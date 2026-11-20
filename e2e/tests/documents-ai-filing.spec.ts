@@ -11,7 +11,7 @@ test('AI files an upload into a new folder, says so, and Undo puts it back', asy
 }) => {
   await api.approveAI()
   await openPage(page, '/documents', 'Documents')
-  const name = `receipt-${randomUUID()}.txt`
+  const name = `contract-${randomUUID()}.txt`
   const uploaded = page.waitForResponse(
     (response) =>
       response.url().endsWith('/api/v1/documents') && response.request().method() === 'POST',
@@ -19,14 +19,18 @@ test('AI files an upload into a new folder, says so, and Undo puts it back', asy
   await page
     .locator('input[type=file]')
     .first()
-    .setInputFiles({ name, mimeType: 'text/plain', buffer: Buffer.from(`Receipt ${randomUUID()}`) })
+    .setInputFiles({
+      name,
+      mimeType: 'text/plain',
+      buffer: Buffer.from(`Contract ${randomUUID()}`),
+    })
   const id = text(object(object(await (await uploaded).json()).data).id)
 
-  // the development model files by the name: a new top-level "Receipt" folder, tagged "receipt"
-  await expect(page.getByText('Filed 1 file into Receipt.')).toBeVisible({ timeout: 30_000 })
+  // the development model files by the name: a new top-level "Contract" folder, tagged "contract"
+  await expect(page.getByText('Filed 1 file into Contract.')).toBeVisible({ timeout: 30_000 })
   const filed = await documentOf(api, id)
-  expect(object(filed.folder).name).toBe('Receipt')
-  expect(filed.tags).toContain('receipt')
+  expect(object(filed.folder).name).toBe('Contract')
+  expect(filed.tags).toContain('contract')
   expect(object(filed.ai_filing).status).toBe('filed')
 
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
@@ -35,7 +39,7 @@ test('AI files an upload into a new folder, says so, and Undo puts it back', asy
   expect(back.folder_id).toBeNull()
   expect(back.tags).toEqual([])
   const folders = object(await (await api.request.get('/api/v1/documents/folders')).json()).data
-  expect(JSON.stringify(folders)).not.toContain('"Receipt"')
+  expect(JSON.stringify(folders)).not.toContain('"Contract"')
 })
 
 test('without the uploader’s AI approval an upload is never filed', async ({ api }) => {

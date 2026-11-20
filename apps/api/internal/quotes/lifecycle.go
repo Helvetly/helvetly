@@ -104,6 +104,10 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 				return fmt.Errorf("store quote pdf: %w", err)
 			}
 			t.PDFKey = &key
+			if err := q.FileClientRecord(ctx, sess.Workspace.ID, t.ClientID, "quotes", store.YearOf(t.IssueDate, now), sess.User.ID,
+				store.RecordPDF(auth.NewID("doc"), key, FileName(t), pdf, now), "", ""); err != nil {
+				return err
+			}
 		} else if pdf, err = s.files.Get(ctx, *t.PDFKey); err != nil {
 			return err
 		}

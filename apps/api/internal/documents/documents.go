@@ -89,8 +89,12 @@ func (s *Service) Register(mux *http.ServeMux) {
 	s.registerOrganize(handle)
 }
 
-// Run purges the Trash of what is older than 30 days, hourly, until ctx ends.
+// Run files what came before the system folders once, then purges the Trash of what is older than 30 days, hourly,
+// until ctx ends.
 func (s *Service) Run(ctx context.Context) {
+	if err := s.BackfillSystemFolders(ctx); err != nil {
+		s.log.ErrorContext(ctx, "file records into system folders", "error", err)
+	}
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
 	for {
@@ -173,6 +177,15 @@ func (s *Service) listFolders(w http.ResponseWriter, r *http.Request, sess store
 	if err != nil {
 		return err
 	}
+	if !hasSystemRoots(folders) { // a workspace made after migration 00040 gets its system folders on first look
+		if err := s.db.Tx(r.Context(), func(q store.Q) error { return q.EnsureSystemRoots(r.Context(), sess.Workspace.ID, s.now()) }); err != nil {
+			return err
+		}
+		if folders, err = s.db.DocumentFolders(r.Context(), sess.Workspace.ID, sess.User.ID); err != nil {
+			return err
+		}
+	}
+	localizeFolders(r, folders)
 	auth.WriteJSON(w, http.StatusOK, data(folders))
 	return nil
 }
@@ -259,6 +272,7 @@ func (s *Service) createFolder(w http.ResponseWriter, r *http.Request, sess stor
 	if err != nil {
 		return err
 	}
+	f.Name = folderName(language(r), f.SystemKind, f.Name)
 	auth.WriteJSON(w, http.StatusCreated, data(f))
 	return nil
 }
@@ -291,6 +305,9 @@ func (s *Service) updateFolder(w http.ResponseWriter, r *http.Request, sess stor
 		if err != nil {
 			return err
 		}
+		if f.SystemKind != nil {
+			return errSystemFolder
+		}
 		name, parent := f.Name, f.ParentID
 		if raw, ok := body["name"]; ok {
 			var typed string
@@ -316,6 +333,7 @@ func (s *Service) updateFolder(w http.ResponseWriter, r *http.Request, sess stor
 	if err != nil {
 		return err
 	}
+	f.Name = folderName(language(r), f.SystemKind, f.Name)
 	auth.WriteJSON(w, http.StatusOK, data(f))
 	return nil
 }
@@ -400,6 +418,7 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	}
 	for i := range docs {
 		present(&docs[i])
+		localizeDocument(r, &docs[i])
 	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": docs, "meta": map[string]int{"page": page, "page_size": size,
 		"total": total, "total_pages": int(math.Ceil(float64(total) / float64(size)))}})
@@ -417,6 +436,7 @@ func (s *Service) writeDocument(w http.ResponseWriter, r *http.Request, sess sto
 	if err != nil {
 		return err
 	}
+	localizeDocument(r, &d)
 	auth.WriteJSON(w, status, data(d))
 	return nil
 }
@@ -685,6 +705,9 @@ func (s *Service) trash(w http.ResponseWriter, r *http.Request, sess store.Sessi
 	if err != nil {
 		return err
 	}
+	for i := range items {
+		localizeRef(language(r), items[i].Location)
+	}
 	auth.WriteJSON(w, http.StatusOK, data(items))
 	return nil
 }
@@ -832,10 +855,15 @@ func (s *Service) bulkFolder(ctx context.Context, sess store.Session, action, id
 			if err != nil {
 				return err
 			}
+			if f.SystemKind != nil {
+				return errSystemFolder
+			}
 			return s.placeFolder(q, ctx, sess, id, f.Name, target, mode)
 		case "trash":
-			if _, err := q.DocumentFolder(ctx, ws, id); err != nil {
+			if f, err := q.DocumentFolder(ctx, ws, id); err != nil {
 				return err
+			} else if f.SystemKind != nil {
+				return errSystemFolder
 			}
 			retained, err := q.FolderRetained(ctx, ws, id, s.today())
 			if err != nil {

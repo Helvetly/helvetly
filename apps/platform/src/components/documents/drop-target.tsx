@@ -3,6 +3,7 @@ import { createContext, use, useState, type DragEvent } from 'react'
 
 import type { Folder } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
+import { folderLabel } from '@/lib/system-folders'
 
 import {
   activeDrag,
@@ -56,7 +57,11 @@ export function useDropTarget(target: string | null | 'trash') {
                 value1:
                   target === null
                     ? translate('allDocuments')
-                    : (actions?.folders.find((folder) => folder.id === target)?.name ?? 'folder'),
+                    : folderLabel(
+                        actions?.folders.find((folder) => folder.id === target) ?? {
+                          name: 'folder',
+                        },
+                      ),
               }),
         )
       },

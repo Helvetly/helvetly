@@ -4795,5 +4795,7 @@
   "auditApprovalReset": "Approval reset by an edit",
   "auditApprovalGroupSaved": "Approver group saved",
   "auditApprovalGroupDeleted": "Approver group deleted",
-  "auditApprovalPolicySaved": "Approval rules saved"
+  "auditApprovalPolicySaved": "Approval rules saved",
+  "systemFolderTip": "Managed by Helvetly: can't be renamed, moved or deleted",
+  "systemFolderError": "This folder is managed by Helvetly and can't be renamed, moved or deleted."
 }

@@ -24,7 +24,9 @@ test('a template built on an uploaded PDF is filled for a client and filed in Do
       },
     },
   })
-  expect(uploaded.status()).toBe(201)
+  // issuing filed the PDF in Documents already (Clients/<client>/Invoices/<year>): the same bytes reuse that file
+  expect(uploaded.status()).toBe(200)
+  expect(object(await uploaded.json()).reused).toBe(true)
   const sourceDoc = object(object(await uploaded.json()).data)
 
   const name = uniqueName('Service agreement')
@@ -79,7 +81,8 @@ test('a template built on an uploaded PDF is filled for a client and filed in Do
   const filed = files.map(object).find((file) => file.name === `${title}.pdf`)
   if (!filed) throw new Error('The filled document is not among the client files')
   const doc = await api.read(`/documents/${text(filed.id)}`)
-  expect(object(doc.folder).name).toBe('Clients')
+  // a client's document goes to Clients/<client>/Documents/<year>
+  expect(object(doc.folder).system_kind).toBe('year')
   expect(doc.links).toEqual([expect.objectContaining({ type: 'client', id: client.id })])
   const content = await api.request.get(`/api/v1/documents/${text(doc.id)}/content`)
   await expect(content).toBeOK()

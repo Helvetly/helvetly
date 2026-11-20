@@ -3,6 +3,7 @@ import { languageTag } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField as SharedField } from '@helvetly/ui/components/form-field'
+import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Kbd } from '@helvetly/ui/components/kbd'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
@@ -17,7 +18,6 @@ import {
   Paperclip,
   Percent,
   Plus,
-  Sparkles,
   StickyNote,
   Trash2,
 } from 'lucide-react'
@@ -577,7 +577,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ai"
                           size="sm"
                           disabled={
                             !recognizable || reading !== null || !canRecognize(recognizable)
@@ -585,7 +585,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                           className="cursor-pointer"
                           onClick={() => recognizable && void recognize(recognizable)}
                         >
-                          <Sparkles />
+                          <HeidiSparkle />
                           {reading ? translate('readingTheReceipt') : translate('recognizeReceipt')}
                         </Button>
                         <span className="text-xs text-muted-foreground">

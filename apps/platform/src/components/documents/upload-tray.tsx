@@ -21,6 +21,7 @@ import { promptUpgrade } from '@/components/billing/upgrade-prompt'
 import { ApiError, errorMessage } from '@/lib/api'
 import { formatSize, refreshDocuments, uploadDocument, type OnConflict } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
+import { folderLabel } from '@/lib/system-folders'
 
 import { kindFromName, KindIcon } from './kind'
 import {
@@ -252,7 +253,7 @@ function UploadRow({ upload, act }: { upload: Upload; act: (action: QueueAction)
                       value1: formatSize(upload.file.size * upload.progress),
                       value2: formatSize(upload.file.size),
                     })
-                  : `${STATUS_TEXT[upload.status]} · ${upload.status === 'reused' ? (upload.result?.folder?.name ?? translate('documents')) : upload.folderName}`}
+                  : `${STATUS_TEXT[upload.status]} · ${upload.status === 'reused' ? (upload.result?.folder ? folderLabel(upload.result.folder) : translate('documents')) : upload.folderName}`}
           </p>
         </div>
         {upload.status === 'done' && (

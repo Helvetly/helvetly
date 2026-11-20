@@ -10,6 +10,7 @@ import {
   CommandShortcut,
 } from '@helvetly/ui/components/command'
 import { EmptyState } from '@helvetly/ui/components/empty-state'
+import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { Meter } from '@helvetly/ui/components/meter'
 import { Panel } from '@helvetly/ui/components/panel'
@@ -217,3 +218,40 @@ export const PickerWithAddRow: Story = {
     </div>
   ),
 }
+
+/** The AI action button: an outline button's box with a violet, blue and pink edge; still with reduced motion (CSS). */
+export const AiActionButton: Story = {
+  render: () => (
+    <div className="flex items-center gap-3">
+      <Button variant="outline">Upload</Button>
+      <Button variant="ai">
+        <HeidiSparkle />
+        Organize with AI
+      </Button>
+      <Button variant="ai" size="sm">
+        <HeidiSparkle />
+        Small
+      </Button>
+      <Button variant="ai" disabled>
+        <HeidiSparkle />
+        Disabled
+      </Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const button = canvas.getByRole('button', { name: 'Organize with AI' })
+    await expect(button).toHaveAttribute('data-variant', 'ai')
+    await expect(button.querySelector('svg')).not.toBeNull()
+    // the gradient edge is painted behind the border, and the box matches the outline button's
+    await expect(getComputedStyle(button).backgroundClip).toBe('padding-box, border-box')
+    await expect(button.getBoundingClientRect().height).toBe(
+      canvas.getByRole('button', { name: 'Upload' }).getBoundingClientRect().height,
+    )
+    await expect(getComputedStyle(button).borderRadius).toBe(
+      getComputedStyle(canvas.getByRole('button', { name: 'Upload' })).borderRadius,
+    )
+  },
+}
+
+export const AiActionButtonDark: Story = { ...AiActionButton, parameters: { dark: true } }

@@ -196,7 +196,13 @@ func (q Q) UpdateClient(ctx context.Context, workspaceID, id string, fields map[
 	}
 	tag, err := q.db.Exec(ctx, `UPDATE clients SET `+set+` WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL`,
 		append([]any{workspaceID, id, now}, args...)...)
-	return tag.RowsAffected() == 1, err
+	if err != nil || tag.RowsAffected() != 1 {
+		return false, err
+	}
+	if name, ok := fields["name"].(string); ok {
+		return true, q.RenameClientFolder(ctx, workspaceID, id, name, now)
+	}
+	return true, nil
 }
 
 // BulkClients applies activate, deactivate or delete to the live clients among ids and counts them.
@@ -427,10 +433,10 @@ func scanClientFile(row interface{ Scan(...any) error }) (ClientFile, error) {
 	return f, err
 }
 
-// CreateClientFile files the upload in the top-level "Clients" folder, under a free name (f.Name is updated), and
+// CreateClientFile files the upload in Clients/<client>/Documents/<year>, under a free name (f.Name is updated), and
 // links it to the client. Run it in a transaction.
 func (q Q) createClientFile(ctx context.Context, workspaceID, clientID, uploaderID string, f *ClientFile) error {
-	folder, err := q.ClientsFolder(ctx, workspaceID, uploaderID, f.CreatedAt)
+	folder, err := q.ClientRecordFolder(ctx, workspaceID, clientID, "documents", f.CreatedAt.Year(), uploaderID, f.CreatedAt)
 	if err != nil {
 		return err
 	}

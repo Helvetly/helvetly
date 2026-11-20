@@ -36,7 +36,8 @@ const organizeInstructions = "You organize a small business's document manager. 
 	"line with its id, name, file type, current folder path, tags and the start of its text), propose the folder path it " +
 	"belongs in and its tags. Keep a calm, conventional structure, such as by kind and then year: Invoices/2025, " +
 	"Contracts, Receipts/2024. Prefer the existing folders; a new folder path has at most 3 levels separated by /, each a " +
-	"short Title Case name, plural where natural. folder is the whole path, or an empty string for the top level. Give 1 " +
+	"short Title Case name, plural where natural. " + recordRules + " folder is the whole path, or an empty string for the " +
+	"top level. Give 1 " +
 	"to 3 short lower-case tags, the first saying what kind of document it is (such as invoice, contract, receipt, " +
 	"insurance or payslip), preferring tags already in use. Set change to false when the document already sits well " +
 	"where it is with fitting tags. reason is one short sentence. Use only the given information."
@@ -110,6 +111,10 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
+	clients, err := s.db.ClientNames(ctx, ws.ID, filingClients)
+	if err != nil {
+		return err
+	}
 	if len(docs) == 0 {
 		auth.WriteJSON(w, http.StatusOK, data(map[string]any{"proposals": []proposal{}, "considered": 0}))
 		return nil
@@ -125,16 +130,16 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	call := aimodel.Call{Kind: "organize", Operation: auth.NewID("org"), Step: "organize", MaxOutput: organizeMaxOutput,
 		Caps: aimodel.OrganizeCaps}
-	reply, err := budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, used), call)
+	reply, err := budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, clients, used), call)
 	if errors.Is(err, aimodel.ErrCap) || errors.Is(err, aimodel.ErrTooLarge) {
 		// too large: fewer documents, by name only
 		docs, snippets, call.Step = docs[:min(len(docs), organizeShort)], nil, "short"
-		reply, err = budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, used), call)
+		reply, err = budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, clients, used), call)
 	}
 	if err != nil {
 		return organizeError(err)
 	}
-	proposals, err := readOrganize(reply.Text, docs, folders)
+	proposals, err := readOrganize(reply.Text, docs, folders, clients)
 	if err != nil {
 		return err
 	}
@@ -203,7 +208,7 @@ func currentPath(folders []store.Folder, id *string) string {
 }
 
 // organizeRequest: the folder tree, the tags in use and one JSON line per document.
-func organizeRequest(docs []store.Document, snippets map[string]string, folders []store.Folder, tags []string) aimodel.Request {
+func organizeRequest(docs []store.Document, snippets map[string]string, folders []store.Folder, clients []store.ClientName, tags []string) aimodel.Request {
 	var msg strings.Builder
 	msg.WriteString("Folders:\n")
 	paths := make([]string, 0, len(folders))
@@ -217,6 +222,7 @@ func organizeRequest(docs []store.Document, snippets map[string]string, folders 
 	if len(paths) == 0 {
 		msg.WriteString("(none yet)\n")
 	}
+	msg.WriteString("\n" + clientList(clients))
 	if len(tags) > 0 {
 		fmt.Fprintf(&msg, "\nTags in use: %s\n", strings.Join(tags, ", "))
 	}
@@ -250,7 +256,7 @@ func organizeError(err error) error {
 }
 
 // readOrganize checks the model's answer: only listed documents, each once, a usable path and tags.
-func readOrganize(text string, docs []store.Document, folders []store.Folder) ([]proposal, error) {
+func readOrganize(text string, docs []store.Document, folders []store.Folder, clients []store.ClientName) ([]proposal, error) {
 	var out struct {
 		Proposals []struct {
 			DocumentID string   `json:"document_id"`
@@ -285,8 +291,12 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder) ([
 		if d.FolderID != nil {
 			p.FromFolder = &from
 		}
-		if path, ok := splitPath(a.Folder, organizeApplyDepth); ok && (existing[strings.Join(path, "/")] || len(path) <= organizeDepth) {
-			p.Folder = strings.Join(path, "/")
+		if path, ok := splitPath(a.Folder, organizeApplyDepth); ok {
+			// a place in the system folders only by their structure; any other path as before
+			if place, system := recordPath(path, clients); system && place != nil ||
+				!system && (existing[strings.Join(path, "/")] || len(path) <= organizeDepth) {
+				p.Folder = strings.Join(path, "/")
+			}
 		}
 		for _, t := range a.Tags {
 			if tag := tags.Slug(t); tag != "" && len(p.Tags) < filingAITags && !slices.Contains(p.Tags, tag) {
@@ -365,12 +375,32 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 		paths[i], body.Items[i].Tags = path, typed
 	}
 	ctx, ws := r.Context(), sess.Workspace.ID
+	clients, err := s.db.ClientNames(ctx, ws, filingClients)
+	if err != nil {
+		return err
+	}
 	moved, tagged := 0, 0
 	var undo organizeUndo
-	err := s.db.Tx(ctx, func(q store.Q) error {
+	err = s.db.Tx(ctx, func(q store.Q) error {
 		moved, tagged, undo = 0, 0, organizeUndo{Previous: []organizePrevious{}, CreatedFolders: []string{}}
 		resolved := map[string]*string{"": nil}
 		resolve := func(path []string) (*string, error) {
+			if place, system := recordPath(path, clients); system {
+				if place == nil {
+					return nil, errSkip
+				}
+				made := ""
+				if len(place.rest) > 0 { // Expenses/<year>/<category>: the category is a plain folder undo may delete
+					if made, err = q.ExistingFolderPath(ctx, ws, path); err != nil {
+						return nil, err
+					}
+				}
+				id, err := place.folder(ctx, q, ws, sess.User.ID, s.now())
+				if err == nil && len(place.rest) > 0 && made == "" && !slices.Contains(undo.CreatedFolders, id) {
+					undo.CreatedFolders = append(undo.CreatedFolders, id)
+				}
+				return &id, err
+			}
 			var parent *string
 			for i, name := range path {
 				key := strings.ToLower(strings.Join(path[:i+1], "/"))
@@ -411,6 +441,9 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 				return err
 			}
 			target, err := resolve(paths[i])
+			if errors.Is(err, errSkip) { // not a place in the system folders: the document stays
+				continue
+			}
 			if err != nil {
 				return err
 			}

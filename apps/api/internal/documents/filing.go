@@ -45,8 +45,9 @@ const filingInstructions = "You file documents in a small business's document ma
 	"what it is, such as invoice, contract, receipt, insurance or payslip; prefer tags already in use when they fit. " +
 	"Set folder_id to the id of the listed folder the file belongs in, or, when none fits, folder_id to null and " +
 	"new_folder to a short, general top-level folder name (one or two words, Title Case, plural where natural, such as " +
-	"Contracts or Receipts) that more files like it would fit. When the message says the file stays in its folder, set " +
-	"both to null. Use only the given information."
+	"Contracts or Insurance) that more files like it would fit. " + recordRules + " For those, set folder_id to null and " +
+	"new_folder to that path. When the message says the file stays in its folder, set both to null. Use only the given " +
+	"information."
 
 var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any{
 	"type": "object",
@@ -146,10 +147,12 @@ func (s *Service) FileDue(ctx context.Context) error {
 	}
 }
 
-// filing is the model's decision, checked: at most one of folderID (a live folder listed to it) and newFolder.
+// filing is the model's decision, checked: at most one of folderID (a live folder listed to it), newFolder and record
+// (a place in the system folders).
 type filing struct {
 	tags                []string
 	folderID, newFolder string
+	record              *recordPlace
 }
 
 func (s *Service) file(ctx context.Context, j store.FilingJob) {
@@ -205,20 +208,27 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	mayMove := j.MayMove && doc.FolderID == nil
 	folders := map[string]bool{}
 	var listed []store.Folder
+	var clients []store.ClientName
 	if mayMove {
-		if listed, err = s.db.DocumentFolders(ctx, ws.ID, j.UserID); err != nil {
+		all, err := s.db.DocumentFolders(ctx, ws.ID, j.UserID)
+		if err != nil {
 			return err
 		}
-		listed = listed[:min(len(listed), filingFolders)]
-		for _, f := range listed {
-			folders[f.ID] = true
+		for _, f := range all {
+			if !inSystemTree(all, f) && len(listed) < filingFolders {
+				listed = append(listed, f)
+				folders[f.ID] = true
+			}
+		}
+		if clients, err = s.db.ClientNames(ctx, ws.ID, filingClients); err != nil {
+			return err
 		}
 	}
 	used, err := s.db.DocumentTags(ctx, ws.ID, 50)
 	if err != nil {
 		return err
 	}
-	req, err := s.filingRequest(ctx, doc, mayMove, listed, used)
+	req, err := s.filingRequest(ctx, doc, mayMove, listed, clients, used)
 	if err != nil {
 		return err
 	}
@@ -238,7 +248,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if err != nil {
 		return err
 	}
-	decided, err := readFiling(reply.Text, mayMove, folders)
+	decided, err := readFiling(reply.Text, mayMove, folders, clients)
 	if err != nil {
 		return err
 	}
@@ -247,7 +257,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 
 // filingRequest is what the model sees: the file's name and type, its text or the file itself when small, the
 // folders it may choose from and the tags in use.
-func (s *Service) filingRequest(ctx context.Context, doc store.Document, mayMove bool, folders []store.Folder, tags []string) (aimodel.Request, error) {
+func (s *Service) filingRequest(ctx context.Context, doc store.Document, mayMove bool, folders []store.Folder, clients []store.ClientName, tags []string) (aimodel.Request, error) {
 	var msg strings.Builder
 	fmt.Fprintf(&msg, "File name: %s\nFile type: %s\n\n", doc.Name, doc.ContentType)
 	if mayMove {
@@ -258,7 +268,7 @@ func (s *Service) filingRequest(ctx context.Context, doc store.Document, mayMove
 		if len(folders) == 0 {
 			msg.WriteString("(none yet)\n")
 		}
-		msg.WriteString("\n")
+		msg.WriteString("\n" + clientList(clients) + "\n")
 	} else {
 		msg.WriteString("The file stays in its folder.\n\n")
 	}
@@ -311,7 +321,7 @@ func folderPath(folders []store.Folder, f store.Folder) string {
 }
 
 // readFiling checks the model's answer: usable tags only, and a folder only among those listed.
-func readFiling(text string, mayMove bool, folders map[string]bool) (filing, error) {
+func readFiling(text string, mayMove bool, folders map[string]bool, clients []store.ClientName) (filing, error) {
 	var out struct {
 		Tags      []string `json:"tags"`
 		FolderID  *string  `json:"folder_id"`
@@ -331,6 +341,12 @@ func readFiling(text string, mayMove bool, folders map[string]bool) (filing, err
 	case out.FolderID != nil && folders[*out.FolderID]:
 		f.folderID = *out.FolderID
 	case out.NewFolder != nil:
+		if path, ok := splitPath(*out.NewFolder, organizeApplyDepth); ok {
+			if place, system := recordPath(path, clients); system {
+				f.record = place // nil: a made-up place in the system folders, so the file stays
+				break
+			}
+		}
 		if name, problem := checkName(*out.NewFolder); problem == "" && utf8.RuneCountInString(name) <= 60 {
 			f.newFolder = name
 		}
@@ -435,8 +451,12 @@ func (s *Service) applyFiling(ctx context.Context, j store.FilingJob, ws store.W
 	return err
 }
 
-// filingFolder: the live folder to move into ("" for none), and whether filing made it.
+// filingFolder: the live folder to move into ("" for none), and whether filing made it (never a system folder).
 func (s *Service) filingFolder(ctx context.Context, q store.Q, workspaceID, userID string, f filing) (string, bool, error) {
+	if f.record != nil {
+		id, err := f.record.folder(ctx, q, workspaceID, userID, s.now())
+		return id, false, err
+	}
 	if f.folderID != "" {
 		if _, err := q.DocumentFolder(ctx, workspaceID, f.folderID); errors.Is(err, store.ErrNotFound) {
 			return "", false, nil // deleted meanwhile

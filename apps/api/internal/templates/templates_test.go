@@ -483,7 +483,8 @@ func TestGenerateSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filed.Folder == nil || filed.Folder.Name != "Clients" || len(filed.Links) != 1 || filed.Links[0].Type != "client" ||
+	// a client's documents go to Clients/<client>/Documents/<year>
+	if filed.Folder == nil || filed.Folder.SystemKind == nil || *filed.Folder.SystemKind != "year" || len(filed.Links) != 1 || filed.Links[0].Type != "client" ||
 		filed.Links[0].ID != client || filed.ContentType != "application/pdf" {
 		t.Fatalf("filed: %+v", filed)
 	}

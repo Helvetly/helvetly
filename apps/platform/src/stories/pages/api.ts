@@ -373,10 +373,17 @@ const entries: Entry[] = [
   created_by: anna,
 }))
 
-const folder = (id: string, name: string, files: number): Folder => ({
+const folder = (
+  id: string,
+  name: string,
+  files: number,
+  system_kind: Folder['system_kind'] = null,
+  parent_id: string | null = null,
+): Folder => ({
   id,
   name,
-  parent_id: null,
+  system_kind,
+  parent_id,
   file_count: files,
   size: files * 240_000,
   total_files: files,
@@ -390,6 +397,13 @@ export const folders = [
   folder('fld_contracts', 'Contracts', 3),
   folder('fld_receipts', 'Receipts 2026', 12),
   folder('fld_tax', 'Tax', 4),
+  // The folders Helvetly manages: Clients / Acme AG / Invoices / 2025, and Expenses / 2025.
+  folder('fld_sys_clients', 'Clients', 2, 'clients'),
+  folder('fld_sys_acme', 'Acme AG', 2, 'client', 'fld_sys_clients'),
+  folder('fld_sys_acme_invoices', 'Invoices', 2, 'invoices', 'fld_sys_acme'),
+  folder('fld_sys_acme_invoices_2025', '2025', 2, 'year', 'fld_sys_acme_invoices'),
+  folder('fld_sys_expenses', 'Expenses', 5, 'expenses'),
+  folder('fld_sys_expenses_2025', '2025', 5, 'year', 'fld_sys_expenses'),
 ]
 const file = (id: string, name: string, kind: DocFile['kind'], type: string): DocFile => ({
   id,

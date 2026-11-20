@@ -12,13 +12,30 @@ import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
 import type { Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
+import { folderLabel } from '@/lib/system-folders'
 import { MAX_FILE_BYTES } from '@/lib/upload-packs'
 
 export type Person = { id: string; name: string }
 
+export type SystemKind =
+  | 'clients'
+  | 'expenses'
+  | 'client'
+  | 'invoices'
+  | 'quotes'
+  | 'engagements'
+  | 'signatures'
+  | 'documents'
+  | 'year'
+
+/** A folder named inside a file, filing or Trash row. */
+export type FolderRef = { id: string; name: string; system_kind?: SystemKind | null }
+
 export type Folder = {
   id: string
   name: string
+  /** Set on the folders Helvetly manages: they cannot be renamed, moved or trashed. */
+  system_kind?: SystemKind | null
   parent_id: string | null
   file_count: number
   size: number
@@ -52,7 +69,7 @@ export type DocLink = {
 /** What AI filing did with an upload: queued, filed (`folder` is where it went), skipped or undone. */
 export type AIFiling = {
   status: 'queued' | 'filed' | 'skipped' | 'undone'
-  folder: { id: string; name: string } | null
+  folder: FolderRef | null
   created_folder: boolean
   /** The tags filing added. */
   tags: string[]
@@ -62,7 +79,7 @@ export type DocFile = {
   id: string
   name: string
   folder_id: string | null
-  folder: { id: string; name: string } | null
+  folder: FolderRef | null
   size: number
   content_type: string
   kind: Kind
@@ -88,7 +105,7 @@ export type TrashItem = {
   content_type: string | null
   size: number
   item_count: number
-  location: { id: string; name: string } | null
+  location: FolderRef | null
   retained_until: string | null
   deleted_at: string
   deleted_by: Person | null
@@ -402,7 +419,9 @@ export function tagCounts(files: DocFile[]) {
  */
 export function filingSummary(files: DocFile[]) {
   const filed = files.filter((file) => file.ai_filing?.status === 'filed')
-  const folders = new Set(filed.flatMap((file) => file.ai_filing?.folder?.name ?? []))
+  const folders = new Set(
+    filed.flatMap((file) => (file.ai_filing?.folder ? folderLabel(file.ai_filing.folder) : [])),
+  )
   const moved = filed.filter((file) => file.ai_filing?.folder)
   return {
     filed,
