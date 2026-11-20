@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { portalHandlers, scopedPortal } from '@/mocks/portal'
+import { accountChoice, portalHandlers, scopedPortal } from '@/mocks/portal'
 
 import { PortalLogin } from './portal-login'
 
@@ -186,6 +186,33 @@ export const WorkspaceAddress: Story = {
   },
 }
 
+/** The workspace turned its whole portal off: the calm "not available" page instead of the form, naming nobody. */
+export const WorkspacePortalOff: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        signedOut,
+        http.get('/api/v1/public/portal/scope', () =>
+          HttpResponse.json(
+            { error: { code: 'portal_closed', message: 'This client portal is not available.' } },
+            { status: 404 },
+          ),
+        ),
+        ...portalHandlers,
+      ],
+    },
+  },
+  beforeEach: WorkspaceAddress.beforeEach,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      await canvas.findByRole('heading', { name: 'The client portal is not available' }),
+    ).toBeVisible()
+    await expect(canvas.queryByLabelText('Email')).toBeNull()
+    await expect(canvas.queryByText('Müller Treuhand AG')).toBeNull()
+  },
+}
+
 export const WorkspaceAddressPhone: Story = {
   parameters: { ...WorkspaceAddress.parameters, ...phone },
   beforeEach: WorkspaceAddress.beforeEach,
@@ -193,5 +220,67 @@ export const WorkspaceAddressPhone: Story = {
   play: async (context) => {
     await WorkspaceAddress.play?.(context)
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
+  },
+}
+
+/** On the shared portal an address with several clients chooses one right after its code. */
+export const CodeThenAccountChooser: Story = {
+  parameters: { msw: { handlers: [signedOut, ...accountChoice(), ...portalHandlers] } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.type(await canvas.findByLabelText('Email'), 'anna@example.ch')
+    await userEvent.click(canvas.getByRole('button', { name: 'Continue' }))
+    await userEvent.type(await canvas.findByLabelText('Code'), '123456')
+    await expect(await canvas.findByRole('heading', { name: 'Choose an account' })).toBeVisible()
+    await expect(
+      canvas.getByRole('button', { name: 'Müller Treuhand AG as Keller AG' }),
+    ).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Studio Berg as Anna Keller' })).toBeVisible()
+    await expect(canvas.getByText('anna@example.ch')).toBeVisible()
+    // Another address: back to the email step.
+    await userEvent.click(canvas.getByRole('button', { name: 'Use another email' }))
+    await expect(await canvas.findByLabelText('Email')).toBeVisible()
+  },
+}
+
+let redeemed: string[] = []
+const ticketArrival = {
+  parameters: {
+    msw: {
+      handlers: [
+        signedOut,
+        scopedPortal(),
+        http.post('/api/v1/public/portal/auth/ticket', async ({ request }) => {
+          redeemed.push(((await request.json()) as { ticket: string }).ticket)
+          return HttpResponse.json(
+            { error: { code: 'unauthenticated', message: 'Sign in to continue.' } },
+            { status: 401 },
+          )
+        }),
+        ...portalHandlers,
+      ],
+    },
+  },
+  beforeEach: () => {
+    redeemed = []
+    const before = window.location.href
+    window.history.replaceState(
+      window.history.state,
+      '',
+      '/w/mueller-treuhand/login/#ticket=one-time',
+    )
+    return () => window.history.replaceState(window.history.state, '', before)
+  },
+}
+
+/** Arriving from the chooser: the ticket is taken off the address and spent once; a spent one asks to sign in again. */
+export const ArrivalWithASpentTicket: Story = {
+  ...ticketArrival,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('That sign-in has expired.')
+    await expect(redeemed).toEqual(['one-time'])
+    await expect(window.location.hash).toBe('')
+    await expect(canvas.getByLabelText('Email')).toBeVisible()
   },
 }

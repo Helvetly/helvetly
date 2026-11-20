@@ -165,3 +165,119 @@ test('one address, client of two workspaces, signs in on each address separately
     await staff.dispose()
   }
 })
+
+test('a client of two workspaces signs in on the shared portal, chooses the second and lands in its portal', async ({
+  api,
+  playwright,
+  browser,
+  baseURL,
+}) => {
+  const email = `choose-${randomUUID()}@example.test`
+  const firstName = uniqueName('First Treuhand')
+  await api.save('/workspace', { name: firstName }, 'PATCH')
+  const first = await api.save('/clients', { name: uniqueName('First'), is_company: false, email })
+  await api.save(`/clients/${text(first.id)}`, { portal_enabled: true }, 'PATCH')
+  const firstPath = await portalPath(api.request)
+
+  const staff = await playwright.request.newContext({ baseURL })
+  const context = await browser.newContext({ baseURL: portalURL })
+  try {
+    const other = await signIn(staff, `other-${randomUUID()}@example.test`)
+    const secondName = uniqueName('Second Studio')
+    await other.save('/workspace', { name: secondName }, 'PATCH')
+    const secondClient = uniqueName('Second')
+    const second = await other.save('/clients', { name: secondClient, is_company: false, email })
+    await other.save(`/clients/${text(second.id)}`, { portal_enabled: true }, 'PATCH')
+    const secondPath = await portalPath(staff)
+
+    const portal = await context.newPage()
+    await portal.goto('/login/')
+    await portal.getByLabel('Email', { exact: true }).fill(email)
+    await portal.getByRole('button', { name: 'Continue', exact: true }).click()
+    await expect(portal.getByRole('heading', { name: 'Check your email' })).toBeVisible()
+    const dev = await context.request.get(
+      `/api/v1/auth/email/dev-code?email=${encodeURIComponent(email)}`,
+    )
+    await portal.getByLabel('Code', { exact: true }).fill(text(object(await dev.json()).code))
+
+    // Both accounts, before any session: the choice opens nothing on the shared portal.
+    await expect(portal.getByRole('heading', { name: 'Choose an account' })).toBeVisible()
+    await expect(
+      portal.getByRole('button', { name: `${firstName} as ${text(first.name)}` }),
+    ).toBeVisible()
+    const pick = portal.getByRole('button', { name: `${secondName} as ${secondClient}` })
+    await expect(pick).toBeVisible()
+    expect((await session(context, '/')).status()).toBe(401)
+
+    await pick.click()
+    await expect(portal).toHaveURL(at(secondPath))
+    await expect(portal.locator('header').getByLabel(secondName, { exact: true })).toBeVisible()
+
+    // Signed in to the second workspace's portal only.
+    const own = object(await (await session(context, secondPath)).json())
+    expect(object(own.client).id).toBe(second.id)
+    expect(Array.isArray(own.clients) ? own.clients.length : 0).toBe(1)
+    expect((await session(context, firstPath)).status()).toBe(401)
+    expect((await session(context, '/')).status()).toBe(401)
+    expect((await context.request.get(`${firstPath}api/v1/public/portal/invoices`)).status()).toBe(
+      401,
+    )
+  } finally {
+    await context.close()
+    await staff.dispose()
+  }
+})
+
+test('the owner turns the whole portal off in settings: the client is signed out and the address says it is not available; on again lets them back in', async ({
+  api,
+  page,
+  browser,
+}) => {
+  test.setTimeout(120_000) // the second sign-in waits out the per-address code cooldown
+  const email = `off-${randomUUID()}@example.test`
+  const client = await api.save('/clients', { name: uniqueName('Off'), is_company: false, email })
+  await api.save(`/clients/${text(client.id)}`, { portal_enabled: true }, 'PATCH')
+  const path = await portalPath(api.request)
+  const context = await browser.newContext({ baseURL: portalURL })
+  try {
+    const verified = await context.request.post(`${path}api/v1/public/portal/auth/verify`, {
+      data: { email, code: await code(context, path, email) },
+    })
+    expect(verified.status()).toBe(201)
+    await expect(await session(context, path)).toBeOK()
+
+    await page.goto('/settings/workspace#portal-address')
+    const toggle = page.getByRole('switch', { name: 'Client portal', exact: true })
+    await expect(toggle).toBeChecked()
+    await toggle.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('Turn off the client portal?')
+    await dialog.getByRole('button', { name: 'Turn off', exact: true }).click()
+    await expect(toggle).not.toBeChecked()
+
+    // Off: the session is gone, no sign-in, and the address names nobody.
+    expect((await session(context, path)).status()).toBe(401)
+    const again = await context.request.post(`${path}api/v1/public/portal/auth/verify`, {
+      data: { email, code: '000000' },
+    })
+    // No code is sent while off (the same answer as for an unknown address), so nothing verifies.
+    expect(again.status()).not.toBe(201)
+    expect((await session(context, path)).status()).toBe(401)
+    const portal = await context.newPage()
+    await portal.goto(`${path}login/`)
+    await expect(
+      portal.getByRole('heading', { name: 'The client portal is not available' }),
+    ).toBeVisible()
+    await expect(portal.getByLabel('Email', { exact: true })).toHaveCount(0)
+
+    // On again (no question): the client's own access is as it was.
+    await toggle.click()
+    await expect(toggle).toBeChecked()
+    const back = await context.request.post(`${path}api/v1/public/portal/auth/verify`, {
+      data: { email, code: await code(context, path, email) },
+    })
+    expect(back.status()).toBe(201)
+  } finally {
+    await context.close()
+  }
+})

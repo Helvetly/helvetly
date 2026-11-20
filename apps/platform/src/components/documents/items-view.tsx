@@ -365,7 +365,10 @@ function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
               <StarGlyph className="size-4" />
             </span>
           )}
-          <FolderArt full={folder.total_files > 0} className="w-16 @2xl:w-[90px]" />
+          {/* The art sits a little smaller inside the box it used to fill, so the tile keeps its size. */}
+          <span className="flex aspect-[5/4] w-16 items-center justify-center @2xl:w-[90px]">
+            <FolderArt full={folder.total_files > 0} className="w-14 @2xl:w-[78px]" />
+          </span>
           <span className="block w-full min-w-0 text-center">
             {renaming ? (
               <InlineRename

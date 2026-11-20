@@ -41,6 +41,9 @@ func (s *Service) invitePortal(ctx context.Context, sess store.Session, c store.
 	if s.mail == nil || PortalLogin(c) == "" {
 		return
 	}
+	if off, err := s.db.Q.PortalOff(ctx, sess.Workspace.ID); err != nil || off {
+		return // a workspace with its whole portal off sends no invitations
+	}
 	if err := s.sendPortalInvite(ctx, sess, c); err != nil {
 		s.log.WarnContext(ctx, "portal invitation not sent", "client", c.ID, "error", err)
 	}
@@ -48,6 +51,7 @@ func (s *Service) invitePortal(ctx context.Context, sess store.Session, c store.
 
 var (
 	errPortalOff     = auth.Error(http.StatusConflict, "portal_off", "Turn the client portal on first.", nil)
+	errPortalClosed  = auth.Error(http.StatusConflict, "portal_closed", "The client portal is off for the whole workspace. Turn it on in Settings first.", nil)
 	errNoPortalLogin = auth.Error(http.StatusConflict, "no_portal_address", "Add an email to let this client sign in.", nil)
 	errNoMailer      = auth.Error(http.StatusServiceUnavailable, "mail_unavailable", "Email is not set up, so the invitation cannot be sent.", nil)
 	errInviteFailed  = auth.Error(http.StatusBadGateway, "mail_failed", "The invitation could not be sent. Try again in a moment.", nil)
@@ -62,6 +66,13 @@ func (s *Service) resendPortalInvite(w http.ResponseWriter, r *http.Request, ses
 	switch {
 	case !c.PortalEnabled:
 		return errPortalOff
+	}
+	off, err := s.db.Q.PortalOff(r.Context(), sess.Workspace.ID)
+	switch {
+	case err != nil:
+		return err
+	case off:
+		return errPortalClosed
 	case PortalLogin(c) == "":
 		return errNoPortalLogin
 	case s.mail == nil:

@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 
 import { civilToday } from '@/lib/dates'
 import type {
+  PortalAccount,
   PortalDocument,
   PortalEngagement,
   PortalEngagementPeriod,
@@ -266,6 +267,30 @@ const unscopedPortal = http.get(`${P}/scope`, () =>
 export const scopedPortal = (scope: PortalScope = portalScope) =>
   http.get(`${P}/scope`, () => HttpResponse.json(scope))
 
+/** An address that is a client of several suppliers, as verify offers them on the shared portal. */
+export const portalAccounts: PortalAccount[] = [
+  {
+    client_id: 'cli_1',
+    client_name: 'Keller AG',
+    workspace_name: 'Müller Treuhand AG',
+    logo_url: null,
+  },
+  { client_id: 'cli_7', client_name: 'Anna Keller', workspace_name: 'Studio Berg', logo_url: null },
+]
+
+/** Verify on the shared portal for an address with these accounts; choose answers that supplier's address. */
+export const accountChoice = (accounts: PortalAccount[] = portalAccounts) => [
+  http.post(`${P}/auth/verify`, () =>
+    HttpResponse.json({ csrf_token: 'choice-csrf', accounts }, { status: 200 }),
+  ),
+  http.post(`${P}/auth/choose`, async ({ request }) => {
+    const { client_id } = (await request.json()) as { client_id: string }
+    return HttpResponse.json({
+      url: `https://portal.helvetly.com/w/${client_id}/login/#ticket=one-time`,
+    })
+  }),
+]
+
 export const portalHandlers = [
   unscopedPortal,
   http.post(`${P}/auth/start`, () =>
@@ -279,6 +304,9 @@ export const portalHandlers = [
     HttpResponse.json({ csrf_token: portalSession.csrf_token }, { status: 201 }),
   ),
   http.delete(`${P}/session`, () => new HttpResponse(null, { status: 204 })),
+  http.post(`${P}/auth/ticket`, () =>
+    HttpResponse.json({ csrf_token: portalSession.csrf_token }, { status: 201 }),
+  ),
   http.get(`${P}/invoices`, () => HttpResponse.json({ data: portalInvoices })),
   http.get(`${P}/engagements`, () => HttpResponse.json({ data: portalEngagements })),
   http.get(`${P}/engagements/:id/entries`, () =>

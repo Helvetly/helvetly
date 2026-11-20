@@ -19,6 +19,7 @@
   "answerQuotes": "Beantworten Sie Preisangebote",
   "apartment": "Wohnung",
   "aptSuite": "Apt / Suite",
+  "asClient": "als {client}",
   "awaitingYourAnswer": "Ich warte auf Ihre Antwort",
   "bahnhofstrasse": "Bahnhofstrasse",
   "billingEmail": "Rechnungs-E-Mail",
@@ -30,6 +31,7 @@
   "che123456789MWST": "CHE-123.456.789 MWST",
   "chooseACountry": "Wählen Sie ein Land",
   "chooseAllToSeeEveryInvoice": "Wählen Sie „Alle“, um alle Rechnungen anzuzeigen.",
+  "chooseAnAccount": "Konto wählen",
   "city": "Stadt",
   "clientPortal": "Kundenportal",
   "company": "Unternehmen",
@@ -213,5 +215,11 @@
   "dynamicOn2": "{verb} am {value2}",
   "portalAddressNotFound": "Diese Portaladresse gibt es nicht",
   "portalAddressNotFoundHint": "Prüfen Sie den Link in der E-Mail Ihres Lieferanten oder fragen Sie ihn nach der aktuellen Portaladresse.",
-  "zRich": "Zürich"
+  "signedInAs": "Angemeldet als",
+  "thatSignInHasExpired": "Diese Anmeldung ist abgelaufen. Geben Sie Ihre E-Mail-Adresse ein, um einen neuen Code zu erhalten.",
+  "useAnotherEmail": "Andere E-Mail-Adresse verwenden",
+  "yourAddressHasSeveralAccounts": "Ihre Adresse hat mehr als ein Konto. Welches möchten Sie öffnen?",
+  "zRich": "Zürich",
+  "portalUnavailable": "Das Kundenportal ist nicht verfügbar",
+  "portalUnavailableHint": "Ihr Anbieter hat sein Kundenportal vorübergehend ausgeschaltet. Fragen Sie direkt nach, wenn Sie Rechnungen oder Dokumente brauchen."
 }

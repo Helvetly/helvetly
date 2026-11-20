@@ -33,7 +33,6 @@ import { DangerRow, DangerZone } from './danger-zone'
 import { EmailTemplatesSections } from './email-templates-settings'
 import { ActionRow, FieldGrid, SettingsPage, SettingsSection } from './layout'
 import { PortalAddressSection } from './portal-address'
-import { PortalDomainSection } from './portal-domain'
 import { SettingsHeader } from './settings-tabs'
 import { WorkspaceLogoSection } from './workspace-logo'
 
@@ -61,7 +60,6 @@ export function WorkspaceSettings() {
               canEdit={canManage(session.role)}
             />
             <PortalAddressSection canEdit={canManage(session.role)} />
-            <PortalDomainSection canEdit={canManage(session.role)} />
             {showEmails && <EmailTemplatesSections />}
             {session.role === 'owner' && <ExportCard />}
             {session.role === 'owner' && <DeleteCard name={session.workspace.name} />}

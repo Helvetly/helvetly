@@ -591,7 +591,7 @@ export function DocumentsPage() {
       picker ||
       confirm ||
       newFolderIn !== undefined
-    if (busy || view.section === 'trash' || order.length === 0) return
+    if (event.defaultPrevented || busy || view.section === 'trash' || order.length === 0) return
     if (
       target instanceof Element &&
       target.closest('input, textarea, select, [contenteditable=true], [role=dialog], [role=menu]')

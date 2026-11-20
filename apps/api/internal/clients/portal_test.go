@@ -212,3 +212,28 @@ func TestResendWithoutMailer(t *testing.T) {
 	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"email": "ana@acme.ch", "portal_enabled": true}, 200, nil)
 	e.do(b, "POST", "/api/v1/clients/"+c.ID+"/portal-invitation", nil, 503, nil)
 }
+
+// With the whole portal off, a client's switch still saves, but no invitation goes out and a resend is refused; on
+// again, the resend works.
+func TestNoInviteWhilePortalOff(t *testing.T) {
+	e, m := newPortalEnv(t)
+	b := e.workspace()
+	if err := e.st.SetPortalOff(context.Background(), b.workspace, true); err != nil {
+		t.Fatal(err)
+	}
+	c := e.create(b, address("Acme"))
+	var out struct{ Data store.Client }
+	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"email": "ana@acme.ch", "portal_enabled": true}, 200, &out)
+	if m.count() != 0 || !out.Data.PortalEnabled {
+		t.Fatalf("mails = %+v, enabled = %v", m.sent, out.Data.PortalEnabled)
+	}
+	path := "/api/v1/clients/" + c.ID + "/portal-invitation"
+	e.do(b, "POST", path, nil, 409, nil)
+	if err := e.st.SetPortalOff(context.Background(), b.workspace, false); err != nil {
+		t.Fatal(err)
+	}
+	e.do(b, "POST", path, nil, 200, nil)
+	if m.count() != 1 {
+		t.Fatalf("mails = %+v", m.sent)
+	}
+}

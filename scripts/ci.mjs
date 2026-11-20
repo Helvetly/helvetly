@@ -98,6 +98,7 @@ export function verifyResults(needs, draft) {
     einvoice: checks.backend,
     vitest: checks.frontend,
     coverage: checks.frontend,
+    storybook: checks.frontend,
     visual: checks.frontend,
     e2e: checks.e2e,
   }

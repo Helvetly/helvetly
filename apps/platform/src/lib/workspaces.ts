@@ -81,7 +81,8 @@ export function useWorkspaceLogo() {
 }
 
 /** Where the workspace's clients sign in: its own slug and the whole portal address. */
-export type PortalAddress = { slug: string; url: string }
+/** `enabled` false: the workspace turned its whole portal off (nobody signs in, no invitations). */
+export type PortalAddress = { slug: string; url: string; enabled: boolean }
 export type SlugProblem = 'invalid' | 'reserved' | 'taken'
 
 const portalKey = ['workspace', 'portal'] as const
@@ -94,10 +95,14 @@ export function usePortalAddress(enabled = true) {
   })
 }
 
-/** Whether the workspace can take `slug`; off while it is the current one or empty. */
+/**
+ * Whether the workspace can take `slug`; off while it is the current one or empty. `settled` is false while the
+ * typing has not reached the query yet (the debounce).
+ */
 export function useSlugAvailability(slug: string, current: string | undefined) {
-  const wanted = useDebounced(slug.trim().toLowerCase())
-  return useQuery({
+  const typed = slug.trim().toLowerCase()
+  const wanted = useDebounced(typed)
+  const query = useQuery({
     queryKey: [...portalKey, 'availability', wanted],
     queryFn: async () =>
       (
@@ -107,6 +112,17 @@ export function useSlugAvailability(slug: string, current: string | undefined) {
       ).data,
     enabled: wanted !== '' && wanted !== current,
     staleTime: 10_000,
+  })
+  return { query, settled: wanted === typed }
+}
+
+/** Turns the whole client portal on or off (owners and admins). */
+export function useSetPortalAccess() {
+  const queryClient = useQueryClient()
+  return useMutation<{ data: PortalAddress }, ApiError, boolean>({
+    mutationFn: (enabled) =>
+      request('/workspace/portal/access', { method: 'PUT', json: { enabled } }),
+    onSuccess: (result) => queryClient.setQueryData(portalKey, result.data),
   })
 }
 
