@@ -2,7 +2,8 @@
 // Approvals before issuing: approver groups, a policy per document type, the person's inbox and one invoice's request.
 // Typed by hand from the approvals design; served by Go, the handlers in src/mocks/approvals.ts are a test-only fake.
 import { languageTag } from '@helvetly/i18n'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 
 import { ApiError, request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -157,9 +158,17 @@ export function useApprovalAction() {
   })
 }
 
-/** The issue call's 409 while a required approval is missing. */
+/** The 409 of issuing (or splitting into instalments) while a required approval is missing. */
 export const isApprovalRequired = (error: unknown) =>
   error instanceof ApiError && error.code === 'approval_required'
+
+/** Says the draft needs approval first, and refetches its approval so the drawer shows the step. */
+export function toastApprovalRequired(queryClient: QueryClient, invoiceId: string) {
+  toast.error(translate('approvalRequiredTitle'), {
+    description: translate('approvalRequiredBody'),
+  })
+  void queryClient.invalidateQueries({ queryKey: approvalKeys.invoice(invoiceId) })
+}
 
 /** Who a rule asks for, as a word: the group's name or "anyone who can see invoices". */
 export const ruleSource = (groupId: string | null, groupName: (id: string) => string | undefined) =>

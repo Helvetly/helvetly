@@ -27,7 +27,7 @@ import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import type { MenuKit } from '@/components/data/menus'
 import { errorMessage } from '@/lib/api'
-import { approvalKeys, isApprovalRequired } from '@/lib/approvals'
+import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
 import {
   cannotIssueReasons,
@@ -200,13 +200,8 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
       onSuccess: (issued) => toast.success(translate('issued2', { value1: documentName(issued) })),
       onError: (error) => {
         const reasons = cannotIssueReasons(error)
-        if (isApprovalRequired(error)) {
-          toast.error(translate('approvalRequiredTitle'), {
-            description: translate('approvalRequiredBody'),
-          })
-          // The drawer shows the approval it now knows is needed.
-          void queryClient.invalidateQueries({ queryKey: approvalKeys.invoice(invoice.id) })
-        } else if (reasons) setBlocked({ invoice, reasons })
+        if (isApprovalRequired(error)) toastApprovalRequired(queryClient, invoice.id)
+        else if (reasons) setBlocked({ invoice, reasons })
         else toast.error(errorMessage(error))
       },
     })
