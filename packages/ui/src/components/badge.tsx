@@ -42,7 +42,7 @@ const badgeVariants = cva(
       size: {
         /** sm: beside a name in a list row, a count on a tab or a tag in dense chrome. */
         sm: 'h-5 gap-1 px-1.5 text-caption [&>svg]:size-3',
-        md: 'h-6 gap-1.5 px-2 text-[13px] [&>svg]:size-3.5',
+        md: 'h-6 gap-1.5 px-2 text-body-sm [&>svg]:size-3.5',
       },
     },
     defaultVariants: { variant: 'soft', tone: 'neutral', size: 'md' },
