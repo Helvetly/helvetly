@@ -283,7 +283,9 @@ function PortalLinkActions({ url }: { url: string }) {
           aria-label={translate('copyPortalLink')}
           className="text-muted-foreground"
           onClick={() =>
-            void navigator.clipboard.writeText(url).then(() => toast(translate('portalLinkCopied')))
+            void navigator.clipboard
+              .writeText(url)
+              .then(() => toast.success(translate('portalLinkCopied')))
           }
         >
           <Copy />

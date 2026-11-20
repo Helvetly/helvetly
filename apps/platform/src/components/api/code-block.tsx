@@ -28,7 +28,7 @@ export function CodeBlock({ label, value }: { label: string; value: string }) {
             className="absolute top-1 right-1"
             onClick={() =>
               void navigator.clipboard.writeText(value).then(
-                () => toast(translate('copied', { label: label })),
+                () => toast.success(translate('copied', { label: label })),
                 () => toast.error(translate('couldNotCopySelectTheTextAndCopyIt')),
               )
             }

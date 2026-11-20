@@ -752,7 +752,7 @@ function clientMenu(
             onSelect={() =>
               void navigator.clipboard
                 .writeText(client.email ?? '')
-                .then(() => toast(translate('emailCopied')))
+                .then(() => toast.success(translate('emailCopied')))
             }
           >
             <Copy />

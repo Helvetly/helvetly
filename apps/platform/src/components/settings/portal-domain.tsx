@@ -148,7 +148,7 @@ function AddDomain() {
         setError(undefined)
         setProof(undefined)
         add.mutate(hostname, {
-          onSuccess: () => toast(translate('customDomainAdded')),
+          onSuccess: () => toast.success(translate('customDomainAdded')),
           onError: (failure) => {
             const verify = proofOf(failure)
             const refusal = verify
@@ -271,7 +271,7 @@ function DomainStatus({ domain, canEdit }: { domain: PortalDomain; canEdit: bool
             setConfirming(false)
             if (approved)
               remove.mutate(undefined, {
-                onSuccess: () => toast(translate('customDomainRemoved')),
+                onSuccess: () => toast.success(translate('customDomainRemoved')),
                 onError: toastError,
               })
           }}
@@ -325,7 +325,9 @@ function Copyable({ value, label }: { value: string; label: string }) {
             aria-label={`${label}: ${value}`}
             className="shrink-0 text-muted-foreground"
             onClick={() =>
-              void navigator.clipboard.writeText(value).then(() => toast(translate('dnsCopied')))
+              void navigator.clipboard
+                .writeText(value)
+                .then(() => toast.success(translate('dnsCopied')))
             }
           >
             <Copy />

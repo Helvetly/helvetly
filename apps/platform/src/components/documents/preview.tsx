@@ -483,7 +483,7 @@ function Details({
             onClick={() =>
               void navigator.clipboard
                 .writeText(file.sha256 ?? '')
-                .then(() => toast(translate('sha256Copied')))
+                .then(() => toast.success(translate('sha256Copied')))
             }
             className="group/sha flex w-full cursor-pointer items-center gap-2 rounded-lg bg-muted/60 py-2 pr-2 pl-2.5 text-left font-mono text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
           >
@@ -514,7 +514,7 @@ function TagsPanel({
   const undo = () =>
     void docsApi.undoFiling(file.id).then(() => {
       refreshDocuments(queryClient)
-      toast(translate('aiFilingUndone', { count: 1 }))
+      toast.success(translate('aiFilingUndone', { count: 1 }))
     }, toastError)
   const filed = file.ai_filing?.status === 'filed' ? file.ai_filing : null
   return (

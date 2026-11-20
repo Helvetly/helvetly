@@ -79,7 +79,7 @@ function CopyAddress({ url }: { url: string }) {
           onClick={() =>
             void navigator.clipboard
               .writeText(url)
-              .then(() => toast(translate('portalAddressCopied')))
+              .then(() => toast.success(translate('portalAddressCopied')))
           }
         >
           <Copy />
@@ -96,7 +96,7 @@ function PortalSwitch({ enabled, canEdit }: { enabled: boolean; canEdit: boolean
   const [confirming, setConfirming] = useState(false)
   const turn = (on: boolean) =>
     access.mutate(on, {
-      onSuccess: () => toast(translate(on ? 'portalTurnedOn' : 'portalTurnedOff')),
+      onSuccess: () => toast.success(translate(on ? 'portalTurnedOn' : 'portalTurnedOff')),
       onError: toastError,
     })
   return (

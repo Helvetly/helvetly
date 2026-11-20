@@ -103,7 +103,7 @@ function Row({
           onClick={() =>
             void navigator.clipboard
               .writeText(copy)
-              .then(() => toast(translate('copied', { label: label })))
+              .then(() => toast.success(translate('copied', { label: label })))
           }
         >
           <Copy />

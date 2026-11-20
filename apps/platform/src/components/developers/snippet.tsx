@@ -20,7 +20,7 @@ export function Snippet({ label, value }: { label: string; value: string }) {
             aria-label={translate('copy2', { label: label })}
             onClick={() =>
               void navigator.clipboard.writeText(value).then(
-                () => toast(translate('copied', { label: label })),
+                () => toast.success(translate('copied', { label: label })),
                 () => toast.error(translate('couldNotCopySelectTheTextAndCopyIt')),
               )
             }
