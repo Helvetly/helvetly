@@ -209,6 +209,7 @@ var needsYou = map[string]bool{
 	"portal.domain_failed": true, "signature.declined": true, "engagement.draft_created": true,
 	"billing.trial_ending": true, "billing.payment_failed": true, "billing.payment_disputed": true,
 	"vat.return_due": true, "import.ready": true, "import.failed": true,
+	"approval.requested": true, "approval.approved": true, "approval.rejected": true,
 }
 
 // settledBy: the later event about the same record (the same href) that settles one that needs you.
