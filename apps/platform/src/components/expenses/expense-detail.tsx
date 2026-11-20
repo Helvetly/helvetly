@@ -19,7 +19,7 @@ import { Loader } from '@helvetly/ui/components/loader'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { BookCheck, Ban, Copy, Ellipsis, Pencil, Trash2, X } from 'lucide-react'
+import { BookCheck, Ban, Copy, Ellipsis, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import { inputClass } from '@/components/clients/fields'
@@ -37,7 +37,7 @@ import {
 import { translate } from '@/lib/i18n'
 import { formatDay, formatMoney, PAYMENT_METHODS } from '@/lib/invoices'
 
-import { ExpenseReceipts } from './expense-receipts'
+import { ExpenseReceipts, RECEIPT_INPUT_ID } from './expense-receipts'
 
 export type ExpenseCommand =
   | 'edit'
@@ -264,19 +264,27 @@ function Detail({
         </div>
 
         {draft && !expense.is_complete && (
-          <Callout
-            tone="warning"
-            title={translate('notReadyToBook')}
-            actions={
-              <Button className="cursor-pointer" onClick={() => onCommand('edit', expense)}>
-                {translate('complete')}
-              </Button>
-            }
-          >
-            <p className="text-muted-foreground">
-              {translate('missing')}
-              {expense.missing_fields.map((field) => MISSING_LABELS[field]).join(', ')}
-            </p>
+          <Callout tone="warning" title={translate('notReadyToBook')}>
+            <p className="text-muted-foreground">{translate('notReadyToBookHint')}</p>
+            <ul aria-label={translate('missing').trim()} className="mt-1.5 flex flex-wrap gap-1.5">
+              {expense.missing_fields.map((field) => (
+                <li key={field}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="cursor-pointer"
+                    onClick={() =>
+                      field === 'receipt'
+                        ? document.getElementById(RECEIPT_INPUT_ID)?.click()
+                        : onCommand('edit', expense)
+                    }
+                  >
+                    {field === 'receipt' ? <Upload /> : <Plus />}
+                    {MISSING_LABELS[field]}
+                  </Button>
+                </li>
+              ))}
+            </ul>
           </Callout>
         )}
         {expense.status === 'void' && (
