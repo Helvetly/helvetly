@@ -418,7 +418,7 @@ export function ClientsPage() {
             />
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-[15px] font-normal">
+                <Button variant="ghost" size="sm" className="text-title-sm font-normal">
                   <SlidersHorizontal className="stroke-[1.5]" />
                   <span className="max-sm:sr-only">{translate('customize')}</span>
                 </Button>
@@ -902,7 +902,7 @@ function Filters({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-[15px] font-normal">
+        <Button variant="ghost" size="sm" className="text-title-sm font-normal">
           <ListFilter className="stroke-[1.5]" />
           {translate('filters')}
           {count > 0 && (

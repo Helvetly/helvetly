@@ -210,7 +210,7 @@ export function AppSidebar({ session }: { session: Session }) {
               onClick={() => setPaletteOpen(true)}
               aria-expanded={paletteOpen}
               // A quiet grey well without an edge, muted text; hover, focus and the open palette deepen it a step.
-              className="h-8 gap-2 rounded-lg bg-black/[0.04] px-2.5 text-[13.5px] leading-5 text-muted-foreground transition-colors duration-150 hover:bg-black/[0.06] hover:text-foreground focus-visible:bg-black/[0.06] active:bg-black/[0.06] aria-expanded:bg-black/[0.06] aria-expanded:text-foreground dark:bg-white/[0.04] dark:hover:bg-white/[0.07] dark:focus-visible:bg-white/[0.07] dark:active:bg-white/[0.07] dark:aria-expanded:bg-white/[0.07] [&_svg]:size-4! [&_svg]:stroke-[1.5]"
+              className="h-8 gap-2 rounded-lg bg-black/[0.04] px-2.5 text-body-sm text-muted-foreground transition-colors duration-150 hover:bg-black/[0.06] hover:text-foreground focus-visible:bg-black/[0.06] active:bg-black/[0.06] aria-expanded:bg-black/[0.06] aria-expanded:text-foreground dark:bg-white/[0.04] dark:hover:bg-white/[0.07] dark:focus-visible:bg-white/[0.07] dark:active:bg-white/[0.07] dark:aria-expanded:bg-white/[0.07] [&_svg]:size-4! [&_svg]:stroke-[1.5]"
             >
               <Zap />
               <span>{translate('quickActions')}</span>

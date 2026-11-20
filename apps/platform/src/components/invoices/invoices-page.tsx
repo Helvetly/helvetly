@@ -873,7 +873,7 @@ function Filters({
   return (
     <Popover onOpenChange={(open) => !open && setPicking(false)}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-[15px] font-normal">
+        <Button variant="ghost" size="sm" className="text-title-sm font-normal">
           <ListFilter className="stroke-[1.5]" />
           {translate('filters')}
           {count > 0 && (

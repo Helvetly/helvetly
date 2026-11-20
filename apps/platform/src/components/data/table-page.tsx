@@ -100,7 +100,7 @@ export function TablePage<Row extends { id: string }>({
           <Button
             variant="ghost"
             size="sm"
-            className="text-[15px] font-normal"
+            className="text-title-sm font-normal"
             onClick={soon(translate('filtersAre'))}
           >
             <ListFilter className="stroke-[1.5]" />
@@ -115,7 +115,7 @@ export function TablePage<Row extends { id: string }>({
           <Button
             variant="ghost"
             size="sm"
-            className="text-[15px] font-normal"
+            className="text-title-sm font-normal"
             onClick={soon(translate('customColumnsAre'))}
           >
             <SlidersHorizontal className="stroke-[1.5]" />

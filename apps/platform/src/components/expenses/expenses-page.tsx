@@ -746,7 +746,7 @@ function Filters({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="cursor-pointer text-[15px] font-normal">
+        <Button variant="ghost" size="sm" className="cursor-pointer text-title-sm font-normal">
           <ListFilter className="stroke-[1.5]" />
           {translate('filters')}
           {count > 0 && (
