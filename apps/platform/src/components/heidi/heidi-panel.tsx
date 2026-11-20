@@ -55,7 +55,7 @@ function IconButton({
           aria-label={label}
           aria-pressed={pressed}
           onClick={onClick}
-          className="text-muted-foreground hover:text-foreground aria-pressed:bg-muted aria-pressed:text-foreground [&_svg]:stroke-[1.5]"
+          className="text-muted-foreground aria-pressed:bg-muted aria-pressed:text-foreground [&_svg]:stroke-[1.5]"
         >
           {children}
         </Button>

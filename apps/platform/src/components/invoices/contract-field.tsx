@@ -63,15 +63,16 @@ export function ContractField({
         <span className="flex shrink-0 items-center">
           <Tooltip>
             <TooltipTrigger asChild>
-              <a
-                href={contentUrl(document.id)}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={translate('contractOpenDocument', { name: document.name })}
-                className="grid size-6 place-items-center rounded-md text-brand hover:bg-muted"
-              >
-                <FileIcon name={document.name} className="size-3.5" />
-              </a>
+              <Button asChild variant="ghost" size="icon-xs" className="text-brand">
+                <a
+                  href={contentUrl(document.id)}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={translate('contractOpenDocument', { name: document.name })}
+                >
+                  <FileIcon name={document.name} className="size-3.5" />
+                </a>
+              </Button>
             </TooltipTrigger>
             <TooltipContent>{document.name}</TooltipContent>
           </Tooltip>

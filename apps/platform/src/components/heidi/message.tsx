@@ -96,7 +96,7 @@ function CopyButton({ text }: { text: string }) {
           aria-label={label}
           // Keeps the row shown while "Copied" confirms the click.
           data-copied={copied || undefined}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground"
           onClick={() =>
             void navigator.clipboard.writeText(text).then(
               () => {

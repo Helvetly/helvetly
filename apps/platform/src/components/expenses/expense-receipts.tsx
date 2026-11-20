@@ -306,22 +306,29 @@ export function ExpenseReceipts({
         </ul>
       )}
       {list.length > 0 && uploadable && (
-        <label className="relative inline-flex h-8 w-fit cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[13px] text-muted-foreground ring-1 ring-border transition-colors hover:bg-muted hover:text-foreground has-focus-visible:ring-2 has-focus-visible:ring-ring/50">
-          <Upload className="size-3.5" />
-          {translate('addAnotherReceipt')}
-          <input
-            type="file"
-            multiple
-            accept={RECEIPT_ACCEPT}
-            disabled={upload !== null}
-            onChange={(event) => {
-              const files = [...(event.target.files ?? [])].slice(0, RECEIPT_MAX_FILES)
-              event.target.value = ''
-              if (files.length) send(files)
-            }}
-            className="sr-only"
-          />
-        </label>
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="relative w-fit cursor-pointer has-focus-visible:border-ring has-focus-visible:ring-3 has-focus-visible:ring-ring/50"
+        >
+          <label>
+            <Upload />
+            {translate('addAnotherReceipt')}
+            <input
+              type="file"
+              multiple
+              accept={RECEIPT_ACCEPT}
+              disabled={upload !== null}
+              onChange={(event) => {
+                const files = [...(event.target.files ?? [])].slice(0, RECEIPT_MAX_FILES)
+                event.target.value = ''
+                if (files.length) send(files)
+              }}
+              className="sr-only"
+            />
+          </label>
+        </Button>
       )}
 
       {deleting && (

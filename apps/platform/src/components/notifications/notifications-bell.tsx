@@ -175,7 +175,7 @@ function NotificationsPanel({ title, onGo }: { title: ReactNode; onGo: () => voi
           <Button
             variant="ghost"
             size="sm"
-            className="-mr-2 text-muted-foreground hover:text-foreground"
+            className="-mr-2 text-muted-foreground"
             disabled={unread === 0 || markAll.isPending}
             onClick={() => markAll.mutate()}
           >

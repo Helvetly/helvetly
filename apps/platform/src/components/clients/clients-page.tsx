@@ -842,7 +842,7 @@ function ActiveFilters({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-body-sm font-normal text-muted-foreground"
+          className="text-body-sm font-normal text-muted-foreground"
           onClick={() =>
             onChange({
               ...(statusView(params.status) === null && { status: [] }),
