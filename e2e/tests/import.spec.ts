@@ -237,7 +237,8 @@ test('a quote PDF imported from the quotes page becomes a sent quote with its ow
   const quotes = object(await (await api.request.get('/api/v1/quotes')).json()).data
   if (!Array.isArray(quotes)) throw new Error('Expected quotes')
   const quote = object(quotes.find((row) => object(row).number === number))
-  expect(quote.status).toBe('sent')
+  // Sent on 15 Jan, valid for 30 days: past that, the list shows it expired.
+  expect(quote.status).toBe('expired')
   expect(quote.client_id).toBe(client.id)
   expect(quote.valid_until).toBe('2026-02-14')
 
