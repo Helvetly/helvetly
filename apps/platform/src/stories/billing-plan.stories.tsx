@@ -553,7 +553,7 @@ export const PlansYearly: Story = {
     await expect(
       (await proCard.findByText('CHF 471', { selector: 'strong' })).parentElement,
     ).toHaveTextContent('CHF 471 a year, billed yearly')
-    await expect(proCard.getByText('CHF 39', { exact: true })).toBeVisible()
+    await expect(proCard.getByText('CHF 39.25', { exact: true })).toBeVisible()
     await userEvent.click(proCard.getByRole('button', { name: 'Upgrade to Pro' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
     await waitFor(() => expect(dialog.getByText(/CHF 471 per person a year/)).toBeVisible())

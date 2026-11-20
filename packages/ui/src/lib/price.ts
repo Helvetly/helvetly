@@ -13,9 +13,9 @@ export function yearOf(month: Price): Price {
   return { ...month, amount: Math.ceil(discounted / 100) * 100 }
 }
 
-/** What a yearly price comes to a month, in whole francs: a headline, with the exact year's price shown under it. */
+/** What a yearly price comes to a month, to the rappen: twelve of it make the year's price, never a franc off. */
 export function monthOf(year: Price): Price {
-  return { ...year, amount: Math.round(year.amount / 1200) * 100 }
+  return { ...year, amount: Math.round(year.amount / 12) }
 }
 
 /** The number alone, Swiss style: "19", "18.50", "1'140". */

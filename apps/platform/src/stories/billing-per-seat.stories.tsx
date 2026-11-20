@@ -163,7 +163,7 @@ export const PlanTilesPerPerson: Story = {
     await expect(
       basic.getByText('CHF 183', { selector: 'strong' }).parentElement,
     ).toHaveTextContent('CHF 183 a year, billed yearly')
-    await expect(basic.getByText('CHF 15', { exact: true })).toBeVisible()
+    await expect(basic.getByText('CHF 15.25', { exact: true })).toBeVisible()
   },
 }
 
