@@ -99,6 +99,7 @@ import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
 
+import { ApprovalInbox } from './approval-inbox'
 import { ClientSearch } from './client-search'
 import { composeQuery, isLegacyEditorPath, parseCompose } from './compose'
 import { DERIVED, DerivePicker, type DeriveFrom } from './derive-picker'
@@ -264,7 +265,7 @@ const COLUMNS: ColumnDef[] = [
     label: translate('status'),
     width: 'w-[112px]',
     cell: (invoice) => (
-      <span className="flex items-center gap-1.5">
+      <span className="flex flex-wrap items-center gap-1.5">
         <RowStatus invoice={invoice} />
       </span>
     ),
@@ -471,6 +472,7 @@ export function InvoicesPage() {
         onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['invoices'] })}
       >
         <div className="relative flex flex-1 flex-col">
+          <ApprovalInbox onOpen={open} />
           {isReceivable(params.kind) && <InvoiceKpis />}
           <ListToolbar>
             <Filters params={params} onChange={update} />

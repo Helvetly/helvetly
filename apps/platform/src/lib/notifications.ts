@@ -105,6 +105,7 @@ export const categoryOf = (category: string) => CATEGORIES[category] ?? OTHER
 
 const MANAGERS = translate('forOwnersAndAdmins')
 const YOURS = translate('requestsYouSent')
+const YOURS_APPROVALS = translate('approvalsYouAskedFor')
 
 /** What each event is called in the settings; an event a newer server adds stays unlisted until named here. */
 export const EVENT_LABELS: Record<string, { label: string; hint: string }> = {
@@ -113,6 +114,12 @@ export const EVENT_LABELS: Record<string, { label: string; hint: string }> = {
   'invoice.overdue': { label: translate('invoiceOverdue'), hint: MANAGERS },
   'dunning.sent': { label: translate('paymentReminderSent'), hint: MANAGERS },
   'instalment.issued': { label: translate('instalmentIssued'), hint: MANAGERS },
+  'approval.requested': {
+    label: translate('approvalRequested'),
+    hint: translate('approvalRequestedHint'),
+  },
+  'approval.approved': { label: translate('approvalApprovedEvent'), hint: YOURS_APPROVALS },
+  'approval.rejected': { label: translate('approvalRejectedEvent'), hint: YOURS_APPROVALS },
   'quote.accepted': { label: translate('quoteAccepted'), hint: MANAGERS },
   'quote.declined': { label: translate('quoteDeclined'), hint: MANAGERS },
   'einvoice.delivery_failed': { label: translate('eInvoiceNotDelivered'), hint: MANAGERS },

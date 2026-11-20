@@ -35,6 +35,9 @@ func (s *Service) issue(w http.ResponseWriter, r *http.Request, sess store.Sessi
 		} else if planned {
 			return errPlanned
 		}
+		if err := s.approvals.Gate(ctx, q, sess.Workspace.ID, approvalDoc(inv)); err != nil {
+			return err
+		}
 		return s.issueDraft(ctx, q, sess, inv, &pdf)
 	})
 	if err := s.settlePDF(ctx, pdf, err); err != nil {

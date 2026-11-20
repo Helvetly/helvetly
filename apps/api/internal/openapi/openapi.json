@@ -7225,6 +7225,11 @@
               }
             ]
           },
+          "approval_state": {
+            "type": ["string", "null"],
+            "enum": ["pending", "approved", "rejected", null],
+            "description": "A draft's approval before issuing, when its type needs approval: waiting, approved or rejected. Null without a request. Read only: approving happens in the app."
+          },
           "sent_at": {
             "type": ["string", "null"],
             "format": "date-time"
@@ -7510,6 +7515,11 @@
           "issued_at": {
             "type": ["string", "null"],
             "format": "date-time"
+          },
+          "approval_state": {
+            "type": ["string", "null"],
+            "enum": ["pending", "approved", "rejected", null],
+            "description": "A draft's approval before issuing, when its type needs approval: waiting, approved or rejected. Null without a request. Read only: approving happens in the app."
           },
           "sent_at": {
             "type": ["string", "null"],

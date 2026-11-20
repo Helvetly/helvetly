@@ -172,6 +172,7 @@ type Invoice struct {
 	ClientNumberDisplay *string      `json:"client_number_display"`
 	ContractReference   *string      `json:"contract_reference"` // BT-12
 	ContractDocument    *DocumentRef `json:"contract_document"`  // a document of the workspace, never printed
+	ApprovalState       *string      `json:"approval_state"`     // of a draft's latest approval request (internal/approvals)
 }
 
 // IssuedElsewhere: an invoice an import brought in as issued by another system.
@@ -257,6 +258,7 @@ type InvoiceListItem struct {
 	Reference      *string        `json:"-"`
 	SentAt         *time.Time     `json:"sent_at"`
 	CreatedAt      time.Time      `json:"created_at"`
+	ApprovalState  *string        `json:"approval_state"`
 }
 
 // ---- settings ----
@@ -331,7 +333,13 @@ var invoiceColumns = `i.id, i.kind, i.number, i.status, ` + fmt.Sprintf(isOverdu
 	COALESCE(i.reference_type, 'NON'), i.payment_reference, i.qr_bill, i.revolut_url, i.pay_qr_bill, i.pay_revolut, i.seller, i.buyer, i.issued_at, i.sent_at, i.created_at,
 	i.updated_at, i.pdf_key, i.prepaid_total, di.id, di.number, i.reminders_enabled, i.instalment_interval, pl.id, COALESCE(i.plan_seq, 0), pl.count,
 	trim_scale(i.tax_currency_rate)::text, i.origin, i.source_document_id, i.client_number_display, i.contract_reference,
-	i.contract_document_id, ` + fmt.Sprintf(contractDocumentName, "i")
+	i.contract_document_id, ` + fmt.Sprintf(contractDocumentName, "i") + `, ` + approvalState
+
+// approvalState: a draft's latest approval request as pending, approved or rejected; null without one or once it was
+// withdrawn or reset. An issued document shows only approved (one issued after its policy was turned off was not).
+const approvalState = `(SELECT CASE WHEN ar.status = 'approved' OR ar.status IN ('pending', 'rejected') AND i.status = 'draft'
+	THEN ar.status END FROM approval_requests ar
+	WHERE ar.workspace_id = i.workspace_id AND ar.doc_id = i.id ORDER BY ar.submitted_at DESC, ar.id DESC LIMIT 1)`
 
 // invoicePlanJoin: the plan that issued the document, or the live plan the draft is the source of.
 const invoicePlanJoin = ` LEFT JOIN instalment_plans pl ON pl.id = COALESCE(i.plan_id, (SELECT sp.id FROM instalment_plans sp
@@ -349,7 +357,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&i.Payment.ReferenceType, &i.Payment.Reference, &i.Payment.QRBill, &i.Payment.RevolutURL, &i.PaymentMethods.QRBill,
 		&i.PaymentMethods.Revolut, &i.Seller, &i.Buyer, &i.IssuedAt, &i.SentAt, &i.CreatedAt,
 		&i.UpdatedAt, &i.PDFKey, &i.PrepaidTotal, &deductedID, &deductedNumber, &i.RemindersEnabled, &interval, &planID, &planSeq, &planCount,
-		&i.TaxCurrencyRate, &i.Origin, &i.SourceDocumentID, &i.ClientNumberDisplay, &i.ContractReference, &contractDocID, &contractDocName)
+		&i.TaxCurrencyRate, &i.Origin, &i.SourceDocumentID, &i.ClientNumberDisplay, &i.ContractReference, &contractDocID, &contractDocName, &i.ApprovalState)
 	i.Client.ID = i.ClientID
 	i.ContractDocument = DocumentRefOf(contractDocID, contractDocName)
 	i.PayableTotal = i.Payable()
@@ -887,7 +895,7 @@ func (q Q) EachInvoice(ctx context.Context, workspaceID, today string, f Invoice
 	rows, err := q.db.Query(ctx, `SELECT i.id, i.kind, i.number, i.status, `+fmt.Sprintf(isOverdue, 2)+`, i.client_id,
 		c.number, `+invoiceClientName+`, i.issue_date::text, i.due_date::text, i.currency, i.net_total, i.vat_total, i.total, i.rounding_amount, `+amountDue+`,
 		`+refundDue+`, i.amount_paid, i.reference, i.sent_at, i.created_at, i.pay_qr_bill, i.pay_revolut, i.prepaid_total,
-		di.id, di.number`+invoiceListFrom+where+` ORDER BY `+f.orderBy()+page, args...)
+		di.id, di.number, `+approvalState+invoiceListFrom+where+` ORDER BY `+f.orderBy()+page, args...)
 	if err != nil {
 		return err
 	}
@@ -897,7 +905,7 @@ func (q Q) EachInvoice(ctx context.Context, workspaceID, today string, f Invoice
 		var deductedID, deductedNumber *string
 		if err := rows.Scan(&i.ID, &i.Kind, &i.Number, &i.Status, &i.IsOverdue, &i.Client.ID, &i.Client.Number, &i.Client.Name,
 			&i.IssueDate, &i.DueDate, &i.Currency, &i.NetTotal, &i.VATTotal, &i.Total, &i.RoundingAmount, &i.AmountDue, &i.RefundDue, &i.Paid, &i.Reference, &i.SentAt,
-			&i.CreatedAt, &i.PaymentMethods.QRBill, &i.PaymentMethods.Revolut, &i.PrepaidTotal, &deductedID, &deductedNumber); err != nil {
+			&i.CreatedAt, &i.PaymentMethods.QRBill, &i.PaymentMethods.Revolut, &i.PrepaidTotal, &deductedID, &deductedNumber, &i.ApprovalState); err != nil {
 			return err
 		}
 		i.PayableTotal = i.Total + i.RoundingAmount

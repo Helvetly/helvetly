@@ -5,6 +5,7 @@ import publicOffer from '@/components/billing/public-offer.fixture.json'
 import type { Dashboard, Session } from '@/lib/api'
 import type { Usage } from '@/lib/documents'
 import type { Summary } from '@/lib/invoices'
+import { NOT_REQUIRED } from '@/mocks/approvals'
 import { portalAddressHandlers } from '@/mocks/portal-address'
 import { portalDomainHandlers } from '@/mocks/portal-domain'
 import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
@@ -115,6 +116,8 @@ export const storyDefaults = [
   http.get('/api/v1/invoices/:id/deliveries', () => nothing([])),
   http.get('/api/v1/invoices/:id/transmissions', () => nothing([])),
   http.get('/api/v1/invoices/:id/engagement', () => nothing(null)),
+  http.get('/api/v1/invoices/:id/approval', () => nothing(NOT_REQUIRED)),
+  http.get('/api/v1/approvals/inbox', () => nothing([])),
   http.get('/api/v1/invoices/:id/dunning', () =>
     nothing({
       applies: false,

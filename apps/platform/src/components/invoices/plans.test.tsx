@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
+import { toast } from 'sonner'
 
 import type { Plan } from '@/lib/instalments'
 import { today } from '@/lib/invoices'
@@ -80,6 +81,33 @@ test('plan dialog creates plan', async () => {
     }),
   )
   await waitFor(() => expect(onCreated).toHaveBeenCalled())
+})
+
+test('a draft that needs approval first is not split: the toast says so and the dialog closes', async () => {
+  server.use(
+    http.post('/api/v1/invoices/inv_1/plan', () =>
+      HttpResponse.json(
+        { error: { code: 'approval_required', message: 'Needs approval.' } },
+        { status: 409 },
+      ),
+    ),
+  )
+  const error = vi.spyOn(toast, 'error')
+  const onClose = vi.fn<() => void>()
+  wrap(
+    <PlanDialog
+      invoiceId="inv_1"
+      settings={sampleSettings()}
+      firstDue="2000-01-01"
+      onClose={onClose}
+      onCreated={() => {}}
+    />,
+  )
+  await userEvent.click(screen.getByRole('button', { name: 'Create plan' }))
+  await waitFor(() => expect(onClose).toHaveBeenCalled())
+  expect(error).toHaveBeenCalledWith('This draft needs approval first', {
+    description: 'Submit it for approval from its details; you can issue it once it’s approved.',
+  })
 })
 
 test('pause plan', async () => {

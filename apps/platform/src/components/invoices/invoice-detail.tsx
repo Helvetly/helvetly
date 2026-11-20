@@ -49,6 +49,7 @@ import { useMarkSent } from '@/components/invoices/invoice-dialogs'
 import { HeroFact, HeroLink, RecordHero } from '@/components/invoices/record-hero'
 import { RecordPageButton } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
+import { useInvoiceApproval, type Approval } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
 import { downloadEinvoice } from '@/lib/invoice-download'
 import {
@@ -81,10 +82,11 @@ import {
   type InvoiceListItem,
 } from '@/lib/invoices'
 
+import { ApprovalPanel, awaitsApproval, showsApproval, useRunApproval } from './approval-panel'
 import { editHref } from './compose'
 import { DunningCard, dunnable } from './dunning-card'
 import { InstalmentSchedule } from './instalment-schedule'
-import { InvoiceStatusBadge, Money } from './invoice-bits'
+import { ApprovalBadge, InvoiceStatusBadge, Money } from './invoice-bits'
 import { CommandItems, type InvoiceCommand } from './invoice-commands'
 import { PaymentSummary } from './payment-methods'
 import { PdfView } from './pdf-view'
@@ -205,16 +207,33 @@ function Row({ label, wrap, children }: { label: string; wrap?: boolean; childre
 const unitShort = (unit: Invoice['lines'][number]['unit']) =>
   unit ? (UNITS.find((entry) => entry.value === unit)?.short ?? unit) : ''
 
+/** When the draft was approved: the last approval of its approved request. */
+const approvedAt = (approval: Approval) =>
+  approval.state === 'approved'
+    ? (approval.trail.findLast((entry) => entry.kind === 'approved')?.at ?? null)
+    : null
+
 /**
- * Created → Issued → Sent → Paid, with the dates each step happened. Sent is optional (the PDF may go by post, by
- * hand or through the portal), so it can be marked from here and never blocks Paid.
+ * Created → (Approval →) Issued → Sent → Paid, with the dates each step happened. Sent is optional (the PDF may go by
+ * post, by hand or through the portal), so it can be marked from here and never blocks Paid.
  */
-function Timeline({ invoice, canManage }: { invoice: Invoice; canManage: boolean }) {
+function Timeline({
+  invoice,
+  canManage,
+  approval,
+}: {
+  invoice: Invoice
+  canManage: boolean
+  approval?: Approval
+}) {
   const credit = invoice.kind === 'credit_note'
   const proforma = invoice.kind === 'proforma'
   const markSent = useMarkSent()
   const steps = [
     { label: translate('created3'), at: invoice.created_at, optional: false },
+    ...(showsApproval(approval)
+      ? [{ label: translate('approval'), at: approvedAt(approval), optional: false }]
+      : []),
     { label: translate('issued4'), at: invoice.issued_at, optional: false },
     // A proforma ends when it is sent, so there it is the last step, not an optional one.
     ...(credit ? [] : [{ label: translate('sent3'), at: invoice.sent_at, optional: !proforma }]),
@@ -322,6 +341,14 @@ function Detail({
   busy: boolean
 }) {
   const primary = primaryFor(invoice)
+  // Only a draft has something to approve; a plan's source draft is never issued itself.
+  const approvalQuery = useInvoiceApproval(
+    invoice.id,
+    invoice.status === 'draft' && invoice.plan?.seq !== 0,
+  )
+  const approval = approvalQuery.data
+  const gated = primary.command === 'issue' && awaitsApproval(approval)
+  const submitting = useRunApproval(invoice.id)
   const [pages, setPages] = useState<number | null>(null)
   const credit = invoice.kind === 'credit_note'
   const proforma = invoice.kind === 'proforma'
@@ -330,7 +357,11 @@ function Detail({
     payable > 0n ? Number(((payable - toCents(invoice.amount_due)) * 1000n) / payable) / 10 : 0
   const deliveries = useInvoiceDeliveries(invoice.id, invoice.status !== 'draft')
   // The refund has its own button in the callout.
-  const skip: InvoiceCommand[] = [...(primary.command ? [primary.command] : []), 'refund']
+  const skip: InvoiceCommand[] = [
+    ...(primary.command ? [primary.command] : []),
+    'refund',
+    ...(gated ? (['issue'] as const) : []),
+  ]
   // The server voids only open invoices with neither payments nor credit notes.
   if (!isZero(invoice.amount_paid) || !isZero(invoice.amount_credited)) skip.push('void')
 
@@ -377,7 +408,29 @@ function Detail({
                 </Link>
               </Button>
             )}
-            {primary.command === null ? (
+            {gated && approval?.can_submit ? (
+              <Button
+                className="gap-1.5"
+                disabled={submitting.pending}
+                onClick={() => submitting.run('submit')}
+              >
+                <Send /> {translate('approvalSubmit')}
+              </Button>
+            ) : gated ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* Stays focusable while it cannot run, so its tooltip can say why. */}
+                  <Button aria-disabled className="cursor-not-allowed gap-1.5 opacity-50">
+                    {primary.icon} {primary.label}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64">
+                  {approval?.state === 'pending'
+                    ? translate('approvalIssueWaits')
+                    : translate('approvalIssueNeedsApproval')}
+                </TooltipContent>
+              </Tooltip>
+            ) : primary.command === null ? (
               <Button asChild className="gap-1.5">
                 <a href={localizedHref(pdfUrl(invoice.id, true))} download>
                   {primary.icon} {primary.label}
@@ -386,7 +439,8 @@ function Detail({
             ) : (
               <PrimaryButton
                 tip={primary.command === 'send' ? translate('sendTip') : undefined}
-                disabled={busy}
+                // Issue waits for the draft's approval to be known, so it never flips under the pointer.
+                disabled={busy || (primary.command === 'issue' && approvalQuery.isPending)}
                 onClick={() => primary.command && run(primary.command, invoice)}
               >
                 {primary.icon} {primary.label}
@@ -437,7 +491,7 @@ function Detail({
             </Callout>
           )}
 
-          <Timeline invoice={invoice} canManage={canManage} />
+          <Timeline invoice={invoice} canManage={canManage} approval={approval} />
 
           <TabsList variant="line" className="-mb-px h-10 gap-4 p-0">
             {[
@@ -477,6 +531,7 @@ function Detail({
       </header>
 
       <TabsContent value="overview" className="grid grid-cols-1 content-start gap-3 p-4 sm:p-5">
+        {showsApproval(approval) && <ApprovalPanel invoiceId={invoice.id} approval={approval} />}
         <Panel title={credit ? translate('creditedLines') : translate('lines')}>
           <ul className="divide-y divide-border/60">
             {invoice.lines.map((line) => (
@@ -1018,7 +1073,13 @@ function InvoiceHero({
       currency={invoice.currency}
       amount={`${credit ? '−' : ''}${formatAmount(fromCents(payable))}`}
       // A draft says so in the header already.
-      badge={invoice.status !== 'draft' && <InvoiceStatusBadge invoice={invoice} />}
+      badge={
+        invoice.status !== 'draft' ? (
+          <InvoiceStatusBadge invoice={invoice} />
+        ) : (
+          <ApprovalBadge state={invoice.approval_state} />
+        )
+      }
     >
       <HeroFact
         label={translate('issueDate')}
