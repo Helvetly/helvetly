@@ -155,7 +155,8 @@ const toggleIn = <T,>(list: T[], value: T) =>
 type ColumnDef = {
   id: string
   label: string
-  width: string
+  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
+  width?: string
   sort?: SortField
   align?: 'right'
   wide?: boolean
@@ -212,7 +213,6 @@ const COLUMNS: ColumnDef[] = [
   {
     id: 'client',
     label: translate('client'),
-    width: 'w-[30%]',
     sort: 'client',
     cell: (invoice) => (
       <span className="flex min-w-0 items-center gap-2.5">

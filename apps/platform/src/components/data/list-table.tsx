@@ -15,8 +15,12 @@ export const listTable = {
   th: 'px-3 font-medium first:pl-5 last:pr-5',
   row: 'h-[58px] border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-brand-surface/60 data-attention:not-data-selected:bg-warning-surface/50',
   td: 'truncate px-3 first:pl-5 last:pr-5',
-  /** The leading checkbox column, head and body. */
-  select: 'w-12 pl-5',
+  /**
+   * The leading checkbox column, head and body. A fixed table spreads spare width over the sized
+   * columns when none is auto, which pushed the first column away from the checkbox: so the main
+   * text column (client, name, supplier) never takes a width.
+   */
+  select: 'w-10 pl-5',
   /** The trailing "…" column, head and body. */
   menu: 'w-12 pr-3 text-right',
   numeric: 'text-right tabular-nums',

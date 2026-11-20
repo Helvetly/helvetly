@@ -102,13 +102,14 @@ const VIEWS: { label: string; icon: LucideIcon; view: View }[] = [
 const COLUMNS: {
   id: string
   label: string
-  width: string
+  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
+  width?: string
   sort?: SortField
   align?: 'right'
   wide?: boolean
 }[] = [
   { id: 'number', label: translate('no'), width: 'w-[72px]', sort: 'number' },
-  { id: 'supplier', label: translate('supplier'), width: 'w-[30%]', sort: 'supplier' },
+  { id: 'supplier', label: translate('supplier'), sort: 'supplier' },
   { id: 'category', label: translate('category'), width: 'w-[20%]', wide: true },
   { id: 'date', label: translate('date'), width: 'w-[124px]', sort: 'document_date' },
   { id: 'total', label: translate('amount'), width: 'w-[150px]', sort: 'total', align: 'right' },
