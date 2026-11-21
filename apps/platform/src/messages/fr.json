@@ -196,7 +196,7 @@
   "allEngagements": "Tous les mandats ",
   "allFiguresByZiffer": "Toutes les figures de Ziffer ",
   "allFiles": "Tous les fichiers",
-  "allNotifications": "Toutes les notifications",
+  "viewAllNotifications": "Voir toutes les notifications",
   "allowanceLegend": "Les quotas de chaque membre payant de l’équipe s’additionnent dans un quota partagé par l’espace de travail. Les limites de l’espace de travail s’appliquent à l’ensemble de celui-ci.",
   "allowanceMonthlyNote": "Les quotas mensuels sont réinitialisés chaque mois ; le stockage est une capacité, pas un quota mensuel.",
   "allowancePer": "{scope, select, workspace { / espace de travail} other {}}{monthly, select, true { / mois} other {}}",

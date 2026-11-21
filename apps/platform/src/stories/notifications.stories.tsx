@@ -72,7 +72,13 @@ export const BellAll: Story = {
       await canvas.findByRole('button', { name: 'Notifications', description: '2 unread' }),
     ).toBeVisible()
     await expect(canvas.getByTestId('bell-count')).toHaveTextContent('2')
+    // Something unread: the bell rings now and then.
+    await expect(canvas.getByTestId('bell-icon')).toHaveClass('bell-ring')
     const bubble = await openBell(canvasElement)
+    // One compact row: the title, the filters and the icon button share it.
+    const head = bubble.getByRole('heading', { name: 'Notifications' }).parentElement!
+    await expect(head.getBoundingClientRect().height).toBeLessThanOrEqual(49)
+    await expect(head).toContainElement(bubble.getByRole('button', { name: 'Mark all as read' }))
     const needs = await bubble.findByRole('region', { name: 'Needs you' })
     await expect(needs).toHaveTextContent(/RE-2026-0037 is overdue/)
     await expect(bubble.getByRole('region', { name: 'Updates' })).toHaveTextContent(
@@ -88,10 +94,13 @@ export const BellAll: Story = {
     await userEvent.click(bubble.getByRole('button', { name: 'Mark all as read' }))
     await waitFor(() => expect(canvas.queryByTestId('bell-count')).toBeNull())
     await expect(bubble.queryByText('New')).toBeNull()
-    await expect(bubble.getByRole('link', { name: 'All notifications' })).toHaveAttribute(
+    // Nothing unread: the bell rests.
+    await expect(canvas.getByTestId('bell-icon')).not.toHaveClass('bell-ring')
+    await expect(bubble.getByRole('link', { name: 'View all notifications' })).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/notifications\/?$/),
     )
+    await expect(bubble.getByRole('link', { name: 'Notification settings' })).toBeVisible()
   },
 }
 
@@ -103,7 +112,10 @@ export const BellNeedsYou: Story = {
     await expect(bubble.getByRole('region', { name: 'Needs you' })).toBeVisible()
     await expect(bubble.queryByRole('region', { name: 'Updates' })).toBeNull()
     await expect(
-      bubble.getByRole('link', { name: 'View invoice', description: /RE-2026-0037 is overdue/ }),
+      bubble.getByRole('link', {
+        name: 'Invoice RE-2026-0037 is overdue',
+        description: /View invoice/,
+      }),
     ).toBeVisible()
   },
 }
@@ -141,7 +153,7 @@ export const BellLiveResolve: Story = {
     // It fades in.
     await waitFor(() => expect(paid).toBeVisible())
     await expect(within(needs).getByText('Settled')).toBeInTheDocument()
-    await expect(bubble.getByRole('button', { name: 'Needs you 0' })).toBeVisible()
+    await expect(bubble.getByRole('button', { name: 'Needs you' })).toBeVisible()
     focusManager.setFocused(undefined)
   },
 }
@@ -149,7 +161,7 @@ export const BellLiveResolve: Story = {
 const longTitle =
   'Your engagements import is ready to review, with records from every uploaded file'
 
-/** A long title wraps inside the bubble instead of running off it. */
+/** A long title wraps inside the bubble instead of running off it, two lines at most. */
 export const BellLongTitle: Story = {
   render: () => bell(),
   beforeEach: () =>
@@ -160,6 +172,7 @@ export const BellLongTitle: Story = {
     const bubble = await openBell(canvasElement)
     const title = await bubble.findByText(longTitle)
     await expect(title.getBoundingClientRect().height).toBeGreaterThan(20)
+    await expect(title.getBoundingClientRect().height).toBeLessThan(44)
     await expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
   },
 }
@@ -174,8 +187,124 @@ export const BellEmpty: Story = {
     const bubble = await openBell(canvasElement)
     await expect(await bubble.findByText('You’re all caught up')).toBeVisible()
     await expect(bubble.getByRole('button', { name: 'Mark all as read' })).toBeDisabled()
-    await userEvent.click(bubble.getByRole('button', { name: 'Needs you 0' }))
+    // An empty filter shows no count.
+    await userEvent.click(bubble.getByRole('button', { name: 'Needs you' }))
     await expect(bubble.getByText('Nothing needs you right now')).toBeVisible()
+    await userEvent.click(bubble.getByRole('button', { name: 'Updates' }))
+    await expect(bubble.getByText('No updates yet')).toBeVisible()
+  },
+}
+
+/** Twelve unread: the list scrolls with a soft fade at its edges while the header and footer stay put. */
+const twelve = () =>
+  Array.from({ length: 12 }, (_, i) => {
+    const n = sampleNotifications()[i % 5]!
+    return Object.assign(n, { id: `ntf_many_${i}`, read: false, read_at: null })
+  })
+
+export const BellMany: Story = {
+  render: () => bell(),
+  beforeEach: () => resetNotificationsMock(twelve()),
+  play: async ({ canvasElement }) => {
+    const bubble = await openBell(canvasElement)
+    await bubble.findAllByText(/RE-2026-0042 was paid/)
+    const list = bubble.getByTestId('bell-list')
+    await expect(list.scrollHeight).toBeGreaterThan(list.clientHeight)
+    // Measure once the bubble has finished zooming in.
+    const dialog = list.closest('[role=dialog]')!
+    await Promise.all(dialog.getAnimations().map((a) => a.finished))
+    const heading = bubble.getByRole('heading', { name: 'Notifications' })
+    const footer = bubble.getByRole('link', { name: 'View all notifications' })
+    const before = [heading.getBoundingClientRect().top, footer.getBoundingClientRect().top]
+    list.scrollTop = list.scrollHeight
+    await waitFor(() => expect(list.scrollTop).toBeGreaterThan(0))
+    await expect([heading.getBoundingClientRect().top, footer.getBoundingClientRect().top]).toEqual(
+      before,
+    )
+    // At the bottom only the top fades.
+    const [top, bottom] = Array.from(list.parentElement!.querySelectorAll(':scope > [aria-hidden]'))
+    await waitFor(() => expect(top).toHaveAttribute('data-on'))
+    await expect(bottom).not.toHaveAttribute('data-on')
+  },
+}
+
+export const BellManyDark: Story = { ...BellMany, parameters: { dark: true } }
+
+/** The arrow keys walk the rows; Enter opens the focused one, marks it read and closes the bubble. */
+export const BellKeyboard: Story = {
+  render: () => bell(),
+  play: async ({ canvasElement }) => {
+    const bubble = await openBell(canvasElement)
+    const rows = await bubble.findAllByRole('link', { description: /View/ })
+    rows[0]!.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(rows[1]).toHaveFocus()
+    await userEvent.keyboard('{End}')
+    await expect(rows.at(-1)).toHaveFocus()
+    await userEvent.keyboard('{ArrowUp}{Home}')
+    await expect(rows[0]).toHaveFocus()
+    // Focus never moves the row.
+    const box = rows[0]!.getBoundingClientRect()
+    await userEvent.keyboard('{ArrowDown}{ArrowUp}')
+    await expect(rows[0]!.getBoundingClientRect()).toEqual(box)
+  },
+}
+
+let drawerAsked = false
+
+/** The whole row is the link: clicking it closes the bubble and opens the record in place (marking it read: the unit test). */
+export const BellRowOpens: Story = {
+  render: () => bell(),
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/invoices/inv_42', async () => {
+          drawerAsked = true
+          await delay('infinite')
+        }),
+        ...notificationHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    drawerAsked = false
+    const bubble = await openBell(canvasElement)
+    const body = await bubble.findByText("CHF 1'250.00 received from Muster AG.")
+    // userEvent targets the element it is given: ask the page what a real click on the line would hit.
+    const { left, top, width, height } = body.getBoundingClientRect()
+    const hit = document.elementFromPoint(left + width / 2, top + height / 2)
+    const link = bubble.getByRole('link', { name: 'Invoice RE-2026-0042 was paid' })
+    await expect(hit).toBe(link)
+    await userEvent.click(link)
+    // The bubble closes and the invoice opens in place, in its drawer.
+    await waitFor(() => expect(bubble.queryByRole('heading', { name: 'Notifications' })).toBeNull())
+    await waitFor(() => expect(drawerAsked).toBe(true))
+  },
+}
+
+/** Every rule that rings the bell sits under `prefers-reduced-motion: no-preference`: with reduced motion it rests. */
+export const BellReducedMotion: Story = {
+  render: () => bell(),
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByTestId('bell-count')).toBeVisible()
+    const found: boolean[] = []
+    const walk = (rules: CSSRuleList, allowed: boolean) => {
+      for (const rule of Array.from(rules)) {
+        const inside =
+          allowed ||
+          (rule instanceof CSSMediaRule &&
+            rule.conditionText.includes('prefers-reduced-motion: no-preference'))
+        if (rule instanceof CSSStyleRule && rule.selectorText.includes('.bell-ring'))
+          found.push(inside)
+        if ('cssRules' in rule && rule.cssRules instanceof CSSRuleList) walk(rule.cssRules, inside)
+      }
+    }
+    for (const sheet of Array.from(document.styleSheets)) walk(sheet.cssRules, false)
+    await expect(found.length).toBeGreaterThan(0)
+    await expect(found.every(Boolean)).toBe(true)
+    const icon = within(canvasElement).getByTestId('bell-icon')
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    await expect(getComputedStyle(icon).animationName).toBe(reduce ? 'none' : 'bell-ring')
   },
 }
 

@@ -53,7 +53,7 @@ test('a teammate joining reaches the bell, which forgets it 5 minutes after it w
   await expect(item).toHaveCount(0)
 
   // It stays on the Notifications page.
-  await bubble.getByRole('link', { name: 'All notifications' }).click()
+  await bubble.getByRole('link', { name: 'View all notifications' }).click()
   await expect(page).toHaveURL(/\/notifications\/?$/)
   await expect(page.getByRole('link', { name: /joined the workspace/ }).first()).toBeVisible()
   const response = await page.request.get('/api/v1/notifications')
