@@ -65,9 +65,10 @@ export const WaitingForDns: Story = {
     await expect(canvas.getByText('TXT')).toBeVisible()
     await expect(canvas.getByText('Points your domain at your client portal.')).toBeVisible()
     await expect(canvas.getByText(/Proves the domain is yours/)).toBeVisible()
-    await expect(
-      canvas.getByText(/Finish the setup by .*, or the domain is released\./),
-    ).toBeVisible()
+    const alert = canvas.getByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'warning')
+    await expect(alert).toHaveTextContent('Waiting for your DNS records')
+    await expect(alert).toHaveTextContent(/Finish the setup by .*, or the domain is released\./)
     const write = fn(async (_text: string) => {})
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: write },
@@ -94,6 +95,8 @@ export const VerificationMissing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'warning')
+    await expect(alert).toHaveTextContent('Ownership record not found yet')
     await expect(alert).toHaveTextContent(
       'The TXT record that proves this domain is yours is missing.',
     )
@@ -107,9 +110,19 @@ export const Certificate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('Issuing certificate')).toBeVisible()
-    await expect(canvas.getByRole('alert')).toHaveTextContent(
-      'certificate for the secure connection is being issued',
-    )
+    // Not an error: a calm info alert with the three steps, DNS done and the secure connection in progress.
+    const alert = canvas.getByRole('status')
+    await expect(alert).toHaveAttribute('data-tone', 'info')
+    await expect(alert).toHaveTextContent('Setting up your domain')
+    await expect(alert).toHaveTextContent('We are issuing the certificate')
+    const steps = within(alert).getAllByRole('listitem')
+    await expect(steps.map((step) => step.dataset.state)).toEqual(['done', 'active', 'pending'])
+    await expect(canvas.queryByRole('alert')).toBeNull()
+    // The records stay one click away, with the note about the TXT record.
+    await expect(canvas.queryByText('CNAME')).not.toBeVisible()
+    await userEvent.click(canvas.getByText('DNS records', { selector: 'summary' }))
+    await expect(canvas.getByText('CNAME')).toBeVisible()
+    await expect(canvas.getByText(/delete the TXT record once the domain is active/)).toBeVisible()
   },
 }
 
@@ -128,10 +141,22 @@ export const Active: Story = {
   beforeEach: () => resetPortalDomain(portalDomain(undefined, 'active')),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      await canvas.findByRole('link', { name: 'portal.mueller-treuhand.ch' }),
-    ).toHaveAttribute('href', 'https://portal.mueller-treuhand.ch/')
+    const live = (
+      await canvas.findByText('portal.mueller-treuhand.ch is live')
+    ).closest<HTMLElement>('[data-slot=callout]')!
+    await expect(live).toHaveAttribute('data-tone', 'success')
+    await expect(live).toHaveTextContent('portal.mueller-treuhand.ch is live')
+    await expect(within(live).getByRole('link', { name: 'Open' })).toHaveAttribute(
+      'href',
+      'https://portal.mueller-treuhand.ch/',
+    )
     await expect(canvas.getByText('Active')).toBeVisible()
+    // Nothing to set up: no Re-check, no TXT instructions, the CNAME hint and the records behind a disclosure.
+    await expect(canvas.queryByRole('button', { name: 'Re-check' })).toBeNull()
+    await expect(canvas.getByText('Keep the CNAME record at your DNS provider.')).toBeVisible()
+    await expect(canvas.queryByText(/Keep it until/)).toBeNull()
+    await expect(canvas.queryByText('TXT')).toBeNull()
+    await expect(canvas.getByText('CNAME')).not.toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Remove' }))
     const dialog = await page().findByRole('dialog')
     await expect(dialog).toHaveTextContent('Remove portal.mueller-treuhand.ch?')
@@ -148,10 +173,17 @@ export const Problem: Story = {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('Problem')).toBeVisible()
     const alert = canvas.getByRole('alert')
-    await expect(alert).toHaveTextContent(
-      'We cannot see the CNAME record yet, or it points elsewhere.',
-    )
-    await expect(alert).toHaveTextContent('custom hostname does not CNAME to this zone.')
+    await expect(alert).toHaveAttribute('data-tone', 'danger')
+    await expect(alert).toHaveTextContent('DNS records not found yet')
+    // The provider's own words stay behind "Technical details".
+    const details = within(alert).getByText('Technical details')
+    await expect(
+      within(alert).getByText('custom hostname does not CNAME to this zone.'),
+    ).not.toBeVisible()
+    await userEvent.click(details)
+    await expect(
+      within(alert).getByText('custom hostname does not CNAME to this zone.'),
+    ).toBeVisible()
   },
 }
 
@@ -161,6 +193,7 @@ export const PlanLost: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'warning')
     await expect(alert).toHaveTextContent(
       /no longer includes your own domain.*as soon as you upgrade/,
     )
@@ -173,7 +206,9 @@ export const TakenOnCloudflare: Story = {
   beforeEach: () => resetPortalDomain(portalDomain(undefined, 'problem', 'taken')),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+    const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'danger')
+    await expect(alert).toHaveTextContent(
       'connected to another service on Cloudflare. Remove it there, then re-check.',
     )
   },
@@ -308,3 +343,46 @@ export const Disabled: Story = {
 }
 
 export const Dark: Story = { ...WaitingForDns, parameters: { ...meta.parameters, dark: true } }
+
+const phone = {
+  ...meta.parameters,
+  viewport: { options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } } },
+}
+
+export const WaitingForDnsPhone: Story = {
+  ...WaitingForDns,
+  parameters: phone,
+  globals: { viewport: { value: 'phone' } },
+}
+
+export const CertificateDark: Story = {
+  ...Certificate,
+  parameters: { ...meta.parameters, dark: true },
+}
+
+export const ProblemDark: Story = { ...Problem, parameters: { ...meta.parameters, dark: true } }
+
+export const ProblemPhone: Story = {
+  ...Problem,
+  parameters: phone,
+  globals: { viewport: { value: 'phone' } },
+}
+
+export const IssuingCertificateDark: Story = {
+  ...Certificate,
+  parameters: { ...meta.parameters, dark: true },
+}
+
+export const IssuingCertificatePhone: Story = {
+  ...Certificate,
+  parameters: phone,
+  globals: { viewport: { value: 'phone' } },
+}
+
+export const ActiveDark: Story = { ...Active, parameters: { ...meta.parameters, dark: true } }
+
+export const ActivePhone: Story = {
+  ...Active,
+  parameters: phone,
+  globals: { viewport: { value: 'phone' } },
+}
