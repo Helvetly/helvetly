@@ -27,13 +27,15 @@ const openLayers = () =>
 
 /** Closes what a click opened above the `base` layers and waits until it has left the page, animation and all. */
 async function closeLayers(base: { all: number; open: number }, after: string) {
-  if (openLayers() > base.open)
-    document.activeElement?.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
-    )
-  // Before the next click: while a layer is still leaving, an Escape would reach the form's own drawer instead.
   const end = Date.now() + 5000
   const gone = async (): Promise<void> => {
+    // Escape on every pass while a new layer is open: on a slow runner one Escape can come before a dialog (Cancel's
+    // "Discard your changes?") listens for it, and the dialog then stays open.
+    if (openLayers() > base.open)
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      )
+    // Before the next click: while a layer is still leaving, an Escape would reach the form's own drawer instead.
     if (layers() <= base.all) return
     if (Date.now() > end) throw new Error(`A layer stayed open after clicking "${after}"`)
     await tick()
@@ -73,9 +75,15 @@ export async function expectButtonsDoNotSubmit(
       // A click before may have removed it (a deleted line) or disabled it.
       if (button.isConnected && !button.disabled) {
         current = describe(button)
+        const form = button.form
         button.click()
         await tick()
         await closeLayers(base, current)
+        // A closed form would leave the buttons after this one untried without a word.
+        if (form && !form.isConnected)
+          throw new Error(
+            `"${current}" closed its form; name it in \`skip\` if it leaves on purpose`,
+          )
       }
       await tryInTurn(rest)
     }
