@@ -21,12 +21,16 @@ func TestQuotesOwnSentOnly(t *testing.T) {
 	e.quote("quo_draft", "cli_1", "draft", "2026-01-05", "2099-01-05", nil, nil)
 	e.quote("quo_other", "cli_2", "sent", "2026-01-05", "2099-01-05", "Q-2026-002", "quotes/other.pdf")
 	e.files.objects["quotes/sent.pdf"] = []byte("%PDF-quote")
+	e.exec(`UPDATE quotes SET instalments = '{"interval":"monthly","items":[{"seq":1,"due_date":"2026-02-01","amount":"54.05"},
+		{"seq":2,"due_date":"2026-03-01","amount":"54.05"}]}' WHERE id = 'quo_sent'`)
 	c, csrf := e.signIn("ana@acme.ch")
 
 	res, body := e.get(c, "/quotes")
 	if res.StatusCode != 200 || !strings.Contains(body, "quo_sent") || strings.Contains(body, "quo_draft") ||
 		strings.Contains(body, "quo_other") || strings.Contains(body, "internal only") || !strings.Contains(body, `"status":"expired"`) ||
-		!strings.Contains(body, `"total":"108.10"`) {
+		!strings.Contains(body, `"total":"108.10"`) || !strings.Contains(body,
+		`"instalments":[{"seq":1,"due_date":"2026-02-01","amount":"54.05"},{"seq":2,"due_date":"2026-03-01","amount":"54.05"}]`) ||
+		!strings.Contains(body, `"instalments":[]`) {
 		t.Fatalf("list: %d %s", res.StatusCode, body)
 	}
 	if res, body := e.get(c, "/quotes/quo_sent/pdf"); res.StatusCode != 200 || body != "%PDF-quote" ||

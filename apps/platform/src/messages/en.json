@@ -4599,6 +4599,7 @@
   "editInstalments": "Edit instalments",
   "instalmentsSummary": "{count}× · {interval} · from {date}",
   "instalmentsDialogDescription": "One invoice, several due dates, one QR bill each.",
+  "quoteInstalmentsDescription": "The client accepts these due dates with the quote; the invoice made from it takes them over.",
   "assets": "Assets",
   "liabilitiesAndEquity": "Liabilities and equity",
   "operatingRevenue": "Operating revenue",

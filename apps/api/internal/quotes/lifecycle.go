@@ -86,6 +86,11 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 				}
 			}
 		}
+		if t.Status == "draft" { // the client accepts the schedule with the quote: it must hold as sent
+			if err := s.invoices.QuoteScheduleProblems(asInvoice(t)); err != nil {
+				return err
+			}
+		}
 		var m mail.Message
 		if email {
 			if m, err = s.message(ctx, q, sess.Workspace.ID, t, body.To, body.Cc, body.Subject, body.Message); err != nil {
@@ -320,6 +325,7 @@ func (s *Service) toInvoice(w http.ResponseWriter, r *http.Request, sess store.S
 			}
 			inv.ClientNumberDisplay, inv.ContractReference, inv.ContractDocument = t.ClientNumberDisplay, t.ContractReference, t.ContractDocument
 			inv.Lines = slices.Clone(t.Lines)
+			inv.Instalments = carrySchedule(t.Instalments, inv.IssueDate)
 		})
 		if err != nil {
 			return err
@@ -331,4 +337,24 @@ func (s *Service) toInvoice(w http.ResponseWriter, r *http.Request, sess store.S
 		return err
 	}
 	return s.respond(w, r, sess, http.StatusCreated, id)
+}
+
+// carrySchedule: the accepted schedule for the invoice dated issueDate, amounts as accepted. When the first instalment
+// would fall due before that date, every one moves by the same number of days, so they keep the spacing the client
+// accepted; the quote keeps its own.
+func carrySchedule(sched *store.InstalmentSchedule, issueDate string) *store.InstalmentSchedule {
+	if sched == nil || len(sched.Items) == 0 {
+		return nil
+	}
+	shift := 0
+	first, err1 := time.Parse(time.DateOnly, sched.Items[0].DueDate)
+	issue, err2 := time.Parse(time.DateOnly, issueDate)
+	if err1 == nil && err2 == nil && first.Before(issue) {
+		shift = int(issue.Sub(first).Hours() / 24)
+	}
+	out := &store.InstalmentSchedule{Interval: sched.Interval, Items: make([]store.InstalmentItem, len(sched.Items))}
+	for i, it := range sched.Items {
+		out.Items[i] = store.InstalmentItem{Seq: it.Seq, DueDate: addDays(it.DueDate, shift), Amount: it.Amount}
+	}
+	return out
 }

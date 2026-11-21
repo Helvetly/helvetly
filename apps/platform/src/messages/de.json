@@ -4599,6 +4599,7 @@
   "editInstalments": "Raten bearbeiten",
   "instalmentsSummary": "{count}× · {interval} · ab {date}",
   "instalmentsDialogDescription": "Eine Rechnung, mehrere Fälligkeiten, je ein QR-Einzahlungsschein.",
+  "quoteInstalmentsDescription": "Der Kunde nimmt diese Fälligkeiten mit der Offerte an; die Rechnung daraus übernimmt sie.",
   "assets": "Aktiven",
   "liabilitiesAndEquity": "Passiven",
   "operatingRevenue": "Betriebsertrag",

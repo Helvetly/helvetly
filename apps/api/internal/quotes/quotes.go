@@ -35,6 +35,7 @@ type Invoices interface {
 	QuoteNumber(ctx context.Context, q store.Q, workspaceID, issueDate string, seq int64) (string, error)
 	CreateDraft(ctx context.Context, q store.Q, sess store.Session, clientID string, fill func(*store.Invoice)) (string, error)
 	Seller(ctx context.Context, q store.Q, workspaceID string) (store.Party, []byte, string, error)
+	QuoteScheduleProblems(inv store.Invoice) error
 }
 
 // Storage keeps the PDF of each send, which the portal serves.
@@ -94,7 +95,7 @@ const defaultValidDays = 30
 // inputKeys: the invoice fields a quote takes and its own valid_until.
 var inputKeys = []string{"client_id", "issue_date", "valid_until", "currency", "language", "vat_mode", "reference", "client_number_display",
 	"contract_reference", "contract_document_id", "intro",
-	"footer", "note", "discount_percent", "lines"}
+	"footer", "note", "discount_percent", "lines", "instalments"}
 
 func data(v any) map[string]any { return map[string]any{"data": v} }
 
@@ -143,7 +144,8 @@ func asInvoice(t store.Quote) store.Invoice {
 		Reference: t.Reference, ClientNumberDisplay: t.ClientNumberDisplay, ContractReference: t.ContractReference,
 		ContractDocument: t.ContractDocument, Intro: t.Intro, Footer: t.Footer, Note: t.Note, DiscountPercent: t.DiscountPercent,
 		Lines: t.Lines, Subtotal: t.Subtotal, DiscountAmount: t.DiscountAmount, NetTotal: t.NetTotal,
-		VATBreakdown: t.VATBreakdown, VATTotal: t.VATTotal, Total: t.Total, RoundingAmount: t.RoundingAmount}
+		VATBreakdown: t.VATBreakdown, VATTotal: t.VATTotal, Total: t.Total, RoundingAmount: t.RoundingAmount,
+		Instalments: t.Instalments}
 }
 
 // fromInvoice copies the content internal/invoices validated and computed back onto the quote.
@@ -154,6 +156,7 @@ func fromInvoice(t *store.Quote, inv store.Invoice) {
 	t.Intro, t.Footer, t.Note, t.DiscountPercent, t.Lines = inv.Intro, inv.Footer, inv.Note, inv.DiscountPercent, inv.Lines
 	t.Subtotal, t.DiscountAmount, t.NetTotal, t.VATBreakdown = inv.Subtotal, inv.DiscountAmount, inv.NetTotal, inv.VATBreakdown
 	t.VATTotal, t.Total, t.RoundingAmount, t.PayableTotal = inv.VATTotal, inv.Total, inv.RoundingAmount, inv.Payable()
+	t.Instalments = inv.Instalments
 }
 
 // apply validates body onto the quote: the invoice fields through internal/invoices, then valid_until.

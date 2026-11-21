@@ -205,6 +205,22 @@ function QuoteRow({ quote, onAsk }: { quote: PortalQuote; onAsk: (asking: Asking
         </span>
         <QuotePdfLink quote={quote} />
       </div>
+      {quote.instalments.length > 0 && (
+        <section
+          aria-label={translate('paymentSchedule')}
+          className="grid gap-1 px-4 text-body-sm sm:pr-6 sm:pl-20"
+        >
+          <h3 className="font-medium text-muted-foreground">{translate('paymentSchedule')}</h3>
+          <ol className="grid max-w-sm gap-0.5 tabular-nums">
+            {quote.instalments.map((instalment) => (
+              <li key={instalment.seq} className="flex justify-between gap-3">
+                <span>{formatDate(instalment.due_date)}</span>
+                <span>{formatMoney(instalment.amount, quote.currency)}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       {quote.decision_note && (
         <p className="px-4 text-body-sm break-words text-muted-foreground sm:pr-6 sm:pl-20">
           {translate('yourNote')}

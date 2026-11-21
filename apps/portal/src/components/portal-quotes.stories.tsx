@@ -54,6 +54,39 @@ export const Filled: Story = {
   },
 }
 
+/** A quote with a payment schedule lists its due dates and amounts, which the client accepts with it. */
+export const WithSchedule: Story = {
+  parameters: withQuotes(() =>
+    HttpResponse.json({
+      data: [
+        {
+          ...portalQuotes[0],
+          total: '3000.00',
+          instalments: [
+            { seq: 1, due_date: '2026-12-01', amount: '1000.00' },
+            { seq: 2, due_date: '2027-01-01', amount: '2000.00' },
+          ],
+        },
+      ],
+    }),
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const schedule = await canvas.findByRole('region', { name: 'Payment schedule' })
+    const rows = within(schedule).getAllByRole('listitem')
+    await expect(rows).toHaveLength(2)
+    await expect(rows[0]).toHaveTextContent(`${formatDate('2026-12-01')}CHF 1’000.00`)
+    await expect(rows[1]).toHaveTextContent(`${formatDate('2027-01-01')}CHF 2’000.00`)
+    await userEvent.click(canvas.getByRole('button', { name: /^Accept quote/ }))
+    await expect(await body().findByRole('dialog', { name: /CHF 3’000.00/ })).toBeVisible()
+  },
+}
+
+export const WithSchedulePhone: Story = {
+  ...WithSchedule,
+  globals: { viewport: { value: 'phone' } },
+}
+
 export const FilledDark: Story = { ...Filled, parameters: { ...meta.parameters, dark: true } }
 
 /** A 390px phone: nothing pushes the page sideways and the buttons stay on one row. */

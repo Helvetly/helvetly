@@ -31,9 +31,11 @@ import {
   applyClient,
   changeVatMode,
   LANGUAGE_CHOICES,
+  scheduleBlocker,
   serverErrors,
   VAT_CHOICES,
 } from '@/components/invoices/editor-model'
+import { InstalmentsSection } from '@/components/invoices/instalments-section'
 import { LinesEditor } from '@/components/invoices/lines-editor'
 import { LetterheadLogo } from '@/components/settings/logo-upload'
 import { PercentInput } from '@/components/shared/percent-input'
@@ -220,6 +222,14 @@ function Editor({
   const preview = useInvoicePreview(previewing)
   const totals = preview.data
   const previewFailed = preview.isError && !totals
+  const payable = totals?.payable_total ?? null
+  const generated =
+    totals?.instalments?.items.map(({ due_date, amount }) => ({ due_date, amount })) ?? []
+  // Rows equal to the server's (a reopened draft) are generated: they follow the totals again.
+  const schedule = values.instalments
+  if (schedule?.items && JSON.stringify(schedule.items) === JSON.stringify(generated))
+    setValues({ ...values, instalments: { ...schedule, items: null } })
+  const blocker = scheduleBlocker(values, payable, generated)
 
   const set = <K extends keyof QuoteValues>(field: K, value: QuoteValues[K]) =>
     setValues((current) => ({ ...current, [field]: value }))
@@ -523,28 +533,43 @@ function Editor({
           </div>
 
           <div className="shrink-0 border-t border-border/60 px-3 py-3 sm:px-6">
-            <section className="mx-auto grid w-full max-w-[1040px] gap-1.5 px-1">
-              <label
-                htmlFor="quote-note"
-                className="flex items-center gap-1.5 text-body-sm font-medium text-muted-foreground"
-              >
-                <Lock className="size-3.5" />
-                {translate('internalNote2')}
-                <span className="font-normal">{translate('neverPrintedOrShownToTheClient')}</span>
-              </label>
-              <textarea
-                id="quote-note"
-                value={values.note}
-                maxLength={1000}
-                onChange={(event) => set('note', event.target.value)}
-                placeholder={translate('anythingYourTeamShouldKnowAboutThisQuote')}
-                rows={1}
-                className={cn(
-                  inputClass,
-                  '[field-sizing:content] h-auto max-h-32 resize-none py-2.5 text-body leading-relaxed',
-                )}
+            <div className="mx-auto grid w-full max-w-[1040px] gap-2">
+              <InstalmentsSection
+                value={values.instalments}
+                onChange={(instalments) => set('instalments', instalments)}
+                description={translate('quoteInstalmentsDescription')}
+                payable={payable}
+                generated={generated}
+                currency={values.currency}
+                issueDate={values.issue_date}
+                firstDue={values.due_date}
+                settings={settings}
+                errors={errors}
+                blocker={blocker}
               />
-            </section>
+              <section className="grid gap-1.5 px-1">
+                <label
+                  htmlFor="quote-note"
+                  className="flex items-center gap-1.5 text-body-sm font-medium text-muted-foreground"
+                >
+                  <Lock className="size-3.5" />
+                  {translate('internalNote2')}
+                  <span className="font-normal">{translate('neverPrintedOrShownToTheClient')}</span>
+                </label>
+                <textarea
+                  id="quote-note"
+                  value={values.note}
+                  maxLength={1000}
+                  onChange={(event) => set('note', event.target.value)}
+                  placeholder={translate('anythingYourTeamShouldKnowAboutThisQuote')}
+                  rows={1}
+                  className={cn(
+                    inputClass,
+                    '[field-sizing:content] h-auto max-h-32 resize-none py-2.5 text-body leading-relaxed',
+                  )}
+                />
+              </section>
+            </div>
           </div>
         </div>
       </Frame>

@@ -94,7 +94,7 @@ func parseSchedule(p *parser, raw json.RawMessage, kind string) (*store.Instalme
 	if isNull(raw) {
 		return nil, nil
 	}
-	if !Receivable(kind) {
+	if !Receivable(kind) && kind != "quote" { // a quote offers the schedule its invoice takes over
 		p.fail("instalments", "Only invoices, partial, prepayment and debit notes and corrections can be paid in instalments.")
 		return nil, nil
 	}

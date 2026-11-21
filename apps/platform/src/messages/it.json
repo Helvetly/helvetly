@@ -4599,6 +4599,7 @@
   "editInstalments": "Modifica le rate",
   "instalmentsSummary": "{count}× · {interval} · dal {date}",
   "instalmentsDialogDescription": "Una fattura, più scadenze, una QR-fattura per ciascuna.",
+  "quoteInstalmentsDescription": "Il cliente accetta queste scadenze con l’offerta; la fattura che ne deriva le riprende.",
   "assets": "Attivi",
   "liabilitiesAndEquity": "Passivi",
   "operatingRevenue": "Ricavi d’esercizio",
