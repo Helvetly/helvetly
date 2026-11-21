@@ -12,17 +12,12 @@ import { cn } from '@helvetly/ui/lib/utils'
 import {
   ArrowDown,
   ArrowUp,
-  AtSign,
-  Building2,
-  CircleDot,
   CloudOff,
   Copy,
   Download,
   ListFilter,
-  MapPin,
   PanelRightOpen,
   Pencil,
-  Phone,
   Power,
   PowerOff,
   SearchX,
@@ -54,7 +49,6 @@ import {
   ResizableTable,
   useResizableColumns,
 } from '@/components/data/resizable-columns'
-import { DetailsPopover } from '@/components/data/row-details'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -691,55 +685,25 @@ export function bulkActions(
   ]
 }
 
+/** The name opens the client: by click like the rest of the row, and by keyboard. */
 function NameCell({ client, onOpen }: { client: Client; onOpen: () => void }) {
   return (
-    <DetailsPopover
-      onAction={onOpen}
-      details={{
-        name: client.name,
-        action: 'Open',
-        drafts: [],
-        fields: [
-          {
-            icon: CircleDot,
-            label: translate('status'),
-            value: <ClientStatusBadge client={client} />,
-          },
-          {
-            icon: Building2,
-            label: translate('type'),
-            value: client.is_company ? 'Company' : 'Person',
-          },
-          { icon: AtSign, label: translate('email'), value: client.email ?? '—' },
-          {
-            icon: Phone,
-            label: translate('phone'),
-            value: client.phone ? displayPhone(client.phone) : '—',
-          },
-          {
-            icon: MapPin,
-            label: translate('city'),
-            value:
-              [client.city, client.country && countryName(client.country)]
-                .filter(Boolean)
-                .join(', ') || '—',
-          },
-        ],
-      }}
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full min-w-0 items-center gap-2.5 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
     >
-      <span className="flex min-w-0 items-center gap-2.5">
-        <Initials name={client.name} />
-        <span className="grid min-w-0 leading-tight">
-          <span className="truncate">{client.name}</span>
-          {client.email && (
-            <span className="truncate text-[13px] text-muted-foreground">{client.email}</span>
-          )}
-        </span>
-        <span className="ml-auto shrink-0">
-          <ChangesPendingBadge client={client} />
-        </span>
+      <Initials name={client.name} />
+      <span className="grid min-w-0 leading-tight">
+        <span className="truncate">{client.name}</span>
+        {client.email && (
+          <span className="truncate text-[13px] text-muted-foreground">{client.email}</span>
+        )}
       </span>
-    </DetailsPopover>
+      <span className="ml-auto shrink-0">
+        <ChangesPendingBadge client={client} />
+      </span>
+    </button>
   )
 }
 

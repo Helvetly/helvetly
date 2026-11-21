@@ -1,11 +1,9 @@
 import { Button } from '@helvetly/ui/components/button'
 import { SidebarProvider } from '@helvetly/ui/components/sidebar'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { Mail } from 'lucide-react'
 import { http, HttpResponse } from 'msw'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
-import { DetailsPopover } from '@/components/data/row-details'
 import { HeidiFormView } from '@/components/heidi/heidi-form'
 import { PageHeader } from '@/components/shell/page-header'
 import { AdoptDialog } from '@/components/signatures/adopt-dialog'
@@ -95,30 +93,6 @@ export const HeidiContinue: Story = {
       canvas.getByRole('button', { name: 'Continue' }),
       canvas.getByTestId('reference-action'),
     )
-  },
-}
-export const RowContact: Story = {
-  render: () => (
-    <div className="grid justify-items-start gap-6">
-      <Reference />
-      <DetailsPopover
-        details={{
-          name: 'Muster AG',
-          fields: [{ icon: Mail, label: 'Email', value: 'office@example.com' }],
-          action: 'Contact',
-          drafts: [],
-        }}
-      >
-        Muster AG
-      </DetailsPopover>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Muster AG' }))
-    const action = await within(document.body).findByRole('button', { name: 'Contact' })
-    await waitFor(() => expect(action).toBeVisible())
-    await sameAction(action, canvas.getByTestId('reference-action'))
   },
 }
 export const SignatureWizard: Story = {
