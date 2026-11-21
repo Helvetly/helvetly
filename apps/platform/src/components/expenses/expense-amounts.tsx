@@ -274,7 +274,7 @@ function LineCategory({
 }) {
   const categories = useExpenseCategories().data ?? []
   const options = [
-    { value: '', label: translate('expenseCategoryDefault') },
+    { value: '', label: translate('defaultExpenseCategory') },
     ...categories
       .filter((category) => !category.is_archived || category.id === value)
       .map((category) => ({
@@ -290,7 +290,7 @@ function LineCategory({
       value={value}
       options={options}
       invalid={invalid}
-      placeholder={translate('expenseCategoryDefault')}
+      placeholder={translate('defaultExpenseCategory')}
       contentClassName="w-64"
       className="max-sm:col-span-2"
       onChange={onChange}

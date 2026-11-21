@@ -73,6 +73,18 @@ export const newLine = (vatRate: string): LineValues => ({
   unit_price: '',
 })
 
+/**
+ * A new category suggests its VAT rate: lines still at the rate the previous category (or the default) suggested take
+ * the new one; a rate someone chose stays. `from` or `to` null: nothing to suggest.
+ */
+export function withCategoryRate(values: FormValues, from: string | null, to: string | null) {
+  if (from === null || to === null || from === to) return values
+  return {
+    ...values,
+    lines: values.lines.map((line) => (line.vat_rate === from ? { ...line, vat_rate: to } : line)),
+  }
+}
+
 export function emptyValues(currency: string, vatRate: string, registered: boolean): FormValues {
   return {
     supplier_name: '',

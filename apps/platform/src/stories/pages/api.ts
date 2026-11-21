@@ -7,7 +7,7 @@ import publicOffer from '@/components/billing/public-offer.fixture.json'
 import type { Period as BooksPeriod } from '@/lib/books'
 import type { DocFile, Folder } from '@/lib/documents'
 import type { Engagement, Entry, Period } from '@/lib/engagements'
-import type { Expense, Summary as ExpenseSummary } from '@/lib/expenses'
+import type { Expense, ExpenseCategory, Summary as ExpenseSummary } from '@/lib/expenses'
 import type { Line } from '@/lib/invoices'
 import type { Invitation, Member } from '@/lib/members'
 import type { Product } from '@/lib/products'
@@ -147,7 +147,7 @@ export const expense = (change: Partial<Expense>): Expense => ({
   reference: null,
   duplicate_of: null,
   description: 'Zürich–Bern return',
-  category: { id: 'cat_travel', name: 'Travel', account_code: '6640' },
+  category: { id: 'cat_travel', name: 'Travel', account_code: '6640', preset: 'travel' },
   document_date: '2026-11-04',
   due_date: null,
   currency: 'CHF',
@@ -213,7 +213,7 @@ export const expenses = [
     number: 2,
     supplier_name: 'Swisscom (Schweiz) AG',
     description: 'Mobile and internet, November',
-    category: { id: 'cat_tel', name: 'Telecom', account_code: '6510' },
+    category: { id: 'cat_tel', name: 'Telecom', account_code: '6510', preset: null },
     document_date: '2026-11-02',
     due_date: '2026-11-30',
     total: '129.00',
@@ -247,8 +247,14 @@ const expenseSummary: ExpenseSummary = {
   input_vat: { period: '2026-Q4', amount: '57.20' },
   incomplete: { count: 1 },
   by_category: [
-    { category: { id: 'cat_travel', name: 'Travel', account_code: '6640' }, amount: '184.60' },
-    { category: { id: 'cat_tel', name: 'Telecom', account_code: '6510' }, amount: '129.00' },
+    {
+      category: { id: 'cat_travel', name: 'Travel', account_code: '6640', preset: 'travel' },
+      amount: '184.60',
+    },
+    {
+      category: { id: 'cat_tel', name: 'Telecom', account_code: '6510', preset: null },
+      amount: '129.00',
+    },
     { category: null, amount: '449.00' },
   ],
   monthly: [
@@ -257,16 +263,26 @@ const expenseSummary: ExpenseSummary = {
   ],
   views: { review: 1, unpaid: 1, reimburse: 0 },
 }
-const categories = [
-  ['cat_travel', 'Travel', '6640'],
-  ['cat_tel', 'Telecom', '6510'],
-].map(([id = '', name = '', account_code = '']) => ({
-  id,
-  name,
-  account_code,
-  is_archived: false,
-  expenses_count: 1,
-}))
+const categories: ExpenseCategory[] = [
+  {
+    id: 'cat_travel',
+    name: 'Travel',
+    account_code: '6640',
+    preset: 'travel',
+    vat_treatment: 'standard',
+    is_archived: false,
+    expenses_count: 1,
+  },
+  {
+    id: 'cat_tel',
+    name: 'Telecom',
+    account_code: '6510',
+    preset: null,
+    vat_treatment: null,
+    is_archived: false,
+    expenses_count: 1,
+  },
+]
 
 const period = (change: Partial<Period> = {}): Period => ({
   id: 'epr_1',

@@ -37,6 +37,7 @@ import { PercentInput } from '@/components/shared/percent-input'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
+import { treatmentRate } from '@/lib/expense-categories'
 import {
   expensesApi,
   canRecognize,
@@ -70,6 +71,7 @@ import {
   toInput,
   validate,
   valuesFromExpense,
+  withCategoryRate,
   withSupplierCountry,
   type FieldErrors,
   type FormValues,
@@ -268,6 +270,11 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       }
     }
   }
+  const categoryRate = (id: string) =>
+    treatmentRate(
+      categories.data?.find((category) => category.id === id)?.vat_treatment,
+      values.document_date,
+    )
   const set = <K extends keyof FormValues>(field: K, value: FormValues[K]) => {
     touched.current.add(field)
     setValues((current) => ({ ...current, [field]: value }))
@@ -725,7 +732,13 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     id={fieldId('category_id')}
                     value={values.category_id}
                     invalid={Boolean(errors.category_id)}
-                    onChange={(id) => set('category_id', id)}
+                    onChange={(id) => {
+                      const from = registered
+                        ? (categoryRate(values.category_id) ?? defaultRate)
+                        : null
+                      set('category_id', id)
+                      setValues((current) => withCategoryRate(current, from, categoryRate(id)))
+                    }}
                   />
                 </FormField>
                 <FormField

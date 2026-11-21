@@ -2,6 +2,7 @@
 import { formatPercent } from '@helvetly/ui/lib/format'
 
 import { Kpi, KpiBand, Sparkline, TickGauge } from '@/components/kpi-band'
+import { categoryLabel } from '@/lib/expense-categories'
 import { useExpenseSummary } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
 import { chartNumber, formatWholeAmount, toCents } from '@/lib/invoices'
@@ -73,7 +74,7 @@ export function ExpenseKpis() {
           <Kpi
             label={
               top?.category
-                ? translate('top', { name: top.category.name })
+                ? translate('top', { name: categoryLabel(top.category) })
                 : translate('topCategory')
             }
             value={top ? formatPercent(topShare) : '—'}

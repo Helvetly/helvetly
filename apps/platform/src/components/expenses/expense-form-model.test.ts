@@ -8,6 +8,7 @@ import {
   serverFieldErrors,
   toInput,
   validate,
+  withCategoryRate,
   withEntryMode,
   withSupplierCountry,
   type FormValues,
@@ -165,6 +166,20 @@ test('a foreign supplier defaults to no Swiss input tax; Swiss VAT is reclaimabl
   })
 })
 
+const linesAt = (...rates: string[]) => rates.map((rate) => ({ ...newLine(rate), amount: '10' }))
+
+describe('withCategoryRate', () => {
+  test.each([
+    ['lines at the old suggestion take the new one', ['8.1', '8.1'], '8.1', '3.8', ['3.8', '3.8']],
+    ['a rate someone chose stays', ['8.1', '2.6'], '8.1', '0', ['0', '2.6']],
+    ['no suggestion leaves the lines', ['8.1'], '8.1', null, ['8.1']],
+    ['a workspace outside VAT gets none', ['0'], null, '8.1', ['0']],
+    ['back from an exempt category', ['0'], '0', '8.1', ['8.1']],
+  ])('%s', (_, rates, from, to, want) => {
+    const values = filled({ lines: linesAt(...rates) })
+    expect(withCategoryRate(values, from, to).lines.map((line) => line.vat_rate)).toEqual(want)
+  })
+})
 const item = (
   amount: string,
   vat_rate: string,

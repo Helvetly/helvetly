@@ -114,7 +114,7 @@ func (e *env) category(ws string) store.ExpenseCategory {
 func TestPreviewReadsTheFullBreakdownAndStoresNothing(t *testing.T) {
 	e := previewEnv(t)
 	c := e.category("ws_a")
-	e.model.replies = []func(aimodel.Request) (aimodel.Reply, error){answer(recordJSON(t, threeRates(c.ID)))}
+	e.model.replies = []func(aimodel.Request) (aimodel.Reply, error){answer(recordJSON(t, threeRates(*c.Preset)))}
 	w := e.previewPages("request-0001", [][]byte{pngBytes(t), pngBytes(t)}, nil)
 	if w.Code != 200 {
 		t.Fatalf("%d %s", w.Code, w.Body)
@@ -136,7 +136,7 @@ func TestPreviewReadsTheFullBreakdownAndStoresNothing(t *testing.T) {
 		}
 	}
 	seen := e.model.seen[0]
-	if len(seen.Files) != 2 || !strings.Contains(seen.Instructions, c.ID+" | "+c.Name+" | "+c.AccountCode) {
+	if len(seen.Files) != 2 || !strings.Contains(seen.Instructions, *c.Preset+" | "+c.Name+" | "+c.AccountCode) {
 		t.Errorf("files %d, instructions lack the category list: %s", len(seen.Files), seen.Instructions)
 	}
 	if n := e.expenseCount("ws_a"); n != 0 || e.files.puts != 0 {

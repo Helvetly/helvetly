@@ -17,7 +17,7 @@ function stubApi(onWrite: (url: string, body: unknown) => Response | Promise<Res
   const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
     const url = String(input)
     const body: unknown = typeof init?.body === 'string' ? JSON.parse(init.body) : null
-    if (url.endsWith('/expense-categories'))
+    if (url.includes('/expense-categories?'))
       return json({
         data: [
           {
@@ -175,7 +175,7 @@ test('a new expense waits for the workspace settings and categories before takin
     vi.fn<typeof globalThis.fetch>(async (input) => {
       const url = String(input)
       if (url.includes('/invoice-settings')) return settings.promise
-      if (url.endsWith('/expense-categories')) return json({ data: [] })
+      if (url.includes('/expense-categories?')) return json({ data: [] })
       return json({ error: { code: 'http_404', message: 'x' } }, 404)
     }),
   )

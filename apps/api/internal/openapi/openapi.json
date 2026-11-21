@@ -5139,7 +5139,7 @@
         "operationId": "list_expense_categories",
         "tags": ["Expenses"],
         "summary": "List expense categories",
-        "description": "The workspace's expense categories (each mapped to an account code), by account code; the Swiss KMU defaults are created on first use. Use an id as category_id on an expense. Creating and editing categories is a settings task in the app and not part of the public API.",
+        "description": "The workspace's expense categories (each mapped to an account code), by account code; the Swiss KMU catalogue is created on first use, its names in the asker's language. Use an id as category_id on an expense. Creating and editing categories is a settings task in the app and not part of the public API.",
         "parameters": [
           {
             "name": "include_archived",
@@ -7868,9 +7868,13 @@
           },
           "account_code": {
             "type": "string"
+          },
+          "preset": {
+            "type": ["string", "null"],
+            "description": "The catalogue entry the category is, such as travel; its name is then in the asker's language (?lang, else Accept-Language: en, de, fr or it). Null for a category someone named."
           }
         },
-        "required": ["id", "name", "account_code"]
+        "required": ["id", "name", "account_code", "preset"]
       },
       "ExpenseLine": {
         "type": "object",
@@ -11952,6 +11956,15 @@
             "type": "string",
             "description": "Account of the chart of accounts (Swiss KMU-Kontenrahmen by default), e.g. 6640."
           },
+          "preset": {
+            "type": ["string", "null"],
+            "description": "The catalogue entry the category is, such as travel; its name is then in the asker's language (?lang, else Accept-Language: en, de, fr or it). Null for a category someone named."
+          },
+          "vat_treatment": {
+            "type": ["string", "null"],
+            "enum": ["standard", "reduced", "lodging", "exempt", "none", null],
+            "description": "The VAT the category usually carries; the rate is the one in force on the document's date."
+          },
           "is_archived": {
             "type": "boolean"
           },
@@ -11959,7 +11972,15 @@
             "type": "integer"
           }
         },
-        "required": ["id", "name", "account_code", "is_archived", "expenses_count"]
+        "required": [
+          "id",
+          "name",
+          "account_code",
+          "preset",
+          "vat_treatment",
+          "is_archived",
+          "expenses_count"
+        ]
       },
       "ExpenseMonthAmount": {
         "type": "object",

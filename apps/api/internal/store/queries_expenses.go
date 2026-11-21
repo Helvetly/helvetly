@@ -33,12 +33,16 @@ type CategoryRef struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	AccountCode string `json:"account_code"`
+	// Preset: the catalogue entry (CategoryPresets) the category still is; its name is translated. Renaming clears it.
+	Preset *string `json:"preset"`
 }
 
 type ExpenseCategory struct {
 	CategoryRef
-	IsArchived    bool `json:"is_archived"`
-	ExpensesCount int  `json:"expenses_count"`
+	// VATTreatment: standard, reduced, lodging, exempt or none; the line rate it suggests is the one on the document's date.
+	VATTreatment  *string `json:"vat_treatment"`
+	IsArchived    bool    `json:"is_archived"`
+	ExpensesCount int     `json:"expenses_count"`
 }
 
 // ExpenseLine is one amount at one VAT rate, or one item; an item's own category (null: the expense's) takes its
@@ -148,37 +152,77 @@ func (e *Expense) Derive(today string) {
 	e.IsOverdue = e.Status != "void" && e.PaymentStatus == "unpaid" && e.DueDate != nil && *e.DueDate < today
 }
 
-// DefaultCategories: the KMU-Kontenrahmen accounts a workspace starts with (name, account code).
-var DefaultCategories = [][2]string{
-	{"Materials & goods", "4000"}, {"Subcontractors", "4400"}, {"Training", "5810"}, {"Rent & premises", "6000"},
-	{"Repairs & maintenance", "6100"}, {"Vehicles & transport", "6200"}, {"Insurance & fees", "6300"},
-	{"Energy & waste", "6400"}, {"Office & administration", "6500"}, {"Phone & internet", "6510"},
-	{"IT & software", "6570"}, {"Marketing & advertising", "6600"}, {"Travel", "6640"},
-	{"Meals & entertainment", "6641"}, {"Other operating costs", "6700"}, {"Bank charges", "6940"},
+// CategoryPreset is an entry of the category catalogue: an account of the KMU-Kontenrahmen and its usual VAT.
+type CategoryPreset struct{ Key, Name, Account, VAT string }
+
+// CategoryPresets: the catalogue a new workspace starts with (migration 00046 adds it to older ones). Name is the
+// stored English name; the first sixteen keep the names workspaces had before the catalogue.
+var CategoryPresets = []CategoryPreset{
+	{"materials", "Materials & goods", "4000", "standard"},
+	{"goods_resale", "Goods for resale", "4200", "standard"},
+	{"subcontractors", "Subcontractors", "4400", "standard"},
+	{"staff_other", "Other staff costs", "5800", "standard"},
+	{"training", "Training", "5810", "standard"},
+	{"staff_expenses", "Expense allowances", "5820", "standard"},
+	{"rent", "Rent & premises", "6000", "exempt"},
+	{"premises_ancillary", "Ancillary premises costs", "6030", "standard"},
+	{"cleaning", "Cleaning", "6040", "standard"},
+	{"repairs", "Repairs & maintenance", "6100", "standard"},
+	{"equipment_leasing", "Equipment leasing", "6105", "standard"},
+	{"vehicles", "Vehicles & transport", "6200", "standard"},
+	{"fuel", "Fuel", "6210", "standard"},
+	{"vehicle_insurance", "Vehicle insurance", "6220", "none"},
+	{"vehicle_tax", "Vehicle tax & fees", "6230", "none"},
+	{"vehicle_leasing", "Vehicle leasing", "6260", "standard"},
+	{"freight", "Freight & delivery", "6280", "standard"},
+	{"insurance", "Insurance & fees", "6300", "none"},
+	{"duties_permits", "Duties, fees & permits", "6360", "none"},
+	{"energy", "Energy & waste", "6400", "standard"},
+	{"waste", "Waste disposal", "6460", "standard"},
+	{"office", "Office & administration", "6500", "standard"},
+	{"telecom", "Phone & internet", "6510", "standard"},
+	{"postage", "Postage", "6513", "standard"},
+	{"memberships", "Memberships", "6520", "none"},
+	{"donations", "Donations", "6520", "none"},
+	{"professional_fees", "Legal & accounting fees", "6530", "standard"},
+	{"software_saas", "IT & software", "6570", "standard"},
+	{"it_services", "IT services", "6570", "standard"},
+	{"hardware_small", "Small hardware", "6570", "standard"},
+	{"marketing", "Marketing & advertising", "6600", "standard"},
+	{"gifts", "Business gifts", "6620", "standard"},
+	{"trade_fairs", "Trade fairs & events", "6660", "standard"},
+	{"travel", "Travel", "6640", "standard"},
+	{"lodging", "Lodging", "6640", "lodging"},
+	{"meals_entertainment", "Meals & entertainment", "6641", "standard"},
+	{"other_operating", "Other operating costs", "6700", "standard"},
+	{"interest", "Interest", "6900", "none"},
+	{"bank_fees", "Bank charges", "6940", "none"},
+	{"direct_taxes", "Direct taxes", "8900", "none"},
 }
 
 // ---- categories ----
 
-// SeedExpenseCategories adds the defaults to a workspace that has no categories yet (safe to race: the
+// SeedExpenseCategories adds the catalogue to a workspace that has no categories yet (safe to race: the
 // unique name index drops the second insert).
 func (q Q) SeedExpenseCategories(ctx context.Context, workspaceID string, newID func() string, now time.Time) error {
-	ids, names, codes := make([]string, len(DefaultCategories)), make([]string, len(DefaultCategories)), make([]string, len(DefaultCategories))
-	for i, c := range DefaultCategories {
-		ids[i], names[i], codes[i] = newID(), c[0], c[1]
+	n := len(CategoryPresets)
+	ids, keys, names, codes, vats := make([]string, n), make([]string, n), make([]string, n), make([]string, n), make([]string, n)
+	for i, p := range CategoryPresets {
+		ids[i], keys[i], names[i], codes[i], vats[i] = newID(), p.Key, p.Name, p.Account, p.VAT
 	}
-	_, err := q.db.Exec(ctx, `INSERT INTO expense_categories (id, workspace_id, name, account_code, created_at, updated_at)
-		SELECT id, $1, name, code, $5, $5 FROM unnest($2::text[], $3::text[], $4::text[]) AS d(id, name, code)
+	_, err := q.db.Exec(ctx, `INSERT INTO expense_categories (id, workspace_id, name, account_code, preset, vat_treatment, created_at, updated_at)
+		SELECT id, $1, name, code, key, vat, $7, $7 FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::text[]) AS d(id, key, name, code, vat)
 		WHERE NOT EXISTS (SELECT 1 FROM expense_categories WHERE workspace_id = $1)
-		ON CONFLICT DO NOTHING`, workspaceID, ids, names, codes, now)
+		ON CONFLICT DO NOTHING`, workspaceID, ids, keys, names, codes, vats, now)
 	return err
 }
 
-const categoryColumns = `c.id, c.name, c.account_code, c.archived_at IS NOT NULL,
+const categoryColumns = `c.id, c.name, c.account_code, c.preset, c.vat_treatment, c.archived_at IS NOT NULL,
 	(SELECT count(*) FROM expenses e WHERE e.category_id = c.id AND e.deleted_at IS NULL)`
 
 func scanCategory(row interface{ Scan(...any) error }) (ExpenseCategory, error) {
 	var c ExpenseCategory
-	err := row.Scan(&c.ID, &c.Name, &c.AccountCode, &c.IsArchived, &c.ExpensesCount)
+	err := row.Scan(&c.ID, &c.Name, &c.AccountCode, &c.Preset, &c.VATTreatment, &c.IsArchived, &c.ExpensesCount)
 	return c, err
 }
 
@@ -219,7 +263,7 @@ func (q Q) CreateExpenseCategory(ctx context.Context, workspaceID, id, name, cod
 	return categoryErr(err)
 }
 
-// UpdateExpenseCategory runs in a transaction; booked categories keep their name and account.
+// UpdateExpenseCategory runs in a transaction; booked categories keep their name and account. A new name ends the preset.
 // Nil leaves a field alone; false means there is no such category.
 func (q Q) UpdateExpenseCategory(ctx context.Context, workspaceID, id string, name, code *string, archived *bool, now time.Time) (bool, error) {
 	var currentName, currentCode string
@@ -242,6 +286,7 @@ func (q Q) UpdateExpenseCategory(ctx context.Context, workspaceID, id string, na
 		}
 	}
 	tag, err := q.db.Exec(ctx, `UPDATE expense_categories SET name = COALESCE($3, name), account_code = COALESCE($4, account_code),
+		preset = CASE WHEN $3::text IS NULL OR $3 = name THEN preset END,
 		archived_at = CASE WHEN $5::boolean IS NULL THEN archived_at WHEN $5 THEN COALESCE(archived_at, $6) END, updated_at = $6
 		WHERE workspace_id = $1 AND id = $2`, workspaceID, id, name, code, archived, now)
 	return tag.RowsAffected() == 1, categoryErr(err)
@@ -258,7 +303,7 @@ func (q Q) MemberName(ctx context.Context, workspaceID, userID string) (string, 
 // ---- expenses ----
 
 var expenseColumns = `e.id, e.number, e.status, e.source, e.supplier_name, e.supplier_vat_number, e.supplier_country, e.reference, e.description,
-	e.category_id, c.name, c.account_code, e.document_date::text, e.due_date::text, e.currency, e.amount_mode, e.input_tax,
+	e.category_id, c.name, c.account_code, c.preset, e.document_date::text, e.due_date::text, e.currency, e.amount_mode, e.input_tax,
 	e.deductible_percent, e.net_total, e.vat_total, e.total, e.deductible_vat, e.vat_breakdown, e.exchange_rate,
 	e.exchange_rate_date::text, e.exchange_rate_source, e.base_currency, e.base_net_total, e.base_vat_total, e.base_total,
 	e.base_deductible_vat, e.payment_status, e.paid_on::text, e.payment_method, e.paid_by, pb.name, e.reimbursed_on::text, e.note,
@@ -279,10 +324,10 @@ func person(id, name *string) *Person {
 
 func scanExpense(row interface{ Scan(...any) error }, today string) (Expense, error) {
 	var e Expense
-	var catName, catCode, paidByName, createdBy, createdByName, bookedBy, bookedByName, voidedBy, voidedByName *string
+	var catName, catCode, catPreset, paidByName, createdBy, createdByName, bookedBy, bookedByName, voidedBy, voidedByName *string
 	var breakdown []byte
 	err := row.Scan(&e.ID, &e.Number, &e.Status, &e.Source, &e.SupplierName, &e.SupplierVATNumber, &e.SupplierCountry, &e.Reference, &e.Description,
-		&e.CategoryID, &catName, &catCode, &e.DocumentDate, &e.DueDate, &e.Currency, &e.AmountMode, &e.InputTax,
+		&e.CategoryID, &catName, &catCode, &catPreset, &e.DocumentDate, &e.DueDate, &e.Currency, &e.AmountMode, &e.InputTax,
 		&e.DeductiblePercent, &e.NetTotal, &e.VATTotal, &e.Total, &e.DeductibleVAT, &breakdown, &e.ExchangeRate,
 		&e.ExchangeRateDate, &e.ExchangeRateSource, &e.Base.Currency, &e.Base.NetTotal, &e.Base.VATTotal, &e.Base.Total,
 		&e.Base.DeductibleVAT, &e.PaymentStatus, &e.PaidOn, &e.PaymentMethod, &e.PaidByID, &paidByName, &e.ReimbursedOn, &e.Note,
@@ -293,7 +338,7 @@ func scanExpense(row interface{ Scan(...any) error }, today string) (Expense, er
 		return e, err
 	}
 	if e.CategoryID != nil && catName != nil {
-		e.Category = &CategoryRef{ID: *e.CategoryID, Name: *catName, AccountCode: *catCode}
+		e.Category = &CategoryRef{ID: *e.CategoryID, Name: *catName, AccountCode: *catCode, Preset: catPreset}
 	}
 	e.PaidByMember, e.CreatedBy, e.BookedBy, e.VoidedBy = person(e.PaidByID, paidByName), person(createdBy, createdByName),
 		person(bookedBy, bookedByName), person(voidedBy, voidedByName)
@@ -633,22 +678,22 @@ func (q Q) ExpenseSummary(ctx context.Context, workspaceID, currency, today stri
 		return s, err
 	}
 
-	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, c.account_code, sum(e.base_total) FROM expenses e
+	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, c.account_code, c.preset, sum(e.base_total) FROM expenses e
 		LEFT JOIN expense_categories c ON c.id = e.category_id
 		WHERE `+live+` AND date_trunc('month', e.document_date) = date_trunc('month', $3::date)
-		GROUP BY c.id, c.name, c.account_code ORDER BY sum(e.base_total) DESC, c.account_code`, workspaceID, currency, today)
+		GROUP BY c.id, c.name, c.account_code, c.preset ORDER BY sum(e.base_total) DESC, c.account_code`, workspaceID, currency, today)
 	if err != nil {
 		return s, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var id, name, code *string
+		var id, name, code, preset *string
 		var c CategoryAmount
-		if err := rows.Scan(&id, &name, &code, &c.Amount); err != nil {
+		if err := rows.Scan(&id, &name, &code, &preset, &c.Amount); err != nil {
 			return s, err
 		}
 		if id != nil {
-			c.Category = &CategoryRef{ID: *id, Name: *name, AccountCode: *code}
+			c.Category = &CategoryRef{ID: *id, Name: *name, AccountCode: *code, Preset: preset}
 		}
 		s.ByCategory = append(s.ByCategory, c)
 	}
