@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
 
 import { ClientsPage } from '@/components/clients/clients-page'
+import { columnWidthsKey } from '@/lib/column-widths'
 
 import { ringClipper } from '../focus-ring'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
@@ -153,3 +154,72 @@ export const ReadOnlyNoDrop: Story = {
   parameters: readOnly('/clients'),
   play: noDropTarget('Keller Holzbau AG', 'clients'),
 }
+
+/** One click on a client's name opens the client: no card in between. */
+export const NameOpensClient: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(
+      await body.findByRole('button', { name: /^Alpenglow Studio/ }, { timeout: 8000 }),
+    )
+    // The drawer follows ?id= (Storybook's search params do not follow the History API).
+    await waitFor(() =>
+      expect(new URL(canvasElement.ownerDocument.location.href).searchParams.get('id')).toBe(
+        'cli_1',
+      ),
+    )
+    await expect(body.queryByRole('dialog')).toBeNull()
+    await expect(body.queryByRole('button', { name: 'Open' })).toBeNull()
+  },
+}
+
+/** Drags a column's handle by `dx` pixels, as a mouse would. */
+function drag(handle: HTMLElement, dx: number) {
+  const box = handle.getBoundingClientRect()
+  const x = box.left + box.width / 2
+  const y = box.top + box.height / 2
+  fireEvent.pointerDown(handle, { button: 0, clientX: x, clientY: y, pointerId: 1 })
+  fireEvent.pointerMove(window, { clientX: x + dx, clientY: y, pointerId: 1 })
+  fireEvent.pointerUp(window, { clientX: x + dx, clientY: y, pointerId: 1 })
+}
+
+const widthOf = (element: Element) => Math.round(element.getBoundingClientRect().width)
+const whole = (badge: HTMLElement) => badge.scrollWidth <= badge.clientWidth
+
+/** Name narrows when dragged left, the row stays full, and badge columns stop with their badges whole. */
+export const ResizeColumns: Story = {
+  beforeEach: () => localStorage.removeItem(columnWidthsKey('clients')),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const name = await body.findByRole('columnheader', { name: 'Name' }, { timeout: 8000 })
+    await canvasElement.ownerDocument.fonts.ready
+    const table = name.closest('table')
+    const scroller = table?.parentElement
+    const before = widthOf(name)
+
+    await drag(body.getByRole('slider', { name: 'Resize Name' }), -60)
+    await waitFor(() => expect(widthOf(name)).toBe(before - 60))
+    await expect(scroller?.scrollWidth).toBe(scroller?.clientWidth)
+
+    const type = body.getByRole('columnheader', { name: 'Type' })
+    await drag(body.getByRole('slider', { name: 'Resize Type' }), -1000)
+    await waitFor(() => expect(widthOf(type)).toBeLessThan(110))
+    const badges = [...(table?.querySelectorAll<HTMLElement>('tbody [data-slot=badge]') ?? [])]
+    await expect(badges.length).toBeGreaterThan(0)
+    await expect(badges.filter((badge) => !whole(badge))).toEqual([])
+    // Smaller than its minimum is not possible by keyboard either.
+    const handle = body.getByRole('slider', { name: 'Resize Type' })
+    const least = widthOf(type)
+    handle.focus()
+    await userEvent.keyboard('{Shift>}{ArrowLeft}{/Shift}')
+    await waitFor(() => expect(handle).toHaveValue(String(least)))
+    await expect(widthOf(type)).toBe(least)
+
+    // Name stops where its avatar and "Changes pending" still fit.
+    await drag(body.getByRole('slider', { name: 'Resize Name' }), -1000)
+    await waitFor(() => expect(widthOf(name)).toBeLessThan(before))
+    await expect(badges.filter((badge) => !whole(badge))).toEqual([])
+    await expect(scroller?.scrollWidth).toBe(scroller?.clientWidth)
+  },
+}
+export const ResizeColumnsDark = dark(ResizeColumns)
