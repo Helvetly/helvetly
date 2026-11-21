@@ -158,14 +158,11 @@ export function PortalInvoices() {
           onValueChange={(value) => isFilter(value) && setFilter(value)}
           className="gap-4"
         >
-          <TabsList
-            aria-label={translate('show')}
-            className="h-9 max-w-full overflow-x-auto bg-card shadow-elevation-1"
-          >
+          <TabsList aria-label={translate('show')} className="max-w-full overflow-x-auto">
             {Object.entries(FILTERS).map(([key, { label, test }]) => (
-              <TabsTrigger key={key} value={key} className="px-3">
+              <TabsTrigger key={key} value={key}>
                 {label}
-                <span className="text-xs text-muted-foreground tabular-nums">
+                <span className="text-xs font-normal text-muted-foreground tabular-nums">
                   {invoices.filter(test).length}
                 </span>
               </TabsTrigger>

@@ -1,5 +1,19 @@
+import { segmentItem, segmentText, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useId, type ReactNode } from 'react'
+import { Children, useId, type ReactNode } from 'react'
+
+/** Wraps a segment's text so it keeps its semibold width (`segmentText`); icons and other nodes pass through. */
+export function segmentLabels(children: ReactNode) {
+  return Children.map(children, (child) =>
+    typeof child === 'string' || typeof child === 'number' ? (
+      <span data-text={child} className={segmentText}>
+        {child}
+      </span>
+    ) : (
+      child
+    ),
+  )
+}
 
 /** A row of mutually exclusive choices ("Company | Person", "10 | 30 | 60 | Custom"). */
 export function Segmented<T extends string>({
@@ -32,20 +46,17 @@ export function Segmented<T extends string>({
   return (
     // Stretches to the height of a neighbouring field; the options fill it, so the padding stays even.
     <fieldset
-      className={cn(
-        'items-stretch rounded-lg bg-foreground/6 p-0.5',
-        fill ? 'grid w-full auto-cols-fr grid-flow-col' : 'flex w-fit',
-      )}
+      className={cn(segmentTrack, fill ? 'grid w-full auto-cols-fr grid-flow-col' : 'flex w-fit')}
     >
       <legend className="sr-only">{label}</legend>
       {options.map((option) => (
         <label
           key={option.value}
           className={cn(
-            'relative flex items-center justify-center rounded-md px-3 text-body-sm text-muted-foreground transition-colors duration-150 hover:text-foreground has-checked:bg-card has-checked:text-brand has-checked:shadow-elevation-1 has-focus-visible:ring-2 has-focus-visible:ring-ring/50',
-            size === 'sm' ? 'min-h-7' : 'min-h-8',
+            segmentItem,
+            size === 'sm' ? 'min-h-6' : 'min-h-7',
             // Filling a narrow field, a long option wraps instead of running off the page.
-            fill ? 'py-1 text-center text-balance' : 'whitespace-nowrap',
+            fill && 'py-0.5 text-center text-balance whitespace-normal',
           )}
         >
           <input
@@ -58,9 +69,9 @@ export function Segmented<T extends string>({
             // Covers the whole option, so a click (or a test's `check()`) lands on the radio itself.
             className="absolute inset-0 cursor-pointer appearance-none opacity-0"
           />
-          {option.label}
+          {segmentLabels(option.label)}
           {option.count !== undefined && (
-            <span className="ml-1.5 text-muted-foreground tabular-nums">{option.count}</span>
+            <span className="font-normal text-muted-foreground tabular-nums">{option.count}</span>
           )}
         </label>
       ))}

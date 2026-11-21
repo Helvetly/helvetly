@@ -7,6 +7,9 @@ import {
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
 import { Input } from '@helvetly/ui/components/input'
+import { segmentLabels } from '@helvetly/ui/components/segmented'
+import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
+import { cn } from '@helvetly/ui/lib/utils'
 import { Eraser, PenLine, Type } from 'lucide-react'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 
@@ -61,16 +64,17 @@ export function AdoptDialog({
             {translate('itGoesIntoEverySignatureFieldOfThisDocument')}
           </DialogDescription>
         </div>
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
+        <div className={cn(segmentTrack, 'grid grid-cols-2')}>
           {METHODS.map(([value, label, Icon]) => (
             <button
               key={value}
               type="button"
               aria-pressed={method === value}
               onClick={() => setMethod(value)}
-              className="flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg text-[13.5px] leading-5 text-muted-foreground transition-colors aria-pressed:bg-card aria-pressed:font-medium aria-pressed:text-foreground aria-pressed:shadow-elevation-1"
+              className={cn(segmentItem, 'h-8')}
             >
-              <Icon className="size-4" /> {label}
+              <Icon className="size-4" />
+              {segmentLabels(label)}
             </button>
           ))}
         </div>

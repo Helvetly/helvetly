@@ -154,8 +154,15 @@ export const SegmentedControl: Story = {
   play: async ({ canvasElement }) => {
     const [first, second] = within(canvasElement).getAllByRole('group', { name: 'Period' })
     if (!first || !second) throw new Error('Expected two segmented controls')
-    await userEvent.click(within(first).getByRole('radio', { name: 'This quarter' }))
-    await expect(within(first).getByRole('radio', { name: 'This quarter' })).toBeChecked()
+    const widths = () =>
+      [...first.querySelectorAll('label')].map((option) => option.getBoundingClientRect().width)
+    const before = widths()
+    const quarter = within(first).getByRole('radio', { name: 'This quarter' })
+    await userEvent.click(quarter)
+    await expect(quarter).toBeChecked()
+    // The chosen segment turns semibold without moving its neighbours.
+    await expect(getComputedStyle(quarter.parentElement ?? quarter).fontWeight).toBe('600')
+    await expect(widths()).toEqual(before)
     // Same label, separate groups: the second control keeps its own choice.
     await expect(within(second).getByRole('radio', { name: 'This month' })).toBeChecked()
   },
