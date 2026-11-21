@@ -20,6 +20,21 @@
 }
 
 /*
+ * A wide card (from 64rem of sections): the title column gains 7.5rem (descriptions wrap less) and the
+ * rows, the notice and the section footer fill the rest instead of stopping at 44rem. layout.tsx
+ * caps the sections' own width for very wide screens.
+ */
+@container sections (min-width: 64rem) {
+  [data-slot='settings-section'] {
+    --settings-label: 26.5rem;
+    --settings-form: none;
+  }
+  [data-slot='settings-notice'] {
+    max-width: none;
+  }
+}
+
+/*
  * Settings rows (layout.tsx). A [data-slot=settings-fields] container (a section card's body) lays out
  * its direct children as rows: a field (FormField), a switch (SwitchRow)
  * or an action (ActionRow), each with a hairline above it, so the first row also separates the card's
@@ -175,7 +190,7 @@
 /*
  * The settings form grid: inside a section, the field column is ONE grid for every settings form.
  *
- *   12 columns of at most 2.75rem with 1rem gutters (44rem in all), then a filler column. A row
+ *   12 columns with 1rem gutters (a 44rem form, the whole width in a wide card). A row
  *   spans the 12 columns unless its FormField names a width, so every form shares its left and
  *   right edges and fields meet on the same column lines:
  *
@@ -195,7 +210,8 @@
  *   On a narrow column (< 34rem) xs takes half a row, every other width the whole row.
  */
 :where([data-slot='settings-section']) [data-slot='settings-fields'] {
-  grid-template-columns: repeat(12, minmax(0, 2.75rem)) minmax(0, 1fr);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  max-width: var(--settings-form);
   column-gap: 1rem;
   row-gap: 1.25rem;
 }
@@ -255,9 +271,18 @@
   grid-column: auto / span 8;
 }
 
+/* Short fields (xs, sm) keep the width they have in a 44rem form while the 12 columns grow. */
+@container (min-width: 44rem) {
+  [data-slot='settings-section'] [data-slot='settings-fields'] [data-width='xs'] {
+    max-width: 10.25rem;
+  }
+  [data-slot='settings-section'] [data-slot='settings-fields'] [data-width='sm'] {
+    max-width: 14rem;
+  }
+}
+
 @container (max-width: 34rem) {
   [data-slot='settings-section'] [data-slot='settings-fields'] {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
     column-gap: 0.75rem;
   }
   [data-slot='settings-section']
