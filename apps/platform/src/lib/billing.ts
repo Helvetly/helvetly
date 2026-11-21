@@ -199,6 +199,8 @@ export type PublicOffer = {
     plans: Record<PlanId, boolean>
   }[]
   usage_details: string[]
+  /** The most people a workspace can have, the owner included; null: no cap. */
+  max_self_service_seats: Record<PlanId, number | null>
   limits: Record<
     string,
     {

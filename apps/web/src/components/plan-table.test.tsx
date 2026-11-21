@@ -39,5 +39,15 @@ it.each(cases)(
       .closest('tr')
     expect(storage).toHaveTextContent('500 MB')
     expect(storage).not.toHaveTextContent(monthly)
+
+    // An amount and its unit share one cell line, "300 / month"; no cap is ∞, read out as Unlimited.
+    const invoices = within(table)
+      .getByRole('rowheader', { name: translate('featureInvoices') })
+      .closest('tr')
+    const [, , pro, business] = invoices?.querySelectorAll('th, td') ?? []
+    expect(pro?.textContent).toBe(`100 ${monthly}`)
+    expect(pro?.querySelector('.block')).toBeNull()
+    expect(business?.textContent).toContain('∞')
+    expect(business?.querySelector('[aria-hidden]')).toHaveTextContent('∞')
   },
 )

@@ -156,7 +156,7 @@ export const Trial: Story = {
     await expect(nextStep(canvasElement)).toHaveTextContent('Then CHF 198 is charged.')
     // The plans are a page of their own: no tiles here, one way there.
     await expect(canvas.queryByRole('region', { name: 'Pro' })).not.toBeInTheDocument()
-    await expect(canvas.queryByRole('radio', { name: 'Yearly' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('radio', { name: /^Yearly/ })).not.toBeInTheDocument()
     // A trial on Business: nothing above it, so one way to the plans page.
     await changePlanLink(summary)
 
@@ -434,13 +434,13 @@ export const PlansTrialSwitch: Story = {
       canvas.getByRole('region', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
     ).toHaveTextContent('For 2 peopleCHF 98 / month')
     // Limits read number first.
-    await expect(proCard.getByText(/clients \/ workspace$/).parentElement).toHaveTextContent(
-      /^300 clients \/ workspace$/,
+    await waitFor(() =>
+      expect(proCard.getByRole('list', { name: 'Pro includes' })).toHaveTextContent(/300 clients/),
     )
     // Pro lists what it adds over Basic once the public offer has loaded, and nothing it lacks.
     await waitFor(() =>
       expect(proCard.getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
-        /Heidi AI assistant/,
+        /Heidi, your AI assistant/,
       ),
     )
     await expect(proCard.getByRole('list', { name: 'Pro includes' })).not.toHaveTextContent(
@@ -450,7 +450,8 @@ export const PlansTrialSwitch: Story = {
     const businessCard = card(canvas, 'Business')
     await expect(businessCard.getByText('Current')).toBeVisible()
     await expect(businessCard.getByRole('button', { name: 'Current plan' })).toBeDisabled()
-    await expect(canvas.getByText('Save 20% yearly')).toBeVisible()
+    // The yearly saving sits in the Yearly segment itself.
+    await expect(canvas.getByRole('radio', { name: 'Yearly −20%' })).toBeInTheDocument()
     await expect(canvas.getByText('Every member is a paid seat')).toBeVisible()
 
     await userEvent.click(proCard.getByRole('button', { name: 'Switch to Pro' }))
@@ -574,7 +575,7 @@ export const PlansSwitchToYearly: Story = {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
     await canvas.findByRole('region', { name: 'Basic' })
-    await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
+    await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
     const basic = card(canvas, 'Basic')
     await expect(
       basic.getByText('CHF 183', { selector: 'strong' }).parentElement,
@@ -603,14 +604,14 @@ export const PlansProToBusiness: Story = {
     // Pro is the recommendation; a workspace already on it sees no badge
     await expect(canvas.queryByText('Recommended')).not.toBeInTheDocument()
     await expect(businessCard.getByText('CHF 99')).toBeVisible()
-    // Business has no cap on records, invoices or quotes: "Unlimited", never a number, ∞ or -1
-    const includes = businessCard.getByRole('list', { name: 'Business includes' })
-    await expect(includes).toHaveTextContent(/Unlimited clients \/ workspace/)
-    await expect(includes).toHaveTextContent(/Unlimited invoice issues \/ month/)
-    await expect(includes).toHaveTextContent(/Unlimited quotes sent \/ month/)
-    await expect(includes).not.toHaveTextContent(/∞|NaN|-1/)
+    // Business has no cap on records, invoices or quotes: ∞, read out as "Unlimited", never a number or -1
+    const includes = await businessCard.findByRole('list', { name: 'Business includes' })
+    await expect(includes).toHaveTextContent(/∞Unlimited clients/)
+    await expect(includes).toHaveTextContent(/∞Unlimited invoices \/ month/)
+    await expect(includes).toHaveTextContent(/∞Unlimited quotes \/ month/)
+    await expect(includes).not.toHaveTextContent(/NaN|-1/)
     await expect(card(canvas, 'Pro').getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
-      /100 quotes sent \/ month/,
+      /100 quotes \/ month/,
     )
     const quotes = await waitFor(() => {
       const row = canvasElement.querySelector<HTMLElement>('[data-row=quotes_per_month]')

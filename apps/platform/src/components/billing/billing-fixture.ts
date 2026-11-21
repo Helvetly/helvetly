@@ -44,7 +44,8 @@ const business: Record<LimitKey, number | null> = {
   ai_tokens_per_month: 20_000_000,
   ai_automation_tokens_per_month: 20_000_000,
 }
-const PRO_FEATURES: FeatureKey[] = [
+// Gated features the app names, and the ones it only lists (instalments).
+const PRO_FEATURES: (FeatureKey | 'invoice_instalments')[] = [
   'api_access',
   'heidi',
   'expenses',
@@ -52,13 +53,14 @@ const PRO_FEATURES: FeatureKey[] = [
   'document_templates',
   'simple_signatures',
   'invoice_corrections',
+  'invoice_instalments',
   'vat_returns',
   'ledger_exports',
   'data_export',
   'automations',
 ]
 // The gated features of offer helvetly per plan; the ones every plan has are left out.
-const features: Record<PlanId, FeatureKey[]> = {
+const features: Record<PlanId, (FeatureKey | 'invoice_instalments')[]> = {
   basic: [],
   pro: PRO_FEATURES,
   business: [

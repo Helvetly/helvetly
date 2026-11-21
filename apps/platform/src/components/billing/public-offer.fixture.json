@@ -359,5 +359,10 @@
         }
       }
     }
+  },
+  "max_self_service_seats": {
+    "basic": 5,
+    "business": null,
+    "pro": 25
   }
 }
