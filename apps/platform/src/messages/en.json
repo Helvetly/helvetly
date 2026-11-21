@@ -196,7 +196,7 @@
   "allEngagements": "All engagements ",
   "allFiguresByZiffer": "All figures by Ziffer ",
   "allFiles": "All files",
-  "allNotifications": "All notifications",
+  "viewAllNotifications": "View all notifications",
   "allowanceLegend": "Allowances per paid team member combine in one shared workspace pool. Workspace limits apply to the whole workspace.",
   "allowanceMonthlyNote": "Monthly allowances start again each month; storage is capacity, not monthly.",
   "allowancePer": "{scope, select, workspace { / workspace} other {}}{monthly, select, true { / month} other {}}",
@@ -610,6 +610,7 @@
   "common": "Common",
   "companies": "Companies",
   "company": "Company",
+  "companyClientText": "A business: company name, UID and VAT number",
   "companyDetails": "Company details",
   "companyName": "Company name",
   "comparePlans": "Compare plans",
@@ -2322,6 +2323,7 @@
   "perPerson2": "{value1} per person × {value2}",
   "perPersonA": "{value1} per person a {interval}, {value3}{total}",
   "person": "Person",
+  "personClientText": "A private individual, by first and last name",
   "personal": "Personal",
   "perWorkspace": "Per workspace",
   "phone": "Phone",
@@ -4783,5 +4785,12 @@
   "auditApprovalGroupDeleted": "Approver group deleted",
   "auditApprovalPolicySaved": "Approval rules saved",
   "systemFolderTip": "Managed by Helvetly: can't be renamed, moved or deleted",
-  "systemFolderError": "This folder is managed by Helvetly and can't be renamed, moved or deleted."
+  "systemFolderError": "This folder is managed by Helvetly and can't be renamed, moved or deleted.",
+  "requiredToInvoice": "Required to invoice",
+  "requiredToSendByEmail": "Required to send by email, unless “Invoices go to” is filled",
+  "missingAddress": "Missing address",
+  "missingEmail": "Missing email",
+  "theClientHasNoEmailAddress": "The client has no email address.",
+  "addTheClientsEmail": "Add the client’s email",
+  "addAnEmailToLetThisClientSignIn": "Add an email to let this client sign in to the portal."
 }

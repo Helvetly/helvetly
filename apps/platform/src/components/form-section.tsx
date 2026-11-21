@@ -89,7 +89,7 @@ export function FormChoiceCards<T extends string>({
         return (
           <label
             key={option}
-            className="group/choice flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition-colors hover:bg-muted/30 has-checked:border-foreground/80 has-checked:bg-muted/40 has-focus-visible:ring-2 has-focus-visible:ring-ring/50"
+            className="group/choice flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition-colors hover:border-foreground/20 hover:bg-muted/30 has-checked:border-brand-solid/45 has-checked:bg-brand-surface/40 has-focus-visible:ring-2 has-focus-visible:ring-ring/50"
           >
             <input
               type="radio"
@@ -103,7 +103,7 @@ export function FormChoiceCards<T extends string>({
             />
             <span
               aria-hidden
-              className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground group-has-checked/choice:text-foreground"
+              className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground group-has-checked/choice:bg-card group-has-checked/choice:text-brand"
             >
               <Icon className="size-4 stroke-[1.75]" />
             </span>
@@ -117,7 +117,7 @@ export function FormChoiceCards<T extends string>({
             </span>
             <span
               aria-hidden
-              className="flex size-4 shrink-0 items-center justify-center rounded-full border border-input group-has-checked/choice:border-primary group-has-checked/choice:bg-primary group-has-checked/choice:text-primary-foreground"
+              className="flex size-4 shrink-0 items-center justify-center rounded-full border border-input group-has-checked/choice:border-brand-solid group-has-checked/choice:bg-brand-solid group-has-checked/choice:text-white"
             >
               <Check className="hidden size-2.5 stroke-[3] group-has-checked/choice:block" />
             </span>

@@ -1,13 +1,13 @@
 import { languageTag } from '@helvetly/i18n'
-import { Button } from '@helvetly/ui/components/button'
 import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ArrowUpRight, Check, Info, TriangleAlert } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
+import type { KeyboardEvent } from 'react'
 
 import { RecordLink } from '@/components/record-link'
 import { translate } from '@/lib/i18n'
-import { categoryOf, shortTime, type Notification } from '@/lib/notifications'
+import { categoryOf, rowStep, shortTime, type Notification } from '@/lib/notifications'
 
 /** The category's icon on a neutral tile; AI and Heidi keep Heidi's colour. */
 export function CategoryIcon({ category, className }: { category: string; className?: string }) {
@@ -76,17 +76,28 @@ export function UnreadDot({ className }: { className?: string }) {
   )
 }
 
-/** The bubble's round status mark: amber while it needs you, green once settled, blue for an update. */
+/** Up, down, Home and End move between the rows of the list around; Enter opens the focused one (it is a link). */
+function moveBetweenRows(event: KeyboardEvent<HTMLElement>) {
+  const list = event.currentTarget.closest('[data-notification-rows]') ?? document
+  const rows = Array.from(list.querySelectorAll<HTMLElement>('[data-notification-row]'))
+  const next = rowStep(event.key, rows.indexOf(event.currentTarget), rows.length)
+  if (next === null) return
+  event.preventDefault()
+  rows[next]?.focus()
+}
+
+/** The bubble's tinted mark: the category's icon, amber while it needs you, green once settled, blue for an update. */
 function StatusMark({ n }: { n: Notification }) {
-  const [Icon, tone, label] = n.resolved
-    ? [Check, 'bg-success-surface text-success', translate('settled')]
+  const Icon = n.resolved ? Check : categoryOf(n.category).icon
+  const [tone, label] = n.resolved
+    ? ['bg-success-surface text-success', translate('settled')]
     : n.needs_you
-      ? [TriangleAlert, 'bg-warning-surface text-warning', translate('needsYou')]
-      : [Info, 'bg-info-surface text-info', translate('update')]
+      ? ['bg-warning-surface text-warning', translate('needsYou')]
+      : ['bg-info-surface text-info', translate('update')]
   return (
     <span
       className={cn(
-        'flex size-7 items-center justify-center rounded-full transition-colors duration-300',
+        'flex size-6 items-center justify-center rounded-full transition-colors duration-300',
         tone,
       )}
     >
@@ -97,8 +108,9 @@ function StatusMark({ n }: { n: Notification }) {
 }
 
 /**
- * The bubble's rows: a blue dot while unread, the status mark, the title over a muted line, the time and a quiet
- * button that opens what it is about in place. One that something settled shows that instead, fading over.
+ * The bubble's rows, each one link (the title's, covering the row) to what it is about, opened in place: a blue dot while unread, the tinted mark,
+ * the title over a muted line (two lines each at most), the time, and on hover or focus an arrow. One that something
+ * settled shows that instead, fading over. Up and down arrows move between the rows.
  */
 export function NotificationList({
   items,
@@ -110,7 +122,7 @@ export function NotificationList({
   className?: string
 }) {
   return (
-    <ul className={cn('grid', className)}>
+    <ul className={cn('grid gap-px px-1.5', className)}>
       {items.map((n) => {
         const shown = n.resolved ?? n
         return (
@@ -118,9 +130,10 @@ export function NotificationList({
             key={n.id}
             data-unread={!n.read || undefined}
             data-resolved={n.resolved ? true : undefined}
-            className="grid grid-cols-[0.375rem_auto_minmax(0,1fr)_auto] items-start gap-x-3 px-4 py-2.5"
+            // The title's link covers the row; its ring is inset (a shadow), so focus never moves or resizes it.
+            className="group/row relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 rounded-lg py-2 pr-2 pl-3.5 hover:bg-accent/60 has-focus-visible:bg-accent/60 has-focus-visible:ring-2 has-focus-visible:ring-ring/50 has-focus-visible:ring-inset"
           >
-            {n.read ? <span /> : <UnreadDot className="mt-3 size-1.5" />}
+            {!n.read && <UnreadDot className="absolute top-[1.0625rem] left-1 size-1.5" />}
             <StatusMark n={n} />
             {/* Keyed by the state, so a settled item's words fade in instead of jumping. */}
             <span
@@ -130,39 +143,42 @@ export function NotificationList({
                 n.resolved && 'slide-in-from-bottom-0.5 animate-in duration-300 fade-in',
               )}
             >
-              <span
-                id={`notification-${n.id}`}
-                className="text-body-sm leading-snug font-medium text-pretty text-foreground"
+              <RecordLink
+                href={n.href}
+                prefetch={false}
+                data-notification-row
+                onKeyDown={moveBetweenRows}
+                aria-describedby={`notification-${n.id}-more`}
+                onClick={() => onOpen?.(n)}
+                className={cn(
+                  'line-clamp-2 text-body-sm leading-snug text-pretty outline-none after:absolute after:inset-0 after:rounded-lg',
+                  n.read ? 'font-medium text-foreground/80' : 'font-semibold text-foreground',
+                )}
               >
                 {shown.title}
+              </RecordLink>
+              <span id={`notification-${n.id}-more`} className="contents">
+                {(shown.body ?? n.actor) && (
+                  <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                    {shown.body ?? n.actor}
+                  </span>
+                )}
+                <span className="sr-only">{shown.action}</span>
               </span>
-              {(shown.body ?? n.actor) && (
-                <span
-                  className="truncate text-xs text-muted-foreground"
-                  title={shown.body ?? undefined}
-                >
-                  {shown.body ?? n.actor}
-                </span>
-              )}
-              <Button asChild variant="outline" size="xs" className="mt-1.5 w-fit">
-                <RecordLink
-                  href={n.href}
-                  prefetch={false}
-                  aria-describedby={`notification-${n.id}`}
-                  onClick={() => onOpen?.(n)}
-                >
-                  <ArrowUpRight data-icon="inline-start" />
-                  {shown.action}
-                </RecordLink>
-              </Button>
             </span>
-            <time
-              dateTime={shown.created_at}
-              title={new Date(shown.created_at).toLocaleString(languageTag)}
-              className="pt-0.5 font-mono text-xs text-muted-foreground tabular-nums"
-            >
-              {shortTime(shown.created_at)}
-            </time>
+            <span className="grid justify-items-end gap-1 pt-0.5">
+              <time
+                dateTime={shown.created_at}
+                title={new Date(shown.created_at).toLocaleString(languageTag)}
+                className="text-xs whitespace-nowrap text-muted-foreground tabular-nums"
+              >
+                {shortTime(shown.created_at)}
+              </time>
+              <ArrowRight
+                aria-hidden
+                className="size-3.5 text-muted-foreground opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 group-has-focus-visible/row:opacity-100"
+              />
+            </span>
           </li>
         )
       })}

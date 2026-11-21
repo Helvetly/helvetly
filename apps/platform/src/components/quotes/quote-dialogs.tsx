@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { NoClientEmail } from '@/components/clients/client-fix'
 import { inputClass as fieldClass } from '@/components/clients/fields'
 import { EmailMessageField } from '@/components/email-message-field'
 import {
@@ -117,6 +118,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
           {translate('emailIsnTSetUpOnThisServerMark')}
         </Callout>
       )}
+      <NoClientEmail client={client} />
       <FormField
         id="quote-send-to"
         label={translate('to3')}

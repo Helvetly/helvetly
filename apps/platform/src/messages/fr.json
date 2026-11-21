@@ -196,7 +196,7 @@
   "allEngagements": "Tous les mandats ",
   "allFiguresByZiffer": "Toutes les figures de Ziffer ",
   "allFiles": "Tous les fichiers",
-  "allNotifications": "Toutes les notifications",
+  "viewAllNotifications": "Voir toutes les notifications",
   "allowanceLegend": "Les quotas de chaque membre payant de l’équipe s’additionnent dans un quota partagé par l’espace de travail. Les limites de l’espace de travail s’appliquent à l’ensemble de celui-ci.",
   "allowanceMonthlyNote": "Les quotas mensuels sont réinitialisés chaque mois ; le stockage est une capacité, pas un quota mensuel.",
   "allowancePer": "{scope, select, workspace { / espace de travail} other {}}{monthly, select, true { / mois} other {}}",
@@ -610,6 +610,7 @@
   "common": "Commun",
   "companies": "Entreprises",
   "company": "Société",
+  "companyClientText": "Une entreprise : raison sociale, UID et numéro de TVA",
   "companyDetails": "Coordonnées de l’entreprise",
   "companyName": "Nom de la société",
   "comparePlans": "Comparer les formules",
@@ -2322,6 +2323,7 @@
   "perPerson2": "{value1} par personne × {value2}",
   "perPersonA": "{value1} par personne a {interval}, {value3}{total}",
   "person": "Personne",
+  "personClientText": "Un particulier, avec prénom et nom",
   "personal": "Personnel",
   "perWorkspace": "Par espace de travail",
   "phone": "Téléphone",
@@ -4783,5 +4785,12 @@
   "auditApprovalGroupDeleted": "Groupe d’approbation supprimé",
   "auditApprovalPolicySaved": "Règles d’approbation enregistrées",
   "systemFolderTip": "Géré par Helvetly : ne peut pas être renommé, déplacé ou supprimé",
-  "systemFolderError": "Ce dossier est géré par Helvetly et ne peut pas être renommé, déplacé ou supprimé."
+  "systemFolderError": "Ce dossier est géré par Helvetly et ne peut pas être renommé, déplacé ou supprimé.",
+  "requiredToInvoice": "Requis pour facturer",
+  "requiredToSendByEmail": "Requis pour l’envoi par e-mail, sauf si « Les factures vont à » est rempli",
+  "missingAddress": "Adresse manquante",
+  "missingEmail": "E-mail manquant",
+  "theClientHasNoEmailAddress": "Le client n’a pas d’adresse e-mail.",
+  "addTheClientsEmail": "Ajouter l’e-mail du client",
+  "addAnEmailToLetThisClientSignIn": "Ajoutez un e-mail pour que ce client puisse se connecter au portail."
 }

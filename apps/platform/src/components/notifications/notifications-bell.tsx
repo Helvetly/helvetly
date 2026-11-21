@@ -5,10 +5,11 @@ import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Sheet, SheetContent, SheetTitle } from '@helvetly/ui/components/sheet'
 import { SidebarMenuButton, useSidebar } from '@helvetly/ui/components/sidebar'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Bell, CheckCheck, SlidersHorizontal } from 'lucide-react'
+import { ArrowRight, Bell, BellOff, CheckCheck, Settings } from 'lucide-react'
 import Link from 'next/link'
-import { useId, useState, type ReactNode } from 'react'
+import { useCallback, useId, useState, type ReactNode, type UIEvent } from 'react'
 
 import { LoadError } from '@/components/load-error'
 import { WithShortcut } from '@/components/shortcuts/shortcut-keys'
@@ -55,7 +56,8 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
   const describedBy = unread > 0 ? countId : undefined
   const content = (
     <>
-      <Bell />
+      {/* While anything is unread the bell rings now and then (never with reduced motion: globals.css). */}
+      <Bell data-testid="bell-icon" className={unread > 0 ? 'bell-ring' : undefined} />
       <span>{translate('notifications')}</span>
       {/* The name stays the visible word; the count is the item's description. */}
       {unread > 0 && (
@@ -105,12 +107,9 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
           className="max-h-[90svh] gap-0 rounded-t-2xl p-0 [&_[data-slot=panel-head]]:pr-10"
         >
           <NotificationsPanel
-            title={
-              <SheetTitle className="text-title-sm font-semibold">
-                {translate('notifications')}
-              </SheetTitle>
-            }
+            title={<SheetTitle className="sr-only">{translate('notifications')}</SheetTitle>}
             onGo={go}
+            phone
           />
         </SheetContent>
       </Sheet>
@@ -133,11 +132,11 @@ export function NotificationsBell({ className, onGo }: { className?: string; onG
         align="end"
         sideOffset={8}
         aria-labelledby="notifications-title"
-        className="w-[min(26rem,calc(100vw-1rem))] gap-0 overflow-hidden rounded-2xl p-0"
+        className="max-h-[calc(var(--radix-popover-content-available-height)-0.5rem)] w-[min(26rem,calc(100vw-1rem))] gap-0 overflow-hidden rounded-2xl p-0"
       >
         <NotificationsPanel
           title={
-            <h2 id="notifications-title" className="text-title-sm font-semibold">
+            <h2 id="notifications-title" className="min-w-0 truncate text-sm font-semibold">
               {translate('notifications')}
             </h2>
           }
@@ -154,13 +153,56 @@ const FILTERS: { value: BellFilter; label: string }[] = [
   { value: 'updates', label: translate('updates') },
 ]
 
-/** What the bubble and the sheet hold: the title, the filters, the list and the footer. */
-function NotificationsPanel({ title, onGo }: { title: ReactNode; onGo: () => void }) {
+const EMPTY: Record<BellFilter, string> = {
+  all: translate('youReAllCaughtUp'),
+  needs: translate('nothingNeedsYou'),
+  updates: translate('noUpdatesYet'),
+}
+
+/** Whether the list has more above or below its scrolled view, for the soft fades at its edges. */
+function useScrollEdges() {
+  const [edges, setEdges] = useState({ top: false, bottom: false })
+  const measure = useCallback((node: HTMLElement) => {
+    const top = node.scrollTop > 0
+    const bottom = node.scrollTop + node.clientHeight < node.scrollHeight - 1
+    setEdges((was) => (was.top === top && was.bottom === bottom ? was : { top, bottom }))
+  }, [])
+  const observe = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node) return
+      measure(node)
+      // New or settled items change the height without a scroll.
+      const observer = new ResizeObserver(() => measure(node))
+      if (node.firstElementChild) observer.observe(node.firstElementChild)
+      observer.observe(node)
+      return () => observer.disconnect()
+    },
+    [measure],
+  )
+  return { edges, observe, onScroll: (event: UIEvent<HTMLElement>) => measure(event.currentTarget) }
+}
+
+/**
+ * What the bubble and the sheet hold: one compact row with the title, the filters and "Mark all as read"; the list,
+ * which scrolls past about eight items while the header and footer stay; and a footer to the full page and the
+ * settings.
+ */
+function NotificationsPanel({
+  title,
+  onGo,
+  phone = false,
+}: {
+  title: ReactNode
+  onGo: () => void
+  /** On a phone the sheet's title is only spoken: the filters get the row, starting at its left. */
+  phone?: boolean
+}) {
   const [filter, setFilter] = useState<BellFilter>('all')
   const latest = useLatestNotifications({ live: true })
   const markAll = useMarkAllRead()
   const setRead = useSetRead()
   const prefs = useNotificationPrefs()
+  const { edges, observe, onScroll } = useScrollEdges()
   const items = latest.data?.data ?? []
   const unread = latest.data?.unread ?? 0
   const counts = bellCounts(items)
@@ -171,21 +213,13 @@ function NotificationsPanel({ title, onGo }: { title: ReactNode; onGo: () => voi
     onGo()
   }
   return (
-    <>
-      <div className="grid gap-3 border-b px-4 pt-4 pb-3">
-        <div data-slot="panel-head" className="flex items-center justify-between gap-2">
-          {title}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-mr-2 text-muted-foreground"
-            disabled={unread === 0 || markAll.isPending}
-            onClick={() => markAll.mutate()}
-          >
-            {translate('markAllAsRead2')}
-          </Button>
-        </div>
-        <fieldset className="flex w-fit gap-0.5 rounded-full bg-muted p-0.5">
+    <div className="flex max-h-[inherit] min-h-0 flex-col">
+      <div
+        data-slot="panel-head"
+        className="flex h-12 shrink-0 items-center gap-2 border-b pr-2 pl-4"
+      >
+        {title}
+        <fieldset className={cn('flex shrink-0 items-center gap-0.5', phone ? '-ml-2' : 'ml-auto')}>
           <legend className="sr-only">{translate('showNotifications')}</legend>
           {FILTERS.map((f) => (
             <button
@@ -193,16 +227,41 @@ function NotificationsPanel({ title, onGo }: { title: ReactNode; onGo: () => voi
               type="button"
               aria-pressed={filter === f.value}
               onClick={() => setFilter(f.value)}
-              className="flex h-7 items-center gap-1.5 rounded-full px-3 text-body-sm text-muted-foreground transition-colors duration-200 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-pressed:bg-foreground aria-pressed:text-background"
+              className="flex h-7 items-center gap-1 rounded-md px-2 text-body-sm text-muted-foreground transition-colors duration-150 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-pressed:bg-foreground/6 aria-pressed:font-medium aria-pressed:text-foreground"
             >
-              {f.value === 'needs' && counts.needs > 0 && (
-                <span aria-hidden className="size-1.5 rounded-full bg-warning-solid" />
+              {f.label}
+              {/* An empty filter shows no count; the space reads "Needs you 2". */}
+              {counts[f.value] > 0 && (
+                <>
+                  {' '}
+                  <span
+                    className={cn(
+                      'text-xs tabular-nums',
+                      f.value === 'needs' ? 'text-warning' : 'text-muted-foreground',
+                    )}
+                  >
+                    {counts[f.value]}
+                  </span>
+                </>
               )}
-              {/* The space reads "Needs you 2"; flex drops it from the layout. */}
-              {f.label} <span className="tabular-nums opacity-70">{counts[f.value]}</span>
             </button>
           ))}
         </fieldset>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className={cn('text-muted-foreground', phone && 'ml-auto')}
+              aria-label={translate('markAllAsRead2')}
+              disabled={unread === 0 || markAll.isPending}
+              onClick={() => markAll.mutate()}
+            >
+              <CheckCheck />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{translate('markAllAsRead2')}</TooltipContent>
+        </Tooltip>
       </div>
       {latest.isPending ? (
         <Loader className="min-h-52" />
@@ -216,54 +275,78 @@ function NotificationsPanel({ title, onGo }: { title: ReactNode; onGo: () => voi
         </div>
       ) : !sections.length ? (
         <div className="grid justify-items-center gap-2 px-6 py-10 text-center">
-          <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <CheckCheck className="size-5 stroke-[1.5]" />
+          <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <BellOff className="size-4 stroke-[1.75]" />
           </span>
-          <p className="text-sm font-medium">
-            {filter === 'needs'
-              ? translate('nothingNeedsYou')
-              : filter === 'updates'
-                ? translate('noUpdatesYet')
-                : translate('youReAllCaughtUp')}
-          </p>
-          {filter === 'all' && (
-            <p className="text-body-sm text-pretty text-muted-foreground">
-              {translate('paymentsSignaturesClientActivityAndTeamChangesShowUp')}
-            </p>
-          )}
+          <p className="text-body-sm text-muted-foreground">{EMPTY[filter]}</p>
         </div>
       ) : (
-        <div className="max-h-[min(60svh,30rem)] overflow-y-auto py-1">
-          {sections.map((s) => (
-            <section key={s.key} aria-labelledby={`bell-${s.key}`}>
-              <h3 id={`bell-${s.key}`} className="px-4 pt-2.5 text-xs text-muted-foreground">
-                {s.label}
-              </h3>
-              <NotificationList items={s.items} onOpen={openItem} />
-            </section>
-          ))}
+        <div className="relative flex min-h-0 flex-col">
+          <div
+            ref={observe}
+            onScroll={onScroll}
+            data-testid="bell-list"
+            data-notification-rows
+            // About eight rows, then it scrolls; the header and footer stay where they are.
+            className="max-h-[min(60svh,32rem)] min-h-0 overflow-y-auto overscroll-contain"
+          >
+            <div className="py-1.5">
+              {sections.map((s) => (
+                <section key={s.key} aria-labelledby={`bell-${s.key}`}>
+                  {/* Under one filter the heading would repeat the tab: only screen readers get it. */}
+                  <h3
+                    id={`bell-${s.key}`}
+                    className={cn(
+                      'px-4 pt-2 pb-1 text-xs font-medium text-muted-foreground',
+                      filter !== 'all' && 'sr-only',
+                    )}
+                  >
+                    {s.label}
+                  </h3>
+                  <NotificationList items={s.items} onOpen={openItem} />
+                </section>
+              ))}
+            </div>
+          </div>
+          <div
+            aria-hidden
+            data-on={edges.top || undefined}
+            className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-linear-to-b from-popover to-transparent opacity-0 transition-opacity duration-150 data-on:opacity-100"
+          />
+          <div
+            aria-hidden
+            data-on={edges.bottom || undefined}
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-t from-popover to-transparent opacity-0 transition-opacity duration-150 data-on:opacity-100"
+          />
         </div>
       )}
-      <div className="px-4 pt-1 pb-2.5">
-        <Link
-          href="/notifications"
-          onClick={onGo}
-          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-        >
-          {translate('allNotifications')}
-        </Link>
-      </div>
-      <div className="flex items-center justify-between gap-2 border-t bg-muted/60 px-2 py-1.5">
-        <Button asChild variant="ghost" size="sm">
-          <PrefsLink onClick={onGo}>
-            <SlidersHorizontal />
-            {translate('notificationSettings2')}
-          </PrefsLink>
+      <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-t px-2">
+        <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+          <Link href="/notifications" onClick={onGo}>
+            {translate('viewAllNotifications')}
+            <ArrowRight data-icon="inline-end" />
+          </Link>
         </Button>
-        {emailed && (
-          <span className="px-2 text-xs text-muted-foreground">{translate('alsoSentByEmail')}</span>
-        )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground"
+              aria-label={translate('notificationSettings2')}
+            >
+              <PrefsLink onClick={onGo}>
+                <Settings />
+              </PrefsLink>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {translate('notificationSettings2')}
+            {emailed && <span className="block opacity-70">{translate('alsoSentByEmail')}</span>}
+          </TooltipContent>
+        </Tooltip>
       </div>
-    </>
+    </div>
   )
 }
