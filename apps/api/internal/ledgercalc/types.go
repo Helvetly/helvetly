@@ -102,7 +102,8 @@ type Payment struct {
 	Refund    bool              `json:"refund"`
 }
 
-// Expense is a booked expense in its base currency; Account is its category account.
+// Expense is a booked expense in its base currency; Account is its category account. Splits, when set, divide it
+// over several accounts and replace Account, Total less Deductible, MaterialVAT and the acquisition tax amounts.
 type Expense struct {
 	ID           string            `json:"id"`
 	Ref          string            `json:"ref"`
@@ -121,6 +122,7 @@ type Expense struct {
 	ReverseCharge         bool              `json:"reverse_charge"`
 	AcquisitionTax        invoicecalc.Money `json:"acquisition_tax"`
 	AcquisitionDeductible invoicecalc.Money `json:"acquisition_deductible"`
+	Splits                []Split           `json:"splits"`
 }
 
 // Sources is everything Post needs, gathered by the store.

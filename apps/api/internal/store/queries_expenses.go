@@ -41,12 +41,18 @@ type ExpenseCategory struct {
 	ExpensesCount int  `json:"expenses_count"`
 }
 
+// ExpenseLine is one amount at one VAT rate, or one item; an item's own category (null: the expense's) takes its
+// share in the ledger. Quantity and unit price are only shown: Amount is the figure.
 type ExpenseLine struct {
-	ID          string              `json:"id"`
-	Position    int                 `json:"position"`
-	Description *string             `json:"description"`
-	Amount      invoicecalc.Money   `json:"amount"`
-	VATRate     invoicecalc.Percent `json:"vat_rate"`
+	ID          string                `json:"id"`
+	Position    int                   `json:"position"`
+	Description *string               `json:"description"`
+	Amount      invoicecalc.Money     `json:"amount"`
+	VATRate     invoicecalc.Percent   `json:"vat_rate"`
+	CategoryID  *string               `json:"-"`
+	Category    *CategoryRef          `json:"category"`
+	Quantity    *invoicecalc.Quantity `json:"quantity"`
+	UnitPrice   *invoicecalc.Money    `json:"unit_price"`
 }
 
 type ExpenseVAT struct {
@@ -81,6 +87,7 @@ type Expense struct {
 	DueDate              *string             `json:"due_date"`
 	Currency             string              `json:"currency"`
 	AmountMode           string              `json:"amount_mode"`
+	EntryMode            string              `json:"entry_mode"` // single: one amount per VAT rate; itemised: items
 	Lines                []ExpenseLine       `json:"lines"`
 	NetTotal             invoicecalc.Money   `json:"net_total"`
 	VATTotal             invoicecalc.Money   `json:"vat_total"`
@@ -226,7 +233,8 @@ func (q Q) UpdateExpenseCategory(ctx context.Context, workspaceID, id string, na
 	if (name != nil && *name != currentName) || (code != nil && *code != currentCode) {
 		var booked bool
 		if err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM expenses
-			WHERE category_id = $1 AND status <> 'draft')`, id).Scan(&booked); err != nil {
+			WHERE category_id = $1 AND status <> 'draft') OR EXISTS (SELECT 1 FROM expense_lines l JOIN expenses e ON e.id = l.expense_id
+			WHERE l.category_id = $1 AND e.status <> 'draft')`, id).Scan(&booked); err != nil {
 			return false, err
 		}
 		if booked {
@@ -256,7 +264,7 @@ var expenseColumns = `e.id, e.number, e.status, e.source, e.supplier_name, e.sup
 	e.base_deductible_vat, e.payment_status, e.paid_on::text, e.payment_method, e.paid_by, pb.name, e.reimbursed_on::text, e.note,
 	e.receipt_missing_reason, (SELECT count(*) FROM expense_receipts r WHERE r.expense_id = e.id), e.created_by, cb.name,
 	e.booked_at, e.booked_by, bb.name, e.voided_at, e.voided_by, vb.name, e.void_reason, e.created_at, e.updated_at,
-	e.reverse_charge, e.input_tax_box, ` + approvalStateOf("e")
+	e.reverse_charge, e.input_tax_box, e.entry_mode, ` + approvalStateOf("e")
 
 const expenseFrom = ` FROM expenses e LEFT JOIN expense_categories c ON c.id = e.category_id
 	LEFT JOIN users pb ON pb.id = e.paid_by LEFT JOIN users cb ON cb.id = e.created_by
@@ -280,7 +288,7 @@ func scanExpense(row interface{ Scan(...any) error }, today string) (Expense, er
 		&e.Base.DeductibleVAT, &e.PaymentStatus, &e.PaidOn, &e.PaymentMethod, &e.PaidByID, &paidByName, &e.ReimbursedOn, &e.Note,
 		&e.ReceiptMissingReason, &e.ReceiptsCount, &createdBy, &createdByName,
 		&e.BookedAt, &bookedBy, &bookedByName, &e.VoidedAt, &voidedBy, &voidedByName, &e.VoidReason, &e.CreatedAt, &e.UpdatedAt,
-		&e.ReverseCharge, &e.InputTaxBox, &e.ApprovalState)
+		&e.ReverseCharge, &e.InputTaxBox, &e.EntryMode, &e.ApprovalState)
 	if err != nil {
 		return e, err
 	}
@@ -308,16 +316,23 @@ func (q Q) Expense(ctx context.Context, workspaceID, id, today string, forUpdate
 	if err != nil {
 		return e, err
 	}
-	rows, err := q.db.Query(ctx, `SELECT id, position, description, amount, vat_rate FROM expense_lines
-		WHERE expense_id = $1 ORDER BY position`, id)
+	rows, err := q.db.Query(ctx, `SELECT l.id, l.position, l.description, l.amount, l.vat_rate, l.category_id, c.name, c.account_code,
+			l.quantity, l.unit_price
+		FROM expense_lines l LEFT JOIN expense_categories c ON c.id = l.category_id
+		WHERE l.expense_id = $1 ORDER BY l.position`, id)
 	if err != nil {
 		return e, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var l ExpenseLine
-		if err := rows.Scan(&l.ID, &l.Position, &l.Description, &l.Amount, &l.VATRate); err != nil {
+		var catName, catCode *string
+		if err := rows.Scan(&l.ID, &l.Position, &l.Description, &l.Amount, &l.VATRate, &l.CategoryID, &catName, &catCode,
+			&l.Quantity, &l.UnitPrice); err != nil {
 			return e, err
+		}
+		if l.CategoryID != nil && catName != nil {
+			l.Category = &CategoryRef{ID: *l.CategoryID, Name: *catName, AccountCode: *catCode}
 		}
 		e.Lines = append(e.Lines, l)
 	}
@@ -355,13 +370,13 @@ func (q Q) SaveExpense(ctx context.Context, workspaceID string, e Expense, now t
 		exchange_rate = $19, exchange_rate_date = $20, exchange_rate_source = $21, base_currency = $22, base_net_total = $23,
 		base_vat_total = $24, base_total = $25, base_deductible_vat = $26, payment_status = $27, paid_on = $28,
 		payment_method = $29, paid_by = $30, reimbursed_on = $31, note = $32, receipt_missing_reason = $33, updated_at = $34,
-		supplier_country = $35, reverse_charge = $36, input_tax_box = $37
+		supplier_country = $35, reverse_charge = $36, input_tax_box = $37, entry_mode = COALESCE(NULLIF($38, ''), 'single')
 		WHERE workspace_id = $1 AND id = $2`,
 		workspaceID, e.ID, e.SupplierName, e.SupplierVATNumber, e.Reference, e.Description, e.CategoryID, e.DocumentDate, e.DueDate,
 		e.Currency, e.AmountMode, e.InputTax, e.DeductiblePercent, e.NetTotal, e.VATTotal, e.Total, e.DeductibleVAT, breakdown,
 		e.ExchangeRate, e.ExchangeRateDate, e.ExchangeRateSource, e.Base.Currency, e.Base.NetTotal, e.Base.VATTotal, e.Base.Total,
 		e.Base.DeductibleVAT, e.PaymentStatus, e.PaidOn, e.PaymentMethod, e.PaidByID, e.ReimbursedOn, e.Note, e.ReceiptMissingReason, now, e.SupplierCountry,
-		e.ReverseCharge, e.InputTaxBox)
+		e.ReverseCharge, e.InputTaxBox, e.EntryMode)
 	if err != nil {
 		return err
 	}
@@ -369,8 +384,9 @@ func (q Q) SaveExpense(ctx context.Context, workspaceID string, e Expense, now t
 		return err
 	}
 	for _, l := range e.Lines {
-		if _, err := q.db.Exec(ctx, `INSERT INTO expense_lines (id, expense_id, position, description, amount, vat_rate)
-			VALUES ($1, $2, $3, $4, $5, $6)`, l.ID, e.ID, l.Position, l.Description, l.Amount, l.VATRate); err != nil {
+		if _, err := q.db.Exec(ctx, `INSERT INTO expense_lines (id, expense_id, position, description, amount, vat_rate, category_id,
+			quantity, unit_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			l.ID, e.ID, l.Position, l.Description, l.Amount, l.VATRate, l.CategoryID, l.Quantity, l.UnitPrice); err != nil {
 			return err
 		}
 	}
@@ -379,9 +395,9 @@ func (q Q) SaveExpense(ctx context.Context, workspaceID string, e Expense, now t
 
 // BookExpense marks a draft booked by userID.
 func (q Q) BookExpense(ctx context.Context, id, userID string, now time.Time) error {
-	// Category edits take the same lock, so a booked record's account cannot change behind it.
-	if _, err := q.db.Exec(ctx, `SELECT id FROM expense_categories
-		WHERE id = (SELECT category_id FROM expenses WHERE id = $1) FOR UPDATE`, id); err != nil {
+	// Category edits take the same locks, so a booked record's accounts cannot change behind it.
+	if _, err := q.db.Exec(ctx, `SELECT id FROM expense_categories WHERE id IN (SELECT category_id FROM expenses WHERE id = $1
+		UNION SELECT category_id FROM expense_lines WHERE expense_id = $1) ORDER BY id FOR UPDATE`, id); err != nil {
 		return err
 	}
 	_, err := q.db.Exec(ctx, `UPDATE expenses SET status = 'booked', booked_at = $2, booked_by = $3, updated_at = $2
@@ -397,7 +413,9 @@ func (q Q) LockExpenseBatch(ctx context.Context, workspaceID string, ids []strin
 	}
 	if booking {
 		_, err := q.db.Exec(ctx, `SELECT id FROM expense_categories WHERE workspace_id = $1 AND id IN
-			(SELECT category_id FROM expenses WHERE workspace_id = $1 AND id = ANY($2) AND deleted_at IS NULL)
+			(SELECT category_id FROM expenses WHERE workspace_id = $1 AND id = ANY($2) AND deleted_at IS NULL
+				UNION SELECT l.category_id FROM expense_lines l JOIN expenses e ON e.id = l.expense_id
+				WHERE e.workspace_id = $1 AND e.id = ANY($2) AND e.deleted_at IS NULL)
 			ORDER BY id FOR UPDATE`, workspaceID, ids)
 		return err
 	}

@@ -119,7 +119,7 @@
 2 text-px apps/platform/src/components/engagements/send-report-dialog.tsx
 1 text-px apps/platform/src/components/expenses/duplicate-warning.tsx
 16 text-px apps/platform/src/components/expenses/expense-detail.tsx
-6 text-px apps/platform/src/components/expenses/expense-form.tsx
+3 text-px apps/platform/src/components/expenses/expense-form.tsx
 5 text-px apps/platform/src/components/expenses/expenses-page.tsx
 5 text-px apps/platform/src/components/fix-list.tsx
 4 text-px apps/platform/src/components/form-section.tsx
