@@ -10,7 +10,7 @@ import { translate } from '@/lib/i18n'
  */
 export const listTable = {
   /** Pages add their own breakpoint, e.g. `hidden @4xl:table`. */
-  table: 'w-full table-fixed text-[15px]',
+  table: 'w-full table-fixed text-body-sm [&_.font-code]:text-[length:1em]',
   head: 'h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase',
   /** `relative group/th`: a column's resize handle sits on its right edge, shown on hover. */
   th: 'group/th relative px-3 font-medium whitespace-nowrap first:pl-5 last:pr-5',

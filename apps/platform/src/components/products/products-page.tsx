@@ -180,11 +180,11 @@ function PriceCell({ product }: { product: Product }) {
   return (
     <span className="grid justify-items-end leading-tight tabular-nums">
       <span className="whitespace-nowrap">
-        <span className="mr-1 text-[12px] text-muted-foreground">{product.currency}</span>
+        <span className="mr-1 text-caption text-muted-foreground">{product.currency}</span>
         {formatAmount(product.unit_price)}
         {unit && <span className="text-muted-foreground"> / {unit}</span>}
       </span>
-      <span className="text-[12px] text-muted-foreground">
+      <span className="text-caption text-muted-foreground">
         {product.price_basis === 'gross' ? translate('inclVAT3') : translate('exclVAT2')}
       </span>
     </span>
@@ -767,7 +767,7 @@ function NameCell({ product, onOpen }: { product: Product; onOpen: () => void })
       <span className="grid min-w-0 leading-tight">
         <span className="break-words">{product.name}</span>
         {product.description && (
-          <span className="truncate text-[13px] text-muted-foreground" title={product.description}>
+          <span className="truncate text-caption text-muted-foreground" title={product.description}>
             {product.description}
           </span>
         )}

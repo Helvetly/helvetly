@@ -887,7 +887,7 @@ const ExpenseRow = memo(function ExpenseRow({ expense, selected, bulk, access, a
             </span>
             {expense.description && (
               <span
-                className="truncate text-[13px] text-muted-foreground"
+                className="truncate text-caption text-muted-foreground"
                 title={expense.description}
               >
                 {expense.description}
@@ -899,7 +899,7 @@ const ExpenseRow = memo(function ExpenseRow({ expense, selected, bulk, access, a
           {expense.category ? (
             <span className="grid leading-tight">
               <span>{expense.category.name}</span>
-              <span className="text-[13px] text-muted-foreground tabular-nums">
+              <span className="text-caption text-muted-foreground tabular-nums">
                 {expense.category.account_code}
               </span>
             </span>
@@ -919,21 +919,21 @@ const ExpenseRow = memo(function ExpenseRow({ expense, selected, bulk, access, a
         <td className="px-3">
           {expense.receipts_count > 0 ? (
             <span
-              className="inline-flex items-center gap-1 text-[13px] text-muted-foreground tabular-nums"
+              className="inline-flex items-center gap-1 text-caption text-muted-foreground tabular-nums"
               title={translate('receiptsAttached2')}
             >
               <Paperclip className="size-3.5" /> {expense.receipts_count}
             </span>
           ) : expense.receipt_missing_reason ? (
             <span
-              className="text-[13px] text-muted-foreground"
+              className="text-caption text-muted-foreground"
               title={expense.receipt_missing_reason}
             >
               {translate('substitute')}
             </span>
           ) : (
             <span
-              className="inline-flex items-center gap-1 text-[13px] text-[#a05c5c] dark:text-rose-300"
+              className="inline-flex items-center gap-1 text-caption text-[#a05c5c] dark:text-rose-300"
               title={translate('noReceiptYet')}
             >
               <CircleDashed className="size-3.5" />

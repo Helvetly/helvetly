@@ -138,7 +138,7 @@ function PeriodCell({ engagement }: { engagement: Engagement }) {
   return (
     <span className="grid leading-tight">
       <span className="whitespace-nowrap">{periodLabel(period)}</span>
-      <span className="text-[12px] text-muted-foreground">
+      <span className="text-caption text-muted-foreground">
         {engagement.status === 'ended' || engagement.status === 'cancelled'
           ? translate('ended')
           : period.state === 'upcoming'
@@ -170,7 +170,7 @@ function RemainingCell({ engagement }: { engagement: Engagement }) {
 const TitleCell = ({ engagement }: { engagement: Engagement }) => (
   <span className="grid min-w-0 leading-snug">
     <span className="truncate text-[15px]">{engagement.title}</span>
-    <span className="truncate text-[13px] text-muted-foreground">
+    <span className="truncate text-caption text-muted-foreground">
       {engagement.client.name} · <span className="font-code">#{engagement.number}</span>
     </span>
   </span>
