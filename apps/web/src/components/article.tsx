@@ -81,7 +81,7 @@ export function ArticleView({
           <h1 className="text-subhero mt-3 max-w-3xl font-semibold text-balance">
             {article.title}
           </h1>
-          <p className="text-lead mt-4 max-w-2xl text-balance text-muted-foreground">
+          <p className="text-lead mt-4 max-w-4xl text-balance text-muted-foreground">
             {article.description}
           </p>
           <p className="mt-4 text-body-sm text-muted-foreground">

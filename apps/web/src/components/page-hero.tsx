@@ -27,7 +27,7 @@ export function PageHero({
         {lead && (
           <p
             style={{ ['--d' as string]: '100ms' }}
-            className="rise text-lead mt-6 max-w-2xl text-balance text-muted-foreground"
+            className="rise text-lead mt-6 max-w-4xl text-balance text-muted-foreground"
           >
             {lead}
           </p>
