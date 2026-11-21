@@ -4,6 +4,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { ExpenseDetail } from '@/components/expenses/expense-detail'
 import type { Expense, Receipt } from '@/lib/expenses'
+import { aiConsent } from '@/mocks/ai-notice'
 
 import { expense } from './pages/api'
 import { storySession } from './screen-fixtures'
@@ -126,6 +127,9 @@ const meta = {
 } satisfies Meta<{ onCommand: () => void; onClose: () => void }>
 export default meta
 type Story = StoryObj<typeof meta>
+
+const dark = (base: Story): Story => ({ ...base, parameters: { ...base.parameters, dark: true } })
+const phone = (base: Story): Story => ({ ...base, globals: { viewport: { value: 'phone' } } })
 
 const drawer = async (canvasElement: HTMLElement) =>
   within(await within(canvasElement.ownerDocument.body).findByRole('dialog'))
@@ -279,3 +283,120 @@ export const AddAnotherThenDeleteAll = story(receiptApi([cafe]), async ({ canvas
   await expect(sheet.getByRole('button', { name: 'Book' })).toBeDisabled()
   await expect(sheet.getByLabelText('Upload receipts')).toBeInTheDocument()
 })
+
+/** The draft's receipts read again: an SBB receipt with a number the draft lacks and a longer supplier name. */
+const rereading = {
+  supplier: { name: 'SBB CFF FFS AG', vat_number: null, country: 'CH', iban: null },
+  document: { type: 'receipt', number: 'R-77', date: '2026-11-04', due_date: null },
+  description: 'Zürich–Bern return',
+  currency: 'CHF',
+  totals: { net: null, vat: null, gross: '184.60' },
+  vat_breakdown: [{ rate: '8.1', net: null, vat: null, gross: '184.60' }],
+  items: [],
+  payment: { status: 'unknown', method: null, paid_on: null },
+  reverse_charge: false,
+  category: null,
+  confidence: {
+    supplier: 'high',
+    document: 'high',
+    totals: 'high',
+    vat_breakdown: 'high',
+    items: 'high',
+    payment: 'high',
+  },
+  issues: {},
+}
+const patched = fn()
+const rereadApi = (status: Expense['status'] = 'draft') => {
+  const api = receiptApi([cafe])
+  const current = (): Expense => ({
+    ...draft([cafe]),
+    status,
+    booked_at: status === 'draft' ? null : '2026-11-05T09:00:00Z',
+  })
+  return {
+    start: () => void (api.start(), patched.mockClear()),
+    handlers: [
+      http.get(`/api/v1/expenses/${ID}`, () => HttpResponse.json({ data: current() })),
+      http.get('/api/v1/heidi/usage', () =>
+        HttpResponse.json({
+          period: '2026-11',
+          tokens_used: 0,
+          tokens_included: 500_000,
+          tokens_purchased: 0,
+          tokens_remaining: 500_000,
+          provider_available: true,
+          consent: aiConsent(true),
+        }),
+      ),
+      http.post(`/api/v1/expenses/${ID}/read`, () => HttpResponse.json({ data: rereading })),
+      http.patch(`/api/v1/expenses/${ID}`, async ({ request }) => {
+        const input = await request.json()
+        patched(input)
+        return HttpResponse.json({ data: { ...current(), reference: 'R-77' } })
+      }),
+      ...api.handlers,
+    ],
+  }
+}
+
+/**
+ * Read again: what the receipt says beside what the draft has; the empty receipt number is ticked, the changed
+ * supplier name is not. Nothing is saved yet.
+ */
+export const RereadDiff = story(rereadApi(), async ({ canvasElement }) => {
+  const sheet = await drawer(canvasElement)
+  await userEvent.click(await sheet.findByRole('button', { name: 'Read again with AI' }))
+  const list = await sheet.findByRole('list', { name: 'Differences' })
+  const boxes = within(list).getAllByRole('checkbox')
+  await expect(boxes).toHaveLength(2)
+  await expect(within(list).getAllByRole('listitem')[0]).toHaveTextContent(
+    /Supplier.*SBB CFF FFS.*SBB CFF FFS AG/,
+  )
+  await expect(boxes[0]).not.toBeChecked()
+  await expect(boxes[1]).toBeChecked()
+  await expect(sheet.getByRole('button', { name: 'Apply 1 change' })).toBeEnabled()
+  await expect(patched).not.toHaveBeenCalled()
+})
+export const RereadDiffDark = dark(RereadDiff)
+export const RereadDiffPhone = phone(RereadDiff)
+
+/** Applying saves only what is ticked, as an ordinary edit, and goes back to the expense. */
+export const RereadDiffApply = story(rereadApi(), async (context) => {
+  await RereadDiff.play?.(context)
+  const sheet = await drawer(context.canvasElement)
+  await userEvent.click(sheet.getByRole('button', { name: 'Apply 1 change' }))
+  await waitFor(() => expect(patched).toHaveBeenCalledOnce())
+  await expect(patched.mock.calls[0]?.[0]).toMatchObject({
+    reference: 'R-77',
+    supplier_name: 'SBB CFF FFS',
+  })
+  await expect(await sheet.findByText('Ready to book')).toBeVisible()
+})
+
+/** A booked expense's figures are records: nothing offers to read its receipt again. */
+export const BookedHasNoReread = story(rereadApi('booked'), async ({ canvasElement }) => {
+  const sheet = await drawer(canvasElement)
+  await expect(await sheet.findByText(cafe.name)).toBeVisible()
+  await expect(sheet.queryByRole('button', { name: 'Read again with AI' })).toBeNull()
+  await userEvent.click(sheet.getByRole('button', { name: 'More actions' }))
+  const body = within(canvasElement.ownerDocument.body)
+  await expect(await body.findByRole('menuitem', { name: 'Duplicate' })).toBeVisible()
+  await expect(body.queryByRole('menuitem', { name: 'Read again with AI' })).toBeNull()
+})
+
+/** Below the receipt: the amounts, supplier, payment and booking cards, with the entries booking will make. */
+export const DetailCards = story(receiptApi([cafe]), async ({ canvasElement }) => {
+  const sheet = await drawer(canvasElement)
+  await expect(await sheet.findByRole('heading', { name: 'Amounts' })).toBeVisible()
+  await expect(sheet.getByRole('heading', { name: 'Supplier & document' })).toBeVisible()
+  await expect(sheet.getByRole('heading', { name: 'Payment' })).toBeVisible()
+  await expect(sheet.getByRole('heading', { name: 'Booking' })).toBeVisible()
+  await expect(sheet.getByText('You reclaim CHF 13.83 input tax')).toBeVisible()
+  await expect(sheet.getByText('Entries booking will make')).toBeVisible()
+  await expect(sheet.getByRole('cell', { name: '1171' })).toBeVisible()
+  await expect(sheet.getAllByRole('cell', { name: '2000' })).toHaveLength(2)
+})
+export const DetailCardsDark = dark(DetailCards)
+/** On a phone (in Storybook and the visual suite) the cards stack and Book stays at the bottom of the screen. */
+export const DetailCardsPhone = phone(DetailCards)

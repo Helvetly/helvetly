@@ -121,7 +121,11 @@ export const ForeignBusiness: Story = {
       notice && views.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
     await userEvent.click(body.getAllByRole('button', { name: 'New expense' })[0] ?? document.body)
-    // The loading sheet gives way to the form's own sheet: look the dialog up again each time.
+    // The receipt comes first; typing it in skips to the form. The loading sheet gives way to the form's own sheet:
+    // look the dialog up again each time.
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Enter manually' }, { timeout: 8000 }),
+    )
     await waitFor(
       () => expect(within(body.getByRole('dialog')).getByText(SCOPE_NOTICE)).toBeVisible(),
       { timeout: 8000 },

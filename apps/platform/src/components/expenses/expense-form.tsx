@@ -8,6 +8,7 @@ import { Kbd } from '@helvetly/ui/components/kbd'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -78,6 +79,8 @@ import {
 } from './expense-form-model'
 import { applyRecognition, type Applied } from './expense-form-recognition'
 import { ReceiptDrop, StagedReceipts } from './expense-receipts'
+import { recognizedLabel } from './expense-reread-model'
+import { ExpenseReading, ExpenseStart, READ_MAX_PAGES, useReceiptAIBlock } from './expense-start'
 
 const twoDecimals = (code: string) =>
   new Intl.NumberFormat(languageTag, { style: 'currency', currency: code }).resolvedOptions()
@@ -94,29 +97,42 @@ function FormField({
 
 const NO_FILES: File[] = []
 
-const recognizedLabel = (field: string) =>
-  ({
-    supplier_name: translate('supplier'),
-    supplier_vat_number: translate('supplierVATUID'),
-    supplier_country: translate('supplierCountry'),
-    reference: translate('invoiceReceiptNo'),
-    description: translate('whatFor'),
-    document_date: translate('receiptDate'),
-    due_date: translate('dueDate'),
-    amounts: translate('amounts'),
-    payment: translate('payment'),
-    category_id: translate('category'),
-  })[field] ?? field
+/** Beside a field the reading filled: the sparkle, or an amber dot when it was read with low confidence. */
+function AIMark({ unsure }: { unsure: boolean }) {
+  const label = unsure ? translate('aiReadCheckIt') : translate('aiFilledFromReceipt')
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span data-ai-mark={unsure ? 'unsure' : 'sure'} className="inline-flex">
+          {unsure ? (
+            <span aria-hidden className="m-1 size-2 rounded-full bg-warning-solid" />
+          ) : (
+            <HeidiSparkle className="size-3.5" />
+          )}
+          <span className="sr-only">{label}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-60">{label}</TooltipContent>
+    </Tooltip>
+  )
+}
 
-/** What the last Recognize receipt did, for the review note under the receipt. */
+/** What the last reading did, for the review note under the receipt and the marks beside the fields. */
 type Recognized =
-  | (Pick<Applied, 'applied' | 'kept' | 'uncertain'> & { issues: string[] })
+  | (Pick<Applied, 'applied' | 'kept' | 'uncertain'> & {
+      issues: string[]
+      categoryConfidence: number | null
+    })
   | { error: string }
 
 type ExpenseFormProps = {
   expense?: Expense
   /** Receipts dropped before the form opened (a new expense only). */
   initialFiles?: File[]
+  /** A new expense starts with its receipt (ExpenseStart) in this same sheet. */
+  start?: boolean
+  /** "One expense per file": hands the files to the AI import. */
+  onImport?: (files: File[]) => void
   onClose: () => void
   onSaved: (expense: Expense, created: boolean) => void
 }
@@ -130,7 +146,14 @@ export function ExpenseForm(props: ExpenseFormProps) {
   return <ExpenseFormBody {...props} />
 }
 
-function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }: ExpenseFormProps) {
+function ExpenseFormBody({
+  expense,
+  initialFiles = NO_FILES,
+  start = false,
+  onImport,
+  onClose,
+  onSaved,
+}: ExpenseFormProps) {
   const settings = useInvoiceSettings().data
   const session = useSession().data
   const categories = useExpenseCategories()
@@ -161,10 +184,15 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
   const [staged, setStaged] = useState<File[]>(initialFiles)
   const [discarding, setDiscarding] = useState(false)
   const [busy, setBusy] = useState(false)
-  // Receipt recognition: one chosen file, one request at a time; `touched` is every field the person ever edited.
+  // One sheet: the receipt first (a new expense), the reading, then the form.
+  const [step, setStep] = useState<'start' | 'reading' | 'form'>(
+    start && !expense ? 'start' : 'form',
+  )
+  const aiBlock = useReceiptAIBlock()
+  // Receipt reading: the staged files as one receipt's pages, one request at a time; `touched` is every field the
+  // person ever edited.
   const touched = useRef(new Set<string>())
-  const [chosen, setChosen] = useState<File | null>(null)
-  const [reading, setReading] = useState<File | null>(null)
+  const [reading, setReading] = useState<File[] | null>(null)
   const [recognized, setRecognized] = useState<Recognized | null>(null)
   const reader = useRef<AbortController | null>(null)
   const { ensure } = useAIApproval()
@@ -205,19 +233,20 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
   })
   // Closing the form abandons a reading in flight too (its usage is still counted server-side).
   useEffect(() => () => reader.current?.abort(), [])
-  const recognizable = staged.length === 1 ? staged[0] : staged.find((file) => file === chosen)
+  const readable = staged.filter(canRecognize).slice(0, READ_MAX_PAGES)
   const stopReading = () => {
     reader.current?.abort()
     reader.current = null
     setReading(null)
     setRecognized(null)
+    setStep('form')
   }
-  const recognize = async (file: File) => {
-    if (reader.current || expense) return // recognition fills a new expense only
+  const recognize = async (files: File[]) => {
+    if (reader.current || expense || !files.length) return // recognition fills a new expense only
     const controller = new AbortController()
     const startedIn = workspaceId
     reader.current = controller
-    setReading(file)
+    setReading(files)
     setRecognized(null)
     // Removed, replaced, closed or another workspace meanwhile (also while the approval question was open).
     const stale = () =>
@@ -226,16 +255,20 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       currentWorkspace.current !== startedIn
     try {
       // The shared first-use approval: "Not now" sends nothing and keeps the form and the files.
-      if (!(await ensure()) || stale()) return
+      if (!(await ensure())) {
+        if (!stale()) setRecognized({ error: translate('receiptNotReadNoApproval') })
+        return
+      }
+      if (stale()) return
       let suggestions
       try {
-        suggestions = await recognizeReceipt([file], crypto.randomUUID(), controller.signal)
+        suggestions = await recognizeReceipt(files, crypto.randomUUID(), controller.signal)
       } catch (error) {
         // The server still wanted approval (withdrawn elsewhere, a new notice since): ask once and retry once.
         if (!isAIConsentRequired(error) || stale()) throw error
         await queryClient.invalidateQueries({ queryKey: usageKey })
         if (!(await ensure()) || stale()) throw error
-        suggestions = await recognizeReceipt([file], crypto.randomUUID(), controller.signal)
+        suggestions = await recognizeReceipt(files, crypto.randomUUID(), controller.signal)
       }
       if (stale()) return
       const result = applyRecognition(latest.current, initial, touched.current, suggestions, {
@@ -259,6 +292,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
         kept: result.kept,
         uncertain: result.uncertain,
         issues: Object.values(suggestions.issues),
+        categoryConfidence: suggestions.category?.confidence ?? null,
       })
     } catch (error) {
       if (controller.signal.aborted || reader.current !== controller) return
@@ -267,6 +301,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       if (reader.current === controller) {
         reader.current = null
         setReading(null)
+        setStep('form')
       }
     }
   }
@@ -395,6 +430,11 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
     if (dirty) setDiscarding(true)
     else onClose()
   }
+  const filled = recognized && 'applied' in recognized ? recognized : null
+  const mark = (field: string) =>
+    filled?.applied.includes(field) ? (
+      <AIMark unsure={filled.uncertain.includes(field)} />
+    ) : undefined
   const describe = (field: string) => ({
     id: fieldId(field),
     'aria-invalid': errors[field] ? true : undefined,
@@ -568,46 +608,33 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                     <StagedReceipts
                       files={staged}
                       onRemove={(file) => {
-                        if (file === reading) stopReading()
-                        if (file === chosen) setChosen(null)
+                        if (reading?.includes(file)) stopReading()
                         setStaged(staged.filter((entry) => entry !== file))
                       }}
                     />
                     <div className="grid gap-2">
-                      {staged.length > 1 && (
-                        <Combobox
-                          id={fieldId('recognize_receipt')}
-                          value={recognizable ? String(staged.indexOf(recognizable)) : ''}
-                          options={staged.map((file, index) => ({
-                            value: String(index),
-                            label: file.name,
-                          }))}
-                          placeholder={translate('chooseTheReceiptToRead')}
-                          onChange={(index) => {
-                            stopReading() // a reading of the previously chosen receipt must not fill the form
-                            setChosen(staged[Number(index)] ?? null)
-                          }}
-                        />
-                      )}
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <Button
                           type="button"
                           variant="ai"
                           size="sm"
-                          disabled={
-                            !recognizable || reading !== null || !canRecognize(recognizable)
-                          }
+                          disabled={!readable.length || reading !== null || aiBlock !== null}
+                          title={aiBlock ?? undefined}
                           className="cursor-pointer"
-                          onClick={() => recognizable && void recognize(recognizable)}
+                          onClick={() => void recognize(readable)}
                         >
                           <HeidiSparkle />
-                          {reading ? translate('readingTheReceipt') : translate('recognizeReceipt')}
+                          {reading
+                            ? translate('readingTheReceipt')
+                            : recognized
+                              ? translate('readAgainWithAI')
+                              : translate('readWithAI')}
                         </Button>
                         <span className="text-xs text-muted-foreground">
-                          {translate('recognizeReceiptNotice')}
+                          {aiBlock ?? translate('recognizeReceiptNotice')}
                         </span>
                       </div>
-                      {recognizable && isHeic(recognizable) && (
+                      {staged.some(isHeic) && (
                         <p className="text-xs text-muted-foreground">
                           {translate('heicCantBeRead')}
                         </p>
@@ -675,6 +702,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   field="supplier_name"
+                  mark={mark('supplier_name')}
                   label={translate('supplier')}
                   error={errors.supplier_name}
                   required
@@ -691,6 +719,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 </FormField>
                 <FormField
                   field="document_date"
+                  mark={mark('document_date')}
                   label={translate('receiptDate')}
                   error={errors.document_date}
                   required
@@ -707,6 +736,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 </FormField>
                 <FormField
                   field="due_date"
+                  mark={mark('due_date')}
                   label={translate('dueDate')}
                   error={errors.due_date}
                   tip={translate('forSupplierInvoicesYouPayLaterUnpaidOnesPast')}
@@ -723,10 +753,21 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 </FormField>
                 <FormField
                   field="category_id"
+                  mark={mark('category_id')}
                   label={translate('category')}
                   error={errors.category_id}
                   required
                   tip={translate('eachCategoryBooksToAnAccountOfTheSwiss')}
+                  status={
+                    filled?.applied.includes('category_id') &&
+                    filled.categoryConfidence !== null && (
+                      <span className="text-xs text-muted-foreground">
+                        {translate('aiCategoryConfidence', {
+                          percent: Math.round(filled.categoryConfidence * 100),
+                        })}
+                      </span>
+                    )
+                  }
                 >
                   <ExpenseCategoryField
                     id={fieldId('category_id')}
@@ -743,6 +784,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 </FormField>
                 <FormField
                   field="reference"
+                  mark={mark('reference')}
                   label={translate('invoiceReceiptNo')}
                   error={errors.reference}
                 >
@@ -757,6 +799,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 <DuplicateWarning duplicate={expense?.duplicate_of ?? null} />
                 <FormField
                   field="supplier_country"
+                  mark={mark('supplier_country')}
                   label={translate('supplierCountry')}
                   tip={translate('whereTheSupplierChargedItsVATOnlySwissAnd')}
                 >
@@ -774,6 +817,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 </FormField>
                 <FormField
                   field="supplier_vat_number"
+                  mark={mark('supplier_vat_number')}
                   label={translate('supplierVATUID')}
                   error={errors.supplier_vat_number}
                   tip={translate('printedOnTheReceiptEGCHE123456')}
@@ -788,6 +832,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 </FormField>
                 <FormField
                   field="description"
+                  mark={mark('description')}
                   label={translate('whatFor')}
                   error={errors.description}
                   className="sm:col-span-2"
@@ -1028,11 +1073,34 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
           document.getElementById(fieldId(booked ? 'paid' : 'supplier_name'))?.focus()
         }}
         showCloseButton={false}
-        className="w-full! max-w-none! gap-0 p-0 sm:w-[min(900px,calc(100vw-6rem))]! dark:bg-card"
+        className={cn(
+          'w-full! max-w-none! gap-0 p-0 transition-[width] duration-200 dark:bg-card',
+          step === 'form'
+            ? 'sm:w-[min(900px,calc(100vw-6rem))]!'
+            : 'sm:w-[min(600px,calc(100vw-6rem))]!',
+        )}
       >
         <SheetTitle className="sr-only">{title}</SheetTitle>
         <SheetDescription className="sr-only">{translate('expenseDetails')}</SheetDescription>
-        {body}
+        {step === 'start' ? (
+          <ExpenseStart
+            onRead={(files) => {
+              setStaged(files)
+              setStep('reading')
+              void recognize(files)
+            }}
+            onContinue={(files) => {
+              setStaged(files)
+              setStep('form')
+            }}
+            onImport={(files) => onImport?.(files)}
+            onCancel={onClose}
+          />
+        ) : step === 'reading' ? (
+          <ExpenseReading files={reading ?? staged} onStop={stopReading} />
+        ) : (
+          body
+        )}
       </SheetContent>
     </Sheet>
   )

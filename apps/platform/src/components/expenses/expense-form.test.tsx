@@ -13,7 +13,10 @@ afterEach(() => vi.unstubAllGlobals())
 const json = (body: unknown, status = 200) => Response.json(body, { status })
 
 /** A fake API: categories, a preview echoing the total, and whatever `onWrite` answers to writes. */
-function stubApi(onWrite: (url: string, body: unknown) => Response | Promise<Response>) {
+function stubApi(
+  onWrite: (url: string, body: unknown) => Response | Promise<Response>,
+  usage: () => Response = () => json({ provider_available: true }),
+) {
   const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
     const url = String(input)
     const body: unknown = typeof init?.body === 'string' ? JSON.parse(init.body) : null
@@ -32,6 +35,8 @@ function stubApi(onWrite: (url: string, body: unknown) => Response | Promise<Res
     if (url.endsWith('/expenses/preview'))
       return json({ error: { code: 'http_404', message: 'x' } }, 404)
     if (url.includes('/session') || url.includes('/invoice-settings')) return json({}, 404)
+    if (url.includes('/billing')) return json({}, 404)
+    if (url.endsWith('/heidi/usage')) return usage()
     return onWrite(url, body)
   })
   vi.stubGlobal('fetch', fetch)
@@ -229,7 +234,7 @@ const answer = (f: Record<string, string | null>, issues: Record<string, string>
   })
 const isPreview = ([url]: Parameters<typeof globalThis.fetch>) =>
   String(url).endsWith('/expenses/receipt-preview')
-const recognizeButton = () => screen.getByRole('button', { name: 'Recognize receipt' })
+const recognizeButton = () => screen.getByRole('button', { name: /^Read (again )?with AI$/ })
 const supplier = () => screen.getByRole('textbox', { name: /Supplier$/ })
 const amount = () => screen.getByRole('textbox', { name: 'Line 1 amount' })
 
@@ -325,18 +330,18 @@ test('withheld amounts (reverse charge, several VAT bands) stay empty and say wh
   expect(screen.getByText(/Reverse charge: the form cannot record it yet\./)).toBeInTheDocument()
 })
 
-test('with several receipts one must be chosen, and only that file is sent', async () => {
+test('several receipts are read together as the pages of one, unreadable ones left out', async () => {
   const fetch = stubApi(() => answer({ supplier_name: 'Coop' }))
-  await renderForm([photo('a.jpg'), photo('b.jpg')])
-  expect(recognizeButton()).toBeDisabled()
-
-  await userEvent.click(screen.getByRole('button', { name: /Choose the receipt to read/ }))
-  await userEvent.click(await screen.findByRole('option', { name: 'b.jpg' }))
+  await renderForm([photo('a.jpg'), photo('iphone.heic', 'image/heic'), photo('b.jpg')])
   await userEvent.click(recognizeButton())
 
   await waitFor(() => expect(supplier()).toHaveValue('Coop'))
   const form = fetch.mock.calls.find(isPreview)?.[1]?.body
-  expect(((form as FormData).get('file') as File).name).toBe('b.jpg')
+  expect(form).toBeInstanceOf(FormData)
+  expect(
+    form instanceof FormData &&
+      form.getAll('file').map((file) => (file instanceof File ? file.name : '')),
+  ).toEqual(['a.jpg', 'b.jpg'])
 })
 
 test('removing the receipt while it is read drops the answer', async () => {
@@ -386,23 +391,15 @@ test('switching workspace while reading drops the answer', async () => {
   expect(supplier()).toHaveValue('')
 })
 
-const choose = async (name: string) => {
-  await userEvent.click(
-    screen.getByRole('button', { name: /^(Choose the receipt to read|[ab]\.jpg)$/ }),
-  )
-  await userEvent.click(await screen.findByRole('option', { name }))
-}
-
-test('choosing another receipt while one is read drops the old result', async () => {
+test('removing one of several receipts while they are read drops the answer', async () => {
   const pending = Promise.withResolvers<Response>()
   const fetch = stubApi(() => pending.promise)
   await renderForm([photo('a.jpg'), photo('b.jpg')])
-  await choose('a.jpg')
   await userEvent.click(recognizeButton())
   const signal = fetch.mock.calls.find(isPreview)?.[1]?.signal
-  await choose('b.jpg')
+  await userEvent.click(screen.getByRole('button', { name: /^Remove b\.jpg/ }))
   expect(signal?.aborted).toBe(true)
-  pending.resolve(answer({ supplier_name: 'FIRST FILE RESULT' }))
+  pending.resolve(answer({ supplier_name: 'BOTH FILES RESULT' }))
 
   await waitFor(() => expect(recognizeButton()).toBeEnabled())
   expect(supplier()).toHaveValue('')
@@ -437,18 +434,20 @@ const usage = (granted: boolean) =>
 
 function approvalApi(options: { granted: boolean; previews: (call: number) => Response }) {
   const state = { granted: options.granted, previews: 0, puts: 0 }
-  const fetch = stubApi((url, _body) => {
-    if (url.endsWith('/heidi/usage')) return usage(state.granted)
-    if (url.includes('/heidi/consent?'))
-      return json({ data: aiConsent(state.granted), notice: aiNotice })
-    if (url.endsWith('/heidi/consent')) {
-      state.puts += 1
-      state.granted = true
-      return json({ data: aiConsent(true) })
-    }
-    state.previews += 1
-    return options.previews(state.previews)
-  })
+  const fetch = stubApi(
+    (url, _body) => {
+      if (url.includes('/heidi/consent?'))
+        return json({ data: aiConsent(state.granted), notice: aiNotice })
+      if (url.endsWith('/heidi/consent')) {
+        state.puts += 1
+        state.granted = true
+        return json({ data: aiConsent(true) })
+      }
+      state.previews += 1
+      return options.previews(state.previews)
+    },
+    () => usage(state.granted),
+  )
   return { state, fetch }
 }
 
