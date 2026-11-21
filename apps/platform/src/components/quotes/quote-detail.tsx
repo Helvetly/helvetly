@@ -356,7 +356,11 @@ function Detail({
           <Row label={translate('date')}>{formatDay(quote.issue_date)}</Row>
           <Row label={translate('validUntil3')}>{formatDay(quote.valid_until)}</Row>
           {quote.revision > 1 && <Row label={translate('revision')}>{quote.revision}</Row>}
-          {quote.reference && <Row label={translate('reference')}>{quote.reference}</Row>}
+          {quote.reference && (
+            <Row label={translate('reference')}>
+              <span className="font-code">{quote.reference}</span>
+            </Row>
+          )}
           <Row label={translate('languageVAT')}>
             {quote.language.toUpperCase()} ·{' '}
             {quote.vat_mode === 'none'

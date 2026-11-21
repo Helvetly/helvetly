@@ -102,7 +102,7 @@ export function HeroFact({
 export function HeroLink({ label, href, number }: { label: string; href: string; number: string }) {
   return (
     <HeroFact label={label}>
-      <RecordLink href={href} className="underline underline-offset-2 hover:no-underline">
+      <RecordLink href={href} className="font-code underline underline-offset-2 hover:no-underline">
         {number}
       </RecordLink>
     </HeroFact>

@@ -548,7 +548,7 @@ function EntryRow({
               >
                 <Lock className="size-3" aria-hidden />
                 {translate('invoice')}
-                {entry.invoice.number ?? 'draft'}
+                <span className="font-code">{entry.invoice.number ?? 'draft'}</span>
               </RecordLink>
             )}
           </p>

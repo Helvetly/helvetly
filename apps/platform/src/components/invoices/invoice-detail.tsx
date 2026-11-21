@@ -645,7 +645,11 @@ function Detail({
               {invoice.service_date_end && ` – ${formatDay(invoice.service_date_end)}`}
             </Row>
           )}
-          {invoice.reference && <Row label={translate('clientReference')}>{invoice.reference}</Row>}
+          {invoice.reference && (
+            <Row label={translate('clientReference')}>
+              <span className="font-code">{invoice.reference}</span>
+            </Row>
+          )}
           <Row label={translate('languageVAT')}>
             {invoice.language.toUpperCase()} ·{' '}
             {invoice.vat_mode === 'none'

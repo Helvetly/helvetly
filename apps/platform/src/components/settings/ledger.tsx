@@ -373,7 +373,7 @@ function TrialBalance({
                   onClick={() => onOpen(row)}
                   className="group/row cursor-pointer border-t border-border/40 transition-colors hover:bg-muted/40"
                 >
-                  <td className="px-4 py-2.5 tabular-nums">
+                  <td className="font-code px-4 py-2.5">
                     <button
                       type="button"
                       className="rounded-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
