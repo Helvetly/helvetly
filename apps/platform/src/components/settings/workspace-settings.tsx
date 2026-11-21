@@ -19,6 +19,7 @@ import { toast } from 'sonner'
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { Combobox, type Option } from '@/components/clients/fields'
+import { confirmPhrase } from '@/components/confirm-phrase'
 import { MAX_WORKSPACE_NAME } from '@/components/onboarding/onboarding-model'
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
 import { setCsrfToken } from '@/lib/api'
@@ -279,6 +280,7 @@ export function DeleteDialog({ name, onClose }: { name: string; onClose: () => v
   const plan = useBilling().data
   const paid = plan?.enabled && plan.plan !== ''
   const [typed, setTyped] = useState('')
+  const confirm = confirmPhrase((value) => translate('typeToConfirm2', { name: value }), name)
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -307,7 +309,7 @@ export function DeleteDialog({ name, onClose }: { name: string; onClose: () => v
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-5">
-          <FormField id="delete-confirm" label={translate('typeToConfirm2', { name: name })}>
+          <FormField id="delete-confirm" label={confirm.plain} labelNode={confirm.node}>
             <Input
               id="delete-confirm"
               autoComplete="off"

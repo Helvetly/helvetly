@@ -113,7 +113,7 @@ func (q Q) createSignatureRequest(ctx context.Context, r SignatureRequest, userI
 
 const signatureSelect = `SELECT r.id, r.workspace_id, w.name, w.timezone, r.title, r.message, r.status, r.signing_order, r.document_id, d.name,
 		r.signed_document_id, sd.name, r.folder_id, r.original_key, r.original_sha256, r.final_sha256, r.page_count, r.expires_at,
-		u.id, u.name, coalesce(u.email, ''), r.created_at, r.updated_at, r.completed_at
+		u.id, u.name, ` + avatarColumn + `, coalesce(u.email, ''), r.created_at, r.updated_at, r.completed_at
 	FROM signature_requests r
 	JOIN workspaces w ON w.id = r.workspace_id
 	LEFT JOIN documents d ON d.id = r.document_id
@@ -122,19 +122,17 @@ const signatureSelect = `SELECT r.id, r.workspace_id, w.name, w.timezone, r.titl
 
 func scanSignatureRequest(row pgx.Row) (SignatureRequest, error) {
 	var r SignatureRequest
-	var docID, docName, signedID, signedName, userID, userName *string
+	var docID, docName, signedID, signedName, userID, userName, userAvatar *string
 	err := row.Scan(&r.ID, &r.WorkspaceID, &r.WorkspaceName, &r.Timezone, &r.Title, &r.Message, &r.Status, &r.SigningOrder, &docID, &docName,
 		&signedID, &signedName, &r.FolderID, &r.OriginalKey, &r.OriginalSHA256, &r.FinalSHA256, &r.PageCount, &r.ExpiresAt,
-		&userID, &userName, &r.SenderEmail, &r.CreatedAt, &r.UpdatedAt, &r.CompletedAt)
+		&userID, &userName, &userAvatar, &r.SenderEmail, &r.CreatedAt, &r.UpdatedAt, &r.CompletedAt)
 	if docID != nil && docName != nil {
 		r.Document = &FolderRef{ID: *docID, Name: *docName}
 	}
 	if signedID != nil && signedName != nil {
 		r.SignedDocument = &FolderRef{ID: *signedID, Name: *signedName}
 	}
-	if userID != nil && userName != nil {
-		r.CreatedBy = &Uploader{ID: *userID, Name: *userName}
-	}
+	r.CreatedBy = uploader(userID, userName, userAvatar)
 	r.Signers, r.Fields = []Signer{}, []SignatureField{}
 	return r, err
 }

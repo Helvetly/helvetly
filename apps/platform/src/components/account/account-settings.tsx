@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { confirmPhrase } from '@/components/confirm-phrase'
 import { useRedirectToPrefs } from '@/components/notifications/prefs-drawer'
 import { MAX_PERSON_NAME } from '@/components/onboarding/onboarding-model'
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
@@ -194,6 +195,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
   const router = useRouter()
   const remove = useDeleteAccount()
   const [typed, setTyped] = useState('')
+  const confirm = confirmPhrase((value) => translate('typeToConfirm', { email: value }), email)
   const submit = (event: FormEvent) => {
     event.preventDefault()
     remove.mutate(typed.trim(), {
@@ -216,10 +218,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-5">
-          <FormField
-            id="delete-account-confirm"
-            label={translate('typeToConfirm', { email: email })}
-          >
+          <FormField id="delete-account-confirm" label={confirm.plain} labelNode={confirm.node}>
             <Input
               id="delete-account-confirm"
               autoComplete="off"

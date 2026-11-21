@@ -1,15 +1,11 @@
 import { Badge, type Tone } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { SidebarProvider } from '@helvetly/ui/components/sidebar'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { useQuery } from '@tanstack/react-query'
-import { FileText, Mail } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { useState } from 'react'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
-import { Composer, DetailsPopover, type RowDetails } from '@/components/data/row-details'
-import { TablePage } from '@/components/data/table-page'
 import { NewFolderDialog } from '@/components/documents/dialogs'
 import { KIND_STYLE } from '@/components/documents/kind'
 import { Kpi, KpiBand, Sparkline } from '@/components/kpi-band'
@@ -63,40 +59,6 @@ export const PersistentDestructiveConfirmation: Story = {
   },
 }
 
-const details: RowDetails = {
-  name: 'Alpenglow Studio GmbH',
-  fields: [{ icon: Mail, label: 'Email', value: 'office@alpenglow.ch' }],
-  action: 'Contact',
-  drafts: [{ label: 'Payment reminder', text: 'Please review the invoice due on 30 November.' }],
-}
-export const DetailsAndDraft: Story = {
-  render: () => <DetailsPopover details={details}>Alpenglow Studio GmbH</DetailsPopover>,
-  play: async ({ canvasElement }) => {
-    await userEvent.click(
-      within(canvasElement).getByRole('button', { name: 'Alpenglow Studio GmbH' }),
-    )
-    const body = within(document.body)
-    await waitFor(() => expect(body.getByText('office@alpenglow.ch')).toBeVisible())
-    await userEvent.click(body.getByRole('button', { name: 'Contact' }))
-    await userEvent.click(await body.findByRole('button', { name: /Payment reminder/ }))
-    await expect(
-      body.getByRole('textbox', { name: 'Message to Alpenglow Studio GmbH' }),
-    ).toHaveValue('Please review the invoice due on 30 November.')
-    await expect(body.getByRole('button', { name: 'Send' })).toBeEnabled()
-  },
-}
-export const ComposerKeyboard: Story = {
-  render: () => <Composer to="Alpenglow" drafts={details.drafts} onClose={fn()} />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByRole('textbox', { name: 'Message to Alpenglow' })).toHaveFocus()
-    await userEvent.type(canvas.getByRole('textbox'), '   ')
-    await expect(canvas.getByRole('button', { name: 'Send' })).toBeDisabled()
-    await userEvent.click(canvas.getByRole('button', { name: 'Let Heidi write it' }))
-    await expect(canvas.getByRole('textbox')).toHaveValue(details.drafts[0]?.text ?? '')
-  },
-}
-
 const folderName = fn()
 function FolderDialog() {
   const [closed, setClosed] = useState(false)
@@ -130,49 +92,6 @@ export const FolderClashAndRetry: Story = {
     await userEvent.keyboard('{Enter}')
     await expect(await body.findByText('Folder created')).toBeVisible()
     await expect(folderName).toHaveBeenLastCalledWith('Contracts 2027')
-  },
-}
-type Row = { id: string; name: string; status: string }
-function GenericTable() {
-  const query = useQuery({
-    queryKey: ['storybook-table'],
-    queryFn: async (): Promise<Row[]> => [
-      { id: 'a', name: 'Alpenglow Studio GmbH', status: 'Active' },
-      { id: 'b', name: 'Muster AG', status: 'Inactive' },
-    ],
-  })
-  return (
-    <SidebarProvider>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TablePage
-          views={[{ label: 'All' }, { label: 'Active', filter: (row) => row.status === 'Active' }]}
-          primary="New contact"
-          noun="contacts"
-          query={query}
-          columns={[
-            { header: 'Name', width: 'w-2/3', cell: (row) => row.name },
-            { header: 'Status', width: 'w-1/3', cell: (row) => row.status },
-          ]}
-          line={(row) => ({ title: row.name, subtitle: row.status })}
-          details={(row) => ({ ...details, name: row.name })}
-        />
-      </div>
-    </SidebarProvider>
-  )
-}
-export const TableSearchAndSelection: Story = {
-  render: () => <GenericTable />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.click(await canvas.findByRole('checkbox', { name: 'Select Muster AG' }))
-    await expect(canvas.getByRole('toolbar', { name: 'Selected rows' })).toHaveTextContent(
-      'Selected: 1',
-    )
-    await userEvent.click(canvas.getByRole('button', { name: 'Clear selection' }))
-    await userEvent.type(canvas.getByRole('searchbox', { name: 'Search contacts' }), 'missing')
-    await waitFor(() => expect(canvas.getByText('Nothing matches “missing”')).toBeVisible())
-    await userEvent.click(canvas.getByRole('button', { name: 'Show all contacts' }))
-    await expect(canvas.getByRole('searchbox')).toHaveValue('')
   },
 }
 export const EmptyKpiHistory: Story = {

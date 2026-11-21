@@ -55,7 +55,7 @@ export function ClientEngagements({ clientId }: { clientId: string }) {
                     <span className="text-[12.5px] text-muted-foreground">
                       {periodLabel(e.current_period)}
                     </span>
-                    <ProgressBar period={e.current_period} unit={e.unit} />
+                    <ProgressBar period={e.current_period} unit={e.unit} nested />
                   </>
                 )}
               </RecordLink>

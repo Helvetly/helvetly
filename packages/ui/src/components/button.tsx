@@ -14,7 +14,7 @@ const buttonVariants = cva(
           'border-primary bg-primary bg-clip-border text-primary-foreground shadow-[0_1px_2px_rgb(29_79_209/0.3),inset_0_1px_0_rgb(255_255_255/0.14)] hover:bg-primary/90 active:bg-[color-mix(in_oklch,var(--primary),black_10%)] disabled:shadow-none',
         outline:
           // Hover is darker than the page background (#efeef1): plain muted vanishes on it.
-          'border-foreground/12 bg-card hover:border-foreground/20 hover:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] hover:text-foreground aria-expanded:border-foreground/20 aria-expanded:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:shadow-none dark:hover:bg-input/50',
+          'border-foreground/16 bg-card shadow-button hover:border-foreground/24 hover:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] hover:text-foreground disabled:shadow-none aria-expanded:border-foreground/24 aria-expanded:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_11%)] aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:shadow-none dark:hover:bg-input/50',
         // AI action (Organize with AI, Extract with AI): an outline button with a drifting violet,
         // blue and pink edge. Put a HeidiSparkle first: it twinkles on hover.
         // The clip is important: the base's bg-clip-padding would otherwise decide.
@@ -34,7 +34,7 @@ const buttonVariants = cva(
         // `destructive-outline`: a red-edged button for an irreversible action that sits among
         // other content (a danger zone row, "Sign out of all other sessions"), not in a dialog.
         'destructive-outline':
-          'border-destructive/40 bg-card text-destructive hover:border-destructive/60 hover:bg-destructive/8 hover:text-destructive focus-visible:border-destructive/50 focus-visible:ring-destructive/20 aria-expanded:bg-destructive/8 dark:border-destructive/45 dark:bg-transparent dark:hover:bg-destructive/15 dark:focus-visible:ring-destructive/40',
+          'border-destructive/45 bg-card text-destructive shadow-button hover:border-destructive/60 hover:bg-destructive/8 hover:text-destructive focus-visible:border-destructive/50 focus-visible:ring-destructive/20 disabled:shadow-none aria-expanded:bg-destructive/8 dark:border-destructive/45 dark:bg-transparent dark:shadow-none dark:hover:bg-destructive/15 dark:focus-visible:ring-destructive/40',
         'destructive-ghost':
           'text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/40 focus-visible:ring-destructive/20 aria-expanded:bg-destructive/10 dark:hover:bg-destructive/20 dark:focus-visible:ring-destructive/40',
         link: 'text-link underline underline-offset-4 hover:no-underline',

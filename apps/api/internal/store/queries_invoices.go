@@ -702,7 +702,7 @@ func (q Q) CreatePayment(ctx context.Context, invoiceID, userID string, p Paymen
 
 // Payments: the invoice's payments, oldest first.
 func (q Q) Payments(ctx context.Context, invoiceID string) ([]Payment, error) {
-	rows, err := q.db.Query(ctx, `SELECT p.id, p.amount, p.paid_on::text, p.method, p.note, p.created_at, u.id, u.name
+	rows, err := q.db.Query(ctx, `SELECT p.id, p.amount, p.paid_on::text, p.method, p.note, p.created_at, u.id, u.name, `+avatarColumn+`
 		FROM invoice_payments p LEFT JOIN users u ON u.id = p.created_by WHERE p.invoice_id = $1 ORDER BY p.paid_on, p.created_at, p.id`,
 		invoiceID)
 	if err != nil {
@@ -710,11 +710,9 @@ func (q Q) Payments(ctx context.Context, invoiceID string) ([]Payment, error) {
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Payment, error) {
 		var p Payment
-		var uid, uname *string
-		err := r.Scan(&p.ID, &p.Amount, &p.PaidOn, &p.Method, &p.Note, &p.CreatedAt, &uid, &uname)
-		if uid != nil {
-			p.CreatedBy = &Uploader{ID: *uid, Name: *uname}
-		}
+		var uid, uname, uavatar *string
+		err := r.Scan(&p.ID, &p.Amount, &p.PaidOn, &p.Method, &p.Note, &p.CreatedAt, &uid, &uname, &uavatar)
+		p.CreatedBy = uploader(uid, uname, uavatar)
 		return p, err
 	})
 }
@@ -734,7 +732,7 @@ func (q Q) CreateRefund(ctx context.Context, invoiceID, userID string, r Refund)
 
 // Refunds: the invoice's refunds, oldest first.
 func (q Q) Refunds(ctx context.Context, invoiceID string) ([]Refund, error) {
-	rows, err := q.db.Query(ctx, `SELECT r.id, r.amount, r.refunded_on::text, r.method, r.note, r.created_at, u.id, u.name
+	rows, err := q.db.Query(ctx, `SELECT r.id, r.amount, r.refunded_on::text, r.method, r.note, r.created_at, u.id, u.name, `+avatarColumn+`
 		FROM invoice_refunds r LEFT JOIN users u ON u.id = r.created_by WHERE r.invoice_id = $1 ORDER BY r.refunded_on, r.created_at, r.id`,
 		invoiceID)
 	if err != nil {
@@ -742,11 +740,9 @@ func (q Q) Refunds(ctx context.Context, invoiceID string) ([]Refund, error) {
 	}
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Refund, error) {
 		var r Refund
-		var uid, uname *string
-		err := row.Scan(&r.ID, &r.Amount, &r.RefundedOn, &r.Method, &r.Note, &r.CreatedAt, &uid, &uname)
-		if uid != nil {
-			r.CreatedBy = &Uploader{ID: *uid, Name: *uname}
-		}
+		var uid, uname, uavatar *string
+		err := row.Scan(&r.ID, &r.Amount, &r.RefundedOn, &r.Method, &r.Note, &r.CreatedAt, &uid, &uname, &uavatar)
+		r.CreatedBy = uploader(uid, uname, uavatar)
 		return r, err
 	})
 }
@@ -775,18 +771,16 @@ func (q Q) CreateDelivery(ctx context.Context, invoiceID string, userID *string,
 
 // Deliveries: the invoice's sends, newest first.
 func (q Q) Deliveries(ctx context.Context, invoiceID string) ([]Delivery, error) {
-	rows, err := q.db.Query(ctx, `SELECT d.id, d.recipients, d.cc, d.sent_at, u.id, u.name FROM invoice_deliveries d
+	rows, err := q.db.Query(ctx, `SELECT d.id, d.recipients, d.cc, d.sent_at, u.id, u.name, `+avatarColumn+` FROM invoice_deliveries d
 		LEFT JOIN users u ON u.id = d.sent_by WHERE d.invoice_id = $1 ORDER BY d.sent_at DESC, d.id DESC`, invoiceID)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Delivery, error) {
 		var d Delivery
-		var uid, uname *string
-		err := r.Scan(&d.ID, &d.To, &d.Cc, &d.SentAt, &uid, &uname)
-		if uid != nil {
-			d.SentBy = &Uploader{ID: *uid, Name: *uname}
-		}
+		var uid, uname, uavatar *string
+		err := r.Scan(&d.ID, &d.To, &d.Cc, &d.SentAt, &uid, &uname, &uavatar)
+		d.SentBy = uploader(uid, uname, uavatar)
 		return d, err
 	})
 }

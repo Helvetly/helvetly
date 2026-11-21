@@ -206,6 +206,64 @@ export const FlexibleColumnScrolls: Story = {
   },
 }
 
+/** Dragging the client column left narrows it: the columns after it share the room, the row stays full. */
+export const FlexibleColumnShrinks: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const number = header(canvas, 'Number')
+    const client = header(canvas, 'Client')
+    const due = header(canvas, 'Due')
+    const amount = header(canvas, 'Amount')
+    const table = canvasElement.querySelector('table')
+    const width = client.width()
+    const after = due.width() + amount.width()
+    const tableWidth = table?.getBoundingClientRect().width
+    await drag(canvas.getByLabelText('Resize Client'), -100)
+    await waitFor(() => expect(client.width()).toBe(width - 100))
+    await expect(number.width()).toBe(128)
+    await expect(due.width()).toBeGreaterThan(128)
+    await expect(due.width() + amount.width()).toBe(after + 100)
+    await expect(table?.getBoundingClientRect().width).toBe(tableWidth)
+    await expect(
+      Object.keys(JSON.parse(localStorage.getItem(columnWidthsKey(TABLE)) ?? '{}').widths),
+    ).toEqual(['due', 'total'])
+  },
+}
+
+// The label ends inside the cell's padding: the handle past the edge does not count.
+const fits = (head: HTMLElement) => {
+  const label = document.createRange()
+  label.selectNodeContents(head)
+  const handle = head.querySelector('[data-column-resizer]')
+  if (handle) label.setEndBefore(handle)
+  const right = head.getBoundingClientRect().right - parseFloat(getComputedStyle(head).paddingRight)
+  return label.getBoundingClientRect().right <= right + 0.5
+}
+
+/** A column stops where its header would no longer fit; a stored width below that is not used. */
+export const StopsAtItsMinimum: Story = {
+  beforeEach: () => {
+    localStorage.setItem(
+      columnWidthsKey(TABLE),
+      JSON.stringify({ columns: COLUMNS.join(','), widths: { due: 4 } }),
+    )
+  },
+  play: async ({ canvasElement }) => {
+    await document.fonts.ready
+    const canvas = within(canvasElement)
+    const due = header(canvas, 'Due')
+    await waitFor(() => expect(due.width()).toBeGreaterThan(30))
+    await expect(fits(due.head)).toBe(true)
+    const number = header(canvas, 'Number')
+    await drag(canvas.getByLabelText('Resize Number'), -500)
+    await waitFor(() => expect(number.width()).toBeLessThan(100))
+    await expect(fits(number.head)).toBe(true)
+    await expect(canvas.getByRole('slider', { name: 'Resize Number' })).toHaveValue(
+      String(number.width()),
+    )
+  },
+}
+
 /** Widths saved for another set of columns are ignored: every column keeps its own width. */
 export const StaleStorageIgnored: Story = {
   beforeEach: () => {
