@@ -82,7 +82,7 @@ func (s *Service) expensePreview(w http.ResponseWriter, r *http.Request, sess st
 // (they are checked again inside the budget's admission).
 func (s *Service) readerAdmitted(r *http.Request, sess store.Session) error {
 	if !s.limit.Allow(r) {
-		return auth.Error(http.StatusTooManyRequests, "rate_limited", "Wait a minute before reading another receipt.", nil)
+		return auth.Error(http.StatusTooManyRequests, "rate_limited", "Wait a minute before reading another document.", nil)
 	}
 	if err := need(sess, "write:expenses"); err != nil {
 		return err
@@ -112,7 +112,7 @@ func (s *Service) readReceipt(ctx context.Context, sess store.Session, requestID
 		return s.previewGate(ctx, q, sess, operation)
 	}
 	req := aimodel.Request{
-		Instructions: "You read receipts and supplier invoices for Helvetly's expense form. " + receiptPrompt + rules + "\n\n" + list,
+		Instructions: "You read expense documents for Helvetly's expense form. " + receiptPrompt + rules + "\n\n" + list,
 		Message:      "The document is attached (" + strconv.Itoa(len(files)) + " file(s), in page order).",
 		Files:        attached,
 		Schema: &aimodel.Schema{Name: "receipt_v2", JSON: map[string]any{"type": "object", "additionalProperties": false,
@@ -155,7 +155,7 @@ func (s *Service) previewGate(ctx context.Context, q store.Q, sess store.Session
 		return nil
 	}
 	if _, _, calls, err := q.AICallSpend(ctx, ws, operation, "0", ""); err != nil || calls > 0 {
-		return errors.Join(err, auth.Error(http.StatusConflict, "receipt_already_read", "This receipt was already sent for reading. Choose Recognize receipt again to read it anew.", nil))
+		return errors.Join(err, auth.Error(http.StatusConflict, "receipt_already_read", "This document was already sent for reading. Choose to read it again to read it anew.", nil))
 	}
 	return nil
 }
@@ -194,7 +194,7 @@ func readPreviewForm(w http.ResponseWriter, r *http.Request) (requestID string, 
 				return "", nil, previewTooLarge
 			}
 			if len(b) == 0 {
-				return "", nil, invalid("Choose a receipt to read; a file is missing or empty.")
+				return "", nil, invalid("Choose a document to read; a file is missing or empty.")
 			}
 			contentType, serr := sniff(part.FileName(), b)
 			if serr != nil {
@@ -205,21 +205,21 @@ func readPreviewForm(w http.ResponseWriter, r *http.Request) (requestID string, 
 			}
 			files = append(files, previewFile{contentType: contentType, data: b})
 		case part.FormName() == "file":
-			return "", nil, invalid("Send at most five pages of one receipt.")
+			return "", nil, invalid("Send at most five pages of one document.")
 		default:
-			return "", nil, invalid("Send the receipt's files as file and a request_id, nothing else.")
+			return "", nil, invalid("Send the document's files as file and a request_id, nothing else.")
 		}
 	}
 	switch {
 	case !previewRequestID.MatchString(requestID):
 		return "", nil, invalid("Send a request_id of 8 to 64 letters, digits, - or _.")
 	case len(files) == 0:
-		return "", nil, invalid("Choose a receipt to read; the file is missing or empty.")
+		return "", nil, invalid("Choose a document to read; the file is missing or empty.")
 	}
 	return requestID, files, nil
 }
 
-var previewTooLarge = auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large", "The receipt's files must be at most 25 MB together.", nil)
+var previewTooLarge = auth.Error(http.StatusRequestEntityTooLarge, "payload_too_large", "The document's files must be at most 25 MB together.", nil)
 
 func previewBodyError(err error) error {
 	if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
@@ -247,7 +247,7 @@ func checkPreviewFile(contentType string, data []byte) error {
 		}
 		return nil
 	default:
-		return invalid("Only a PDF, PNG, JPEG or WebP receipt can be read automatically.")
+		return invalid("Only a PDF, PNG, JPEG or WebP file can be read automatically.")
 	}
 	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 || int64(cfg.Width)*int64(cfg.Height) > previewMaxPixels {
 		return invalid("The image is damaged or too large to read. Use a smaller photo.")
@@ -299,22 +299,22 @@ func previewError(err error) error {
 	case errors.Is(err, aimodel.ErrQuota):
 		return auth.Error(http.StatusForbidden, "quota_exceeded", "This workspace has used its monthly AI import and filing allowance.", nil)
 	case errors.Is(err, aimodel.ErrTooLarge):
-		return auth.Error(http.StatusForbidden, "quota_exceeded", "This receipt is larger than the remaining monthly AI import and filing allowance.", nil)
+		return auth.Error(http.StatusForbidden, "quota_exceeded", "This document is larger than the remaining monthly AI import and filing allowance.", nil)
 	case errors.Is(err, aimodel.ErrCap), errors.Is(err, aimodel.ErrAttempts):
-		return auth.Error(http.StatusRequestEntityTooLarge, "receipt_too_large", "This receipt is larger than one AI reading may be. Use a smaller photo or enter the details yourself.", nil)
+		return auth.Error(http.StatusRequestEntityTooLarge, "receipt_too_large", "This document is larger than one AI reading may be. Use a smaller photo or enter the details yourself.", nil)
 	case errors.Is(err, aimodel.ErrUnfunded):
-		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "Reading receipts is paused while the service's AI budget is being updated.", nil)
+		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "Reading documents is paused while the service's AI budget is being updated.", nil)
 	case errors.Is(err, aimodel.ErrUncertain):
 		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "Another AI request is in progress for this workspace. Try again in a moment.", nil)
 	case aimodel.Busy(err):
 		return auth.Error(http.StatusServiceUnavailable, "ai_busy", "The AI is busy right now. Try again in a minute.", nil)
 	case errors.Is(err, aimodel.ErrProvider):
-		return auth.Error(http.StatusServiceUnavailable, "ai_failed", "The AI couldn't read the receipt right now. Try again in a moment or enter the details yourself.", nil)
+		return auth.Error(http.StatusServiceUnavailable, "ai_failed", "The AI couldn't read the document right now. Try again in a moment or enter the details yourself.", nil)
 	}
 	return err // an auth error of the gate, or an unexpected one
 }
 
-// previewRecord is the single receipt the model found: none or several is an answer, never a guess of the first.
+// previewRecord is the single expense document the model found: none or several is an answer, never a guess of the first.
 func previewRecord(text string) (json.RawMessage, error) {
 	unreadable := auth.Error(http.StatusBadGateway, "receipt_unreadable", "The AI model's answer could not be read. Try again or enter the details yourself.", nil)
 	var out struct {
@@ -327,7 +327,7 @@ func previewRecord(text string) (json.RawMessage, error) {
 	case 1:
 		return out.Records[0], nil
 	case 0:
-		return nil, auth.Error(http.StatusUnprocessableEntity, "no_receipt", "No receipt was found in this file.", nil)
+		return nil, auth.Error(http.StatusUnprocessableEntity, "no_receipt", "No expense was found in this file.", nil)
 	}
-	return nil, auth.Error(http.StatusUnprocessableEntity, "multiple_receipts", "These files hold more than one receipt. Read each receipt on its own.", nil)
+	return nil, auth.Error(http.StatusUnprocessableEntity, "multiple_receipts", "These files hold several separate expense documents. Read each one on its own.", nil)
 }

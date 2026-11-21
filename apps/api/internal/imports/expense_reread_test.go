@@ -89,7 +89,7 @@ func TestRereadRefusals(t *testing.T) {
 		code   string
 	}{
 		"booked":              {e.sess, booked, http.StatusConflict, "expense_not_draft"},
-		"no receipt":          {e.sess, bare, http.StatusUnprocessableEntity, "no_receipt"},
+		"no receipt":          {e.sess, bare, http.StatusUnprocessableEntity, "no_readable_file"},
 		"another workspace's": {e.sess, foreign, http.StatusNotFound, "not_found"},
 		"unknown":             {e.sess, "exp_missing", http.StatusNotFound, "not_found"},
 		"a reader":            {reader, draft, http.StatusForbidden, "forbidden"},
