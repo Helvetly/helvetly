@@ -17,7 +17,15 @@ import {
 
 import { storySession } from '../screen-fixtures'
 import { draftInvoice } from './api'
-import { closeHeidi, dark, desktop, Frame, pageParameters, phone } from './frame'
+import {
+  closeHeidi,
+  dark,
+  desktop,
+  expectCompactStacked,
+  Frame,
+  pageParameters,
+  phone,
+} from './frame'
 
 const business = http.get('/api/v1/billing', () =>
   HttpResponse.json({
@@ -235,6 +243,7 @@ export const SettingsPlanWithoutFeature: Story = {
       await body().findByRole('region', { name: 'Approve documents before they go out' }),
     )
     await expect(card.getByRole('link', { name: 'Upgrade to Business' })).toBeVisible()
+    await expectCompactStacked(card.getByText(/Approver groups such as/))
     await expect(body().queryByRole('region', { name: 'Invoices' })).toBeNull()
   },
 }

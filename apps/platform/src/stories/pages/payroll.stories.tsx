@@ -320,5 +320,5 @@ export const LockedByPlan: Story = {
     billingOn('pro'),
     sessionHandler({ role: 'member', scopes: ['write:payroll'] }),
   ]),
-  play: shows('Employees and payroll aren’t on this plan'),
+  play: shows('Staff records and payroll in one place'),
 }

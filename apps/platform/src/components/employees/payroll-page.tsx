@@ -12,7 +12,6 @@ import {
   ChevronRight,
   Download,
   FileUp,
-  Lock,
   Plus,
   ReceiptText,
 } from 'lucide-react'
@@ -46,7 +45,7 @@ import {
 } from '@/lib/payroll'
 import { setUrlQuery } from '@/lib/url-query'
 
-import { HrLockNotice, useHrAccess, useHrTabs } from './hr-access'
+import { HrLockNotice, HrUpsell, useHrAccess, useHrTabs } from './hr-access'
 import { BookingsSheet } from './payroll-bookings'
 import { EntrySheet, EntryStatus, NewEntrySheet } from './payroll-entry'
 
@@ -116,12 +115,7 @@ export function PayrollPage() {
       />
       <HrLockNotice hr={hr} />
       {hr.blocked ? (
-        <State
-          icon={<Lock />}
-          title={translate('employeeLockedTitle')}
-          text={translate('employeeLockedText')}
-          action={null}
-        />
+        <HrUpsell hr={hr} />
       ) : (
         <div className="flex flex-1 flex-col">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-3 py-2 md:px-5">

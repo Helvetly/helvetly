@@ -56,7 +56,7 @@ export function CommandPalette({
   const openPrefs = useOpenNotificationPrefs()
   const openHref = useOpenHref()
   const scopes = useScopes()
-  const { billing, loading: billingPending } = useBillingStatus()
+  const { billing } = useBillingStatus()
   const { theme, setTheme } = useTheme()
   const heidi = useHeidi()
   const [term, setTerm] = useState('')
@@ -112,7 +112,7 @@ export function CommandPalette({
             </>
           )}
           <CommandGroup heading={translate('goTo')}>
-            {visibleNav(scopes, billing, billingPending)
+            {visibleNav(scopes)
               .flatMap((group) => group.items)
               .filter((item) => item.href)
               .map(({ label, icon: Icon, href }) => (

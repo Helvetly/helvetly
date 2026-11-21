@@ -9,7 +9,6 @@ import { useRouter } from 'next/navigation'
 import { useState, type ComponentType, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { useBillingStatus } from '@/components/billing/feature-lock'
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
@@ -32,8 +31,7 @@ export function MobileTabBar() {
   const { setOpenMobile } = useSidebar()
   const [creating, setCreating] = useState(false)
   const primary = usePrimaryAction()
-  const { billing, loading } = useBillingStatus()
-  const pages = visibleNav(scopes, billing, loading).flatMap((group) => group.items)
+  const pages = visibleNav(scopes).flatMap((group) => group.items)
   const tabs = TABS.flatMap((href) => pages.filter((item) => item.href === href))
   const [first, ...rest] = tabs
 

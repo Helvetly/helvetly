@@ -24,9 +24,9 @@ export function AccessGate({ children }: { children: ReactNode }) {
   const scopes = useScopes()
   const pathname = usePathname() ?? ''
   const router = useRouter()
-  // Not on the plan and nothing kept to read: the module does not exist here, so its URLs lead home.
+  // Not on the plan and nothing kept to read: its settings do not exist here, so the URL leads home.
   const { billing, loading } = useBillingStatus()
-  const inModule = /^\/(employees|settings\/employment)(\/|$)/.test(pathname)
+  const inModule = /^\/settings\/employment(\/|$)/.test(pathname)
   // Billing still loading: show nothing yet, but do not redirect on a guess.
   const redirect = inModule && !loading && employeesHidden(billing)
   useEffect(() => {

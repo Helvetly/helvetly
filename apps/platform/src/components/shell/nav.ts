@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 
-import { employeesHidden, featureLock } from '@/components/billing/feature-lock'
+import { featureLock } from '@/components/billing/feature-lock'
 import type { Billing, FeatureKey } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { can, canReadPath, type Need } from '@/lib/permissions'
@@ -91,9 +91,8 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
 ]
 
 /** The menu without the pages these scopes cannot read, and without groups left empty. */
-export function visibleNav(scopes: readonly string[], billing?: Billing, loading = false) {
+export function visibleNav(scopes: readonly string[]) {
   const readable = (item: NavItem): NavItem[] => {
-    if (item.feature === 'employees' && employeesHidden(billing, loading)) return []
     if (!item.href) return [item]
     const href = (item.pages ?? [item.href]).find((page) => canReadPath(scopes, page))
     return href ? [{ ...item, href }] : []

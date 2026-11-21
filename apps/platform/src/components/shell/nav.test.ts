@@ -1,4 +1,3 @@
-import { billingFixture } from '@/components/billing/billing-fixture'
 import { effectiveScopes } from '@/lib/permissions'
 
 import { visibleNav } from './nav'
@@ -6,7 +5,7 @@ import { visibleNav } from './nav'
 vi.mock('next/navigation', () => ({ usePathname: () => '/' }))
 
 const labels = (scopes: readonly string[]) =>
-  visibleNav(scopes, billingFixture()).flatMap((group) => group.items.map((item) => item.label))
+  visibleNav(scopes).flatMap((group) => group.items.map((item) => item.label))
 
 test('everything is in the menu with full access', () => {
   expect(labels(['*:*'])).toEqual(expect.arrayContaining(['Clients', 'Invoices', 'Members']))
@@ -17,7 +16,7 @@ test('pages without read are left out, along with groups left empty', () => {
   expect(labels(scopes)).toContain('Clients')
   expect(labels(scopes)).not.toContain('Invoices')
   expect(labels(scopes)).not.toContain('Members')
-  expect(visibleNav(scopes, billingFixture()).map((group) => group.label)).not.toContain('Team')
+  expect(visibleNav(scopes).map((group) => group.label)).not.toContain('Team')
 })
 
 test('write alone is enough to see a page; the dashboard and Heidi always stay', () => {
@@ -41,23 +40,9 @@ test('payroll view alone shows Employees: the list serves picking employees by n
   expect(labels(['read:clients'])).not.toContain('Employees')
 })
 
-test('Employees is left out on a plan without it, kept for an owner with records', () => {
-  const owner = effectiveScopes('owner', undefined)
-  const pro = billingFixture({ plan: 'pro', locked: false })
-  const names = (billing: typeof pro) =>
-    visibleNav(owner, billing).flatMap((group) => group.items.map((item) => item.label))
-  expect(names(pro)).not.toContain('Employees')
-  expect(names({ ...pro, has_employees: true })).toContain('Employees')
-  expect(names(billingFixture({ plan: 'business', locked: false }))).toContain('Employees')
-})
-
-test('Employees waits for billing, so it never appears and disappears', () => {
-  const owner = effectiveScopes('owner', undefined)
-  const items = visibleNav(owner, undefined, true).flatMap((group) =>
-    group.items.map((item) => item.label),
-  )
-  expect(items).not.toContain('Employees')
-  expect(items).toContain('Members')
+test('Employees stays in the menu on every plan: its page offers the plan that has it', () => {
+  expect(labels(effectiveScopes('owner', undefined))).toContain('Employees')
+  expect(labels(effectiveScopes('member', undefined))).not.toContain('Employees')
 })
 
 const booksHref = (scopes: readonly string[]) =>
