@@ -312,12 +312,15 @@ export const ScheduleEditRemove: Story = {
 
 /** Only Save saves: + Add line, the line menus, dates and discount controls leave the editor open and unsaved. */
 export const EditorButtonsDoNotSubmit: Story = {
-  parameters: quotes({ id: 'quo_draft' }),
+  parameters: scheduled,
   play: async ({ canvasElement }) => {
-    const body = page(canvasElement)
-    await userEvent.click(await body.findByRole('button', { name: 'Edit' }, wait))
-    const editor = await body.findByRole('form', { name: 'Edit draft quote' })
-    await expectButtonsDoNotSubmit(editor, { skip: /^(Close editor|Cancel)$/ })
+    const { body, editor, dialog } = await openSchedule(canvasElement)
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    const instalments = within(editor).getByRole('switch', { name: 'Pay in instalments' })
+    await expect(instalments).toHaveAttribute('type', 'button')
+    await expect(instalments).not.toBeChecked()
+    await expectButtonsDoNotSubmit(editor, { skip: /^(Close editor|Cancel|Pay in instalments)$/ })
     await expect(body.getByRole('form', { name: 'Edit draft quote' })).toBeVisible()
     await expect(body.queryByText('Quote saved.')).toBeNull()
   },
