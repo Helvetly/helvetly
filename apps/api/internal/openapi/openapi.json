@@ -7889,9 +7889,51 @@
           },
           "vat_rate": {
             "$ref": "#/components/schemas/Percent"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The item's own category, whose account takes its share in the ledger; null: the expense's."
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Quantity"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shown only; amount is the figure."
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shown only; amount is the figure."
           }
         },
-        "required": ["id", "position", "description", "amount", "vat_rate"]
+        "required": [
+          "id",
+          "position",
+          "description",
+          "amount",
+          "vat_rate",
+          "category",
+          "quantity",
+          "unit_price"
+        ]
       },
       "ExpenseVat": {
         "type": "object",
@@ -7997,6 +8039,11 @@
           },
           "amount_mode": {
             "type": "string"
+          },
+          "entry_mode": {
+            "type": "string",
+            "enum": ["single", "itemised"],
+            "description": "single: one amount per VAT rate; itemised: one line per item, each with an optional category of its own."
           },
           "lines": {
             "type": "array",
@@ -8155,6 +8202,7 @@
           "supplier_country",
           "currency",
           "amount_mode",
+          "entry_mode",
           "lines",
           "net_total",
           "vat_total",
@@ -11640,6 +11688,11 @@
             "enum": ["gross", "net"],
             "description": "Whether line amounts include VAT (gross, default) or not (net)."
           },
+          "entry_mode": {
+            "type": "string",
+            "enum": ["single", "itemised"],
+            "description": "single (default): one amount per VAT rate; itemised: one line per item. A line names its own category only when itemised."
+          },
           "lines": {
             "type": "array",
             "maxItems": 20,
@@ -11668,6 +11721,32 @@
                     }
                   ],
                   "description": "0 to 100; default the workspace's default VAT rate when it is VAT-registered, else 0."
+                },
+                "category_id": {
+                  "type": ["string", "null"],
+                  "description": "Itemised only: a category of the workspace whose account takes this line's share in the ledger; null: the expense's category."
+                },
+                "quantity": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Quantity"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Above 0; shown only."
+                },
+                "unit_price": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Money"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "0 or more; shown only."
                 }
               }
             }
