@@ -130,8 +130,8 @@ func (q Q) LedgerSources(ctx context.Context, workspaceID, to string) (ledgercal
 	}
 
 	rows, err = q.db.Query(ctx, `SELECT e.id, e.number, coalesce(e.supplier_name, ''), COALESCE(e.document_date, e.booked_at::date)::text,
-			e.base_currency, coalesce(c.account_code, ''), e.base_total, e.base_deductible_vat,
-			COALESCE(e.input_tax_box, CASE WHEN c.account_code LIKE '4%' THEN '400' ELSE '405' END) = '400', coalesce(e.paid_on::text, ''), coalesce(e.payment_method, ''),
+			e.base_currency, coalesce(c.account_code, ''), e.base_total, e.base_deductible_vat, coalesce(e.input_tax_box, ''),
+			e.amount_mode = 'gross', coalesce(e.paid_on::text, ''), coalesce(e.payment_method, ''),
 			e.paid_by IS NOT NULL, coalesce(e.reimbursed_on::text, ''), e.reverse_charge, e.base_net_total, e.deductible_percent
 		FROM expenses e LEFT JOIN expense_categories c ON c.id = e.category_id
 		WHERE e.workspace_id = $1 AND e.status = 'booked' AND e.deleted_at IS NULL
@@ -140,31 +140,74 @@ func (q Q) LedgerSources(ctx context.Context, workspaceID, to string) (ledgercal
 	if err != nil {
 		return src, nil, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var e ledgercalc.Expense
+	type booked struct {
+		e       ledgercalc.Expense
+		box     string
+		gross   bool
+		net     invoicecalc.Money
+		percent invoicecalc.Percent
+	}
+	all, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (booked, error) {
+		var b booked
 		var number int64
-		var material *bool
-		var net invoicecalc.Money
-		var percent invoicecalc.Percent
-		if err := rows.Scan(&e.ID, &number, &e.Party, &e.Date, &e.Currency, &e.Account, &e.Total, &e.Deductible, &material,
-			&e.PaidOn, &e.Method, &e.PaidByMember, &e.ReimbursedOn, &e.ReverseCharge, &net, &percent); err != nil {
-			return src, nil, err
-		}
-		e.Ref = strconv.FormatInt(number, 10)
-		e.MaterialVAT = material != nil && *material
+		err := r.Scan(&b.e.ID, &number, &b.e.Party, &b.e.Date, &b.e.Currency, &b.e.Account, &b.e.Total, &b.e.Deductible, &b.box,
+			&b.gross, &b.e.PaidOn, &b.e.Method, &b.e.PaidByMember, &b.e.ReimbursedOn, &b.e.ReverseCharge, &b.net, &b.percent)
+		b.e.Ref = strconv.FormatInt(number, 10)
+		return b, err
+	})
+	if err != nil {
+		return src, nil, err
+	}
+	ids := make([]string, len(all))
+	for i, b := range all {
+		ids[i] = b.e.ID
+	}
+	lines, err := q.expenseSplitLines(ctx, ids)
+	if err != nil {
+		return src, nil, err
+	}
+	for _, b := range all {
+		e := b.e
+		e.MaterialVAT = ledgercalc.Material(e.Account, b.box)
+		e.Splits = ledgercalc.SplitExpense(e.Account, b.box, b.gross, lines[e.ID], e.Total, e.Deductible, b.net)
 		// vatcalc keeps its 2024-01-01 cut-over unexported: before it, acquisition tax is at former rates and not in the return.
-		if e.ReverseCharge && e.Date >= "2024-01-01" {
-			e.AcquisitionTax = invoicecalc.Share(net, vatcalc.AcquisitionRate)
-			e.AcquisitionDeductible = invoicecalc.Share(e.AcquisitionTax, percent)
-		} else {
-			e.ReverseCharge = false
+		e.ReverseCharge = e.ReverseCharge && e.Date >= "2024-01-01"
+		uncategorised := false
+		for i, sp := range e.Splits {
+			if e.ReverseCharge {
+				e.Splits[i].AcquisitionTax = invoicecalc.Share(sp.Taxable, vatcalc.AcquisitionRate)
+				e.Splits[i].AcquisitionDeductible = invoicecalc.Share(e.Splits[i].AcquisitionTax, b.percent)
+				e.AcquisitionTax += e.Splits[i].AcquisitionTax
+				e.AcquisitionDeductible += e.Splits[i].AcquisitionDeductible
+			}
+			uncategorised = uncategorised || sp.Account == ""
 		}
-		if e.Account == "" {
+		if uncategorised {
 			unposted = append(unposted, LedgerUnposted{e.Ref, "no_category"})
 			continue
 		}
 		src.Expenses = append(src.Expenses, e)
 	}
-	return src, unposted, rows.Err()
+	return src, unposted, nil
+}
+
+// expenseSplitLines: the lines of the expenses, in order, with the account of the category each names ("" for none).
+func (q Q) expenseSplitLines(ctx context.Context, expenseIDs []string) (map[string][]ledgercalc.SplitLine, error) {
+	rows, err := q.db.Query(ctx, `SELECT l.expense_id, coalesce(c.account_code, ''), l.amount, l.vat_rate
+		FROM expense_lines l LEFT JOIN expense_categories c ON c.id = l.category_id
+		WHERE l.expense_id = ANY($1) ORDER BY l.expense_id, l.position`, expenseIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	lines := map[string][]ledgercalc.SplitLine{}
+	for rows.Next() {
+		var id string
+		var l ledgercalc.SplitLine
+		if err := rows.Scan(&id, &l.Account, &l.Amount, &l.Rate); err != nil {
+			return nil, err
+		}
+		lines[id] = append(lines[id], l)
+	}
+	return lines, rows.Err()
 }

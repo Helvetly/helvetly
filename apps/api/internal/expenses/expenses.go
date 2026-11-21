@@ -170,22 +170,37 @@ func (s *Service) get(w http.ResponseWriter, r *http.Request, sess store.Session
 	return s.respond(w, r, sess, http.StatusOK, r.PathValue("id"))
 }
 
-// checkRefs: the named category is the workspace's and active (unless the expense already had it), and the
-// named member belongs to the workspace.
-func (s *Service) checkRefs(ctx context.Context, q store.Q, sess store.Session, e *store.Expense, before *string, rf refs) error {
+// checkRefs: each named category, the expense's and its lines', is the workspace's and active (unless the expense
+// already had it), and the named member belongs to the workspace. before lists the categories the expense had.
+func (s *Service) checkRefs(ctx context.Context, q store.Q, sess store.Session, e *store.Expense, before []string, rf refs) error {
 	invalid := map[string]string{}
-	if rf.category && rf.categoryID != nil {
-		c, err := q.ExpenseCategory(ctx, sess.Workspace.ID, *rf.categoryID)
+	var failed error
+	category := func(key, id string) *store.CategoryRef {
+		c, err := q.ExpenseCategory(ctx, sess.Workspace.ID, id)
 		switch {
 		case errors.Is(err, store.ErrNotFound):
-			invalid["category_id"] = "Choose one of the workspace's categories."
+			invalid[key] = "Choose one of the workspace's categories."
 		case err != nil:
-			return err
-		case c.IsArchived && (before == nil || *before != c.ID):
-			invalid["category_id"] = "This category is archived: choose another."
+			failed = err
+		case c.IsArchived && !slices.Contains(before, c.ID):
+			invalid[key] = "This category is archived: choose another."
 		default:
-			e.Category = &c.CategoryRef
+			return &c.CategoryRef
 		}
+		return nil
+	}
+	if rf.category && rf.categoryID != nil {
+		e.Category = category("category_id", *rf.categoryID)
+	}
+	if rf.lines {
+		for i := range e.Lines {
+			if l := &e.Lines[i]; l.CategoryID != nil {
+				l.Category = category(fmt.Sprintf("lines.%d.category_id", i), *l.CategoryID)
+			}
+		}
+	}
+	if failed != nil {
+		return failed
 	}
 	if rf.member && rf.memberID != nil {
 		name, err := q.MemberName(ctx, sess.Workspace.ID, *rf.memberID)
@@ -281,7 +296,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if e.Status != "draft" { // a booked expense keeps the base currency and amounts it was booked with
 			d.Currency = e.Base.Currency
 		}
-		before, paid := e.CategoryID, paymentOf(e)
+		before, paid := categoriesOf(e), paymentOf(e)
 		oldCategory, oldPath := categoryName(e), store.ExpenseFolder(e.DocumentDate, s.today(sess.Workspace), categoryName(e))
 		rf, err := applyInput(&e, body, d, s.today(sess.Workspace))
 		if err != nil {
@@ -547,6 +562,7 @@ func (s *Service) duplicate(w http.ResponseWriter, r *http.Request, sess store.S
 	e.SupplierName, e.SupplierVATNumber, e.Description, e.CategoryID = src.SupplierName, src.SupplierVATNumber, src.Description, src.CategoryID
 	e.SupplierCountry, e.ReverseCharge, e.InputTaxBox = src.SupplierCountry, src.ReverseCharge, src.InputTaxBox
 	e.Currency, e.AmountMode, e.InputTax, e.DeductiblePercent = src.Currency, src.AmountMode, src.InputTax, src.DeductiblePercent
+	e.EntryMode = src.EntryMode
 	if e.Currency != d.Currency {
 		e.ExchangeRate = src.ExchangeRate // a starting point; its date and source must be entered again
 	}

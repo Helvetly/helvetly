@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"helvetly.com/api/internal/invoicecalc"
+	"helvetly.com/api/internal/ledgercalc"
 	"helvetly.com/api/internal/vatcalc"
 )
 
@@ -181,28 +182,59 @@ type VATPurchase struct {
 	Currency string
 }
 
-// VATPurchases: booked expenses dated in [from, to): by document date, or by payment date on the received basis. The
-// input-tax box is the expense's own, else 400 for an account of class 4 (materials, goods, services) and 405 otherwise.
+// VATPurchases: booked expenses dated in [from, to): by document date, or by payment date on the received basis, one
+// purchase per account the expense posts to (ledgercalc.SplitExpense). The input-tax box is the expense's own, else
+// 400 for an account of class 4 (materials, goods, services) and 405 otherwise.
 func (q Q) VATPurchases(ctx context.Context, workspaceID, from, to string, received bool) ([]VATPurchase, error) {
 	date := `COALESCE(e.document_date, e.booked_at::date)`
 	if received {
 		date = `e.paid_on`
 	}
-	rows, err := q.db.Query(ctx, `SELECT e.number, e.base_currency, `+date+`::text, e.base_net_total, e.base_deductible_vat,
-			e.deductible_percent, e.reverse_charge, COALESCE(e.input_tax_box, CASE WHEN c.account_code LIKE '4%' THEN '400' ELSE '405' END)
+	rows, err := q.db.Query(ctx, `SELECT e.id, e.number, e.base_currency, `+date+`::text, e.base_total, e.base_net_total, e.base_deductible_vat,
+			e.deductible_percent, e.reverse_charge, coalesce(e.input_tax_box, ''), coalesce(c.account_code, ''), e.amount_mode = 'gross'
 		FROM expenses e LEFT JOIN expense_categories c ON c.id = e.category_id
 		WHERE e.workspace_id = $1 AND e.status = 'booked' AND e.deleted_at IS NULL AND `+date+` >= $2 AND `+date+` < $3
 		ORDER BY e.number`, workspaceID, from, to)
 	if err != nil {
 		return nil, err
 	}
-	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (VATPurchase, error) {
-		var p VATPurchase
+	type booked struct {
+		id, box, account string
+		gross            bool
+		total            invoicecalc.Money
+		p                VATPurchase
+	}
+	all, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (booked, error) {
+		var b booked
 		var number int64
-		err := r.Scan(&number, &p.Currency, &p.SupplyDate, &p.Net, &p.DeductibleVAT, &p.DeductiblePercent, &p.ReverseCharge, &p.Box)
-		p.Ref = "Expense " + strconv.FormatInt(number, 10)
-		return p, err
+		err := r.Scan(&b.id, &number, &b.p.Currency, &b.p.SupplyDate, &b.total, &b.p.Net, &b.p.DeductibleVAT, &b.p.DeductiblePercent,
+			&b.p.ReverseCharge, &b.box, &b.account, &b.gross)
+		b.p.Ref = "Expense " + strconv.FormatInt(number, 10)
+		return b, err
 	})
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(all))
+	for i, b := range all {
+		ids[i] = b.id
+	}
+	lines, err := q.expenseSplitLines(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	var purchases []VATPurchase
+	for _, b := range all {
+		for _, sp := range ledgercalc.SplitExpense(b.account, b.box, b.gross, lines[b.id], b.total, b.p.DeductibleVAT, b.p.Net) {
+			p := b.p
+			p.Box, p.DeductibleVAT, p.Net = "405", sp.Deductible, sp.Taxable
+			if sp.Material {
+				p.Box = "400"
+			}
+			purchases = append(purchases, p)
+		}
+	}
+	return purchases, nil
 }
 
 // ClosedMonths counts the closed months among [from, to).

@@ -4830,5 +4830,17 @@
   "missingEmail": "E-mail manquant",
   "theClientHasNoEmailAddress": "Le client n’a pas d’adresse e-mail.",
   "addTheClientsEmail": "Ajouter l’e-mail du client",
-  "addAnEmailToLetThisClientSignIn": "Ajoutez un e-mail pour que ce client puisse se connecter au portail."
+  "addAnEmailToLetThisClientSignIn": "Ajoutez un e-mail pour que ce client puisse se connecter au portail.",
+  "oneAmount": "Un montant",
+  "itemised": "Articles",
+  "enterAs": "Saisir comme",
+  "addAnItem": "Ajouter un article",
+  "expenseCategoryDefault": "Catégorie de la dépense",
+  "lineUnitPrice": "Prix unitaire de la ligne {value1}",
+  "lineCategory": "Catégorie de la ligne {value1}",
+  "enterAQuantityAbove0": "Saisissez une quantité supérieure à 0.",
+  "mergeItemsTitle": "Saisir en un seul montant ?",
+  "mergeItemsBody": "Les articles sont additionnés en une ligne par taux de TVA. Leurs descriptions, quantités et catégories sont supprimées.",
+  "mergeItems": "Additionner",
+  "oneLinePerItem": "Une ligne par article. Un article avec sa propre catégorie est comptabilisé sur son compte."
 }

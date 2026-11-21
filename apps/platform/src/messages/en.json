@@ -4830,5 +4830,17 @@
   "missingEmail": "Missing email",
   "theClientHasNoEmailAddress": "The client has no email address.",
   "addTheClientsEmail": "Add the client’s email",
-  "addAnEmailToLetThisClientSignIn": "Add an email to let this client sign in to the portal."
+  "addAnEmailToLetThisClientSignIn": "Add an email to let this client sign in to the portal.",
+  "oneAmount": "One amount",
+  "itemised": "Items",
+  "enterAs": "Enter as",
+  "addAnItem": "Add an item",
+  "expenseCategoryDefault": "Expense's category",
+  "lineUnitPrice": "Line {value1} unit price",
+  "lineCategory": "Line {value1} category",
+  "enterAQuantityAbove0": "Enter a quantity above 0.",
+  "mergeItemsTitle": "Enter as one amount?",
+  "mergeItemsBody": "The items are added up into one line per VAT rate. Their descriptions, quantities and categories are dropped.",
+  "mergeItems": "Add up",
+  "oneLinePerItem": "One line per item. An item with its own category is booked to that account."
 }

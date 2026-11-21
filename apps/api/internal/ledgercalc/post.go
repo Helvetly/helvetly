@@ -50,17 +50,28 @@ func Post(a Accounts, s Sources) []Row {
 	}
 
 	for _, e := range s.Expenses {
-		vat := a.InputVATOther
-		if e.MaterialVAT {
-			vat = a.InputVATMaterial
+		splits := e.Splits
+		if len(splits) == 0 {
+			splits = []Split{{Account: e.Account, Material: e.MaterialVAT, Net: e.Total - e.Deductible, Deductible: e.Deductible,
+				AcquisitionTax: e.AcquisitionTax, AcquisitionDeductible: e.AcquisitionDeductible}}
+		}
+		inputVAT := func(sp Split) string {
+			if sp.Material {
+				return a.InputVATMaterial
+			}
+			return a.InputVATOther
 		}
 		desc := "Expense " + e.Ref + " · " + e.Party
-		add(e.Date, e.Ref, desc, e.Account, a.Payables, e.Total-e.Deductible, e.Currency, "expense", e.ID)
-		add(e.Date, e.Ref, desc, vat, a.Payables, e.Deductible, e.Currency, "expense", e.ID)
+		for _, sp := range splits {
+			add(e.Date, e.Ref, desc, sp.Account, a.Payables, sp.Net, e.Currency, "expense", e.ID)
+			add(e.Date, e.Ref, desc, inputVAT(sp), a.Payables, sp.Deductible, e.Currency, "expense", e.ID)
+		}
 		if e.ReverseCharge {
 			acq := "Acquisition tax " + e.Ref + " · " + e.Party
-			add(e.Date, e.Ref, acq, vat, a.OutputVAT, e.AcquisitionDeductible, e.Currency, "expense", e.ID)
-			add(e.Date, e.Ref, acq, e.Account, a.OutputVAT, e.AcquisitionTax-e.AcquisitionDeductible, e.Currency, "expense", e.ID)
+			for _, sp := range splits {
+				add(e.Date, e.Ref, acq, inputVAT(sp), a.OutputVAT, sp.AcquisitionDeductible, e.Currency, "expense", e.ID)
+				add(e.Date, e.Ref, acq, sp.Account, a.OutputVAT, sp.AcquisitionTax-sp.AcquisitionDeductible, e.Currency, "expense", e.ID)
+			}
 		}
 		if e.PaidOn == "" {
 			continue
