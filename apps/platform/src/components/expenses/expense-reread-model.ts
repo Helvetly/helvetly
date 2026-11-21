@@ -1,3 +1,4 @@
+import { categoryLabel } from '@/lib/expense-categories'
 // Compares a draft with a new AI reading of its receipts, and applies the parts the person chose.
 import type { Expense, ReceiptSuggestions } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
@@ -84,8 +85,10 @@ export function rereadRows(
   if (s.category && s.category.id !== values.category_id)
     rows.push({
       field: 'category_id',
-      now: expense.category ? `${expense.category.name} · ${expense.category.account_code}` : '',
-      read: `${s.category.name} · ${s.category.account_code}`,
+      now: expense.category
+        ? `${categoryLabel(expense.category)} · ${expense.category.account_code}`
+        : '',
+      read: `${categoryLabel(s.category)} · ${s.category.account_code}`,
       empty: values.category_id === '',
     })
 

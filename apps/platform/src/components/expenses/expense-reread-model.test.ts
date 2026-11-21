@@ -86,6 +86,7 @@ test.each<{
         id: 'cat_telecom',
         name: 'Telecom',
         account_code: '6510',
+        preset: 'telecom',
         confidence: 0.9,
         reason: null,
       },
@@ -165,6 +166,7 @@ test('applying changes only the chosen parts', () => {
       id: 'cat_telecom',
       name: 'Telecom',
       account_code: '6510',
+      preset: 'telecom',
       confidence: 1,
       reason: null,
     },
@@ -201,4 +203,30 @@ test('applying changes only the chosen parts', () => {
 test('nothing chosen is the draft unchanged', () => {
   const values = valuesFromExpense(draft())
   expect(applyReread(values, reading({ description: 'New' }), new Set(), options)).toBe(values)
+})
+
+test('the category row names both categories in the user’s language', async () => {
+  vi.stubEnv('NEXT_PUBLIC_I18N_MODE', 'browser')
+  window.history.replaceState(null, '', '/expenses?lang=de')
+  vi.resetModules()
+  const model = await import('./expense-reread-model')
+  const form = await import('./expense-form-model')
+  const expense = draft({
+    category: { id: 'cat_travel', name: 'Travel', account_code: '6640', preset: 'travel' },
+  })
+  const read = reading({
+    category: {
+      id: 'cat_lodging',
+      name: 'Lodging',
+      account_code: '6641',
+      preset: 'lodging',
+      confidence: 0.9,
+      reason: null,
+    },
+  })
+  const [row] = model.rereadRows(form.valuesFromExpense(expense), expense, read, options)
+  expect(row?.now).toBe('Reisen · 6640')
+  expect(row?.read).toBe('Übernachtung · 6641')
+  vi.unstubAllEnvs()
+  window.history.replaceState(null, '', '/')
 })

@@ -598,6 +598,7 @@ export type ReceiptSuggestions = {
     id: string
     name: string
     account_code: string
+    preset: string | null
     confidence: number
     reason: string | null
   } | null
@@ -668,6 +669,7 @@ export function parseSuggestions(body: unknown): ReceiptSuggestions {
             id: String(category.id),
             name: str(category.name) ?? '',
             account_code: str(category.account_code) ?? '',
+            preset: str(category.preset),
             confidence: Math.min(1, Math.max(0, category.confidence)),
             reason: str(category.reason),
           }

@@ -368,7 +368,7 @@ func receiptCategories(ctx context.Context, q store.Q, workspaceID string) ([]re
 		if c.Preset != nil {
 			key = *c.Preset
 		}
-		out[i] = receiptCategory{Key: key, ID: c.ID, Name: c.Name, AccountCode: c.AccountCode}
+		out[i] = receiptCategory{Key: key, ID: c.ID, Name: c.Name, AccountCode: c.AccountCode, Preset: c.Preset}
 		// one line each: a name never starts a new instruction
 		b.WriteString("\n- " + key + " | " + strings.Join(strings.Fields(c.Name), " ") + " | " + c.AccountCode)
 	}
@@ -376,8 +376,9 @@ func receiptCategories(ctx context.Context, q store.Q, workspaceID string) ([]re
 }
 
 type receiptCategory struct {
-	Key         string `json:"key"`
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	AccountCode string `json:"account_code"`
+	Key         string  `json:"key"`
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	AccountCode string  `json:"account_code"`
+	Preset      *string `json:"-"`
 }

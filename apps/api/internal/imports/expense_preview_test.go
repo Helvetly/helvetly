@@ -428,7 +428,7 @@ func TestPreviewCategoryKeyIsThePreset(t *testing.T) {
 	if w.Code != 200 {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
-	if got := decode[receiptReading](t, w); got.Category == nil || got.Category.ID != c.ID || value(got.Category.Key) != "goods_purchase" {
+	if got := decode[receiptReading](t, w); got.Category == nil || got.Category.ID != c.ID || value(got.Category.Key) != "goods_purchase" || value(got.Category.Preset) != "goods_purchase" {
 		t.Errorf("category %+v", got.Category)
 	}
 	if !strings.Contains(e.model.seen[0].Instructions, "- goods_purchase | "+c.Name+" | "+c.AccountCode) {
