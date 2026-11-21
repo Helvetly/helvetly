@@ -24,22 +24,34 @@ test('list params come from the URL, unknown values fall back to the defaults', 
     search: 'lara',
     status: 'archived',
     department: 'Studio',
+    sort: { field: 'name', desc: false },
   })
   expect(parseListParams(new URLSearchParams('status=fired')).status).toBe('active')
+  expect(parseListParams(new URLSearchParams('sort=-since')).sort).toEqual({
+    field: 'since',
+    desc: true,
+  })
+  expect(parseListParams(new URLSearchParams('sort=bank_account')).sort).toEqual({
+    field: 'name',
+    desc: false,
+  })
 })
 
 test('list params go back to the URL without defaults, keeping the drawer keys', () => {
   const query = listParamsToQuery(
-    { search: 'x', status: 'all', department: null },
-    new URLSearchParams('id=emp_1&status=ended'),
+    { search: 'x', status: 'all', department: null, sort: { field: 'since', desc: true } },
+    new URLSearchParams('id=emp_1&status=ended&sort=name'),
   )
-  expect(query.toString()).toBe('id=emp_1&q=x&status=all')
+  expect(query.toString()).toBe('id=emp_1&q=x&status=all&sort=-since')
   expect(listParamsToQuery(DEFAULT_PARAMS).toString()).toBe('')
 })
 
 test('the API query always names the status and trims the search', () => {
-  expect(apiQuery({ search: '  lara ', status: 'active', department: 'Studio' }).toString()).toBe(
+  expect(apiQuery({ ...DEFAULT_PARAMS, search: '  lara ', department: 'Studio' }).toString()).toBe(
     'status=active&page_size=200&search=lara&department=Studio',
+  )
+  expect(apiQuery({ ...DEFAULT_PARAMS, sort: { field: 'position', desc: true } }).toString()).toBe(
+    'status=active&page_size=200&sort=-position',
   )
 })
 

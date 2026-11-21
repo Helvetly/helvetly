@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { ApiError, browserTimeZone, request, setCsrfToken } from '@/lib/api'
+import { type Sort, type SortValue } from '@/lib/list-sort'
 
 export type Role = 'owner' | 'admin' | 'member'
 
@@ -80,6 +81,24 @@ export function matchesTeamFilter(
     (roles.length === 0 || roles.includes(row.role)) &&
     (!term || [row.name ?? '', row.email].some((text) => text.toLowerCase().includes(term)))
   )
+}
+
+/** The team table's sortable columns; an invitation's "last active" is when it expires. */
+export const TEAM_SORTS = ['member', 'role', 'active'] as const
+export type TeamSortField = (typeof TEAM_SORTS)[number]
+/** Owners first, as the list has always been. */
+export const DEFAULT_TEAM_SORT: Sort<TeamSortField> = { field: 'role', desc: false }
+
+type SortedMember = Pick<Member, 'name' | 'role' | 'last_active_at'>
+type SortedInvitation = Pick<Invitation, 'email' | 'role' | 'expires_at'>
+
+export function teamSortValue(
+  row: SortedMember | SortedInvitation,
+  field: TeamSortField,
+): SortValue {
+  if (field === 'role') return ROLES.indexOf(row.role)
+  if (field === 'member') return 'name' in row ? row.name : row.email
+  return 'last_active_at' in row ? row.last_active_at : row.expires_at
 }
 
 export const canManage = (role: string) => role === 'owner' || role === 'admin'

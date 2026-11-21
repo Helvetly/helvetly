@@ -38,6 +38,12 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if len(f.Search) > 100 || len(f.Department) > 100 {
 		return badRequest("Search for at most 100 characters.")
 	}
+	if sort := q.Get("sort"); sort != "" {
+		f.Sort, f.Desc = strings.TrimPrefix(sort, "-"), strings.HasPrefix(sort, "-")
+		if !store.ValidEmployeeSort(f.Sort) {
+			return badRequest("sort must be name, position, department or since, with - for descending.")
+		}
+	}
 	page, err := intParam(q.Get("page"), 1, 1_000_000)
 	if err != nil {
 		return err

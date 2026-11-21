@@ -51,6 +51,21 @@ export const Month: Story = {
     await expect(body().getByText('Recorded, not calculated')).toBeVisible()
   },
 }
+const grossHeader = () => body().getAllByRole('columnheader', { name: /^gross/i })[0] as HTMLElement
+
+/** A header orders the month's entries in the browser: the latest period leads, a click on Gross keeps the sort in the URL. */
+export const SortByHeader: Story = {
+  play: async (context) => {
+    await shows('Noah Weber')?.(context)
+    await expect(body().getAllByRole('columnheader', { name: /period/i })[0]).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    )
+    await userEvent.click(within(grossHeader()).getByRole('button', { name: /gross/i }))
+    await waitFor(() => expect(window.location.search).toContain('sort=-gross'))
+  },
+}
+
 export const MonthDark = dark(Month)
 export const MonthPhone = phone(Month)
 
