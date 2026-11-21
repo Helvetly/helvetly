@@ -557,7 +557,7 @@ export const ExpenseReceiptReading: Story = {
   ),
   play: async () => {
     const body = within(document.body)
-    const recognize = await body.findByRole('button', { name: 'Recognize receipt' })
+    const recognize = await body.findByRole('button', { name: 'Read with AI' })
     const supplier = body.getByRole('textbox', { name: /Supplier$/ })
     // The AI approval belongs to the signed-in person and workspace: a click before the session has loaded is
     // dropped without sending anything, so it is clicked again until the reading lands.

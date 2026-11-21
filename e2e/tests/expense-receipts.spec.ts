@@ -67,7 +67,9 @@ test('a receipt picked in the new-expense form counts as soon as the drawer open
   const supplier = uniqueName('Form Receipt')
   await openPage(page, '/expenses?new=1', 'Expenses')
   const form = page.getByRole('dialog')
+  // The receipt comes first; E2E's Heidi usage says no AI model, so Continue opens the form with it staged.
   await form.getByLabel('Upload receipts').setInputFiles(receiptFile('form-receipt.pdf'))
+  await form.getByRole('button', { name: 'Continue' }).click()
   await form.getByRole('textbox', { name: 'Supplier', exact: true }).fill(supplier)
   await form.getByRole('button', { name: 'Save draft' }).click()
 

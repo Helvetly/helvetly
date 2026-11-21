@@ -45,6 +45,10 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 		b, _ := json.Marshal(map[string]string{"name": string(name[:min(len(name), 40)])})
 		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
 	}
+	if r.Schema.Name == "receipt_v2" {
+		b, _ := json.Marshal(map[string]any{"records": []any{fakeReceipt(r.Instructions)}})
+		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
+	}
 	if props, _ := r.Schema.JSON["properties"].(map[string]any); props["proposals"] != nil {
 		b, _ := json.Marshal(fakeOrganize(r.Message))
 		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
@@ -106,6 +110,36 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 		return Reply{}, errors.New("fake model could not encode its answer")
 	}
 	return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
+}
+
+// fakeReceipt is one fixed receipt (CHF 108.10 at 8.1%, unpaid) for the expense form's reading, in the first listed
+// category ("- key | name | account" lines of the instructions), or none when the list is empty.
+func fakeReceipt(instructions string) map[string]any {
+	category := map[string]any{"key": nil, "confidence": 0, "reason": nil}
+	_, list, _ := strings.Cut(instructions, "The categories (key | name | account):")
+	for line := range strings.Lines(list) {
+		rest, listed := strings.CutPrefix(strings.TrimSpace(line), "- ")
+		if key, _, ok := strings.Cut(rest, " | "); listed && ok {
+			category = map[string]any{"key": key, "confidence": 0.9, "reason": "development model"}
+			break
+		}
+	}
+	confidence := map[string]any{}
+	for _, g := range []string{"supplier", "document", "totals", "vat_breakdown", "items", "payment"} {
+		confidence[g] = "high"
+	}
+	return map[string]any{
+		"supplier": map[string]any{"name": "Development Supplier AG", "vat_number": nil, "country": "CH", "iban": nil},
+		"document": map[string]any{"type": "invoice", "number": "DEV-1", "date": "2026-01-15", "due_date": nil,
+			"service_period": map[string]any{"from": nil, "to": nil}},
+		"description": "Development model receipt", "currency": "CHF",
+		"totals":        map[string]any{"net": "100.00", "vat": "8.10", "gross": "108.10"},
+		"vat_breakdown": []any{map[string]any{"rate": "8.1", "net": "100.00", "vat": "8.10", "gross": "108.10"}},
+		"items": []any{map[string]any{"description": "Development model service", "quantity": "1", "unit_price": "108.10",
+			"amount": "108.10", "vat_rate": "8.1", "category": nil}},
+		"payment":        map[string]any{"status": "unpaid", "method": nil, "paid_on": nil},
+		"reverse_charge": false, "category": category, "confidence": confidence,
+	}
 }
 
 // fakeFiling files by the file name: its first two words (of three letters or more) are the tags; the folder is the

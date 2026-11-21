@@ -61,6 +61,7 @@ import {
 } from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ExpenseCategoriesSheet } from '@/components/expenses/expense-categories-sheet'
+import { handOffImport } from '@/components/import/hand-off'
 import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
@@ -622,6 +623,16 @@ export function ExpensesPage() {
         <ExpenseForm
           key={`form:${formState.expense?.id ?? 'new'}`}
           expense={formState.expense}
+          start={!formState.expense}
+          onImport={(files) => {
+            // One navigation: the form's ?new=1 goes as the import's ?import=1 comes.
+            handOffImport('expenses', files)
+            setForm(null)
+            const next = new URLSearchParams(query)
+            next.delete('new')
+            next.set('import', '1')
+            navigate(next)
+          }}
           onClose={closeForm}
           onSaved={(expense, created) => {
             setForm(null)

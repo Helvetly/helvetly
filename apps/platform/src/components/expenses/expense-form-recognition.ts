@@ -23,7 +23,7 @@ export const TEXT_FIELDS = [
 /** Edits that protect the amounts: currency, mode and lines are one group, never partly reinterpreted. */
 const AMOUNT_FIELDS = ['currency', 'amount_mode', 'lines'] as const
 
-type TextField = (typeof TEXT_FIELDS)[number]
+export type TextField = (typeof TEXT_FIELDS)[number]
 
 /** The part of the reading each filled field comes from, for its confidence. */
 const GROUP_OF: Partial<Record<string, ReadGroup>> = {
@@ -50,7 +50,7 @@ export type Applied = {
 }
 
 /** The reading's value for each text field of the form. */
-const textOf = (s: ReceiptSuggestions): Record<TextField, string | null> => ({
+export const textOf = (s: ReceiptSuggestions): Record<TextField, string | null> => ({
   supplier_name: s.supplier.name,
   supplier_vat_number: s.supplier.vat_number,
   supplier_country: s.supplier.country,
@@ -60,7 +60,7 @@ const textOf = (s: ReceiptSuggestions): Record<TextField, string | null> => ({
   due_date: s.document.due_date,
 })
 
-const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
+export const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
 
 /**
  * Receipt reading v2 into the form. A field that started non-blank (a habit or default) is the person's and is kept, except the supplier country,
@@ -160,7 +160,7 @@ const PAYMENT_FIELDS = ['paid', 'paid_on', 'payment_method'] as const
  * One gross line per rate of the breakdown, or nothing: never a reverse charge (the form cannot record it yet), a
  * total without its rate, or figures the server found disagreeing.
  */
-function amountsFrom(s: ReceiptSuggestions, currencyOk: (code: string) => boolean) {
+export function amountsFrom(s: ReceiptSuggestions, currencyOk: (code: string) => boolean) {
   const currency = s.currency?.toUpperCase()
   if (!currency || !currencyOk(currency) || s.reverse_charge || s.vat_breakdown.length === 0)
     return null

@@ -120,6 +120,17 @@ export const storyDefaults = [
   http.get('/api/v1/quotes/:id/approval', () => nothing(NOT_REQUIRED)),
   http.get('/api/v1/expenses/:id/approval', () => nothing(NOT_REQUIRED)),
   http.get('/api/v1/approvals/inbox', () => nothing([])),
+  // A server without an AI model, unless the story gives one.
+  http.get('/api/v1/heidi/usage', () =>
+    HttpResponse.json({
+      period: '2026-11',
+      tokens_used: 0,
+      tokens_included: null,
+      tokens_purchased: 0,
+      tokens_remaining: null,
+      provider_available: false,
+    }),
+  ),
   http.get('/api/v1/approvals/settings', () => nothing({ groups: [], policies: [] })),
   http.get('/api/v1/invoices/:id/dunning', () =>
     nothing({
