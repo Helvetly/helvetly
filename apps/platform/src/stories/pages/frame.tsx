@@ -106,3 +106,14 @@ export const expectFooterAtTheBottom = async (paper: HTMLElement) => {
   const gap = paper.getBoundingClientRect().bottom - (footer?.getBoundingClientRect().bottom ?? 0)
   await expect(gap).toBeLessThanOrEqual(parseFloat(getComputedStyle(paper).paddingBottom) + 1)
 }
+
+/** The upsell card is compact, not the page's full width, and its benefits are stacked one under another. */
+export async function expectCompactStacked(firstBenefit: HTMLElement) {
+  const card = firstBenefit.closest<HTMLElement>('[data-slot="upsell-card"]')
+  const items = [...(card?.querySelectorAll('li') ?? [])]
+  await expect(items).toHaveLength(3)
+  await expect(card?.getBoundingClientRect().width).toBeLessThanOrEqual(672)
+  const tops = items.map((item) => item.getBoundingClientRect().top)
+  await expect(tops).toEqual(tops.toSorted((a, b) => a - b))
+  await expect(new Set(tops).size).toBe(3)
+}

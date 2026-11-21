@@ -30,6 +30,13 @@ test('others see the lock instead of data while the plan lacks the module', () =
   expect(hrAccess(['write:employees', 'write:payroll'], 'member', lock).blocked).toBe(true)
 })
 
+test('an owner without employee records is offered the plan too, one with records keeps reading', () => {
+  const owner = effectiveScopes('owner', null)
+  expect(hrAccess(owner, 'owner', lock, false).blocked).toBe(true)
+  expect(hrAccess(owner, 'owner', lock, true).blocked).toBe(false)
+  expect(hrAccess(owner, 'owner', null, false).blocked).toBe(false)
+})
+
 test('an admin holds payroll view by default: the register, not the records', () => {
   const admin = hrAccess(effectiveScopes('admin', null), 'admin', null)
   expect(admin).toMatchObject({

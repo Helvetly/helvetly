@@ -2,11 +2,12 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { EmployeesPage } from '@/components/employees/employees-page'
 
 import { sessionHandler, unavailable } from '../screen-fixtures'
 import { hr } from './api'
-import { closeHeidi, dark, desktop, Frame, phone, shows } from './frame'
+import { closeHeidi, dark, desktop, expectCompactStacked, Frame, phone, shows } from './frame'
 import { billingOn, hrPage } from './hr'
 
 const meta = {
@@ -360,17 +361,60 @@ export const PayrollOnlyViewer: Story = {
   },
 }
 
-/** Not on the plan, not the owner: the lock high under the tabs instead of data. */
+/** Pro: Employees stays in the menu, and the page is the same compact upsell as Approvals. */
+export const ProUpsell: Story = {
+  parameters: hrPage('/employees', {}, [billingOn('pro', false)]),
+  play: async (context) => {
+    await shows('Staff records and payroll in one place')?.(context)
+    await expectCompactStacked(body().getByText(/Employee records with contracts/))
+    await expect(body().getByRole('link', { name: 'Upgrade to Business' })).toHaveAttribute(
+      'href',
+      '/settings/billing/plans/',
+    )
+    await expect(body().getByRole('link', { name: 'Compare plans' })).toBeVisible()
+    await expect(body().queryByText('Lara Brunner')).toBeNull()
+  },
+}
+/** The sidebar lists Employees on every plan; on Pro it carries the plan's tag. */
+export const ProMenuListsEmployees: Story = {
+  parameters: hrPage('/employees', {}, [billingOn('pro', false)]),
+  play: async (context) => {
+    await shows('Staff records and payroll in one place')?.(context)
+    await expect(
+      body().getAllByRole('link', { name: /Employees/, hidden: true }).length,
+    ).toBeGreaterThan(0)
+  },
+}
+export const ProUpsellDark = dark(ProUpsell)
+export const ProUpsellPhone = phone(ProUpsell)
+
+/** Whoever cannot manage billing sees what Business gives, without the upgrade actions. */
+export const ProUpsellWithoutBilling: Story = {
+  parameters: hrPage('/employees', {}, [
+    http.get('/api/v1/billing', () =>
+      HttpResponse.json({
+        data: billingFixture({ plan: 'pro', status: 'active', locked: false, can_manage: false }),
+      }),
+    ),
+    sessionHandler({ role: 'member', scopes: ['write:employees', 'write:payroll'] }),
+  ]),
+  play: async (context) => {
+    await shows('Staff records and payroll in one place')?.(context)
+    await expect(body().queryByRole('link', { name: /Upgrade/ })).toBeNull()
+    await expect(body().queryByRole('link', { name: 'Compare plans' })).toBeNull()
+  },
+}
+
+/** Not on the plan, not the owner: the upsell instead of data. */
 export const LockedByPlan: Story = {
   parameters: hrPage('/employees', {}, [
     billingOn('pro'),
     sessionHandler({ role: 'member', scopes: ['write:employees', 'write:payroll'] }),
   ]),
   play: async (context) => {
-    await shows('Employees and payroll aren’t on this plan')?.(context)
-    await expect(body().getByText(/Ask the workspace owner to change the plan/)).toBeVisible()
+    await shows('Staff records and payroll in one place')?.(context)
     await expect(body().queryByText('Lara Brunner')).toBeNull()
-    await expect(body().getByRole('link', { name: /See Business/ })).toHaveAttribute(
+    await expect(body().getByRole('link', { name: 'Upgrade to Business' })).toHaveAttribute(
       'href',
       '/settings/billing/plans/',
     )

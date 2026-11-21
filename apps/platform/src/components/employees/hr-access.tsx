@@ -1,7 +1,7 @@
 'use client'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
-import { Banknote, IdCard } from 'lucide-react'
+import { Banknote, FileLock2, IdCard, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
 
@@ -10,6 +10,8 @@ import {
   useFeatureLock,
   type FeatureLock,
 } from '@/components/billing/feature-lock'
+import { UpsellCard } from '@/components/billing/upsell-card'
+import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { can, useScopes } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
@@ -19,7 +21,13 @@ import { useSession } from '@/lib/queries'
  * the API refuses everything but an owner's reads: others see the lock instead of data (`blocked`), an owner keeps
  * reading and exporting, and every write is off with `lockReason` as its tooltip.
  */
-export function hrAccess(scopes: readonly string[], role: string | undefined, lock: FeatureLock) {
+export function hrAccess(
+  scopes: readonly string[],
+  role: string | undefined,
+  lock: FeatureLock,
+  /** Employees the workspace still holds: an owner keeps reading them after a downgrade. */
+  records = true,
+) {
   const owner = role === 'owner'
   const lockReason = lock ? translate('employeePlanReadOnlyTip') : null
   const writable = !lock
@@ -27,8 +35,8 @@ export function hrAccess(scopes: readonly string[], role: string | undefined, lo
     owner,
     lock,
     lockReason,
-    /** Not on the plan and not an owner: the API refuses every route. */
-    blocked: Boolean(lock) && !owner,
+    /** Not on the plan, and nothing to keep reading (or not an owner): the page offers the plan instead. */
+    blocked: Boolean(lock) && (!owner || !records),
     readEmployees: can(scopes, 'read:employees'),
     writeEmployees: writable && can(scopes, 'write:employees'),
     readPayroll: can(scopes, 'read:payroll'),
@@ -44,7 +52,8 @@ export function hrAccess(scopes: readonly string[], role: string | undefined, lo
 export type HrAccess = ReturnType<typeof hrAccess>
 
 export function useHrAccess(): HrAccess {
-  return hrAccess(useScopes(), useSession().data?.role, useFeatureLock('employees'))
+  const records = useBilling().data?.has_employees ?? false
+  return hrAccess(useScopes(), useSession().data?.role, useFeatureLock('employees'), records)
 }
 
 /** A disabled control keeps its tooltip: the span takes the hover and focus the disabled button cannot. */
@@ -64,13 +73,33 @@ export function DisabledTip({ reason, children }: { reason: string | null; child
 
 /** The plan lock, high under the tabs: what stays (the owner's view and export) and the way to the plans. */
 export function HrLockNotice({ hr }: { hr: HrAccess }) {
-  if (!hr.lock) return null
+  if (!hr.lock || hr.blocked) return null
   return (
     <FeatureLockNotice
       lock={hr.lock}
       kept={hr.owner ? translate('employeePlanKeptOwner') : translate('employeePlanKeptMember')}
       className="mx-3 mt-3 md:mx-5"
     />
+  )
+}
+
+/** The Employees module offered where it would be, on a plan without it. */
+export function HrUpsell({ hr }: { hr: HrAccess }) {
+  if (!hr.lock) return null
+  return (
+    <div className="p-3 md:p-5">
+      <UpsellCard
+        heading="h2"
+        lock={hr.lock}
+        title={translate('employeesUpsellTitle')}
+        pitch={translate('employeesUpsellPitch')}
+        benefits={[
+          { icon: Users, text: translate('employeesBenefitRecords') },
+          { icon: Banknote, text: translate('employeesBenefitPayroll') },
+          { icon: FileLock2, text: translate('employeesBenefitFiles') },
+        ]}
+      />
+    </div>
   )
 }
 

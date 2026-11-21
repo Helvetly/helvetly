@@ -120,6 +120,7 @@ export const storyDefaults = [
   http.get('/api/v1/quotes/:id/approval', () => nothing(NOT_REQUIRED)),
   http.get('/api/v1/expenses/:id/approval', () => nothing(NOT_REQUIRED)),
   http.get('/api/v1/approvals/inbox', () => nothing([])),
+  http.get('/api/v1/approvals/settings', () => nothing({ groups: [], policies: [] })),
   http.get('/api/v1/invoices/:id/dunning', () =>
     nothing({
       applies: false,

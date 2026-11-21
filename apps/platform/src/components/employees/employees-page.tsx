@@ -5,7 +5,7 @@ import { DropdownMenuItem } from '@helvetly/ui/components/dropdown-menu'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Download, IdCard, Lock, ScrollText, SearchX, Settings, UserPlus } from 'lucide-react'
+import { Download, IdCard, ScrollText, SearchX, Settings, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -42,7 +42,7 @@ import { setUrlQuery } from '@/lib/url-query'
 import { EmployeeDetail } from './employee-detail'
 import { EmployeeForm } from './employee-form'
 import { EmployeeStatusBadge } from './employee-status'
-import { HrLockNotice, useHrAccess, useHrTabs } from './hr-access'
+import { HrLockNotice, HrUpsell, useHrAccess, useHrTabs } from './hr-access'
 import { RetentionReview } from './retention-review'
 
 /** Employees: the company's staff, apart from the members who use Helvetly. */
@@ -117,12 +117,7 @@ export function EmployeesPage() {
       />
       <HrLockNotice hr={hr} />
       {hr.blocked ? (
-        <State
-          icon={<Lock />}
-          title={translate('employeeLockedTitle')}
-          text={translate('employeeLockedText')}
-          action={null}
-        />
+        <HrUpsell hr={hr} />
       ) : (
         <div className="flex flex-1 flex-col">
           {/* On a phone the search has its own row and the two filters share the next. */}

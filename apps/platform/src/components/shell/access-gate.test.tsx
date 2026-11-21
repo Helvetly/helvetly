@@ -54,21 +54,29 @@ test('pages without a resource are always shown', () => {
   pathname = '/clients'
 })
 
-test('employee pages lead home on a plan without them and without records, and stay with records', () => {
+test('employment settings lead home on a plan without employees and without records, and stay with records', () => {
   const pro = billingFixture({ plan: 'pro', locked: false })
-  pathname = '/employees/payroll'
-  renderGate(['*:*'], pro)
+  pathname = '/settings/employment'
+  renderGate(['read:employees'], pro)
   expect(screen.queryByText('The list')).toBeNull()
   expect(replace).toHaveBeenCalledWith('/')
   replace.mockClear()
-  renderGate(['*:*'], { ...pro, has_employees: true })
+  renderGate(['read:employees'], { ...pro, has_employees: true })
   expect(replace).not.toHaveBeenCalled()
   pathname = '/clients'
 })
 
-test('employee pages show nothing, and do not redirect, while billing loads', () => {
+test('the employees page opens on a plan without it: it shows the plan offer itself', () => {
   pathname = '/employees'
-  renderGate(['*:*'])
+  renderGate(['read:employees'], billingFixture({ plan: 'pro', locked: false }))
+  expect(screen.getByText('The list')).toBeVisible()
+  expect(replace).not.toHaveBeenCalled()
+  pathname = '/clients'
+})
+
+test('employment settings show nothing, and do not redirect, while billing loads', () => {
+  pathname = '/settings/employment'
+  renderGate(['read:employees'])
   expect(screen.queryByText('The list')).toBeNull()
   expect(replace).not.toHaveBeenCalled()
   pathname = '/clients'

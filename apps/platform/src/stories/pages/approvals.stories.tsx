@@ -5,19 +5,30 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { billingFixture } from '@/components/billing/billing-fixture'
 import { InvoicesPage } from '@/components/invoices/invoices-page'
 import { ApprovalsSettings } from '@/components/settings/approvals-settings'
+import { InvoiceSettingsPage } from '@/components/settings/invoice-settings'
 import {
   accountants,
   approvalHandlers,
+  approvalLockedHandlers,
   approvalOf,
   approvalStateOf,
   configuredApprovals,
   inboxItem,
   resetApprovals,
 } from '@/mocks/approvals'
+import { sampleSettings } from '@/test/invoice-api'
 
 import { storySession } from '../screen-fixtures'
 import { draftInvoice } from './api'
-import { closeHeidi, dark, desktop, Frame, pageParameters, phone } from './frame'
+import {
+  closeHeidi,
+  dark,
+  desktop,
+  expectCompactStacked,
+  Frame,
+  pageParameters,
+  phone,
+} from './frame'
 
 const business = http.get('/api/v1/billing', () =>
   HttpResponse.json({
@@ -68,6 +79,54 @@ const policy = async (name: string) => within(await body().findByRole('region', 
 const sheet = async () => within(await body().findByRole('dialog', { name: /Draft|Invoice/ }))
 
 // Settings
+
+const settingsData = http.get('/api/v1/invoice-settings', () =>
+  HttpResponse.json({ data: sampleSettings() }),
+)
+const invoiceSettings = () => (
+  <Frame>
+    <InvoiceSettingsPage />
+  </Frame>
+)
+const row = async () =>
+  within(await body().findByRole('list', { name: 'Approvals before issuing' }))
+
+/** Settings → Invoices says where approvals stand and links to the tab. */
+export const InvoiceSettingsRow: Story = {
+  parameters: pageParameters('/settings/invoices', {}, [
+    settingsData,
+    business,
+    ...approvalHandlers,
+  ]),
+  beforeEach: () => {
+    resetApprovals(configuredApprovals())
+  },
+  render: invoiceSettings,
+  play: async () => {
+    const approvals = await row()
+    await expect(
+      await approvals.findByText(/On: Invoices from CHF 1.000\.00, Credit notes/),
+    ).toBeVisible()
+    await expect(approvals.getByRole('link', { name: 'Change' })).toHaveAttribute(
+      'href',
+      '/settings/approvals/',
+    )
+  },
+}
+
+/** Without the Business plan the row says what it takes and still links to the tab's upsell. */
+export const InvoiceSettingsRowLocked: Story = {
+  parameters: pageParameters('/settings/invoices', {}, [settingsData, ...approvalLockedHandlers]),
+  render: invoiceSettings,
+  play: async () => {
+    const approvals = await row()
+    await expect(await approvals.findByText('Included in Business')).toBeVisible()
+    await expect(approvals.getByRole('link', { name: 'Set up' })).toHaveAttribute(
+      'href',
+      '/settings/approvals/',
+    )
+  },
+}
 
 /** Nothing set up: create a group, switch invoices on and read the rule in words, then save. */
 export const SettingsFirstSetup: Story = {
@@ -235,6 +294,7 @@ export const SettingsPlanWithoutFeature: Story = {
       await body().findByRole('region', { name: 'Approve documents before they go out' }),
     )
     await expect(card.getByRole('link', { name: 'Upgrade to Business' })).toBeVisible()
+    await expectCompactStacked(card.getByText(/Approver groups such as/))
     await expect(body().queryByRole('region', { name: 'Invoices' })).toBeNull()
   },
 }

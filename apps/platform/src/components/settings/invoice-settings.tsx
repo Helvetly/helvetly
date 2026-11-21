@@ -57,6 +57,7 @@ import {
   type FieldErrors,
   type SectionState,
 } from '@/components/section-form'
+import { ApprovalsRow } from '@/components/settings/approvals-row'
 import { NumberFormatField } from '@/components/settings/number-format-field'
 import { PercentInput } from '@/components/shared/percent-input'
 import { TextareaBox } from '@/components/textarea-box'
@@ -1347,6 +1348,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     ]}
                   />
                 </FormField>
+                <ApprovalsRow currency={values.currency} />
               </Section>
             )}
 

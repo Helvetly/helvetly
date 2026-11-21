@@ -190,7 +190,8 @@ export const HiddenWithoutRecords: Story = {
       await tabs.findByRole('button', { name: /^Workspace/ }, { timeout: 8000 }),
     ).toBeVisible()
     await expect(tabs.queryByRole('button', { name: /^Employment/ })).toBeNull()
-    await waitFor(() => expect(body.queryByRole('link', { name: /^Employees/ })).toBeNull())
-    await expect(body.queryByText(/Business does/)).toBeNull()
+    // Employees stays in the menu on every plan, marked as Business; only the settings tab is hidden
+    const employees = await body.findByRole('link', { name: /^Employees/ })
+    await expect(within(employees).getByText(/Business does/)).toBeInTheDocument()
   },
 }
