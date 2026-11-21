@@ -81,12 +81,7 @@ import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
 
-import {
-  ChangesPendingBadge,
-  ClientRowStatus,
-  ClientStatusBadge,
-  ClientTypeBadge,
-} from './client-bits'
+import { ChangesPendingBadge, ClientRowStatus, ClientTypeBadge } from './client-bits'
 import { ClientDetail, type ClientCommand } from './client-detail'
 import { ClientForm } from './client-form'
 import { countryName } from './client-form-model'
