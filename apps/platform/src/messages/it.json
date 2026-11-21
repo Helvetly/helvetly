@@ -4892,7 +4892,7 @@
   "itemised": "Voci",
   "enterAs": "Inserisci come",
   "addAnItem": "Aggiungi una voce",
-  "expenseCategoryDefault": "Categoria della spesa",
+  "defaultExpenseCategory": "Categoria della spesa",
   "lineUnitPrice": "Prezzo unitario della riga {value1}",
   "lineCategory": "Categoria della riga {value1}",
   "enterAQuantityAbove0": "Inserisci una quantità maggiore di 0.",

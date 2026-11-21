@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-// TestExpenseCategoryCatalogueMigration: 00043 gives the categories an older workspace had their catalogue key when name
+// TestExpenseCategoryCatalogueMigration: 00046 gives the categories an older workspace had their catalogue key when name
 // and account match, adds the entries it lacks (active, never a second category of a name it has) and leaves a
 // workspace without categories to SeedExpenseCategories. Its entries are store.CategoryPresets.
 func TestExpenseCategoryCatalogueMigration(t *testing.T) {
 	ctx := context.Background()
 	p, pool := migrationProvider(t)
-	if _, err := p.UpTo(ctx, 42); err != nil {
+	if _, err := p.UpTo(ctx, 45); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO workspaces (id, name, created_at) VALUES
@@ -26,7 +26,7 @@ func TestExpenseCategoryCatalogueMigration(t *testing.T) {
 		('c4', 'ws_custom', 'Coworking', '6000', NULL, now(), now())`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.UpTo(ctx, 43); err != nil {
+	if _, err := p.UpTo(ctx, 46); err != nil {
 		t.Fatal(err)
 	}
 	q := Q{db: pool}

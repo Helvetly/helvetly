@@ -4892,7 +4892,7 @@
   "itemised": "Positionen",
   "enterAs": "Erfassen als",
   "addAnItem": "Position hinzufügen",
-  "expenseCategoryDefault": "Kategorie der Ausgabe",
+  "defaultExpenseCategory": "Kategorie der Ausgabe",
   "lineUnitPrice": "Zeile {value1} Stückpreis",
   "lineCategory": "Zeile {value1} Kategorie",
   "enterAQuantityAbove0": "Geben Sie eine Menge über 0 ein.",

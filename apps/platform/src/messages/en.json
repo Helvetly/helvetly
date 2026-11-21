@@ -4892,7 +4892,7 @@
   "itemised": "Items",
   "enterAs": "Enter as",
   "addAnItem": "Add an item",
-  "expenseCategoryDefault": "Expense's category",
+  "defaultExpenseCategory": "Expense's category",
   "lineUnitPrice": "Line {value1} unit price",
   "lineCategory": "Line {value1} category",
   "enterAQuantityAbove0": "Enter a quantity above 0.",

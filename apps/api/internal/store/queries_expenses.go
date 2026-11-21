@@ -155,7 +155,7 @@ func (e *Expense) Derive(today string) {
 // CategoryPreset is an entry of the category catalogue: an account of the KMU-Kontenrahmen and its usual VAT.
 type CategoryPreset struct{ Key, Name, Account, VAT string }
 
-// CategoryPresets: the catalogue a new workspace starts with (migration 00043 adds it to older ones). Name is the
+// CategoryPresets: the catalogue a new workspace starts with (migration 00046 adds it to older ones). Name is the
 // stored English name; the first sixteen keep the names workspaces had before the catalogue.
 var CategoryPresets = []CategoryPreset{
 	{"materials", "Materials & goods", "4000", "standard"},

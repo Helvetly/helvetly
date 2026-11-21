@@ -4892,7 +4892,7 @@
   "itemised": "Articles",
   "enterAs": "Saisir comme",
   "addAnItem": "Ajouter un article",
-  "expenseCategoryDefault": "Catégorie de la dépense",
+  "defaultExpenseCategory": "Catégorie de la dépense",
   "lineUnitPrice": "Prix unitaire de la ligne {value1}",
   "lineCategory": "Catégorie de la ligne {value1}",
   "enterAQuantityAbove0": "Saisissez une quantité supérieure à 0.",
