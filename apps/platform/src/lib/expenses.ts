@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-query'
 
 import { type ApiError, request } from '@/lib/api'
+import type { ApprovalState } from '@/lib/approvals'
 import type { ClientFile, Page } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import type { Decimal, PaymentMethod } from '@/lib/invoices'
@@ -99,6 +100,8 @@ export type Expense = {
   voided_at: string | null
   voided_by: Person | null
   void_reason: string | null
+  /** The latest approval request of a draft (or the approval it was booked with); null without one. */
+  approval_state: Exclude<ApprovalState, 'none'> | null
   created_at: string
   updated_at: string
 }

@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto'
 
-import { expect, test as base, type APIRequestContext, type Page } from '@playwright/test'
+import {
+  expect,
+  test as base,
+  type APIRequestContext,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from '@playwright/test'
 
 export function object(value: unknown): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value))
@@ -146,6 +153,35 @@ export async function signIn(request: APIRequestContext, email: string) {
     await expect(await api.write('/session/onboarded')).toBeOK()
   }
   return api
+}
+
+export type Person = {
+  api: FinancialAPI
+  context: BrowserContext
+  page: Page
+  id: string
+  name: string
+}
+
+/** Invites a member who may read everything, signs them in in their own browser context and names them. */
+export async function join(
+  owner: FinancialAPI,
+  browser: Browser,
+  baseURL: string | undefined,
+  name: string,
+): Promise<Person> {
+  const email = `e2e-approver-${randomUUID()}@example.test`
+  await owner.save('/members/invitations', {
+    email,
+    role: 'member',
+    scopes: ['read:*'],
+    send_email: false,
+  })
+  const context = await browser.newContext({ baseURL })
+  const api = await signIn(context.request, email)
+  await expect(await api.write('/account', { name }, 'PATCH')).toBeOK()
+  const session = object(await (await context.request.get('/api/v1/session')).json())
+  return { api, context, page: await context.newPage(), id: text(object(session.user).id), name }
 }
 
 export const test = base.extend<{ api: FinancialAPI; email: string; runtimeErrors: void }>({

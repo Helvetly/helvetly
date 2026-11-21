@@ -56,7 +56,7 @@ func render(n store.Notification) message {
 	if m.href == "" {
 		m.href = "/notifications"
 	}
-	m.action = or(actions[n.Event], "Open Helvetly")
+	m.action = or(m.action, actions[n.Event], "Open Helvetly")
 	return m
 }
 
@@ -103,15 +103,18 @@ func words(event string, d data) message {
 			actor: d.s("contact_name")}
 	case "approval.requested":
 		return message{title: or(d.s("actor"), "A team member") + " asks you to approve " + approvalDoc(d),
-			body: strings.TrimSpace(money + " · it is issued once approved."), href: invoice}
+			body: strings.TrimSpace(money + " · " + approvalStep(d).once), href: approvalHref(d, invoice)}
 	case "approval.approved":
-		return message{title: "Your " + approvalDoc(d) + " was approved", body: "You can issue it now.", href: invoice}
+		step := approvalStep(d)
+		return message{title: "Your " + approvalDoc(d) + " was approved", body: step.now, href: approvalHref(d, invoice),
+			action: step.action}
 	case "approval.rejected":
 		body := "It is a draft again: change it and submit it again."
 		if d.s("comment") != "" {
 			body = "“" + d.s("comment") + "”"
 		}
-		return message{title: or(d.s("actor"), "A team member") + " rejected your " + approvalDoc(d), body: body, href: invoice}
+		return message{title: or(d.s("actor"), "A team member") + " rejected your " + approvalDoc(d), body: body,
+			href: approvalHref(d, invoice)}
 	case "quote.accepted", "quote.declined":
 		verb := map[string]string{"quote.accepted": "accepted", "quote.declined": "declined"}[event]
 		body := "In the client portal."
@@ -223,11 +226,42 @@ func words(event string, d data) message {
 	return message{title: "Something happened in your workspace", href: "/"}
 }
 
-// approvalDoc names a draft waiting for approval: "credit note for Acme AG".
+// approvalDoc names a draft waiting for approval: "credit note for Acme AG", "quote for Acme AG", "expense from
+// Swisscom".
 func approvalDoc(d data) string {
+	switch d.s("doc_type") {
+	case "quote":
+		return "quote" + strings.Replace(from(d.s("client")), " from ", " for ", 1)
+	case "expense":
+		return "expense" + from(d.s("client"))
+	}
 	kind := map[string]string{"credit_note": "credit note", "debit_note": "debit note", "corrected": "corrected invoice",
 		"proforma": "pro-forma invoice"}[d.s("kind")]
 	return or(kind, "invoice") + strings.Replace(from(d.s("client")), " from ", " for ", 1)
+}
+
+// approvalStep: what an approval lets happen to the document: invoices are issued, quotes sent, expenses booked.
+type step struct{ once, now, action string }
+
+func approvalStep(d data) step {
+	switch d.s("doc_type") {
+	case "quote":
+		return step{"it is sent once approved.", "You can send it now.", "Send it"}
+	case "expense":
+		return step{"it is booked once approved.", "You can book it now.", "Book it"}
+	}
+	return step{"it is issued once approved.", "You can issue it now.", "Issue it"}
+}
+
+// approvalHref opens the document; notifications from before quotes and expenses name only invoice_id.
+func approvalHref(d data, invoice string) string {
+	switch d.s("doc_type") {
+	case "quote":
+		return "/quotes?" + url.Values{"id": {d.s("doc_id")}}.Encode()
+	case "expense":
+		return "/expenses?" + url.Values{"id": {d.s("doc_id")}}.Encode()
+	}
+	return invoice
 }
 
 func from(client string) string {

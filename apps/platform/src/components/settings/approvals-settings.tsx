@@ -17,10 +17,12 @@ import {
   FileText,
   Pencil,
   Plus,
+  ScrollText,
   ShieldCheck,
   Trash2,
   Users,
   UserX,
+  Wallet,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -81,7 +83,27 @@ export const DOC_TYPE_INFO: Record<DocType, { label: string; hint: string; icon:
     hint: translate('approvalCorrectionsHint'),
     icon: FilePen,
   },
+  quote: {
+    label: translate('quotes'),
+    hint: translate('approvalQuotesHint'),
+    icon: ScrollText,
+  },
+  expense: {
+    label: translate('expenses'),
+    hint: translate('approvalExpensesHint'),
+    icon: Wallet,
+  },
 }
+
+/** The policies by area: what goes out to clients, and what the business pays. */
+const POLICY_GROUPS: { id: string; label: string; types: DocType[] }[] = [
+  {
+    id: 'sales',
+    label: translate('approvalGroupSales'),
+    types: ['invoice', 'credit_note', 'debit_note', 'corrected', 'quote'],
+  },
+  { id: 'spending', label: translate('approvalGroupSpending'), types: ['expense'] },
+]
 
 /** A policy as the form edits it: the threshold as typed. */
 type Draft = { enabled: boolean; min_total: string; rules: ApprovalRule[] }
@@ -390,6 +412,8 @@ function Policies({ policies, groups }: { policies: ApprovalPolicy[]; groups: Ap
     credit_note: saved('credit_note'),
     debit_note: saved('debit_note'),
     corrected: saved('corrected'),
+    quote: saved('quote'),
+    expense: saved('expense'),
   }
   const form = useSectionForm<Drafts, DocType>({
     initial,
@@ -410,7 +434,20 @@ function Policies({ policies, groups }: { policies: ApprovalPolicy[]; groups: Ap
     savedMessage: (type) => translate('approvalPolicySaved', { type: DOC_TYPE_INFO[type].label }),
   })
   const groupName = (id: string) => groups.find((group) => group.id === id)?.name
-  return DOC_TYPES.map((type) => {
+  return POLICY_GROUPS.map((group) => (
+    <section key={group.id} aria-labelledby={`approval-group-${group.id}`} className="contents">
+      <p
+        id={`approval-group-${group.id}`}
+        className="border-t pt-7 text-caption font-medium tracking-wide text-muted-foreground uppercase"
+      >
+        {group.label}
+      </p>
+      {group.types.map((type, i) => policySection(type, i === 0))}
+    </section>
+  ))
+
+  // The first section of a group sits right under the group's hairline and name.
+  function policySection(type: DocType, first: boolean) {
     const draft = form.values[type]
     const info = DOC_TYPE_INFO[type]
     const error = (field: string) => form.errors[`${type}.${field}`]
@@ -421,6 +458,7 @@ function Policies({ policies, groups }: { policies: ApprovalPolicy[]; groups: Ap
       <SettingsSection
         key={type}
         id={`approval-policy-${type}`}
+        className={first ? 'border-t-0 pt-0' : undefined}
         icon={info.icon}
         title={info.label}
         description={info.hint}
@@ -523,7 +561,7 @@ function Policies({ policies, groups }: { policies: ApprovalPolicy[]; groups: Ap
         </div>
       </SettingsSection>
     )
-  })
+  }
 }
 
 /** The first group (then "anyone") no rule asks yet; undefined when every source has its rule. */

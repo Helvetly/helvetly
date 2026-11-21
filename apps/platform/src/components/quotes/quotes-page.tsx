@@ -23,6 +23,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { memo, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { ApprovalInbox } from '@/components/approvals/approval-inbox'
 import { useFeatureLock } from '@/components/billing/feature-lock'
 import { listTable } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
@@ -75,7 +76,7 @@ import {
 import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
 
-import { QuoteStatusBadge } from './quote-bits'
+import { QuoteRowStatus } from './quote-bits'
 import { QuoteMenuItems, useQuoteCommands } from './quote-commands'
 import { QuoteDetail } from './quote-detail'
 import { NewQuoteSheet } from './quote-editor'
@@ -169,7 +170,7 @@ const COLUMNS: ColumnDef[] = [
     id: 'status',
     label: translate('status'),
     width: 'w-[120px]',
-    cell: (quote) => <QuoteStatusBadge status={quote.status} />,
+    cell: (quote) => <QuoteRowStatus quote={quote} />,
   },
 ]
 
@@ -430,6 +431,7 @@ export function QuotesPage() {
         onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['quotes'] })}
       >
         <div className="relative flex flex-1 flex-col">
+          <ApprovalInbox doc="quotes" onOpen={open} />
           <ListToolbar>
             <ListSearch
               label={translate('searchQuotes')}
@@ -757,7 +759,7 @@ const QuoteItem = memo(function QuoteItem({
           </span>
           <span className="grid justify-items-end gap-1">
             <Money value={quote.payable_total} currency={quote.currency} className="text-body" />
-            <QuoteStatusBadge status={quote.status} />
+            <QuoteRowStatus quote={quote} />
           </span>
         </button>
       </li>

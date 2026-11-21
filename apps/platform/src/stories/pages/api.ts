@@ -189,6 +189,7 @@ export const expense = (change: Partial<Expense>): Expense => ({
   voided_at: null,
   voided_by: null,
   void_reason: null,
+  approval_state: null,
   created_at: at,
   updated_at: at,
   ...change,

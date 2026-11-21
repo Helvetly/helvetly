@@ -88,6 +88,9 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			}
 		}
 		if t.Status == "draft" { // the client accepts the schedule with the quote: it must hold as sent
+			if err := s.approvals.Gate(ctx, q, sess.Workspace.ID, approvalDoc(t)); err != nil {
+				return err
+			}
 			if err := s.invoices.QuoteScheduleProblems(asInvoice(t)); err != nil {
 				return err
 			}
@@ -294,7 +297,11 @@ func (s *Service) revise(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		t.Status, t.Revision, t.PDFKey = "draft", t.Revision+1, nil
 		t.DecidedAt, t.DecidedBy, t.DecisionNote = nil, nil, nil
-		return q.SaveQuote(ctx, sess.Workspace.ID, t, now)
+		if err := q.SaveQuote(ctx, sess.Workspace.ID, t, now); err != nil {
+			return err
+		}
+		// the approval was for the revision sent: the next one is approved again
+		return s.approvals.Reset(ctx, q, sess, approvalDoc(t))
 	})
 	if err != nil {
 		return err

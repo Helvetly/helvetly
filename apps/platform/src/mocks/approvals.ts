@@ -1,14 +1,15 @@
-// Approvals before issuing (GET /approvals/settings, groups, policies, the inbox and one invoice's request), as the Go
+// Approvals (GET /approvals/settings, groups, policies, the inbox and one invoice's, quote's or expense's request), as the Go
 // API answers. "Me" is the stories' signed-in person, Anna Muster (usr_story).
 import { http, HttpResponse } from 'msw'
 
-import type {
-  Approval,
-  ApprovalGroup,
-  ApprovalPolicy,
-  ApprovalRule,
-  DocType,
-  InboxItem,
+import {
+  DOC_TYPES,
+  type Approval,
+  type ApprovalGroup,
+  type ApprovalPolicy,
+  type ApprovalRule,
+  type DocType,
+  type InboxItem,
 } from '@/lib/approvals'
 
 const ME = { id: 'usr_story', name: 'Anna Muster' }
@@ -32,8 +33,7 @@ const policy = (doc_type: DocType, change: Partial<ApprovalPolicy> = {}): Approv
   rules: [],
   ...change,
 })
-const offPolicies = () =>
-  (['invoice', 'credit_note', 'debit_note', 'corrected'] as const).map((type) => policy(type))
+const offPolicies = () => DOC_TYPES.map((type) => policy(type))
 
 /** Two groups; invoices from 1'000 need 2 accountants and 1 manager, credit notes anyone. */
 export const configuredApprovals = () => ({
@@ -50,6 +50,12 @@ export const configuredApprovals = () => ({
     policy('credit_note', { enabled: true, rules: [{ group_id: null, min: 1 }] }),
     policy('debit_note'),
     policy('corrected'),
+    policy('quote', { enabled: true, rules: [{ group_id: management.id, min: 1 }] }),
+    policy('expense', {
+      enabled: true,
+      min_total: '500.00',
+      rules: [{ group_id: null, min: 1 }],
+    }),
   ],
 })
 
@@ -115,21 +121,21 @@ let settings: { groups: ApprovalGroup[]; policies: ApprovalPolicy[] } = {
 let inbox: InboxItem[] = []
 let approvals = new Map<string, Approval>()
 
-/** Settings, my inbox and each invoice's approval (any other invoice needs none). */
+/** Settings, my inbox and each document's approval by its id (any other document needs none). */
 export function resetApprovals({
   groups = [],
   policies = offPolicies(),
   items = [],
-  byInvoice = {},
+  byDoc = {},
 }: {
   groups?: ApprovalGroup[]
   policies?: ApprovalPolicy[]
   items?: InboxItem[]
-  byInvoice?: Record<string, Approval>
+  byDoc?: Record<string, Approval>
 } = {}) {
   settings = { groups, policies }
   inbox = items
-  approvals = new Map(Object.entries(byInvoice))
+  approvals = new Map(Object.entries(byDoc))
 }
 
 const refuse = (status: number, code: string, message: string, details?: object) =>
@@ -158,7 +164,7 @@ function policyProblem(input: Omit<ApprovalPolicy, 'doc_type'>) {
 
 const approvalFor = (id: string) => approvals.get(id) ?? NOT_REQUIRED
 
-/** The invoice's `approval_state` as the API derives it from its latest request. */
+/** The document's `approval_state` as the API derives it from its latest request. */
 export function approvalStateOf(id: string) {
   const state = approvals.get(id)?.state
   return state === undefined || state === 'none' ? null : state
@@ -224,10 +230,10 @@ export const approvalHandlers = [
     },
   ),
   http.get('/api/v1/approvals/inbox', () => HttpResponse.json({ data: inbox })),
-  http.get<{ id: string }>('/api/v1/invoices/:id/approval', ({ params }) =>
+  http.get<{ id: string }>('/api/v1/:doc/:id/approval', ({ params }) =>
     HttpResponse.json({ data: approvalFor(params.id) }),
   ),
-  http.post<{ id: string }>('/api/v1/invoices/:id/approval', ({ params }) => {
+  http.post<{ id: string }>('/api/v1/:doc/:id/approval', ({ params }) => {
     const current = approvalFor(params.id)
     if (!current.can_submit) return refuse(403, 'approval_not_allowed', 'You can’t submit this.')
     return answer(params.id, {
@@ -241,7 +247,7 @@ export const approvalHandlers = [
       trail: [...current.trail, entry('submitted')],
     })
   }),
-  http.post<{ id: string }>('/api/v1/invoices/:id/approval/withdraw', ({ params }) => {
+  http.post<{ id: string }>('/api/v1/:doc/:id/approval/withdraw', ({ params }) => {
     const current = approvalFor(params.id)
     if (current.state !== 'pending')
       return refuse(409, 'invalid_state', 'Only a pending request can be withdrawn.')
@@ -254,33 +260,30 @@ export const approvalHandlers = [
       trail: [...current.trail, entry('withdrawn')],
     })
   }),
-  http.post<{ id: string }>(
-    '/api/v1/invoices/:id/approval/approve',
-    async ({ params, request }) => {
-      const current = approvalFor(params.id)
-      if (!current.can_decide) return refuse(403, 'approval_not_allowed', 'You can’t decide this.')
-      const sent = (await request.json()) as { request_id?: string }
-      if (sent.request_id !== current.request_id)
-        return refuse(409, 'approval_changed', 'This document was changed and submitted again.')
-      // My approval fills the first slot still open.
-      const open = current.rules.findIndex((rule) => rule.approved < rule.min)
-      const rules = current.rules.map((rule, i) =>
-        i === open ? { ...rule, approved: rule.approved + 1 } : rule,
-      )
-      const done = rules.every((rule) => rule.approved >= rule.min)
-      inbox = inbox.filter((item) => item.doc_id !== params.id)
-      return answer(params.id, {
-        ...current,
-        rules,
-        state: done ? 'approved' : 'pending',
-        can_decide: false,
-        can_withdraw: done ? false : current.can_withdraw,
-        trail: [...current.trail, entry('approved')],
-      })
-    },
-  ),
+  http.post<{ id: string }>('/api/v1/:doc/:id/approval/approve', async ({ params, request }) => {
+    const current = approvalFor(params.id)
+    if (!current.can_decide) return refuse(403, 'approval_not_allowed', 'You can’t decide this.')
+    const sent = (await request.json()) as { request_id?: string }
+    if (sent.request_id !== current.request_id)
+      return refuse(409, 'approval_changed', 'This document was changed and submitted again.')
+    // My approval fills the first slot still open.
+    const open = current.rules.findIndex((rule) => rule.approved < rule.min)
+    const rules = current.rules.map((rule, i) =>
+      i === open ? { ...rule, approved: rule.approved + 1 } : rule,
+    )
+    const done = rules.every((rule) => rule.approved >= rule.min)
+    inbox = inbox.filter((item) => item.doc_id !== params.id)
+    return answer(params.id, {
+      ...current,
+      rules,
+      state: done ? 'approved' : 'pending',
+      can_decide: false,
+      can_withdraw: done ? false : current.can_withdraw,
+      trail: [...current.trail, entry('approved')],
+    })
+  }),
   http.post<{ id: string }, { comment?: string; request_id?: string }>(
-    '/api/v1/invoices/:id/approval/reject',
+    '/api/v1/:doc/:id/approval/reject',
     async ({ params, request }) => {
       const { comment, request_id } = await request.json()
       const current = approvalFor(params.id)

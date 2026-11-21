@@ -3,19 +3,36 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { BadgeCheck, ChevronDown } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-import { useApprovalInbox } from '@/lib/approvals'
+import { useApprovalInbox, type ApprovalDoc, type InboxItem } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
 import { formatMoney, kindInfo } from '@/lib/invoices'
 
+/** The page an item opens on. */
+const docOf = (item: InboxItem): ApprovalDoc =>
+  item.doc_type === 'quote' ? 'quotes' : item.doc_type === 'expense' ? 'expenses' : 'invoices'
+
+const kindLabel = (item: InboxItem) =>
+  item.kind === 'expense'
+    ? translate('expense2')
+    : item.kind === 'quote'
+      ? translate('quote2')
+      : kindInfo(item.kind).label
+
 /**
- * "Needs my approval": the documents waiting for my decision, as a band under the tabs; a row opens its drawer.
- * Not there while nothing waits.
+ * "Needs my approval": the documents waiting for my decision, as a band under the tabs; a row of this page's `doc`
+ * opens its drawer, any other goes to its own page. Not there while nothing waits.
  */
-export function ApprovalInbox({ onOpen }: { onOpen: (id: string) => void }) {
+export function ApprovalInbox({ doc, onOpen }: { doc: ApprovalDoc; onOpen: (id: string) => void }) {
   const items = useApprovalInbox().data ?? []
+  const router = useRouter()
   const [open, setOpen] = useState(true)
+  const openItem = (item: InboxItem) =>
+    docOf(item) === doc
+      ? onOpen(item.doc_id)
+      : router.push(`/${docOf(item)}?id=${encodeURIComponent(item.doc_id)}`)
   if (items.length === 0) return null
   return (
     <section
@@ -49,14 +66,16 @@ export function ApprovalInbox({ onOpen }: { onOpen: (id: string) => void }) {
             <li key={item.doc_id}>
               <button
                 type="button"
-                onClick={() => onOpen(item.doc_id)}
+                onClick={() => openItem(item)}
                 className="flex w-full flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md px-2 py-1.5 text-left hover:bg-muted/60"
               >
                 <span className="min-w-0 flex-1 basis-48">
-                  <span className="block truncate text-body">{item.client_name}</span>
+                  <span className="block truncate text-body">
+                    {item.client_name || kindLabel(item)}
+                  </span>
                   <span className="block truncate text-caption text-muted-foreground">
                     {translate('approvalInboxMeta', {
-                      kind: kindInfo(item.kind).label,
+                      kind: kindLabel(item),
                       name: item.submitted_by.name,
                       date: formatDate(item.submitted_at),
                     })}

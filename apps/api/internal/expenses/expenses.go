@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/notifications"
 	"helvetly.com/api/internal/retention"
@@ -40,11 +41,43 @@ type Storage interface {
 }
 
 type Service struct {
-	db    *store.Store
-	auth  Auth
-	files Storage
-	log   *slog.Logger
-	now   func() time.Time
+	db        *store.Store
+	auth      Auth
+	files     Storage
+	approvals *approvals.Service // nil: nothing is gated
+	log       *slog.Logger
+	now       func() time.Time
+}
+
+// SetApprovals is startup wiring: draft expenses whose policy applies are approved before they are booked.
+func (s *Service) SetApprovals(a *approvals.Service) { s.approvals = a }
+
+func approvalDoc(e store.Expense) approvals.Doc {
+	supplier := ""
+	if e.SupplierName != nil {
+		supplier = *e.SupplierName
+	} else if e.Description != nil {
+		supplier = *e.Description
+	}
+	return approvals.Doc{Type: "expense", Subject: "expense", Resource: "expenses", ID: e.ID, Draft: e.Status == "draft",
+		Kind: "expense", Client: supplier, Currency: e.Currency, Total: e.Total}
+}
+
+func (s *Service) approvalLoad(ctx context.Context, q store.Q, sess store.Session, id string, lock bool) (approvals.Doc, error) {
+	e, err := q.Expense(ctx, sess.Workspace.ID, id, s.today(sess.Workspace), lock)
+	return approvalDoc(e), err
+}
+
+// changed: the session's person changed the locked draft: they become one of its authors, who never approve it, and
+// its open approval request ends (internal/approvals).
+func (s *Service) changed(ctx context.Context, q store.Q, sess store.Session, e store.Expense) error {
+	if e.Status != "draft" {
+		return nil
+	}
+	if err := q.AddApprovalAuthor(ctx, sess.Workspace.ID, e.ID, sess.User.ID); err != nil {
+		return err
+	}
+	return s.approvals.Reset(ctx, q, sess, approvalDoc(e))
 }
 
 func New(db *store.Store, a Auth, files Storage, log *slog.Logger) *Service {
@@ -89,6 +122,10 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/expense-categories", s.categories)
 	handle("POST /api/v1/expense-categories", s.createCategory)
 	handle("PATCH /api/v1/expense-categories/{id}", s.updateCategory)
+	if s.approvals != nil {
+		s.approvals.Routes(func(p string, h func(http.ResponseWriter, *http.Request, store.Session) error) { handle(p, h) },
+			"/api/v1/expenses/{id}/approval", s.approvalLoad)
+	}
 }
 
 var (
@@ -256,6 +293,9 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := s.save(r.Context(), q, sess, e, paid); err != nil {
 			return err
 		}
+		if err := s.changed(r.Context(), q, sess, e); err != nil {
+			return err
+		}
 		return s.refile(r.Context(), q, sess, e, oldCategory, oldPath)
 	})
 	if err != nil {
@@ -315,7 +355,13 @@ func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if e.Status != "draft" {
 		return invalidState("Only drafts can be deleted: void a booked expense instead.")
 	}
-	if _, err := s.db.DeleteDraftExpense(r.Context(), sess.Workspace.ID, e.ID, s.now()); err != nil {
+	err = s.db.Tx(r.Context(), func(q store.Q) error {
+		if _, err := q.DeleteDraftExpense(r.Context(), sess.Workspace.ID, e.ID, s.now()); err != nil {
+			return err
+		}
+		return s.approvals.Forget(r.Context(), q, sess.Workspace.ID, e.ID)
+	})
+	if err != nil {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -334,6 +380,9 @@ func (s *Service) book(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		if reasons := bookReasons(e, s.today(sess.Workspace)); len(reasons) > 0 {
 			return auth.Error(http.StatusUnprocessableEntity, "cannot_book", "This expense cannot be booked yet.",
 				map[string]any{"reasons": reasons})
+		}
+		if err := s.approvals.Gate(r.Context(), q, sess.Workspace.ID, approvalDoc(e)); err != nil {
+			return err
 		}
 		return s.bookOne(r.Context(), q, sess, e)
 	})
@@ -606,6 +655,11 @@ func (s *Service) apply(ctx context.Context, q store.Q, sess store.Session, e *s
 		if reasons := bookReasons(*e, today); len(reasons) > 0 {
 			return strings.Join(reasons, " "), nil
 		}
+		if err := s.approvals.Gate(ctx, q, sess.Workspace.ID, approvalDoc(*e)); errors.Is(err, approvals.ErrRequired) {
+			return "Needs approval.", nil
+		} else if err != nil {
+			return "", err
+		}
 		err := s.bookOne(ctx, q, sess, *e)
 		if errors.Is(err, store.ErrPeriodClosed) {
 			return "period_closed", nil
@@ -615,8 +669,10 @@ func (s *Service) apply(ctx context.Context, q store.Q, sess store.Session, e *s
 		if e.Status != "draft" {
 			return "Only drafts can be deleted.", nil
 		}
-		_, err := q.DeleteDraftExpense(ctx, sess.Workspace.ID, e.ID, now)
-		return "", err
+		if _, err := q.DeleteDraftExpense(ctx, sess.Workspace.ID, e.ID, now); err != nil {
+			return "", err
+		}
+		return "", s.approvals.Forget(ctx, q, sess.Workspace.ID, e.ID)
 	}
 	if e.Status == "void" {
 		return "Voided.", nil

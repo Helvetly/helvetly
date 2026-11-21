@@ -3,6 +3,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Panel } from '@helvetly/ui/components/panel'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, MessageSquareWarning, RotateCcw, Send, Undo2, X } from 'lucide-react'
@@ -10,16 +11,17 @@ import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { fieldErrors, FormDialog } from '@/components/invoices/invoice-dialogs'
 import { TextareaBox } from '@/components/textarea-box'
 import {
   useApprovalAction,
   type Approval,
   type ApprovalAction,
+  type ApprovalDoc,
+  type ApprovalTarget,
   type TrailEntry,
 } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
-
-import { fieldErrors, FormDialog } from './invoice-dialogs'
 
 /** Whether issuing waits for an approval: required and not approved yet. */
 export const awaitsApproval = (approval: Approval | undefined) =>
@@ -36,12 +38,40 @@ const DONE: Record<ApprovalAction, string> = {
   reject: translate('approvalYouRejected'),
 }
 
+/** What the panel and the gated button say, by what approval allows: issuing, sending or booking. */
+export const APPROVAL_WORDS: Record<
+  ApprovalDoc,
+  { needed: string; neededNoSubmit: string; ready: string; waits: string; needs: string }
+> = {
+  invoices: {
+    needed: translate('approvalNeededSubmit'),
+    neededNoSubmit: translate('approvalNeededNoSubmit'),
+    ready: translate('approvalReadyToIssue'),
+    waits: translate('approvalIssueWaits'),
+    needs: translate('approvalIssueNeedsApproval'),
+  },
+  quotes: {
+    needed: translate('approvalNeededSubmitQuote'),
+    neededNoSubmit: translate('approvalNeededNoSubmitQuote'),
+    ready: translate('approvalReadyToSend'),
+    waits: translate('approvalSendWaits'),
+    needs: translate('approvalSendNeedsApproval'),
+  },
+  expenses: {
+    needed: translate('approvalNeededSubmitExpense'),
+    neededNoSubmit: translate('approvalNeededNoSubmitExpense'),
+    ready: translate('approvalReadyToBook'),
+    waits: translate('approvalBookWaits'),
+    needs: translate('approvalBookNeedsApproval'),
+  },
+}
+
 /** Runs one approval action with its toast; `onDone` after it succeeded. */
-export function useRunApproval(invoiceId: string) {
+export function useRunApproval(target: ApprovalTarget) {
   const action = useApprovalAction()
   const run = (kind: ApprovalAction, comment?: string, onDone?: () => void) =>
     action.mutate(
-      { id: invoiceId, action: kind, comment },
+      { target, action: kind, comment },
       {
         onSuccess: () => {
           toast.success(DONE[kind])
@@ -53,9 +83,56 @@ export function useRunApproval(invoiceId: string) {
   return { run, pending: action.isPending }
 }
 
+/**
+ * The drawer's main button while approval holds it back: "Submit for approval" for someone who may submit, else the
+ * gated action (`children`), focusable but inert, its tooltip saying why.
+ */
+export function ApprovalGate({
+  target,
+  approval,
+  children,
+}: {
+  target: ApprovalTarget
+  approval: Approval | undefined
+  children: ReactNode
+}) {
+  const submitting = useRunApproval(target)
+  const words = APPROVAL_WORDS[target.doc]
+  if (approval?.can_submit)
+    return (
+      <Button
+        className="gap-1.5"
+        disabled={submitting.pending}
+        onClick={() => submitting.run('submit')}
+      >
+        <Send /> {translate('approvalSubmit')}
+      </Button>
+    )
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {/* Stays focusable while it cannot run, so its tooltip can say why. */}
+        <Button aria-disabled className="cursor-not-allowed gap-1.5 opacity-50">
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">
+        {approval?.state === 'pending' ? words.waits : words.needs}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 /** The draft's approval in the drawer: its state, each rule's progress, the trail and what I may do. */
-export function ApprovalPanel({ invoiceId, approval }: { invoiceId: string; approval: Approval }) {
-  const { run, pending } = useRunApproval(invoiceId)
+export function ApprovalPanel({
+  target,
+  approval,
+}: {
+  target: ApprovalTarget
+  approval: Approval
+}) {
+  const { run, pending } = useRunApproval(target)
+  const words = APPROVAL_WORDS[target.doc]
   const [rejecting, setRejecting] = useState(false)
   const rejection = approval.state === 'rejected' ? approval.trail.findLast(isRejection) : undefined
   return (
@@ -64,15 +141,11 @@ export function ApprovalPanel({ invoiceId, approval }: { invoiceId: string; appr
       <section aria-label={translate('approval')} className="grid gap-3">
         {approval.state === 'none' && (
           <p className="text-body-sm text-pretty text-muted-foreground">
-            {approval.can_submit
-              ? translate('approvalNeededSubmit')
-              : translate('approvalNeededNoSubmit')}
+            {approval.can_submit ? words.needed : words.neededNoSubmit}
           </p>
         )}
         {approval.state === 'approved' && (
-          <p className="text-body-sm text-pretty text-muted-foreground">
-            {translate('approvalReadyToIssue')}
-          </p>
+          <p className="text-body-sm text-pretty text-muted-foreground">{words.ready}</p>
         )}
         {approval.state === 'rejected' && (
           <Callout tone="danger" icon={MessageSquareWarning}>
@@ -172,7 +245,7 @@ export function ApprovalPanel({ invoiceId, approval }: { invoiceId: string; appr
           </div>
         )}
       </section>
-      {rejecting && <RejectDialog invoiceId={invoiceId} onClose={() => setRejecting(false)} />}
+      {rejecting && <RejectDialog target={target} onClose={() => setRejecting(false)} />}
     </Panel>
   )
 }
@@ -228,14 +301,14 @@ function TrailRow({ entry }: { entry: TrailEntry }) {
 }
 
 /** Rejecting asks what needs to change: the author reads it on the draft. */
-function RejectDialog({ invoiceId, onClose }: { invoiceId: string; onClose: () => void }) {
+function RejectDialog({ target, onClose }: { target: ApprovalTarget; onClose: () => void }) {
   const [comment, setComment] = useState('')
   const [error, setError] = useState<string>()
   const action = useApprovalAction()
   const submit = () => {
     if (!comment.trim()) return setError(translate('approvalSayWhatToChange'))
     action.mutate(
-      { id: invoiceId, action: 'reject', comment: comment.trim() },
+      { target, action: 'reject', comment: comment.trim() },
       {
         onSuccess: () => {
           toast.success(DONE.reject)

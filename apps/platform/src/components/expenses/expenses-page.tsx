@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowDown,
   ArrowUp,
@@ -34,6 +34,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { type ComponentProps, memo, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
+import { ApprovalInbox } from '@/components/approvals/approval-inbox'
 import {
   ExportItem,
   FeatureLockNotice,
@@ -63,6 +64,7 @@ import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { PageHeader } from '@/components/shell/page-header'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
+import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
 import {
   canManageExpenses,
   DEFAULT_PARAMS,
@@ -163,6 +165,7 @@ export function ExpensesPage() {
   const unfiltered = useQuery(expenseListQuery(parseListParams(new URLSearchParams())))
   const bulk = useBulkExpenses()
   const remove = useDeleteExpense()
+  const queryClient = useQueryClient()
   const book = useExpenseAction((id: string) => expensesApi.book(id))
   const duplicate = useExpenseAction((id: string) => expensesApi.duplicate(id))
   const voidIt = useExpenseAction(({ id, reason }: { id: string; reason: string }) =>
@@ -224,7 +227,10 @@ export function ExpensesPage() {
     if (name === 'book')
       book.mutate(expense.id, {
         onSuccess: (saved) => toast.success(translate('expenseBooked', { number: saved.number })),
-        onError: toastError,
+        onError: (error) =>
+          isApprovalRequired(error)
+            ? toastApprovalRequired(queryClient, expense.id, 'expenses')
+            : toastError(error),
       })
     if (name === 'duplicate')
       duplicate.mutate(expense.id, {
@@ -371,6 +377,7 @@ export function ExpensesPage() {
         className="mx-4 mt-4 sm:mx-6"
       />
       <SwissScopeNotice area="expenses" className="mx-4 mt-4 sm:mx-6" />
+      <ApprovalInbox doc="expenses" onOpen={openExpense} />
       {!empty && !noExpenses && <ExpenseKpis />}
       {dropping && <DropOverlay title={translate('dropToReadTheseReceiptsIntoDraftExpenses')} />}
       <PageContextMenu

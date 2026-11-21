@@ -44,9 +44,11 @@ type Quote struct {
 	DecidedBy    *string             `json:"decided_by"` // staff | client
 	DecisionNote *string             `json:"decision_note"`
 	Invoice      *InvoiceRef         `json:"invoice"` // the invoice draft it became; number "" until issued
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
-	PDFKey       *string             `json:"-"`
+	// ApprovalState: of a draft's latest approval request before sending (internal/approvals), as on Invoice.
+	ApprovalState *string   `json:"approval_state"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	PDFKey        *string   `json:"-"`
 
 	// ClientNumberDisplay, ContractReference, ContractDocument: as on Invoice.
 	ClientNumberDisplay *string      `json:"client_number_display"`
@@ -68,7 +70,7 @@ var quoteSelect = `SELECT q.id, q.number, q.revision, q.status, q.client_id, c.n
 		q.valid_until::text, q.currency, q.language, q.vat_mode, q.reference, q.intro, q.footer, q.note, q.discount_percent,
 		q.lines, q.subtotal, q.discount_amount, q.net_total, q.vat_breakdown, q.vat_total, q.total, q.rounding_amount,
 		q.sent_at, q.decided_at, q.decided_by, q.decision_note, q.invoice_id, coalesce(i.number, ''), q.created_at, q.updated_at, q.pdf_key,
-		q.client_number_display, q.contract_reference, q.contract_document_id, q.instalments, ` + fmt.Sprintf(contractDocumentName, "q") + `
+		q.client_number_display, q.contract_reference, q.contract_document_id, q.instalments, ` + fmt.Sprintf(contractDocumentName, "q") + `, ` + approvalStateOf("q") + `
 	FROM quotes q JOIN clients c ON c.id = q.client_id LEFT JOIN invoices i ON i.id = q.invoice_id `
 
 func scanQuote(row interface{ Scan(...any) error }, today string) (Quote, error) {
@@ -80,7 +82,7 @@ func scanQuote(row interface{ Scan(...any) error }, today string) (Quote, error)
 		&t.ValidUntil, &t.Currency, &t.Language, &t.VATMode, &t.Reference, &t.Intro, &t.Footer, &t.Note, &t.DiscountPercent,
 		&t.Lines, &t.Subtotal, &t.DiscountAmount, &t.NetTotal, &t.VATBreakdown, &t.VATTotal, &t.Total, &t.RoundingAmount,
 		&t.SentAt, &t.DecidedAt, &t.DecidedBy, &t.DecisionNote, &invoiceID, &invoiceNumber, &t.CreatedAt, &t.UpdatedAt, &t.PDFKey,
-		&t.ClientNumberDisplay, &t.ContractReference, &contractDocID, &t.Instalments, &contractDocName)
+		&t.ClientNumberDisplay, &t.ContractReference, &contractDocID, &t.Instalments, &contractDocName, &t.ApprovalState)
 	t.ContractDocument = DocumentRefOf(contractDocID, contractDocName)
 	t.Client.ID = t.ClientID
 	t.PayableTotal = t.Total + t.RoundingAmount

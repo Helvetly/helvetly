@@ -44,6 +44,12 @@ import Link from 'next/link'
 import { useState, type ComponentProps, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import {
+  ApprovalGate,
+  ApprovalPanel,
+  awaitsApproval,
+  showsApproval,
+} from '@/components/approvals/approval-panel'
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { dropdownKit } from '@/components/data/menus'
@@ -84,7 +90,6 @@ import {
   type InvoiceListItem,
 } from '@/lib/invoices'
 
-import { ApprovalPanel, awaitsApproval, showsApproval, useRunApproval } from './approval-panel'
 import { editHref } from './compose'
 import { DunningCard, dunnable } from './dunning-card'
 import { InstalmentSchedule } from './instalment-schedule'
@@ -374,7 +379,6 @@ function Detail({
   )
   const approval = approvalQuery.data
   const gated = primary.command === 'issue' && awaitsApproval(approval)
-  const submitting = useRunApproval(invoice.id)
   const [pages, setPages] = useState<number | null>(null)
   const credit = invoice.kind === 'credit_note'
   const proforma = invoice.kind === 'proforma'
@@ -434,28 +438,10 @@ function Detail({
                 </Link>
               </Button>
             )}
-            {gated && approval?.can_submit ? (
-              <Button
-                className="gap-1.5"
-                disabled={submitting.pending}
-                onClick={() => submitting.run('submit')}
-              >
-                <Send /> {translate('approvalSubmit')}
-              </Button>
-            ) : gated ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  {/* Stays focusable while it cannot run, so its tooltip can say why. */}
-                  <Button aria-disabled className="cursor-not-allowed gap-1.5 opacity-50">
-                    {primary.icon} {primary.label}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-64">
-                  {approval?.state === 'pending'
-                    ? translate('approvalIssueWaits')
-                    : translate('approvalIssueNeedsApproval')}
-                </TooltipContent>
-              </Tooltip>
+            {gated ? (
+              <ApprovalGate target={{ doc: 'invoices', id: invoice.id }} approval={approval}>
+                {primary.icon} {primary.label}
+              </ApprovalGate>
             ) : primary.command === null ? (
               <Button asChild className="gap-1.5">
                 <a href={localizedHref(pdfUrl(invoice.id, true))} download>
@@ -557,7 +543,9 @@ function Detail({
       </header>
 
       <TabsContent value="overview" className="grid grid-cols-1 content-start gap-3 p-4 sm:p-5">
-        {showsApproval(approval) && <ApprovalPanel invoiceId={invoice.id} approval={approval} />}
+        {showsApproval(approval) && (
+          <ApprovalPanel target={{ doc: 'invoices', id: invoice.id }} approval={approval} />
+        )}
         <Panel title={credit ? translate('creditedLines') : translate('lines')}>
           <ul className="divide-y divide-border/60">
             {invoice.lines.map((line) => (

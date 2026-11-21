@@ -11,6 +11,8 @@ const drafts = (invoice: Partial<typeof off>) => ({
   credit_note: off,
   debit_note: off,
   corrected: off,
+  quote: off,
+  expense: off,
 })
 
 describe('policyProblems', () => {

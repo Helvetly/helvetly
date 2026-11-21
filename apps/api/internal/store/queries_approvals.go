@@ -236,9 +236,12 @@ func (q Q) AddApprovalAuthor(ctx context.Context, workspaceID, docID, userID str
 	return err
 }
 
-// ApprovalAuthors: the people who wrote each of the drafts, by draft.
+// ApprovalAuthors: the people who wrote each of the drafts, by draft; for an expense also whoever created it (an
+// import too) and the member it is paid back to, who never approve their own claim.
 func (q Q) ApprovalAuthors(ctx context.Context, workspaceID string, docIDs []string) (map[string][]string, error) {
-	rows, err := q.db.Query(ctx, `SELECT doc_id, user_id FROM approval_authors WHERE workspace_id = $1 AND doc_id = ANY($2)`,
+	rows, err := q.db.Query(ctx, `SELECT doc_id, user_id FROM approval_authors WHERE workspace_id = $1 AND doc_id = ANY($2)
+		UNION SELECT id, created_by FROM expenses WHERE workspace_id = $1 AND id = ANY($2) AND created_by IS NOT NULL
+		UNION SELECT id, paid_by FROM expenses WHERE workspace_id = $1 AND id = ANY($2) AND paid_by IS NOT NULL`,
 		workspaceID, docIDs)
 	if err != nil {
 		return nil, err
@@ -286,8 +289,9 @@ func (q Q) UserNames(ctx context.Context, ids []string) (map[string]string, erro
 	return out, rows.Err()
 }
 
-// ApprovalInvoice: what the "Needs my approval" list shows of a draft invoice waiting for approval.
-type ApprovalInvoice struct {
+// ApprovalItem: what the "Needs my approval" list shows of a draft waiting for approval. ClientName is an expense's
+// supplier (else its description), IssueDate its document date ("" without one).
+type ApprovalItem struct {
 	ID         string `json:"doc_id"`
 	Kind       string `json:"kind"`
 	ClientName string `json:"client_name"`
@@ -296,18 +300,26 @@ type ApprovalInvoice struct {
 	IssueDate  string `json:"issue_date"`
 }
 
-// DraftInvoicesByID: the drafts among ids, by id.
-func (q Q) DraftInvoicesByID(ctx context.Context, workspaceID string, ids []string) (map[string]ApprovalInvoice, error) {
+// ApprovalDraftsByID: the draft invoices, quotes and expenses among ids, by id.
+func (q Q) ApprovalDraftsByID(ctx context.Context, workspaceID string, ids []string) (map[string]ApprovalItem, error) {
 	rows, err := q.db.Query(ctx, `SELECT i.id, i.kind, `+invoiceClientName+`, i.total + i.rounding_amount, i.currency, i.issue_date::text
 		FROM invoices i JOIN clients c ON c.id = i.client_id
-		WHERE i.workspace_id = $1 AND i.id = ANY($2) AND i.status = 'draft'`, workspaceID, ids)
+		WHERE i.workspace_id = $1 AND i.id = ANY($2) AND i.status = 'draft'
+		UNION ALL
+		SELECT t.id, 'quote', c.name, t.total + t.rounding_amount, t.currency, t.issue_date::text
+		FROM quotes t JOIN clients c ON c.id = t.client_id
+		WHERE t.workspace_id = $1 AND t.id = ANY($2) AND t.status = 'draft'
+		UNION ALL
+		SELECT e.id, 'expense', COALESCE(e.supplier_name, e.description, ''), e.total, e.currency, COALESCE(e.document_date::text, '')
+		FROM expenses e
+		WHERE e.workspace_id = $1 AND e.id = ANY($2) AND e.status = 'draft' AND e.deleted_at IS NULL`, workspaceID, ids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := map[string]ApprovalInvoice{}
+	out := map[string]ApprovalItem{}
 	for rows.Next() {
-		var i ApprovalInvoice
+		var i ApprovalItem
 		if err := rows.Scan(&i.ID, &i.Kind, &i.ClientName, &i.Total, &i.Currency, &i.IssueDate); err != nil {
 			return nil, err
 		}

@@ -166,6 +166,7 @@ func run() error {
 	invoicesSvc.SetApprovals(approvalsSvc)
 	authSvc.CompleteOnboarding = invoicesSvc.CompleteOnboarding
 	quotesSvc := quotes.New(db, authSvc, invoicesSvc, files, quoteMailer, slog.Default())
+	quotesSvc.SetApprovals(approvalsSvc)
 	membersSvc := members.New(db, authSvc, slog.Default())
 	invitationsSvc := invitations.New(db, authSvc, inviteMailer, cfg.PublicURL, slog.Default())
 	productsSvc := products.New(db, authSvc, slog.Default())
@@ -215,6 +216,7 @@ func run() error {
 	}
 	bg.Go(ctx, "delivery", deliverySvc.Run) // every minute: queued e-invoice transmissions
 	expensesSvc := expenses.New(db, authSvc, files, slog.Default())
+	expensesSvc.SetApprovals(approvalsSvc)
 	documentsSvc := documents.New(db, authSvc, files, cfg.DocumentsMaxUpload, slog.Default())
 	employeesSvc := employees.New(db, authSvc, documentsSvc, cfg.SecretKey, slog.Default())
 	signaturesSvc := signatures.New(db, authSvc, files, signMailer, cfg.PublicURL, slog.Default())

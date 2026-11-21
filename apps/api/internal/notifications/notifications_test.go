@@ -595,3 +595,23 @@ func TestOverdueSettledByPayment(t *testing.T) {
 		t.Fatalf("invoice 1 not settled: %+v", got[2])
 	}
 }
+
+func TestRenderApproval(t *testing.T) {
+	for _, c := range []struct{ event, data, title, href, action string }{
+		{"approval.requested", `{"invoice_id":"inv_1","kind":"credit_note","client":"Acme AG","actor":"Ana"}`,
+			"Ana asks you to approve credit note for Acme AG", "/invoices?id=inv_1", "Review the draft"},
+		{"approval.approved", `{"doc_type":"quote","doc_id":"quo_1","kind":"quote","client":"Acme AG"}`,
+			"Your quote for Acme AG was approved", "/quotes?id=quo_1", "Send it"},
+		{"approval.approved", `{"doc_type":"expense","doc_id":"exp_1","kind":"expense","client":"SBB"}`,
+			"Your expense from SBB was approved", "/expenses?id=exp_1", "Book it"},
+		{"approval.approved", `{"doc_type":"invoice","doc_id":"inv_2","invoice_id":"inv_2","kind":"invoice"}`,
+			"Your invoice was approved", "/invoices?id=inv_2", "Issue it"},
+		{"approval.rejected", `{"doc_type":"expense","doc_id":"exp_1","kind":"expense","client":"SBB","actor":"Bo"}`,
+			"Bo rejected your expense from SBB", "/expenses?id=exp_1", "Open the draft"},
+	} {
+		m := render(store.Notification{Event: c.event, Data: []byte(c.data)})
+		if m.title != c.title || m.href != c.href || m.action != c.action {
+			t.Errorf("%s %s: %+v", c.event, c.data, m)
+		}
+	}
+}

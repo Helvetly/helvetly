@@ -34,33 +34,45 @@ func New(db *store.Store, a Auth) *Service {
 	return &Service{db: db, auth: a, now: func() time.Time { return time.Now().UTC() }}
 }
 
-// DocTypes: the document types a policy can be set for, in the order the settings list them.
-var DocTypes = []string{"invoice", "credit_note", "debit_note", "corrected"}
+// DocTypes: the document types a policy can be set for, in the order the settings list them: invoices are approved
+// before they are issued, quotes before they are sent, expenses before they are booked.
+var DocTypes = []string{"invoice", "credit_note", "debit_note", "corrected", "quote", "expense"}
+
+// invoiceTypes: the types that are invoice kinds.
+var invoiceTypes = DocTypes[:4]
 
 // InvoiceType: the policy type of an invoice kind; partial, prepayment, proforma and self-billed invoices follow
 // the invoices' policy.
 func InvoiceType(kind string) string {
-	if slices.Contains(DocTypes, kind) {
+	if slices.Contains(invoiceTypes, kind) {
 		return kind
 	}
 	return "invoice"
 }
 
+// resource: the permission resource whose read lets a member see documents of the type (quotes are under invoices).
+func resource(docType string) string {
+	if docType == "expense" {
+		return "expenses"
+	}
+	return "invoices"
+}
+
 // Doc is what approvals needs of a locked document.
 type Doc struct {
 	Type     string // a DocTypes value
-	Subject  string // the audit log's subject type ("invoice")
-	Resource string // the permission resource whose read lets a member see it ("invoices")
+	Subject  string // the audit log's subject type ("invoice", "quote", "expense")
+	Resource string // the permission resource whose read lets a member see it ("invoices", "expenses")
 	ID       string
 	Draft    bool // it can still be submitted and decided
 	Kind     string
-	Client   string
+	Client   string // the client, or an expense's supplier
 	Currency string
 	Total    store.Money
 }
 
 var (
-	errRequired     = auth.Error(http.StatusConflict, "approval_required", "This document needs approval before it can be issued.", nil)
+	ErrRequired     = auth.Error(http.StatusConflict, "approval_required", "This document needs approval first.", nil)
 	errNotRequired  = auth.Error(http.StatusConflict, "approval_not_required", "This document does not need approval.", nil)
 	errNotAllowed   = auth.Error(http.StatusForbidden, "approval_not_allowed", "You cannot approve or reject this document.", nil)
 	errUnsatisfied  = auth.Error(http.StatusConflict, "approval_unsatisfiable", "Not enough team members can approve this document: add approvers to the groups in Settings → Approvals.", nil)
@@ -105,7 +117,7 @@ func (s *Service) Gate(ctx context.Context, q store.Q, workspaceID string, doc D
 		return err
 	}
 	if open == nil || open.Status != "approved" {
-		return errRequired
+		return ErrRequired
 	}
 	return nil
 }
@@ -272,8 +284,11 @@ func (s *Service) Submit(ctx context.Context, q store.Q, sess store.Session, doc
 }
 
 func (s *Service) notice(sess store.Session, doc Doc, comment *string) map[string]any {
-	d := map[string]any{"invoice_id": doc.ID, "kind": doc.Kind, "client": doc.Client, "currency": doc.Currency,
+	d := map[string]any{"doc_type": doc.Type, "doc_id": doc.ID, "kind": doc.Kind, "client": doc.Client, "currency": doc.Currency,
 		"amount": doc.Total.String(), "actor": notifications.Actor(sess.User)}
+	if slices.Contains(invoiceTypes, doc.Type) {
+		d["invoice_id"] = doc.ID // the invoice's link, as notifications from before quotes and expenses have it
+	}
 	if comment != nil {
 		d["comment"] = *comment
 	}

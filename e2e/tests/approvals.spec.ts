@@ -1,35 +1,10 @@
-import { randomUUID } from 'node:crypto'
+import type { Page } from '@playwright/test'
 
-import type { Browser, BrowserContext, Page } from '@playwright/test'
-
-import { expect, object, signIn, test, text, type FinancialAPI } from './fixtures'
+import { expect, join, object, test, text, type FinancialAPI, type Person } from './fixtures'
 
 // Approval before issuing on the real API and screens: groups and a policy set up in Settings, a draft submitted,
 // decided by other people in their own sessions, issued once approved; a rejection and an edit send it back.
 // Billing is off in E2E, so every plan feature (document_approvals included) is allowed.
-
-type Person = { api: FinancialAPI; context: BrowserContext; page: Page; id: string; name: string }
-
-/** Invites a member who may read everything, signs them in in their own browser context and names them. */
-async function join(
-  owner: FinancialAPI,
-  browser: Browser,
-  baseURL: string | undefined,
-  name: string,
-): Promise<Person> {
-  const email = `e2e-approver-${randomUUID()}@example.test`
-  await owner.save('/members/invitations', {
-    email,
-    role: 'member',
-    scopes: ['read:*'],
-    send_email: false,
-  })
-  const context = await browser.newContext({ baseURL })
-  const api = await signIn(context.request, email)
-  await expect(await api.write('/account', { name }, 'PATCH')).toBeOK()
-  const session = object(await (await context.request.get('/api/v1/session')).json())
-  return { api, context, page: await context.newPage(), id: text(object(session.user).id), name }
-}
 
 async function draft(api: FinancialAPI) {
   return text((await api.draft(await api.client())).id)
