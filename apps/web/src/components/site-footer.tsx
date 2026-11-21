@@ -112,20 +112,39 @@ export function SiteFooter({ lang }: { lang: Locale }) {
         <Container className="relative border-t border-white/10 py-10">
           {/* Wide screens: each column as wide as its longest link, spread over the row, so long words such as
               "Datenverarbeitungsvereinbarung" stay whole; columns still shrink and wrap when the row is short. */}
-          <div className="grid grid-cols-2 gap-10 md:grid-cols-3 lg:grid-cols-[repeat(5,auto)] lg:justify-between">
-            {FOOTER.map((group) => (
-              <nav key={group.title} aria-label={group.title} className="flex flex-col gap-2">
-                <h2 className="text-body-sm font-medium text-white">{group.title}</h2>
-                {group.links.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="w-fit max-w-full text-body-sm wrap-break-word hyphens-auto text-white/55 underline-offset-4 transition-colors hover:text-white hover:underline"
-                  >
-                    {link.label}
-                  </Link>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-3 lg:grid-cols-[repeat(4,auto)] lg:justify-between">
+            {/* Short sections share a column and Comparisons runs in two, so the columns end about together.
+                Source order: Product, Why Helvetly, Resources, Comparisons, Legal. */}
+            {[
+              { key: 'start', groups: FOOTER.slice(0, 2), cls: '' },
+              { key: 'resources', groups: FOOTER.slice(2, 3), cls: '' },
+              { key: 'legal', groups: FOOTER.slice(4), cls: 'lg:order-last' },
+              {
+                key: 'comparisons',
+                groups: FOOTER.slice(3, 4),
+                cls: 'col-span-2 md:col-span-3 lg:col-span-1',
+              },
+            ].map(({ key, groups, cls }) => (
+              <div key={key} className={`flex flex-col gap-8 ${cls}`}>
+                {groups.map((group) => (
+                  <nav key={group.title} aria-label={group.title} className="flex flex-col gap-2">
+                    <h2 className="text-body-sm font-medium text-white">{group.title}</h2>
+                    <div
+                      className={`flex flex-col gap-2 ${key === 'comparisons' ? 'sm:block sm:columns-2 sm:gap-x-10 sm:*:mb-2 sm:*:block sm:*:break-inside-avoid' : ''}`}
+                    >
+                      {group.links.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="w-fit max-w-full text-body-sm wrap-break-word hyphens-auto text-white/55 underline-offset-4 transition-colors hover:text-white hover:underline"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </nav>
                 ))}
-              </nav>
+              </div>
             ))}
           </div>
           {/* Equal side columns keep the Swiss line centred on the whole footer, not between its neighbours. */}
