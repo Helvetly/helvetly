@@ -75,7 +75,8 @@ func TestReceiptIsCopiedToDocumentsAndFollowsCategoryChange(t *testing.T) {
 
 	var other category
 	for code, c := range cats {
-		if code != "6640" && !c.IsArchived {
+		// a name with a slash gets a different folder name; this checks the move, not the renaming
+		if code != "6640" && !c.IsArchived && !strings.ContainsAny(c.Name, `/\`) {
 			other = c
 			break
 		}
@@ -110,7 +111,8 @@ func TestMovedDocumentStaysWhenCategoryChanges(t *testing.T) {
 	}
 	var other category
 	for code, c := range cats {
-		if code != "6640" && !c.IsArchived {
+		// a name with a slash gets a different folder name; this checks the move, not the renaming
+		if code != "6640" && !c.IsArchived && !strings.ContainsAny(c.Name, `/\`) {
 			other = c
 			break
 		}
