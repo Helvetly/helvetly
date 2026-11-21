@@ -11,7 +11,7 @@ import (
 )
 
 // Record paths: AI filing and organizing put a client's records into Clients/<client>/<record type>/<year> and
-// expenses into Expenses/<category>/<year>, the system folders, instead of folders of their own.
+// expenses into Expenses/<year>/<category>, the system folders, instead of folders of their own.
 
 const filingClients = 200
 
@@ -60,16 +60,16 @@ func recordPath(path []string, names recordNames) (place *recordPlace, ok bool) 
 		if len(path) != 3 {
 			return nil, true
 		}
-		year, good := yearOf(path[2])
+		year, good := yearOf(path[1])
 		if !good {
 			return nil, true
 		}
 		for _, c := range names.categories {
-			if strings.EqualFold(strings.Join(strings.Fields(c.Name), " "), path[1]) {
+			if strings.EqualFold(strings.Join(strings.Fields(c.Name), " "), path[2]) {
 				return &recordPlace{kind: "expenses", year: year, categoryID: &c.ID}, true
 			}
 		}
-		if strings.EqualFold(path[1], store.UncategorisedFolder) {
+		if strings.EqualFold(path[2], store.UncategorisedFolder) {
 			return &recordPlace{kind: "expenses", year: year}, true
 		}
 		return nil, true

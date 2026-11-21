@@ -320,7 +320,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 	return s.get(w, r, sess)
 }
 
-// refile moves the expense's linked files that still sit in the folder Expenses/<category>/<year> its old category and
+// refile moves the expense's linked files that still sit in the folder Expenses/<year>/<category> its old category and
 // date gave to the new one, swapping the category tag; a file the user moved elsewhere stays.
 func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, old, e store.Expense) error {
 	oldYear, year := store.ExpenseYear(old.DocumentDate, s.today(sess.Workspace)), store.ExpenseYear(e.DocumentDate, s.today(sess.Workspace))

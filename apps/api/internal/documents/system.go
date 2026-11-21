@@ -10,7 +10,7 @@ import (
 )
 
 // System folders (store/queries_system_folders.go): Clients/<client>/<record type>/<year> and
-// Expenses/<category>/<year>. Nobody renames, moves or deletes them; typed ones are stored by their English name and
+// Expenses/<year>/<category>. Nobody renames, moves or deletes them; typed ones are stored by their English name and
 // answered in the asker's language.
 
 var errSystemFolder = refuse(http.StatusConflict, "system_folder",
@@ -83,7 +83,7 @@ func localizeDocument(r *http.Request, d *store.Document) {
 
 // BackfillSystemFolders files what came before the system folders: the missing top-level ones, the stored PDFs of
 // issued invoices and sent quotes (one document each, sharing the record's object), the client files the app put
-// straight into Clients and the expenses' files in the earlier Expenses/<year>[/<category>] folders, which then end.
+// straight into Clients and the earlier Expenses/<category>/<year> folders, turned into Expenses/<year>/<category>.
 // Idempotent: each step only picks what is still missing, under the workspace's lock.
 func (s *Service) BackfillSystemFolders(ctx context.Context) error {
 	const batch = 200
@@ -157,51 +157,27 @@ func (s *Service) BackfillSystemFolders(ctx context.Context) error {
 	return s.backfillExpenseFolders(ctx, batch)
 }
 
-// backfillExpenseFolders moves the expenses' files out of the year folders straight in Expenses into
-// Expenses/<category>/<year>, then retires those year folders (plain from then on, trashed when nothing is left).
+// backfillExpenseFolders turns the earlier Expenses/<category>/<year> folders into Expenses/<year>/<category>, one
+// category folder per transaction under the workspace's lock (on-demand filing makes the new layout meanwhile).
 func (s *Service) backfillExpenseFolders(ctx context.Context, batch int) error {
 	for {
-		files, err := s.db.LegacyExpenseFiles(ctx, batch)
+		old, err := s.db.OldExpenseFolders(ctx, batch)
 		if err != nil {
 			return err
 		}
-		for _, f := range files {
+		for _, f := range old {
 			err := s.db.Tx(ctx, func(q store.Q) error {
 				if err := q.LockAddress(ctx, "system-folders:"+f.WorkspaceID); err != nil {
 					return err
 				}
-				if still, err := q.InLegacyExpenseFolder(ctx, f.WorkspaceID, f.DocumentID); err != nil || !still {
-					return err // moved or trashed meanwhile: the person's choice stands
-				}
-				folder, err := q.ExpenseYearFolder(ctx, f.WorkspaceID, f.CategoryID, f.Year, "", s.now())
-				if err != nil {
-					return err
-				}
-				if err := q.LockContainer(ctx, f.WorkspaceID, &folder); err != nil {
-					return err
-				}
-				name, err := q.FreeFileName(ctx, f.WorkspaceID, &folder, f.Name)
-				if err != nil {
-					return err
-				}
-				return q.UpdateDocument(ctx, f.WorkspaceID, f.DocumentID, name, &folder, s.now())
+				return q.ConvertOldExpenseFolder(ctx, f.WorkspaceID, f.ID, s.now())
 			})
 			if err != nil {
 				return err
 			}
 		}
-		if len(files) < batch {
-			break
-		}
-	}
-	for {
-		var n int
-		err := s.db.Tx(ctx, func(q store.Q) (err error) {
-			n, err = q.RetireLegacyExpenseFolders(ctx, batch, s.now())
-			return err
-		})
-		if err != nil || n < batch {
-			return err
+		if len(old) < batch {
+			return nil
 		}
 	}
 }

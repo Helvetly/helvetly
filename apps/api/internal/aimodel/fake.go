@@ -258,7 +258,7 @@ func fakeClients(message string) []string {
 }
 
 // fakeRecordPath files by the name: "invoice" or "quote" with a listed client's name (spaces as - or _) goes to
-// Clients/<client>/Invoices|Quotes/<year>, "receipt" to Expenses/Uncategorised/<year>; the year is a four-digit number in the
+// Clients/<client>/Invoices|Quotes/<year>, "receipt" to Expenses/<year>/Uncategorised; the year is a four-digit number in the
 // name, else 2026. "" for anything else.
 func fakeRecordPath(base string, clients []string) string {
 	year := "2026"
@@ -270,7 +270,7 @@ func fakeRecordPath(base string, clients []string) string {
 	}
 	flat := strings.NewReplacer("-", " ", "_", " ").Replace(base)
 	if strings.Contains(flat, "receipt") {
-		return "Expenses/Uncategorised/" + year
+		return "Expenses/" + year + "/Uncategorised"
 	}
 	kind := ""
 	switch {
