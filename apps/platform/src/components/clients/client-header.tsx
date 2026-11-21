@@ -38,7 +38,7 @@ import { RecordPageButton } from '@/components/record-link'
 import type { Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 
-import { addressLines, ClientStatusBadge } from './client-bits'
+import { addressLines, ClientStatusBadge, MissingDataBadges } from './client-bits'
 import { countryName } from './client-form-model'
 import { UidVerifiedBadge } from './uid-register-fields'
 
@@ -249,11 +249,9 @@ export function ClientHeader({
               <h2 className="text-page leading-tight font-medium tracking-[-0.02em] break-words">
                 {client.name}
               </h2>
-              {/* Active is the normal state; only a draft or an inactive client gets a badge. */}
-              {(client.is_draft || !client.is_active) && <ClientStatusBadge client={client} />}
-              {client.is_draft && !client.is_active && (
-                <ClientStatusBadge client={{ ...client, is_draft: false }} />
-              )}
+              {/* Active is the normal state; only what invoicing lacks or an inactive client gets a badge. */}
+              <MissingDataBadges client={client} />
+              {!client.is_active && <ClientStatusBadge client={{ ...client, is_draft: false }} />}
               <UidVerifiedBadge client={client} />
             </div>
             <p className="text-body-sm text-muted-foreground">{clientKind(client)}</p>

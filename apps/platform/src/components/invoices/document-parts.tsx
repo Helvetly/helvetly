@@ -1,5 +1,4 @@
 'use client'
-import { localizedHref } from '@helvetly/i18n'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
@@ -10,6 +9,7 @@ import Link from 'next/link'
 import { type ReactNode, useState } from 'react'
 
 import { addressLines } from '@/components/clients/client-bits'
+import { ClientFixButton } from '@/components/clients/client-fix'
 import { ClientForm } from '@/components/clients/client-form'
 import { countryName } from '@/components/clients/client-form-model'
 import { type Client } from '@/lib/clients'
@@ -180,14 +180,13 @@ export function ClientBlock({
         <Callout tone="warning" icon={CircleAlert} className="max-w-sm rounded-lg px-3 py-2">
           <span>
             {translate('theAddressIsIncompleteSoThisCanBeDrafted')}{' '}
-            <a
-              href={localizedHref(`/clients?id=${encodeURIComponent(client.id)}`)}
-              target="_blank"
-              rel="noreferrer"
+            <ClientFixButton
+              clientId={client.id}
+              focus="address"
               className="font-medium underline underline-offset-4 hover:no-underline"
             >
               {translate('completeIt')}
-            </a>
+            </ClientFixButton>
           </span>
         </Callout>
       )}
