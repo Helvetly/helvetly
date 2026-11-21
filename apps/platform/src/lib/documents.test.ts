@@ -15,6 +15,7 @@ import {
   pathTo,
   presetFrom,
   tagCounts,
+  trashSortValue,
   uploadDocument,
   viewToQuery,
   withStar,
@@ -228,5 +229,24 @@ describe('AI filing', () => {
       { name: 'invoice', count: 2 },
       { name: 'paid', count: 1 },
     ])
+  })
+})
+
+describe('trashSortValue', () => {
+  const item = {
+    name: 'a.pdf',
+    size: 5,
+    location: null,
+    deleted_at: '2026-01-01',
+    purge_at: '2026-01-31',
+  }
+  it.each([
+    ['name', 'a.pdf'],
+    ['size', 5],
+    ['deleted', '2026-01-01'],
+    ['purge', '2026-01-31'],
+  ] as const)('%s', (field, expected) => expect(trashSortValue(item, field)).toBe(expected))
+  it('names the root when the item was not in a folder', () => {
+    expect(trashSortValue(item, 'was')).toBeTruthy()
   })
 })

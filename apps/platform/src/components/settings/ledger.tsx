@@ -30,28 +30,36 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
 import { BooksHeader } from '@/components/books/books-tabs'
 import { inputClass, NativeSelect } from '@/components/clients/fields'
+import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { FormSection } from '@/components/form-section'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { formatAmount, PAYMENT_METHODS, today } from '@/lib/invoices'
 import {
+  balanceSortValue,
+  DEFAULT_SORT,
   fetchLedger,
   fetchLedgerSettings,
   fetchStatement,
   ledgerExportUrl,
   saveLedgerSettings,
+  SORT_FIELDS,
   type LedgerAccounts,
   type LedgerBalance,
+  type SortField,
 } from '@/lib/ledger'
+import { nextSort, parseSort, sortParam, sortRows, type Sort } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
+import { setUrlQuery } from '@/lib/url-query'
 
 import { SettingsPage } from './layout'
 
@@ -106,14 +114,18 @@ const CLASSES: Record<string, string> = {
   '9': translate('yearEndClosing'),
 }
 
-/** Balances under their account class, in chart order. */
-export function groupByClass(balances: LedgerBalance[]) {
+/** Balances under their account class, in chart order; the rows of a class in `sort` order. */
+export function groupByClass(balances: LedgerBalance[], sort: Sort<SortField> = DEFAULT_SORT) {
   const groups = new Map<string, LedgerBalance[]>()
   for (const row of balances.toSorted((a, b) => a.account.localeCompare(b.account))) {
     const key = row.account.charAt(0)
     groups.set(key, [...(groups.get(key) ?? []), row])
   }
-  return [...groups].map(([key, rows]) => ({ key, name: CLASSES[key] ?? '', rows }))
+  return [...groups].map(([key, rows]) => ({
+    key,
+    name: CLASSES[key] ?? '',
+    rows: sortRows(rows, (row) => balanceSortValue(row, sort.field), sort.desc),
+  }))
 }
 
 /** The sum of decimal amounts, in cents so that 0.1 + 0.2 stays 0.30. */
@@ -292,6 +304,29 @@ function TrialBalance({
   currency: string
   onOpen: (row: LedgerBalance) => void
 }) {
+  const pathname = usePathname()
+  const query = useSearchParams()
+  const sort = parseSort(query.get('sort'), SORT_FIELDS, DEFAULT_SORT)
+  const sortBy = (field: SortField) => {
+    const next = new URLSearchParams(query)
+    const value = sortParam(
+      nextSort(sort, field, field !== 'account' && field !== 'name'),
+      DEFAULT_SORT,
+    )
+    if (value) next.set('sort', value)
+    else next.delete('sort')
+    setUrlQuery(pathname, next)
+  }
+  const head = (field: SortField, label: string, align: string) => (
+    <th aria-sort={ariaSort(sort.field === field, sort.desc)} className={`${th} ${align}`}>
+      <SortButton
+        label={label}
+        sorted={sort.field === field}
+        desc={sort.desc}
+        onClick={() => sortBy(field)}
+      />
+    </th>
+  )
   // Only the books' own currency adds up; a foreign-currency account is listed with its badge.
   const own = balances.filter((row) => row.currency === currency)
   const debit = sumAmounts(own.map((row) => row.debit))
@@ -303,16 +338,16 @@ function TrialBalance({
         <table className="w-full text-body-sm">
           <thead>
             <tr className="border-b border-border/60">
-              <th className={`${th} w-24 text-left`}>{translate('account')}</th>
-              <th className={`${th} text-left`}>{translate('name')}</th>
-              <th className={`${th} ${money}`}>{translate('opening')}</th>
-              <th className={`${th} ${money}`}>{translate('debit')}</th>
-              <th className={`${th} ${money}`}>{translate('credit2')}</th>
-              <th className={`${th} ${money}`}>{translate('closing')}</th>
+              {head('account', translate('account'), 'w-24 text-left')}
+              {head('name', translate('name'), 'text-left')}
+              {head('opening', translate('opening'), money)}
+              {head('debit', translate('debit'), money)}
+              {head('credit', translate('credit2'), money)}
+              {head('closing', translate('closing'), money)}
               <th className="w-10" aria-hidden />
             </tr>
           </thead>
-          {groupByClass(balances).map((group) => (
+          {groupByClass(balances, sort).map((group) => (
             <tbody key={group.key} className="border-b border-border/60 last:border-0">
               <tr className="bg-muted/40">
                 <th

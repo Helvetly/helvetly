@@ -1,3 +1,4 @@
+import { sortRows } from '@/lib/list-sort'
 import { entry, totals } from '@/mocks/employees'
 
 import {
@@ -8,6 +9,8 @@ import {
   monthOr,
   monthPeriod,
   shiftMonth,
+  sortValue,
+  type SortField,
 } from './payroll'
 
 const fourEyes = { require_second_approver: true, payroll_approvers: 2 }
@@ -105,4 +108,18 @@ test('the entry form sends an empty figure as missing (null), never 0', async ()
     employer_costs: '0',
   })
   expect(input.pay_date).toBeNull()
+})
+
+test('the register sorts by its visible columns, with unknown amounts last', () => {
+  const rows = [
+    entry({ id: 'a', employee_name: 'Zoe', net: '10.00', period_end: '2026-01-31' }),
+    entry({ id: 'b', employee_name: 'Abe', net: null, period_end: '2026-01-15' }),
+    entry({ id: 'c', employee_name: 'Mia', net: '9.00', period_end: '2026-01-31' }),
+  ]
+  const order = (field: SortField, desc: boolean) =>
+    sortRows(rows, (row) => sortValue(row, field), desc).map((row) => row.id)
+  expect(order('employee', false)).toEqual(['b', 'c', 'a'])
+  expect(order('net', false)).toEqual(['c', 'a', 'b'])
+  expect(order('net', true)).toEqual(['a', 'c', 'b'])
+  expect(order('period', true)).toEqual(['a', 'c', 'b'])
 })

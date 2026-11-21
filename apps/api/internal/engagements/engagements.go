@@ -434,8 +434,8 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if sort == "" {
 		sort = "ends"
 	}
-	if !slices.Contains([]string{"ends", "-created_at", "title", "client"}, sort) {
-		return badRequest("sort must be one of ends, -created_at, title, client.")
+	if !slices.Contains(sortOrders, sort) {
+		return badRequest("sort must be one of " + strings.Join(sortOrders, ", ") + ".")
 	}
 	page, err := intParam(q, "page", 1, 1, 1_000_000)
 	if err != nil {
@@ -456,7 +456,7 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 
 // page pages in SQL when the order and filter are stored columns; "ends" and attention are derived, so those page in memory.
 func (s *Service) page(ctx context.Context, ws string, f store.EngagementFilter, att, sort string, page, size int) ([]EngagementView, int, error) {
-	if att == "" && sort != "ends" {
+	if att == "" && sort != "ends" && sort != "-ends" {
 		f.Sort, f.Limit, f.Offset = sort, size, (page-1)*size
 		total, err := s.db.CountEngagements(ctx, ws, f)
 		if err != nil {
@@ -478,7 +478,13 @@ func (s *Service) page(ctx context.Context, ws string, f store.EngagementFilter,
 	return list[from:min(from+size, total)], total, nil
 }
 
+// sortOrders are the accepted sort values; a leading "-" reverses one.
+var sortOrders = []string{"ends", "-ends", "-created_at", "title", "-title", "client", "-client"}
+
 func compare(sort string, a, b EngagementView) int {
+	if sort != "-created_at" && strings.HasPrefix(sort, "-") {
+		return compare(strings.TrimPrefix(sort, "-"), b, a)
+	}
 	switch sort {
 	case "-created_at":
 		return b.CreatedAt.Compare(a.CreatedAt)

@@ -17,6 +17,7 @@ import { groupByClass, LedgerPage, rangeOf, sumAmounts, validateAccounts } from 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn<() => void>() }),
   usePathname: () => '/books/ledger',
+  useSearchParams: () => new URLSearchParams(),
 }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
 
@@ -72,6 +73,16 @@ test('groupByClass puts balances under their Swiss SME account class, in chart o
     ['3', 'Operating revenue', ['3200']],
     ['6', 'Other operating expenses', ['6500']],
   ])
+})
+
+test('groupByClass sorts the rows inside each class and never moves a class', () => {
+  const rows = [
+    { ...row('1020'), closing: '5.00' },
+    { ...row('1100'), closing: '9.00' },
+    { ...row('3200'), closing: '1.00' },
+  ]
+  const groups = groupByClass(rows, { field: 'closing', desc: true })
+  expect(groups.map((g) => g.rows.map((r) => r.account))).toEqual([['1100', '1020'], ['3200']])
 })
 
 test.each([

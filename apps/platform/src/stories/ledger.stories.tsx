@@ -194,6 +194,28 @@ export const TrialBalance: Story = {
   },
 }
 
+/** A header orders the accounts inside each class; the classes keep their places. */
+export const SortByHeader: Story = {
+  parameters: { msw: { handlers: handlers('owner') } },
+  play: async ({ canvasElement }) => {
+    const c = within(canvasElement)
+    await expect(await c.findByText('Debits equal credits')).toBeVisible()
+    await expect(c.getByRole('columnheader', { name: /account/i })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    )
+    const closing = c.getByRole('columnheader', { name: /closing/i })
+    await userEvent.click(within(closing).getByRole('button'))
+    await waitFor(() => expect(window.location.search).toContain('sort=-closing'))
+    const classes = c.getAllByRole('rowheader').map((cell) => cell.textContent)
+    await expect(classes.slice(0, 3)).toEqual([
+      '1Assets',
+      '2Liabilities and equity',
+      '3Operating revenue',
+    ])
+  },
+}
+
 export const Empty: Story = {
   parameters: { msw: { handlers: handlers('owner', { balances: [] }) } },
   play: async ({ canvasElement }) => {

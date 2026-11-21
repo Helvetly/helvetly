@@ -365,9 +365,23 @@ func TestEmployeeValidationAndList(t *testing.T) {
 		"/api/v1/employees?department=sales":                 "Ben",
 		"/api/v1/employees?search=mus":                       "Anna",
 		"/api/v1/employees?search=" + url.QueryEscape("E-3"): "Cleo",
+		"/api/v1/employees?sort=-name":                       "Cleo,Anna,Ben",
+		"/api/v1/employees?sort=since":                       "Cleo,Anna,Ben",
+		"/api/v1/employees?sort=-since":                      "Ben,Anna,Cleo",
+		"/api/v1/employees?sort=department":                  "Anna,Cleo,Ben",
 	} {
 		if got := strings.Join(names(path), ","); got != want {
 			t.Errorf("%s = %s, want %s", path, got, want)
+		}
+	}
+}
+
+func TestEmployeeListRefusesUnknownSort(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	for _, sort := range []string{"bank_account", "-tax_id", "name%3Bdrop"} {
+		if status, _ := e.send(owner, "GET", "/api/v1/employees?sort="+sort, nil); status != 400 {
+			t.Errorf("sort=%s: %d", sort, status)
 		}
 	}
 }

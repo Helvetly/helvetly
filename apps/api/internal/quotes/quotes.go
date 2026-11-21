@@ -88,6 +88,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/quotes/{id}/decline", s.decide(false))
 	handle("POST /api/v1/quotes/{id}/revise", s.revise)
 	handle("POST /api/v1/quotes/{id}/invoice", s.toInvoice)
+	handle("POST /api/v1/quotes/{id}/duplicate", s.duplicate)
 }
 
 const defaultValidDays = 30

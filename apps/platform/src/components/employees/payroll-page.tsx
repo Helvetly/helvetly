@@ -26,23 +26,29 @@ import {
   ResizableTable,
   useResizableColumns,
 } from '@/components/data/resizable-columns'
+import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { PageHeader } from '@/components/shell/page-header'
 import { formatPay } from '@/lib/employees'
 import { translate } from '@/lib/i18n'
+import { nextSort, parseSort, sortParam, sortRows, type Sort } from '@/lib/list-sort'
 import {
+  DEFAULT_SORT,
   exportUrl,
   IMPORT_COLUMNS,
   missingNotes,
   monthLabel,
   monthOr,
   shiftMonth,
+  SORT_FIELDS,
+  sortValue,
   usePayrollEntries,
   usePayrollSummary,
   type PayrollEntry,
   type PayrollTotals,
+  type SortField,
 } from '@/lib/payroll'
 import { setUrlQuery } from '@/lib/url-query'
 
@@ -62,6 +68,7 @@ export function PayrollPage() {
   const query = useSearchParams()
   const month = monthOr(query.get('month'))
   const entryId = query.get('entry')
+  const sort = parseSort(query.get('sort'), SORT_FIELDS, DEFAULT_SORT)
   const [superseded, setSuperseded] = useState(false)
   const [bookingsOpen, setBookingsOpen] = useState(false)
   const hr = useHrAccess()
@@ -192,7 +199,14 @@ export function PayrollPage() {
               }
             />
           ) : (
-            <EntryList entries={entries.data} onOpen={open} />
+            <EntryList
+              entries={entries.data}
+              sort={sort}
+              onSort={(field) =>
+                go({ sort: sortParam(nextSort(sort, field, field !== 'employee'), DEFAULT_SORT) })
+              }
+              onOpen={open}
+            />
           )}
         </div>
       )}
@@ -267,7 +281,26 @@ function Summary({ totals }: { totals: PayrollTotals[] | undefined }) {
   )
 }
 
-function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: string) => void }) {
+function EntryList({
+  entries: unsorted,
+  sort,
+  onSort,
+  onOpen,
+}: {
+  entries: PayrollEntry[]
+  sort: Sort<SortField>
+  onSort: (field: SortField) => void
+  onOpen: (id: string) => void
+}) {
+  const entries = sortRows(unsorted, (entry) => sortValue(entry, sort.field), sort.desc)
+  const head = (field: SortField, label: string) => (
+    <SortButton
+      label={label}
+      sorted={sort.field === field}
+      desc={sort.desc}
+      onClick={() => onSort(field)}
+    />
+  )
   // The amounts share what is left; the first of them keeps the room when the others grow.
   const widths = useResizableColumns('payroll', ['employee', 'period'], { flex: AMOUNTS[0][0] })
   return (
@@ -279,17 +312,28 @@ function EntryList({ entries, onOpen }: { entries: PayrollEntry[]; onOpen: (id: 
               columns={widths}
               column="employee"
               label={translate('payrollColEmployee')}
+              aria-sort={ariaSort(sort.field === 'employee', sort.desc)}
               className={cn(listTable.th, 'w-[17%]')}
-            />
+            >
+              {head('employee', translate('payrollColEmployee'))}
+            </ResizableHead>
             <ResizableHead
               columns={widths}
               column="period"
               label={translate('payrollColPeriod')}
+              aria-sort={ariaSort(sort.field === 'period', sort.desc)}
               className={cn(listTable.th, 'w-[15%]')}
-            />
+            >
+              {head('period', translate('payrollColPeriod'))}
+            </ResizableHead>
             {AMOUNTS.map(([key, label]) => (
-              <th key={key} data-column={key} className={cn(listTable.th, listTable.numeric)}>
-                {label}
+              <th
+                key={key}
+                data-column={key}
+                aria-sort={ariaSort(sort.field === key, sort.desc)}
+                className={cn(listTable.th, listTable.numeric)}
+              >
+                {head(key, label)}
               </th>
             ))}
             <th className={cn(listTable.th, 'w-[15%]')}>{translate('employeeStatusLabel')}</th>

@@ -5,6 +5,8 @@ import { resetQuotesMock, sampleQuote } from '@/mocks/quotes'
 
 import { ApiError } from './api'
 import {
+  bulkTargets,
+  DEFAULT_QUOTE_SORT,
   isQuoteStatus,
   listQuery,
   quoteCommands,
@@ -14,7 +16,11 @@ import {
   quotePdfUrl,
   quotesApi,
   searchQuotes,
+  sortQuotes,
+  type Quote,
 } from './quotes'
+
+const idsOf = (list: Quote[]) => list.map((quote) => quote.id)
 
 const server = setupServer(...handlers)
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
@@ -31,12 +37,20 @@ test('numbers read as on the PDF: a revision says so, a draft has none yet', () 
 })
 
 test.each([
-  ['draft, never sent', { status: 'draft', number: null }, ['edit', 'delete', 'send']],
-  ['revised draft', { status: 'draft', number: 'Q-2026-001' }, ['edit', 'send']],
-  ['sent', { status: 'sent', number: 'Q-2026-001' }, ['send', 'accept', 'decline', 'revise']],
-  ['expired', { status: 'expired', number: 'Q-2026-001' }, ['accept', 'decline', 'revise']],
-  ['declined', { status: 'declined', number: 'Q-2026-001' }, ['revise']],
-  ['accepted', { status: 'accepted', number: 'Q-2026-001' }, ['invoice']],
+  ['draft, never sent', { status: 'draft', number: null }, ['edit', 'delete', 'send', 'duplicate']],
+  ['revised draft', { status: 'draft', number: 'Q-2026-001' }, ['edit', 'send', 'duplicate']],
+  [
+    'sent',
+    { status: 'sent', number: 'Q-2026-001' },
+    ['send', 'accept', 'decline', 'revise', 'duplicate'],
+  ],
+  [
+    'expired',
+    { status: 'expired', number: 'Q-2026-001' },
+    ['accept', 'decline', 'revise', 'duplicate'],
+  ],
+  ['declined', { status: 'declined', number: 'Q-2026-001' }, ['revise', 'duplicate']],
+  ['accepted', { status: 'accepted', number: 'Q-2026-001' }, ['invoice', 'duplicate']],
 ] as const)('a %s quote offers what the lifecycle allows', (_, state, allowed) => {
   const can = quoteCommands({ ...state, invoice: null })
   expect(Object.entries(can).flatMap(([command, ok]) => (ok ? [command] : []))).toEqual(
@@ -147,4 +161,66 @@ test('search matches number, client and reference, ignoring case and spaces', ()
   expect(ids('holzbau')).toEqual(['c'])
   expect(ids('draft')).toEqual(['c'])
   expect(ids('nothing')).toEqual([])
+})
+
+describe('sorting the list', () => {
+  const quotes = [
+    sampleQuote({ id: 'a', number: 'Q-2026-010', issue_date: '2026-10-01', status: 'sent' }),
+    sampleQuote({ id: 'b', number: null, issue_date: '2026-11-01', status: 'draft' }),
+    sampleQuote({ id: 'c', number: 'Q-2026-009', issue_date: '2026-09-01', status: 'accepted' }),
+    sampleQuote({
+      id: 'd',
+      number: 'Q-2026-009',
+      revision: 2,
+      issue_date: '2026-09-01',
+      status: 'expired',
+    }),
+  ]
+
+  test('by default the newest date first', () => {
+    expect(idsOf(sortQuotes(quotes, DEFAULT_QUOTE_SORT))).toEqual(['b', 'a', 'c', 'd'])
+  })
+  test('numbers in order, a revision after its first, drafts last', () => {
+    expect(idsOf(sortQuotes(quotes, { field: 'number', desc: false }))).toEqual([
+      'c',
+      'd',
+      'a',
+      'b',
+    ])
+    expect(idsOf(sortQuotes(quotes, { field: 'number', desc: true }))).toEqual(['a', 'd', 'c', 'b'])
+  })
+  test('status in the order of the lifecycle', () => {
+    expect(idsOf(sortQuotes(quotes, { field: 'status', desc: false }))).toEqual([
+      'b',
+      'a',
+      'c',
+      'd',
+    ])
+  })
+  test('totals by amount, not as text', () => {
+    const totals = [
+      { ...sampleQuote({ id: 'x' }), payable_total: '900.00' },
+      { ...sampleQuote({ id: 'y' }), payable_total: '1200.00' },
+    ]
+    expect(idsOf(sortQuotes(totals, { field: 'total', desc: true }))).toEqual(['y', 'x'])
+  })
+})
+
+test('bulk actions apply only where the lifecycle allows', () => {
+  const draft = sampleQuote({ id: 'draft' })
+  const revised = sampleQuote({ id: 'revised', number: 'Q-1', revision: 2 })
+  const sent = sampleQuote({ id: 'sent', number: 'Q-2', status: 'sent' })
+  const expired = sampleQuote({ id: 'expired', number: 'Q-3', status: 'expired' })
+  const accepted = sampleQuote({ id: 'accepted', number: 'Q-4', status: 'accepted' })
+  const targets = bulkTargets([draft, revised, sent, expired, accepted])
+  expect(idsOf(targets.markSent)).toEqual(['draft', 'revised'])
+  expect(idsOf(targets.accept)).toEqual(['sent', 'expired'])
+  expect(idsOf(targets.decline)).toEqual(['sent', 'expired'])
+  expect(idsOf(targets.remove)).toEqual(['draft'])
+})
+
+test('duplicating makes a new unnumbered draft', async () => {
+  const { data } = await quotesApi.duplicate('quo_accepted')
+  expect(data).toMatchObject({ status: 'draft', number: null, revision: 1, invoice: null })
+  expect(data.id).not.toBe('quo_accepted')
 })

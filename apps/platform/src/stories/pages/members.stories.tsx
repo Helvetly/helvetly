@@ -119,3 +119,18 @@ export const SoleOwner: Story = {
   },
 }
 export const SoleOwnerPhone = phone(SoleOwner)
+
+/** A header sorts: the sorted column says so, and a click on another one writes it to the URL. */
+export const SortedByColumn: Story = {
+  parameters: pageParameters('/members', { sort: 'member' }),
+  play: async (context) => {
+    await shows('Luca Rossi')?.(context)
+    const body = page(context.canvasElement)
+    await expect(body.getByRole('button', { name: 'Member' }).closest('th')).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    )
+    await userEvent.click(body.getByRole('button', { name: 'Last active' }))
+    await waitFor(() => expect(window.location.search).toContain('sort=-active'), wait)
+  },
+}

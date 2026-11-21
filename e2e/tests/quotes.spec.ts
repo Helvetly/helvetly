@@ -135,11 +135,14 @@ test('quotes stay inside their workspace and with their client', async ({
     expect((await otherRequest.get(`/api/v1/quotes/${id}`)).status()).toBe(404)
     expect((await otherRequest.get(`/api/v1/quotes/${id}/pdf`)).status()).toBe(404)
     const writes = await Promise.all(
-      [`/quotes/${id}/accept`, `/quotes/${id}/invoice`, `/quotes/${id}/revise`].map((path) =>
-        other.write(path),
-      ),
+      [
+        `/quotes/${id}/accept`,
+        `/quotes/${id}/invoice`,
+        `/quotes/${id}/revise`,
+        `/quotes/${id}/duplicate`,
+      ].map((path) => other.write(path)),
     )
-    expect(writes.map((response) => response.status())).toEqual([404, 404, 404])
+    expect(writes.map((response) => response.status())).toEqual([404, 404, 404, 404])
     expect((await other.write(`/quotes/${id}`, { note: 'x' }, 'PATCH')).status()).toBe(404)
     const list = object(await (await otherRequest.get('/api/v1/quotes')).json())
     expect(list.data).toEqual([])
@@ -214,16 +217,58 @@ test('the quotes list searches by number and keeps the search over a reload', as
   const search = page.getByRole('searchbox', { name: 'Search quotes' })
   await search.fill(number.toLowerCase())
   await expect(page).toHaveURL(new RegExp(`q=${number.toLowerCase()}`))
-  await expect(page.getByRole('button', { name: number })).toBeVisible()
+  await expect(page.getByRole('button', { name: number, exact: true })).toBeVisible()
   await page.reload()
   await expect(search).toHaveValue(number.toLowerCase())
-  await expect(page.getByRole('button', { name: number })).toBeVisible()
+  await expect(page.getByRole('button', { name: number, exact: true })).toBeVisible()
 
   await search.fill('no such quote')
   await expect(page.getByText('Nothing matches “no such quote”')).toBeVisible()
   await page.getByRole('button', { name: 'Clear search and filters' }).click()
   await expect(search).toHaveValue('')
-  await expect(page.getByRole('button', { name: number })).toBeVisible()
+  await expect(page.getByRole('button', { name: number, exact: true })).toBeVisible()
+})
+
+test('the quotes list sorts by its headers and changes picked quotes in one go', async ({
+  api,
+  page,
+}) => {
+  const { client, quote } = await sentQuote(api)
+  const number = text(quote.number)
+  const draft = await api.save('/quotes', {
+    client_id: client.id,
+    lines: [{ ...line, quantity: '1' }],
+  })
+  await page.goto('/quotes')
+  const rows = page.locator('tbody tr')
+  await expect(rows).toHaveCount(2)
+
+  // Total: the larger first, then the other way after a second click; a reload keeps it.
+  const total = page.getByRole('columnheader', { name: /Total/ })
+  await total.getByRole('button', { name: 'Total' }).click()
+  await expect(page).toHaveURL(/sort=-total/)
+  await expect(total).toHaveAttribute('aria-sort', 'descending')
+  await expect(rows.first()).toContainText(number)
+  await total.getByRole('button', { name: 'Total' }).click()
+  await expect(page).toHaveURL(/sort=total/)
+  await expect(rows.first()).toContainText('Draft')
+  await page.reload()
+  await expect(rows.first()).toContainText('Draft')
+
+  // Both picked: the draft is marked sent, the sent one is left as it was.
+  await page.getByRole('checkbox', { name: 'Select all quotes' }).click()
+  const bar = page.getByRole('toolbar', { name: 'Selected rows' })
+  await bar.getByRole('button', { name: 'Mark 1 as sent' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Mark as sent' }).click()
+  await expect(page.getByText('1 quote updated.')).toBeVisible()
+  expect(await api.read(`/quotes/${text(draft.id)}`)).toMatchObject({ status: 'sent' })
+  expect(await api.read(`/quotes/${text(quote.id)}`)).toMatchObject({ status: 'sent', number })
+
+  // A row's menu duplicates the quote as a new draft and opens it.
+  await page.getByRole('button', { name: `Actions for ${number} · ${text(client.name)}` }).click()
+  await page.getByRole('menuitem', { name: 'Duplicate' }).click()
+  await expect(page).toHaveURL(/id=quo_/)
+  await expect(rows).toHaveCount(3)
 })
 
 /** A civil date `days` after today, as the API writes it. */
