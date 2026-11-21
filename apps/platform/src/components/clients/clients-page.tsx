@@ -696,7 +696,7 @@ function NameCell({ client, onOpen }: { client: Client; onOpen: () => void }) {
       <span className="grid min-w-0 leading-tight">
         <span className="truncate">{client.name}</span>
         {client.email && (
-          <span className="truncate text-[13px] text-muted-foreground">{client.email}</span>
+          <span className="truncate text-caption text-muted-foreground">{client.email}</span>
         )}
       </span>
       <span className="ml-auto shrink-0">

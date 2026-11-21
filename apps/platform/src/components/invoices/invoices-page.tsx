@@ -178,7 +178,7 @@ function DueCell({ invoice }: { invoice: InvoiceListItem }) {
       <span>{formatDay(invoice.due_date)}</span>
       <span
         className={cn(
-          'text-[12.5px]',
+          'text-caption',
           days < 0 ? 'text-[#b5544f] dark:text-rose-300' : 'text-muted-foreground',
         )}
       >
@@ -211,7 +211,7 @@ const COLUMNS: ColumnDef[] = [
           <PaymentMarks methods={invoice.payment_methods} />
         </span>
         {invoice.kind === 'credit_note' && (
-          <span className="text-[12.5px] text-muted-foreground">{translate('creditNote2')}</span>
+          <span className="text-caption text-muted-foreground">{translate('creditNote2')}</span>
         )}
       </span>
     ),
@@ -259,7 +259,7 @@ const COLUMNS: ColumnDef[] = [
         />
         {/* Less due than the amount: partly paid or credited. */}
         {invoice.status === 'open' && invoice.amount_due !== invoice.payable_total && (
-          <span className="text-[12.5px] text-muted-foreground tabular-nums">
+          <span className="text-caption text-muted-foreground tabular-nums">
             {formatAmount(invoice.amount_due)}
             {translate('due6')}
           </span>

@@ -1,7 +1,7 @@
 import { Geist_Mono, Instrument_Serif, Inter } from 'next/font/google'
 
-const sans = Inter({ subsets: ['latin'], variable: '--font-sans' })
-const mono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' })
+const sans = Inter({ subsets: ['latin', 'latin-ext', 'cyrillic'], variable: '--font-sans' })
+const mono = Geist_Mono({ subsets: ['latin', 'latin-ext', 'cyrillic'], variable: '--font-mono' })
 // The serif for an accent word in a headline (`.accent` in globals.css).
 const serif = Instrument_Serif({
   subsets: ['latin'],

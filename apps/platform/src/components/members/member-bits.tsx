@@ -32,7 +32,7 @@ export function MemberCell({
           <span className="truncate">{name}</span>
           {you && <Badge size="sm">{translate('you2')}</Badge>}
         </span>
-        <span className="block truncate text-[13px] text-muted-foreground">{detail}</span>
+        <span className="block truncate text-caption text-muted-foreground">{detail}</span>
       </span>
     </span>
   )
