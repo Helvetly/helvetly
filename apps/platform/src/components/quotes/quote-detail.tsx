@@ -35,11 +35,18 @@ import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import {
+  ApprovalGate,
+  ApprovalPanel,
+  awaitsApproval,
+  showsApproval,
+} from '@/components/approvals/approval-panel'
 import { Money } from '@/components/invoices/invoice-bits'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { HeroFact, RecordHero } from '@/components/invoices/record-hero'
 import { RecordLink } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
+import { useApproval } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
 import { formatAmount, formatDay, formatMoney, isZero, repeatsAmount, UNITS } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
@@ -56,7 +63,7 @@ import {
   type QuoteCommand,
 } from '@/lib/quotes'
 
-import { QuoteStatusBadge } from './quote-bits'
+import { QuoteRowStatus } from './quote-bits'
 import { failQuote, QuoteDecisionDialog, QuoteSendDialog } from './quote-dialogs'
 import { EDITOR_WIDTH, QuoteEditor } from './quote-editor'
 
@@ -153,7 +160,13 @@ function Detail({
   const busy = revise.isPending || invoice.isPending || remove.isPending
   const can = quoteCommands(quote)
   const primary = writable ? primaryCommand(quote) : null
-  const menu = MENU.filter((command) => writable && can[command] && command !== primary)
+  const target = { doc: 'quotes', id: quote.id } as const
+  const approval = useApproval(target, quote.status === 'draft').data
+  // Sending a draft (or a new revision) waits for its approval when the policy asks for one.
+  const gated = quote.status === 'draft' && awaitsApproval(approval)
+  const menu = MENU.filter(
+    (command) => writable && can[command] && command !== primary && !(gated && command === 'send'),
+  )
   const name = quoteName(quote)
 
   const run = (command: QuoteCommand) => (command === 'edit' ? onEdit() : setDialog(command))
@@ -245,7 +258,13 @@ function Detail({
                 {translate('edit4')}
               </Button>
             )}
-            <PrimaryButton quote={quote} command={primary} busy={busy} onRun={run} />
+            {gated && primary === 'send' ? (
+              <ApprovalGate target={target} approval={approval}>
+                <Send /> {ACTIONS.send.label}
+              </ApprovalGate>
+            ) : (
+              <PrimaryButton quote={quote} command={primary} busy={busy} onRun={run} />
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -268,7 +287,7 @@ function Detail({
             client={quote.client}
             currency={quote.currency}
             amount={formatAmount(quote.payable_total)}
-            badge={<QuoteStatusBadge status={quote.status} />}
+            badge={<QuoteRowStatus quote={quote} />}
           >
             <HeroFact
               label={translate('issueDate')}
@@ -339,6 +358,7 @@ function Detail({
       </header>
 
       <TabsContent value="overview" className="grid content-start gap-3 p-4 sm:p-5">
+        {showsApproval(approval) && <ApprovalPanel target={target} approval={approval} />}
         <Panel title={translate('lines')}>
           <ul className="divide-y divide-border/60">
             {quote.lines.map((line) => (

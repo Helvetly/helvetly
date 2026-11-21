@@ -17,6 +17,7 @@ import {
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { ApprovalInbox } from '@/components/approvals/approval-inbox'
 import { useFeatureLock } from '@/components/billing/feature-lock'
 import { listTable } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
@@ -50,7 +51,7 @@ import {
 } from '@/lib/quotes'
 import { setUrlQuery } from '@/lib/url-query'
 
-import { QuoteStatusBadge } from './quote-bits'
+import { QuoteRowStatus } from './quote-bits'
 import { QuoteDetail } from './quote-detail'
 import { NewQuoteSheet } from './quote-editor'
 
@@ -152,6 +153,7 @@ export function QuotesPage() {
         onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['quotes'] })}
       >
         <div className="relative flex flex-1 flex-col">
+          <ApprovalInbox doc="quotes" onOpen={open} />
           <ListToolbar>
             <ListSearch
               label={translate('searchQuotes')}
@@ -310,7 +312,7 @@ export function QuotesPage() {
                         <Money value={quote.payable_total} currency={quote.currency} />
                       </td>
                       <td className={listTable.td}>
-                        <QuoteStatusBadge status={quote.status} />
+                        <QuoteRowStatus quote={quote} />
                       </td>
                     </tr>
                   ))}
@@ -357,7 +359,7 @@ function QuoteItem({ quote, onOpen }: { quote: Quote; onOpen: (id: string) => vo
         </span>
         <span className="grid justify-items-end gap-1">
           <Money value={quote.payable_total} currency={quote.currency} className="text-body" />
-          <QuoteStatusBadge status={quote.status} />
+          <QuoteRowStatus quote={quote} />
         </span>
       </button>
     </li>

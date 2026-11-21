@@ -94,6 +94,7 @@ export const sampleQuote = (change: Partial<Quote> = {}): Quote =>
     decided_by: null,
     decision_note: null,
     invoice: null,
+    approval_state: null,
     created_at: at,
     updated_at: at,
     ...change,

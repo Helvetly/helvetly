@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { ApiError, errorMessage, request } from '@/lib/api'
+import type { ApprovalState } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
 import {
   type Decimal,
@@ -52,6 +53,8 @@ export type Quote = Totals & {
   decision_note: string | null
   /** The invoice draft it became; `number` is "" until that invoice is issued. */
   invoice: { id: string; number: string } | null
+  /** The latest approval request of a draft (or the approval it was sent with); null without one. */
+  approval_state: Exclude<ApprovalState, 'none'> | null
   created_at: string
   updated_at: string
 }

@@ -2,6 +2,7 @@
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
+import { useQueryClient } from '@tanstack/react-query'
 import { MailX } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -19,6 +20,7 @@ import {
 } from '@/components/invoices/invoice-dialogs'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
+import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
 import { useClient } from '@/lib/clients'
 import { useQuoteEmailDraft } from '@/lib/email-templates'
 import { translate } from '@/lib/i18n'
@@ -53,6 +55,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
   const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [mailDown, setMailDown] = useState(false)
+  const queryClient = useQueryClient()
   const send = useQuoteAction((input: QuoteSendInput) => quotesApi.send(quote.id, input))
   const recipients = to ?? (draft.data?.to.join(', ') || fallback)
   const shownSubject = subject ?? draft.data?.subject ?? ''
@@ -67,6 +70,10 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
       },
       onError: (error) => {
         if (error instanceof ApiError && error.code === 'mail_unavailable') return setMailDown(true)
+        if (isApprovalRequired(error)) {
+          toastApprovalRequired(queryClient, quote.id, 'quotes')
+          return onClose()
+        }
         const fromServer = fieldErrors(error)
         if (Object.keys(fromServer).length) setErrors(fromServer)
         else failQuote(error)

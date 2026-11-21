@@ -22,9 +22,17 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { BookCheck, Ban, Copy, Ellipsis, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
+import {
+  ApprovalGate,
+  ApprovalPanel,
+  awaitsApproval,
+  showsApproval,
+} from '@/components/approvals/approval-panel'
 import { inputClass } from '@/components/clients/fields'
 import { loadProblemText } from '@/components/data/load-problem'
+import { ApprovalBadge } from '@/components/invoices/invoice-bits'
 import { RecordPageButton } from '@/components/record-link'
+import { useApproval } from '@/lib/approvals'
 import {
   expenseState,
   FOREIGN_VAT_HINT,
@@ -142,6 +150,10 @@ function Detail({
 }) {
   const badge = expenseState(expense)
   const draft = expense.status === 'draft'
+  const target = { doc: 'expenses', id: expense.id } as const
+  const approval = useApproval(target, draft).data
+  // Booking waits for the draft's approval when the policy asks for one; missing details come first.
+  const gated = draft && expense.is_complete && awaitsApproval(approval)
   const foreign = expense.currency !== expense.base.currency
   const money = (value: string) => formatMoney(value, expense.currency)
   const base = (value: string) => formatMoney(value, expense.base.currency)
@@ -215,16 +227,25 @@ function Detail({
               {translate('edit4')}
             </Button>
           )}
-          {draft && (
-            <Button
-              className="cursor-pointer gap-1.5"
-              disabled={!expense.is_complete}
-              title={expense.is_complete ? undefined : translate('completeTheMissingDetailsFirst')}
-              onClick={() => onCommand('book', expense)}
-            >
+          {gated ? (
+            <ApprovalGate target={target} approval={approval}>
               <BookCheck className="size-3.5" />
               {translate('book')}
-            </Button>
+            </ApprovalGate>
+          ) : (
+            draft && (
+              <Button
+                className="cursor-pointer gap-1.5"
+                disabled={!expense.is_complete}
+                title={
+                  expense.is_complete ? undefined : translate('completeTheMissingDetailsFirst')
+                }
+                onClick={() => onCommand('book', expense)}
+              >
+                <BookCheck className="size-3.5" />
+                {translate('book')}
+              </Button>
+            )
           )}
           <RecordPageButton />
           <Button
@@ -243,6 +264,7 @@ function Detail({
         <div className="grid gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={badge.tone}>{badge.label}</Badge>
+            {draft && <ApprovalBadge state={expense.approval_state} />}
             {expense.paid_by_member && !expense.reimbursed_on && expense.status !== 'void' && (
               <Badge tone="blue">{translate('toReimburse')}</Badge>
             )}
@@ -287,6 +309,7 @@ function Detail({
             </ul>
           </Callout>
         )}
+        {showsApproval(approval) && <ApprovalPanel target={target} approval={approval} />}
         {expense.status === 'void' && (
           <div className="grid gap-0.5 rounded-xl px-4 py-3 ring-1 ring-border">
             <p className="text-[14px] font-medium">

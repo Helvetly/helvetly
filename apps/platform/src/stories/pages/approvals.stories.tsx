@@ -274,7 +274,7 @@ export const DrawerNotRequired: Story = {
 export const DrawerSubmit: Story = {
   render: invoices,
   parameters: drawer(),
-  beforeEach: () => resetApprovals({ byInvoice: { [draftInvoice.id]: approvalOf('none') } }),
+  beforeEach: () => resetApprovals({ byDoc: { [draftInvoice.id]: approvalOf('none') } }),
   play: async () => {
     const drawerView = await sheet()
     const panel = within(await drawerView.findByRole('region', { name: 'Approval' }))
@@ -306,7 +306,7 @@ export const DrawerPendingAsApprover: Story = {
   parameters: drawer(),
   beforeEach: () =>
     resetApprovals({
-      byInvoice: { [draftInvoice.id]: approvalOf('pending', { can_decide: true }) },
+      byDoc: { [draftInvoice.id]: approvalOf('pending', { can_decide: true }) },
     }),
   play: async () => {
     const drawerView = await sheet()
@@ -327,7 +327,7 @@ export const DrawerRejectWithComment: Story = {
   parameters: drawer(),
   beforeEach: () =>
     resetApprovals({
-      byInvoice: { [draftInvoice.id]: approvalOf('pending', { can_decide: true }) },
+      byDoc: { [draftInvoice.id]: approvalOf('pending', { can_decide: true }) },
     }),
   play: async () => {
     const drawerView = await sheet()
@@ -355,7 +355,7 @@ export const DrawerPendingAsAuthor: Story = {
   parameters: drawer(),
   beforeEach: () =>
     resetApprovals({
-      byInvoice: { [draftInvoice.id]: approvalOf('pending', { can_withdraw: true }) },
+      byDoc: { [draftInvoice.id]: approvalOf('pending', { can_withdraw: true }) },
     }),
   play: async () => {
     const drawerView = await sheet()
@@ -379,7 +379,7 @@ export const DrawerApproved: Story = {
   parameters: drawer(),
   beforeEach: () =>
     resetApprovals({
-      byInvoice: {
+      byDoc: {
         [draftInvoice.id]: approvalOf('approved', {
           trail: [
             {
@@ -417,7 +417,7 @@ export const DrawerRejected: Story = {
   parameters: drawer(),
   beforeEach: () =>
     resetApprovals({
-      byInvoice: {
+      byDoc: {
         [draftInvoice.id]: approvalOf('rejected', {
           comment: 'Please split the workshop into two lines.',
           trail: [
@@ -507,7 +507,7 @@ export const InboxWithItems: Story = {
           total: '420.00',
         }),
       ],
-      byInvoice: { [draftInvoice.id]: approvalOf('pending', { can_decide: true }) },
+      byDoc: { [draftInvoice.id]: approvalOf('pending', { can_decide: true }) },
     }),
   play: async () => {
     const band = within(await body().findByRole('region', { name: 'Needs my approval' }))

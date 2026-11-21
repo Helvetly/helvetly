@@ -6,11 +6,25 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { toast } from 'sonner'
 
 import { ApiError, request } from '@/lib/api'
+import { expenseKeys } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
 import { invoiceKeys, type Decimal, type InvoiceKind } from '@/lib/invoices'
+import { quoteKeys } from '@/lib/quotes'
 
-export type DocType = 'invoice' | 'credit_note' | 'debit_note' | 'corrected'
-export const DOC_TYPES: DocType[] = ['invoice', 'credit_note', 'debit_note', 'corrected']
+export type DocType = 'invoice' | 'credit_note' | 'debit_note' | 'corrected' | 'quote' | 'expense'
+export const DOC_TYPES: DocType[] = [
+  'invoice',
+  'credit_note',
+  'debit_note',
+  'corrected',
+  'quote',
+  'expense',
+]
+
+/** The kind of record an approval belongs to: its API collection. */
+export type ApprovalDoc = 'invoices' | 'quotes' | 'expenses'
+/** One record whose approval is read or acted on. */
+export type ApprovalTarget = { doc: ApprovalDoc; id: string }
 
 export type ApprovalGroup = { id: string; name: string; member_ids: string[] }
 /** At least `min` approvals from the group; `group_id` null: from anyone who can see invoices. */
@@ -31,10 +45,12 @@ type Person = { id: string; name: string }
 export type InboxItem = {
   doc_type: DocType
   doc_id: string
-  kind: InvoiceKind
+  kind: InvoiceKind | 'quote' | 'expense'
+  /** The client; for an expense its supplier, else its description, else "". */
   client_name: string
   total: Decimal
   currency: string
+  /** "" for an expense without a date. */
   issue_date: string
   submitted_by: Person
   submitted_at: string
@@ -66,8 +82,9 @@ export type ApprovalAction = 'submit' | 'withdraw' | 'approve' | 'reject'
 type One<T> = { data: T }
 const send = (method: 'POST' | 'PATCH' | 'PUT', json: unknown) => ({ method, json }) as const
 const groupPath = (id: string) => `/approvals/groups/${encodeURIComponent(id)}`
-const invoicePath = (id: string, action: ApprovalAction) =>
-  `/invoices/${encodeURIComponent(id)}/approval${action === 'submit' ? '' : `/${action}`}`
+const approvalPath = ({ doc, id }: ApprovalTarget) => `/${doc}/${encodeURIComponent(id)}/approval`
+const actionPath = (target: ApprovalTarget, action: ApprovalAction) =>
+  `${approvalPath(target)}${action === 'submit' ? '' : `/${action}`}`
 
 export const approvalsApi = {
   settings: async () => (await request<One<ApprovalSettings>>('/approvals/settings')).data,
@@ -84,23 +101,22 @@ export const approvalsApi = {
       )
     ).data,
   inbox: async () => (await request<One<InboxItem[]>>('/approvals/inbox')).data,
-  get: async (id: string) =>
-    (await request<One<Approval>>(`/invoices/${encodeURIComponent(id)}/approval`)).data,
+  get: async (target: ApprovalTarget) => (await request<One<Approval>>(approvalPath(target))).data,
   /** `requestId` is the request the person saw: the API refuses a decision on one submitted again since. */
   act: async ({
-    id,
+    target,
     action,
     comment,
     requestId,
   }: {
-    id: string
+    target: ApprovalTarget
     action: ApprovalAction
     comment?: string
     requestId?: string | null
   }) =>
     (
       await request<One<Approval>>(
-        invoicePath(id, action),
+        actionPath(target, action),
         send('POST', {
           ...(comment ? { comment } : {}),
           ...(requestId ? { request_id: requestId } : {}),
@@ -112,7 +128,20 @@ export const approvalsApi = {
 export const approvalKeys = {
   settings: ['approvals', 'settings'] as const,
   inbox: ['approvals', 'inbox'] as const,
-  invoice: (id: string) => ['approvals', 'invoice', id] as const,
+  of: ({ doc, id }: ApprovalTarget) => ['approvals', doc, id] as const,
+}
+
+/** The record's own queries, which carry its `approval_state`. */
+function invalidateRecord(queryClient: QueryClient, { doc, id }: ApprovalTarget) {
+  if (doc === 'invoices') {
+    void queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(id), exact: true })
+    void queryClient.invalidateQueries({ queryKey: invoiceKeys.lists })
+  } else if (doc === 'quotes') {
+    void queryClient.invalidateQueries({ queryKey: quoteKeys.all })
+  } else {
+    void queryClient.invalidateQueries({ queryKey: expenseKeys.detail(id), exact: true })
+    void queryClient.invalidateQueries({ queryKey: ['expenses', 'list'] })
+  }
 }
 
 export function useApprovalSettings() {
@@ -149,34 +178,40 @@ export function useApprovalInbox() {
   return useQuery({ queryKey: approvalKeys.inbox, queryFn: approvalsApi.inbox })
 }
 
-/** Fetched for drafts only: an issued document has nothing left to approve. */
-export function useInvoiceApproval(id: string, enabled: boolean) {
+/** Fetched for drafts only: an issued, sent or booked record has nothing left to approve. */
+export function useApproval(target: ApprovalTarget, enabled: boolean) {
   return useQuery({
-    queryKey: approvalKeys.invoice(id),
-    queryFn: () => approvalsApi.get(id),
+    queryKey: approvalKeys.of(target),
+    queryFn: () => approvalsApi.get(target),
     enabled,
   })
 }
 
-/** Submit, withdraw, approve or reject: the invoice's `approval_state`, the lists and my inbox change with it. */
+export const useInvoiceApproval = (id: string, enabled: boolean) =>
+  useApproval({ doc: 'invoices', id }, enabled)
+
+/** Submit, withdraw, approve or reject: the record's `approval_state`, the lists and my inbox change with it. */
 export function useApprovalAction() {
   const queryClient = useQueryClient()
-  return useMutation<Approval, ApiError, { id: string; action: ApprovalAction; comment?: string }>({
+  return useMutation<
+    Approval,
+    ApiError,
+    { target: ApprovalTarget; action: ApprovalAction; comment?: string }
+  >({
     // the decision names the request on screen, so a stale drawer never approves content submitted again
     mutationFn: (variables) =>
       approvalsApi.act({
         ...variables,
-        requestId: queryClient.getQueryData<Approval>(approvalKeys.invoice(variables.id))
+        requestId: queryClient.getQueryData<Approval>(approvalKeys.of(variables.target))
           ?.request_id,
       }),
-    onError: (error, { id }) => {
+    onError: (error, { target }) => {
       if (error.code === 'approval_changed')
-        void queryClient.invalidateQueries({ queryKey: approvalKeys.invoice(id) })
+        void queryClient.invalidateQueries({ queryKey: approvalKeys.of(target) })
     },
-    onSuccess: (approval, { id }) => {
-      queryClient.setQueryData(approvalKeys.invoice(id), approval)
-      void queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(id), exact: true })
-      void queryClient.invalidateQueries({ queryKey: invoiceKeys.lists })
+    onSuccess: (approval, { target }) => {
+      queryClient.setQueryData(approvalKeys.of(target), approval)
+      invalidateRecord(queryClient, target)
       void queryClient.invalidateQueries({ queryKey: approvalKeys.inbox })
     },
   })
@@ -186,12 +221,20 @@ export function useApprovalAction() {
 export const isApprovalRequired = (error: unknown) =>
   error instanceof ApiError && error.code === 'approval_required'
 
+const REQUIRED_BODY: Record<ApprovalDoc, string> = {
+  invoices: translate('approvalRequiredBody'),
+  quotes: translate('approvalRequiredBodyQuote'),
+  expenses: translate('approvalRequiredBodyExpense'),
+}
+
 /** Says the draft needs approval first, and refetches its approval so the drawer shows the step. */
-export function toastApprovalRequired(queryClient: QueryClient, invoiceId: string) {
-  toast.error(translate('approvalRequiredTitle'), {
-    description: translate('approvalRequiredBody'),
-  })
-  void queryClient.invalidateQueries({ queryKey: approvalKeys.invoice(invoiceId) })
+export function toastApprovalRequired(
+  queryClient: QueryClient,
+  id: string,
+  doc: ApprovalDoc = 'invoices',
+) {
+  toast.error(translate('approvalRequiredTitle'), { description: REQUIRED_BODY[doc] })
+  void queryClient.invalidateQueries({ queryKey: approvalKeys.of({ doc, id }) })
 }
 
 /** Who a rule asks for, as a word: the group's name or "anyone who can see invoices". */

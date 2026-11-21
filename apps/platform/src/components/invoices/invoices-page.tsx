@@ -37,6 +37,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
+import { ApprovalInbox } from '@/components/approvals/approval-inbox'
 import {
   ExportItem,
   PlanTag,
@@ -106,7 +107,6 @@ import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
 
-import { ApprovalInbox } from './approval-inbox'
 import { ClientSearch } from './client-search'
 import { composeQuery, isLegacyEditorPath, parseCompose } from './compose'
 import { DERIVED, DerivePicker, type DeriveFrom } from './derive-picker'
@@ -483,7 +483,7 @@ export function InvoicesPage() {
         onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['invoices'] })}
       >
         <div className="relative flex flex-1 flex-col">
-          <ApprovalInbox onOpen={open} />
+          <ApprovalInbox doc="invoices" onOpen={open} />
           {isReceivable(params.kind) && <InvoiceKpis />}
           <ListToolbar>
             <Filters params={params} onChange={update} />
