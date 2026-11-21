@@ -106,6 +106,9 @@ function install(page: Page) {
       },
       /** Up to `tries` two-frame looks, until one finds nothing moving. */
       still: async (tries: number): Promise<void> => {
+        // A blur's transition back can still be pending: measured then, the field's focused place looks still,
+        // and the next focus, cancelling it, moves nothing.
+        await audit.started()
         before = audit.boxes()
         await audit.frame()
         await audit.frame()
@@ -116,14 +119,16 @@ function install(page: Page) {
         control.focus({ preventScroll: true })
         return audit.focusChanged()
       },
-      focusChanged: async () => {
-        // A focus transition can still be pending after two frames.
-        await Promise.allSettled(
+      /** A CSS transition can still be pending after two frames; this waits until each has started. */
+      started: () =>
+        Promise.allSettled(
           document
             .getAnimations()
             .filter((animation) => animation instanceof CSSTransition && animation.pending)
             .map((animation) => animation.ready),
-        )
+        ),
+      focusChanged: async () => {
+        await audit.started()
         await audit.frame()
         await audit.frame()
         return audit.changed()
