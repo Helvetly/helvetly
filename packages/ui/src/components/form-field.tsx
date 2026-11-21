@@ -20,6 +20,7 @@ export type FieldWidth = 'xs' | 'sm' | 'md' | 'lg' | 'full'
 export function FormField({
   id,
   label,
+  labelNode,
   error,
   hint,
   status,
@@ -32,6 +33,8 @@ export function FormField({
 }: {
   id: string
   label: string
+  /** Shown in place of `label` where the label holds a node (a name in code style); `label` stays its plain text. */
+  labelNode?: ReactNode
   error?: string
   hint?: ReactNode
   status?: ReactNode
@@ -53,7 +56,7 @@ export function FormField({
           htmlFor={group ? undefined : id}
           className={cn('text-body-sm font-medium', error && 'text-destructive')}
         >
-          {label}
+          {labelNode ?? label}
           {required && (
             <span aria-hidden className="ml-0.5 text-destructive">
               *
