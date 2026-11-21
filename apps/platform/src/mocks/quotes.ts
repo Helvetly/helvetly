@@ -3,7 +3,13 @@
 // contract's lifecycle; totals are a simple stand-in for internal/invoicecalc.
 import { delay, http, HttpResponse } from 'msw'
 
-import type { Line, LineInput } from '@/lib/invoices'
+import type {
+  InstalmentInput,
+  InstalmentSchedule,
+  InvoiceInput,
+  Line,
+  LineInput,
+} from '@/lib/invoices'
 import type { Quote, QuoteInput, QuoteSendInput } from '@/lib/quotes'
 
 const at = '2026-11-03T09:30:00Z'
@@ -74,6 +80,7 @@ export const sampleQuote = (change: Partial<Quote> = {}): Quote =>
     note: null,
     discount_percent: '0',
     lines: [line(1, 'Brand workshop', '8', '180.00'), line(2, 'Logo design', '6', '150.00')],
+    instalments: null,
     subtotal: '0.00',
     discount_amount: '0.00',
     net_total: '0.00',
@@ -185,17 +192,68 @@ const asLines = (input: LineInput[]): Line[] =>
     amount: (Number(entry.quantity) * Number(entry.unit_price)).toFixed(2),
   }))
 
+/** The schedule as the API keeps it: the typed rows, or the payable total split evenly a month apart. */
+export function asSchedule(input: InstalmentInput, payable: string): InstalmentSchedule {
+  const cents = Math.round(Number(payable) * 100)
+  const part = Math.floor(cents / input.count)
+  const month = (i: number) => {
+    const date = new Date(`${input.first_due_date}T00:00:00Z`)
+    date.setUTCMonth(date.getUTCMonth() + i)
+    return date.toISOString().slice(0, 10)
+  }
+  const rows =
+    input.items && input.items.length > 0
+      ? input.items
+      : Array.from({ length: input.count }, (_, i) => ({
+          due_date: month(i),
+          amount: ((i === input.count - 1 ? cents - part * i : part) / 100).toFixed(2),
+        }))
+  return {
+    interval: input.interval,
+    items: rows.map((row, i) => ({
+      seq: i + 1,
+      due_date: row.due_date,
+      amount: row.amount,
+      effective: row.amount,
+      paid: '0.00',
+      open: row.amount,
+      status: 'open',
+      reference: null,
+    })),
+  }
+}
+
+/** The invoice preview the quote editor asks for its totals, with the rows of a schedule. */
+export const quotePreviewHandler = http.post<never, Partial<InvoiceInput>>(
+  '/api/v1/invoices/preview',
+  async ({ request }) => {
+    const input = await request.json()
+    const totals = withTotals(sampleQuote({ lines: asLines(input.lines ?? []) }))
+    const instalments = input.instalments
+      ? asSchedule(input.instalments, totals.payable_total)
+      : null
+    return HttpResponse.json({ data: { ...totals, instalments } })
+  },
+)
+
 function apply(
   quote: Quote,
   body: Partial<QuoteInput>,
 ): { quote: Quote } | { fields: Record<string, string> } {
-  const { lines, client_id, ...rest } = body
-  const next: Quote = {
+  const { lines, client_id, instalments, ...rest } = body
+  const merged: Quote = {
     ...quote,
     ...rest,
     ...(lines ? { lines: asLines(lines) } : {}),
     ...(client_id ? client(client_id) : {}),
   }
+  const next: Quote =
+    instalments === undefined
+      ? merged
+      : {
+          ...merged,
+          instalments: instalments && asSchedule(instalments, withTotals(merged).payable_total),
+        }
   const fields: Record<string, string> = {}
   if (!next.client_id) fields.client_id = 'Choose a client.'
   if (next.valid_until < next.issue_date)

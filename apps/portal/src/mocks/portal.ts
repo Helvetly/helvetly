@@ -239,6 +239,7 @@ const quote = (fields: Partial<PortalQuote> & Pick<PortalQuote, 'id' | 'number'>
   total: '0.00',
   decided_at: null,
   decision_note: null,
+  instalments: [],
   ...fields,
 })
 

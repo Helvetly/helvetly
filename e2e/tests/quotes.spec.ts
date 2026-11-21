@@ -225,3 +225,81 @@ test('the quotes list searches by number and keeps the search over a reload', as
   await expect(search).toHaveValue('')
   await expect(page.getByRole('button', { name: number })).toBeVisible()
 })
+
+/** A civil date `days` after today, as the API writes it. */
+const inDays = (days: number) => {
+  const date = new Date(`${today()}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+test('a quote’s payment schedule is accepted in the portal and carried to the invoice draft', async ({
+  api,
+  browser,
+}) => {
+  await api.settings()
+  const client = await api.client()
+  const email = `quote-schedule-${randomUUID()}@example.test`
+  await api.save(`/clients/${text(client.id)}`, { email, portal_enabled: true }, 'PATCH')
+  const rows = [
+    { due_date: inDays(20), amount: '945.80' },
+    { due_date: inDays(50), amount: '1000.00' },
+  ]
+  const draft = await api.save('/quotes', {
+    client_id: client.id,
+    lines: [line],
+    instalments: { count: 2, interval: 'monthly', first_due_date: rows[0]?.due_date, items: rows },
+  })
+  expect(draft.instalments).toMatchObject({ interval: 'monthly', items: rows })
+
+  // A schedule off the total is not sent; once it adds up, it is.
+  await api.save(
+    `/quotes/${text(draft.id)}`,
+    {
+      instalments: {
+        count: 2,
+        interval: 'monthly',
+        first_due_date: inDays(20),
+        items: [rows[0], { ...rows[1], amount: '1.00' }],
+      },
+    },
+    'PATCH',
+  )
+  const refused = await api.write(`/quotes/${text(draft.id)}/send`, { email: false })
+  expect(refused.status()).toBe(422)
+  expect(object(object(await refused.json()).error).code).toBe('cannot_send')
+  await api.save(
+    `/quotes/${text(draft.id)}`,
+    { instalments: { count: 2, interval: 'monthly', first_due_date: inDays(20), items: rows } },
+    'PATCH',
+  )
+  const quote = await api.save(`/quotes/${text(draft.id)}/send`, { email: false })
+  const number = text(quote.number)
+
+  // The client sees the schedule with the quote and accepts it.
+  const w = await portalPath(api.request)
+  const context = await browser.newContext({ baseURL: portalURL })
+  try {
+    const portal = await signInToPortal(context, w, email)
+    await portal.getByRole('link', { name: 'Quotes' }).first().click()
+    const schedule = portal.getByRole('region', { name: 'Payment schedule' })
+    await expect(schedule.getByRole('listitem')).toHaveCount(2)
+    await expect(schedule.getByRole('listitem').nth(1)).toContainText('1’000.00')
+    await portal.getByRole('button', { name: `Accept quote ${number}` }).click()
+    const dialog = portal.getByRole('dialog')
+    await dialog.getByRole('button', { name: 'Accept quote' }).click()
+    await expect(dialog).toBeHidden()
+  } finally {
+    await context.close()
+  }
+
+  // The invoice draft takes the schedule over and falls due with its last instalment; the quote keeps its own.
+  const converted = await api.save(`/quotes/${text(quote.id)}/invoice`, {})
+  const invoice = await api.read(`/invoices/${text(object(converted.invoice).id)}`)
+  expect(invoice).toMatchObject({
+    status: 'draft',
+    due_date: rows[1]?.due_date,
+    instalments: { interval: 'monthly', items: rows },
+  })
+  expect((await api.read(`/quotes/${text(quote.id)}`)).instalments).toMatchObject({ items: rows })
+})

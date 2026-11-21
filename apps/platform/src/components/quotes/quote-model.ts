@@ -1,6 +1,7 @@
 // The quote editor's state: the invoice editor's values (same lines, VAT and texts) plus the date a
 // quote is valid until, and the conversion to the contract's QuoteInput.
 import {
+  editorInstalments,
   editorLine,
   emptyValues,
   newLine,
@@ -38,6 +39,7 @@ export function valuesFromQuote(quote: Quote, settings: InvoiceSettings): QuoteV
     note: quote.note ?? '',
     discount_percent: /^0*(\.0*)?$/.test(quote.discount_percent) ? '' : quote.discount_percent,
     lines: quote.lines.map(editorLine),
+    instalments: editorInstalments(quote),
   }
   if (values.lines.length === 0) values.lines = [newLine(values, settings.default_vat_rate)]
   return values
@@ -66,6 +68,7 @@ export function toQuoteInput(values: QuoteValues): {
     note: all.note,
     discount_percent: all.discount_percent,
     lines: all.lines,
+    ...(all.instalments === undefined ? {} : { instalments: all.instalments }),
   }
   return { input, errors, keys }
 }

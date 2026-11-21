@@ -32,12 +32,14 @@ import {
 /**
  * The editor footer's "Pay in instalments": one invoice, several due dates, one QR bill each. A compact row with the
  * schedule's summary; the settings, payment reminders included (they follow the instalments' due dates), open in a dialog.
+ * A quote offers the same schedule, without reminders: its invoice takes the schedule over.
  */
 export function InstalmentsSection({
   value,
   onChange,
-  reminders,
+  reminders = false,
   onReminders,
+  description = translate('instalmentsDialogDescription'),
   payable,
   generated,
   currency,
@@ -50,8 +52,11 @@ export function InstalmentsSection({
 }: {
   value: EditorInstalments | null
   onChange: (next: EditorInstalments | null) => void
-  reminders: boolean
-  onReminders: (on: boolean) => void
+  /** Absent on a quote: reminders belong to the invoice. */
+  reminders?: boolean
+  onReminders?: (on: boolean) => void
+  /** The dialog's line under its title; the invoice's by default. */
+  description?: string
   /** From the server's preview; null while it loads. */
   payable: string | null
   /** The rows the server's preview generates for the schedule. */
@@ -86,7 +91,7 @@ export function InstalmentsSection({
   const cancel = () => {
     if (!opened) return
     onChange(opened.before)
-    onReminders(opened.reminders)
+    onReminders?.(opened.reminders)
     setOpened(undefined)
   }
   const invalid =
@@ -164,7 +169,7 @@ export function InstalmentsSection({
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>{translate('payInInstalments').trim()}</DialogTitle>
-              <DialogDescription>{translate('instalmentsDialogDescription')}</DialogDescription>
+              <DialogDescription>{description}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-3">
               <div className="flex flex-wrap items-end gap-3">
@@ -270,13 +275,15 @@ export function InstalmentsSection({
                 )}
               </div>
 
-              <SwitchRow
-                id="invoice-instalment-reminders"
-                label={translate('paymentReminders')}
-                description={translate('emailsTheClientBeforeAndAfterEachDueDate')}
-                checked={reminders}
-                onCheckedChange={onReminders}
-              />
+              {onReminders && (
+                <SwitchRow
+                  id="invoice-instalment-reminders"
+                  label={translate('paymentReminders')}
+                  description={translate('emailsTheClientBeforeAndAfterEachDueDate')}
+                  checked={reminders}
+                  onCheckedChange={onReminders}
+                />
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={cancel}>

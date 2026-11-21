@@ -11985,6 +11985,17 @@
           "rounding_amount": {
             "$ref": "#/components/schemas/Money"
           },
+          "instalments": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InstalmentSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The payment schedule offered with the quote; its amounts and due dates only. The invoice made from an accepted quote takes it over."
+          },
           "payable_total": {
             "$ref": "#/components/schemas/Money"
           },
@@ -12051,6 +12062,7 @@
           "vat_total",
           "total",
           "rounding_amount",
+          "instalments",
           "payable_total",
           "sent_at",
           "decided_at",
@@ -12342,6 +12354,43 @@
               "$ref": "#/components/schemas/InvoiceLineInput"
             },
             "maxItems": 200
+          },
+          "instalments": {
+            "type": ["object", "null"],
+            "description": "A payment schedule, as an invoice's: count instalments every interval from first_due_date, split evenly unless items give each due date and amount (exactly count, each due after the one before). null removes it. Sending refuses a schedule that does not add up to the payable total or falls due before the quote's date.",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12
+              },
+              "interval": {
+                "type": "string",
+                "enum": ["weekly", "biweekly", "monthly", "quarterly", "yearly"]
+              },
+              "first_due_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "items": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "due_date": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "amount": {
+                      "type": ["string", "number"],
+                      "description": "A decimal: string \"1200.00\" (exact) or number."
+                    }
+                  },
+                  "required": ["due_date", "amount"]
+                }
+              }
+            },
+            "required": ["count", "interval", "first_due_date"]
           }
         },
         "required": ["client_id"],
