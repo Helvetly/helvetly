@@ -8,7 +8,21 @@ import { Input } from '@helvetly/ui/components/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
-import { BadgeCheck, Copy, Globe, Link2, Lock, RefreshCw, ShieldCheck, Timer } from 'lucide-react'
+import {
+  BadgeCheck,
+  Check,
+  Circle,
+  Copy,
+  ExternalLink,
+  Globe,
+  Link2,
+  Loader2,
+  Lock,
+  RefreshCw,
+  ShieldCheck,
+  Timer,
+  Trash2,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -59,7 +73,12 @@ export function domainNotice(
   const { stage, problem } = domain
   if (stage === 'active') return null
   // Only a domain that broke or was refused is a failure; waiting and a plan to upgrade are not.
-  const tone: CalloutTone = stage === 'problem' && problem !== 'plan' ? 'danger' : 'warning'
+  const tone: CalloutTone =
+    stage === 'certificate'
+      ? 'info'
+      : stage === 'problem' && problem !== 'plan'
+        ? 'danger'
+        : 'warning'
   const key = problem ?? 'pending'
   return {
     tone,
@@ -261,6 +280,46 @@ function AddDomain() {
   )
 }
 
+const SPIN = 'animate-spin motion-reduce:animate-none'
+
+/** The three steps of going live, from the API's stage: DNS records, secure connection, live. */
+function SetupSteps({ stage }: { stage: DomainStage }) {
+  const at = stage === 'certificate' ? 1 : 0
+  const steps = [
+    translate('domainStepDns'),
+    translate('domainStepSecure'),
+    translate('domainStepLive'),
+  ]
+  return (
+    <ol data-slot="domain-steps" className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-caption">
+      {steps.map((label, index) => {
+        const state = index < at ? 'done' : index === at ? 'active' : 'pending'
+        return (
+          <li
+            key={label}
+            data-state={state}
+            aria-current={state === 'active' ? 'step' : undefined}
+            className={
+              state === 'pending'
+                ? 'flex items-center gap-1.5 text-muted-foreground'
+                : 'flex items-center gap-1.5 font-medium'
+            }
+          >
+            {state === 'done' ? (
+              <Check aria-hidden className="size-3.5 text-success" />
+            ) : state === 'active' ? (
+              <Loader2 aria-hidden className={`size-3.5 ${SPIN}`} />
+            ) : (
+              <Circle aria-hidden className="size-3.5" />
+            )}
+            {label}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
 function DomainStatus({ domain, canEdit }: { domain: PortalDomain; canEdit: boolean }) {
   const check = useCheckPortalDomain()
   const remove = useRemovePortalDomain()
@@ -268,42 +327,62 @@ function DomainStatus({ domain, canEdit }: { domain: PortalDomain; canEdit: bool
   const stage = STAGES[domain.stage]
   const active = domain.stage === 'active'
   const notice = domainNotice(domain)
+  // Once DNS is verified the records are only a reference.
+  const collapsed = active || domain.stage === 'certificate'
+  const records = (active ? domain.records.filter((r) => r.type === 'CNAME') : domain.records).map(
+    (record) => <RecordRow key={`${record.type} ${record.name}`} record={record} />,
+  )
   return (
     <div className="grid max-w-[var(--settings-form,44rem)] gap-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {active ? (
-          <a
-            href={`https://${domain.hostname}/`}
-            target="_blank"
-            rel="noreferrer"
-            className="min-w-0 truncate text-body font-medium underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground"
-          >
-            {domain.hostname}
-          </a>
-        ) : (
-          <span className="min-w-0 truncate text-body font-medium">{domain.hostname}</span>
-        )}
+        <span className="min-w-0 truncate text-body font-medium">{domain.hostname}</span>
         <Badge tone={stage.tone}>{stage.label}</Badge>
         {canEdit && (
           <span className="ml-auto flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={check.isPending}
-              onClick={() => check.mutate(undefined, { onError: toastError })}
-            >
-              <RefreshCw className={check.isPending ? 'animate-spin' : undefined} />
-              {translate('recheckDomain')}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirming(true)}>
+            {!active && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={check.isPending}
+                onClick={() => check.mutate(undefined, { onError: toastError })}
+              >
+                <RefreshCw className={check.isPending ? SPIN : undefined} />
+                {translate('recheckDomain')}
+              </Button>
+            )}
+            <Button size="sm" variant="destructive-ghost" onClick={() => setConfirming(true)}>
+              <Trash2 />
               {translate('removeDomain')}
             </Button>
           </span>
         )}
       </div>
+      {active && (
+        <Callout
+          tone="success"
+          title={translate('domainLiveTitle', { domain: domain.hostname })}
+          actions={
+            <Button asChild size="sm" variant="outline">
+              <a href={`https://${domain.hostname}/`} target="_blank" rel="noreferrer">
+                <ExternalLink />
+                {translate('domainOpen')}
+              </a>
+            </Button>
+          }
+        />
+      )}
       {notice && (
-        <Callout role="alert" tone={notice.tone} title={notice.title}>
+        <Callout
+          role={notice.tone === 'info' ? 'status' : 'alert'}
+          tone={notice.tone}
+          icon={notice.tone === 'info' ? Loader2 : undefined}
+          iconClassName={notice.tone === 'info' ? SPIN : undefined}
+          title={notice.title}
+        >
           <p>{notice.body}</p>
+          {(domain.stage === 'dns' || domain.stage === 'certificate') && (
+            <SetupSteps stage={domain.stage} />
+          )}
           {domain.releases_at && (
             <p className="mt-1 text-muted-foreground">
               {translate('domainReleasesAt', { date: formatDate(domain.releases_at) })}
@@ -319,14 +398,29 @@ function DomainStatus({ domain, canEdit }: { domain: PortalDomain; canEdit: bool
           )}
         </Callout>
       )}
-      <p className="text-body-sm text-pretty text-muted-foreground">
-        {translate(active ? 'customDomainKeepRecords' : 'customDomainRecords')}
-      </p>
-      <ul className="grid gap-2">
-        {domain.records.map((record) => (
-          <RecordRow key={`${record.type} ${record.name}`} record={record} />
-        ))}
-      </ul>
+      {active && (
+        <p className="text-caption text-muted-foreground">{translate('domainKeepCname')}</p>
+      )}
+      {collapsed ? (
+        <details data-slot="dns-records" className="grid gap-2 text-body-sm">
+          <summary className="w-fit cursor-pointer text-muted-foreground underline underline-offset-2">
+            {translate('domainRecordsToggle')}
+          </summary>
+          <div className="mt-2 grid gap-2">
+            {!active && (
+              <p className="text-pretty text-muted-foreground">{translate('domainRecordsNote')}</p>
+            )}
+            <ul className="grid gap-2">{records}</ul>
+          </div>
+        </details>
+      ) : (
+        <>
+          <p className="text-body-sm text-pretty text-muted-foreground">
+            {translate('customDomainRecords')}
+          </p>
+          <ul className="grid gap-2">{records}</ul>
+        </>
+      )}
       {confirming && (
         <ConfirmDialog
           tone="destructive"

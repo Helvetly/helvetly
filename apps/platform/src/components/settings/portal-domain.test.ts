@@ -34,7 +34,7 @@ describe('domainNotice', () => {
     ['dns', null, 'warning', 'Waiting for your DNS records'],
     ['dns', 'dns', 'warning', 'DNS records not found yet'],
     ['dns', 'verification', 'warning', 'Ownership record not found yet'],
-    ['certificate', 'certificate', 'warning', 'Certificate is being issued'],
+    ['certificate', 'certificate', 'info', 'Setting up your domain'],
     ['problem', 'dns', 'danger', 'DNS records not found yet'],
     ['problem', 'blocked', 'danger', 'Domain blocked'],
     ['problem', 'taken', 'danger', 'Domain connected elsewhere'],

@@ -110,10 +110,19 @@ export const Certificate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('Issuing certificate')).toBeVisible()
-    const alert = canvas.getByRole('alert')
-    await expect(alert).toHaveAttribute('data-tone', 'warning')
-    await expect(alert).toHaveTextContent('Certificate is being issued')
-    await expect(alert).toHaveTextContent('certificate for the secure connection is being issued')
+    // Not an error: a calm info alert with the three steps, DNS done and the secure connection in progress.
+    const alert = canvas.getByRole('status')
+    await expect(alert).toHaveAttribute('data-tone', 'info')
+    await expect(alert).toHaveTextContent('Setting up your domain')
+    await expect(alert).toHaveTextContent('We are issuing the certificate')
+    const steps = within(alert).getAllByRole('listitem')
+    await expect(steps.map((step) => step.dataset.state)).toEqual(['done', 'active', 'pending'])
+    await expect(canvas.queryByRole('alert')).toBeNull()
+    // The records stay one click away, with the note about the TXT record.
+    await expect(canvas.queryByText('CNAME')).not.toBeVisible()
+    await userEvent.click(canvas.getByText('DNS records', { selector: 'summary' }))
+    await expect(canvas.getByText('CNAME')).toBeVisible()
+    await expect(canvas.getByText(/delete the TXT record once the domain is active/)).toBeVisible()
   },
 }
 
@@ -132,10 +141,22 @@ export const Active: Story = {
   beforeEach: () => resetPortalDomain(portalDomain(undefined, 'active')),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      await canvas.findByRole('link', { name: 'portal.mueller-treuhand.ch' }),
-    ).toHaveAttribute('href', 'https://portal.mueller-treuhand.ch/')
+    const live = (
+      await canvas.findByText('portal.mueller-treuhand.ch is live')
+    ).closest<HTMLElement>('[data-slot=callout]')!
+    await expect(live).toHaveAttribute('data-tone', 'success')
+    await expect(live).toHaveTextContent('portal.mueller-treuhand.ch is live')
+    await expect(within(live).getByRole('link', { name: 'Open' })).toHaveAttribute(
+      'href',
+      'https://portal.mueller-treuhand.ch/',
+    )
     await expect(canvas.getByText('Active')).toBeVisible()
+    // Nothing to set up: no Re-check, no TXT instructions, the CNAME hint and the records behind a disclosure.
+    await expect(canvas.queryByRole('button', { name: 'Re-check' })).toBeNull()
+    await expect(canvas.getByText('Keep the CNAME record at your DNS provider.')).toBeVisible()
+    await expect(canvas.queryByText(/Keep it until/)).toBeNull()
+    await expect(canvas.queryByText('TXT')).toBeNull()
+    await expect(canvas.getByText('CNAME')).not.toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Remove' }))
     const dialog = await page().findByRole('dialog')
     await expect(dialog).toHaveTextContent('Remove portal.mueller-treuhand.ch?')
@@ -343,6 +364,25 @@ export const ProblemDark: Story = { ...Problem, parameters: { ...meta.parameters
 
 export const ProblemPhone: Story = {
   ...Problem,
+  parameters: phone,
+  globals: { viewport: { value: 'phone' } },
+}
+
+export const IssuingCertificateDark: Story = {
+  ...Certificate,
+  parameters: { ...meta.parameters, dark: true },
+}
+
+export const IssuingCertificatePhone: Story = {
+  ...Certificate,
+  parameters: phone,
+  globals: { viewport: { value: 'phone' } },
+}
+
+export const ActiveDark: Story = { ...Active, parameters: { ...meta.parameters, dark: true } }
+
+export const ActivePhone: Story = {
+  ...Active,
   parameters: phone,
   globals: { viewport: { value: 'phone' } },
 }

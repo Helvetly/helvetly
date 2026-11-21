@@ -27,6 +27,7 @@ export type CalloutTone = keyof typeof TONES
 export function Callout({
   tone = 'info',
   icon,
+  iconClassName,
   title,
   actions,
   children,
@@ -35,6 +36,7 @@ export function Callout({
 }: {
   tone?: CalloutTone
   icon?: LucideIcon
+  iconClassName?: string
   title?: ReactNode
   actions?: ReactNode
   children?: ReactNode
@@ -54,7 +56,10 @@ export function Callout({
       )}
       {...props}
     >
-      <Icon aria-hidden className={cn('size-4 shrink-0', (title || !actions) && 'mt-px', accent)} />
+      <Icon
+        aria-hidden
+        className={cn('size-4 shrink-0', (title || !actions) && 'mt-px', accent, iconClassName)}
+      />
       <div className="grid min-w-0 flex-1 gap-1">
         {title && <p className={cn('text-body font-medium', accent)}>{title}</p>}
         {children && <div className="text-pretty text-foreground">{children}</div>}
