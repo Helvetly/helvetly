@@ -887,33 +887,33 @@ h1 .accent {
 }
 
 /* The sidebar bell while anything is unread: a short swing from its top, about a second, then rest; it rings again
-   every few seconds. Nothing with reduced motion. `rotate` is its own property, so the hover motion stays. */
+   every 10 seconds. Nothing with reduced motion. `rotate` is its own property, so the hover motion stays. */
 @keyframes bell-ring {
   0%,
-  16%,
+  9.6%,
   100% {
     rotate: 0deg;
   }
-  2% {
+  1.2% {
     rotate: 14deg;
   }
-  4.5% {
+  2.7% {
     rotate: -12deg;
   }
-  7% {
+  4.2% {
     rotate: 9deg;
   }
-  9.5% {
+  5.7% {
     rotate: -6deg;
   }
-  12% {
+  7.2% {
     rotate: 3deg;
   }
 }
 @media (prefers-reduced-motion: no-preference) {
   .bell-ring {
     transform-origin: 50% 2px;
-    animation: bell-ring 6s ease-in-out 0.6s infinite;
+    animation: bell-ring 10s ease-in-out 0.6s infinite;
   }
 }
 
