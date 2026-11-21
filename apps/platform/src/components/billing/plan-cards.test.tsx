@@ -6,18 +6,10 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { toast } from 'sonner'
 
-import type { Billing, PublicOffer } from '@/lib/billing'
+import type { Billing } from '@/lib/billing'
 
-import { billingFixture as billing, flatBillingFixture } from './billing-fixture'
-import {
-  choiceLabel,
-  confirmBody,
-  limitLine,
-  PlanCards,
-  planFact,
-  planFeatures,
-  selfServiceSeats,
-} from './plan-cards'
+import { billingFixture as billing } from './billing-fixture'
+import { choiceLabel, confirmBody, limitLine, PlanCards, selfServiceSeats } from './plan-cards'
 import offerFixture from './public-offer.fixture.json'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
@@ -96,7 +88,7 @@ const renderCards = (value: Billing) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
       <TooltipProvider>
-        <PlanCards billing={value} />
+        <PlanCards billing={value} offer={offerFixture} />
       </TooltipProvider>
     </QueryClientProvider>,
   )
@@ -105,22 +97,38 @@ const card = (name: string) => screen.getByRole('region', { name })
 
 const list = (name: string) => within(card(name)).getByRole('list', { name: `${name} includes` })
 
-test('a card lists only what its plan offers: limits, then what the plan below lacks', () => {
-  const offer: PublicOffer = structuredClone(offerFixture)
+test('a card lists the shared plan lines: Basic in full, the others over the plan before', () => {
+  renderCards(billing())
+  expect(list('Basic')).toHaveTextContent('5 team members')
+  expect(list('Basic')).toHaveTextContent('30 clients')
+  expect(list('Basic')).toHaveTextContent('100 emails to clients / month')
+  expect(list('Basic')).not.toHaveTextContent('Client portal')
+  expect(card('Pro')).toHaveTextContent('Everything in Basic, plus:')
+  expect(list('Pro')).toHaveTextContent('5M AI tokens / month for Heidi, your AI assistant')
+  expect(list('Pro')).not.toHaveTextContent('Swiss QR bills')
+  expect(card('Business')).toHaveTextContent('Everything in Pro, plus:')
+  const business = list('Business')
+  expect(business).toHaveTextContent('Client portal: clients view and pay invoices')
+  expect(business).toHaveTextContent('Your portal on your own domain (portal.yourcompany.ch)')
+  expect(business).toHaveTextContent('Approvals before invoices go out')
+  expect(business).not.toHaveTextContent('Heidi, your AI assistant5M')
+  // Unlimited is the ∞ glyph, read out as "Unlimited".
+  const people = within(business).getByText('team members', { exact: false })
+  expect(people).toHaveTextContent('∞Unlimited team members')
+  expect(within(people).getByText('∞')).toHaveAttribute('aria-hidden', 'true')
+  expect(within(people).getByText('Unlimited')).toHaveClass('sr-only')
+})
+
+test('without the offer the cards still show prices and the way to each plan', () => {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <TooltipProvider>
-        <PlanCards billing={billing()} offer={offer} />
+        <PlanCards billing={billing()} />
       </TooltipProvider>
     </QueryClientProvider>,
   )
-  expect(list('Basic')).not.toHaveTextContent('Client portal')
-  expect(list('Basic')).not.toHaveTextContent('Heidi AI assistant')
-  expect(list('Pro')).toHaveTextContent('Heidi AI assistant')
-  expect(list('Pro')).not.toHaveTextContent('Client portal')
-  expect(list('Business')).toHaveTextContent('Client portal')
-  expect(list('Business')).not.toHaveTextContent('Heidi AI assistant')
-  expect(screen.queryByText('Not included:', { exact: false })).toBeNull()
+  expect(within(card('Basic')).queryByRole('list')).toBeNull()
+  expect(within(card('Basic')).getByRole('button', { name: 'Choose Basic' })).toBeEnabled()
 })
 
 test('only Pro offers the trial, with its line; the others are charged today', async () => {
@@ -332,56 +340,9 @@ test('people who cannot manage billing see the plans without the way to change t
   expect(screen.queryByText('Have a promotion code?')).toBeNull()
 })
 
-test('features read from the limits', () => {
-  const pro = flatBillingFixture().plans[1]
-  expect(pro && planFeatures(pro)).toEqual([
-    '10 members besides the owner',
-    '300 clients per workspace',
-    '100 invoice issues a month per team member',
-    '100 quotes sent a month per team member',
-    '300 expenses a month per team member',
-    '250 products & services per workspace',
-    '20 active engagements per workspace',
-    '50 signature requests a month per team member',
-    '5 GB storage per team member',
-    "5'000'000 Heidi AI tokens a month per team member",
-    "5'000'000 AI import & filing tokens a month per team member",
-  ])
-})
-
-test('Business lists its uncapped records and quotes as unlimited, never as a number', () => {
-  const business = billing().plans[2]
-  expect(business && planFeatures(business)).toEqual([
-    'Any number of people',
-    'Unlimited clients',
-    'Unlimited invoice issues',
-    'Unlimited quotes sent',
-    'Unlimited expenses',
-    'Unlimited products & services',
-    'Unlimited active engagements',
-    'Unlimited signature requests',
-    '20 GB storage per team member',
-    "20'000'000 Heidi AI tokens a month per team member",
-    "20'000'000 AI import & filing tokens a month per team member",
-  ])
-})
-
-test('a larger plan lists only what grows over the one before it', () => {
-  const [basic, pro] = billing().plans
-  if (!basic || !pro) throw new Error('fixture has no Basic and Pro')
-  const flat = { ...pro, limits: { ...pro.limits, members: basic.limits.members, products: 25 } }
-  expect(planFeatures(flat, basic)).toEqual([
-    '300 clients per workspace',
-    '100 invoice issues a month per team member',
-    '100 quotes sent a month per team member',
-    '300 expenses a month per team member',
-    '20 active engagements per workspace',
-    '50 signature requests a month per team member',
-    '5 GB storage per team member',
-    "5'000'000 Heidi AI tokens a month per team member",
-    "5'000'000 AI import & filing tokens a month per team member",
-  ])
+test('limitLine words one limit for the usage overview', () => {
   expect(limitLine('members', 1)).toBe('1 member besides the owner')
+  expect(limitLine('members', null)).toBe('Any number of people')
   expect(limitLine('invoices_per_month', 1)).toBe('1 invoice issue a month per team member')
   expect(limitLine('quotes_per_month', 1)).toBe('1 quote sent a month per team member')
   expect(limitLine('expenses_per_month', 0)).toBe('No expenses')
@@ -426,12 +387,6 @@ test('choiceLabel names the way to each plan from the workspace’s', () => {
   expect(choiceLabel(billing({ plan: 'basic' }), pro, 'month')).toBe('Upgrade to Pro')
 })
 
-test('a plan with no member cap says any number of people', () => {
-  expect(limitLine('members', null)).toBe('Any number of people')
-  const pro = billing().plans[1]
-  expect(pro && planFeatures(pro)[0]).toBe('Any number of people')
-})
-
 test('the current plan and the next step up are marked; Business has nothing above it', () => {
   const { unmount } = renderCards(billing({ plan: 'basic', status: 'active', interval: 'month' }))
   expect(within(card('Basic')).getByText('Current')).toBeInTheDocument()
@@ -465,39 +420,18 @@ test('a workspace with no seats counted yet is totalled for one person', () => {
   expect(proTotal()).toHaveTextContent('For 1 personCHF 49 / month')
 })
 
-test('limits read as short facts with the key number first', () => {
-  expect(planFact('clients', 30)).toEqual({ value: '30', label: 'clients / workspace' })
-  // The scope ("per team member") is said once in the legend: a fact names only its unit, its month or its workspace.
-  expect(planFact('invoices_per_month', null)).toEqual({
-    value: 'Unlimited',
-    label: 'invoice issues / month',
-  })
-  expect(planFact('quotes_per_month', 5)).toEqual({ value: '5', label: 'quotes sent / month' })
-  // People: Basic 5 and Pro 25 count the owner (members + 1); Business has none.
-  expect(planFact('members', null)).toEqual({ value: 'Any number', label: 'of people' })
-  expect(planFact('members', 4)).toEqual({ value: '5', label: 'people at most' })
-  expect(planFact('members', 24)).toEqual({ value: '25', label: 'people at most' })
-  expect(planFact('ai_tokens_per_month', 250_000)).toEqual({
-    value: "250'000",
-    label: 'Heidi AI tokens / month',
-  })
-  expect(planFact('storage_bytes', 5_000_000_000)).toEqual({ value: '5 GB', label: 'storage' })
-  expect(planFact('ai_tokens_per_month', 5_000_000)).toEqual({
-    value: '5M',
-    label: 'Heidi AI tokens / month',
-  })
-})
-
-test('one legend says whose allowances they are, the yearly amount is bold and a percent has no space', async () => {
+test('one footnote says whose allowances they are, the yearly amount is bold and a percent has no space', async () => {
   renderCards(billing({ trial_available: false }))
-  expect(screen.getAllByText(/combine in one shared workspace pool/)).toHaveLength(1)
+  expect(screen.getAllByText(/shared by the whole team/)).toHaveLength(1)
   expect(document.body.textContent).not.toMatch(/per team member/i)
   // Monthly view: "or CHF … a year, save 20%".
-  const monthly = card('Pro').querySelector('strong')
+  const monthly = card('Pro').querySelector('[data-slot=plan-price] ~ p strong')
   expect(monthly?.textContent).toMatch(/^CHF/)
   expect(card('Pro').textContent).toMatch(/save \d+%/)
   await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
-  expect(card('Pro').querySelector('strong')?.textContent).toMatch(/^CHF/)
+  expect(card('Pro').querySelector('[data-slot=plan-price] ~ p strong')?.textContent).toMatch(
+    /^CHF/,
+  )
   // Cards and the "Save 20% yearly" badge alike: no space between a number and its percent sign.
   expect(document.body.textContent).not.toMatch(/\d %/)
 })

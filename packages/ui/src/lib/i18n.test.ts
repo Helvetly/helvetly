@@ -10,8 +10,11 @@ import nl from '../messages/nl.json'
 import sv from '../messages/sv.json'
 import { translatorFor } from './i18n'
 
+// A plural branch's text ("one {Kunde}") is wording, not a parameter.
 const parameters = (value: string) =>
-  [...value.matchAll(/\{(\w+)(?:\}|,)/g)].map((match) => match[1]).toSorted()
+  [...value.matchAll(/(?<!(?:zero|one|two|few|many|other|=\d+)\s*)\{(\w+)(?:\}|,)/g)]
+    .map((match) => match[1])
+    .toSorted()
 
 describe.each([
   ['de', de],

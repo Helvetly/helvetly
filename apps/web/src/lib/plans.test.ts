@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { faqIn } from './faq'
+import { planLines } from './offer'
 import {
   has,
   PLAN_IDS,
@@ -18,6 +19,10 @@ const { BENEFITS, bytes, formatLimit, LIMITS, PLANS, plansWith, tokens, FEATURE_
   plansIn('en')
 
 const api = join(__dirname, '../../../api/internal')
+
+/** A card's lines as read: "300 clients", "∞ quotes / month". */
+const text = (plan: number) =>
+  planLines('en')[plan]?.lines.map((l) => [l.amount, l.label].filter(Boolean).join(' '))
 
 describe('plans', () => {
   it('match the monthly prices and the discount in plans.go', () => {
@@ -46,6 +51,19 @@ describe('full comparison', () => {
       .filter((r) => r.type === 'access')
       .map((r) => [r.key, PLAN_IDS.filter((id) => r.values[id]?.state === 'enabled')]),
   )
+  // Business-only features added to every offer after the seed.
+  const added = [
+    ['custom_portal_domain', '00032_workspace_domains.sql'],
+    ['document_approvals', '00039_document_approvals.sql'],
+  ] as const
+  for (const [key] of added) seeded.set(key, ['business'])
+
+  it('takes the features added later from their migrations', () => {
+    for (const [key, file] of added)
+      expect(readFileSync(join(api, 'store/migrations', file), 'utf8')).toContain(
+        `'${key}', CASE plan_id WHEN 'business' THEN 'enabled' ELSE 'disabled' END`,
+      )
+  })
   const rows = FEATURE_GROUPS.flatMap((g) => g.rows).filter((r) => !(r.key in LIMITS))
 
   it('gives each feature to the plans the offer does', () => {
@@ -166,14 +184,77 @@ describe('offer helvetly public projection', () => {
         'signatures_per_month',
       ].toSorted(),
     )
-    const [basic, pro, business] = PLANS.map((p) => p.highlights)
-    expect(basic).toContain('15 invoices and 5 quotes / month')
-    expect(pro).toContain('100 invoices, 100 quotes and 300 expenses / month')
-    expect(business).toContain('Unlimited clients, products and engagements')
-    expect(business).toContain('Unlimited invoices, quotes, expenses and signature requests')
-    expect(PLANS.flatMap((p) => p.highlights).join(' ')).not.toMatch(/per (paid )?person/)
-    // The scope is said once in the legend, not on every feature line.
-    expect(PLANS.flatMap((p) => p.highlights).join(' ')).not.toMatch(/team member/)
+    const business = planLines('en')[2]?.lines ?? []
+    const infinite = business.filter((line) => line.amount === '∞').map((line) => line.key)
+    expect(infinite).toEqual([
+      'people',
+      'clients',
+      'products',
+      'invoices',
+      'quotes',
+      'engagements',
+      'expenses',
+      'signatures',
+    ])
+    expect(
+      business.filter((line) => line.amount === '∞').every((l) => l.spoken === 'Unlimited'),
+    ).toBe(true)
+  })
+
+  it('lists on each card what the plan adds to the one before, from the offer', () => {
+    expect(planLines('en').map((p) => p.basis)).toEqual([
+      undefined,
+      'Everything in Basic, plus:',
+      'Everything in Pro, plus:',
+    ])
+    expect(text(0)).toEqual([
+      '5 team members',
+      '30 clients',
+      '25 products and services',
+      '15 invoices / month',
+      '5 quotes / month',
+      'Swiss QR bills and Revolut payment links',
+      '3 ongoing engagements and retainers',
+      '500 MB document storage',
+      '100 emails to clients / month',
+    ])
+    expect(text(1)).toEqual([
+      '300 expenses / month, receipts read by AI',
+      '5M AI tokens / month for Heidi, your AI assistant',
+      '1’500 automated steps / month, such as payment reminders',
+      '50 e-signature requests / month',
+      'Document templates',
+      'Payment in instalments',
+      'Credit notes, invoice corrections and VAT returns',
+      'Ledger, accounting exports and API access',
+      '25 team members',
+      '300 clients',
+      '250 products and services',
+      '100 invoices / month',
+      '100 quotes / month',
+      '20 ongoing engagements and retainers',
+      '5 GB document storage',
+      '500 emails to clients / month',
+    ])
+    expect(text(2)).toEqual([
+      'Client portal: clients view and pay invoices, accept quotes and download documents',
+      'Your portal on your own domain (portal.yourcompany.ch)',
+      'Approvals before invoices go out',
+      'E-invoices as XML: XRechnung, ZUGFeRD and more',
+      'Employee records and payroll register',
+      '∞ team members',
+      '∞ clients',
+      '∞ products and services',
+      '∞ invoices / month',
+      '∞ quotes / month',
+      '∞ ongoing engagements and retainers',
+      '∞ expenses / month, receipts read by AI',
+      '20M AI tokens / month for Heidi, your AI assistant',
+      '6’000 automated steps / month, such as payment reminders',
+      '∞ e-signature requests / month',
+      '20 GB document storage',
+      '2’000 emails to clients / month',
+    ])
   })
 
   it('quotes the quotes allowance and explains automated actions in the full comparison', () => {
@@ -186,10 +267,10 @@ describe('offer helvetly public projection', () => {
 
   it('gives each plan its own people limit, the owner included, and Business none', () => {
     expect(SELF_SERVICE_SEATS).toEqual({ basic: 5, pro: 25, business: null })
-    expect(PLANS.map((p) => p.highlights[0])).toEqual([
-      'Up to 5 people',
-      'Up to 25 people',
-      'Unlimited people',
+    expect(planLines('en').map((p) => p.lines.find((l) => l.key === 'people')?.amount)).toEqual([
+      '5',
+      '25',
+      '∞',
     ])
   })
 
