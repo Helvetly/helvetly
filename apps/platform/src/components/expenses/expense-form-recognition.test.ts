@@ -165,6 +165,7 @@ test('fills the category and marks an unsure one, low-confidence parts too', () 
     id: 'exc_1',
     name: 'Telecom',
     account_code: '6510',
+    preset: 'telecom',
     confidence: 0.4,
     reason: null,
   }

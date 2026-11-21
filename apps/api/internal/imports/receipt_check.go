@@ -77,6 +77,7 @@ type receiptCategoryPick struct {
 	ID         string  `json:"id"`
 	Name       string  `json:"name"`
 	Account    string  `json:"account_code"`
+	Preset     *string `json:"preset"` // the catalogue entry the category still is, for showing its name translated
 }
 
 const receiptMaxItems = 200
@@ -235,7 +236,7 @@ func checkReceipt(raw json.RawMessage, categories []receiptCategory) (receiptRea
 		c := findCategory(categories, key)
 		switch {
 		case c != nil:
-			pick.Key, pick.ID, pick.Name, pick.Account = &c.Key, c.ID, c.Name, c.AccountCode
+			pick.Key, pick.ID, pick.Name, pick.Account, pick.Preset = &c.Key, c.ID, c.Name, c.AccountCode, c.Preset
 			pick.Confidence, pick.Reason = min(1, max(0, pick.Confidence)), trimmed(pick.Reason)
 		case key != nil:
 			issues["category"] = "The suggested category is not one of this workspace's; choose one."
