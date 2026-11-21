@@ -88,7 +88,12 @@ import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
 
-import { ChangesPendingBadge, ClientStatusBadge, ClientTypeBadge } from './client-bits'
+import {
+  ChangesPendingBadge,
+  ClientRowStatus,
+  ClientStatusBadge,
+  ClientTypeBadge,
+} from './client-bits'
 import { ClientDetail, type ClientCommand } from './client-detail'
 import { ClientForm } from './client-form'
 import { countryName } from './client-form-model'
@@ -180,9 +185,9 @@ const COLUMNS: ColumnDef[] = [
   {
     id: 'status',
     label: translate('status'),
-    width: 'w-[100px]',
+    width: 'w-[130px]',
     visible: true,
-    cell: (client) => <ClientStatusBadge client={client} />,
+    cell: (client) => <ClientRowStatus client={client} />,
   },
   {
     id: 'created',
@@ -1113,7 +1118,7 @@ const ClientItem = memo(function ClientItem({ client, selected, bulk, access, ac
           </span>
           <span className="flex shrink-0 flex-wrap justify-end gap-1">
             <ChangesPendingBadge client={client} />
-            <ClientStatusBadge client={client} />
+            <ClientRowStatus client={client} />
           </span>
         </button>
       </li>

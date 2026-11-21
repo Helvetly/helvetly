@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { ClientFixButton, NoClientEmail } from '@/components/clients/client-fix'
 import { inputClass as fieldClass } from '@/components/clients/fields'
 import { EmailMessageField } from '@/components/email-message-field'
 import {
@@ -529,6 +530,7 @@ export function SendDialog({
           {translate('emailIsnTSetUpOnThisServerMarkTheInvoice')}
         </Callout>
       )}
+      <NoClientEmail client={client} />
       <FormField
         id="send-to"
         label={translate('to3')}
@@ -593,18 +595,14 @@ const SETTINGS_CODES = new Set(['settings_incomplete', 'seller_vat_missing', 'no
 /** Codes about the client: fixed in its drawer. */
 const CLIENT_CODES = new Set(['client_draft', 'buyer_vat_missing'])
 
-/** Where a cannot_issue reason is fixed, by its code; null when the editor fixes it itself. */
-export function reasonFix(
-  reason: IssueReason,
-  clientId: string,
-): { label: string; href: string } | null {
+/**
+ * Where a cannot_issue reason is fixed, by its code: a settings page, or the client's form opened in place (`href`
+ * null); null when the editor fixes it itself.
+ */
+export function reasonFix(reason: IssueReason): { label: string; href: string | null } | null {
   if (SETTINGS_CODES.has(reason.code) || reason.field?.startsWith('settings.'))
     return settingsFix(reason.field?.replace(/^settings\./, '') ?? '')
-  if (CLIENT_CODES.has(reason.code))
-    return {
-      label: translate('completeTheClient'),
-      href: `/clients?id=${encodeURIComponent(clientId)}`,
-    }
+  if (CLIENT_CODES.has(reason.code)) return { label: translate('completeTheClient'), href: null }
   return null
 }
 
@@ -631,7 +629,7 @@ export function issueFixes(
 ): Fix[] {
   const fixes: Fix[] = []
   for (const reason of groupReasons(reasons)) {
-    const fix = reasonFix(reason, clientId)
+    const fix = reasonFix(reason)
     const same = fix && fixes.find((row) => row.key === fix.label)
     if (same) {
       same.messages.push(reason.message)
@@ -640,8 +638,17 @@ export function issueFixes(
     fixes.push({
       key: fix?.label ?? `${reason.code}:${reason.field ?? ''}`,
       messages: [reason.message],
-      action: fix ? (
+      action: fix?.href ? (
         <FixLink href={fix.href}>{fix.label}</FixLink>
+      ) : fix ? (
+        <ClientFixButton
+          clientId={clientId}
+          focus={reason.code === 'client_draft' ? 'address' : 'vat_number'}
+          className={fixActionClass}
+        >
+          {fix.label}
+          <ArrowRight aria-hidden className="size-3.5" />
+        </ClientFixButton>
       ) : (
         onFixInline &&
         reason.field && (

@@ -196,7 +196,7 @@
   "allEngagements": "Tutti gli incarichi ",
   "allFiguresByZiffer": "Tutte le figure di Ziffer ",
   "allFiles": "Tutti i file",
-  "allNotifications": "Tutte le notifiche",
+  "viewAllNotifications": "Vedi tutte le notifiche",
   "allowanceLegend": "Le quote di ogni membro pagante del team si sommano in un’unica quota condivisa nello spazio di lavoro. I limiti dello spazio di lavoro si applicano all’intero spazio.",
   "allowanceMonthlyNote": "Le quote mensili si azzerano e ripartono ogni mese; lo spazio di archiviazione è una capacità, non una quota mensile.",
   "allowancePer": "{scope, select, workspace { / spazio di lavoro} other {}}{monthly, select, true { / mese} other {}}",
@@ -613,6 +613,7 @@
   "common": "Comune",
   "companies": "Aziende",
   "company": "Azienda",
+  "companyClientText": "Un’azienda: ragione sociale, IDI e numero IVA",
   "companyDetails": "Dettagli aziendali",
   "companyName": "Ragione sociale",
   "comparePlans": "Confronta i piani",
@@ -2340,6 +2341,7 @@
   "perPerson2": "{value1} a persona × {value2}",
   "perPersonA": "{value1} a persona un {interval}, {value3}{total}",
   "person": "Persona",
+  "personClientText": "Un privato, con nome e cognome",
   "personal": "Personale",
   "perWorkspace": "Per area di lavoro",
   "phone": "Telefono",
@@ -4829,5 +4831,12 @@
   "markDeclined": "Segna come rifiutati",
   "quotesBulkDone": "{count, plural, one {# preventivo aggiornato.} other {# preventivi aggiornati.}}",
   "quotesBulkDuplicated": "{count, plural, one {# copia creata come bozza.} other {# copie create come bozze.}}",
-  "quotesBulkFailed": "{failed} preventivi su {count} non sono stati modificati: {reason}"
+  "quotesBulkFailed": "{failed} preventivi su {count} non sono stati modificati: {reason}",
+  "requiredToInvoice": "Necessario per fatturare",
+  "requiredToSendByEmail": "Necessario per l’invio via email, salvo se “Le fatture vanno a” è compilato",
+  "missingAddress": "Indirizzo mancante",
+  "missingEmail": "Email mancante",
+  "theClientHasNoEmailAddress": "Il cliente non ha un indirizzo email.",
+  "addTheClientsEmail": "Aggiungi l’email del cliente",
+  "addAnEmailToLetThisClientSignIn": "Aggiungi un’email perché il cliente possa accedere al portale."
 }

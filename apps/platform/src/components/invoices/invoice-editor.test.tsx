@@ -227,10 +227,8 @@ test('issuing a draft for a draft client lists every reason with a way to fix it
 
   const alert = await screen.findByRole('alert', {}, { timeout: 3000 })
   expect(within(alert).getByText("Complete the client's address: street, zip.")).toBeInTheDocument()
-  expect(within(alert).getByRole('link', { name: /Complete the client/ })).toHaveAttribute(
-    'href',
-    '/clients?id=cli_2',
-  )
+  // The client is fixed in place: a button opens its drawer, never a page jump.
+  expect(within(alert).queryByRole('link', { name: /Complete the client/ })).not.toBeInTheDocument()
   // One row per missing company field reads as a list: they are merged, linking to the first.
   expect(
     within(alert).getByText('Your company details are missing: ZIP, City.'),
@@ -240,6 +238,8 @@ test('issuing a draft for a draft client lists every reason with a way to fix it
     '/settings/company?focus=seller.zip#company',
   )
   expect(within(alert).getAllByRole('listitem')).toHaveLength(2)
+  await userEvent.click(within(alert).getByRole('button', { name: /Complete the client/ }))
+  expect(await screen.findByRole('dialog', { name: /Edit Weber/ })).toBeInTheDocument()
   expect(push).not.toHaveBeenCalled()
 })
 
