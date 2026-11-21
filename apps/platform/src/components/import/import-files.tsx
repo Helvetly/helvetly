@@ -21,6 +21,7 @@ import {
   Loader2,
   Sparkles,
   Upload,
+  Trash2,
   X,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -185,11 +186,12 @@ export function DropZone({
                 </th>
                 <th scope="col" className="w-24 px-2 py-1 text-right">
                   <Button
-                    variant="ghost"
+                    variant="destructive-ghost"
                     size="xs"
                     disabled={disabled}
                     onClick={() => onChange([])}
                   >
+                    <Trash2 />
                     {translate('removeAllFiles')}
                   </Button>
                 </th>

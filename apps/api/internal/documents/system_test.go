@@ -277,7 +277,7 @@ func TestAIFilingUsesTheSystemFolders(t *testing.T) {
 	if got := path(e.get(b, invoice.ID).FolderID); got != "Clients/Acme AG/Invoices/2024" {
 		t.Fatalf("invoice filed in %q", got)
 	}
-	if got := path(e.get(b, receipt.ID).FolderID); got != "Expenses/2023" {
+	if got := path(e.get(b, receipt.ID).FolderID); got != "Expenses/Uncategorised/2023" {
 		t.Fatalf("receipt filed in %q", got)
 	}
 	if got := e.get(b, unknown.ID); got.FolderID != nil && strings.HasPrefix(path(got.FolderID), "Clients") {
@@ -299,7 +299,9 @@ func TestAIFilingUsesTheSystemFolders(t *testing.T) {
 }
 
 func TestRecordPath(t *testing.T) {
-	clients := []store.ClientName{{ID: "c1", Name: "Acme  AG"}, {ID: "c2", Name: "Twin"}, {ID: "c3", Name: "twin"}}
+	travel := "exc_travel"
+	names := recordNames{clients: []store.ClientName{{ID: "c1", Name: "Acme  AG"}, {ID: "c2", Name: "Twin"}, {ID: "c3", Name: "twin"}},
+		categories: []store.CategoryName{{ID: travel, Name: "Travel"}}}
 	cases := []struct {
 		path   string
 		system bool
@@ -313,16 +315,20 @@ func TestRecordPath(t *testing.T) {
 		{"Clients/Acme AG/Invoices/25", true, nil},
 		{"Clients/Nobody/Invoices/2025", true, nil},
 		{"Clients/Twin/Invoices/2025", true, nil}, // two clients by that name
-		{"Expenses/2024", true, &recordPlace{kind: "expenses", year: 2024, rest: []string{}}},
-		{"Expenses/2024/Travel", true, &recordPlace{kind: "expenses", year: 2024, rest: []string{"Travel"}}},
+		{"Expenses/travel/2024", true, &recordPlace{kind: "expenses", year: 2024, categoryID: &travel}},
+		{"Expenses/Uncategorised/2024", true, &recordPlace{kind: "expenses", year: 2024}},
+		{"Expenses/2024/Travel", true, nil},
+		{"Expenses/Made Up/2024", true, nil},
+		{"Expenses/2024", true, nil},
 		{"Expenses/Travel", true, nil},
 		{"Expenses", true, nil},
 	}
 	for _, tc := range cases {
 		path, _ := splitPath(tc.path, organizeApplyDepth)
-		got, system := recordPath(path, clients)
+		got, system := recordPath(path, names)
 		if system != tc.system || (got == nil) != (tc.want == nil) ||
-			got != nil && (got.clientID != tc.want.clientID || got.kind != tc.want.kind || got.year != tc.want.year || !slices.Equal(got.rest, tc.want.rest)) {
+			got != nil && (got.clientID != tc.want.clientID || got.kind != tc.want.kind || got.year != tc.want.year ||
+				(got.categoryID == nil) != (tc.want.categoryID == nil) || got.categoryID != nil && *got.categoryID != *tc.want.categoryID) {
 			t.Errorf("%s: %+v %v, want %+v %v", tc.path, got, system, tc.want, tc.system)
 		}
 	}
@@ -350,13 +356,14 @@ func TestOrganizeApplyFilesIntoTheSystemFolders(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
 	e.client(b, "Acme AG")
+	e.category(b, "Travel")
 	a := e.uploaded(b, "a.txt", "a")
 	r := e.uploaded(b, "r.txt", "r")
 	x := e.uploaded(b, "x.txt", "x")
 	var out applyAnswer
 	e.do(b, "POST", "/api/v1/documents/organize/apply", map[string]any{"items": []map[string]any{
 		{"document_id": a.ID, "folder": "Clients/acme ag/invoices/2024", "tags": []string{}},
-		{"document_id": r.ID, "folder": "Expenses/2023/Travel", "tags": []string{}},
+		{"document_id": r.ID, "folder": "Expenses/travel/2023", "tags": []string{}},
 		{"document_id": x.ID, "folder": "Clients/Made Up", "tags": []string{}}, // not their structure: stays
 	}}, 200, &out)
 	folders := e.allFolders(b)
@@ -370,13 +377,14 @@ func TestOrganizeApplyFilesIntoTheSystemFolders(t *testing.T) {
 	if got := path(e.get(b, a.ID)); got != "Clients/Acme AG/Invoices/2024" {
 		t.Fatalf("a in %q", got)
 	}
-	if got := path(e.get(b, r.ID)); got != "Expenses/2023/Travel" {
+	if got := path(e.get(b, r.ID)); got != "Expenses/Travel/2023" {
 		t.Fatalf("r in %q", got)
 	}
 	if got := e.get(b, x.ID); got.FolderID != nil {
 		t.Fatalf("x moved to %q", path(got))
 	}
-	folderByKind(t, folders, "year", "2023") // Expenses/2023 is a system folder, Travel is not
+	folderByKind(t, folders, "expense_category", "Travel")
+	folderByKind(t, folders, "year", "2023")
 	// undo deletes only the plain folders the run made
 	e.do(b, "POST", "/api/v1/documents/organize/undo", out.Data.Undo, 200, nil)
 	for _, f := range e.allFolders(b) {

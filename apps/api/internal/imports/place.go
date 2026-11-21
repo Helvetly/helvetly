@@ -14,10 +14,10 @@ const (
 	maxDocumentTags = 10 // as documents' own limits
 )
 
-// placeDocument files the source Document of a created record under folder path and adds tags, creating the folders.
+// placeDocument files the source Document of a created record into the folder that folder finds or makes, and adds tags.
 // Only a file at the top level, or one the generic AI filing put in its current folder, is moved: a folder the person
 // chose is never overridden. A missing or trashed Document is left alone.
-func placeDocument(ctx context.Context, q store.Q, sess store.Session, documentID string, path, add []string, now time.Time) error {
+func placeDocument(ctx context.Context, q store.Q, sess store.Session, documentID string, folder func() (string, error), add []string, now time.Time) error {
 	ws := sess.Workspace.ID
 	d, err := q.Document(ctx, ws, documentID)
 	if errors.Is(err, store.ErrNotFound) || (err == nil && d.DeletedAt != nil) {
@@ -38,20 +38,20 @@ func placeDocument(ctx context.Context, q store.Q, sess store.Session, documentI
 			return nil
 		}
 	}
-	folder, err := q.FolderPath(ctx, ws, sess.User.ID, path, now)
-	if err != nil || folder == "" {
+	to, err := folder()
+	if err != nil || to == "" {
 		return err
 	}
-	if d.FolderID == nil || *d.FolderID != folder {
+	if d.FolderID == nil || *d.FolderID != to {
 		name := d.Name
-		if taken, err := q.FileNameTaken(ctx, ws, &folder, name, d.ID); err != nil {
+		if taken, err := q.FileNameTaken(ctx, ws, &to, name, d.ID); err != nil {
 			return err
 		} else if taken != "" {
-			if name, err = q.FreeFileName(ctx, ws, &folder, name); err != nil {
+			if name, err = q.FreeFileName(ctx, ws, &to, name); err != nil {
 				return err
 			}
 		}
-		if err := q.UpdateDocument(ctx, ws, d.ID, name, &folder, now); err != nil {
+		if err := q.UpdateDocument(ctx, ws, d.ID, name, &to, now); err != nil {
 			return err
 		}
 	}
