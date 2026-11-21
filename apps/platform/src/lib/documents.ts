@@ -15,7 +15,7 @@ import { queryKeys } from '@/lib/queries'
 import { folderLabel } from '@/lib/system-folders'
 import { MAX_FILE_BYTES } from '@/lib/upload-packs'
 
-export type Person = { id: string; name: string }
+export type Person = { id: string; name: string; avatar_url?: string | null }
 
 export type SystemKind =
   | 'clients'

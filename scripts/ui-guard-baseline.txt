@@ -106,7 +106,7 @@
 12 text-px apps/platform/src/components/documents/documents-page.tsx
 4 text-px apps/platform/src/components/documents/folder-tree.tsx
 1 text-px apps/platform/src/components/documents/inline-rename.tsx
-8 text-px apps/platform/src/components/documents/items-view.tsx
+7 text-px apps/platform/src/components/documents/items-view.tsx
 1 text-px apps/platform/src/components/documents/kind.tsx
 10 text-px apps/platform/src/components/documents/preview.tsx
 2 text-px apps/platform/src/components/documents/recent-strip.tsx

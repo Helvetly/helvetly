@@ -32,9 +32,9 @@ import { useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { NativeSelect } from '@/components/clients/fields'
-import { Initials } from '@/components/initials'
 import { RecordLink } from '@/components/record-link'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
+import { UserAvatar } from '@/components/user-avatar'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   createEntry,
@@ -531,7 +531,11 @@ function EntryRow({
             {entry.performed_by && (
               <Tip label={entry.performed_by.name}>
                 <span className="flex min-w-0 items-center gap-1.5">
-                  <Initials name={entry.performed_by.name} className="size-5" />
+                  <UserAvatar
+                    name={entry.performed_by.name}
+                    url={entry.performed_by.avatar_url}
+                    className="size-5"
+                  />
                   <span className="max-w-40 truncate">{entry.performed_by.name}</span>
                 </span>
               </Tip>

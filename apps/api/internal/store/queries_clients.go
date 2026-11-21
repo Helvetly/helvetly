@@ -82,8 +82,24 @@ type ClientFile struct {
 }
 
 type Uploader struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+}
+
+// uploader is the person a joined users row names, nil once their account is gone.
+func uploader(id, name, avatar *string) *Uploader {
+	if id == nil || name == nil {
+		return nil
+	}
+	return &Uploader{ID: *id, Name: *name, AvatarURL: deref(avatar)}
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 type TagCount struct {
@@ -418,18 +434,16 @@ func (q Q) DeleteContact(ctx context.Context, clientID, id string) error {
 // A client's files are documents (internal/documents) linked to the client.
 
 // clientFileColumns: also read by the expense receipts (alias f, users u).
-const clientFileColumns = `f.id, f.name, f.size, f.content_type, f.created_at, f.object_key, u.id, u.name, coalesce(f.sha256, '')`
+const clientFileColumns = `f.id, f.name, f.size, f.content_type, f.created_at, f.object_key, u.id, u.name, ` + avatarColumn + `, coalesce(f.sha256, '')`
 
 const clientFileFrom = ` FROM documents f JOIN document_links l ON l.document_id = f.id AND l.target_type = 'client'
 	LEFT JOIN users u ON u.id = f.uploaded_by WHERE l.target_id = $1 AND f.deleted_at IS NULL`
 
 func scanClientFile(row interface{ Scan(...any) error }) (ClientFile, error) {
 	var f ClientFile
-	var uid, uname *string
-	err := row.Scan(&f.ID, &f.Name, &f.Size, &f.ContentType, &f.CreatedAt, &f.ObjectKey, &uid, &uname, &f.SHA256)
-	if uid != nil {
-		f.UploadedBy = &Uploader{ID: *uid, Name: *uname}
-	}
+	var uid, uname, uavatar *string
+	err := row.Scan(&f.ID, &f.Name, &f.Size, &f.ContentType, &f.CreatedAt, &f.ObjectKey, &uid, &uname, &uavatar, &f.SHA256)
+	f.UploadedBy = uploader(uid, uname, uavatar)
 	return f, err
 }
 

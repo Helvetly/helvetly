@@ -127,6 +127,7 @@ export function ProgressBar({
         value={Math.min(used, available * (1 + MAX_OVER_SHARE))}
         max={available}
         marker={showTick ? expected : undefined}
+        markerLabel={`${translate('expectedByNow')}: ${withUnit(approx(period.expected), unit)}`}
         size={size}
       />
       {caption && <span className="text-caption text-muted-foreground tabular-nums">{text}</span>}
