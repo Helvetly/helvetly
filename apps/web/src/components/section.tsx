@@ -52,13 +52,13 @@ export function SectionHeading({
     <div
       data-reveal
       className={cn(
-        'flex max-w-2xl flex-col gap-4',
+        'flex max-w-4xl flex-col gap-4',
         align === 'center' ? 'mx-auto items-center text-center' : 'items-start',
         className,
       )}
     >
       {eyebrow && <Eyebrow tone={tone}>{eyebrow}</Eyebrow>}
-      <h2 className="text-headline font-semibold text-balance">{title}</h2>
+      <h2 className="text-headline max-w-2xl font-semibold text-balance">{title}</h2>
       {lead && <p className="text-lead text-balance text-muted-foreground">{lead}</p>}
     </div>
   )
