@@ -4803,6 +4803,7 @@
   "auditApprovalGroupDeleted": "Gruppo di approvazione eliminato",
   "auditApprovalPolicySaved": "Regole di approvazione salvate",
   "systemFolderTip": "Gestita da Helvetly: non può essere rinominata, spostata o eliminata",
+  "uncategorisedFolder": "Senza categoria",
   "systemFolderError": "Questa cartella è gestita da Helvetly e non può essere rinominata, spostata o eliminata.",
   "duplicateQuote": "Duplica",
   "quoteDuplicated": "Copia di {name} creata come bozza.",

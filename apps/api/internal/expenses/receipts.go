@@ -287,11 +287,11 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 }
 
 // fileCopy keeps the receipt in Documents, linked to the expense. A live Document with the same bytes is reused (Documents
-// hold no duplicates): moved to Expenses/<year>/<category> only while no person has placed it. Otherwise the stored
+// hold no duplicates): moved to Expenses/<category>/<year> only while no person has placed it. Otherwise the stored
 // copy becomes the Document. Returns the copy's key when it turned out unneeded.
 func (s *Service) fileCopy(ctx context.Context, q store.Q, sess store.Session, e store.Expense, u upload) (unused string, err error) {
 	ws, now := sess.Workspace.ID, s.now()
-	folder, err := q.FolderPath(ctx, ws, sess.User.ID, store.ExpenseFolder(e.DocumentDate, s.today(sess.Workspace), categoryName(e)), now)
+	folder, err := q.ExpenseYearFolder(ctx, ws, e.CategoryID, store.ExpenseYear(e.DocumentDate, s.today(sess.Workspace)), sess.User.ID, now)
 	if err != nil {
 		return "", err
 	}

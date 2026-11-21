@@ -11,7 +11,7 @@ import (
 )
 
 // Record paths: AI filing and organizing put a client's records into Clients/<client>/<record type>/<year> and
-// expenses into Expenses/<year>[/<category>], the system folders, instead of folders of their own.
+// expenses into Expenses/<category>/<year>, the system folders, instead of folders of their own.
 
 const filingClients = 200
 
@@ -19,19 +19,36 @@ const filingClients = 200
 const recordRules = "Documents of one of the listed clients (issued to them or received from them) that are an " +
 	"invoice, credit or debit note, quote, engagement report or contract, signed document or other client document go " +
 	"to the path Clients/<the client's name exactly as listed>/<Invoices, Quotes, Engagements, Signatures or " +
-	"Documents>/<the year of the document's date>. Receipts, supplier bills and other expenses go to Expenses/<the year " +
-	"of their date>. Never make other folders inside Clients or Expenses."
+	"Documents>/<the year of the document's date>. Receipts, supplier bills and other expenses go to Expenses/<the " +
+	"listed expense category that fits, exactly as listed, or " + store.UncategorisedFolder + ">/<the year of their " +
+	"date>. Never make other folders inside Clients or Expenses."
 
-// recordPlace: where a record path points; client "" for Expenses.
+// recordNames: the clients and expense categories a record path may name.
+type recordNames struct {
+	clients    []store.ClientName
+	categories []store.CategoryName
+}
+
+// recordNames: the workspace's names for record paths.
+func (s *Service) recordNames(ctx context.Context, workspaceID string) (recordNames, error) {
+	clients, err := s.db.ClientNames(ctx, workspaceID, filingClients)
+	if err != nil {
+		return recordNames{}, err
+	}
+	categories, err := s.db.ExpenseCategoryNames(ctx, workspaceID, filingClients)
+	return recordNames{clients: clients, categories: categories}, err
+}
+
+// recordPlace: where a record path points; client "" for Expenses, category nil for Uncategorised.
 type recordPlace struct {
 	clientID, kind string
 	year           int
-	rest           []string // Expenses/<year>/<rest>
+	categoryID     *string
 }
 
 // recordPath reads a path into the system folders; ok false when it does not start with Clients or Expenses, and
 // place nil when it does but does not fit their structure (or names no single listed client).
-func recordPath(path []string, clients []store.ClientName) (place *recordPlace, ok bool) {
+func recordPath(path []string, names recordNames) (place *recordPlace, ok bool) {
 	if len(path) == 0 {
 		return nil, false
 	}
@@ -40,14 +57,22 @@ func recordPath(path []string, clients []store.ClientName) (place *recordPlace, 
 		return nil, false
 	}
 	if root == "expenses" {
-		if len(path) < 2 {
+		if len(path) != 3 {
 			return nil, true
 		}
-		year, good := yearOf(path[1])
-		if !good || len(path) > 3 {
+		year, good := yearOf(path[2])
+		if !good {
 			return nil, true
 		}
-		return &recordPlace{kind: "expenses", year: year, rest: path[2:]}, true
+		for _, c := range names.categories {
+			if strings.EqualFold(strings.Join(strings.Fields(c.Name), " "), path[1]) {
+				return &recordPlace{kind: "expenses", year: year, categoryID: &c.ID}, true
+			}
+		}
+		if strings.EqualFold(path[1], store.UncategorisedFolder) {
+			return &recordPlace{kind: "expenses", year: year}, true
+		}
+		return nil, true
 	}
 	if len(path) != 4 {
 		return nil, true
@@ -63,7 +88,7 @@ func recordPath(path []string, clients []store.ClientName) (place *recordPlace, 
 		return nil, true
 	}
 	match := ""
-	for _, c := range clients {
+	for _, c := range names.clients {
 		if strings.EqualFold(strings.Join(strings.Fields(c.Name), " "), path[1]) {
 			if match != "" {
 				return nil, true // two clients by that name: not ours to guess
@@ -87,18 +112,22 @@ func (p recordPlace) folder(ctx context.Context, q store.Q, workspaceID, userID 
 	if p.clientID != "" {
 		return q.ClientRecordFolder(ctx, workspaceID, p.clientID, p.kind, p.year, userID, now)
 	}
-	return q.FolderPath(ctx, workspaceID, userID, append([]string{store.SystemRoots["expenses"], strconv.Itoa(p.year)}, p.rest...), now)
+	return q.ExpenseYearFolder(ctx, workspaceID, p.categoryID, p.year, userID, now)
 }
 
-// clientList: the listed clients for the model, one name per line.
-func clientList(clients []store.ClientName) string {
+// recordList: the listed clients and expense categories for the model, one name per line.
+func recordList(names recordNames) string {
 	var b strings.Builder
 	b.WriteString("Clients:\n")
-	for _, c := range clients {
+	for _, c := range names.clients {
 		fmt.Fprintf(&b, "%s\n", strings.Join(strings.Fields(c.Name), " "))
 	}
-	if len(clients) == 0 {
+	if len(names.clients) == 0 {
 		b.WriteString("(none yet)\n")
+	}
+	b.WriteString("\nExpense categories:\n")
+	for _, c := range names.categories {
+		fmt.Fprintf(&b, "%s\n", strings.Join(strings.Fields(c.Name), " "))
 	}
 	return b.String()
 }

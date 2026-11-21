@@ -27,6 +27,7 @@ export type SystemKind =
   | 'engagements'
   | 'signatures'
   | 'documents'
+  | 'expense_category'
   | 'year'
 
 /** A folder named inside a file, filing or Trash row. */

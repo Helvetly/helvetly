@@ -4803,6 +4803,7 @@
   "auditApprovalGroupDeleted": "Groupe d’approbation supprimé",
   "auditApprovalPolicySaved": "Règles d’approbation enregistrées",
   "systemFolderTip": "Géré par Helvetly : ne peut pas être renommé, déplacé ou supprimé",
+  "uncategorisedFolder": "Sans catégorie",
   "systemFolderError": "Ce dossier est géré par Helvetly et ne peut pas être renommé, déplacé ou supprimé.",
   "duplicateQuote": "Dupliquer",
   "quoteDuplicated": "Copie de {name} créée en brouillon.",

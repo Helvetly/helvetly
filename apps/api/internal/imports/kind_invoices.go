@@ -113,7 +113,8 @@ var invoicesKind = Kind{
 		}
 		now := time.Now().UTC()
 		path := invoiceFolder(rawText(data["issue_date"]), sess.Workspace.Today(now))
-		return id, placeDocument(ctx, q, sess, *doc, path, []string{"invoice"}, now)
+		folder := func() (string, error) { return q.FolderPath(ctx, sess.Workspace.ID, sess.User.ID, path, now) }
+		return id, placeDocument(ctx, q, sess, *doc, folder, []string{"invoice"}, now)
 	},
 	Conflict: func(ctx context.Context, q store.Q, workspaceID string, data Data) (*store.ImportConflict, error) {
 		return invoices.NumberConflict(ctx, q, workspaceID, data)

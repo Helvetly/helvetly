@@ -208,7 +208,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	mayMove := j.MayMove && doc.FolderID == nil
 	folders := map[string]bool{}
 	var listed []store.Folder
-	var clients []store.ClientName
+	var names recordNames
 	if mayMove {
 		all, err := s.db.DocumentFolders(ctx, ws.ID, j.UserID)
 		if err != nil {
@@ -220,7 +220,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 				folders[f.ID] = true
 			}
 		}
-		if clients, err = s.db.ClientNames(ctx, ws.ID, filingClients); err != nil {
+		if names, err = s.recordNames(ctx, ws.ID); err != nil {
 			return err
 		}
 	}
@@ -228,7 +228,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if err != nil {
 		return err
 	}
-	req, err := s.filingRequest(ctx, doc, mayMove, listed, clients, used)
+	req, err := s.filingRequest(ctx, doc, mayMove, listed, names, used)
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if err != nil {
 		return err
 	}
-	decided, err := readFiling(reply.Text, mayMove, folders, clients)
+	decided, err := readFiling(reply.Text, mayMove, folders, names)
 	if err != nil {
 		return err
 	}
@@ -257,7 +257,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 
 // filingRequest is what the model sees: the file's name and type, its text or the file itself when small, the
 // folders it may choose from and the tags in use.
-func (s *Service) filingRequest(ctx context.Context, doc store.Document, mayMove bool, folders []store.Folder, clients []store.ClientName, tags []string) (aimodel.Request, error) {
+func (s *Service) filingRequest(ctx context.Context, doc store.Document, mayMove bool, folders []store.Folder, names recordNames, tags []string) (aimodel.Request, error) {
 	var msg strings.Builder
 	fmt.Fprintf(&msg, "File name: %s\nFile type: %s\n\n", doc.Name, doc.ContentType)
 	if mayMove {
@@ -268,7 +268,7 @@ func (s *Service) filingRequest(ctx context.Context, doc store.Document, mayMove
 		if len(folders) == 0 {
 			msg.WriteString("(none yet)\n")
 		}
-		msg.WriteString("\n" + clientList(clients) + "\n")
+		msg.WriteString("\n" + recordList(names) + "\n")
 	} else {
 		msg.WriteString("The file stays in its folder.\n\n")
 	}
@@ -321,7 +321,7 @@ func folderPath(folders []store.Folder, f store.Folder) string {
 }
 
 // readFiling checks the model's answer: usable tags only, and a folder only among those listed.
-func readFiling(text string, mayMove bool, folders map[string]bool, clients []store.ClientName) (filing, error) {
+func readFiling(text string, mayMove bool, folders map[string]bool, names recordNames) (filing, error) {
 	var out struct {
 		Tags      []string `json:"tags"`
 		FolderID  *string  `json:"folder_id"`
@@ -342,7 +342,7 @@ func readFiling(text string, mayMove bool, folders map[string]bool, clients []st
 		f.folderID = *out.FolderID
 	case out.NewFolder != nil:
 		if path, ok := splitPath(*out.NewFolder, organizeApplyDepth); ok {
-			if place, system := recordPath(path, clients); system {
+			if place, system := recordPath(path, names); system {
 				f.record = place // nil: a made-up place in the system folders, so the file stays
 				break
 			}

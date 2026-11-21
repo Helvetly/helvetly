@@ -12,8 +12,9 @@ import (
 	"unicode/utf8"
 )
 
-// System folders (migration 00040): Clients/<client>/<record type>/<year> and Expenses/<year>. The app makes them on
-// demand and nobody renames, moves or deletes them; the stored name of a typed one is English, shown translated.
+// System folders (migrations 00040, 00044): Clients/<client>/<record type>/<year> and Expenses/<category>/<year>. The
+// app makes them on demand and nobody renames, moves or deletes them; the stored name of a typed one is English, shown
+// translated.
 
 // RecordFolders: the record types that belong to a client, by system_kind, with their stored (English) names.
 var RecordFolders = map[string]string{"invoices": "Invoices", "quotes": "Quotes", "engagements": "Engagements",
@@ -22,9 +23,13 @@ var RecordFolders = map[string]string{"invoices": "Invoices", "quotes": "Quotes"
 // SystemRoots: the top-level system folders, by system_kind.
 var SystemRoots = map[string]string{"clients": "Clients", "expenses": "Expenses"}
 
+// UncategorisedFolder: the stored name of the folder in Expenses for expenses without a category.
+const UncategorisedFolder = "Uncategorised"
+
 const maxSystemFolderRunes = 60
 
-// systemFolder: the live system folder of kind (and ref, the client of a client folder; the name of a year) in parent,
+// systemFolder: the live system folder of kind (and ref, the client of a client folder or the category of an expense
+// category folder, "" for Uncategorised; the name of a year) in parent,
 // made when missing. A plain folder already there by that name becomes it; a name another system folder holds gets a
 // free one ("Acme (2)" for a second client called Acme). Run it in a transaction.
 func (q Q) systemFolder(ctx context.Context, workspaceID string, parent *string, kind, ref, name, userID string, now time.Time) (string, error) {
@@ -33,7 +38,8 @@ func (q Q) systemFolder(ctx context.Context, workspaceID string, parent *string,
 	}
 	var id string
 	err := q.db.QueryRow(ctx, `SELECT id FROM document_folders WHERE workspace_id = $1 AND parent_id IS NOT DISTINCT FROM $2
-		AND system_kind = $3 AND deleted_at IS NULL AND CASE $3 WHEN 'client' THEN system_ref = $4 WHEN 'year' THEN name = $5 ELSE true END
+		AND system_kind = $3 AND deleted_at IS NULL AND CASE $3 WHEN 'client' THEN system_ref = $4
+			WHEN 'expense_category' THEN system_ref IS NOT DISTINCT FROM nullif($4, '') WHEN 'year' THEN name = $5 ELSE true END
 		ORDER BY created_at, id LIMIT 1`, workspaceID, parent, kind, ref, name).Scan(&id)
 	if err == nil || !errors.Is(err, ErrNotFound) {
 		return id, err
@@ -77,10 +83,13 @@ func (q Q) EnsureSystemRoots(ctx context.Context, workspaceID string, now time.T
 }
 
 // clientFolderName: the client's name as a folder name (no slashes, at most 60 characters).
-func clientFolderName(name string) string {
+func clientFolderName(name string) string { return recordFolderName(name, "Client") }
+
+// recordFolderName: a record's name as a folder name (no slashes, at most 60 characters), fallback when none is left.
+func recordFolderName(name, fallback string) string {
 	name = strings.Join(strings.Fields(strings.NewReplacer("/", "-", `\`, "-").Replace(name)), " ")
 	if name == "" || name == "." || name == ".." {
-		return "Client"
+		return fallback
 	}
 	for utf8.RuneCountInString(name) > maxSystemFolderRunes {
 		name = name[:len(name)-1]
@@ -116,10 +125,20 @@ func (q Q) ClientRecordFolder(ctx context.Context, workspaceID, clientID, kind s
 
 // RenameClientFolder gives the client's system folder the client's new name (a free one among its siblings).
 func (q Q) RenameClientFolder(ctx context.Context, workspaceID, clientID, name string, now time.Time) error {
+	return q.renameRecordFolder(ctx, workspaceID, "client", clientID, clientFolderName(name), now)
+}
+
+// RenameCategoryFolder gives the expense category's system folder the category's new name.
+func (q Q) RenameCategoryFolder(ctx context.Context, workspaceID, categoryID, name string, now time.Time) error {
+	return q.renameRecordFolder(ctx, workspaceID, "expense_category", categoryID, recordFolderName(name, "Category"), now)
+}
+
+// renameRecordFolder: the system folder of kind and ref takes name, or a free one among its siblings.
+func (q Q) renameRecordFolder(ctx context.Context, workspaceID, kind, ref, name string, now time.Time) error {
 	var id string
 	var parent *string
-	err := q.db.QueryRow(ctx, `SELECT id, parent_id FROM document_folders WHERE workspace_id = $1 AND system_kind = 'client'
-		AND system_ref = $2 AND deleted_at IS NULL ORDER BY created_at, id LIMIT 1`, workspaceID, clientID).Scan(&id, &parent)
+	err := q.db.QueryRow(ctx, `SELECT id, parent_id FROM document_folders WHERE workspace_id = $1 AND system_kind = $2
+		AND system_ref = $3 AND deleted_at IS NULL ORDER BY created_at, id LIMIT 1`, workspaceID, kind, ref).Scan(&id, &parent)
 	if errors.Is(err, ErrNotFound) {
 		return nil
 	} else if err != nil {
@@ -137,7 +156,7 @@ func (q Q) RenameClientFolder(ctx context.Context, workspaceID, clientID, name s
 	if err != nil {
 		return err
 	}
-	name = FreeName(clientFolderName(name), false, func(n string) bool {
+	name = FreeName(name, false, func(n string) bool {
 		for _, t := range names {
 			if t == strings.ToLower(n) {
 				return true
@@ -172,17 +191,149 @@ func (q Q) FileClientRecord(ctx context.Context, workspaceID, clientID, kind str
 	return q.AddDocumentLink(ctx, workspaceID, d.ID, targetType, targetID, userID, d.CreatedAt)
 }
 
-// systemLevel: the system kind of level i of a name path made by FolderPath (Expenses/<year>/…), or "".
-func systemLevel(names []string, i int) string {
-	switch {
-	case len(names) == 0 || names[0] != SystemRoots["expenses"]:
-		return ""
-	case i == 0:
-		return "expenses"
-	case i == 1 && len(names[1]) == 4 && strings.Trim(names[1], "0123456789") == "":
-		return "year"
+// ExpenseYearFolder: Expenses/<category>/<year>, made where missing; categoryID nil for Uncategorised. Run it in a
+// transaction.
+func (q Q) ExpenseYearFolder(ctx context.Context, workspaceID string, categoryID *string, year int, userID string, now time.Time) (string, error) {
+	ref, name := "", UncategorisedFolder
+	if categoryID != nil {
+		if err := q.db.QueryRow(ctx, `SELECT name FROM expense_categories WHERE workspace_id = $1 AND id = $2`,
+			workspaceID, *categoryID).Scan(&name); err != nil {
+			return "", err
+		}
+		ref, name = *categoryID, recordFolderName(name, "Category")
 	}
-	return ""
+	root, err := q.systemFolder(ctx, workspaceID, nil, "expenses", "", SystemRoots["expenses"], userID, now)
+	if err != nil {
+		return "", err
+	}
+	category, err := q.systemFolder(ctx, workspaceID, &root, "expense_category", ref, name, userID, now)
+	if err != nil {
+		return "", err
+	}
+	return q.systemFolder(ctx, workspaceID, &category, "year", "", strconv.Itoa(year), userID, now)
+}
+
+// ExistingExpenseYearFolder: like ExpenseYearFolder but makes nothing; "" when it is missing.
+func (q Q) ExistingExpenseYearFolder(ctx context.Context, workspaceID string, categoryID *string, year int) (string, error) {
+	var id string
+	err := q.db.QueryRow(ctx, `SELECT y.id FROM document_folders y
+		JOIN document_folders c ON c.id = y.parent_id AND c.system_kind = 'expense_category' AND c.deleted_at IS NULL
+			AND c.system_ref IS NOT DISTINCT FROM $2
+		JOIN document_folders r ON r.id = c.parent_id AND r.system_kind = 'expenses' AND r.parent_id IS NULL AND r.deleted_at IS NULL
+		WHERE y.workspace_id = $1 AND y.system_kind = 'year' AND y.name = $3 AND y.deleted_at IS NULL
+		ORDER BY y.created_at, y.id LIMIT 1`, workspaceID, categoryID, strconv.Itoa(year)).Scan(&id)
+	if errors.Is(err, ErrNotFound) {
+		return "", nil
+	}
+	return id, err
+}
+
+// ExpenseYear: the year of an expense's folder, from its document date (YYYY-MM-DD) or today.
+func ExpenseYear(documentDate *string, today string) int {
+	day := today
+	if documentDate != nil && len(*documentDate) >= 4 {
+		day = *documentDate
+	}
+	y, _ := strconv.Atoi(day[:4])
+	return y
+}
+
+// legacyExpenseFoldersSQL: the year folders straight in Expenses (before 00044), as CTE "legacy".
+const legacyExpenseFoldersSQL = `WITH legacy AS (SELECT y.id FROM document_folders y
+		JOIN document_folders r ON r.id = y.parent_id AND r.system_kind = 'expenses' AND r.parent_id IS NULL
+		WHERE y.system_kind = 'year' AND y.deleted_at IS NULL) `
+
+// LegacyExpenseFile: an expense's file in the earlier Expenses/<year>[/<category>] folders, with the expense's place.
+type LegacyExpenseFile struct {
+	WorkspaceID, DocumentID, Name string
+	CategoryID                    *string
+	Year                          int
+}
+
+// LegacyExpenseFiles: up to limit live files linked to a live expense that sit in a legacy year folder or in a folder
+// straight in one; the place is the first such expense's.
+func (q Q) LegacyExpenseFiles(ctx context.Context, limit int) ([]LegacyExpenseFile, error) {
+	rows, err := q.db.Query(ctx, legacyExpenseFoldersSQL+`SELECT DISTINCT ON (d.workspace_id, d.id) d.workspace_id, d.id, d.name,
+			e.category_id, coalesce(extract(year FROM e.document_date)::int,
+				extract(year FROM e.created_at AT TIME ZONE (SELECT w.timezone FROM workspaces w WHERE w.id = d.workspace_id))::int)
+		FROM documents d JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
+		JOIN document_links l ON l.document_id = d.id AND l.target_type = 'expense'
+		JOIN expenses e ON e.id = l.target_id AND e.workspace_id = d.workspace_id AND e.deleted_at IS NULL
+		WHERE d.deleted_at IS NULL AND NOT d.hr_private
+			AND (f.id IN (SELECT id FROM legacy) OR f.parent_id IN (SELECT id FROM legacy))
+		ORDER BY d.workspace_id, d.id, e.id LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []LegacyExpenseFile
+	for rows.Next() {
+		var f LegacyExpenseFile
+		if err := rows.Scan(&f.WorkspaceID, &f.DocumentID, &f.Name, &f.CategoryID, &f.Year); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// InLegacyExpenseFolder: the live document still sits in a legacy year folder or in a folder straight in one.
+func (q Q) InLegacyExpenseFolder(ctx context.Context, workspaceID, documentID string) (bool, error) {
+	var in bool
+	err := q.db.QueryRow(ctx, legacyExpenseFoldersSQL+`SELECT EXISTS (SELECT 1 FROM documents d
+		JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
+		WHERE d.workspace_id = $1 AND d.id = $2 AND d.deleted_at IS NULL
+			AND (f.id IN (SELECT id FROM legacy) OR f.parent_id IN (SELECT id FROM legacy)))`, workspaceID, documentID).Scan(&in)
+	return in, err
+}
+
+// RetireLegacyExpenseFolders ends up to limit legacy year folders: each becomes a plain folder, and it and each folder
+// straight in it (the earlier category level) go to the Trash when no file (live or trashed) is left below them.
+// Returns how many it took.
+func (q Q) RetireLegacyExpenseFolders(ctx context.Context, limit int, now time.Time) (int, error) {
+	rows, err := q.db.Query(ctx, legacyExpenseFoldersSQL+`SELECT f.workspace_id, f.id FROM document_folders f
+		WHERE f.id IN (SELECT id FROM legacy) ORDER BY f.workspace_id, f.id LIMIT $1`, limit)
+	if err != nil {
+		return 0, err
+	}
+	type folder struct{ workspace, id string }
+	var found []folder
+	for rows.Next() {
+		var f folder
+		if err := rows.Scan(&f.workspace, &f.id); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		found = append(found, f)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	for _, f := range found {
+		if _, err := q.db.Exec(ctx, `UPDATE document_folders SET system_kind = NULL, updated_at = $3
+			WHERE workspace_id = $1 AND id = $2`, f.workspace, f.id, now); err != nil {
+			return 0, err
+		}
+		rows, err := q.db.Query(ctx, `SELECT id FROM document_folders WHERE workspace_id = $1 AND parent_id = $2
+			AND deleted_at IS NULL`, f.workspace, f.id)
+		if err != nil {
+			return 0, err
+		}
+		inside, err := collect(rows)
+		if err != nil {
+			return 0, err
+		}
+		for _, id := range append(inside, f.id) {
+			if _, err := q.db.Exec(ctx, subtreeSQL+`UPDATE document_folders SET deleted_at = $3,
+					trashed_with = CASE WHEN id = $2 THEN NULL ELSE $2 END
+				WHERE id IN (SELECT id FROM t) AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.folder_id IN (SELECT id FROM t))`,
+				f.workspace, id, now); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(found), nil
 }
 
 // PendingRecordFile: a generated PDF of a client's record that has no Documents file yet (backfill).
@@ -311,6 +462,30 @@ func (q Q) ClientNames(ctx context.Context, workspaceID string, limit int) ([]Cl
 	out := []ClientName{}
 	for rows.Next() {
 		var c ClientName
+		if err := rows.Scan(&c.ID, &c.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// CategoryName: an expense category as AI filing names it.
+type CategoryName struct {
+	ID, Name string
+}
+
+// ExpenseCategoryNames: up to limit live expense categories of the workspace, by name.
+func (q Q) ExpenseCategoryNames(ctx context.Context, workspaceID string, limit int) ([]CategoryName, error) {
+	rows, err := q.db.Query(ctx, `SELECT id, name FROM expense_categories WHERE workspace_id = $1 AND archived_at IS NULL
+		ORDER BY lower(name), id LIMIT $2`, workspaceID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []CategoryName{}
+	for rows.Next() {
+		var c CategoryName
 		if err := rows.Scan(&c.ID, &c.Name); err != nil {
 			return nil, err
 		}

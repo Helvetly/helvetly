@@ -79,3 +79,58 @@ test('a receipt picked in the new-expense form counts as soon as the drawer open
   await expect(missing).toBeVisible()
   await expect(missing.getByRole('button', { name: 'Receipt' })).toHaveCount(0)
 })
+
+type Folder = { id: string; name: string; parent_id: string | null; system_kind: string | null }
+
+test('a receipt is filed in Expenses/<category>/<year> and follows the draft’s category', async ({
+  page,
+  api,
+}) => {
+  await api.settings()
+  const categories = object(await (await api.request.get('/api/v1/expense-categories')).json()).data
+  if (!Array.isArray(categories) || categories.length < 2) throw new Error('Expected categories')
+  const first = object(categories[0])
+  const second = object(categories[1])
+  const expense = await api.save('/expenses', {
+    supplier_name: uniqueName('Folder Supplier'),
+    document_date: today(),
+    category_id: text(first.id),
+    lines: [{ amount: '12.00', vat_rate: '8.1' }],
+  })
+  const file = `folder-${randomUUID().slice(0, 8)}.pdf`
+  await openPage(page, `/expenses?id=${text(expense.id)}`, 'Expenses')
+  await page.getByRole('dialog').getByLabel('Upload receipts').setInputFiles(receiptFile(file))
+  await expect(page.getByRole('dialog').getByText(file)).toBeVisible()
+
+  const year = today().slice(0, 4)
+  const placeOf = async (language = 'en') => {
+    const response = await api.request.get('/api/v1/documents/folders', {
+      headers: { 'Accept-Language': language },
+    })
+    const all = object(await response.json()).data as Folder[]
+    const docs = object(await (await api.request.get(`/api/v1/documents?search=${file}`)).json())
+      .data as { folder_id: string | null }[]
+    const path: Folder[] = []
+    for (let id = docs[0]?.folder_id ?? null; id;) {
+      const folder = all.find((f) => f.id === id)
+      if (!folder) break
+      path.unshift(folder)
+      id = folder.parent_id
+    }
+    return path
+  }
+  let path = await placeOf()
+  expect(path.map((f) => f.name)).toEqual(['Expenses', text(first.name), year])
+  expect(path.map((f) => f.system_kind)).toEqual(['expenses', 'expense_category', 'year'])
+
+  await api.save(`/expenses/${text(expense.id)}`, { category_id: text(second.id) }, 'PATCH')
+  path = await placeOf()
+  expect(path.map((f) => f.name)).toEqual(['Expenses', text(second.name), year])
+
+  await api.save(`/expenses/${text(expense.id)}`, { category_id: null }, 'PATCH')
+  expect((await placeOf('de')).map((f) => f.name)).toEqual(['Ausgaben', 'Ohne Kategorie', year])
+
+  const category = path[1]
+  const renamed = await api.write(`/documents/folders/${category?.id}`, { name: 'Mine' }, 'PATCH')
+  expect(renamed.status()).toBe(409)
+})

@@ -111,7 +111,7 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
-	clients, err := s.db.ClientNames(ctx, ws.ID, filingClients)
+	names, err := s.recordNames(ctx, ws.ID)
 	if err != nil {
 		return err
 	}
@@ -130,16 +130,16 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	call := aimodel.Call{Kind: "organize", Operation: auth.NewID("org"), Step: "organize", MaxOutput: organizeMaxOutput,
 		Caps: aimodel.OrganizeCaps}
-	reply, err := budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, clients, used), call)
+	reply, err := budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, used), call)
 	if errors.Is(err, aimodel.ErrCap) || errors.Is(err, aimodel.ErrTooLarge) {
 		// too large: fewer documents, by name only
 		docs, snippets, call.Step = docs[:min(len(docs), organizeShort)], nil, "short"
-		reply, err = budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, clients, used), call)
+		reply, err = budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, used), call)
 	}
 	if err != nil {
 		return organizeError(err)
 	}
-	proposals, err := readOrganize(reply.Text, docs, folders, clients)
+	proposals, err := readOrganize(reply.Text, docs, folders, names)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func currentPath(folders []store.Folder, id *string) string {
 }
 
 // organizeRequest: the folder tree, the tags in use and one JSON line per document.
-func organizeRequest(docs []store.Document, snippets map[string]string, folders []store.Folder, clients []store.ClientName, tags []string) aimodel.Request {
+func organizeRequest(docs []store.Document, snippets map[string]string, folders []store.Folder, names recordNames, tags []string) aimodel.Request {
 	var msg strings.Builder
 	msg.WriteString("Folders:\n")
 	paths := make([]string, 0, len(folders))
@@ -222,7 +222,7 @@ func organizeRequest(docs []store.Document, snippets map[string]string, folders 
 	if len(paths) == 0 {
 		msg.WriteString("(none yet)\n")
 	}
-	msg.WriteString("\n" + clientList(clients))
+	msg.WriteString("\n" + recordList(names))
 	if len(tags) > 0 {
 		fmt.Fprintf(&msg, "\nTags in use: %s\n", strings.Join(tags, ", "))
 	}
@@ -256,7 +256,7 @@ func organizeError(err error) error {
 }
 
 // readOrganize checks the model's answer: only listed documents, each once, a usable path and tags.
-func readOrganize(text string, docs []store.Document, folders []store.Folder, clients []store.ClientName) ([]proposal, error) {
+func readOrganize(text string, docs []store.Document, folders []store.Folder, names recordNames) ([]proposal, error) {
 	var out struct {
 		Proposals []struct {
 			DocumentID string   `json:"document_id"`
@@ -293,7 +293,7 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder, cl
 		}
 		if path, ok := splitPath(a.Folder, organizeApplyDepth); ok {
 			// a place in the system folders only by their structure; any other path as before
-			if place, system := recordPath(path, clients); system && place != nil ||
+			if place, system := recordPath(path, names); system && place != nil ||
 				!system && (existing[strings.Join(path, "/")] || len(path) <= organizeDepth) {
 				p.Folder = strings.Join(path, "/")
 			}
@@ -375,7 +375,7 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 		paths[i], body.Items[i].Tags = path, typed
 	}
 	ctx, ws := r.Context(), sess.Workspace.ID
-	clients, err := s.db.ClientNames(ctx, ws, filingClients)
+	names, err := s.recordNames(ctx, ws)
 	if err != nil {
 		return err
 	}
@@ -385,20 +385,11 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 		moved, tagged, undo = 0, 0, organizeUndo{Previous: []organizePrevious{}, CreatedFolders: []string{}}
 		resolved := map[string]*string{"": nil}
 		resolve := func(path []string) (*string, error) {
-			if place, system := recordPath(path, clients); system {
+			if place, system := recordPath(path, names); system {
 				if place == nil {
 					return nil, errSkip
 				}
-				made := ""
-				if len(place.rest) > 0 { // Expenses/<year>/<category>: the category is a plain folder undo may delete
-					if made, err = q.ExistingFolderPath(ctx, ws, path); err != nil {
-						return nil, err
-					}
-				}
 				id, err := place.folder(ctx, q, ws, sess.User.ID, s.now())
-				if err == nil && len(place.rest) > 0 && made == "" && !slices.Contains(undo.CreatedFolders, id) {
-					undo.CreatedFolders = append(undo.CreatedFolders, id)
-				}
 				return &id, err
 			}
 			var parent *string

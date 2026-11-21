@@ -127,8 +127,10 @@ var expensesKind = Kind{
 				category = c.Name
 				tags = append(tags, category)
 			}
-			path := store.ExpenseFolder(e.DocumentDate, sess.Workspace.Today(now), category)
-			if err := placeDocument(ctx, q, sess, *src.DocumentID, path, tags, now); err != nil {
+			folder := func() (string, error) {
+				return q.ExpenseYearFolder(ctx, sess.Workspace.ID, e.CategoryID, store.ExpenseYear(e.DocumentDate, sess.Workspace.Today(now)), sess.User.ID, now)
+			}
+			if err := placeDocument(ctx, q, sess, *src.DocumentID, folder, tags, now); err != nil {
 				return "", err
 			}
 		}
