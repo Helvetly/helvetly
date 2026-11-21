@@ -6425,9 +6425,13 @@
           },
           "name": {
             "type": "string"
+          },
+          "avatar_url": {
+            "type": "string",
+            "description": "The person's photo, empty when they have none."
           }
         },
-        "required": ["id", "name"]
+        "required": ["id", "name", "avatar_url"]
       },
       "ElectronicAddress": {
         "type": "object",

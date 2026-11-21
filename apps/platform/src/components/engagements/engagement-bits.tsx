@@ -99,12 +99,15 @@ export function ProgressBar({
   unit,
   size = 'sm',
   caption = true,
+  nested = false,
 }: {
   period: PeriodSummary
   unit: Engagement['unit']
   size?: 'sm' | 'lg'
   /** False when the numbers already stand next to the bar. */
   caption?: boolean
+  /** True inside a button or link: the marker is then a plain tick, since a focusable one cannot nest there. */
+  nested?: boolean
 }) {
   const available = Number(period.available)
   const used = Number(period.used)
@@ -127,7 +130,11 @@ export function ProgressBar({
         value={Math.min(used, available * (1 + MAX_OVER_SHARE))}
         max={available}
         marker={showTick ? expected : undefined}
-        markerLabel={`${translate('expectedByNow')}: ${withUnit(approx(period.expected), unit)}`}
+        markerLabel={
+          nested
+            ? undefined
+            : `${translate('expectedByNow')}: ${withUnit(approx(period.expected), unit)}`
+        }
         size={size}
       />
       {caption && <span className="text-caption text-muted-foreground tabular-nums">{text}</span>}
