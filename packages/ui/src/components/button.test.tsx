@@ -21,7 +21,7 @@ test('a destructive outline button is red-edged on the card, not a solid red blo
   render(<Button variant="destructive-outline">Delete workspace</Button>)
   const button = screen.getByRole('button', { name: 'Delete workspace' })
   expect(button).toHaveAttribute('data-variant', 'destructive-outline')
-  expect(button.className).toContain('border-destructive/40')
+  expect(button.className).toContain('border-destructive/45')
   expect(button.className).toContain('text-destructive')
   expect(button.className).not.toContain('bg-destructive ')
 })

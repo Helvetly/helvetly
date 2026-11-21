@@ -90,7 +90,7 @@ function UpgradeNudge({ billing, item }: { billing: Billing; item: UsageItem }) 
       data-slot="usage-nudge"
       actions={
         next && (
-          <Button asChild size="sm" variant="outline" className="bg-card">
+          <Button asChild size="sm" variant="outline">
             <Link href="/settings/billing/plans">
               {translate('see')}
               {next.name} <ArrowRight data-icon="inline-end" aria-hidden />
