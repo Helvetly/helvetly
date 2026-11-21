@@ -529,3 +529,40 @@ func TestClientDecisionAtMidnightInWorkspaceZone(t *testing.T) {
 		}
 	}
 }
+
+func TestDuplicate(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	c := e.client(b)
+	src := e.quote(b, "POST", "/api/v1/quotes", map[string]any{"client_id": c, "issue_date": "2026-10-01", "valid_until": "2026-10-21",
+		"reference": "PO-7", "lines": []any{line("2", "100.00")}}, http.StatusCreated)
+	e.quote(b, "POST", "/api/v1/quotes/"+src.ID+"/send", map[string]any{"email": false}, http.StatusOK)
+	src = e.quote(b, "POST", "/api/v1/quotes/"+src.ID+"/accept", map[string]any{}, http.StatusOK)
+
+	dup := e.quote(b, "POST", "/api/v1/quotes/"+src.ID+"/duplicate", nil, http.StatusCreated)
+	if dup.ID == src.ID || dup.Status != "draft" || dup.Number != nil || dup.Revision != 1 || dup.SentAt != nil ||
+		dup.DecidedAt != nil || dup.Invoice != nil || dup.IssueDate != "2026-11-16" || dup.ValidUntil != "2026-12-06" {
+		t.Fatalf("duplicate: %+v", dup)
+	}
+	if dup.ClientID != c || dup.Reference == nil || *dup.Reference != "PO-7" || dup.PayableTotal.String() != "216.20" ||
+		len(dup.Lines) != 1 || dup.Lines[0].ID == src.Lines[0].ID || dup.Lines[0].Description != "Beratung" {
+		t.Fatalf("duplicate content: %+v", dup)
+	}
+	if again := e.quote(b, "GET", "/api/v1/quotes/"+src.ID, nil, http.StatusOK); again.Status != "accepted" || *again.Number != "Q-2026-001" {
+		t.Fatalf("original changed: %+v", again)
+	}
+	// the copy is an ordinary draft: editable, and numbered on its own first send
+	e.quote(b, "PATCH", "/api/v1/quotes/"+dup.ID, map[string]any{"note": "copy"}, http.StatusOK)
+	if sent := e.quote(b, "POST", "/api/v1/quotes/"+dup.ID+"/send", map[string]any{"email": false}, http.StatusOK); *sent.Number != "Q-2026-002" {
+		t.Fatalf("copy number %s", *sent.Number)
+	}
+
+	other := e.workspace()
+	e.fails(other, "POST", "/api/v1/quotes/"+src.ID+"/duplicate", nil, 404, "not_found", "")
+	e.fails(b, "POST", "/api/v1/quotes/quo_nope/duplicate", nil, 404, "not_found", "")
+
+	if _, err := e.pool.Exec(context.Background(), `UPDATE clients SET deleted_at = now() WHERE id = $1`, c); err != nil {
+		t.Fatal(err)
+	}
+	e.fails(b, "POST", "/api/v1/quotes/"+src.ID+"/duplicate", nil, 409, "invalid_state", "")
+}

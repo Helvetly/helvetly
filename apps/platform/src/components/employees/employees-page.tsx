@@ -19,6 +19,7 @@ import {
   ResizableTable,
   useResizableColumns,
 } from '@/components/data/resizable-columns'
+import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { PageHeader } from '@/components/shell/page-header'
@@ -32,8 +33,10 @@ import {
   useEmploymentSettings,
   type Employee,
   type ListParams,
+  type SortField,
 } from '@/lib/employees'
 import { translate } from '@/lib/i18n'
+import { nextSort } from '@/lib/list-sort'
 import { setUrlQuery } from '@/lib/url-query'
 
 import { EmployeeDetail } from './employee-detail'
@@ -208,7 +211,14 @@ export function EmployeesPage() {
               />
             )
           ) : (
-            <EmployeeRows rows={rows} onOpen={canOpen ? (id) => go({ id }, true) : undefined} />
+            <EmployeeRows
+              rows={rows}
+              sort={params.sort}
+              onSort={(field) =>
+                setParams({ sort: nextSort(params.sort, field, field === 'since') })
+              }
+              onOpen={canOpen ? (id) => go({ id }, true) : undefined}
+            />
           )}
         </div>
       )}
@@ -237,7 +247,17 @@ export function EmployeesPage() {
   )
 }
 
-function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen?: (id: string) => void }) {
+function EmployeeRows({
+  rows,
+  sort,
+  onSort,
+  onOpen,
+}: {
+  rows: Employee[]
+  sort: ListParams['sort']
+  onSort: (field: SortField) => void
+  onOpen?: (id: string) => void
+}) {
   const widths = useResizableColumns('employees', ['name', 'position', 'department', 'since'], {
     flex: 'name',
   })
@@ -250,26 +270,58 @@ function EmployeeRows({ rows, onOpen }: { rows: Employee[]; onOpen?: (id: string
               columns={widths}
               column="name"
               label={translate('employeeColName')}
+              aria-sort={ariaSort(sort.field === 'name', sort.desc)}
               className={cn(listTable.th, 'w-[30%]')}
-            />
+            >
+              <SortButton
+                label={translate('employeeColName')}
+                sorted={sort.field === 'name'}
+                desc={sort.desc}
+                onClick={() => onSort('name')}
+              />
+            </ResizableHead>
             <ResizableHead
               columns={widths}
               column="position"
               label={translate('employeePosition')}
+              aria-sort={ariaSort(sort.field === 'position', sort.desc)}
               className={cn(listTable.th, 'w-[22%]')}
-            />
+            >
+              <SortButton
+                label={translate('employeePosition')}
+                sorted={sort.field === 'position'}
+                desc={sort.desc}
+                onClick={() => onSort('position')}
+              />
+            </ResizableHead>
             <ResizableHead
               columns={widths}
               column="department"
               label={translate('employeeDepartment')}
+              aria-sort={ariaSort(sort.field === 'department', sort.desc)}
               className={cn(listTable.th, 'w-[16%]')}
-            />
+            >
+              <SortButton
+                label={translate('employeeDepartment')}
+                sorted={sort.field === 'department'}
+                desc={sort.desc}
+                onClick={() => onSort('department')}
+              />
+            </ResizableHead>
             <ResizableHead
               columns={widths}
               column="since"
               label={translate('employeeColSince')}
+              aria-sort={ariaSort(sort.field === 'since', sort.desc)}
               className={cn(listTable.th, 'w-[16%]')}
-            />
+            >
+              <SortButton
+                label={translate('employeeColSince')}
+                sorted={sort.field === 'since'}
+                desc={sort.desc}
+                onClick={() => onSort('since')}
+              />
+            </ResizableHead>
             <th className={cn(listTable.th, 'w-[16%]')}>{translate('employeeStatusLabel')}</th>
           </tr>
         </thead>

@@ -748,6 +748,55 @@ export const TrashReadOnly: Story = {
   },
 }
 const documentWrite = fn()
+const trashed = (id: string, name: string, deleted: string) => ({
+  type: 'file' as const,
+  id,
+  name,
+  content_type: 'application/pdf',
+  size: 1234,
+  item_count: 0,
+  location: null,
+  retained_until: null,
+  deleted_at: deleted,
+  deleted_by: null,
+  purge_at: '2026-12-01T00:00:00Z',
+})
+/** A header sorts: the sorted column says so, rows follow it, and a click writes the other way to the URL. */
+export const TrashSorted: Story = {
+  parameters: {
+    nextjs: { navigation: { pathname: '/documents', query: { sort: 'name' } } },
+    msw: {
+      handlers: [sessionHandler({ role: 'owner', scopes: [] }), ...screenHandlers],
+    },
+  },
+  render: () => (
+    <TrashView
+      items={[
+        trashed('t1', 'Zeta.pdf', '2026-11-03T00:00:00Z'),
+        trashed('t2', 'Alpha.pdf', '2026-11-01T00:00:00Z'),
+      ]}
+      error={null}
+      onRetry={fn()}
+      selected={new Set()}
+      onToggle={fn()}
+      onToggleAll={fn()}
+      onOpen={fn()}
+      onRestore={fn()}
+      onDelete={fn()}
+      onEmpty={fn()}
+      canDelete
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const header = await canvas.findByRole('button', { name: 'Name' })
+    await expect(header.closest('th')).toHaveAttribute('aria-sort', 'ascending')
+    const names = canvas.getAllByText(/\.pdf$/).map((cell) => cell.textContent)
+    await expect(names).toEqual(['Alpha.pdf', 'Zeta.pdf'])
+    await userEvent.click(header)
+    await waitFor(() => expect(window.location.search).toContain('sort=-name'))
+  },
+}
 export const DocumentsReadOnlyKeyboard: Story = {
   parameters: {
     msw: {

@@ -31,7 +31,7 @@ func TestListSQLPagingMatchesOnePage(t *testing.T) {
 		}
 		return out
 	}
-	for _, sort := range []string{"title", "client", "-created_at"} {
+	for _, sort := range []string{"title", "-title", "client", "-client", "-created_at", "-ends"} {
 		var all page
 		e.do(b, "GET", "/api/v1/engagements?page_size=200&sort="+sort, nil, 200, &all)
 		var joined []string
@@ -46,6 +46,11 @@ func TestListSQLPagingMatchesOnePage(t *testing.T) {
 		if !slices.Equal(joined, titles(all.Data)) {
 			t.Fatalf("%s: pages %v, one page %v", sort, joined, titles(all.Data))
 		}
+	}
+	var byTitleDesc page
+	e.do(b, "GET", "/api/v1/engagements?sort=-title", nil, 200, &byTitleDesc)
+	if got := titles(byTitleDesc.Data); !slices.Equal(got, []string{"gamma", "Delta", "beta", "alpha 2", "Alpha"}) {
+		t.Fatalf("by title descending: %v", got)
 	}
 	var byTitle page
 	e.do(b, "GET", "/api/v1/engagements?sort=title", nil, 200, &byTitle)

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -160,7 +161,22 @@ func employeeErr(err error) error {
 // every one), a department and a search over names, number, email, position and department.
 type EmployeeFilter struct {
 	Status, Department, Search string
+	// Sort is one of the keys of employeeOrder ("" = by name); Desc reverses it.
+	Sort string
+	Desc bool
 }
+
+// employeeOrder maps a sort key to its SQL (a whitelist: the key never reaches the query itself). Only visible
+// columns sort, never a sealed field.
+var employeeOrder = map[string]string{
+	"name":       "lower(e.last_name) %[1]s, lower(e.first_name) %[1]s",
+	"position":   "lower(e.position) %[1]s NULLS LAST",
+	"department": "lower(e.department) %[1]s NULLS LAST",
+	"since":      "e.employment_start %[1]s",
+}
+
+// ValidEmployeeSort reports whether key names a sortable column.
+func ValidEmployeeSort(key string) bool { _, ok := employeeOrder[key]; return ok }
 
 // HasEmployees reports whether the workspace ever recorded an employee (archived ones included): HR data an owner
 // may still read and export after a downgrade.
@@ -199,8 +215,16 @@ func (q Q) ListEmployees(ctx context.Context, workspaceID string, f EmployeeFilt
 	if err := q.db.QueryRow(ctx, `SELECT count(*) FROM employees e WHERE `+cond, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
+	order := employeeOrder["name"]
+	if f.Sort != "" {
+		order = employeeOrder[f.Sort]
+	}
+	dir := "ASC"
+	if f.Desc {
+		dir = "DESC"
+	}
 	rows, err := q.db.Query(ctx, `SELECT `+employeeColumns+employeeFrom+` WHERE `+cond+`
-		ORDER BY lower(e.last_name), lower(e.first_name), e.id LIMIT `+arg(limit)+` OFFSET `+arg(offset), args...)
+		ORDER BY `+fmt.Sprintf(order, dir)+`, lower(e.last_name), lower(e.first_name), e.id LIMIT `+arg(limit)+` OFFSET `+arg(offset), args...)
 	if err != nil {
 		return nil, 0, err
 	}

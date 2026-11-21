@@ -1259,7 +1259,7 @@
             "description": "Default ends.",
             "schema": {
               "type": "string",
-              "enum": ["ends", "-created_at", "title", "client"]
+              "enum": ["ends", "-ends", "-created_at", "title", "-title", "client", "-client"]
             }
           }
         ],
@@ -3558,7 +3558,7 @@
             "description": "Default ends.",
             "schema": {
               "type": "string",
-              "enum": ["ends", "-created_at", "title", "client"],
+              "enum": ["ends", "-ends", "-created_at", "title", "-title", "client", "-client"],
               "default": "ends"
             }
           }
@@ -6214,6 +6214,41 @@
             "$ref": "#/components/responses/Error"
           }
         }
+      }
+    },
+    "/api/v1/quotes/{id}/duplicate": {
+      "post": {
+        "operationId": "duplicate_quote",
+        "tags": ["Quotes"],
+        "summary": "Duplicate a quote as a draft",
+        "description": "Copies any quote's client, lines, texts and payment schedule into a new unnumbered draft dated today, valid for as many days as the original. The original is unchanged. 409 invalid_state when the quote's client was deleted. Not idempotent: each call makes a new draft.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The record's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
       }
     },
     "/api/v1/quotes/{id}/revise": {

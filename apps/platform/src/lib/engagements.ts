@@ -146,7 +146,7 @@ export type EngagementQuery = {
   client_id?: string
   status?: string
   attention?: Attention
-  sort?: 'ends' | '-created_at' | 'title' | 'client'
+  sort?: 'ends' | '-ends' | '-created_at' | 'title' | '-title' | 'client' | '-client'
   page?: number
   page_size?: number
 }
