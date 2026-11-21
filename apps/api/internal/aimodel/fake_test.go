@@ -104,3 +104,37 @@ func TestFakeReadsAnAttachedFileAsASalesInvoiceForAnAutoImport(t *testing.T) {
 		t.Fatalf("%s %v", reply.Text, err)
 	}
 }
+
+func TestFakeReadsAReceiptIntoTheFirstListedCategory(t *testing.T) {
+	read := func(instructions string) map[string]any {
+		t.Helper()
+		reply, err := Fake{}.Answer(context.Background(), Request{Instructions: instructions, Message: "The document attached (1 file(s), in page order).",
+			Schema: &Schema{Name: "receipt_v2", JSON: map[string]any{"type": "object"}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out struct{ Records []map[string]any }
+		if err := json.Unmarshal([]byte(reply.Text), &out); err != nil || len(out.Records) != 1 {
+			t.Fatalf("%s %v", reply.Text, err)
+		}
+		return out.Records[0]
+	}
+	tests := []struct {
+		name, instructions string
+		key                any
+	}{
+		{"listed", "Read it.\n- not | a category\n\nThe categories (key | name | account):\n- telecom | Telecom | 6510\n- rent | Rent | 6000", "telecom"},
+		{"none listed", "Read it.\n\nThe categories (key | name | account):", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := read(tt.instructions)
+			if got := r["category"].(map[string]any)["key"]; got != tt.key {
+				t.Fatalf("category key %v, want %v", got, tt.key)
+			}
+			if r["totals"].(map[string]any)["gross"] != "108.10" || r["supplier"].(map[string]any)["name"] != "Development Supplier AG" {
+				t.Fatalf("receipt: %v", r)
+			}
+		})
+	}
+}
