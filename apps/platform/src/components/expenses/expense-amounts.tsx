@@ -27,10 +27,27 @@ import {
 
 const RATE_CHOICES = [...VAT_RATES, '0']
 const MAX_LINES = 20
-// Single: item | amount | VAT | remove. Itemised adds quantity, unit price and category; phones stack each item.
+// Single: item | amount | VAT | remove. Itemised adds quantity, unit price and category.
 const SINGLE_GRID =
   'grid-cols-[minmax(0,1fr)_136px_92px_32px] max-sm:grid-cols-[minmax(0,1fr)_120px_84px_32px]'
-const ITEM_GRID = 'sm:grid-cols-[minmax(0,1fr)_76px_112px_84px_168px_128px_32px]'
+// Sized by the lines' own width (the form's column), not the screen: where it fits, item | quantity | unit price |
+// amount, with the category and VAT rate under them; else a card per item.
+const ITEM_COLS = '@min-[34rem]:grid-cols-[minmax(0,1fr)_64px_128px_128px_32px]'
+const ITEM_GRID = cn(
+  'grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px]',
+  "[grid-template-areas:'item_item_del'_'qty_price_price'_'vat_amount_amount'_'cat_cat_cat']",
+  ITEM_COLS,
+  "@min-[34rem]:[grid-template-areas:'item_qty_price_amount_del'_'cat_cat_vat_._.']",
+)
+const area = {
+  item: '[grid-area:item]',
+  qty: '[grid-area:qty]',
+  price: '[grid-area:price]',
+  vat: '[grid-area:vat]',
+  amount: '[grid-area:amount]',
+  category: '[grid-area:cat]',
+  remove: '[grid-area:del]',
+}
 
 type Describe = (field: string) => {
   id: string
@@ -81,7 +98,7 @@ export function ExpenseLines({
     )
 
   return (
-    <div className="grid gap-2">
+    <div className="@container grid gap-2">
       <Segmented
         label={translate('enterAs')}
         value={values.entry_mode}
@@ -98,7 +115,7 @@ export function ExpenseLines({
         aria-hidden
         className={cn(
           'grid gap-2 text-body-sm font-medium',
-          itemised ? cn('max-sm:hidden', ITEM_GRID) : SINGLE_GRID,
+          itemised ? cn('hidden @min-[34rem]:grid', ITEM_COLS) : SINGLE_GRID,
         )}
       >
         <span>{translate('item')}</span>
@@ -110,8 +127,7 @@ export function ExpenseLines({
             <span className="ml-0.5 text-destructive">*</span>
           </span>
         )}
-        <span>{translate('vat2')}</span>
-        {itemised && <span>{translate('category')}</span>}
+        {itemised || <span>{translate('vat2')}</span>}
         {itemised && (
           <span>
             {translate('amount')}
@@ -128,7 +144,7 @@ export function ExpenseLines({
             value={line.description}
             onChange={(event) => onLine(index, { description: event.target.value })}
             placeholder={index === 0 ? translate('optionalEGHotel') : translate('eGBreakfast')}
-            className={cn(inputClass, itemised && 'max-sm:col-span-2')}
+            className={cn(inputClass, itemised && area.item)}
           />
         )
         const amount = (
@@ -149,6 +165,7 @@ export function ExpenseLines({
             value={line.vat_rate}
             onValueChange={(value) => onLine(index, { vat_rate: value })}
             placeholder="8.1"
+            className={cn(itemised && area.vat)}
             inputClassName={cn(inputClass, 'text-right tabular-nums')}
           />
         )
@@ -159,10 +176,7 @@ export function ExpenseLines({
             size="icon-sm"
             aria-label={translate('removeLine', { value1: n })}
             disabled={values.lines.length === 1}
-            className={cn(
-              'cursor-pointer',
-              itemised && 'max-sm:col-start-2 max-sm:row-start-1 max-sm:justify-self-end',
-            )}
+            className={cn('cursor-pointer', itemised && area.remove)}
             onClick={() => onValues({ lines: values.lines.filter((_, i) => i !== index) })}
           >
             <Trash2 />
@@ -170,12 +184,19 @@ export function ExpenseLines({
         )
         const field = errorField(index)
         return (
-          <div key={line.key} className="grid gap-1">
+          <div
+            key={line.key}
+            className={cn(
+              'grid gap-1',
+              itemised && index > 0 && '@min-[34rem]:border-t @min-[34rem]:pt-2',
+            )}
+          >
             {itemised ? (
               <div
                 data-testid="expense-item"
                 className={cn(
-                  'grid grid-cols-2 items-center gap-2 max-sm:rounded-lg max-sm:p-3 max-sm:ring-1 max-sm:ring-border',
+                  'grid items-center gap-2 rounded-lg p-3 ring-1 ring-border',
+                  '@min-[34rem]:rounded-none @min-[34rem]:p-0 @min-[34rem]:ring-0',
                   ITEM_GRID,
                 )}
               >
@@ -187,16 +208,18 @@ export function ExpenseLines({
                   value={line.quantity}
                   onChange={(event) => setPrice(index, line, { quantity: event.target.value })}
                   placeholder={translate('qty')}
-                  className={cn(inputClass, 'text-right tabular-nums')}
+                  className={cn(inputClass, 'text-right tabular-nums', area.qty)}
                 />
-                <AmountInput
-                  {...describe(`lines.${index}.unit_price`)}
-                  aria-label={translate('lineUnitPrice', { value1: n })}
-                  currency={values.currency}
-                  value={line.unit_price}
-                  onValueChange={(value) => setPrice(index, line, { unit_price: value })}
-                  placeholder={translate('unitPrice')}
-                />
+                <div className={cn('min-w-0', area.price)}>
+                  <AmountInput
+                    {...describe(`lines.${index}.unit_price`)}
+                    aria-label={translate('lineUnitPrice', { value1: n })}
+                    currency={values.currency}
+                    value={line.unit_price}
+                    onValueChange={(value) => setPrice(index, line, { unit_price: value })}
+                    placeholder={translate('unitPrice')}
+                  />
+                </div>
                 {rate}
                 <LineCategory
                   index={index}
@@ -204,7 +227,7 @@ export function ExpenseLines({
                   invalid={Boolean(errors[`lines.${index}.category_id`])}
                   onChange={(category_id) => onLine(index, { category_id })}
                 />
-                {amount}
+                <div className={cn('min-w-0', area.amount)}>{amount}</div>
                 {remove}
               </div>
             ) : (
@@ -292,7 +315,7 @@ function LineCategory({
       invalid={invalid}
       placeholder={translate('defaultExpenseCategory')}
       contentClassName="w-64"
-      className="max-sm:col-span-2"
+      className={area.category}
       onChange={onChange}
     />
   )

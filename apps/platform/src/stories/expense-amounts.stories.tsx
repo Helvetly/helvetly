@@ -140,7 +140,37 @@ export const TotalsCard: Story = {
   },
 }
 
-/** On a phone each item is a card of its own, its fields two to a row. */
+/** Two items in the form's column: item, quantity, unit price and amount in a row under their headers, the
+ * category and VAT rate under them, and nothing wider than the column. */
+export const TwoItems: Story = {
+  play: async () => {
+    await itemise()
+    await userEvent.click(body.getByRole('button', { name: 'Add an item' }))
+    const items = body.getAllByTestId('expense-item')
+    await expect(items).toHaveLength(2)
+    const column = items[0]?.parentElement?.parentElement?.getBoundingClientRect()
+    await waitFor(() =>
+      expect(
+        items.map((item) => getComputedStyle(item).gridTemplateColumns.split(' ').length),
+      ).toEqual([5, 5]),
+    )
+    const overflowing = items
+      .flatMap((item) => [...item.querySelectorAll('input, button')])
+      .filter((field) => field.getBoundingClientRect().right > (column?.right ?? 0))
+    await expect(overflowing).toEqual([])
+    const description = body.getByRole('textbox', { name: 'Line 1 description' })
+    const quantity = body.getByRole('textbox', { name: 'Line 1 quantity' })
+    await expect(description.getBoundingClientRect().width).toBeGreaterThan(120)
+    await expect(description.getBoundingClientRect().right).toBeLessThan(
+      quantity.getBoundingClientRect().left,
+    )
+    await expect(body.getByText('Qty', { selector: 'span' }).getBoundingClientRect().left).toBe(
+      quantity.getBoundingClientRect().left,
+    )
+  },
+}
+
+/** On a phone each item is a card of its own, its fields two to a row beside the remove button. */
 export const ItemisedPhone: Story = {
   parameters: {
     viewport: {
@@ -152,7 +182,7 @@ export const ItemisedPhone: Story = {
     await itemise()
     const item = body.getByTestId('expense-item')
     await waitFor(() =>
-      expect(getComputedStyle(item).gridTemplateColumns.split(' ')).toHaveLength(2),
+      expect(getComputedStyle(item).gridTemplateColumns.split(' ')).toHaveLength(3),
     )
   },
 }
