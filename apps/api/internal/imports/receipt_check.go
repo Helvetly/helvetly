@@ -60,6 +60,7 @@ type receiptBand struct {
 }
 
 type receiptItem struct {
+	Date        *string `json:"date"`
 	Description *string `json:"description"`
 	Quantity    *string `json:"quantity"`
 	UnitPrice   *string `json:"unit_price"`
@@ -205,6 +206,12 @@ func checkReceipt(raw json.RawMessage, categories []receiptCategory) (receiptRea
 	for i := range r.Items {
 		it := &r.Items[i]
 		it.Description = trimmed(it.Description)
+		if it.Date = trimmed(it.Date); it.Date != nil {
+			if _, err := time.Parse(time.DateOnly, *it.Date); err != nil {
+				it.Date = nil
+				low("items", "A date could not be read; check it.")
+			}
+		}
 		if q := trimmed(it.Quantity); q != nil {
 			if n, ok := invoicecalc.ParseQuantity(*q); ok {
 				it.Quantity = ptr(n.String())

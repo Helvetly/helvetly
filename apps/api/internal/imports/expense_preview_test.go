@@ -249,6 +249,76 @@ func TestPreviewOneReceiptOnly(t *testing.T) {
 	}
 }
 
+// expenseReport is the model's answer for an employee expense report: one table of dated lines and one total, no
+// single supplier.
+func expenseReport(t *testing.T) string {
+	type line struct{ date, description, amount string }
+	var items []map[string]any
+	for _, l := range []line{
+		{"2026-10-05", "Hotel, 1 night", "450.00"}, {"2026-10-06", "Hotel, 1 night", "450.00"},
+		{"2026-10-05", "Mileage, 130 mi", "87.10"}, {"2026-10-05", "Per diem", "75.00"}, {"2026-10-06", "Per diem", "75.00"},
+		{"2026-10-05", "Rental car", "612.43"}, {"2026-10-05", "Dinner", "98.50"}, {"2026-10-06", "Lunch", "72.00"},
+		{"2026-10-07", "Dinner", "80.00"},
+	} {
+		items = append(items, map[string]any{"date": l.date, "description": l.description, "amount": l.amount})
+	}
+	return recordJSON(t, map[string]any{
+		"document":    map[string]any{"type": nil, "date": "2026-10-07"},
+		"description": "Business trip expenses",
+		"currency":    "USD",
+		"totals":      map[string]any{"gross": "2000.03"},
+		"items":       items,
+		"payment":     map[string]any{"status": "paid"},
+	})
+}
+
+// An expense report, a statement or a many-line invoice is one itemised expense; only separate documents are several.
+func TestPreviewReadsAnyExpenseDocumentAsOne(t *testing.T) {
+	invoice := recordJSON(t, map[string]any{
+		"supplier": map[string]any{"name": "Swisscom"}, "document": map[string]any{"type": "invoice"}, "currency": "CHF",
+		"totals": map[string]any{"gross": "130.00"},
+		"items":  []map[string]any{{"description": "Mobile", "amount": "80.00"}, {"description": "Internet", "amount": "50.00"}},
+	})
+	two := `{"records":[{"supplier":{"name":"Migros"}},{"supplier":{"name":"Coop"}}]}`
+	for name, tc := range map[string]struct {
+		reply, code string
+		items       int
+		gross       string
+	}{
+		"expense report":    {expenseReport(t), "", 9, "2000.03"},
+		"many-line invoice": {invoice, "", 2, "130.00"},
+		"separate receipts": {two, "multiple_receipts", 0, ""},
+		"no expense at all": {`{"records":[]}`, "no_receipt", 0, ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e := previewEnv(t)
+			e.model.replies = []func(aimodel.Request) (aimodel.Reply, error){answer(tc.reply)}
+			w := e.preview("request-0001", pngBytes(t), nil)
+			for _, kind := range []string{"expense report", "statement", "invoice", "booking confirmation", "ONE record"} {
+				if !strings.Contains(e.model.seen[0].Instructions, kind) {
+					t.Errorf("instructions do not mention %q", kind)
+				}
+			}
+			if tc.code != "" {
+				if w.Code != http.StatusUnprocessableEntity || code(w) != tc.code {
+					t.Errorf("%d %s, want %s", w.Code, w.Body, tc.code)
+				}
+				return
+			}
+			if w.Code != 200 {
+				t.Fatalf("%d %s", w.Code, w.Body)
+			}
+			got := decode[receiptReading](t, w)
+			if len(got.Items) != tc.items || value(got.Totals.Gross) != tc.gross || got.Issues["items"] != "" {
+				t.Errorf("items %d gross %q issues %v", len(got.Items), value(got.Totals.Gross), got.Issues)
+			}
+			if name == "expense report" && (value(got.Items[0].Date) != "2026-10-05" || value(got.Currency) != "USD" || got.Supplier.Name != nil) {
+				t.Errorf("report: %+v", got)
+			}
+		})
+	}
+}
+
 func TestPreviewRefusesBadInputBeforeTheModel(t *testing.T) {
 	e := previewEnv(t)
 	good := pngBytes(t)
