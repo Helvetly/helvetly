@@ -45,7 +45,15 @@ func (s *Service) approvalView(w http.ResponseWriter, r *http.Request, sess stor
 	if err != nil {
 		return err
 	}
-	v, err := s.approvals.View(ctx, s.db.Q, sess, approvalDoc(inv))
+	doc := approvalDoc(inv)
+	if doc.Draft {
+		planned, err := planSource(ctx, s.db.Q, sess.Workspace.ID, inv)
+		if err != nil {
+			return err
+		}
+		doc.Draft = !planned
+	}
+	v, err := s.approvals.View(ctx, s.db.Q, sess, doc)
 	if err != nil {
 		return err
 	}
@@ -83,9 +91,17 @@ func (s *Service) approvalAction(step func(context.Context, store.Q, store.Sessi
 			return auth.ErrNotFound
 		}
 		err := s.db.Tx(ctx, func(q store.Q) error {
+			if err := q.LockInvoiceSettings(ctx, sess.Workspace.ID); err != nil {
+				return err
+			}
 			inv, err := q.Invoice(ctx, sess.Workspace.ID, r.PathValue("id"), s.today(sess.Workspace), true)
 			if err != nil {
 				return err
+			}
+			if planned, err := planSource(ctx, q, sess.Workspace.ID, inv); err != nil {
+				return err
+			} else if planned {
+				return errPlanned
 			}
 			return step(ctx, q, sess, approvalDoc(inv), decision{requestID: body.RequestID, comment: comment})
 		})

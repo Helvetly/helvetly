@@ -2,6 +2,7 @@
 // pending when created and active, with its certificate, once it has been read or refreshed again. Lists page like
 // Cloudflare's: at most 50 a page, with result_info.
 import { randomUUID } from 'node:crypto'
+import { once } from 'node:events'
 import { createServer } from 'node:http'
 
 export const cloudflareZone = '0123456789abcdef0123456789abcdef'
@@ -27,7 +28,7 @@ function page(res, url, hosts) {
   })
 }
 
-export function startCloudflareFake(port) {
+export async function startCloudflareFake() {
   const hosts = new Map()
   const base = `/zones/${cloudflareZone}/custom_hostnames`
   const server = createServer((req, res) => {
@@ -75,6 +76,6 @@ export function startCloudflareFake(port) {
       return answer(res, 200, host)
     })
   })
-  server.listen(port, '127.0.0.1')
-  return server
+  await once(server.listen(0, '127.0.0.1'), 'listening')
+  return server.unref()
 }

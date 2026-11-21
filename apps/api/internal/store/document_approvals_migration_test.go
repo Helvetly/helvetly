@@ -29,14 +29,15 @@ func TestDocumentApprovalsMigration(t *testing.T) {
 		AND document->'records'->-1->>'key' = 'document_approvals' AND jsonb_array_length(document->'records') = 70`); n != 1 {
 		t.Fatal("helvetly-v1.4 is not published with the record last")
 	}
-	if n := count(`SELECT count(*) FROM information_schema.tables WHERE table_name LIKE 'approval_%'`); n != 6 {
+	const approvalTables = `SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name LIKE 'approval_%'`
+	if n := count(approvalTables); n != 6 {
 		t.Fatalf("%d approval tables", n)
 	}
 	if _, err := p.DownTo(ctx, 38); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(`SELECT count(*) FROM limits WHERE key = 'document_approvals'`) + count(`SELECT count(*) FROM offer_versions WHERE id = 'helvetly-v1.4'`) +
-		count(`SELECT count(*) FROM information_schema.tables WHERE table_name LIKE 'approval_%'`); n != 0 {
+		count(approvalTables); n != 0 {
 		t.Fatal("left after Down")
 	}
 	if _, err := p.UpTo(ctx, 39); err != nil {

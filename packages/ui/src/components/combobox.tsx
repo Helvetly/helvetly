@@ -110,6 +110,7 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
+        aria-label={label ?? placeholder}
         align="start"
         className={cn(
           'w-max max-w-[min(32rem,var(--radix-popover-content-available-width))] min-w-[max(16rem,var(--radix-popover-trigger-width))] p-0',

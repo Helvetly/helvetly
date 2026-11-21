@@ -105,9 +105,10 @@ are the reference.
   approval_changed` otherwise). The document stays
   `draft`; its latest request (`approval_requests`, one `pending|approved` at a time, decisions in
   `approval_decisions`) gives `approval_state`. The document package calls approvals in its own transaction with the
-  row locked: `Gate` before issuing (`409 approval_required`), `Reset` after any edit (the request ends, submit again;
-  a change of the seller, IBAN or Revolut account in the invoice settings ends every open request, `ResetAll`),
-  `Forget` on delete; an instalment plan from a draft needs its approval too. No policy, or no feature after a downgrade: nothing is gated. Not gated: a void's
+  row locked: `Gate` before issuing (`409 approval_required`), `Reset` after an edit other than a reminders-only change,
+  `Forget` on delete. A change of the seller, IBAN or Revolut account resets open requests on editable drafts
+  (`ResetAll`); approval actions, issue and plan creation share the invoice settings lock. An instalment plan needs
+  its source draft's approval and keeps it as history. No policy or feature after a downgrade: nothing is gated. Not gated: a void's
   credit note, plan instalments (the plan itself needs the draft's approval) and invoices imported as issued
   elsewhere (`IssueImported`). Steps go to the audit log (`approval.*`, configuration
   `approvals.*`), never as money events; `approval.requested|approved|rejected` notify. Approving is session-only:

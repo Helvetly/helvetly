@@ -23,6 +23,10 @@ func (s *Service) issue(w http.ResponseWriter, r *http.Request, sess store.Sessi
 	ctx, id := r.Context(), r.PathValue("id")
 	var pdf string
 	err := s.db.Tx(ctx, func(q store.Q) error {
+		// The settings update may reset approval before this transaction can issue.
+		if err := q.LockInvoiceSettings(ctx, sess.Workspace.ID); err != nil {
+			return err
+		}
 		inv, err := q.Invoice(ctx, sess.Workspace.ID, id, s.today(sess.Workspace), true)
 		if err != nil {
 			return err
