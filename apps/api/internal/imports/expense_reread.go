@@ -63,7 +63,7 @@ func (s *Service) expenseReread(w http.ResponseWriter, r *http.Request, sess sto
 		files = append(files, previewFile{contentType: rc.ContentType, data: data})
 	}
 	if len(files) == 0 {
-		return auth.Error(http.StatusUnprocessableEntity, "no_receipt", "This expense has no receipt that can be read (PDF, PNG, JPEG or WebP).", nil)
+		return auth.Error(http.StatusUnprocessableEntity, "no_readable_file", "This expense has no file that can be read (PDF, PNG, JPEG or WebP).", nil)
 	}
 	reading, err := s.readReceipt(ctx, sess, body.RequestID, files)
 	if err != nil {

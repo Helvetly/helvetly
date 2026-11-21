@@ -149,7 +149,7 @@ export const Reading: Story = {
   play: async () => {
     const view = await pick(receipt())
     await userEvent.click(view.getByRole('button', { name: 'Continue' }))
-    await expect(await view.findByText('Reading the receipt…')).toBeVisible()
+    await expect(await view.findByText('Reading the document…')).toBeVisible()
     await expect(view.getByText('Reading 1 file')).toBeVisible()
     await userEvent.click(view.getByRole('button', { name: 'Stop and enter manually' }))
     await expect(await view.findByRole('textbox', { name: /Supplier$/ })).toHaveValue('')
@@ -182,6 +182,29 @@ export const LowConfidence: Story = {
 }
 export const LowConfidenceDark = dark(LowConfidence)
 
+/** A file with no expense in it is a warning with the next step, not an error. */
+export const ReadNothingFound: Story = {
+  parameters: {
+    msw: {
+      handlers: handlers(() =>
+        HttpResponse.json(
+          { error: { code: 'no_receipt', message: 'No expense was found in this file.' } },
+          { status: 422 },
+        ),
+      ),
+    },
+  },
+  play: async () => {
+    const view = await pick(receipt())
+    await userEvent.click(view.getByRole('button', { name: 'Continue' }))
+    const alert = await view.findByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'warning')
+    await expect(alert).toHaveTextContent('No expense found')
+    await expect(alert).toHaveTextContent('enter the details yourself')
+    await expect(alert).not.toHaveTextContent('No expense was found in this file.')
+  },
+}
+
 /** A failed reading opens the form anyway, with the file staged and the reason under it. */
 export const ReadFailed: Story = {
   parameters: {
@@ -202,9 +225,10 @@ export const ReadFailed: Story = {
   play: async () => {
     const view = await pick(receipt())
     await userEvent.click(view.getByRole('button', { name: 'Continue' }))
-    await expect(
-      await view.findByText(/The receipt could not be read: The AI model’s answer/),
-    ).toBeVisible()
+    const alert = await view.findByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'danger')
+    await expect(alert).toHaveTextContent('The file could not be read')
+    await expect(alert).toHaveTextContent('The AI model’s answer could not be read.')
     await expect(view.getByRole('textbox', { name: /Supplier$/ })).toHaveValue('')
     await expect(view.getByText('swisscom.png')).toBeVisible()
     await expect(view.getByRole('button', { name: 'Read again with AI' })).toBeEnabled()
