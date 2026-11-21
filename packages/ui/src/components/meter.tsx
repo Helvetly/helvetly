@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 
 /** Where a meter turns orange, then red: a share of `max`. */
@@ -22,6 +23,7 @@ export function Meter({
   max,
   label,
   marker,
+  markerLabel,
   size = 'sm',
   tone,
   className,
@@ -30,6 +32,8 @@ export function Meter({
   max: number
   label: string
   marker?: number
+  /** Names the marker for a tooltip on hover and focus, e.g. "Expected by now: 28.6 h". */
+  markerLabel?: string
   size?: 'sm' | 'lg'
   /** A fixed colour for a bar that is no limit (time passing): no orange or red near the end. */
   tone?: 'brand'
@@ -41,7 +45,7 @@ export function Meter({
   const over = Math.max(0, value - max)
   const pct = (part: number) => `${((part / scale) * 100).toFixed(2)}%`
   return (
-    <div className={cn('grid', className)}>
+    <div className={cn('relative grid', className)}>
       <progress className="sr-only" aria-label={label} max={max} value={within} />
       <div
         aria-hidden
@@ -65,14 +69,49 @@ export function Meter({
             style={{ width: pct(over) }}
           />
         )}
-        {marker !== undefined && (
-          <span
-            data-part="marker"
-            className="absolute inset-y-0 w-px bg-foreground/60"
-            style={{ left: pct(Math.min(marker, max)) }}
-          />
-        )}
       </div>
+      {marker !== undefined && (
+        <MeterMarker left={pct(Math.min(marker, max))} label={markerLabel} />
+      )}
     </div>
+  )
+}
+
+/**
+ * A 2px notch in the card's own colour, outlined, that pokes past the bar above and below: it reads on the
+ * coloured fill and on the grey track alike, in both themes. Out of the bar's box, so nothing moves.
+ */
+function MeterMarker({ left, label }: { left: string; label?: string }) {
+  const notch = (
+    <span
+      data-part="marker"
+      className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-background ring-1 ring-foreground/35"
+    />
+  )
+  const box = 'absolute inset-y-[-3px] w-3 -translate-x-1/2'
+  if (!label)
+    return (
+      <span aria-hidden className={box} style={{ left }}>
+        {notch}
+      </span>
+    )
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {/* Wider than the notch, so the tooltip is reachable by pointer and keyboard. */}
+        <button
+          type="button"
+          aria-label={label}
+          className={cn(
+            box,
+            'cursor-default rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+          )}
+          style={{ left }}
+        >
+          {notch}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }

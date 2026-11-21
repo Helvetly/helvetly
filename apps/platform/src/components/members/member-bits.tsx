@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
@@ -6,24 +5,12 @@ import { formatDate, formatRelative } from '@helvetly/ui/lib/format'
 import { Users } from 'lucide-react'
 import Link from 'next/link'
 
-import { Initials } from '@/components/initials'
+import { UserAvatar } from '@/components/user-avatar'
 import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { PRESETS, presetOf } from '@/lib/permissions'
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
-
-/** The person's picture, or their initials when there is none. */
-export function MemberAvatar({ name, url }: { name: string; url?: string | null }) {
-  return (
-    <Avatar className="size-8">
-      {url && <AvatarImage src={url} alt="" />}
-      <AvatarFallback className="bg-transparent">
-        <Initials name={name} className="size-8" />
-      </AvatarFallback>
-    </Avatar>
-  )
-}
 
 /** Name with the email (or other context) as a second line; "You" marks the signed-in person. */
 export function MemberCell({
@@ -39,7 +26,7 @@ export function MemberCell({
 }) {
   return (
     <span className="flex min-w-0 items-center gap-3">
-      <MemberAvatar name={name} url={url} />
+      <UserAvatar name={name} url={url} className="size-8" />
       <span className="min-w-0 leading-tight">
         <span className="flex items-center gap-1.5">
           <span className="truncate">{name}</span>

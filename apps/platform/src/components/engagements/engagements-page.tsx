@@ -381,7 +381,7 @@ function EngagementItem({
         >
           <TitleCell engagement={engagement} />
           {engagement.current_period && (
-            <ProgressBar period={engagement.current_period} unit={engagement.unit} />
+            <ProgressBar period={engagement.current_period} unit={engagement.unit} nested />
           )}
           <AttentionBadges attention={engagement.attention} />
         </button>

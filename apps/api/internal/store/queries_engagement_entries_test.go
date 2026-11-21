@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -152,6 +153,44 @@ func TestPeriodInvoicesSkipsVoid(t *testing.T) {
 	for _, l := range list {
 		if l.ID == "inv_void" {
 			t.Fatalf("void listed: %+v", list)
+		}
+	}
+}
+
+func TestEntryUsersCarryAvatar(t *testing.T) {
+	s, _ := seedEngagementWorkspace(t)
+	seedPeriod(t, s)
+	ctx := context.Background()
+	if err := s.CreateUser(ctx, store.User{ID: "usr_p", Email: "p@x.ch", Name: "Photo", AvatarURL: "https://g.example/p.png"}, t0); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateUser(ctx, store.User{ID: "usr_g", Email: "g@x.ch", Name: "Google", AvatarURL: "https://g.example/g.png"}, t0); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CreateUser(ctx, store.User{ID: "usr_n", Email: "n@x.ch", Name: "None"}, t0); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetUserPhoto(ctx, "usr_p", store.UserPhoto{ObjectKey: "k", ContentType: "image/png", SHA256: strings.Repeat("0123456789abcdef", 4), Size: 1}, t0); err != nil {
+		t.Fatal(err)
+	}
+	for i, id := range []string{"usr_p", "usr_g", "usr_n"} {
+		e := entry("ent_"+id, "2026-02-0"+string(rune('1'+i)), 1000)
+		e.PerformedBy, e.CreatedBy = &store.UserRef{ID: id}, &store.UserRef{ID: "usr_g"}
+		if err := s.CreateEntry(ctx, "eng_1", e, t0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list, err := s.Entries(ctx, "eng_1", "")
+	if err != nil || len(list) != 3 {
+		t.Fatalf("%+v %v", list, err)
+	}
+	want := map[string]string{"usr_p": "/api/v1/users/usr_p/avatar?v=0123456789ab", "usr_g": "https://g.example/g.png", "usr_n": ""}
+	for _, e := range list {
+		if got := e.PerformedBy.AvatarURL; got != want[e.PerformedBy.ID] {
+			t.Errorf("%s: avatar %q, want %q", e.PerformedBy.ID, got, want[e.PerformedBy.ID])
+		}
+		if e.CreatedBy.AvatarURL != "https://g.example/g.png" {
+			t.Errorf("created by avatar %q", e.CreatedBy.AvatarURL)
 		}
 	}
 }

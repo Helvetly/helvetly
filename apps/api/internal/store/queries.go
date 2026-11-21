@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -48,6 +49,11 @@ const UserAvatarPath = "/api/v1/users/"
 // bytes, so no cache shows an old one), else Google's picture, else "".
 const avatarColumn = `CASE WHEN u.photo_sha256 IS NULL THEN u.avatar_url
 	ELSE '` + UserAvatarPath + `' || u.id || '/avatar?v=' || left(u.photo_sha256, 12) END`
+
+// avatarOf is avatarColumn for the users row joined under another alias.
+func avatarOf(alias string) string {
+	return strings.ReplaceAll(avatarColumn, "u.", alias+".")
+}
 
 const userColumns = `u.id, u.email, u.name, ` + avatarColumn
 
