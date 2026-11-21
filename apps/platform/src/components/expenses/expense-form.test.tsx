@@ -276,7 +276,7 @@ test('what the person typed or cleared while reading is kept, and the amounts ar
   stubApi(() => pending.promise)
   await renderForm([photo()])
   await userEvent.click(recognizeButton())
-  expect(screen.getByRole('button', { name: 'Reading the receipt…' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Reading the document…' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled()
 
   await userEvent.type(supplier(), 'Mine')
@@ -307,9 +307,10 @@ test('a failed reading keeps every entry and the form stays usable', async () =>
   await userEvent.type(supplier(), 'SBB')
   await userEvent.click(recognizeButton())
 
-  expect(
-    await screen.findByText(/The receipt could not be read: Allowance used\./),
-  ).toBeInTheDocument()
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveAttribute('data-tone', 'danger')
+  expect(alert).toHaveTextContent('The file could not be read')
+  expect(alert).toHaveTextContent('Allowance used.')
   expect(supplier()).toHaveValue('SBB')
   expect(recognizeButton()).toBeEnabled()
   expect(screen.getByRole('button', { name: 'Save draft' })).toBeEnabled()
@@ -491,9 +492,7 @@ test('a refusal for missing approval is retried once, not in a loop', async () =
   await renderForm([photo()], session('ws_a'), true)
   await userEvent.click(recognizeButton())
 
-  expect(
-    await screen.findByText(/The receipt could not be read: Approve first\./),
-  ).toBeInTheDocument()
+  expect(await screen.findByRole('alert')).toHaveTextContent('Approve first.')
   expect(state.previews).toBe(2)
   expect(recognizeButton()).toBeEnabled()
 })

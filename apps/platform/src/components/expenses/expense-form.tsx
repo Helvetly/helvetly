@@ -78,6 +78,7 @@ import {
   type FormValues,
 } from './expense-form-model'
 import { applyRecognition, type Applied } from './expense-form-recognition'
+import { readFailure, ReadFailureAlert, type ReadFailure } from './expense-read-failure'
 import { ReceiptDrop, StagedReceipts } from './expense-receipts'
 import { recognizedLabel } from './expense-reread-model'
 import { ExpenseReading, ExpenseStart, READ_MAX_PAGES, useReceiptAIBlock } from './expense-start'
@@ -123,7 +124,7 @@ type Recognized =
       issues: string[]
       categoryConfidence: number | null
     })
-  | { error: string }
+  | { failure: ReadFailure }
 
 type ExpenseFormProps = {
   expense?: Expense
@@ -256,7 +257,14 @@ function ExpenseFormBody({
     try {
       // The shared first-use approval: "Not now" sends nothing and keeps the form and the files.
       if (!(await ensure())) {
-        if (!stale()) setRecognized({ error: translate('receiptNotReadNoApproval') })
+        if (!stale())
+          setRecognized({
+            failure: {
+              tone: 'warning',
+              title: translate('readNotSentTitle'),
+              body: translate('receiptNotReadNoApproval'),
+            },
+          })
         return
       }
       if (stale()) return
@@ -296,7 +304,7 @@ function ExpenseFormBody({
       })
     } catch (error) {
       if (controller.signal.aborted || reader.current !== controller) return
-      if (!promptUpgrade(error)) setRecognized({ error: errorMessage(error) })
+      if (!promptUpgrade(error)) setRecognized({ failure: readFailure(error) })
     } finally {
       if (reader.current === controller) {
         reader.current = null
@@ -639,15 +647,13 @@ function ExpenseFormBody({
                           {translate('heicCantBeRead')}
                         </p>
                       )}
+                      {recognized && 'failure' in recognized && (
+                        <ReadFailureAlert failure={recognized.failure} />
+                      )}
                       <output
                         aria-live="polite"
                         className="grid gap-1 text-xs text-muted-foreground empty:hidden"
                       >
-                        {recognized && 'error' in recognized && (
-                          <span className="text-destructive">
-                            {translate('receiptReadFailed', { reason: recognized.error })}
-                          </span>
-                        )}
                         {recognized && 'applied' in recognized && (
                           <>
                             {recognized.applied.length > 0 && (

@@ -278,14 +278,23 @@ func value(s *string) string {
 // the re-read of a draft's receipts (POST /expenses/{id}/read): one document, its full VAT breakdown at any number of
 // rates, the line items, the payment and a category of the workspace's list with the model's confidence. The import's
 // review table keeps the flat expensesKind record.
-const receiptPrompt = "Read the one receipt or supplier invoice the attached files show (several files are pages of the same " +
-	"document). Amounts are decimals with a dot and no currency symbol or thousands separator (\"108.10\"), never negative " +
+const receiptPrompt = "Read the one expense document the attached files show (several files are pages of the same " +
+	"document). Any proof of an expense is one: a receipt, a supplier invoice or QR-bill, a utility bill, a ticket, a " +
+	"booking confirmation, an employee expense report, a bank or card statement extract or another itemised summary. " +
+	"A document listing several lines (an expense report's dated entries, a statement's transactions, an invoice's " +
+	"positions) is ONE record: each line is an item and totals is the document's total. Return several records only " +
+	"when the files hold several separate receipts or invoices, each with its own supplier and total; return none " +
+	"only when the files show no expense at all. document.type is receipt, invoice or credit_note, null for any other " +
+	"kind of document; supplier is null when no single supplier is named (an expense report: its employee or company " +
+	"is no supplier). Amounts are decimals with a dot and no currency symbol or thousands separator (\"108.10\"), never negative " +
 	"(a credit note has document.type credit_note). totals are the document's net, VAT and gross totals. vat_breakdown " +
 	"has one entry per VAT rate the document shows, with its net, VAT and gross; a document that shows no VAT has an " +
 	"empty vat_breakdown. A rate is the percentage shown (\"8.1\"), never an amount. items are the line items as printed, " +
-	"amount being the line's total; leave items empty when the document lists none. Dates are YYYY-MM-DD. currency is " +
-	"the ISO 4217 code printed; never convert amounts. supplier.country is the supplier's ISO 3166 alpha-2 code. " +
-	"payment.status is paid only when the document shows it was paid (a till receipt, \"paid\", a card slip), unpaid " +
+	"amount being the line's total and date the line's own date when it has one; leave items empty when the document " +
+	"lists none. Dates are YYYY-MM-DD; document.date is the document's date, else its latest line's. currency is " +
+	"the ISO 4217 code printed (\"$\" alone is USD); never convert amounts. supplier.country is the supplier's ISO 3166 alpha-2 code. " +
+	"payment.status is paid only when the document shows it was paid (a till receipt, \"paid\", a card slip, a " +
+	"statement's booked transactions), unpaid " +
 	"when it asks for payment, else unknown. reverse_charge is true only when the document says the recipient owes the " +
 	"VAT (reverse charge, Bezugsteuer). category.key is the key of the listed category the expense belongs to, with " +
 	"your confidence from 0 to 1 and a short reason; null when none fits. An item's category is a listed key or null. " +
@@ -304,7 +313,7 @@ var (
 		}),
 		"document": record(map[string]any{
 			"type":     map[string]any{"type": []string{"string", "null"}, "enum": []any{"receipt", "invoice", "credit_note", nil}},
-			"number":   nullable("string", "Receipt or invoice number"),
+			"number":   nullable("string", "Receipt, invoice or report number"),
 			"date":     nullable("string", "Document date, YYYY-MM-DD"),
 			"due_date": nullable("string", "Payment due date, YYYY-MM-DD"),
 			"service_period": record(map[string]any{
@@ -322,6 +331,7 @@ var (
 			"net":  receiptAmount("Net at this rate"), "vat": receiptAmount("VAT at this rate"), "gross": receiptAmount("Gross at this rate"),
 		})},
 		"items": map[string]any{"type": "array", "items": record(map[string]any{
+			"date":        nullable("string", "The line's own date, YYYY-MM-DD"),
 			"description": nullable("string", "The item as printed"),
 			"quantity":    nullable("string", "Quantity, e.g. 2"),
 			"unit_price":  receiptAmount("Price of one"),
