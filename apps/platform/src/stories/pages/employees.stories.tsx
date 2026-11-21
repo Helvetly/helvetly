@@ -373,6 +373,14 @@ export const ProUpsell: Story = {
     )
     await expect(body().getByRole('link', { name: 'Compare plans' })).toBeVisible()
     await expect(body().queryByText('Lara Brunner')).toBeNull()
+    // A short page still fills the panel: the white card reaches its bottom, no grey below it.
+    const panel = document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]')
+    if (!panel) throw new Error('No panel')
+    const end =
+      panel.getBoundingClientRect().bottom -
+      Number.parseFloat(getComputedStyle(panel).paddingBottom)
+    const last = panel.lastElementChild?.getBoundingClientRect().bottom ?? 0
+    await expect(last).toBeGreaterThan(end - 1)
   },
 }
 /** The sidebar lists Employees on every plan; on Pro it carries the plan's tag. */
