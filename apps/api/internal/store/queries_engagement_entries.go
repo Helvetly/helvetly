@@ -13,8 +13,9 @@ import (
 // invoice_id; a void invoice is ignored when reading, so it releases its entries.
 
 type UserRef struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 type EngagementEntry struct {
@@ -32,8 +33,8 @@ type EngagementEntry struct {
 	CreatedBy            *UserRef           `json:"created_by"`
 }
 
-const entryColumns = `en.id, en.period_id, to_char(en.date, ` + dateFmt + `), en.quantity, en.note, en.client_performance, en.client_performance_on_invoice,
-	pu.id, pu.name, i.id, i.number, i.status, coalesce(ei.kind, 'usage'), en.created_at, cu.id, cu.name`
+var entryColumns = `en.id, en.period_id, to_char(en.date, ` + dateFmt + `), en.quantity, en.note, en.client_performance, en.client_performance_on_invoice,
+	pu.id, pu.name, ` + avatarOf("pu") + `, i.id, i.number, i.status, coalesce(ei.kind, 'usage'), en.created_at, cu.id, cu.name, ` + avatarOf("cu")
 
 const entryFrom = ` FROM engagement_entries en
 	LEFT JOIN users pu ON pu.id = en.performed_by
@@ -43,17 +44,17 @@ const entryFrom = ` FROM engagement_entries en
 
 func scanEntry(row interface{ Scan(...any) error }) (EngagementEntry, error) {
 	var e EngagementEntry
-	var pID, pName, cID, cName, invID, invNumber, invStatus, invKind *string
-	err := row.Scan(&e.ID, &e.PeriodID, &e.Date, &e.Quantity, &e.Note, &e.ClientPerformance, &e.PerformanceOnInvoice, &pID, &pName, &invID, &invNumber, &invStatus, &invKind,
-		&e.CreatedAt, &cID, &cName)
+	var pID, pName, pAvatar, cID, cName, cAvatar, invID, invNumber, invStatus, invKind *string
+	err := row.Scan(&e.ID, &e.PeriodID, &e.Date, &e.Quantity, &e.Note, &e.ClientPerformance, &e.PerformanceOnInvoice, &pID, &pName, &pAvatar, &invID, &invNumber, &invStatus, &invKind,
+		&e.CreatedAt, &cID, &cName, &cAvatar)
 	if err != nil {
 		return e, err
 	}
 	if pID != nil {
-		e.PerformedBy = &UserRef{ID: *pID, Name: *pName}
+		e.PerformedBy = &UserRef{ID: *pID, Name: *pName, AvatarURL: deref(pAvatar)}
 	}
 	if cID != nil {
-		e.CreatedBy = &UserRef{ID: *cID, Name: *cName}
+		e.CreatedBy = &UserRef{ID: *cID, Name: *cName, AvatarURL: deref(cAvatar)}
 	}
 	if invID != nil {
 		e.Invoice = &EngagementInvoice{ID: *invID, Number: invNumber, Status: *invStatus, Kind: *invKind}

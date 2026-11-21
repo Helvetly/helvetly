@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError } from '@/lib/api'
 import { translate } from '@/lib/i18n'
+import type { Sort, SortValue } from '@/lib/list-sort'
 
 export type ComponentKind = 'earning' | 'deduction' | 'employer_cost'
 export type PayrollComponent = { kind: ComponentKind; label: string; amount: string }
@@ -186,6 +187,30 @@ export function approvalBlock(
   return settings.payroll_approvers < 2
     ? `${translate('payrollYouEnteredThese')} ${translate('payrollNobodyElseCanApprove')}`
     : translate('payrollYouEnteredThese')
+}
+
+export const SORT_FIELDS = [
+  'employee',
+  'period',
+  'gross',
+  'deductions',
+  'net',
+  'employer_costs',
+] as const
+export type SortField = (typeof SORT_FIELDS)[number]
+/** The API's own order: the latest period first, then by name. */
+export const DEFAULT_SORT: Sort<SortField> = { field: 'period', desc: true }
+
+/** What a register column sorts by; an amount that is not known (null) sorts last, never as 0. */
+export function sortValue(entry: PayrollEntry, field: SortField): SortValue {
+  switch (field) {
+    case 'employee':
+      return entry.employee_name
+    case 'period':
+      return entry.period_end
+    default:
+      return entry[field] === null ? null : Number(entry[field])
+  }
 }
 
 const entryPath = (id: string) => `/payroll/entries/${encodeURIComponent(id)}`

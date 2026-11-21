@@ -28,6 +28,7 @@ import {
   ResizableTable,
   useResizableColumns,
 } from '@/components/data/resizable-columns'
+import { UserAvatar } from '@/components/user-avatar'
 import {
   docQuery,
   formatSize,
@@ -681,19 +682,11 @@ function NameCell({
   )
 }
 
-function Person({ person }: { person: { name: string } | null }) {
+function Person({ person }: { person: { name: string; avatar_url?: string | null } | null }) {
   if (!person?.name) return <span>—</span>
-  const initials = person.name
-    .split(/\s+/)
-    .map((word) => word.charAt(0))
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10.5px] font-medium text-foreground/80 ring-1 ring-border/60">
-        {initials}
-      </span>
+      <UserAvatar name={person.name} url={person.avatar_url} className="size-6" />
       <span className="truncate text-foreground/85">{person.name}</span>
     </span>
   )

@@ -13,18 +13,21 @@ import { Children, type ReactNode } from 'react'
  * (a check's result, a preview, an undo). The control gets `id`; its error has the id `${id}-error`.
  * `width` is the field's span in a settings form grid (settings.css); `group` labels a set of
  * controls (radios, a photo) rather than one input: a caption, as the controls name themselves
- * (a Segmented's legend).
+ * (a Segmented's legend). `mark` is a quiet sign after the label (what the field is needed for), in the label's
+ * row so it never moves the control.
  */
 export type FieldWidth = 'xs' | 'sm' | 'md' | 'lg' | 'full'
 
 export function FormField({
   id,
   label,
+  labelNode,
   error,
   hint,
   status,
   required,
   tip,
+  mark,
   width,
   group,
   className,
@@ -32,11 +35,14 @@ export function FormField({
 }: {
   id: string
   label: string
+  /** Shown in place of `label` where the label holds a node (a name in code style); `label` stays its plain text. */
+  labelNode?: ReactNode
   error?: string
   hint?: ReactNode
   status?: ReactNode
   required?: boolean
   tip?: string
+  mark?: ReactNode
   width?: FieldWidth
   group?: boolean
   className?: string
@@ -53,7 +59,7 @@ export function FormField({
           htmlFor={group ? undefined : id}
           className={cn('text-body-sm font-medium', error && 'text-destructive')}
         >
-          {label}
+          {labelNode ?? label}
           {required && (
             <span aria-hidden className="ml-0.5 text-destructive">
               *
@@ -72,6 +78,7 @@ export function FormField({
             )}
           </HelpTip>
         )}
+        {mark}
       </span>
       {/* Each control in a gap-free box: a zero-size node a browser extension adds beside an input
           (a password manager's icon host) would otherwise become a grid row and push the rest down by the gap. */}

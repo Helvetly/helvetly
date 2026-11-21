@@ -163,20 +163,22 @@ test('a huge overrun never takes more than a third of the bar', () => {
 
 test('an open period shows the expected-by-now tick', () => {
   render(
-    <ProgressBar
-      period={period({
-        quantity: '30',
-        available: '30',
-        used: '10',
-        overage: '0',
-        expected: '15',
-        state: 'open',
-      })}
-      unit="hour"
-    />,
+    <TooltipProvider>
+      <ProgressBar
+        period={period({
+          quantity: '30',
+          available: '30',
+          used: '10',
+          overage: '0',
+          expected: '15',
+          state: 'open',
+        })}
+        unit="hour"
+      />
+    </TooltipProvider>,
   )
   expect(screen.getByRole('progressbar', { name: '10 of 30 h used' })).toBeInTheDocument()
-  expect(document.querySelector<HTMLElement>('[data-part=marker]')?.style.left).toBe('50%')
+  expect(screen.getByRole('button', { name: 'Expected by now: 15 h' }).style.left).toBe('50%')
 })
 
 test('attention renders text only', () => {

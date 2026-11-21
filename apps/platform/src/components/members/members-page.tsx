@@ -34,17 +34,22 @@ import {
   ResizableTable,
   useResizableColumns,
 } from '@/components/data/resizable-columns'
+import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { PageHeader } from '@/components/shell/page-header'
 import { seatCostLabel, useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
+import { nextSort, parseSort, sortParam, sortRows } from '@/lib/list-sort'
 import {
   assignableRoles,
   canManage,
   matchesTeamFilter,
   parseTeamFilter,
+  DEFAULT_TEAM_SORT,
   ROLES,
+  TEAM_SORTS,
   teamFilterToQuery,
+  teamSortValue,
   useChangeRole,
   useInvitations,
   useMembers,
@@ -55,6 +60,7 @@ import {
   type Member,
   type Role,
   type TeamFilter,
+  type TeamSortField,
 } from '@/lib/members'
 import { useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
@@ -104,9 +110,22 @@ export function MembersPage() {
     return () => clearTimeout(timer)
   })
 
-  const memberRows =
-    tab === 1 ? [] : (members.data ?? []).filter((row) => matchesTeamFilter(row, filter))
-  const invitationRows = (invitations.data ?? []).filter((row) => matchesTeamFilter(row, filter))
+  const sort = parseSort(query.get('sort'), TEAM_SORTS, DEFAULT_TEAM_SORT)
+  const sortBy = (field: TeamSortField) => {
+    const next = new URLSearchParams(query)
+    const value = sortParam(nextSort(sort, field, field === 'active'), DEFAULT_TEAM_SORT)
+    if (value) next.set('sort', value)
+    else next.delete('sort')
+    setUrlQuery(pathname, next)
+  }
+  const ordered = <Row extends Member | Invitation>(rows: Row[]) =>
+    sortRows(
+      rows.filter((row) => matchesTeamFilter(row, filter)),
+      (row) => teamSortValue(row, sort.field),
+      sort.desc,
+    )
+  const memberRows = tab === 1 ? [] : ordered(members.data ?? [])
+  const invitationRows = ordered(invitations.data ?? [])
   const error = members.error ?? invitations.error
   const loading = !members.data || !invitations.data
   const alone =
@@ -227,19 +246,43 @@ export function MembersPage() {
                   column="member"
                   label={translate('member')}
                   className={cn(listTable.th, 'w-[34%]')}
-                />
+                  aria-sort={ariaSort(sort.field === 'member', sort.desc)}
+                >
+                  <SortButton
+                    label={translate('member')}
+                    sorted={sort.field === 'member'}
+                    desc={sort.desc}
+                    onClick={() => sortBy('member')}
+                  />
+                </ResizableHead>
                 <ResizableHead
                   columns={widths}
                   column="role"
                   label={translate('roleAndAccess')}
                   className={cn(listTable.th, 'w-[26%]')}
-                />
+                  aria-sort={ariaSort(sort.field === 'role', sort.desc)}
+                >
+                  <SortButton
+                    label={translate('roleAndAccess')}
+                    sorted={sort.field === 'role'}
+                    desc={sort.desc}
+                    onClick={() => sortBy('role')}
+                  />
+                </ResizableHead>
                 <ResizableHead
                   columns={widths}
                   column="active"
                   label={translate('lastActive')}
                   className={cn(listTable.th, 'hidden w-[20%] @4xl:table-cell')}
-                />
+                  aria-sort={ariaSort(sort.field === 'active', sort.desc)}
+                >
+                  <SortButton
+                    label={translate('lastActive')}
+                    sorted={sort.field === 'active'}
+                    desc={sort.desc}
+                    onClick={() => sortBy('active')}
+                  />
+                </ResizableHead>
                 <th className={cn(listTable.th, 'w-[14%]')}>{translate('status')}</th>
                 <th className={listTable.menu}>
                   <span className="sr-only">{translate('actions')}</span>

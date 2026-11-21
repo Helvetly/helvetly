@@ -143,12 +143,35 @@ export const SparsePerson: Story = {
     const top = await header('John Muster')
     await expect(top.getByText('Person')).toBeVisible()
     await expect(top.getByText('Inactive')).toBeVisible()
+    await expect(top.getByText('Missing email')).toBeVisible()
     await expect(top.queryByText('Email')).toBeNull()
     await expect(top.queryByText('Website')).toBeNull()
     await expect(top.getAllByRole('link').map((link) => link.textContent?.trim())).toEqual([
       'New invoice',
       'Zürich, Switzerland',
     ])
+  },
+}
+
+/** A client without its address: the chip says what invoicing lacks, not "Draft". */
+export const MissingAddress: Story = {
+  parameters: {
+    msw: {
+      handlers: handlers(
+        sampleClient({
+          street: null,
+          zip: null,
+          is_draft: true,
+          missing_fields: ['street', 'zip'],
+        }),
+      ),
+    },
+  },
+  play: async () => {
+    const top = await header('Alpenglow Studio GmbH')
+    await expect(top.getByText('Missing address')).toBeVisible()
+    await expect(top.queryByText('Missing email')).toBeNull()
+    await expect(top.queryByText('Draft')).toBeNull()
   },
 }
 

@@ -7,6 +7,7 @@ import { PhoneInput } from '@helvetly/ui/components/phone-input'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { phoneCountry } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Building2, DoorOpen, Lock, MapPin, Receipt, UserRound } from 'lucide-react'
@@ -59,6 +60,27 @@ function FormField({
   return <SharedField id={fieldId(field)} {...props} />
 }
 
+/**
+ * The quiet sign on a field that saving does not need but invoicing (or sending) does; the reason shows on hover and
+ * is read out after the label.
+ */
+function NeededMark({ label }: { label: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span data-needed-mark className="inline-flex text-muted-foreground">
+          <Receipt aria-hidden className="size-3.5 stroke-[1.75]" />
+          <span className="sr-only">{label}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-60">{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** Where the form opens: the address (its first missing field) or one field issuing or sending needs. */
+export type ClientFormFocus = 'address' | 'email' | 'vat_number'
+
 /** Creates or edits a client in one scrolling form, in a drawer from the right (full width on phones). */
 export function ClientForm({
   client,
@@ -70,8 +92,8 @@ export function ClientForm({
 }: {
   /** The client to edit; none creates a new one. */
   client?: Client
-  /** Scroll to and focus this section when the form opens. */
-  focus?: 'address'
+  /** Scroll to and focus this section (its first missing field) or field when the form opens. */
+  focus?: ClientFormFocus
   /** What a new client starts with, e.g. the details an imported document gave; they win over learned habits. */
   prefill?: Partial<FormValues>
   /** An import record edited in this form: nothing is created, Save hands the values back to the import. */
@@ -116,6 +138,7 @@ export function ClientForm({
   const dirty = JSON.stringify(values) !== JSON.stringify(initial)
   const missing = missingAddress(values)
   const hint = draftHint(missing)
+  const invoiceMark = <NeededMark label={translate('requiredToInvoice')} />
 
   const set = <K extends keyof FormValues>(field: K, value: FormValues[K]) => {
     setValues((current) => ({ ...current, [field]: value }))
@@ -183,7 +206,9 @@ export function ClientForm({
           const fromServer =
             error instanceof ApiError && error.status === 422
               ? serverFieldErrors(error.details)
-              : {}
+              : error instanceof ApiError && error.code === 'no_portal_address'
+                ? { email: translate('addAnEmailToLetThisClientSignIn') }
+                : {}
           if (Object.keys(fromServer).length) {
             setErrors(fromServer)
             focusFirstError(fromServer)
@@ -332,7 +357,12 @@ export function ClientForm({
                 className={inputClass}
               />
             </FormField>
-            <FormField field="email" label={translate('email')} error={errors.email}>
+            <FormField
+              field="email"
+              label={translate('email')}
+              error={errors.email}
+              mark={<NeededMark label={translate('requiredToSendByEmail')} />}
+            >
               <input
                 {...describe('email')}
                 type="email"
@@ -399,7 +429,12 @@ export function ClientForm({
           tip={hint ?? undefined}
         >
           <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-4 sm:grid-cols-[minmax(0,1fr)_110px_110px]">
-            <FormField field="street" label={translate('street')} error={errors.street}>
+            <FormField
+              field="street"
+              label={translate('street')}
+              error={errors.street}
+              mark={invoiceMark}
+            >
               <input
                 {...describe('street')}
                 autoComplete="address-line1"
@@ -413,6 +448,7 @@ export function ClientForm({
               field="street_number"
               label={translate('number')}
               error={errors.street_number}
+              mark={invoiceMark}
             >
               <input
                 {...describe('street_number')}
@@ -439,7 +475,7 @@ export function ClientForm({
             </FormField>
           </div>
           <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-4 sm:grid-cols-[110px_minmax(0,1fr)_236px]">
-            <FormField field="zip" label="ZIP" error={errors.zip}>
+            <FormField field="zip" label="ZIP" error={errors.zip} mark={invoiceMark}>
               <input
                 {...describe('zip')}
                 autoComplete="postal-code"
@@ -449,7 +485,12 @@ export function ClientForm({
                 className={inputClass}
               />
             </FormField>
-            <FormField field="city" label={translate('city')} error={errors.city}>
+            <FormField
+              field="city"
+              label={translate('city')}
+              error={errors.city}
+              mark={invoiceMark}
+            >
               <input
                 {...describe('city')}
                 autoComplete="address-level2"
@@ -463,6 +504,7 @@ export function ClientForm({
               field="country"
               label={translate('country')}
               error={errors.country}
+              mark={invoiceMark}
               className="col-span-2 sm:col-span-1"
             >
               <Combobox
@@ -806,7 +848,7 @@ export function ClientForm({
         onOpenAutoFocus={(event) => {
           event.preventDefault()
           const element = document.getElementById(
-            focus === 'address' ? fieldId(missing[0] ?? 'street') : fieldId('name'),
+            fieldId(focus === 'address' ? (missing[0] ?? 'street') : (focus ?? 'name')),
           )
           element?.scrollIntoView({ block: 'center' })
           element?.focus()

@@ -152,7 +152,7 @@ export type ClientFile = {
   size: number
   content_type: string
   created_at: string
-  uploaded_by: { id: string; name: string } | null
+  uploaded_by: { id: string; name: string; avatar_url?: string | null } | null
 }
 
 export type Page<T> = {

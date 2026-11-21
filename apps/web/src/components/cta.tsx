@@ -12,7 +12,7 @@ const variants = {
     'bg-linear-to-b from-mint-solid to-brand text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.25),0_8px_24px_-10px_var(--mint-solid)] hover:from-brand hover:to-brand',
   outline:
     // A solid surface with a clear edge, so it reads on the hero's pale grid in both themes.
-    'border border-foreground/15 bg-card text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.06)] backdrop-blur hover:border-lilac-solid/40 hover:bg-lilac',
+    'border border-foreground/16 bg-card text-foreground shadow-button backdrop-blur hover:border-lilac-solid/40 hover:bg-lilac',
   light: 'bg-white text-black hover:bg-white/90',
 }
 

@@ -114,7 +114,7 @@ func (q Q) LockContainer(ctx context.Context, workspaceID string, folderID *stri
 
 // DocumentFolders: every live folder, by name, with the files directly inside and the totals of each subtree.
 func (q Q) DocumentFolders(ctx context.Context, workspaceID, userID string) ([]Folder, error) {
-	rows, err := q.db.Query(ctx, `SELECT f.id, f.name, f.parent_id, f.created_at, f.updated_at, u.id, u.name,
+	rows, err := q.db.Query(ctx, `SELECT f.id, f.name, f.parent_id, f.created_at, f.updated_at, u.id, u.name, `+avatarColumn+`,
 			coalesce(s.n, 0), coalesce(s.size, 0), st.folder_id IS NOT NULL, f.system_kind
 		FROM document_folders f LEFT JOIN users u ON u.id = f.created_by
 		LEFT JOIN document_folder_stars st ON st.folder_id = f.id AND st.user_id = $2
@@ -128,13 +128,11 @@ func (q Q) DocumentFolders(ctx context.Context, workspaceID, userID string) ([]F
 	folders := []Folder{}
 	for rows.Next() {
 		var f Folder
-		var uid, uname *string
-		if err := rows.Scan(&f.ID, &f.Name, &f.ParentID, &f.CreatedAt, &f.UpdatedAt, &uid, &uname, &f.FileCount, &f.Size, &f.Starred, &f.SystemKind); err != nil {
+		var uid, uname, uavatar *string
+		if err := rows.Scan(&f.ID, &f.Name, &f.ParentID, &f.CreatedAt, &f.UpdatedAt, &uid, &uname, &uavatar, &f.FileCount, &f.Size, &f.Starred, &f.SystemKind); err != nil {
 			return nil, err
 		}
-		if uid != nil {
-			f.CreatedBy = &Uploader{ID: *uid, Name: *uname}
-		}
+		f.CreatedBy = uploader(uid, uname, uavatar)
 		folders = append(folders, f)
 	}
 	if err := rows.Err(); err != nil {
@@ -388,8 +386,8 @@ func collect(rows interface {
 
 // ---- documents ----
 
-const documentSelect = `SELECT d.id, d.name, d.folder_id, f.name, d.size, d.content_type, d.sha256, d.object_key,
-		d.created_at, d.updated_at, d.deleted_at, d.trashed_with, u.id, u.name, x.id, x.name, ` + retentionSQL + `,
+var documentSelect = `SELECT d.id, d.name, d.folder_id, f.name, d.size, d.content_type, d.sha256, d.object_key,
+		d.created_at, d.updated_at, d.deleted_at, d.trashed_with, u.id, u.name, ` + avatarColumn + `, x.id, x.name, ` + avatarOf("x") + `, ` + retentionSQL + `,
 		d.tags, ff.status, ff.folder_id, fl.name, coalesce(ff.created_folder, false), coalesce(ff.tags, '{}'),
 		f.system_kind, fl.system_kind
 	FROM documents d LEFT JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
@@ -399,10 +397,10 @@ const documentSelect = `SELECT d.id, d.name, d.folder_id, f.name, d.size, d.cont
 
 func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, error) {
 	var d Document
-	var folderName, uid, uname, xid, xname, filing, filedID, filedName, folderKind, filedKind *string
+	var folderName, uid, uname, uavatar, xid, xname, xavatar, filing, filedID, filedName, folderKind, filedKind *string
 	var filed Filing
 	err := row.Scan(append([]any{&d.ID, &d.Name, &d.FolderID, &folderName, &d.Size, &d.ContentType, &d.SHA256, &d.ObjectKey,
-		&d.CreatedAt, &d.UpdatedAt, &d.DeletedAt, &d.TrashedWith, &uid, &uname, &xid, &xname, &d.RetainedUntil,
+		&d.CreatedAt, &d.UpdatedAt, &d.DeletedAt, &d.TrashedWith, &uid, &uname, &uavatar, &xid, &xname, &xavatar, &d.RetainedUntil,
 		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags, &folderKind, &filedKind}, extra...)...)
 	if filing != nil {
 		filed.Status = *filing
@@ -414,12 +412,7 @@ func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, 
 	if d.FolderID != nil && folderName != nil {
 		d.Folder = &FolderRef{ID: *d.FolderID, Name: *folderName, SystemKind: folderKind}
 	}
-	if uid != nil {
-		d.UploadedBy = &Uploader{ID: *uid, Name: *uname}
-	}
-	if xid != nil {
-		d.DeletedBy = &Uploader{ID: *xid, Name: *xname}
-	}
+	d.UploadedBy, d.DeletedBy = uploader(uid, uname, uavatar), uploader(xid, xname, xavatar)
 	if d.DeletedAt != nil {
 		purge := d.DeletedAt.AddDate(0, 0, TrashDays)
 		d.PurgeAt = &purge
@@ -626,14 +619,14 @@ func (s scanFirst) Scan(dest ...any) error { return s.row.Scan(append([]any{s.fi
 // shortcut: no paging, capped at 1000 rows; page it if a workspace ever trashes more within 30 days.
 func (q Q) Trash(ctx context.Context, workspaceID string) ([]TrashItem, error) {
 	rows, err := q.db.Query(ctx, `SELECT 'file', d.id, d.name, d.content_type, d.size, 0, f.id, f.name, `+retentionSQL+`,
-			d.deleted_at, u.id, u.name, f.system_kind
+			d.deleted_at, u.id, u.name, `+avatarColumn+`, f.system_kind
 		FROM documents d LEFT JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
 		LEFT JOIN users u ON u.id = d.deleted_by
 		WHERE d.workspace_id = $1 AND d.deleted_at IS NOT NULL AND d.trashed_with IS NULL AND NOT d.hr_private
 		UNION ALL
 		SELECT 'folder', g.id, g.name, NULL, coalesce((SELECT sum(size) FROM documents WHERE trashed_with = g.id), 0),
 			(SELECT count(*) FROM documents WHERE trashed_with = g.id) + (SELECT count(*) FROM document_folders WHERE trashed_with = g.id),
-			p.id, p.name, NULL, g.deleted_at, u.id, u.name, p.system_kind
+			p.id, p.name, NULL, g.deleted_at, u.id, u.name, `+avatarColumn+`, p.system_kind
 		FROM document_folders g LEFT JOIN document_folders p ON p.id = g.parent_id AND p.deleted_at IS NULL
 		LEFT JOIN users u ON u.id = g.deleted_by
 		WHERE g.workspace_id = $1 AND g.deleted_at IS NOT NULL AND g.trashed_with IS NULL
@@ -645,17 +638,15 @@ func (q Q) Trash(ctx context.Context, workspaceID string) ([]TrashItem, error) {
 	items := []TrashItem{}
 	for rows.Next() {
 		var t TrashItem
-		var lid, lname, uid, uname, lkind *string
+		var lid, lname, uid, uname, uavatar, lkind *string
 		if err := rows.Scan(&t.Type, &t.ID, &t.Name, &t.ContentType, &t.Size, &t.ItemCount, &lid, &lname, &t.RetainedUntil,
-			&t.DeletedAt, &uid, &uname, &lkind); err != nil {
+			&t.DeletedAt, &uid, &uname, &uavatar, &lkind); err != nil {
 			return nil, err
 		}
 		if lid != nil {
 			t.Location = &FolderRef{ID: *lid, Name: *lname, SystemKind: lkind}
 		}
-		if uid != nil {
-			t.DeletedBy = &Uploader{ID: *uid, Name: *uname}
-		}
+		t.DeletedBy = uploader(uid, uname, uavatar)
 		t.PurgeAt = t.DeletedAt.AddDate(0, 0, TrashDays)
 		items = append(items, t)
 	}

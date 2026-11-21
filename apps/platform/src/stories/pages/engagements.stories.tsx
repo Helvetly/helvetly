@@ -756,3 +756,15 @@ export const ReadOnlyNoDrop: Story = {
   parameters: readOnly('/engagements'),
   play: noDropTarget('Bookkeeping support', 'engagements'),
 }
+
+/** A header sorts: the sorted column says so, and clicking it again reverses it in the URL. */
+export const SortedByTitle: Story = {
+  parameters: pageParameters('/engagements', { sort: 'title' }),
+  play: async (context) => {
+    await shows('Bookkeeping support')?.(context)
+    const header = within(document.body).getByRole('button', { name: 'Engagement' })
+    await expect(header.closest('th')).toHaveAttribute('aria-sort', 'ascending')
+    await userEvent.click(header)
+    await waitFor(() => expect(window.location.search).toContain('sort=-title'))
+  },
+}

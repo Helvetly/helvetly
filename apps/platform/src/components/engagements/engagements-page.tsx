@@ -48,6 +48,7 @@ import {
   ResizableTable,
   useResizableColumns,
 } from '@/components/data/resizable-columns'
+import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -74,6 +75,7 @@ import {
   type EngagementQuery,
 } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
+import { nextSort, parseSort, sortParam, type Sort } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { queryKeys, usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
@@ -185,6 +187,11 @@ const HEADERS = [
   ['attention', translate('attention'), 'w-[17%]'],
 ] as const
 const RESIZABLE = HEADERS.map(([id]) => id)
+
+/** The columns the API sorts by, and what the header of each one asks for first. */
+const SORTS = ['ends', 'title'] as const
+const DEFAULT_SORT: Sort<(typeof SORTS)[number]> = { field: 'ends', desc: false }
+const SORT_COLUMN = { engagement: 'title', period: 'ends' } as const
 
 type Command = 'log' | 'edit' | 'renew' | 'cancel' | 'resume' | 'delete'
 type Access = { canWrite: boolean; canManage: boolean }
@@ -381,7 +388,7 @@ function EngagementItem({
         >
           <TitleCell engagement={engagement} />
           {engagement.current_period && (
-            <ProgressBar period={engagement.current_period} unit={engagement.unit} />
+            <ProgressBar period={engagement.current_period} unit={engagement.unit} nested />
           )}
           <AttentionBadges attention={engagement.attention} />
         </button>
@@ -457,6 +464,7 @@ export function EngagementsPage() {
   const pathname = usePathname()
   const url = useSearchParams()
   const openId = url.get('id')
+  const sort = parseSort(url.get('sort'), SORTS, DEFAULT_SORT)
   const [view, setView] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -492,8 +500,11 @@ export function EngagementsPage() {
     return () => clearTimeout(timer)
   }, [search, term])
 
-  const params: EngagementQuery = { ...VIEWS[view]?.query, q: term || undefined, page }
-  const { items, digestToggle } = useMenu({ ...VIEWS[view]?.query, q: term || undefined })
+  const sortValue: EngagementQuery['sort'] =
+    sort.field === 'title' ? (sort.desc ? '-title' : 'title') : sort.desc ? '-ends' : undefined
+  const filters: EngagementQuery = { ...VIEWS[view]?.query, q: term || undefined, sort: sortValue }
+  const params: EngagementQuery = { ...filters, page }
+  const { items, digestToggle } = useMenu(filters)
   const list = useQuery({ ...engagementListQuery(params), placeholderData: keepPreviousData })
   const prefetch = usePrefetch(engagementQuery)
   const summary = useQuery({
@@ -508,6 +519,15 @@ export function EngagementsPage() {
   }
   const turnPage = (next: number) => {
     setPage(next)
+    setSelected(new Set())
+  }
+  const sortBy = (field: (typeof SORTS)[number]) => {
+    const next = new URLSearchParams(url)
+    const value = sortParam(nextSort(sort, field, false), DEFAULT_SORT)
+    if (value) next.set('sort', value)
+    else next.delete('sort')
+    setUrlQuery(pathname, next)
+    setPage(1)
     setSelected(new Set())
   }
   const openEngagement = (id: string | null) => {
@@ -732,15 +752,29 @@ export function EngagementsPage() {
                         }
                       />
                     </th>
-                    {HEADERS.map(([id, label, width]) => (
-                      <ResizableHead
-                        key={id}
-                        columns={widths}
-                        column={id}
-                        label={label}
-                        className={cn(listTable.th, width)}
-                      />
-                    ))}
+                    {HEADERS.map(([id, label, width]) => {
+                      const field = id === 'engagement' || id === 'period' ? SORT_COLUMN[id] : null
+                      const sorted = field === sort.field
+                      return (
+                        <ResizableHead
+                          key={id}
+                          columns={widths}
+                          column={id}
+                          label={label}
+                          className={cn(listTable.th, width)}
+                          aria-sort={field ? ariaSort(sorted, sort.desc) : undefined}
+                        >
+                          {field ? (
+                            <SortButton
+                              label={label}
+                              sorted={sorted}
+                              desc={sort.desc}
+                              onClick={() => sortBy(field)}
+                            />
+                          ) : undefined}
+                        </ResizableHead>
+                      )
+                    })}
                     <th className={listTable.menu}>
                       <span className="sr-only">{translate('actions')}</span>
                     </th>

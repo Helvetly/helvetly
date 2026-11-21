@@ -6,7 +6,6 @@
 1 field packages/ui/src/components/tabs.tsx
 1 field packages/ui/src/lib/field-surface.ts
 4 hex apps/platform/src/components/auth/sign-in.tsx
-1 hex apps/platform/src/components/data/row-details.tsx
 8 hex apps/platform/src/components/documents/folder-art.tsx
 6 hex apps/platform/src/components/documents/items-view.tsx
 4 hex apps/platform/src/components/documents/star.tsx
@@ -74,7 +73,6 @@
 3 radius packages/ui/src/components/input-group.tsx
 1 radius packages/ui/src/components/logo.tsx
 1 radius packages/ui/src/components/tooltip.tsx
-1 shadow apps/platform/src/components/data/row-details.tsx
 1 shadow apps/platform/src/components/data/table-page.tsx
 2 shadow apps/platform/src/components/documents/documents-page.tsx
 1 shadow apps/platform/src/components/documents/preview.tsx
@@ -100,13 +98,12 @@
 4 text-px apps/platform/src/components/clients/self-billing-agreements.tsx
 7 text-px apps/platform/src/components/dashboard/dashboard.tsx
 3 text-px apps/platform/src/components/data/list-table.tsx
-6 text-px apps/platform/src/components/data/row-details.tsx
-5 text-px apps/platform/src/components/data/table-page.tsx
+2 text-px apps/platform/src/components/data/table-page.tsx
 1 text-px apps/platform/src/components/documents/dialogs.tsx
 12 text-px apps/platform/src/components/documents/documents-page.tsx
 4 text-px apps/platform/src/components/documents/folder-tree.tsx
 1 text-px apps/platform/src/components/documents/inline-rename.tsx
-8 text-px apps/platform/src/components/documents/items-view.tsx
+7 text-px apps/platform/src/components/documents/items-view.tsx
 1 text-px apps/platform/src/components/documents/kind.tsx
 10 text-px apps/platform/src/components/documents/preview.tsx
 2 text-px apps/platform/src/components/documents/recent-strip.tsx

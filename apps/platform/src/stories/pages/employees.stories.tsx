@@ -36,6 +36,21 @@ export const List: Story = {
     await expect(body().getByRole('combobox', { name: 'Department' })).toBeEnabled()
   },
 }
+const positionHeader = () =>
+  body().getAllByRole('columnheader', { name: /position/i })[0] as HTMLElement
+
+const nameHeader = () => body().getAllByRole('columnheader', { name: /name/i })[0] as HTMLElement
+
+/** A header sorts the list on the server: the first column is marked, a click puts the sort in the URL. */
+export const SortByHeader: Story = {
+  play: async (context) => {
+    await shows('Lara Brunner')?.(context)
+    await expect(nameHeader()).toHaveAttribute('aria-sort', 'ascending')
+    await userEvent.click(within(positionHeader()).getByRole('button', { name: /position/i }))
+    await waitFor(() => expect(window.location.search).toContain('sort=position'))
+  },
+}
+
 export const ListDark = dark(List)
 export const ListPhone = phone(List)
 

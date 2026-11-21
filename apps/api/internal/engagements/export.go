@@ -74,8 +74,8 @@ func (s *Service) exportEngagements(w http.ResponseWriter, r *http.Request, sess
 	if sort == "" {
 		sort = "ends"
 	}
-	if !slices.Contains([]string{"ends", "-created_at", "title", "client"}, sort) {
-		return badRequest("sort must be one of ends, -created_at, title, client.")
+	if !slices.Contains(sortOrders, sort) {
+		return badRequest("sort must be one of " + strings.Join(sortOrders, ", ") + ".")
 	}
 	list, err := s.views(r.Context(), sess.Workspace.ID, f)
 	if err != nil {

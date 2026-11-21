@@ -1,5 +1,6 @@
 // The general ledger, typed by hand from docs/ledger-contract.md.
 import { request } from '@/lib/api'
+import type { Sort, SortValue } from '@/lib/list-sort'
 
 export type LedgerAccounts = {
   receivables: string
@@ -21,6 +22,14 @@ export type LedgerBalance = {
   credit: string
   closing: string
 }
+export const SORT_FIELDS = ['account', 'name', 'opening', 'debit', 'credit', 'closing'] as const
+export type SortField = (typeof SORT_FIELDS)[number]
+export const DEFAULT_SORT: Sort<SortField> = { field: 'account', desc: false }
+
+/** What a trial-balance column sorts by: amounts by size, account and name as text. */
+export const balanceSortValue = (row: LedgerBalance, field: SortField): SortValue =>
+  field === 'account' || field === 'name' ? row[field] : Number(row[field])
+
 export type LedgerStatementLine = {
   date: string
   ref: string

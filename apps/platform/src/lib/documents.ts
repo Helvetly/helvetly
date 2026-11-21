@@ -11,11 +11,12 @@ import {
 import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
 import type { Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
+import type { Sort, SortValue } from '@/lib/list-sort'
 import { queryKeys } from '@/lib/queries'
 import { folderLabel } from '@/lib/system-folders'
 import { MAX_FILE_BYTES } from '@/lib/upload-packs'
 
-export type Person = { id: string; name: string }
+export type Person = { id: string; name: string; avatar_url?: string | null }
 
 export type SystemKind =
   | 'clients'
@@ -110,6 +111,21 @@ export type TrashItem = {
   deleted_at: string
   deleted_by: Person | null
   purge_at: string
+}
+
+/** The trash table's sortable columns; the list has always come newest-deleted first. */
+export const TRASH_SORTS = ['name', 'was', 'deleted', 'size', 'purge'] as const
+export type TrashSortField = (typeof TRASH_SORTS)[number]
+export const DEFAULT_TRASH_SORT: Sort<TrashSortField> = { field: 'deleted', desc: true }
+
+export function trashSortValue(
+  item: Pick<TrashItem, 'name' | 'size' | 'location' | 'deleted_at' | 'purge_at'>,
+  field: TrashSortField,
+): SortValue {
+  if (field === 'name') return item.name
+  if (field === 'was') return item.location ? folderLabel(item.location) : translate('allDocuments')
+  if (field === 'size') return item.size
+  return field === 'deleted' ? item.deleted_at : item.purge_at
 }
 
 export type Tally = { files: number; size: number }

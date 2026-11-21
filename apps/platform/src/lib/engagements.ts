@@ -126,10 +126,10 @@ export type Entry = {
   note: string | null
   client_performance: string | null
   client_performance_on_invoice: boolean
-  performed_by: { id: string; name: string } | null
+  performed_by: { id: string; name: string; avatar_url?: string | null } | null
   invoice: InvoiceLink | null
   created_at: string
-  created_by: { id: string; name: string } | null
+  created_by: { id: string; name: string; avatar_url?: string | null } | null
 }
 
 export type EntryInput = {
@@ -146,7 +146,7 @@ export type EngagementQuery = {
   client_id?: string
   status?: string
   attention?: Attention
-  sort?: 'ends' | '-created_at' | 'title' | 'client'
+  sort?: 'ends' | '-ends' | '-created_at' | 'title' | '-title' | 'client' | '-client'
   page?: number
   page_size?: number
 }
