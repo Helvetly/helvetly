@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { planAllowance } from '@helvetly/ui/lib/plan-features'
 import { describe, expect, it } from 'vitest'
 
 import { faqIn } from './faq'
-import { planLines } from './offer'
+import { planLines, projectPlans } from './offer'
 import {
   has,
   PLAN_IDS,
@@ -15,8 +16,7 @@ import {
   YEARLY_DISCOUNT_PERCENT,
 } from './plans'
 
-const { BENEFITS, bytes, formatLimit, LIMITS, PLANS, plansWith, tokens, FEATURE_GROUPS } =
-  plansIn('en')
+const { BENEFITS, bytes, LIMITS, PLANS, plansWith, tokens, FEATURE_GROUPS } = plansIn('en')
 
 const api = join(__dirname, '../../../api/internal')
 
@@ -114,19 +114,22 @@ describe('offer helvetly public projection', () => {
   })
 
   it.each([
-    ['clients', ['30', '300', 'Unlimited']],
-    ['products', ['25', '250', 'Unlimited']],
-    ['engagements', ['3', '20', 'Unlimited']],
-    ['invoices_per_month', ['15', '100', 'Unlimited']],
-    ['quotes_per_month', ['5', '100', 'Unlimited']],
-    ['expenses_per_month', [null, '300', 'Unlimited']],
-    ['signatures_per_month', [null, '50', 'Unlimited']],
+    ['clients', ['30', '300', '∞']],
+    ['products', ['25', '250', '∞']],
+    ['engagements', ['3', '20', '∞']],
+    ['invoices_per_month', ['15', '100', '∞']],
+    ['quotes_per_month', ['5', '100', '∞']],
+    ['expenses_per_month', [null, '300', '∞']],
+    ['signatures_per_month', [null, '50', '∞']],
     ['storage_bytes', ['500 MB', '5 GB', '20 GB']],
     ['emails_per_month', ['100', '500', '2’000']],
     ['ai_tokens_per_month', [null, '5M', '20M']],
     ['automation_actions_per_month', [null, '1’500', '6’000']],
-  ] as const)('%s per plan', (key, expected) => {
-    expect(PLAN_IDS.map((id) => formatLimit(key, id))).toEqual(expected)
+  ] as const)('%s per plan, as the pricing cards and the table show it', (key, expected) => {
+    const offer = projectPlans()
+    expect(PLAN_IDS.map((id) => planAllowance(offer, key, id, 'en')?.amount ?? null)).toEqual(
+      expected,
+    )
   })
 
   it('leaves Basic a manual invoicing plan, and keeps the portal and XML for Business', () => {
@@ -215,18 +218,21 @@ describe('offer helvetly public projection', () => {
       '5 quotes / month',
       'Swiss QR bills and Revolut payment links',
       '3 ongoing engagements and retainers',
+      'Books: dashboard, reports and period closing',
       '500 MB document storage',
       '100 emails to clients / month',
     ])
     expect(text(1)).toEqual([
-      '300 expenses / month, receipts read by AI',
+      '300 expenses / month',
+      'AI import: turn PDFs, photos and spreadsheets into invoices, clients and expenses',
       '5M AI tokens / month for Heidi, your AI assistant',
       '1’500 automated steps / month, such as payment reminders',
       '50 e-signature requests / month',
       'Document templates',
       'Payment in instalments',
-      'Credit notes, invoice corrections and VAT returns',
-      'Ledger, accounting exports and API access',
+      'Credit notes and invoice corrections',
+      'Books: ledger, VAT returns and accounting exports',
+      'API access',
       '25 team members',
       '300 clients',
       '250 products and services',
@@ -241,14 +247,14 @@ describe('offer helvetly public projection', () => {
       'Your portal on your own domain (portal.yourcompany.ch)',
       'Approvals before invoices go out',
       'E-invoices as XML: XRechnung, ZUGFeRD and more',
-      'Employee records and payroll register',
+      'Employees: staff records and payroll register',
       '∞ team members',
       '∞ clients',
       '∞ products and services',
       '∞ invoices / month',
       '∞ quotes / month',
       '∞ ongoing engagements and retainers',
-      '∞ expenses / month, receipts read by AI',
+      '∞ expenses / month',
       '20M AI tokens / month for Heidi, your AI assistant',
       '6’000 automated steps / month, such as payment reminders',
       '∞ e-signature requests / month',

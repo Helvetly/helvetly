@@ -61,8 +61,10 @@ export function PricingCards() {
               className="absolute inset-0 cursor-pointer appearance-none opacity-0"
             />
             {value === 'month' ? translate('monthly') : translate('yearly')}
+            {/* The space is for the spoken name: "Yearly −20%". */}
+            {value === 'year' && ' '}
             {value === 'year' && (
-              <Badge tone="blue" size="sm" className="ml-1.5">
+              <Badge tone="green" size="sm" className="ml-1.5">
                 −{YEARLY_DISCOUNT_PERCENT}%
               </Badge>
             )}

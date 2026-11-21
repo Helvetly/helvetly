@@ -43,7 +43,7 @@ import {
 } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
-import { PromoCodeDialog } from './promo-code-dialog'
+import { PromoCodePopover } from './promo-code-popover'
 
 const TAGLINES: Record<Plan['id'], string> = {
   basic: translate('startInvoicingForFreelancersWithASmallClient'),
@@ -193,7 +193,6 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
   const most = selfServiceSeats(billing.plans)
   const [confirm, setConfirm] = useState<Plan | null>(null)
   const [promo, setPromo] = useState<Promotion | null>(null)
-  const [promoDialog, setPromoDialog] = useState(false)
   const { start, busy } = usePlanCheckout()
   const saving = Math.max(...billing.plans.map(yearlySaving))
 
@@ -217,23 +216,61 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
 
   return (
     <div className="grid gap-10">
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      <div className="flex flex-col items-center gap-3">
         <Segmented
           size="sm"
           label={translate('billingPeriod')}
           value={interval}
           options={[
             { value: 'month', label: translate('monthly2') },
-            { value: 'year', label: translate('yearly3') },
+            {
+              value: 'year',
+              label: (
+                <>
+                  {translate('yearly3')}
+                  {/* The space is for the spoken name: "Yearly −20%". */}
+                  {saving > 0 && ' '}
+                  {saving > 0 && (
+                    <Badge tone="green" size="sm" className="ml-1.5">
+                      −{saving}%
+                    </Badge>
+                  )}
+                </>
+              ),
+            },
           ]}
           onChange={setPeriod}
         />
-        {saving > 0 && (
-          <Badge tone="green">
-            {translate('save')}
-            {saving}
-            {translate('yearly2')}
-          </Badge>
+        {billing.can_manage && billing.enabled && (
+          // One line high with or without a code, so the cards below never move.
+          <div className="flex min-h-6 items-center gap-2 text-body-sm text-muted-foreground">
+            {promo ? (
+              <>
+                <Badge tone="blue" size="sm">
+                  <span className="font-code">{promo.code}</span> · {describeDiscount(promo)}
+                </Badge>
+                <PromoCodePopover initial={promo.code} onApplied={setPromo}>
+                  <button type="button" className={textLink}>
+                    {translate('change')}
+                  </button>
+                </PromoCodePopover>
+                <button
+                  type="button"
+                  className={cn(textLink, 'inline-flex items-center gap-1 text-destructive')}
+                  onClick={() => setPromo(null)}
+                >
+                  <X className="size-3.5" aria-hidden />
+                  {translate('remove')}
+                </button>
+              </>
+            ) : (
+              <PromoCodePopover initial="" onApplied={setPromo}>
+                <button type="button" className={textLink}>
+                  {translate('haveAPromotionCode')}
+                </button>
+              </PromoCodePopover>
+            )}
+          </div>
         )}
       </div>
 
@@ -431,32 +468,6 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
       </p>
 
       <div className="flex flex-col items-center gap-3 text-center text-body-sm text-muted-foreground">
-        {billing.can_manage && billing.enabled && (
-          <div className="flex items-center gap-2">
-            {promo ? (
-              <>
-                <Badge tone="blue" size="sm">
-                  <span className="font-code">{promo.code}</span> · {describeDiscount(promo)}
-                </Badge>
-                <button type="button" className={textLink} onClick={() => setPromoDialog(true)}>
-                  {translate('change')}
-                </button>
-                <button
-                  type="button"
-                  className={cn(textLink, 'inline-flex items-center gap-1 text-destructive')}
-                  onClick={() => setPromo(null)}
-                >
-                  <X className="size-3.5" aria-hidden />
-                  {translate('remove')}
-                </button>
-              </>
-            ) : (
-              <button type="button" className={textLink} onClick={() => setPromoDialog(true)}>
-                {translate('haveAPromotionCode')}
-              </button>
-            )}
-          </div>
-        )}
         {billing.pricing !== 'flat' && (
           <p data-slot="seat-rule" className="text-caption">
             {translate('everyMemberIsAPaidSeat', { most: most ?? 'none' })}
@@ -476,13 +487,6 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
         )}
       </div>
 
-      {promoDialog && (
-        <PromoCodeDialog
-          initial={promo?.code ?? ''}
-          onApplied={setPromo}
-          onClose={() => setPromoDialog(false)}
-        />
-      )}
       {confirm && (
         <ConfirmDialog
           key={confirm.id + interval}

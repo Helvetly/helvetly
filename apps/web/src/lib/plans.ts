@@ -242,16 +242,6 @@ export const plansIn = perLanguage((translate, language) => {
 
   const isUnlimited = (key: LimitKey, plan: PlanId) => LIMITS[key].values[plan] === UNLIMITED
 
-  /** One allowance as the usage table shows it: "Unlimited" without a cap; null when the plan does not include it. */
-  function formatLimit(key: LimitKey, plan: PlanId): string | null {
-    const { unit, values } = LIMITS[key]
-    const amount = values[plan]
-    if (amount === null) return null
-    if (amount === UNLIMITED) return translate('unlimited')
-    if (unit === 'byte') return bytes(amount)
-    return unit === 'token' ? tokens(amount) : count(amount)
-  }
-
   /** A capped allowance's number; one that is not included or not capped has none to quote. */
   function value(key: LimitKey, plan: PlanId): number {
     const v = LIMITS[key].values[plan]
@@ -568,7 +558,6 @@ export const plansIn = perLanguage((translate, language) => {
     count,
     bytes,
     tokens,
-    formatLimit,
     BENEFITS,
     FEATURE_GROUPS,
     PLANS,

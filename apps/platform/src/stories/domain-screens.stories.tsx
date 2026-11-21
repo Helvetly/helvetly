@@ -238,8 +238,8 @@ export const BillingPeriod: Story = {
   render: () => <PlanCards billing={billingFixture()} offer={publicOffer} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
-    await expect(canvas.getByRole('radio', { name: 'Yearly' })).toBeChecked()
+    await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
+    await expect(canvas.getByRole('radio', { name: /^Yearly/ })).toBeChecked()
     await expect(canvas.getByRole('region', { name: 'Basic' })).toHaveTextContent('CHF 183')
     await expect(canvas.getByRole('region', { name: 'Pro' })).toHaveTextContent(
       '7 days, up to 2 people, card required',

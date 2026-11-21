@@ -148,7 +148,7 @@ test('only Pro offers the trial, with its line; the others are charged today', a
   expect(basic.querySelector('[data-slot=team-total]')).toHaveTextContent(
     'For 3 peopleCHF 57 / month',
   )
-  await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
+  await userEvent.click(screen.getByRole('radio', { name: /^Yearly/ }))
   expect(card('Basic')).toHaveTextContent('CHF 183')
   expect(card('Basic')).toHaveTextContent('CHF 15.25per person / month')
   expect(card('Basic')).toHaveTextContent('CHF 183 a year, billed yearly')
@@ -258,8 +258,19 @@ test('an unpaid upgrade says why and offers Stripe’s page to pay', async () =>
 test('a subscribed workspace can move down', async () => {
   renderCards(billing({ plan: 'business', status: 'active', interval: 'month' }))
   expect(within(card('Pro')).getByRole('button', { name: 'Switch to Pro' })).toBeEnabled()
-  await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
+  await userEvent.click(screen.getByRole('radio', { name: /^Yearly/ }))
   expect(within(card('Business')).getByRole('button', { name: 'Switch yearly' })).toBeEnabled()
+})
+
+test('the yearly saving sits in the Yearly segment, and the promotion code just under the switch', () => {
+  renderCards(billing())
+  const yearly = screen.getByRole('radio', { name: 'Yearly −20%' })
+  const promo = screen.getByRole('button', { name: 'Have a promotion code?' })
+  // Under the switch, above the first card.
+  expect(yearly.closest('fieldset')?.compareDocumentPosition(promo)).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING,
+  )
+  expect(promo.compareDocumentPosition(card('Basic'))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
 })
 
 test('a valid promotion code discounts the plans it covers and goes with the checkout', async () => {
@@ -428,11 +439,11 @@ test('one footnote says whose allowances they are, the yearly amount is bold and
   const monthly = card('Pro').querySelector('[data-slot=plan-price] ~ p strong')
   expect(monthly?.textContent).toMatch(/^CHF/)
   expect(card('Pro').textContent).toMatch(/save \d+%/)
-  await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
+  await userEvent.click(screen.getByRole('radio', { name: /^Yearly/ }))
   expect(card('Pro').querySelector('[data-slot=plan-price] ~ p strong')?.textContent).toMatch(
     /^CHF/,
   )
-  // Cards and the "Save 20% yearly" badge alike: no space between a number and its percent sign.
+  // Cards and the Yearly segment's "−20%" alike: no space between a number and its percent sign.
   expect(document.body.textContent).not.toMatch(/\d %/)
 })
 

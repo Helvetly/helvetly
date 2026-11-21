@@ -152,11 +152,14 @@ export const PlanTilesPerPerson: Story = {
       canvas.getByRole('region', { name: plan }).querySelector('[data-slot=team-total]')
     await expect(basic.getByText('per person / month')).toBeVisible()
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 57 / month')
-    await expect(basic.getByText('Any number')).toBeVisible()
+    // The most people a plan takes is its first line, once the public offer has loaded.
+    await expect(await basic.findByRole('list', { name: 'Basic includes' })).toHaveTextContent(
+      /^\d+ team members/,
+    )
     await expect(total('Business')).toHaveTextContent('For 3 peopleCHF 297 / month')
     // Seats follow the workspace's people: nobody picks a number here.
     await expect(canvas.queryByRole('button', { name: 'More people' })).not.toBeInTheDocument()
-    await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
+    await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
     await expect(basic.getByText('per person / month')).toBeVisible()
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 549 / year')
     // The yearly amount is bold, so the sentence is split in two nodes.

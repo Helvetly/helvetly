@@ -49,12 +49,15 @@ const LINES: LineDef[] = [
     limit: 'engagements',
     label: (t, count) => t('planLineEngagements', { count }),
   },
+  // Every plan's books; Pro's ledger line below names what it adds.
+  { key: 'books', label: (t) => t('planLineBooks') },
   {
     key: 'expenses',
     limit: 'expenses_per_month',
     needs: ['expenses'],
     label: (t) => t('planLineExpenses'),
   },
+  { key: 'ai_import', needs: ['ai_import'], label: (t) => t('planLineAIImport') },
   {
     key: 'heidi',
     limit: 'ai_tokens_per_month',
@@ -75,12 +78,13 @@ const LINES: LineDef[] = [
   },
   { key: 'templates', needs: ['documents_signatures'], label: (t) => t('planLineTemplates') },
   { key: 'instalments', needs: ['invoice_instalments'], label: (t) => t('planLineInstalments') },
-  { key: 'corrections_vat', needs: ['corrections_vat'], label: (t) => t('planLineCorrections') },
+  { key: 'corrections', needs: ['corrections_vat'], label: (t) => t('planLineCorrections') },
   {
     key: 'ledger_exports',
-    needs: ['ledger_exports', 'api_access'],
+    needs: ['ledger_exports', 'corrections_vat'],
     label: (t) => t('planLineLedger'),
   },
+  { key: 'api_access', needs: ['api_access'], label: (t) => t('planLineAPI') },
   { key: 'client_portal', needs: ['client_portal'], label: (t) => t('planLinePortal') },
   {
     key: 'custom_portal_domain',
@@ -104,6 +108,34 @@ const GB = 1_000_000_000
 const MANY = 100
 
 /**
+ * One allowance of a plan as the lines show it: "300", "5 GB", "5M", or "∞" (with `spoken`, "Unlimited") when the plan
+ * sets no cap; undefined when the plan does not include it. `limit` is an offer allowance key or `people`.
+ */
+export function planAllowance(
+  offer: OfferCatalogue,
+  limit: string,
+  plan: PlanId,
+  language: Locale,
+): { amount: string; spoken?: string; value: number | null } | undefined {
+  const value =
+    limit === 'people'
+      ? offer.max_self_service_seats[plan]
+      : offer.limits[limit]?.plans[plan]?.included
+        ? (offer.limits[limit]?.plans[plan]?.value ?? null)
+        : 0
+  if (value === 0) return undefined
+  if (value === null)
+    return { amount: '∞', spoken: translatorFor(language)('planUnlimited'), value }
+  const count = (n: number) =>
+    n.toLocaleString(localeDetails(language).numberLocale).replaceAll("'", '’')
+  if (limit === 'storage_bytes')
+    return { amount: value >= GB ? `${count(value / GB)} GB` : `${count(value / MB)} MB`, value }
+  if (limit === 'ai_tokens_per_month' && value >= 1_000_000)
+    return { amount: `${count(value / 1_000_000)}M`, value }
+  return { amount: count(value), value }
+}
+
+/**
  * What each plan includes, as one list per plan: the first plan in full, every other one "Everything in <the plan
  * before>, plus:" what it adds first, then the allowances it raises (at their new amount). `features` gives each
  * plan's feature keys, for features the comparison does not name.
@@ -114,40 +146,18 @@ export function planFeatureLines(
   language: Locale,
 ): PlanLines[] {
   const translate = translatorFor(language)
-  const count = (n: number) =>
-    n.toLocaleString(localeDetails(language).numberLocale).replaceAll("'", '’')
-  const format = (limit: string, n: number) => {
-    if (limit === 'storage_bytes') return n >= GB ? `${count(n / GB)} GB` : `${count(n / MB)} MB`
-    if (limit === 'ai_tokens_per_month' && n >= 1_000_000) return `${count(n / 1_000_000)}M`
-    return count(n)
-  }
-
   const has = (plan: PlanId, key: string) =>
     offer.comparison.find((row) => row.key === key)?.plans[plan] ?? features(plan).includes(key)
-  /** A limit's amount: a number, null for unlimited, undefined when the plan does not include it. */
-  const amountOf = (plan: PlanId, limit: string): number | null | undefined => {
-    if (limit === 'people') return offer.max_self_service_seats[plan]
-    const value = offer.limits[limit]?.plans[plan]
-    if (!value?.included || value.value === 0) return undefined
-    return value.value
-  }
 
   const linesOf = (plan: PlanId) =>
     LINES.flatMap((def): { line: FeatureLine; amount?: number | null }[] => {
       if (!(def.needs ?? []).every((key) => has(plan, key))) return []
       if (!def.limit) return [{ line: { key: def.key, label: def.label(translate, MANY) } }]
-      const amount = amountOf(plan, def.limit)
-      if (amount === undefined) return []
-      const line: FeatureLine =
-        amount === null
-          ? {
-              key: def.key,
-              amount: '∞',
-              spoken: translate('planUnlimited'),
-              label: def.label(translate, MANY),
-            }
-          : { key: def.key, amount: format(def.limit, amount), label: def.label(translate, amount) }
-      return [{ line, amount }]
+      const allowance = planAllowance(offer, def.limit, plan, language)
+      if (!allowance) return []
+      const { value, ...shown } = allowance
+      const line = { key: def.key, ...shown, label: def.label(translate, value ?? MANY) }
+      return [{ line, amount: value }]
     })
 
   return offer.plans.map(({ id }, index) => {

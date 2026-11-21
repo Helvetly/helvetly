@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { type OfferCatalogue, type PlanId, planFeatureLines, planFootnote } from './plan-features'
+import {
+  type OfferCatalogue,
+  planAllowance,
+  type PlanId,
+  planFeatureLines,
+  planFootnote,
+} from './plan-features'
 
 const cap = (basic: number | null, pro: number | null, business: number | null) => ({
   plans: {
@@ -32,8 +38,8 @@ const offer: OfferCatalogue = {
 }
 const features: Record<PlanId, string[]> = {
   basic: [],
-  pro: ['expenses'],
-  business: ['expenses', 'custom_portal_domain'],
+  pro: ['expenses', 'ai_import'],
+  business: ['expenses', 'ai_import', 'custom_portal_domain'],
 }
 
 const text = (lines: { amount?: string; label: string }[]) =>
@@ -48,6 +54,7 @@ describe('planFeatureLines', () => {
       '7 clients',
       '9 invoices / month',
       'Swiss QR bills and Revolut payment links',
+      'Books: dashboard, reports and period closing',
       '250 MB document storage',
       '1 email to clients / month',
     ])
@@ -56,7 +63,8 @@ describe('planFeatureLines', () => {
   it('gives every other plan only what it adds, then what it raises', () => {
     expect(pro?.basis).toBe('Everything in Basic, plus:')
     expect(text(pro?.lines ?? [])).toEqual([
-      '40 expenses / month, receipts read by AI',
+      '40 expenses / month',
+      'AI import: turn PDFs, photos and spreadsheets into invoices, clients and expenses',
       '12 team members',
       '70 clients',
       '2 GB document storage',
@@ -79,6 +87,18 @@ describe('planFeatureLines', () => {
       spoken: 'Unlimited',
       label: 'team members',
     })
+  })
+
+  it('gives an allowance the same way the lines and the comparison table show it', () => {
+    expect(planAllowance(offer, 'clients', 'pro', 'en')).toEqual({ amount: '70', value: 70 })
+    expect(planAllowance(offer, 'clients', 'business', 'en')).toEqual({
+      amount: '∞',
+      spoken: 'Unlimited',
+      value: null,
+    })
+    expect(planAllowance(offer, 'storage_bytes', 'pro', 'en')?.amount).toBe('2 GB')
+    expect(planAllowance(offer, 'expenses_per_month', 'basic', 'en')).toBeUndefined()
+    expect(planAllowance(offer, 'quotes_per_month', 'basic', 'en')).toBeUndefined()
   })
 
   it('words the lines in the asked language', () => {
