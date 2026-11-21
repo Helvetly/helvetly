@@ -31,7 +31,7 @@ import { useState, type ReactNode } from 'react'
 import { civilToday, daysBetween, daysLeftText, dueText, greeting, sharedText } from '@/lib/dates'
 import { isActive, mostRelevant, usedShare } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
-import { byUrgency, sumByCurrency } from '@/lib/invoices'
+import { byUrgency, isOpen, sumByCurrency } from '@/lib/invoices'
 import {
   getPortalSession,
   listPortalDocuments,
@@ -417,52 +417,73 @@ function Attention({
 function PayDialog({
   invoice,
   today,
-  currentQR,
+  checking,
+  retry,
   onClose,
 }: {
   invoice: PortalInvoice
   today: string
-  currentQR: boolean
+  checking: boolean
+  retry?: () => void
   onClose: () => void
 }) {
+  const canPay = !checking && !retry && isOpen(invoice)
+  let description = translate('nothingDue')
+  if (checking) {
+    description = translate('loadingInvoices')
+  } else if (retry) {
+    description = translate('yourInvoices') + translate('couldnTBeLoadedTryAgainInAMoment')
+  } else if (canPay) {
+    description = translate(
+      invoice.current_qr
+        ? 'payWithTheQRBillSteps'
+        : invoice.has_pdf === false
+          ? 'askSupplierForPaymentDetails'
+          : 'useCurrentBalanceWhenPaying',
+    )
+  }
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{translate('payInvoice', { number: invoice.number })}</DialogTitle>
-          <DialogDescription>
-            {translate(
-              currentQR
-                ? 'payWithTheQRBillSteps'
-                : invoice.has_pdf === false
-                  ? 'askSupplierForPaymentDetails'
-                  : 'useCurrentBalanceWhenPaying',
-            )}
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <dl className="grid grid-cols-2 gap-4 rounded-lg bg-muted/60 p-4">
-          <div className="grid gap-0.5">
-            <dt className="text-body-sm text-muted-foreground">{translate('amountDue')}</dt>
-            <dd className="text-title-sm font-semibold tabular-nums">
-              {formatMoney(invoice.amount_due, invoice.currency)}
-            </dd>
-          </div>
-          <div className="grid gap-0.5">
-            <dt className="text-body-sm text-muted-foreground">{translate('due')}</dt>
-            <dd className={`text-body font-medium ${invoice.is_overdue ? 'text-destructive' : ''}`}>
-              {invoice.due_date
-                ? `${formatDate(invoice.due_date)} · ${dueText(invoice.due_date, today)}`
-                : translate('noDueDate')}
-            </dd>
-          </div>
-        </dl>
-        {invoice.has_pdf !== false && (
+        {canPay && (
+          <dl className="grid grid-cols-2 gap-4 rounded-lg bg-muted/60 p-4">
+            <div className="grid gap-0.5">
+              <dt className="text-body-sm text-muted-foreground">{translate('amountDue')}</dt>
+              <dd className="text-title-sm font-semibold tabular-nums">
+                {formatMoney(invoice.amount_due, invoice.currency)}
+              </dd>
+            </div>
+            <div className="grid gap-0.5">
+              <dt className="text-body-sm text-muted-foreground">{translate('due')}</dt>
+              <dd
+                className={`text-body font-medium ${invoice.is_overdue ? 'text-destructive' : ''}`}
+              >
+                {invoice.due_date
+                  ? `${formatDate(invoice.due_date)} · ${dueText(invoice.due_date, today)}`
+                  : translate('noDueDate')}
+              </dd>
+            </div>
+          </dl>
+        )}
+        {canPay && invoice.has_pdf !== false && (
           <DialogFooter>
             <Button asChild>
               <a href={localizedHref(portalInvoicePdfUrl(invoice.id))}>
                 <Download aria-hidden />
                 {translate('downloadPDF')}
               </a>
+            </Button>
+          </DialogFooter>
+        )}
+        {!checking && retry && (
+          <DialogFooter>
+            <Button variant="outline" onClick={retry}>
+              {translate('tryAgain')}
             </Button>
           </DialogFooter>
         )}
@@ -607,7 +628,8 @@ export function PortalOverview() {
         <PayDialog
           invoice={paying}
           today={today}
-          currentQR={paying.current_qr === true && !invoices.isFetching && !invoices.error}
+          checking={invoices.isFetching}
+          retry={invoices.isError ? () => void invoices.refetch() : undefined}
           onClose={() => setPayingID(null)}
         />
       )}

@@ -45,6 +45,47 @@ async function issuedInvoice(api: FinancialAPI, client: Record<string, unknown>)
   return api.save(`/invoices/${text(draft.id)}/issue`)
 }
 
+test('a partial payment changes the portal instructions and keeps the issued PDF', async ({
+  api,
+  browser,
+}) => {
+  await api.settings()
+  const email = `portal-balance-${randomUUID()}@example.test`
+  const client = await api.client()
+  await api.save(`/clients/${text(client.id)}`, { email, portal_enabled: true }, 'PATCH')
+  const invoice = await issuedInvoice(api, client)
+  const context = await browser.newContext({ baseURL: portalURL })
+  try {
+    const path = await portalPath(api.request)
+    const portal = await signInToPortal(context, path, email)
+    const pdf = `${path}api/v1/public/portal/invoices/${text(invoice.id)}/pdf`
+    const original = await context.request.get(pdf)
+    await expect(original).toBeOK()
+
+    const pay = portal.getByRole('button', { name: `Pay invoice ${text(invoice.number)}` })
+    await pay.click()
+    const dialog = portal.getByRole('dialog', { name: `Pay invoice ${text(invoice.number)}` })
+    await expect(dialog.getByText(/scan the QR code/)).toBeVisible()
+    await portal.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+
+    await api.save(`/invoices/${text(invoice.id)}/payments`, {
+      amount: '10.00',
+      method: 'bank_transfer',
+    })
+    await pay.click()
+    await expect(dialog.getByText(/Use the current amount due shown here/)).toBeVisible()
+    await expect(dialog.getByText('CHF 1’071.00')).toBeVisible()
+    await expect(dialog.getByText(/scan the QR code/)).toHaveCount(0)
+    await expect(dialog.getByRole('link', { name: 'Download PDF' })).toBeVisible()
+    const afterPayment = await context.request.get(pdf)
+    await expect(afterPayment).toBeOK()
+    expect((await afterPayment.body()).equals(await original.body())).toBe(true)
+  } finally {
+    await context.close()
+  }
+})
+
 test('a client signs in with its email, reads shared data, asks for a change and is cut off when the portal goes off', async ({
   api,
   playwright,
