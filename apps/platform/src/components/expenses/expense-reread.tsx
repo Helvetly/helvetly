@@ -12,7 +12,6 @@ import { toast } from 'sonner'
 import { isAIConsentRequired, useAIApproval } from '@/components/ai/ai-approval'
 import { promptUpgrade, toastError } from '@/components/billing/upgrade-prompt'
 import { CURRENCY_OPTIONS } from '@/components/clients/fields'
-import { errorMessage } from '@/lib/api'
 import { approvalKeys } from '@/lib/approvals'
 import {
   rereadExpense,
@@ -26,11 +25,12 @@ import { useInvoiceSettings } from '@/lib/invoices'
 import { useSession } from '@/lib/queries'
 
 import { toInput, valuesFromExpense } from './expense-form-model'
+import { readFailure, ReadFailureAlert, type ReadFailure } from './expense-read-failure'
 import { applyReread, recognizedLabel, rereadRows, type RereadField } from './expense-reread-model'
 
 type State =
   | { phase: 'reading' }
-  | { phase: 'failed'; message: string }
+  | { phase: 'failed'; failure: ReadFailure }
   | { phase: 'read'; suggestions: ReceiptSuggestions }
 
 /**
@@ -71,7 +71,7 @@ export function ExpenseReread({ expense, onDone }: { expense: Expense; onDone: (
       if (alive.current) setState({ phase: 'read', suggestions })
     } catch (error) {
       promptUpgrade(error)
-      if (alive.current) setState({ phase: 'failed', message: errorMessage(error) })
+      if (alive.current) setState({ phase: 'failed', failure: readFailure(error) })
     }
   }
   // Once per opening: a development re-run of the effect must not read (and charge) twice.
@@ -152,8 +152,7 @@ export function ExpenseReread({ expense, onDone }: { expense: Expense; onDone: (
         )}
 
         {state.phase === 'failed' && (
-          <Callout tone="danger" title={translate('receiptCouldNotBeRead')}>
-            <p className="text-muted-foreground">{state.message}</p>
+          <ReadFailureAlert failure={state.failure}>
             <div className="mt-2 flex gap-2">
               <Button
                 size="sm"
@@ -167,7 +166,7 @@ export function ExpenseReread({ expense, onDone }: { expense: Expense; onDone: (
                 {translate('rereadBack')}
               </Button>
             </div>
-          </Callout>
+          </ReadFailureAlert>
         )}
 
         {state.phase === 'read' && (
