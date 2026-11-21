@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -245,6 +246,9 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 	}
 	sent := false
 	err = s.db.Tx(ctx, func(q store.Q) error {
+		if err := q.LockInvoiceSettings(ctx, ws.ID); err != nil {
+			return err
+		}
 		var sentBy *string
 		data := map[string]any{"invoice_id": st.inv.ID, "number": deref(st.inv.Number), "client": st.inv.Client.Name,
 			"level": n.Level, "title": *n.StoredTitle, "amount": n.Total.String(), "currency": st.inv.Currency}
@@ -259,6 +263,26 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 			return err
 		}
 		if cur.Status != st.inv.Status || cur.AmountDue != st.inv.AmountDue {
+			return errChanged
+		}
+		if live, err := q.LockClient(ctx, ws.ID, cur.ClientID); err != nil {
+			return err
+		} else if !live {
+			return errChanged
+		}
+		current, err := s.load(ctx, q, ws, id)
+		if err != nil {
+			return err
+		}
+		if current.Next == nil || *current.Next != *st.Next || !reflect.DeepEqual(current.set, st.set) ||
+			by == nil && (!current.Enabled || current.Paused || !current.ClientEnabled || ws.Today(now) < current.Next.DueOn) {
+			return errChanged
+		}
+		recipient, err := q.DunningRecipient(ctx, ws.ID, id)
+		if err != nil {
+			return err
+		}
+		if recipient != email {
 			return errChanged
 		}
 		won, err := q.LogDunningNotice(ctx, ws.ID, n, sentBy)

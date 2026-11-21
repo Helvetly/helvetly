@@ -3,7 +3,13 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
-import { portalHandlers, portalInvoices, portalSession, unauthenticated } from '@/mocks/portal'
+import {
+  portalHandlers,
+  portalInvoices,
+  portalPaidIn,
+  portalSession,
+  unauthenticated,
+} from '@/mocks/portal'
 
 import {
   deletePortalAvatar,
@@ -28,7 +34,7 @@ describe('portal client', () => {
   })
 
   it('lists invoices', async () => {
-    expect(await listPortalInvoices()).toEqual(portalInvoices)
+    expect(await listPortalInvoices()).toEqual({ data: portalInvoices, paid_in: portalPaidIn })
   })
 
   it('builds download urls', () => {

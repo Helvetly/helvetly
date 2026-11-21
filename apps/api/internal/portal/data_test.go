@@ -97,6 +97,50 @@ func TestInvoicesNoDrafts(t *testing.T) {
 	}
 }
 
+func TestInvoicePaymentInstructionsAndYearlyPayments(t *testing.T) {
+	e := newEnv(t)
+	for _, id := range []string{"unpaid", "partial", "scheduled", "no_qr", "old"} {
+		e.invoice(id, "cli_1", "open", id, "pdf/"+id)
+	}
+	e.invoice("other_client", "cli_3", "open", "other", "pdf/other")
+	e.exec(`UPDATE invoices SET qr_bill = true WHERE id IN ('unpaid', 'partial', 'scheduled')`)
+	e.exec(`UPDATE invoices SET amount_paid = 3000 WHERE id = 'partial'`)
+	e.exec(`UPDATE invoices SET instalment_interval = 'monthly' WHERE id = 'scheduled'`)
+	e.exec(`UPDATE invoices SET issue_date = date_trunc('year', current_date)::date - 1 WHERE id = 'old'`)
+	e.exec(`INSERT INTO invoice_payments (id, invoice_id, amount, paid_on, method, created_at) VALUES
+		('pay_partial', 'partial', 3000, current_date, 'bank_transfer', now()),
+		('pay_old', 'old', 10000, current_date, 'bank_transfer', now()),
+		('pay_last_year', 'old', 810, date_trunc('year', current_date)::date - 1, 'bank_transfer', now()),
+		('pay_other', 'other_client', 10810, current_date, 'bank_transfer', now())`)
+
+	cookie, _ := e.signIn("ana@acme.ch")
+	res, body := e.get(cookie, "/invoices")
+	var got struct {
+		Data []struct {
+			ID        string
+			CurrentQR bool `json:"current_qr"`
+		}
+		PaidIn struct {
+			Year   string
+			Totals map[string]store.Money
+		} `json:"paid_in"`
+	}
+	if res.StatusCode != http.StatusOK || json.Unmarshal([]byte(body), &got) != nil {
+		t.Fatalf("invoices: %d %s", res.StatusCode, body)
+	}
+	if len(got.Data) != 5 {
+		t.Fatalf("expected five invoices of this client, got %+v", got.Data)
+	}
+	for _, inv := range got.Data {
+		if inv.CurrentQR != (inv.ID == "unpaid") {
+			t.Errorf("current QR for %s: %v", inv.ID, inv.CurrentQR)
+		}
+	}
+	if len(got.PaidIn.Totals) != 1 || got.PaidIn.Totals["CHF"] != 13000 {
+		t.Errorf("payments in %s: %v", got.PaidIn.Year, got.PaidIn.Totals)
+	}
+}
+
 func TestInvoicePDFOtherClient404(t *testing.T) {
 	e := newEnv(t)
 	e.files.objects["pdf/ok"] = []byte("%PDF-ok")

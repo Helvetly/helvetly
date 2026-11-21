@@ -739,6 +739,29 @@ func TestRaceForOneHostname(t *testing.T) {
 	}
 }
 
+func TestExpiredCheckPreservesDomainVerifiedSinceItWasRead(t *testing.T) {
+	e := newEnv(t)
+	owner, ws := e.workspace(billing.Business, "owner")
+	const host = "portal.verified.ch"
+	e.add(owner, host)
+	ctx := t.Context()
+	expired, err := e.st.WorkspaceDomainOf(ctx, ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.live(host)
+	e.clock = e.clock.Add(releaseAfter)
+	if _, err := e.svc.Check(ctx, expired); err != nil {
+		t.Fatal(err)
+	}
+	if status, _ := e.row(ws); status != "active" {
+		t.Fatalf("status after stale expiry check = %s, want active", status)
+	}
+	if e.cf.hostname(host).ID == "" {
+		t.Fatal("Cloudflare hostname was removed")
+	}
+}
+
 // TestConcurrentTicks: instances claim due domains with SKIP LOCKED, so each is checked once and its owners hear once.
 func TestConcurrentTicks(t *testing.T) {
 	e := newEnv(t)

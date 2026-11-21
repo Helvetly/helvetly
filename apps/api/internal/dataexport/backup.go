@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -85,17 +86,27 @@ func (s *Service) backup(ctx context.Context, d store.PendingBackup) error {
 		return err
 	}
 	key := BackupKey(d)
-	if err := s.files.Put(ctx, key, tmp, size, "application/zip", "helvetly-workspace-"+d.WorkspaceID+"-deleted-"+
-		d.DeletedAt.UTC().Format(time.DateOnly)+".zip"); err != nil {
-		return err
-	}
+	stored := false
 	err = s.db.Tx(ctx, func(q store.Q) error {
+		if err := q.LockPendingBackup(ctx, d); errors.Is(err, store.ErrNotFound) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+		if err := s.files.Put(ctx, key, tmp, size, "application/zip", "helvetly-workspace-"+d.WorkspaceID+"-deleted-"+
+			d.DeletedAt.UTC().Format(time.DateOnly)+".zip"); err != nil {
+			return err
+		}
 		if err := retention.Request(ctx, q, s.files, d.WorkspaceID, key, d.DeletedAt.UTC().Format(time.DateOnly), s.now()); err != nil {
 			return err
 		}
-		return q.BackupStored(ctx, d.ID, key, size, s.now())
+		if err := q.BackupStored(ctx, d.ID, key, size, s.now()); err != nil {
+			return err
+		}
+		stored = true
+		return nil
 	})
-	if err != nil {
+	if err != nil || !stored {
 		return err
 	}
 	retention.Settle(ctx, s.db, s.files, s.log, key)

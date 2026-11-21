@@ -22,7 +22,6 @@ import {
   FilePenLine,
   FileText,
   Gauge,
-  QrCode,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
@@ -32,7 +31,7 @@ import { useState, type ReactNode } from 'react'
 import { civilToday, daysBetween, daysLeftText, dueText, greeting, sharedText } from '@/lib/dates'
 import { isActive, mostRelevant, usedShare } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
-import { byUrgency, sumByCurrency } from '@/lib/invoices'
+import { byUrgency, isOpen, sumByCurrency } from '@/lib/invoices'
 import {
   getPortalSession,
   listPortalDocuments,
@@ -305,11 +304,11 @@ function Attention({
             aria-label={translate('payInvoice', { number: invoice.number })}
             onClick={() => onPay(invoice)}
           >
-            <QrCode aria-hidden />
+            <Wallet aria-hidden />
             {translate('pay')}
           </Button>
         ),
-        pdf: (
+        pdf: invoice.has_pdf !== false && (
           <DownloadLink
             href={portalInvoicePdfUrl(invoice.id)}
             label={translate('downloadPDFOfInvoice', { number: invoice.number })}
@@ -414,47 +413,80 @@ function Attention({
   )
 }
 
-/** How to pay: the Swiss QR bill sits on the PDF's payment slip; the portal takes no payments itself. */
+/** The archived payment slip is usable only while its amount matches the balance. */
 function PayDialog({
   invoice,
   today,
+  checking,
+  retry,
   onClose,
 }: {
   invoice: PortalInvoice
   today: string
+  checking: boolean
+  retry?: () => void
   onClose: () => void
 }) {
+  const canPay = !checking && !retry && isOpen(invoice)
+  let description = translate('nothingDue')
+  if (checking) {
+    description = translate('loadingInvoices')
+  } else if (retry) {
+    description = translate('yourInvoices') + translate('couldnTBeLoadedTryAgainInAMoment')
+  } else if (canPay) {
+    description = translate(
+      invoice.current_qr
+        ? 'payWithTheQRBillSteps'
+        : invoice.has_pdf === false
+          ? 'askSupplierForPaymentDetails'
+          : 'useCurrentBalanceWhenPaying',
+    )
+  }
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{translate('payInvoice', { number: invoice.number })}</DialogTitle>
-          <DialogDescription>{translate('payWithTheQRBillSteps')}</DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <dl className="grid grid-cols-2 gap-4 rounded-lg bg-muted/60 p-4">
-          <div className="grid gap-0.5">
-            <dt className="text-body-sm text-muted-foreground">{translate('amountDue')}</dt>
-            <dd className="text-title-sm font-semibold tabular-nums">
-              {formatMoney(invoice.amount_due, invoice.currency)}
-            </dd>
-          </div>
-          <div className="grid gap-0.5">
-            <dt className="text-body-sm text-muted-foreground">{translate('due')}</dt>
-            <dd className={`text-body font-medium ${invoice.is_overdue ? 'text-destructive' : ''}`}>
-              {invoice.due_date
-                ? `${formatDate(invoice.due_date)} · ${dueText(invoice.due_date, today)}`
-                : translate('noDueDate')}
-            </dd>
-          </div>
-        </dl>
-        <DialogFooter>
-          <Button asChild>
-            <a href={localizedHref(portalInvoicePdfUrl(invoice.id))}>
-              <Download aria-hidden />
-              {translate('downloadPDF')}
-            </a>
-          </Button>
-        </DialogFooter>
+        {canPay && (
+          <dl className="grid grid-cols-2 gap-4 rounded-lg bg-muted/60 p-4">
+            <div className="grid gap-0.5">
+              <dt className="text-body-sm text-muted-foreground">{translate('amountDue')}</dt>
+              <dd className="text-title-sm font-semibold tabular-nums">
+                {formatMoney(invoice.amount_due, invoice.currency)}
+              </dd>
+            </div>
+            <div className="grid gap-0.5">
+              <dt className="text-body-sm text-muted-foreground">{translate('due')}</dt>
+              <dd
+                className={`text-body font-medium ${invoice.is_overdue ? 'text-destructive' : ''}`}
+              >
+                {invoice.due_date
+                  ? `${formatDate(invoice.due_date)} · ${dueText(invoice.due_date, today)}`
+                  : translate('noDueDate')}
+              </dd>
+            </div>
+          </dl>
+        )}
+        {canPay && invoice.has_pdf !== false && (
+          <DialogFooter>
+            <Button asChild>
+              <a href={localizedHref(portalInvoicePdfUrl(invoice.id))}>
+                <Download aria-hidden />
+                {translate('downloadPDF')}
+              </a>
+            </Button>
+          </DialogFooter>
+        )}
+        {!checking && retry && (
+          <DialogFooter>
+            <Button variant="outline" onClick={retry}>
+              {translate('tryAgain')}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )
@@ -509,7 +541,7 @@ const NAME_MAX = 40
 export function PortalOverview() {
   const today = civilToday()
   const [hour] = useState(() => new Date().getHours())
-  const [paying, setPaying] = useState<PortalInvoice | null>(null)
+  const [payingID, setPayingID] = useState<string | null>(null)
   const [asking, setAsking] = useState<Asking | null>(null)
   const session = useQuery({
     queryKey: portalKeys.session,
@@ -517,6 +549,7 @@ export function PortalOverview() {
     retry: false,
   })
   const invoices = useQuery({ queryKey: portalKeys.invoices, queryFn: listPortalInvoices })
+  const paying = invoices.data?.data.find((invoice) => invoice.id === payingID)
   // Quotes and engagements add tiles and rows; a failure there leaves them out, their pages say why.
   const quotes = useQuery({ queryKey: portalKeys.quotes, queryFn: listPortalQuotes })
   const engagements = useQuery({
@@ -550,7 +583,7 @@ export function PortalOverview() {
         </section>
       ) : (
         <Summary
-          invoices={invoices.data}
+          invoices={invoices.data.data}
           quotes={quotes.data ?? []}
           engagements={engagements.data ?? []}
           today={today}
@@ -572,10 +605,13 @@ export function PortalOverview() {
             </SectionTitle>
             {invoices.data ? (
               <Attention
-                invoices={invoices.data}
+                invoices={invoices.data.data}
                 quotes={quotes.data ?? []}
                 today={today}
-                onPay={setPaying}
+                onPay={(invoice) => {
+                  setPayingID(invoice.id)
+                  void invoices.refetch()
+                }}
                 onAsk={setAsking}
               />
             ) : (
@@ -588,7 +624,15 @@ export function PortalOverview() {
         </div>
       </div>
 
-      {paying && <PayDialog invoice={paying} today={today} onClose={() => setPaying(null)} />}
+      {paying && (
+        <PayDialog
+          invoice={paying}
+          today={today}
+          checking={invoices.isFetching}
+          retry={invoices.isError ? () => void invoices.refetch() : undefined}
+          onClose={() => setPayingID(null)}
+        />
+      )}
       {asking && (
         <DecisionDialog key={asking.quote.id} {...asking} onClose={() => setAsking(null)} />
       )}

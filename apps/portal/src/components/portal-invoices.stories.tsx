@@ -41,7 +41,7 @@ export const Filled: Story = {
     await expect(canvas.getByRole('tab', { name: 'Paid 2' })).toBeVisible()
     await expect(canvas.getByText('Due in 5 days')).toBeVisible()
     await expect(canvas.getByText('CHF 700.00 open')).toBeVisible()
-    await expect(canvas.getByText('Pay with the Swiss QR bill in each PDF.')).toBeVisible()
+    await expect(canvas.getByText('Open the invoice PDF for payment details.')).toBeVisible()
 
     await userEvent.click(canvas.getByRole('tab', { name: 'Overdue 1' }))
     const list = canvas.getByRole('tabpanel')

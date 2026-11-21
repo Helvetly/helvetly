@@ -182,17 +182,27 @@ const STATUS: Record<string, string> = {
   paid: translate('paid'),
   void: translate('void'),
   replaced: translate('replaced'),
+  overdue: translate('overdue'),
+  credited: translate('credited'),
 }
 const TONE: Record<string, Tone> = STATUS_TONES.invoice
 
-export function InvoiceStatus({ invoice }: { invoice: PortalInvoice }) {
-  if (invoice.is_overdue)
-    return <Badge tone={STATUS_TONES.invoice.overdue}>{translate('overdue')}</Badge>
+function invoiceStatus(invoice: PortalInvoice): string {
+  if (invoice.is_overdue) return 'overdue'
   // The server marks a fully credited invoice void; one paid before it was credited (and refunded) was not cancelled.
-  if (invoice.status === 'void' && Number(invoice.amount_paid) > 0)
-    return <Badge tone={STATUS_TONES.invoice.credited}>{translate('credited')}</Badge>
-  const label = STATUS[invoice.status] ?? invoice.status.replaceAll('_', ' ')
-  return <Badge tone={TONE[invoice.status] ?? 'neutral'}>{label}</Badge>
+  if (invoice.status === 'void' && Number(invoice.amount_paid) > 0) return 'credited'
+  return invoice.status
+}
+
+export function invoiceStatusLabel(invoice: PortalInvoice) {
+  const status = invoiceStatus(invoice)
+  return STATUS[status] ?? status.replaceAll('_', ' ')
+}
+
+export function InvoiceStatus({ invoice }: { invoice: PortalInvoice }) {
+  return (
+    <Badge tone={TONE[invoiceStatus(invoice)] ?? 'neutral'}>{invoiceStatusLabel(invoice)}</Badge>
+  )
 }
 
 /** A download: icon and `text` from `sm` up; the icon alone (with a tooltip) below, or always without `text`. */

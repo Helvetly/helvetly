@@ -61,16 +61,26 @@ type PendingBackup struct {
 	DeletedAt   time.Time
 }
 
-// PendingBackups: deletions without a stored archive that were not tried since retryAfter, oldest first.
+// PendingBackups: current deletions without a stored archive that were not tried since retryAfter, oldest first.
 func (s *Store) PendingBackups(ctx context.Context, retryAfter time.Time, limit int) ([]PendingBackup, error) {
 	rows, err := s.pool.Query(ctx, `SELECT d.id, d.workspace_id, w.name, d.members, d.deleted_by, d.deleted_at
 		FROM workspace_deletions d JOIN workspaces w ON w.id = d.workspace_id
-		WHERE d.backed_up_at IS NULL AND (d.backup_tried_at IS NULL OR d.backup_tried_at < $1) ORDER BY d.deleted_at LIMIT $2`,
+		WHERE d.restored_at IS NULL AND w.deleted_at = d.deleted_at AND d.backed_up_at IS NULL
+			AND (d.backup_tried_at IS NULL OR d.backup_tried_at < $1) ORDER BY d.deleted_at LIMIT $2`,
 		retryAfter, limit)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, pgx.RowToStructByPos[PendingBackup])
+}
+
+// LockPendingBackup rechecks a deletion before its archive leaves the process, serializing with a restore.
+func (q Q) LockPendingBackup(ctx context.Context, d PendingBackup) error {
+	var id string
+	return q.db.QueryRow(ctx, `SELECT d.id FROM workspace_deletions d JOIN workspaces w ON w.id = d.workspace_id
+		WHERE d.id = $1 AND d.workspace_id = $2 AND d.restored_at IS NULL
+			AND w.deleted_at = d.deleted_at AND d.backed_up_at IS NULL FOR UPDATE OF d, w`,
+		d.ID, d.WorkspaceID).Scan(&id)
 }
 
 // BackupStored records the deletion's archive object.

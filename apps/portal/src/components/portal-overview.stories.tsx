@@ -98,6 +98,7 @@ export const PayInPlace: Story = {
     const dialog = await within(document.body).findByRole('dialog', {
       name: `Pay invoice ${year}-009`,
     })
+    await expect(await within(dialog).findByText(/scan the QR code/)).toBeVisible()
     await expect(within(dialog).getByText('CHF 860.00')).toBeVisible()
     await expect(within(dialog).getByText(/12 days overdue/)).toBeVisible()
     await expect(within(dialog).getByRole('link', { name: 'Download PDF' })).toHaveAttribute(
@@ -106,6 +107,47 @@ export const PayInPlace: Story = {
     )
     await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull())
+  },
+}
+
+export const PayPartialBalance: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: `Pay invoice ${year}-012` }))
+    const dialog = await within(document.body).findByRole('dialog', {
+      name: `Pay invoice ${year}-012`,
+    })
+    await expect(
+      await within(dialog).findByText(/Use the current amount due shown here/),
+    ).toBeVisible()
+    await expect(within(dialog).getByText('CHF 700.00')).toBeVisible()
+    await expect(within(dialog).queryByText(/scan the QR code/)).toBeNull()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  },
+}
+
+export const PayBalanceUnavailable: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get(`${P}/invoices`, () => HttpResponse.json({ data: portalInvoices }), {
+          once: true,
+        }),
+        http.get(`${P}/invoices`, () => new HttpResponse(null, { status: 503 })),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: `Pay invoice ${year}-009` }))
+    const dialog = within(
+      await within(document.body).findByRole('dialog', { name: `Pay invoice ${year}-009` }),
+    )
+    await expect(await dialog.findByRole('button', { name: 'Try again' })).toBeVisible()
+    await expect(dialog.queryByText('CHF 860.00')).toBeNull()
+    await expect(dialog.queryByRole('link', { name: 'Download PDF' })).toBeNull()
   },
 }
 

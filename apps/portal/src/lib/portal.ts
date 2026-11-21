@@ -25,6 +25,13 @@ export type PortalInvoice = {
   total: string
   amount_due: string
   amount_paid: string
+  current_qr?: boolean
+  has_pdf?: boolean
+}
+
+export type PortalInvoiceList = {
+  data: PortalInvoice[]
+  paid_in?: { year: string; totals: Record<string, string> }
 }
 
 export type PortalEngagement = {
@@ -202,8 +209,7 @@ export async function signOutPortal() {
   setCsrfToken('')
 }
 
-export const listPortalInvoices = async () =>
-  (await call<{ data: PortalInvoice[] }>('/invoices')).data
+export const listPortalInvoices = () => call<PortalInvoiceList>('/invoices')
 export const portalInvoicePdfUrl = (invoiceId: string) =>
   apiUrl(`${base}/invoices/${id(invoiceId)}/pdf`)
 export const listPortalEngagements = async () =>

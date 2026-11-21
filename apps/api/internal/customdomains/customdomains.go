@@ -395,7 +395,7 @@ func (s *Service) deleteHostname(ctx context.Context, id string) {
 // take-over record is in place: the holder's domain is released (and told), and d takes its custom hostname, proven.
 // Otherwise domain_taken, naming the record that would prove it.
 func (s *Service) takeOver(ctx context.Context, d *store.WorkspaceDomain, now time.Time, add func(store.Q) error) error {
-	holder, err := s.db.WorkspaceDomainByHostname(ctx, d.Hostname)
+	holder, err := s.db.WorkspaceDomainByHostname(ctx, d.Hostname, false)
 	if errors.Is(err, store.ErrNotFound) {
 		return s.db.Tx(ctx, add) // released meanwhile
 	}
@@ -417,10 +417,20 @@ func (s *Service) takeOver(ctx context.Context, d *store.WorkspaceDomain, now ti
 			map[string]any{"fields": map[string]string{"hostname": "taken"}, "verify": rec})
 	}
 	d.VerifiedAt = &now
-	d.CloudflareID, d.CloudflareStatus, d.SSLStatus = holder.CloudflareID, holder.CloudflareStatus, holder.SSLStatus
-	d.OwnershipName, d.OwnershipValue = holder.OwnershipName, holder.OwnershipValue
 	err = s.db.Tx(ctx, func(q store.Q) error {
-		if err := s.release(ctx, q, holder, "claimed", now); err != nil {
+		current, err := q.WorkspaceDomainByHostname(ctx, d.Hostname, true)
+		if errors.Is(err, store.ErrNotFound) {
+			return add(q)
+		}
+		if err != nil {
+			return err
+		}
+		if current.ID != holder.ID || current.VerifiedAt != nil || current.Status == store.DomainActive {
+			return errActive
+		}
+		d.CloudflareID, d.CloudflareStatus, d.SSLStatus = current.CloudflareID, current.CloudflareStatus, current.SSLStatus
+		d.OwnershipName, d.OwnershipValue = current.OwnershipName, current.OwnershipValue
+		if err := s.release(ctx, q, current, "claimed", now); err != nil {
 			return err
 		}
 		return add(q)
@@ -521,7 +531,23 @@ func (s *Service) Check(ctx context.Context, d store.WorkspaceDomain) (store.Wor
 		return d, s.remove(ctx, d, nil)
 	}
 	if d.Status != store.DomainActive && !kept(d) && now.Sub(d.StatusSince) >= releaseAfter {
-		if err := s.db.Tx(ctx, func(q store.Q) error { return s.release(ctx, q, d, "expired", now) }); err != nil {
+		released := false
+		err := s.db.Tx(ctx, func(q store.Q) error {
+			current, err := q.WorkspaceDomainByHostname(ctx, d.Hostname, true)
+			if errors.Is(err, store.ErrNotFound) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if current.ID != d.ID || current.Status == store.DomainActive || kept(current) || now.Sub(current.StatusSince) < releaseAfter {
+				return nil
+			}
+			d = current
+			released = true
+			return s.release(ctx, q, d, "expired", now)
+		})
+		if err != nil || !released {
 			return d, err
 		}
 		s.scopes.Forget()

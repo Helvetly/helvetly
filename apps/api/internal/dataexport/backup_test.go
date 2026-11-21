@@ -30,6 +30,35 @@ func zipEntries(t *testing.T, body string) map[string]string {
 	return out
 }
 
+func TestBackupDoesNotArchiveRestoredWorkspace(t *testing.T) {
+	files := fakeFiles{"k/doc_a": "%PDF", "k/quo_a": "%PDF quote"}
+	e := newEnv(t, files)
+	ctx, now := t.Context(), time.Now()
+	if err := e.st.DeleteWorkspace(ctx, "ws_a", "wdl_a", "usr_a", now); err != nil {
+		t.Fatal(err)
+	}
+	pending, err := e.st.PendingBackups(ctx, now, 1)
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("before restore: %+v, %v", pending, err)
+	}
+	if err := e.st.Tx(ctx, func(q store.Q) error {
+		_, err := q.RestoreWorkspace(ctx, "wdl_a", "usr_a", now.Add(-time.Hour), now)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.backup(ctx, pending[0]); err != nil {
+		t.Fatal(err)
+	}
+	if _, found := files[BackupKey(pending[0])]; found {
+		t.Fatal("created an archive for a restored workspace")
+	}
+	pending, err = e.st.PendingBackups(ctx, now, 1)
+	if err != nil || len(pending) != 0 {
+		t.Fatalf("after restore: %+v, %v", pending, err)
+	}
+}
+
 // TestBackupDeleted: a deleted workspace gets one archive of its own records and files plus who deleted it and its
 // members; a failed write is recorded and tried again only after backupRetry.
 func TestBackupDeleted(t *testing.T) {

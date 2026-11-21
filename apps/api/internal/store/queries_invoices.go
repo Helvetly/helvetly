@@ -253,6 +253,8 @@ type InvoiceListItem struct {
 	AmountDue      Money          `json:"amount_due"`
 	RefundDue      Money          `json:"refund_due"`
 	PaymentMethods PaymentMethods `json:"payment_methods"`
+	ArchivedQR     bool           `json:"-"`
+	HasPDF         bool           `json:"-"`
 	DeductedOn     *InvoiceRef    `json:"deducted_on"`
 	Paid           Money          `json:"amount_paid"`
 	Reference      *string        `json:"-"`
@@ -895,7 +897,8 @@ func (q Q) EachInvoice(ctx context.Context, workspaceID, today string, f Invoice
 	rows, err := q.db.Query(ctx, `SELECT i.id, i.kind, i.number, i.status, `+fmt.Sprintf(isOverdue, 2)+`, i.client_id,
 		c.number, `+invoiceClientName+`, i.issue_date::text, i.due_date::text, i.currency, i.net_total, i.vat_total, i.total, i.rounding_amount, `+amountDue+`,
 		`+refundDue+`, i.amount_paid, i.reference, i.sent_at, i.created_at, i.pay_qr_bill, i.pay_revolut, i.prepaid_total,
-		di.id, di.number, `+approvalState+invoiceListFrom+where+` ORDER BY `+f.orderBy()+page, args...)
+		di.id, di.number, i.qr_bill AND i.instalment_interval IS NULL, i.pdf_key IS NOT NULL,
+		`+approvalState+invoiceListFrom+where+` ORDER BY `+f.orderBy()+page, args...)
 	if err != nil {
 		return err
 	}
@@ -905,7 +908,8 @@ func (q Q) EachInvoice(ctx context.Context, workspaceID, today string, f Invoice
 		var deductedID, deductedNumber *string
 		if err := rows.Scan(&i.ID, &i.Kind, &i.Number, &i.Status, &i.IsOverdue, &i.Client.ID, &i.Client.Number, &i.Client.Name,
 			&i.IssueDate, &i.DueDate, &i.Currency, &i.NetTotal, &i.VATTotal, &i.Total, &i.RoundingAmount, &i.AmountDue, &i.RefundDue, &i.Paid, &i.Reference, &i.SentAt,
-			&i.CreatedAt, &i.PaymentMethods.QRBill, &i.PaymentMethods.Revolut, &i.PrepaidTotal, &deductedID, &deductedNumber, &i.ApprovalState); err != nil {
+			&i.CreatedAt, &i.PaymentMethods.QRBill, &i.PaymentMethods.Revolut, &i.PrepaidTotal, &deductedID, &deductedNumber,
+			&i.ArchivedQR, &i.HasPDF, &i.ApprovalState); err != nil {
 			return err
 		}
 		i.PayableTotal = i.Total + i.RoundingAmount

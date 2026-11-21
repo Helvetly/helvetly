@@ -115,9 +115,8 @@ for (const app of ['platform', 'portal'] as const) {
 }
 
 test('the check sees a flat field', async ({ page }) => {
-  const [first] = stories('platform')
-  if (!first) throw new Error('field-surface: no platform stories')
-  await render(page, 'platform', first)
+  // The self-test also runs when CI selects only portal stories.
+  await render(page, 'platform', 'design-system-controls--keyboard-fields')
   await page.evaluate(() => {
     const flat = document.createElement('input')
     flat.className = 'h-9 rounded-md border bg-muted shadow-none'

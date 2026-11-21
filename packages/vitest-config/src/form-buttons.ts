@@ -3,7 +3,10 @@
 const tick = () => new Promise((resolve) => setTimeout(resolve, 50))
 
 const describe = (button: HTMLButtonElement) =>
-  button.getAttribute('aria-label') || button.textContent?.trim() || button.outerHTML.slice(0, 120)
+  button.getAttribute('aria-label') ||
+  button.labels?.[0]?.textContent?.trim() ||
+  button.textContent?.trim() ||
+  button.outerHTML.slice(0, 120)
 
 /** Fails when a button inside a form leaves its type to the browser's default ("submit"). */
 export function expectTypedFormButtons(root: ParentNode = document) {

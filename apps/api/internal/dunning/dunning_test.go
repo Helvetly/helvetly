@@ -358,6 +358,31 @@ func TestFailedSendIsRetried(t *testing.T) {
 	}
 }
 
+type storageBeforeSend struct {
+	Storage
+	before func()
+}
+
+func (s storageBeforeSend) Get(ctx context.Context, key string) ([]byte, error) {
+	s.before()
+	return s.Storage.Get(ctx, key)
+}
+
+func TestAutomaticReminderRechecksPauseBeforeSending(t *testing.T) {
+	e := newEnv(t)
+	b := e.ready(nil)
+	id := e.invoice(b, nil)
+	e.svc.files = storageBeforeSend{Storage: e.svc.files, before: func() {
+		if err := e.st.SetDunningPaused(t.Context(), b.workspace, id, true); err != nil {
+			t.Error(err)
+		}
+	}}
+	e.tickAt(10)
+	if len(e.mail.subjects()) != 0 || len(e.status(b, id).Notices) != 0 {
+		t.Fatal("a reminder was sent after the invoice was paused")
+	}
+}
+
 func TestOptOutPauseAndPayment(t *testing.T) {
 	e := newEnv(t)
 	b := e.ready(nil)
