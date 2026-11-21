@@ -4811,5 +4811,12 @@
   "auditApprovalGroupDeleted": "Gruppo di approvazione eliminato",
   "auditApprovalPolicySaved": "Regole di approvazione salvate",
   "systemFolderTip": "Gestita da Helvetly: non può essere rinominata, spostata o eliminata",
-  "systemFolderError": "Questa cartella è gestita da Helvetly e non può essere rinominata, spostata o eliminata."
+  "systemFolderError": "Questa cartella è gestita da Helvetly e non può essere rinominata, spostata o eliminata.",
+  "requiredToInvoice": "Necessario per fatturare",
+  "requiredToSendByEmail": "Necessario per l’invio via email, salvo se “Le fatture vanno a” è compilato",
+  "missingAddress": "Indirizzo mancante",
+  "missingEmail": "Email mancante",
+  "theClientHasNoEmailAddress": "Il cliente non ha un indirizzo email.",
+  "addTheClientsEmail": "Aggiungi l’email del cliente",
+  "addAnEmailToLetThisClientSignIn": "Aggiungi un’email perché il cliente possa accedere al portale."
 }

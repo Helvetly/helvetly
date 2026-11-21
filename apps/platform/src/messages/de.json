@@ -4811,5 +4811,12 @@
   "auditApprovalGroupDeleted": "Freigabegruppe gelöscht",
   "auditApprovalPolicySaved": "Freigaberegeln gespeichert",
   "systemFolderTip": "Von Helvetly verwaltet: kann nicht umbenannt, verschoben oder gelöscht werden",
-  "systemFolderError": "Dieser Ordner wird von Helvetly verwaltet und kann nicht umbenannt, verschoben oder gelöscht werden."
+  "systemFolderError": "Dieser Ordner wird von Helvetly verwaltet und kann nicht umbenannt, verschoben oder gelöscht werden.",
+  "requiredToInvoice": "Für Rechnungen nötig",
+  "requiredToSendByEmail": "Für den Versand per E-Mail nötig, ausser „Rechnungen gehen an“ ist ausgefüllt",
+  "missingAddress": "Adresse fehlt",
+  "missingEmail": "E-Mail fehlt",
+  "theClientHasNoEmailAddress": "Der Kunde hat keine E-Mail-Adresse.",
+  "addTheClientsEmail": "E-Mail des Kunden hinzufügen",
+  "addAnEmailToLetThisClientSignIn": "Fügen Sie eine E-Mail hinzu, damit sich der Kunde im Portal anmelden kann."
 }

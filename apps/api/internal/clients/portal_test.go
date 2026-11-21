@@ -141,13 +141,13 @@ func TestInviteWhenTurnedOnOrMoved(t *testing.T) {
 	b := e.workspace()
 	c := e.create(b, address("Acme"))
 	path := "/api/v1/clients/" + c.ID
-	e.do(b, "PATCH", path, map[string]any{"portal_enabled": true}, 200, nil)
+	e.fails(b, "PATCH", path, map[string]any{"portal_enabled": true}, 409, "no_portal_address")
 	if m.count() != 0 {
 		t.Fatal("invited without an address")
 	}
 	var out struct{ Data store.Client }
-	e.do(b, "PATCH", path, map[string]any{"billing_email": "Books@Acme.ch"}, 200, &out)             // the portal's first address
-	e.do(b, "PATCH", path, map[string]any{"billing_email": "books@acme.ch", "note": "x"}, 200, nil) // same login: no second mail
+	e.do(b, "PATCH", path, map[string]any{"billing_email": "Books@Acme.ch", "portal_enabled": true}, 200, &out) // the portal's first address
+	e.do(b, "PATCH", path, map[string]any{"billing_email": "books@acme.ch", "note": "x"}, 200, nil)             // same login: no second mail
 	if m.count() != 1 || m.sent[0].To[0] != "books@acme.ch" {
 		t.Fatalf("mails = %+v", m.sent)
 	}
@@ -187,12 +187,13 @@ func TestResendPortalInvite(t *testing.T) {
 	c := e.create(b, address("Acme"))
 	path := "/api/v1/clients/" + c.ID + "/portal-invitation"
 	e.do(b, "POST", path, nil, 409, nil) // the portal is off
-	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"portal_enabled": true}, 200, nil)
-	e.do(b, "POST", path, nil, 409, nil) // no address to invite
+	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"portal_enabled": true, "email": "ana@acme.ch"}, 200, nil)
+	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"email": nil}, 200, nil) // the address removed later
+	e.fails(b, "POST", path, nil, 409, "no_portal_address")
 	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"email": "ana@acme.ch"}, 200, nil)
 	var out struct{ Data store.Client }
 	e.do(b, "POST", path, nil, 200, &out)
-	if m.count() != 2 || m.sent[1].To[0] != "ana@acme.ch" || out.Data.PortalInvitedAt == nil {
+	if m.count() != 3 || m.sent[2].To[0] != "ana@acme.ch" || out.Data.PortalInvitedAt == nil {
 		t.Fatalf("mails = %+v, invited = %v", m.sent, out.Data.PortalInvitedAt)
 	}
 	if out.Data.PortalSignedInAt != nil {
@@ -235,5 +236,65 @@ func TestNoInviteWhilePortalOff(t *testing.T) {
 	e.do(b, "POST", path, nil, 200, nil)
 	if m.count() != 1 {
 		t.Fatalf("mails = %+v", m.sent)
+	}
+}
+
+// Turning the portal on invites the client, so it needs an email or a billing email; one already on keeps working
+// when its address is removed later (the resend says what is missing).
+func TestPortalNeedsAnAddress(t *testing.T) {
+	e, m := newPortalEnv(t)
+	b := e.workspace()
+	withAddress := func(name string, extra map[string]any) map[string]any {
+		body := address(name)
+		for k, v := range extra {
+			body[k] = v
+		}
+		return body
+	}
+	for _, tc := range []struct {
+		name   string
+		body   map[string]any
+		status int
+	}{
+		{"no address", map[string]any{"portal_enabled": true}, 409},
+		{"blank email", map[string]any{"portal_enabled": true, "email": " "}, 409},
+		{"email", map[string]any{"portal_enabled": true, "email": "ana@acme.ch"}, 201},
+		{"billing email", map[string]any{"portal_enabled": true, "billing_email": "books@acme.ch"}, 201},
+		{"portal off", map[string]any{"portal_enabled": false}, 201},
+	} {
+		t.Run("create "+tc.name, func(t *testing.T) {
+			if tc.status == 409 {
+				e.fails(b, "POST", "/api/v1/clients", withAddress(tc.name, tc.body), 409, "no_portal_address")
+				return
+			}
+			e.create(b, withAddress(tc.name, tc.body))
+		})
+	}
+
+	c := e.create(b, address("Later"))
+	path := "/api/v1/clients/" + c.ID
+	for _, tc := range []struct {
+		name   string
+		body   map[string]any
+		status int
+	}{
+		{"turned on without an address", map[string]any{"portal_enabled": true}, 409},
+		{"turned on with a billing email", map[string]any{"portal_enabled": true, "billing_email": "books@later.ch"}, 200},
+		{"its address removed while on", map[string]any{"billing_email": nil}, 200},
+		{"another change while on", map[string]any{"note": "x"}, 200},
+	} {
+		t.Run("update "+tc.name, func(t *testing.T) {
+			if tc.status == 409 {
+				e.fails(b, "PATCH", path, tc.body, 409, "no_portal_address")
+				return
+			}
+			e.do(b, "PATCH", path, tc.body, tc.status, nil)
+		})
+	}
+	if got := e.client(b, c.ID); !got.PortalEnabled || got.BillingEmail != nil {
+		t.Fatalf("client = %+v", got)
+	}
+	if m.count() != 1 { // the turn-on with an address (a create sends no invitation)
+		t.Fatalf("mails = %d", m.count())
 	}
 }

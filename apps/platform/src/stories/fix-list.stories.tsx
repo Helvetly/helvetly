@@ -1,9 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, waitFor, within } from 'storybook/test'
+import { http, HttpResponse } from 'msw'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { IssueBlockersDialog } from '@/components/invoices/invoice-dialogs'
 import { ExportBlockersDialog } from '@/components/settings/vat-return'
+import type { Client } from '@/lib/clients'
 import type { IssueReason } from '@/lib/invoices'
+import { sampleClient } from '@/test/invoice-fixtures'
+
+import { sessionHandler } from './screen-fixtures'
 
 const meta = {
   title: 'Flows/Fix before continuing',
@@ -60,6 +65,27 @@ const many: IssueReason[] = [
   },
 ]
 
+/** The client the dialog's client row opens in place: its address is missing until saved. */
+let keller: Client
+const incomplete = () =>
+  sampleClient({
+    id: 'cli_2',
+    name: 'Keller Holzbau AG',
+    street: null,
+    street_number: null,
+    is_draft: true,
+    missing_fields: ['street', 'street_number'],
+  })
+const clientHandlers = [
+  sessionHandler(),
+  http.get('/api/v1/clients/tags', () => HttpResponse.json({ data: [] })),
+  http.get('/api/v1/clients/cli_2', () => HttpResponse.json({ data: keller })),
+  http.patch<never, Partial<Client>>('/api/v1/clients/cli_2', async ({ request }) => {
+    keller = { ...keller, ...(await request.json()), is_draft: false, missing_fields: [] }
+    return HttpResponse.json({ data: keller })
+  }),
+]
+
 const issueDialog = (reasons: IssueReason[]) => (
   <IssueBlockersDialog
     reasons={reasons}
@@ -109,13 +135,46 @@ export const ThreeIssues: Story = {
 }
 
 export const ManyIssues: Story = {
+  parameters: { msw: { handlers: clientHandlers } },
+  beforeEach: () => {
+    keller = incomplete()
+  },
   render: () => issueDialog(many),
   play: async () => {
     const { dialog, list } = await blockers(6)
     await expect(dialog.getByText('6 things to fix before issuing')).toBeVisible()
-    // Both client problems are fixed in the client: one row, one link.
-    await expect(list.getAllByRole('link', { name: /Complete the client/ })).toHaveLength(1)
+    // Both client problems are fixed in the client: one row, one action, which opens it in place.
+    await expect(list.getAllByRole('button', { name: /Complete the client/ })).toHaveLength(1)
     await expect(list.getByText('Add at least one line.')).toBeVisible()
+  },
+}
+
+/**
+ * The client's address is fixed without leaving: its form opens over the dialog on the first missing field, and
+ * saving returns to the dialog, ready to issue again.
+ */
+export const FixClientInPlace: Story = {
+  parameters: { msw: { handlers: clientHandlers } },
+  beforeEach: () => {
+    keller = incomplete()
+  },
+  render: () => issueDialog([many[4]!]),
+  play: async () => {
+    const { list } = await blockers(1)
+    await userEvent.click(list.getByRole('button', { name: /Complete the client/ }))
+    const form = await within(document.body).findByRole('dialog', {
+      name: 'Edit Keller Holzbau AG',
+    })
+    const street = within(form).getByRole('textbox', { name: 'Street' })
+    await waitFor(() => expect(street).toHaveFocus())
+    await userEvent.type(street, 'Holzweg')
+    await userEvent.type(within(form).getByRole('textbox', { name: 'Number' }), '4')
+    await userEvent.click(within(form).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(form).not.toBeInTheDocument())
+    await expect(keller.street).toBe('Holzweg')
+    await expect(
+      within(document.body).getByRole('dialog', { name: 'Not ready to issue yet' }),
+    ).toBeVisible()
   },
 }
 
