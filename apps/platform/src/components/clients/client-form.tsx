@@ -9,12 +9,12 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { phoneCountry } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
-import { DoorOpen, Lock, MapPin, Receipt, UserRound } from 'lucide-react'
+import { Building2, DoorOpen, Lock, MapPin, Receipt, UserRound } from 'lucide-react'
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { FormSection } from '@/components/form-section'
+import { FormChoiceCards, FormSection } from '@/components/form-section'
 import { useImportSubmit, type FormImport } from '@/components/import/form-import'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
@@ -247,15 +247,6 @@ export function ClientForm({
               : translate('onlyTheNameIsRequiredYouCanCompleteThe')}
           </p>
         </div>
-        <Segmented
-          label={translate('clientType')}
-          value={company ? 'company' : 'person'}
-          options={[
-            { value: 'company', label: translate('company') },
-            { value: 'person', label: translate('person') },
-          ]}
-          onChange={(type) => set('is_company', type === 'company')}
-        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -265,6 +256,32 @@ export function ClientForm({
           title={translate('basics')}
           description={translate('whoTheClientIsAndHowToReachThem')}
         >
+          {/* First and prominent: a person filled in as a company gets the wrong name, UID and VAT fields. */}
+          <div className="grid gap-1.5">
+            {/* The radio group carries the same name for screen readers. */}
+            <span aria-hidden className="text-body-sm font-medium">
+              {translate('clientType')}
+            </span>
+            <FormChoiceCards
+              label={translate('clientType')}
+              value={company ? 'company' : 'person'}
+              options={[
+                {
+                  value: 'company',
+                  title: translate('company'),
+                  text: translate('companyClientText'),
+                  icon: Building2,
+                },
+                {
+                  value: 'person',
+                  title: translate('person'),
+                  text: translate('personClientText'),
+                  icon: UserRound,
+                },
+              ]}
+              onChange={(type) => set('is_company', type === 'company')}
+            />
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               field="name"
