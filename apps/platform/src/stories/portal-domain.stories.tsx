@@ -65,9 +65,10 @@ export const WaitingForDns: Story = {
     await expect(canvas.getByText('TXT')).toBeVisible()
     await expect(canvas.getByText('Points your domain at your client portal.')).toBeVisible()
     await expect(canvas.getByText(/Proves the domain is yours/)).toBeVisible()
-    await expect(
-      canvas.getByText(/Finish the setup by .*, or the domain is released\./),
-    ).toBeVisible()
+    const alert = canvas.getByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'warning')
+    await expect(alert).toHaveTextContent('Waiting for your DNS records')
+    await expect(alert).toHaveTextContent(/Finish the setup by .*, or the domain is released\./)
     const write = fn(async (_text: string) => {})
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: write },
@@ -94,6 +95,8 @@ export const VerificationMissing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'warning')
+    await expect(alert).toHaveTextContent('Ownership record not found yet')
     await expect(alert).toHaveTextContent(
       'The TXT record that proves this domain is yours is missing.',
     )
@@ -107,9 +110,10 @@ export const Certificate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('Issuing certificate')).toBeVisible()
-    await expect(canvas.getByRole('alert')).toHaveTextContent(
-      'certificate for the secure connection is being issued',
-    )
+    const alert = canvas.getByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'warning')
+    await expect(alert).toHaveTextContent('Certificate is being issued')
+    await expect(alert).toHaveTextContent('certificate for the secure connection is being issued')
   },
 }
 
@@ -148,10 +152,17 @@ export const Problem: Story = {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('Problem')).toBeVisible()
     const alert = canvas.getByRole('alert')
-    await expect(alert).toHaveTextContent(
-      'We cannot see the CNAME record yet, or it points elsewhere.',
-    )
-    await expect(alert).toHaveTextContent('custom hostname does not CNAME to this zone.')
+    await expect(alert).toHaveAttribute('data-tone', 'danger')
+    await expect(alert).toHaveTextContent('DNS records not found yet')
+    // The provider's own words stay behind "Technical details".
+    const details = within(alert).getByText('Technical details')
+    await expect(
+      within(alert).getByText('custom hostname does not CNAME to this zone.'),
+    ).not.toBeVisible()
+    await userEvent.click(details)
+    await expect(
+      within(alert).getByText('custom hostname does not CNAME to this zone.'),
+    ).toBeVisible()
   },
 }
 
@@ -161,6 +172,7 @@ export const PlanLost: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'warning')
     await expect(alert).toHaveTextContent(
       /no longer includes your own domain.*as soon as you upgrade/,
     )
@@ -173,7 +185,9 @@ export const TakenOnCloudflare: Story = {
   beforeEach: () => resetPortalDomain(portalDomain(undefined, 'problem', 'taken')),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+    const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveAttribute('data-tone', 'danger')
+    await expect(alert).toHaveTextContent(
       'connected to another service on Cloudflare. Remove it there, then re-check.',
     )
   },
@@ -308,3 +322,27 @@ export const Disabled: Story = {
 }
 
 export const Dark: Story = { ...WaitingForDns, parameters: { ...meta.parameters, dark: true } }
+
+const phone = {
+  ...meta.parameters,
+  viewport: { options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } } },
+}
+
+export const WaitingForDnsPhone: Story = {
+  ...WaitingForDns,
+  parameters: phone,
+  globals: { viewport: { value: 'phone' } },
+}
+
+export const CertificateDark: Story = {
+  ...Certificate,
+  parameters: { ...meta.parameters, dark: true },
+}
+
+export const ProblemDark: Story = { ...Problem, parameters: { ...meta.parameters, dark: true } }
+
+export const ProblemPhone: Story = {
+  ...Problem,
+  parameters: phone,
+  globals: { viewport: { value: 'phone' } },
+}

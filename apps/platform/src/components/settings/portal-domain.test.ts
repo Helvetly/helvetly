@@ -1,7 +1,7 @@
 import { ApiError } from '@helvetly/ui/lib/http'
 import { describe, expect, it } from 'vitest'
 
-import { domainOf, proofOf } from './portal-domain'
+import { domainNotice, domainOf, proofOf } from './portal-domain'
 
 describe('domainOf', () => {
   it.each([
@@ -27,4 +27,21 @@ describe('proofOf', () => {
     ['another code', new ApiError(409, 'domain_exists', 'x', { verify }), undefined],
     ['not an API error', new Error('x'), undefined],
   ])('%s', (_, failure, want) => expect(proofOf(failure)).toEqual(want))
+})
+
+describe('domainNotice', () => {
+  it.each([
+    ['dns', null, 'warning', 'Waiting for your DNS records'],
+    ['dns', 'dns', 'warning', 'DNS records not found yet'],
+    ['dns', 'verification', 'warning', 'Ownership record not found yet'],
+    ['certificate', 'certificate', 'warning', 'Certificate is being issued'],
+    ['problem', 'dns', 'danger', 'DNS records not found yet'],
+    ['problem', 'blocked', 'danger', 'Domain blocked'],
+    ['problem', 'taken', 'danger', 'Domain connected elsewhere'],
+    ['problem', 'plan', 'warning', 'Your plan does not include your own domain'],
+  ] as const)('%s / %s is %s: %s', (stage, problem, tone, title) =>
+    expect(domainNotice({ stage, problem })).toMatchObject({ tone, title }),
+  )
+  it('has nothing to say about an active domain', () =>
+    expect(domainNotice({ stage: 'active', problem: null })).toBeNull())
 })
