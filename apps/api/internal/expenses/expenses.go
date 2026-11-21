@@ -297,7 +297,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 			d.Currency = e.Base.Currency
 		}
 		before, paid := categoriesOf(e), paymentOf(e)
-		oldCategory, oldPath := categoryName(e), store.ExpenseFolder(e.DocumentDate, s.today(sess.Workspace), categoryName(e))
+		old := e
 		rf, err := applyInput(&e, body, d, s.today(sess.Workspace))
 		if err != nil {
 			return err
@@ -311,7 +311,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := s.changed(r.Context(), q, sess, e); err != nil {
 			return err
 		}
-		return s.refile(r.Context(), q, sess, e, oldCategory, oldPath)
+		return s.refile(r.Context(), q, sess, old, e)
 	})
 	if err != nil {
 		return err
@@ -319,14 +319,14 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 	return s.get(w, r, sess)
 }
 
-// refile moves the expense's linked files that still sit in the folder its old category and date gave to the new
-// one, swapping the category tag; a file the user moved elsewhere stays.
-func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, e store.Expense, oldCategory string, oldPath []string) error {
-	newPath := store.ExpenseFolder(e.DocumentDate, s.today(sess.Workspace), categoryName(e))
-	if slices.Equal(oldPath, newPath) {
+// refile moves the expense's linked files that still sit in the folder Expenses/<category>/<year> its old category and
+// date gave to the new one, swapping the category tag; a file the user moved elsewhere stays.
+func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, old, e store.Expense) error {
+	oldYear, year := store.ExpenseYear(old.DocumentDate, s.today(sess.Workspace)), store.ExpenseYear(e.DocumentDate, s.today(sess.Workspace))
+	if equalRef(old.CategoryID, e.CategoryID) && oldYear == year {
 		return nil
 	}
-	from, err := q.ExistingFolderPath(ctx, sess.Workspace.ID, oldPath)
+	from, err := q.ExistingExpenseYearFolder(ctx, sess.Workspace.ID, old.CategoryID, oldYear)
 	if err != nil || from == "" {
 		return err
 	}
@@ -340,7 +340,7 @@ func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, e s
 			continue
 		}
 		if to == nil {
-			id, err := q.FolderPath(ctx, sess.Workspace.ID, sess.User.ID, newPath, s.now())
+			id, err := q.ExpenseYearFolder(ctx, sess.Workspace.ID, e.CategoryID, year, sess.User.ID, s.now())
 			if err != nil {
 				return err
 			}
@@ -353,14 +353,16 @@ func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, e s
 		if err := q.UpdateDocument(ctx, sess.Workspace.ID, d.ID, name, to, s.now()); err != nil {
 			return err
 		}
-		old := strings.ToLower(strings.Join(strings.Fields(oldCategory), " "))
-		kept := slices.DeleteFunc(slices.Clone(d.Tags), func(t string) bool { return old != "" && t == old })
+		oldTag := strings.ToLower(strings.Join(strings.Fields(categoryName(old)), " "))
+		kept := slices.DeleteFunc(slices.Clone(d.Tags), func(t string) bool { return oldTag != "" && t == oldTag })
 		if err := q.SetDocumentTags(ctx, sess.Workspace.ID, d.ID, expenseTags(kept, categoryName(e)), s.now()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
+func equalRef(a, b *string) bool { return a == nil && b == nil || a != nil && b != nil && *a == *b }
 
 func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	e, err := s.db.Expense(r.Context(), sess.Workspace.ID, r.PathValue("id"), s.today(sess.Workspace), false)
@@ -984,7 +986,10 @@ func (s *Service) updateCategory(w http.ResponseWriter, r *http.Request, sess st
 	err := s.db.Tx(r.Context(), func(q store.Q) error {
 		var err error
 		found, err = q.UpdateExpenseCategory(r.Context(), sess.Workspace.ID, r.PathValue("id"), in.Name, in.AccountCode, in.IsArchived, s.now())
-		return err
+		if err != nil || !found || in.Name == nil {
+			return err
+		}
+		return q.RenameCategoryFolder(r.Context(), sess.Workspace.ID, r.PathValue("id"), *in.Name, s.now())
 	})
 	if errors.Is(err, store.ErrCategoryTaken) {
 		return errCategoryTaken

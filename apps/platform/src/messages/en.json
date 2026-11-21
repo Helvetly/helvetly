@@ -4819,6 +4819,7 @@
   "auditApprovalGroupDeleted": "Approver group deleted",
   "auditApprovalPolicySaved": "Approval rules saved",
   "systemFolderTip": "Managed by Helvetly: can't be renamed, moved or deleted",
+  "uncategorisedFolder": "Uncategorised",
   "systemFolderError": "This folder is managed by Helvetly and can't be renamed, moved or deleted.",
   "duplicateQuote": "Duplicate",
   "quoteDuplicated": "Copy of {name} created as a draft.",

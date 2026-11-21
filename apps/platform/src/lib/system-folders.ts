@@ -10,8 +10,12 @@ type SystemLabelKey =
   | 'engagements'
   | 'signatures'
   | 'documents'
+  | 'uncategorisedFolder'
 
-// Kinds whose stored name is the English canonical one; "client" and "year" show their own name.
+// The stored name of the folder in Expenses for expenses without a category (store.UncategorisedFolder).
+const UNCATEGORISED = 'Uncategorised'
+
+// Kinds whose stored name is the English canonical one; "client", "expense_category" and "year" show their own name.
 const LABEL_KEYS: Partial<Record<SystemKind, SystemLabelKey>> = {
   clients: 'clients',
   expenses: 'expenses',
@@ -38,6 +42,8 @@ export function folderLabel(
   folder: Pick<Folder | FolderRef, 'name' | 'system_kind'>,
   t: Translate = translate,
 ) {
+  if (folder.system_kind === 'expense_category' && folder.name === UNCATEGORISED)
+    return t('uncategorisedFolder')
   const key = folder.system_kind ? LABEL_KEYS[folder.system_kind] : undefined
   return key ? t(key) : folder.name
 }
@@ -51,6 +57,7 @@ export function pathLabel(path: string, t: Translate = translate) {
   shown[0] = t(root)
   const record = root === 'clients' ? RECORD_KEYS[parts[2] ?? ''] : undefined
   if (record) shown[2] = t(record)
+  if (root === 'expenses' && parts[1] === UNCATEGORISED) shown[1] = t('uncategorisedFolder')
   return shown.join('/')
 }
 
@@ -61,6 +68,7 @@ const HIDEABLE = new Set<SystemKind>([
   'engagements',
   'signatures',
   'documents',
+  'expense_category',
   'year',
 ])
 

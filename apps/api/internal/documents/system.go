@@ -9,8 +9,9 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// System folders (store/queries_system_folders.go): Clients/<client>/<record type>/<year> and Expenses/<year>. Nobody
-// renames, moves or deletes them; typed ones are stored by their English name and answered in the asker's language.
+// System folders (store/queries_system_folders.go): Clients/<client>/<record type>/<year> and
+// Expenses/<category>/<year>. Nobody renames, moves or deletes them; typed ones are stored by their English name and
+// answered in the asker's language.
 
 var errSystemFolder = refuse(http.StatusConflict, "system_folder",
 	"Helvetly keeps this folder for your records, so it can't be renamed, moved or deleted.", nil)
@@ -18,11 +19,11 @@ var errSystemFolder = refuse(http.StatusConflict, "system_folder",
 // systemNames: the names of the typed system folders in the other languages (English is the stored name).
 var systemNames = map[string]map[string]string{
 	"de": {"clients": "Kunden", "expenses": "Ausgaben", "invoices": "Rechnungen", "quotes": "Offerten",
-		"engagements": "Aufträge", "signatures": "Unterschriften", "documents": "Dokumente"},
+		"engagements": "Aufträge", "signatures": "Unterschriften", "documents": "Dokumente", "uncategorised": "Ohne Kategorie"},
 	"fr": {"clients": "Clients", "expenses": "Dépenses", "invoices": "Factures", "quotes": "Devis",
-		"engagements": "Mandats", "signatures": "Signatures", "documents": "Documents"},
+		"engagements": "Mandats", "signatures": "Signatures", "documents": "Documents", "uncategorised": "Sans catégorie"},
 	"it": {"clients": "Clienti", "expenses": "Spese", "invoices": "Fatture", "quotes": "Preventivi",
-		"engagements": "Incarichi", "signatures": "Firme", "documents": "Documenti"},
+		"engagements": "Incarichi", "signatures": "Firme", "documents": "Documenti", "uncategorised": "Senza categoria"},
 }
 
 // language: the asker's language among en, de, fr and it: ?lang, else the first supported of Accept-Language.
@@ -40,12 +41,20 @@ func language(r *http.Request) string {
 	return "en"
 }
 
-// folderName: a folder's name as the asker reads it (a client's name and a year are never translated).
+// folderName: a folder's name as the asker reads it (a client's or category's name and a year are never translated;
+// the folder of expenses without a category is).
 func folderName(lang string, kind *string, name string) string {
 	if kind == nil {
 		return name
 	}
-	if t, ok := systemNames[lang][*kind]; ok {
+	key := *kind
+	if key == "expense_category" {
+		if name != store.UncategorisedFolder {
+			return name
+		}
+		key = "uncategorised"
+	}
+	if t, ok := systemNames[lang][key]; ok {
 		return t
 	}
 	return name
@@ -73,8 +82,9 @@ func localizeDocument(r *http.Request, d *store.Document) {
 }
 
 // BackfillSystemFolders files what came before the system folders: the missing top-level ones, the stored PDFs of
-// issued invoices and sent quotes (one document each, sharing the record's object) and the client files the app put
-// straight into Clients. Idempotent: each step only picks what is still missing, under the workspace's lock.
+// issued invoices and sent quotes (one document each, sharing the record's object), the client files the app put
+// straight into Clients and the expenses' files in the earlier Expenses/<year>[/<category>] folders, which then end.
+// Idempotent: each step only picks what is still missing, under the workspace's lock.
 func (s *Service) BackfillSystemFolders(ctx context.Context) error {
 	const batch = 200
 	for {
@@ -141,7 +151,57 @@ func (s *Service) BackfillSystemFolders(ctx context.Context) error {
 			}
 		}
 		if len(loose) < batch {
-			return nil
+			break
+		}
+	}
+	return s.backfillExpenseFolders(ctx, batch)
+}
+
+// backfillExpenseFolders moves the expenses' files out of the year folders straight in Expenses into
+// Expenses/<category>/<year>, then retires those year folders (plain from then on, trashed when nothing is left).
+func (s *Service) backfillExpenseFolders(ctx context.Context, batch int) error {
+	for {
+		files, err := s.db.LegacyExpenseFiles(ctx, batch)
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			err := s.db.Tx(ctx, func(q store.Q) error {
+				if err := q.LockAddress(ctx, "system-folders:"+f.WorkspaceID); err != nil {
+					return err
+				}
+				if still, err := q.InLegacyExpenseFolder(ctx, f.WorkspaceID, f.DocumentID); err != nil || !still {
+					return err // moved or trashed meanwhile: the person's choice stands
+				}
+				folder, err := q.ExpenseYearFolder(ctx, f.WorkspaceID, f.CategoryID, f.Year, "", s.now())
+				if err != nil {
+					return err
+				}
+				if err := q.LockContainer(ctx, f.WorkspaceID, &folder); err != nil {
+					return err
+				}
+				name, err := q.FreeFileName(ctx, f.WorkspaceID, &folder, f.Name)
+				if err != nil {
+					return err
+				}
+				return q.UpdateDocument(ctx, f.WorkspaceID, f.DocumentID, name, &folder, s.now())
+			})
+			if err != nil {
+				return err
+			}
+		}
+		if len(files) < batch {
+			break
+		}
+	}
+	for {
+		var n int
+		err := s.db.Tx(ctx, func(q store.Q) (err error) {
+			n, err = q.RetireLegacyExpenseFolders(ctx, batch, s.now())
+			return err
+		})
+		if err != nil || n < batch {
+			return err
 		}
 	}
 }

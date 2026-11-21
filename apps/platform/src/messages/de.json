@@ -4819,6 +4819,7 @@
   "auditApprovalGroupDeleted": "Freigabegruppe gelöscht",
   "auditApprovalPolicySaved": "Freigaberegeln gespeichert",
   "systemFolderTip": "Von Helvetly verwaltet: kann nicht umbenannt, verschoben oder gelöscht werden",
+  "uncategorisedFolder": "Ohne Kategorie",
   "systemFolderError": "Dieser Ordner wird von Helvetly verwaltet und kann nicht umbenannt, verschoben oder gelöscht werden.",
   "duplicateQuote": "Duplizieren",
   "quoteDuplicated": "Kopie von {name} als Entwurf erstellt.",

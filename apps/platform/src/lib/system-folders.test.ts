@@ -51,6 +51,18 @@ describe('folderLabel', () => {
     expect(folderLabel({ name: 'Travel' }, german)).toBe('Travel')
     expect(folderLabel({ name: 'Expenses', system_kind: 'expenses' }, german)).toBe('Ausgaben')
   })
+
+  it.each([
+    ['en', 'Uncategorised'],
+    ['de', 'Ohne Kategorie'],
+    ['fr', 'Sans catégorie'],
+    ['it', 'Senza categoria'],
+  ] as const)('shows the folder of expenses without a category in %s', (language, label) => {
+    const t = translator(language)
+    expect(folderLabel({ name: 'Uncategorised', system_kind: 'expense_category' }, t)).toBe(label)
+    expect(folderLabel({ name: 'Travel', system_kind: 'expense_category' }, t)).toBe('Travel')
+    expect(folderLabel({ name: 'Uncategorised', system_kind: null }, t)).toBe('Uncategorised')
+  })
 })
 
 describe('pathLabel', () => {
@@ -58,6 +70,8 @@ describe('pathLabel', () => {
   it('translates the root and the record type of a client path', () => {
     expect(pathLabel('Clients/Acme AG/Invoices/2025', t)).toBe('Kunden/Acme AG/Rechnungen/2025')
     expect(pathLabel('Clients/Invoices/Quotes', t)).toBe('Kunden/Invoices/Offerten')
+    expect(pathLabel('Expenses/Uncategorised/2025', t)).toBe('Ausgaben/Ohne Kategorie/2025')
+    expect(pathLabel('Expenses/Travel/2025', t)).toBe('Ausgaben/Travel/2025')
   })
   it('translates only the root of an expenses path', () => {
     expect(pathLabel('Expenses/2025/Travel', t)).toBe('Ausgaben/2025/Travel')
@@ -80,12 +94,25 @@ describe('withoutEmptySystem', () => {
     folder('bq', 'Quotes', 'quotes', 'b'),
     folder('mine', 'Notes', null, 'bq'),
     folder('e', 'Expenses', 'expenses'),
-    folder('ey', '2025', 'year', 'e'),
+    folder('et', 'Travel', 'expense_category', 'e'),
+    folder('ety', '2025', 'year', 'et', 2),
+    folder('eu', 'Uncategorised', 'expense_category', 'e'),
+    folder('euy', '2025', 'year', 'eu'),
   ]
   it('hides empty system sub-folders, keeping roots and what holds files or a made folder', () => {
-    expect(ids(withoutEmptySystem(tree))).toEqual(['c', 'a', 'ai', 'b', 'bq', 'mine', 'e'])
+    expect(ids(withoutEmptySystem(tree))).toEqual([
+      'c',
+      'a',
+      'ai',
+      'b',
+      'bq',
+      'mine',
+      'e',
+      'et',
+      'ety',
+    ])
   })
   it('keeps the open folder and its path', () => {
-    expect(ids(withoutEmptySystem(tree, new Set(['ey'])))).toContain('ey')
+    expect(ids(withoutEmptySystem(tree, new Set(['euy'])))).toContain('euy')
   })
 })
