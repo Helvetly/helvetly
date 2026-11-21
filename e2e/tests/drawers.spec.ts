@@ -172,9 +172,6 @@ test('a client opens and closes from the keyboard alone, and focus returns to it
     .toBe(true)
   await expect(trigger).toBeFocused()
   await page.keyboard.press('Enter')
-  const card = page.getByRole('dialog', { name })
-  await card.getByRole('button', { name: 'Open' }).focus()
-  await page.keyboard.press('Enter')
   const drawer = page.locator('[data-slot=sheet-content]')
   await expect(drawer).toHaveCount(1)
   await expect
