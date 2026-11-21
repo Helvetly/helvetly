@@ -6,6 +6,7 @@ import { useState, type KeyboardEvent } from 'react'
 
 import { Combobox, inputClass } from '@/components/clients/fields'
 import { errorMessage } from '@/lib/api'
+import { categoryGroup, categoryLabel } from '@/lib/expense-categories'
 import {
   canManageExpenses,
   useCreateExpenseCategory,
@@ -45,8 +46,9 @@ export function ExpenseCategoryField({
   const key = (category: ExpenseCategory) => (by === 'id' ? category.id : category.name)
   const options = active.map((category) => ({
     value: key(category),
-    label: category.name,
+    label: categoryLabel(category),
     hint: category.account_code,
+    group: categoryGroup(category.account_code),
   }))
   const suggested =
     by === 'name' &&

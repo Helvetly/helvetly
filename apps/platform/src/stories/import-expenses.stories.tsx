@@ -84,8 +84,24 @@ let current = batch([clean, wrongRate, repeated])
 const body = () => within(document.body)
 
 const startingCategories: ExpenseCategory[] = [
-  { id: 'exc_1', name: 'Travel', account_code: '6640', is_archived: false, expenses_count: 3 },
-  { id: 'exc_2', name: 'Telecom', account_code: '6510', is_archived: false, expenses_count: 1 },
+  {
+    id: 'exc_1',
+    name: 'Travel',
+    account_code: '6640',
+    preset: 'travel',
+    vat_treatment: 'standard',
+    is_archived: false,
+    expenses_count: 3,
+  },
+  {
+    id: 'exc_2',
+    name: 'Telecom',
+    account_code: '6510',
+    preset: null,
+    vat_treatment: null,
+    is_archived: false,
+    expenses_count: 1,
+  },
 ]
 let categories = startingCategories
 /** Every request the drawer and its record editor make besides the import's own. */
@@ -100,6 +116,8 @@ const drawerHandlers = [
       const created = {
         id: `exc_${categories.length + 1}`,
         ...input,
+        preset: null,
+        vat_treatment: null,
         is_archived: false,
         expenses_count: 0,
       }

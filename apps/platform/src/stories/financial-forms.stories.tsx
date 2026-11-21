@@ -4,6 +4,7 @@ import { delay, http, HttpResponse } from 'msw'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { ClientForm } from '@/components/clients/client-form'
+import { ExpenseCategoriesSheet } from '@/components/expenses/expense-categories-sheet'
 import { ExpenseForm } from '@/components/expenses/expense-form'
 import { ProductForm } from '@/components/products/product-form'
 import type { ClientInput } from '@/lib/clients'
@@ -390,6 +391,109 @@ export const ExpenseCreateCategory: Story = {
     )
     await userEvent.click(body.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(body.queryByRole('textbox', { name: 'Category name' })).toBeNull())
+  },
+}
+
+const catalogue = [
+  // In the API's order: account, then name.
+  ['exc_rent', 'Rent & premises', '6000', 'rent', 'exempt'],
+  ['exc_lodging', 'Lodging', '6640', 'lodging', 'lodging'],
+  ['exc_travel', 'Travel', '6640', 'travel', 'standard'],
+  ['exc_old', 'Old costs', '6700', null, null],
+].map(([id, name, account_code, preset, vat_treatment]) => ({
+  id,
+  name,
+  account_code,
+  preset,
+  vat_treatment,
+  is_archived: id === 'exc_old',
+  expenses_count: 0,
+}))
+
+/** A category suggests its usual VAT rate for lines still at the last suggestion; a rate someone typed stays. */
+export const ExpenseCategorySuggestsVAT: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/expense-categories', () => HttpResponse.json({ data: catalogue })),
+        ...baseHandlers,
+      ],
+    },
+  },
+  render: () => <ExpenseForm onClose={fn()} onSaved={savedExpense} />,
+  play: async () => {
+    const body = within(document.body)
+    const rate = await body.findByRole('combobox', { name: 'Line 1 VAT rate' })
+    await expect(rate).toHaveValue('8.1')
+    const pick = async (name: RegExp) => {
+      await userEvent.click(body.getByRole('button', { name: /^Category/ }))
+      await userEvent.click(await body.findByRole('option', { name }))
+    }
+    await expect(body.getByRole('button', { name: /^Category/ })).toBeEnabled()
+    await pick(/Lodging/)
+    await waitFor(() => expect(rate).toHaveValue('3.8'))
+    await pick(/Rent & premises/)
+    await waitFor(() => expect(rate).toHaveValue('0'))
+    await userEvent.clear(rate)
+    await userEvent.type(rate, '2.6')
+    await pick(/Travel/)
+    await expect(rate).toHaveValue('2.6')
+  },
+}
+
+/** The picker lists categories under their account headings and finds one by its account code. */
+export const ExpenseCategoryGroups: Story = {
+  parameters: ExpenseCategorySuggestsVAT.parameters,
+  render: () => <ExpenseForm onClose={fn()} onSaved={savedExpense} />,
+  play: async () => {
+    const body = within(document.body)
+    await userEvent.click(await body.findByRole('button', { name: /^Category/ }))
+    const travel = await body.findByRole('group', { name: 'Marketing & travel' })
+    await expect(travel.textContent).toMatch(/Lodging.*Travel/)
+    await expect(body.getByRole('group', { name: 'Premises & equipment' })).toBeVisible()
+    await expect(body.queryByRole('option', { name: /Old costs/ })).toBeNull()
+    await userEvent.keyboard('6000')
+    await expect(body.getByRole('option', { name: /Rent & premises/ })).toBeVisible()
+    await expect(body.queryByRole('option', { name: /Travel/ })).toBeNull()
+  },
+}
+
+let categoryPatches: unknown[] = []
+
+/** Owners and admins keep the categories in a drawer: account headings, archived ones last; only what changed is sent. */
+export const ExpenseCategoriesManage: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/expense-categories', () => HttpResponse.json({ data: catalogue })),
+        http.patch<{ id: string }, Record<string, unknown>>(
+          '/api/v1/expense-categories/:id',
+          async ({ params, request }) => {
+            const input = await request.json()
+            categoryPatches.push(input)
+            const category = catalogue.find((entry) => entry.id === params.id)
+            return HttpResponse.json({ data: { ...category, ...input } })
+          },
+        ),
+        ...baseHandlers,
+      ],
+    },
+  },
+  render: () => <ExpenseCategoriesSheet onClose={fn()} />,
+  play: async () => {
+    categoryPatches = []
+    const body = within(document.body)
+    const archived = await body.findByRole('heading', { name: 'Archived' })
+    await expect(archived.parentElement).toHaveTextContent('Old costs')
+    await expect(body.getByText(/Lodging rate 3\.8%/)).toBeVisible()
+    await userEvent.click(body.getAllByRole('button', { name: 'Edit' })[0] as HTMLElement)
+    const account = body.getByRole('textbox', { name: /Account code/ })
+    await userEvent.clear(account)
+    await userEvent.type(account, '6001{Enter}')
+    await waitFor(() => expect(categoryPatches).toEqual([{ account_code: '6001' }]))
+    await userEvent.click(body.getByRole('button', { name: 'Restore' }))
+    await waitFor(() => expect(categoryPatches).toHaveLength(2))
+    await expect(categoryPatches[1]).toEqual({ is_archived: false })
   },
 }
 

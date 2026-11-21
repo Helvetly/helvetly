@@ -33,6 +33,7 @@ import { loadProblemText } from '@/components/data/load-problem'
 import { ApprovalBadge } from '@/components/invoices/invoice-bits'
 import { RecordPageButton } from '@/components/record-link'
 import { useApproval } from '@/lib/approvals'
+import { categoryLabel } from '@/lib/expense-categories'
 import {
   expenseState,
   FOREIGN_VAT_HINT,
@@ -159,7 +160,7 @@ function Detail({
   const base = (value: string) => formatMoney(value, expense.base.currency)
   const method = PAYMENT_METHODS.find((entry) => entry.value === expense.payment_method)?.label
   const subtitle = [
-    expense.category?.name,
+    expense.category && categoryLabel(expense.category),
     expense.document_date && formatDay(expense.document_date),
   ]
     .filter(Boolean)
@@ -415,7 +416,7 @@ function Detail({
             value={
               expense.category ? (
                 <span>
-                  {expense.category.name}{' '}
+                  {categoryLabel(expense.category)}{' '}
                   <span className="text-muted-foreground tabular-nums">
                     {expense.category.account_code}
                   </span>

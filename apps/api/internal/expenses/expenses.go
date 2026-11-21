@@ -162,6 +162,7 @@ func (s *Service) respond(w http.ResponseWriter, r *http.Request, sess store.Ses
 	if e.DuplicateOf, err = s.db.DuplicateOf(r.Context(), sess.Workspace.ID, e); err != nil {
 		return err
 	}
+	localize(language(r), e.Category)
 	auth.WriteJSON(w, status, data(e))
 	return nil
 }
@@ -778,6 +779,10 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if err != nil {
 		return err
 	}
+	lang := language(r)
+	for i := range list {
+		localize(lang, list[i].Category)
+	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": list,
 		"meta": map[string]int{"page": page, "page_size": size, "total": total, "total_pages": (total + size - 1) / size}})
 	return nil
@@ -791,6 +796,10 @@ func (s *Service) summary(w http.ResponseWriter, r *http.Request, sess store.Ses
 	sum, err := s.db.ExpenseSummary(r.Context(), sess.Workspace.ID, d.Currency, s.today(sess.Workspace))
 	if err != nil {
 		return err
+	}
+	lang := language(r)
+	for i := range sum.ByCategory {
+		localize(lang, sum.ByCategory[i].Category)
 	}
 	auth.WriteJSON(w, http.StatusOK, data(sum))
 	return nil
@@ -821,8 +830,10 @@ func (s *Service) export(w http.ResponseWriter, r *http.Request, sess store.Sess
 		_ = out.Write(csvHeader)
 	}
 
+	lang := language(r)
 	err = s.db.EachExpense(r.Context(), sess.Workspace.ID, s.today(sess.Workspace), f, 0, 0, func(e store.Expense) error {
 		start()
+		localize(lang, e.Category)
 		code, category, paidBy, booked := "", "", "", ""
 		if e.Category != nil {
 			code, category = e.Category.AccountCode, e.Category.Name
@@ -882,6 +893,10 @@ func (s *Service) categories(w http.ResponseWriter, r *http.Request, sess store.
 	list, err := s.db.ExpenseCategories(r.Context(), sess.Workspace.ID, r.URL.Query().Get("include_archived") == "1")
 	if err != nil {
 		return err
+	}
+	lang := language(r)
+	for i := range list {
+		localize(lang, &list[i].CategoryRef)
 	}
 	auth.WriteJSON(w, http.StatusOK, data(list))
 	return nil
@@ -949,6 +964,7 @@ func (s *Service) createCategory(w http.ResponseWriter, r *http.Request, sess st
 	if err != nil {
 		return err
 	}
+	localize(language(r), &c.CategoryRef)
 	auth.WriteJSON(w, http.StatusCreated, data(c))
 	return nil
 }
@@ -986,6 +1002,7 @@ func (s *Service) updateCategory(w http.ResponseWriter, r *http.Request, sess st
 	if err != nil {
 		return err
 	}
+	localize(language(r), &c.CategoryRef)
 	auth.WriteJSON(w, http.StatusOK, data(c))
 	return nil
 }

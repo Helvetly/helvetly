@@ -30,9 +30,16 @@ export type MissingField =
   | 'receipt'
 type Person = { id: string; name: string }
 
-export type CategoryRef = { id: string; name: string; account_code: string }
+/** `preset`: the catalogue entry the category still is (shown in the user's language); null once someone renamed it. */
+export type CategoryRef = { id: string; name: string; account_code: string; preset: string | null }
 export type CategoryInput = { name: string; account_code: string }
-export type ExpenseCategory = CategoryRef & { is_archived: boolean; expenses_count: number }
+export type CategoryUpdate = Partial<CategoryInput> & { is_archived?: boolean }
+export type VatTreatment = 'standard' | 'reduced' | 'lodging' | 'exempt' | 'none'
+export type ExpenseCategory = CategoryRef & {
+  vat_treatment: VatTreatment | null
+  is_archived: boolean
+  expenses_count: number
+}
 
 export type ExpenseLine = {
   id: string
@@ -284,9 +291,21 @@ export const expensesApi = {
   receipts: (id: string) => request<{ data: Receipt[] }>(`${path(id)}/receipts`),
   deleteReceipt: (id: string, receiptId: string) =>
     request<void>(`${path(id)}/receipts/${encodeURIComponent(receiptId)}`, { method: 'DELETE' }),
-  categories: () => request<{ data: ExpenseCategory[] }>('/expense-categories'),
+  // Stored names (lang=en): an import record names its category by them; the platform translates presets itself.
+  categories: (archived = false) =>
+    request<{ data: ExpenseCategory[] }>(
+      `/expense-categories?lang=en${archived ? '&include_archived=1' : ''}`,
+    ),
   createCategory: (input: CategoryInput) =>
-    request<{ data: ExpenseCategory }>('/expense-categories', { method: 'POST', json: input }),
+    request<{ data: ExpenseCategory }>('/expense-categories?lang=en', {
+      method: 'POST',
+      json: input,
+    }),
+  updateCategory: (id: string, input: CategoryUpdate) =>
+    request<{ data: ExpenseCategory }>(`/expense-categories/${encodeURIComponent(id)}?lang=en`, {
+      method: 'PATCH',
+      json: input,
+    }),
 }
 
 // Downloads go through plain links so the browser sends the session cookie and saves the file.
@@ -343,6 +362,26 @@ export function useExpenseCategories() {
     queryKey: expenseKeys.categories,
     queryFn: async () => (await expensesApi.categories()).data,
     staleTime: 5 * 60_000,
+  })
+}
+
+export function useUpdateExpenseCategory() {
+  const queryClient = useQueryClient()
+  return useMutation<ExpenseCategory, ApiError, { id: string; input: CategoryUpdate }>({
+    mutationFn: async ({ id, input }) => (await expensesApi.updateCategory(id, input)).data,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: expenseKeys.categories })
+      // Expenses carry the category's name and account.
+      void queryClient.invalidateQueries({ queryKey: expenseKeys.all })
+    },
+  })
+}
+
+/** Every category, archived ones too: for managing them. */
+export function useAllExpenseCategories() {
+  return useQuery({
+    queryKey: [...expenseKeys.categories, 'all'],
+    queryFn: async () => (await expensesApi.categories(true)).data,
   })
 }
 
