@@ -13,7 +13,6 @@ import {
   ArrowDown,
   ArrowUp,
   CloudOff,
-  Copy,
   Download,
   ListFilter,
   PanelRightOpen,
@@ -726,18 +725,6 @@ function clientMenu(
           <Item onSelect={() => onCommand('edit', client)}>
             <Pencil />
             {translate('edit4')}
-          </Item>
-        )}
-        {client.email && (
-          <Item
-            onSelect={() =>
-              void navigator.clipboard
-                .writeText(client.email ?? '')
-                .then(() => toast.success(translate('emailCopied')))
-            }
-          >
-            <Copy />
-            {translate('copyEmail')}
           </Item>
         )}
         {can.canWrite && (
