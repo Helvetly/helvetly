@@ -322,12 +322,13 @@ describe('pricing page', () => {
         .getAllByRole('rowheader')
         .map((r) => r.getAttribute('aria-label')),
     ).toEqual(FEATURE_GROUPS.flatMap((g) => g.rows.map((r) => r.label)))
+    // An amount and its unit on one line; no cap is ∞ (read out as Unlimited), as on the cards.
     expect(cells(table, 'Clients and contacts')).toEqual([
-      '30per workspace',
-      '300per workspace',
-      'Unlimited',
+      '30 per workspace',
+      '300 per workspace',
+      '∞Unlimited per workspace',
     ])
-    expect(cells(table, 'Quotes')).toEqual(['5/ month', '100/ month', 'Unlimited'])
+    expect(cells(table, 'Quotes')).toEqual(['5 / month', '100 / month', '∞Unlimited / month'])
     expect(within(table).getByRole('rowheader', { name: 'Automated actions' }).textContent).toMatch(
       /Each automatic step counts once/,
     )

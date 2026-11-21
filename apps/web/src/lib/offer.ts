@@ -1,4 +1,5 @@
-import { defaultLocale } from '@helvetly/i18n'
+import { defaultLocale, type Locale } from '@helvetly/i18n'
+import { planFeatureLines } from '@helvetly/ui/lib/plan-features'
 // The offer on sale as the API publishes it (GET /api/v1/public/offers/current, publicOffer in
 // apps/api/internal/billing/offers_http.go). Pages render plans.ts at build time; once they run, they ask the API and
 // show prices only while it confirms the same values, so a visitor never sees a price the API would not charge.
@@ -181,4 +182,15 @@ export function useOffer(): Offer {
     void load()
   }, [load])
   return useMemo(() => ({ status, checking, retry }), [status, checking, retry])
+}
+
+/** What each plan includes, as the pricing cards list it: this offer's numbers in the plan lines the app shows too. */
+export function planLines(language: Locale) {
+  const { FEATURE_GROUPS, PLANS: named } = plansIn(language)
+  const rows = FEATURE_GROUPS.flatMap((group) => group.rows)
+  return planFeatureLines(
+    { ...projectPlans(), plans: named },
+    (id) => rows.filter((row) => row.plans[id]).map((row) => row.key),
+    language,
+  )
 }
