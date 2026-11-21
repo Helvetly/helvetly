@@ -4150,6 +4150,7 @@
   "keptYourEntries": "Kept what you entered: {fields}.",
   "nothingNewReadFromTheReceipt": "Nothing new could be read from this receipt. Your entries are unchanged.",
   "checkTheseFromTheReceipt": "Check from the receipt: {issues}",
+  "checkUnsureFromTheReceipt": "The AI was unsure, check: {fields}.",
   "heicCantBeRead": "HEIC photos can't be read automatically. Export the photo as JPEG, or enter the details yourself.",
   "receiptReadFailed": "The receipt could not be read: {reason} Your entries are unchanged.",
   "billedBy": "Billed by",

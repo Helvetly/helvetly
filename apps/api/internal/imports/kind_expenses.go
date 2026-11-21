@@ -273,3 +273,111 @@ func value(s *string) string {
 	}
 	return *s
 }
+
+// receiptPrompt and receiptSchema are receipt reading v2, for the expense form (POST /expenses/receipt-preview) and
+// the re-read of a draft's receipts (POST /expenses/{id}/read): one document, its full VAT breakdown at any number of
+// rates, the line items, the payment and a category of the workspace's list with the model's confidence. The import's
+// review table keeps the flat expensesKind record.
+const receiptPrompt = "Read the one receipt or supplier invoice the attached files show (several files are pages of the same " +
+	"document). Amounts are decimals with a dot and no currency symbol or thousands separator (\"108.10\"), never negative " +
+	"(a credit note has document.type credit_note). totals are the document's net, VAT and gross totals. vat_breakdown " +
+	"has one entry per VAT rate the document shows, with its net, VAT and gross; a document that shows no VAT has an " +
+	"empty vat_breakdown. A rate is the percentage shown (\"8.1\"), never an amount. items are the line items as printed, " +
+	"amount being the line's total; leave items empty when the document lists none. Dates are YYYY-MM-DD. currency is " +
+	"the ISO 4217 code printed; never convert amounts. supplier.country is the supplier's ISO 3166 alpha-2 code. " +
+	"payment.status is paid only when the document shows it was paid (a till receipt, \"paid\", a card slip), unpaid " +
+	"when it asks for payment, else unknown. reverse_charge is true only when the document says the recipient owes the " +
+	"VAT (reverse charge, Bezugsteuer). category.key is the key of the listed category the expense belongs to, with " +
+	"your confidence from 0 to 1 and a short reason; null when none fits. An item's category is a listed key or null. " +
+	"confidence rates how clearly each part could be read. Guess nothing: what the document does not carry is null."
+
+var (
+	receiptLevel  = map[string]any{"type": "string", "enum": []string{"high", "medium", "low"}}
+	receiptGroups = []string{"supplier", "document", "totals", "vat_breakdown", "items", "payment"}
+	receiptAmount = func(d string) map[string]any { return nullable("string", d+", e.g. 108.10") }
+	receiptSchema = record(map[string]any{
+		"supplier": record(map[string]any{
+			"name":       nullable("string", "Who was paid"),
+			"vat_number": nullable("string", "VAT or UID number, e.g. CHE-123.456.789 MWST"),
+			"country":    nullable("string", "ISO 3166 alpha-2 country code"),
+			"iban":       nullable("string", "IBAN to pay to, when printed"),
+		}),
+		"document": record(map[string]any{
+			"type":     map[string]any{"type": []string{"string", "null"}, "enum": []any{"receipt", "invoice", "credit_note", nil}},
+			"number":   nullable("string", "Receipt or invoice number"),
+			"date":     nullable("string", "Document date, YYYY-MM-DD"),
+			"due_date": nullable("string", "Payment due date, YYYY-MM-DD"),
+			"service_period": record(map[string]any{
+				"from": nullable("string", "First day of the service period, YYYY-MM-DD"),
+				"to":   nullable("string", "Last day of the service period, YYYY-MM-DD"),
+			}),
+		}),
+		"description": nullable("string", "What was bought, briefly"),
+		"currency":    nullable("string", "ISO 4217 currency code"),
+		"totals": record(map[string]any{
+			"net": receiptAmount("Total without VAT"), "vat": receiptAmount("Total VAT"), "gross": receiptAmount("Total to pay"),
+		}),
+		"vat_breakdown": map[string]any{"type": "array", "items": record(map[string]any{
+			"rate": nullable("string", "VAT rate in percent, e.g. 8.1"),
+			"net":  receiptAmount("Net at this rate"), "vat": receiptAmount("VAT at this rate"), "gross": receiptAmount("Gross at this rate"),
+		})},
+		"items": map[string]any{"type": "array", "items": record(map[string]any{
+			"description": nullable("string", "The item as printed"),
+			"quantity":    nullable("string", "Quantity, e.g. 2"),
+			"unit_price":  receiptAmount("Price of one"),
+			"amount":      receiptAmount("Line total"),
+			"vat_rate":    nullable("string", "The item's VAT rate in percent"),
+			"category":    nullable("string", "Key of a listed category"),
+		})},
+		"payment": record(map[string]any{
+			"status":  map[string]any{"type": "string", "enum": []string{"paid", "unpaid", "unknown"}},
+			"method":  map[string]any{"type": []string{"string", "null"}, "enum": []any{"card", "cash", "bank_transfer", "twint", "other", nil}},
+			"paid_on": nullable("string", "Payment date, YYYY-MM-DD"),
+		}),
+		"reverse_charge": map[string]any{"type": "boolean", "description": "true when the recipient owes the VAT"},
+		"category": record(map[string]any{
+			"key":        nullable("string", "Key of the listed category"),
+			"confidence": map[string]any{"type": "number", "description": "0 to 1"},
+			"reason":     nullable("string", "Why, in a few words"),
+		}),
+		"confidence": record(func() map[string]any {
+			m := map[string]any{}
+			for _, g := range receiptGroups {
+				m[g] = receiptLevel
+			}
+			return m
+		}()),
+	})
+)
+
+// receiptCategories lists the workspace's active categories for the prompt (key, name, account) and returns them for
+// resolving the answer. The key is the catalogue preset when the category has one, else its id.
+func receiptCategories(ctx context.Context, q store.Q, workspaceID string) ([]receiptCategory, string, error) {
+	if err := q.SeedExpenseCategories(ctx, workspaceID, func() string { return auth.NewID("exc") }, time.Now().UTC()); err != nil {
+		return nil, "", err
+	}
+	list, err := q.ExpenseCategories(ctx, workspaceID, false)
+	if err != nil {
+		return nil, "", err
+	}
+	out := make([]receiptCategory, len(list))
+	var b strings.Builder
+	b.WriteString("The categories (key | name | account):")
+	for i, c := range list {
+		key := c.ID
+		if c.Preset != nil {
+			key = *c.Preset
+		}
+		out[i] = receiptCategory{Key: key, ID: c.ID, Name: c.Name, AccountCode: c.AccountCode}
+		// one line each: a name never starts a new instruction
+		b.WriteString("\n- " + key + " | " + strings.Join(strings.Fields(c.Name), " ") + " | " + c.AccountCode)
+	}
+	return out, b.String(), nil
+}
+
+type receiptCategory struct {
+	Key         string `json:"key"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	AccountCode string `json:"account_code"`
+}

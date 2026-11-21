@@ -197,22 +197,36 @@ const session = (id: string) => ({
   csrf_token: 't',
 })
 const photo = (name = 'migros.jpg', type = 'image/jpeg') => new File(['x'], name, { type })
-const NONE = {
-  supplier_name: null,
-  supplier_vat_number: null,
-  supplier_country: null,
-  reference: null,
-  description: null,
-  document_date: null,
-  due_date: null,
-  currency: null,
-  amount: null,
-  vat_rate: null,
-  amount_2: null,
-  vat_rate_2: null,
-}
-const answer = (fields: Record<string, string | null>, issues: Record<string, string> = {}) =>
-  json({ data: { fields: { ...NONE, ...fields }, issues } })
+/** A v2 reading answer from the flat fields the tests speak in: amount and rate are one band of the breakdown. */
+const answer = (f: Record<string, string | null>, issues: Record<string, string> = {}) =>
+  json({
+    data: {
+      supplier: {
+        name: f.supplier_name ?? null,
+        vat_number: f.supplier_vat_number ?? null,
+        country: f.supplier_country ?? null,
+        iban: null,
+      },
+      document: {
+        type: null,
+        number: f.reference ?? null,
+        date: f.document_date ?? null,
+        due_date: f.due_date ?? null,
+      },
+      description: f.description ?? null,
+      currency: f.currency ?? null,
+      totals: { net: null, vat: null, gross: f.amount ?? null },
+      vat_breakdown: f.amount
+        ? [{ rate: f.vat_rate ?? null, net: null, vat: null, gross: f.amount }]
+        : [],
+      items: [],
+      payment: { status: 'unknown', method: null, paid_on: null },
+      reverse_charge: false,
+      category: null,
+      confidence: {},
+      issues,
+    },
+  })
 const isPreview = ([url]: Parameters<typeof globalThis.fetch>) =>
   String(url).endsWith('/expenses/receipt-preview')
 const recognizeButton = () => screen.getByRole('button', { name: 'Recognize receipt' })
