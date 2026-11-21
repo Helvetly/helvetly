@@ -99,6 +99,11 @@ func parseMoney(s string) (int64, bool) {
 	return int64(m), ok
 }
 
+func parseQuantity(s string) (int64, bool) {
+	n, ok := invoicecalc.ParseQuantity(s)
+	return int64(n), ok && n > 0 && n <= 1_000_000_000_000
+}
+
 func parsePercent(s string) (int64, bool) {
 	r, ok := invoicecalc.ParsePercent(s)
 	return int64(r), ok
@@ -119,10 +124,10 @@ var (
 	inputKeys = []string{"supplier_name", "supplier_vat_number", "supplier_country", "reference", "description", "category_id", "document_date",
 		"due_date", "currency", "amount_mode", "lines", "input_tax", "deductible_percent", "exchange_rate", "exchange_rate_date",
 		"exchange_rate_source", "payment_status", "paid_on", "payment_method", "paid_by_member_id", "reimbursed_on", "note",
-		"receipt_missing_reason", "reverse_charge", "input_tax_box"}
+		"receipt_missing_reason", "reverse_charge", "input_tax_box", "entry_mode"}
 	// What a booked expense still takes; a void one takes only its note.
 	bookedKeys = []string{"payment_status", "paid_on", "payment_method", "paid_by_member_id", "reimbursed_on", "note"}
-	lineKeys   = []string{"description", "amount", "vat_rate"}
+	lineKeys   = []string{"description", "amount", "vat_rate", "category_id", "quantity", "unit_price"}
 
 	paymentMethods = []string{"bank_transfer", "cash", "card", "twint", "other"}
 	rateSources    = []string{"estv_monthly", "estv_daily", "bank", "manual"}
@@ -132,6 +137,21 @@ var (
 type refs struct {
 	categoryID, memberID *string
 	category, member     bool // the key was present
+	lines                bool // the lines were given: check their categories
+}
+
+// categoriesOf: the categories the expense names, its own and its lines'.
+func categoriesOf(e store.Expense) []string {
+	var ids []string
+	if e.CategoryID != nil {
+		ids = append(ids, *e.CategoryID)
+	}
+	for _, l := range e.Lines {
+		if l.CategoryID != nil {
+			ids = append(ids, *l.CategoryID)
+		}
+	}
+	return ids
 }
 
 // applyInput sets the ExpenseInput fields present in body on e, then normalises what depends on what. It
@@ -237,6 +257,8 @@ func checkInput(e *store.Expense, body map[string]json.RawMessage, d store.Works
 			}
 		case "input_tax_box":
 			e.InputTaxBox = p.text(k, raw, 3, oneOf("400", "405"))
+		case "entry_mode":
+			e.EntryMode = p.required(k, raw, 8, oneOf("single", "itemised"), "Choose single or itemised.")
 		}
 	}
 	if raw, ok := body["lines"]; ok {
@@ -244,7 +266,14 @@ func checkInput(e *store.Expense, body map[string]json.RawMessage, d store.Works
 		if err != nil {
 			return r, nil, err
 		}
-		e.Lines = lines
+		e.Lines, r.lines = lines, true
+	}
+	if e.EntryMode == "single" {
+		for i, l := range e.Lines {
+			if l.CategoryID != nil {
+				p.fail(fmt.Sprintf("lines.%d.category_id", i), "Only an itemised expense gives a line its own category.")
+			}
+		}
 	}
 	normalise(p, e, body, percentGiven, inputTaxGiven, d, today)
 	if len(p.invalid) > 0 {
@@ -370,6 +399,24 @@ func parseLines(p *parser, raw json.RawMessage, d store.WorkspaceDefaults) ([]st
 				l.VATRate = invoicecalc.Percent(n)
 			}
 		}
+		if raw, ok := m["category_id"]; ok {
+			l.CategoryID = p.text(key("category_id"), raw, 100, nil)
+		}
+		if raw, ok := m["quantity"]; ok && !isNull(raw) {
+			if n, ok := p.decimal(key("quantity"), raw, parseQuantity, "Enter a quantity above 0 with at most three decimals."); ok {
+				q := invoicecalc.Quantity(n)
+				l.Quantity = &q
+			}
+		}
+		if raw, ok := m["unit_price"]; ok && !isNull(raw) {
+			if n, ok := p.decimal(key("unit_price"), raw, parseMoney, "Enter a price of 0 or more with at most two decimals."); ok {
+				if n > maxAmount {
+					p.fail(key("unit_price"), "Enter a price up to 100'000'000.00.")
+				}
+				price := invoicecalc.Money(n)
+				l.UnitPrice = &price
+			}
+		}
 		lines = append(lines, l)
 	}
 	return lines, nil
@@ -411,7 +458,7 @@ func ForeignVAT(country string) bool { return country != "CH" && country != "LI"
 
 // newDraft is an empty expense with the workspace's defaults.
 func newDraft(d store.WorkspaceDefaults, user store.User) store.Expense {
-	e := store.Expense{ID: auth.NewID("exp"), Status: "draft", Source: "manual", SupplierCountry: "CH", Currency: d.Currency, AmountMode: "gross",
+	e := store.Expense{ID: auth.NewID("exp"), Status: "draft", Source: "manual", SupplierCountry: "CH", Currency: d.Currency, AmountMode: "gross", EntryMode: "single",
 		InputTax: "none", ExchangeRate: invoicecalc.RateOne, PaymentStatus: "unpaid", Lines: []store.ExpenseLine{},
 		CreatedBy: &store.Person{ID: user.ID, Name: user.Name}}
 	if d.VATRegistered {

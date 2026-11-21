@@ -4831,5 +4831,17 @@
   "missingEmail": "E-Mail fehlt",
   "theClientHasNoEmailAddress": "Der Kunde hat keine E-Mail-Adresse.",
   "addTheClientsEmail": "E-Mail des Kunden hinzufügen",
-  "addAnEmailToLetThisClientSignIn": "Fügen Sie eine E-Mail hinzu, damit sich der Kunde im Portal anmelden kann."
+  "addAnEmailToLetThisClientSignIn": "Fügen Sie eine E-Mail hinzu, damit sich der Kunde im Portal anmelden kann.",
+  "oneAmount": "Ein Betrag",
+  "itemised": "Positionen",
+  "enterAs": "Erfassen als",
+  "addAnItem": "Position hinzufügen",
+  "expenseCategoryDefault": "Kategorie der Ausgabe",
+  "lineUnitPrice": "Zeile {value1} Stückpreis",
+  "lineCategory": "Zeile {value1} Kategorie",
+  "enterAQuantityAbove0": "Geben Sie eine Menge über 0 ein.",
+  "mergeItemsTitle": "Als einen Betrag erfassen?",
+  "mergeItemsBody": "Die Positionen werden zu einer Zeile pro MWST-Satz zusammengezählt. Ihre Beschreibungen, Mengen und Kategorien entfallen.",
+  "mergeItems": "Zusammenzählen",
+  "oneLinePerItem": "Eine Zeile pro Position. Eine Position mit eigener Kategorie wird auf deren Konto gebucht."
 }

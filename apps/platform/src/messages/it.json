@@ -4831,5 +4831,17 @@
   "missingEmail": "Email mancante",
   "theClientHasNoEmailAddress": "Il cliente non ha un indirizzo email.",
   "addTheClientsEmail": "Aggiungi l’email del cliente",
-  "addAnEmailToLetThisClientSignIn": "Aggiungi un’email perché il cliente possa accedere al portale."
+  "addAnEmailToLetThisClientSignIn": "Aggiungi un’email perché il cliente possa accedere al portale.",
+  "oneAmount": "Un importo",
+  "itemised": "Voci",
+  "enterAs": "Inserisci come",
+  "addAnItem": "Aggiungi una voce",
+  "expenseCategoryDefault": "Categoria della spesa",
+  "lineUnitPrice": "Prezzo unitario della riga {value1}",
+  "lineCategory": "Categoria della riga {value1}",
+  "enterAQuantityAbove0": "Inserisci una quantità maggiore di 0.",
+  "mergeItemsTitle": "Inserire come un unico importo?",
+  "mergeItemsBody": "Le voci vengono sommate in una riga per aliquota IVA. Descrizioni, quantità e categorie vengono eliminate.",
+  "mergeItems": "Somma",
+  "oneLinePerItem": "Una riga per voce. Una voce con una categoria propria viene registrata sul suo conto."
 }
