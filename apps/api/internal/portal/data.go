@@ -26,7 +26,12 @@ func (s *Service) today(sess store.PortalSession) string { return sess.Workspace
 
 func (s *Service) invoices(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
 	// Limit 0 returns every match: the list is never cut off by a page size.
-	list, _, err := s.db.Q.ListInvoices(r.Context(), sess.Workspace.ID, s.today(sess), store.InvoiceFilter{ClientID: sess.ClientID}, 0, 0)
+	today := s.today(sess)
+	list, _, err := s.db.Q.ListInvoices(r.Context(), sess.Workspace.ID, today, store.InvoiceFilter{ClientID: sess.ClientID}, 0, 0)
+	if err != nil {
+		return err
+	}
+	paid, err := s.db.PortalPaymentsByCurrency(r.Context(), sess.Workspace.ID, sess.ClientID, today)
 	if err != nil {
 		return err
 	}
@@ -43,14 +48,18 @@ func (s *Service) invoices(w http.ResponseWriter, r *http.Request, sess store.Po
 		AmountDue store.Money `json:"amount_due"`
 		// AmountPaid tells a void invoice that took payments (fully credited, then refunded) from one voided unpaid.
 		AmountPaid store.Money `json:"amount_paid"`
+		CurrentQR  bool        `json:"current_qr"`
+		HasPDF     bool        `json:"has_pdf"`
 	}
 	out := []item{}
 	for _, i := range list {
 		if i.Status != "draft" {
-			out = append(out, item{i.ID, i.Kind, i.Number, i.Status, i.IsOverdue, i.IssueDate, i.DueDate, i.Currency, i.Total, i.AmountDue, i.Paid})
+			currentQR := i.HasPDF && i.ArchivedQR && i.Status == "open" && i.AmountDue > 0 && i.AmountDue == i.PayableTotal
+			out = append(out, item{i.ID, i.Kind, i.Number, i.Status, i.IsOverdue, i.IssueDate, i.DueDate, i.Currency, i.Total, i.AmountDue, i.Paid,
+				currentQR, i.HasPDF})
 		}
 	}
-	auth.WriteJSON(w, http.StatusOK, data(out))
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": out, "paid_in": map[string]any{"year": today[:4], "totals": paid}})
 	return nil
 }
 

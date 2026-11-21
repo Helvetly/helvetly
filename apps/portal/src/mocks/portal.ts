@@ -67,6 +67,7 @@ export const portalInvoices: PortalInvoice[] = [
     due_date: day(-12),
     total: '860.00',
     amount_due: '860.00',
+    current_qr: true,
   }),
   invoice({
     id: 'inv_4',
@@ -85,6 +86,8 @@ export const portalInvoices: PortalInvoice[] = [
     total: '980.00',
   }),
 ]
+
+export const portalPaidIn = { year: String(year), totals: { CHF: '1500.00' } }
 
 const period = { starts_on: monthStart, ends_on: monthEnd }
 
@@ -312,7 +315,9 @@ export const portalHandlers = [
   ),
   http.delete(`${P}/session`, () => new HttpResponse(null, { status: 204 })),
   http.post(`${P}/auth/links`, () => new HttpResponse(null, { status: 202 })),
-  http.get(`${P}/invoices`, () => HttpResponse.json({ data: portalInvoices })),
+  http.get(`${P}/invoices`, () =>
+    HttpResponse.json({ data: portalInvoices, paid_in: portalPaidIn }),
+  ),
   http.get(`${P}/engagements`, () => HttpResponse.json({ data: portalEngagements })),
   http.get(`${P}/engagements/:id/entries`, () =>
     HttpResponse.json({ data: portalEngagementHistory }),

@@ -74,6 +74,29 @@ func (q Q) PortalSessionByToken(ctx context.Context, tokenHash string, now time.
 	return s, err
 }
 
+// PortalPaymentsByCurrency totals recorded payments in the current year, according to the workspace's calendar.
+func (q Q) PortalPaymentsByCurrency(ctx context.Context, workspaceID, clientID, today string) (map[string]Money, error) {
+	rows, err := q.db.Query(ctx, `SELECT i.currency, sum(p.amount)::bigint
+		FROM invoices i JOIN invoice_payments p ON p.invoice_id = i.id
+		WHERE i.workspace_id = $1 AND i.client_id = $2 AND i.status <> 'draft'
+			AND p.paid_on BETWEEN date_trunc('year', $3::date)::date AND $3::date
+		GROUP BY i.currency`, workspaceID, clientID, today)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	totals := map[string]Money{}
+	for rows.Next() {
+		var currency string
+		var amount Money
+		if err := rows.Scan(&currency, &amount); err != nil {
+			return nil, err
+		}
+		totals[currency] = amount
+	}
+	return totals, rows.Err()
+}
+
 func (q Q) TouchPortalSession(ctx context.Context, id string, now time.Time) error {
 	_, err := q.db.Exec(ctx, `UPDATE portal_sessions SET last_active_at = $2 WHERE id = $1 AND last_active_at < $2::timestamptz - interval '5 minutes'`, id, now)
 	return err

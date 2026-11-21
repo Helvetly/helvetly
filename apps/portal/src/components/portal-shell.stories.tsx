@@ -264,9 +264,9 @@ export const LongNamesPhoneDark: Story = {
 }
 
 export const InvoicesPhone: Story = {
-  ...onPhone(page(<PortalInvoices />), 'Pay with the Swiss QR bill in each PDF.'),
+  ...onPhone(page(<PortalInvoices />), 'Open the invoice PDF for payment details.'),
   play: async ({ canvasElement }) => {
-    await fitsThePhone(canvasElement, 'Pay with the Swiss QR bill in each PDF.')
+    await fitsThePhone(canvasElement, 'Open the invoice PDF for payment details.')
     // The number keeps one line next to its amount and PDF icon.
     const number = within(canvasElement).getByText(`${new Date().getFullYear()}-014`)
     await expect(number.getBoundingClientRect().height).toBeLessThan(24)

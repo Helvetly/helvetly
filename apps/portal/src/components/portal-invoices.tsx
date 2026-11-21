@@ -6,18 +6,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/component
 import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { FileText, QrCode, SearchX } from 'lucide-react'
+import { FileText, SearchX } from 'lucide-react'
 import { useState } from 'react'
 
 import { civilToday, dueText } from '@/lib/dates'
 import { translate } from '@/lib/i18n'
 import { isOpen, sumByCurrency } from '@/lib/invoices'
-import { listPortalInvoices, portalKeys, type PortalInvoice } from '@/lib/portal'
+import {
+  listPortalInvoices,
+  portalKeys,
+  type PortalInvoice,
+  type PortalInvoiceList,
+} from '@/lib/portal'
 
 import {
   cardClass,
   EmptyState,
   InvoiceStatus,
+  invoiceStatusLabel,
   PageHeader,
   PdfLink,
   RetryAlert,
@@ -45,16 +51,16 @@ const money = (sums: [string, string][]) =>
     ))
   )
 
-function Summary({ invoices, today }: { invoices: PortalInvoice[]; today: string }) {
+function Summary({ data: invoices, paid_in: paid }: PortalInvoiceList) {
   const open = invoices.filter(isOpen)
   const overdue = invoices.filter((i) => i.is_overdue)
-  const year = today.slice(0, 4)
-  const paid = invoices.filter((i) => i.status === 'paid' && i.issue_date.startsWith(year))
   const stats = [
     [translate('open'), money(sumByCurrency(open, (i) => i.amount_due)), false],
     [translate('overdue'), money(sumByCurrency(overdue, (i) => i.amount_due)), overdue.length > 0],
-    [translate('paidIn', { year: year }), money(sumByCurrency(paid, (i) => i.total)), false],
   ] as const
+  const paidStat =
+    paid &&
+    ([translate('paidIn', { year: paid.year }), money(Object.entries(paid.totals)), false] as const)
   return (
     // Phones: Open and Overdue side by side, Paid on its own row below.
     <dl
@@ -63,7 +69,7 @@ function Summary({ invoices, today }: { invoices: PortalInvoice[]; today: string
         'grid grid-cols-2 sm:grid-cols-3 [&>*:nth-child(2)]:border-l [&>*:nth-child(3)]:max-sm:col-span-2 [&>*:nth-child(3)]:max-sm:border-t sm:[&>*:nth-child(3)]:border-l',
       )}
     >
-      {stats.map(([label, value, alert]) => (
+      {(paidStat ? [...stats, paidStat] : stats).map(([label, value, alert]) => (
         <div key={label} className="grid min-w-0 content-start gap-1 px-4 py-4 sm:px-6 sm:py-5">
           <dt className="text-body-sm text-muted-foreground">{label}</dt>
           <dd
@@ -94,9 +100,7 @@ function InvoiceRow({ invoice, today }: { invoice: PortalInvoice; today: string 
           ) : (
             <>
               {/* Below sm the badge is hidden: "Paid · 2 Jan 2026" instead of "Issued 2 Jan 2026". */}
-              <span className="sm:hidden">
-                <span className="capitalize">{invoice.status}</span> ·{' '}
-              </span>
+              <span className="sm:hidden">{invoiceStatusLabel(invoice)} · </span>
               <span className="max-sm:hidden">{translate('issued')}</span>
               {formatDate(invoice.issue_date)}
             </>
@@ -118,7 +122,7 @@ function InvoiceRow({ invoice, today }: { invoice: PortalInvoice; today: string 
           </span>
         )}
       </span>
-      <PdfLink invoice={invoice} />
+      {invoice.has_pdf !== false && <PdfLink invoice={invoice} />}
     </li>
   )
 }
@@ -136,7 +140,8 @@ export function PortalInvoices() {
           <RetryAlert what={translate('yourInvoices')} onRetry={() => void query.refetch()} />
         </div>
       )
-    if (query.data.length === 0)
+    const invoices = query.data.data
+    if (invoices.length === 0)
       return (
         <div className={cardClass}>
           <EmptyState icon={FileText} title={translate('noInvoicesYet')}>
@@ -144,10 +149,10 @@ export function PortalInvoices() {
           </EmptyState>
         </div>
       )
-    const shown = query.data.filter(FILTERS[filter].test)
+    const shown = invoices.filter(FILTERS[filter].test)
     return (
       <>
-        <Summary invoices={query.data} today={today} />
+        <Summary {...query.data} />
         <Tabs
           value={filter}
           onValueChange={(value) => isFilter(value) && setFilter(value)}
@@ -161,7 +166,7 @@ export function PortalInvoices() {
               <TabsTrigger key={key} value={key} className="px-3">
                 {label}
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  {query.data.filter(test).length}
+                  {invoices.filter(test).length}
                 </span>
               </TabsTrigger>
             ))}
@@ -183,8 +188,8 @@ export function PortalInvoices() {
                 ))}
               </ul>
             )}
-            <Callout tone="neutral" icon={QrCode} className="bg-transparent">
-              {translate('payWithTheSwissQRBillInEachPDF')}
+            <Callout tone="neutral" icon={FileText} className="bg-transparent">
+              {translate('paymentDetailsInInvoicePdf')}
             </Callout>
           </TabsContent>
         </Tabs>
