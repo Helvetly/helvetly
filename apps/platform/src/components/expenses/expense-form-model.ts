@@ -1,6 +1,7 @@
 // The expense form's values (as typed), their checks and the API input they become.
 import {
   isForeignVat,
+  type EntryMode,
   type Expense,
   type ExpenseInput,
   type InputTax,
@@ -8,9 +9,24 @@ import {
 } from '@/lib/expenses'
 import { withHabits, type Habits } from '@/lib/habits'
 import { translate } from '@/lib/i18n'
-import { parseDecimalInput, PAYMENT_METHODS, type PaymentMethod } from '@/lib/invoices'
+import {
+  fromCents,
+  parseDecimalInput,
+  PAYMENT_METHODS,
+  toCents,
+  type PaymentMethod,
+} from '@/lib/invoices'
 
-export type LineValues = { key: string; description: string; amount: string; vat_rate: string }
+export type LineValues = {
+  key: string
+  description: string
+  amount: string
+  vat_rate: string
+  /** Itemised only: '' is the expense's own category. */
+  category_id: string
+  quantity: string
+  unit_price: string
+}
 
 export type FormValues = {
   supplier_name: string
@@ -23,6 +39,7 @@ export type FormValues = {
   due_date: string
   currency: string
   amount_mode: 'gross' | 'net'
+  entry_mode: EntryMode
   lines: LineValues[]
   input_tax: InputTax
   deductible_percent: string
@@ -51,6 +68,9 @@ export const newLine = (vatRate: string): LineValues => ({
   description: '',
   amount: '',
   vat_rate: vatRate,
+  category_id: '',
+  quantity: '',
+  unit_price: '',
 })
 
 /**
@@ -77,6 +97,7 @@ export function emptyValues(currency: string, vatRate: string, registered: boole
     due_date: '',
     currency,
     amount_mode: 'gross',
+    entry_mode: 'single',
     lines: [newLine(registered ? vatRate : '0')],
     input_tax: registered ? 'full' : 'none',
     deductible_percent: registered ? '100' : '0',
@@ -107,11 +128,15 @@ export function valuesFromExpense(expense: Expense): FormValues {
     due_date: expense.due_date ?? '',
     currency: expense.currency,
     amount_mode: expense.amount_mode,
+    entry_mode: expense.entry_mode,
     lines: expense.lines.length
       ? expense.lines.map((line) => ({
           ...newLine(line.vat_rate),
           description: line.description ?? '',
           amount: line.amount,
+          category_id: line.category?.id ?? '',
+          quantity: line.quantity ?? '',
+          unit_price: line.unit_price ?? '',
         }))
       : [newLine('0')],
     input_tax: expense.input_tax,
@@ -153,7 +178,9 @@ const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value)
 
 /** The lines someone filled in (an empty last row is not a line). */
 const filledLines = (values: FormValues) =>
-  values.lines.filter((line) => line.amount.trim() || line.description.trim())
+  values.lines.filter((line) =>
+    [line.amount, line.description, line.quantity, line.unit_price].some((text) => text.trim()),
+  )
 
 /**
  * Errors the person can fix before saving. `booking` also requires what booking needs; dates are
@@ -169,6 +196,11 @@ export function validate(values: FormValues, today: string, booking: boolean): F
     const rate = parseDecimalInput(line.vat_rate, 2)
     if (rate === null || Number(rate) < 0 || Number(rate) > 100)
       errors[`lines.${index}.vat_rate`] = translate('enterARateFrom0To100')
+    if (values.entry_mode !== 'itemised') return
+    if (line.quantity.trim() && !(Number(parseDecimalInput(line.quantity, 3) ?? 0) > 0))
+      errors[`lines.${index}.quantity`] = translate('enterAQuantityAbove0')
+    if (line.unit_price.trim() && parseDecimalInput(line.unit_price, 2) === null)
+      errors[`lines.${index}.unit_price`] = translate('enterAnAmountSuchAs4990')
   })
   if (values.input_tax === 'partial') {
     const share = parseDecimalInput(values.deductible_percent, 2)
@@ -235,10 +267,18 @@ export function toInput(
     due_date: values.due_date || null,
     currency: values.currency,
     amount_mode: values.amount_mode,
+    entry_mode: values.entry_mode,
     lines: filledLines(values).map((line) => ({
       description: blank(line.description),
       amount: parseDecimalInput(line.amount, 2, true) ?? '0.00',
       vat_rate: parseDecimalInput(line.vat_rate, 2) ?? '0',
+      ...(values.entry_mode === 'itemised'
+        ? {
+            category_id: line.category_id || null,
+            quantity: line.quantity.trim() ? parseDecimalInput(line.quantity, 3) : null,
+            unit_price: line.unit_price.trim() ? parseDecimalInput(line.unit_price, 2, true) : null,
+          }
+        : {}),
     })),
     input_tax: values.input_tax,
     ...(values.input_tax === 'partial'
@@ -252,6 +292,67 @@ export function toInput(
     ...payment,
     note: blank(values.note),
     receipt_missing_reason: blank(values.receipt_missing_reason),
+  }
+}
+
+/** Quantity × unit price as an amount, rounded half up to cents; null while either is not a number yet. */
+export function itemAmount(quantity: string, unitPrice: string): string | null {
+  const q = parseDecimalInput(quantity, 3)
+  const price = parseDecimalInput(unitPrice, 2, true)
+  if (q === null || price === null || q.startsWith('-') || price.startsWith('-')) return null
+  const [whole = '0', fraction = ''] = q.split('.')
+  const thousandths = BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, '0'))
+  return fromCents((thousandths * toCents(price) + 500n) / 1000n)
+}
+
+/** One line per VAT rate, in the order the rates first appear: what switching items back to one amount makes. */
+export function mergedByRate(lines: LineValues[]): LineValues[] {
+  const byRate = new Map<string, LineValues[]>()
+  for (const line of lines) {
+    if (!line.amount.trim() && !line.description.trim()) continue
+    const rate = parseDecimalInput(line.vat_rate, 2) ?? line.vat_rate
+    byRate.set(rate, [...(byRate.get(rate) ?? []), line])
+  }
+  const merged = [...byRate.values()].map((group) => {
+    const [first] = group as [LineValues, ...LineValues[]]
+    const amount =
+      group.length === 1
+        ? first.amount
+        : fromCents(
+            group.reduce(
+              (sum, line) => sum + toCents(parseDecimalInput(line.amount, 2, true) ?? '0'),
+              0n,
+            ),
+          )
+    return {
+      ...newLine(first.vat_rate),
+      description: group.length === 1 ? first.description : '',
+      amount,
+    }
+  })
+  return merged.length ? merged : [lines[0] ?? newLine('0')]
+}
+
+/** Whether merging into one amount per rate drops what the person entered: descriptions, categories, quantities. */
+export function mergeLoses(lines: LineValues[]): boolean {
+  const merged = mergedByRate(lines)
+  const kept = new Set(merged.map((line) => line.description.trim()).filter(Boolean))
+  return lines.some(
+    (line) =>
+      line.category_id !== '' ||
+      line.quantity.trim() !== '' ||
+      line.unit_price.trim() !== '' ||
+      (line.description.trim() !== '' && !kept.has(line.description.trim())),
+  )
+}
+
+/** The values in the other entry mode: items keep their lines; one amount merges them per VAT rate. */
+export function withEntryMode(values: FormValues, mode: EntryMode): FormValues {
+  if (mode === values.entry_mode) return values
+  return {
+    ...values,
+    entry_mode: mode,
+    lines: mode === 'itemised' ? values.lines : mergedByRate(values.lines),
   }
 }
 

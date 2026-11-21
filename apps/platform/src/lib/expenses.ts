@@ -19,6 +19,8 @@ import { MAX_FILE_BYTES, uploadInPacks } from '@/lib/upload-packs'
 
 export type ExpenseStatus = 'draft' | 'booked' | 'void'
 export type AmountMode = 'gross' | 'net'
+/** single: one amount per VAT rate; itemised: one line per item, each with an optional category of its own. */
+export type EntryMode = 'single' | 'itemised'
 export type InputTax = 'full' | 'partial' | 'none'
 export type RateSource = 'estv_monthly' | 'estv_daily' | 'bank' | 'manual'
 export type MissingField =
@@ -47,6 +49,11 @@ export type ExpenseLine = {
   description: string | null
   amount: Decimal
   vat_rate: Decimal
+  /** The item's own category (its account takes the item's share in the books); null: the expense's. */
+  category: CategoryRef | null
+  /** Shown only: amount is the figure. */
+  quantity: Decimal | null
+  unit_price: Decimal | null
 }
 
 export type Expense = {
@@ -67,6 +74,7 @@ export type Expense = {
   due_date: string | null
   currency: string
   amount_mode: AmountMode
+  entry_mode: EntryMode
   lines: ExpenseLine[]
   net_total: Decimal
   vat_total: Decimal
@@ -124,7 +132,15 @@ export type ExpenseInput = {
   due_date: string | null
   currency: string
   amount_mode: AmountMode
-  lines: { description: string | null; amount: Decimal; vat_rate: Decimal }[]
+  entry_mode: EntryMode
+  lines: {
+    description: string | null
+    amount: Decimal
+    vat_rate: Decimal
+    category_id?: string | null
+    quantity?: Decimal | null
+    unit_price?: Decimal | null
+  }[]
   input_tax: InputTax
   deductible_percent: Decimal
   exchange_rate: Decimal

@@ -17,9 +17,7 @@ import {
   Lock,
   Paperclip,
   Percent,
-  Plus,
   StickyNote,
-  Trash2,
 } from 'lucide-react'
 import { useEffect, useEffectEvent, useRef, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
@@ -35,7 +33,6 @@ import {
 import { ExpenseCategoryField } from '@/components/expenses/expense-category-field'
 import { FormSection } from '@/components/form-section'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
-import { AmountInput } from '@/components/shared/amount-input'
 import { PercentInput } from '@/components/shared/percent-input'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import { TextareaBox } from '@/components/textarea-box'
@@ -60,21 +57,15 @@ import {
 import { preferred, useHabits } from '@/lib/habits'
 import { usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
-import {
-  formatMoney,
-  PAYMENT_METHODS,
-  today as workspaceToday,
-  useInvoiceSettings,
-  VAT_RATES,
-} from '@/lib/invoices'
+import { PAYMENT_METHODS, today as workspaceToday, useInvoiceSettings } from '@/lib/invoices'
 import { useSession } from '@/lib/queries'
 
 import { DuplicateWarning } from './duplicate-warning'
+import { ExpenseLines, ExpenseTotals } from './expense-amounts'
 import {
   EXPENSE_HABITS,
   newValues,
   firstError,
-  newLine,
   NOTE_MAX,
   serverFieldErrors,
   toInput,
@@ -101,7 +92,6 @@ function FormField({
   return <SharedField id={fieldId(field)} {...props} />
 }
 
-const RATE_CHOICES = [...VAT_RATES, '0']
 const NO_FILES: File[] = []
 
 const recognizedLabel = (field: string) =>
@@ -287,6 +277,13 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       setErrors((current) =>
         Object.fromEntries(Object.entries(current).filter(([key]) => key !== field)),
       )
+  }
+  const setAmounts = (change: Partial<Pick<FormValues, 'lines' | 'entry_mode'>>) => {
+    touched.current.add('lines')
+    setValues((current) => ({ ...current, ...change }))
+    setErrors((current) =>
+      Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith('lines'))),
+    )
   }
   const setLine = (index: number, change: Partial<FormValues['lines'][number]>) => {
     touched.current.add('lines')
@@ -810,95 +807,14 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 />
               }
             >
-              <div className="grid gap-2">
-                <div className="grid grid-cols-[minmax(0,1fr)_136px_92px_32px] gap-2 text-[13px] font-medium max-sm:grid-cols-[minmax(0,1fr)_120px_84px_32px]">
-                  <span>{translate('item')}</span>
-                  <span>
-                    {translate('amount')}
-                    <span aria-hidden className="ml-0.5 text-destructive">
-                      *
-                    </span>
-                  </span>
-                  <span>{translate('vat2')}</span>
-                  <span />
-                </div>
-                {values.lines.map((line, index) => (
-                  <div key={line.key} className="grid gap-1">
-                    <div className="grid grid-cols-[minmax(0,1fr)_136px_92px_32px] items-center gap-2 max-sm:grid-cols-[minmax(0,1fr)_120px_84px_32px]">
-                      <input
-                        aria-label={translate('lineDescription', { value1: index + 1 })}
-                        value={line.description}
-                        onChange={(event) => setLine(index, { description: event.target.value })}
-                        placeholder={
-                          index === 0 ? translate('optionalEGHotel') : translate('eGBreakfast')
-                        }
-                        className={inputClass}
-                      />
-                      <AmountInput
-                        {...describe(`lines.${index}.amount`)}
-                        aria-label={translate('lineAmount', { value1: index + 1 })}
-                        currency={values.currency}
-                        value={line.amount}
-                        onValueChange={(amount) => setLine(index, { amount })}
-                        placeholder="0.00"
-                      />
-                      <PercentInput
-                        {...describe(`lines.${index}.vat_rate`)}
-                        aria-label={translate('lineVATRate', { value1: index + 1 })}
-                        list="expense-vat-rates"
-                        value={line.vat_rate}
-                        onValueChange={(value) => setLine(index, { vat_rate: value })}
-                        placeholder="8.1"
-                        inputClassName={cn(inputClass, 'text-right tabular-nums')}
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive-ghost"
-                        size="icon-sm"
-                        aria-label={translate('removeLine', { value1: index + 1 })}
-                        disabled={values.lines.length === 1}
-                        className="cursor-pointer"
-                        onClick={() =>
-                          set(
-                            'lines',
-                            values.lines.filter((_, i) => i !== index),
-                          )
-                        }
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                    {(errors[`lines.${index}.amount`] ?? errors[`lines.${index}.vat_rate`]) && (
-                      <p
-                        id={`${fieldId(`lines.${index}.amount`)}-error`}
-                        className="text-xs text-destructive"
-                      >
-                        {errors[`lines.${index}.amount`] ?? errors[`lines.${index}.vat_rate`]}
-                      </p>
-                    )}
-                  </div>
-                ))}
-                <datalist id="expense-vat-rates">
-                  {RATE_CHOICES.map((rate) => (
-                    <option key={rate} value={rate}>
-                      {rate} %
-                    </option>
-                  ))}
-                </datalist>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={values.lines.length >= 20}
-                  className="cursor-pointer justify-self-start text-muted-foreground"
-                  onClick={() =>
-                    set('lines', [...values.lines, newLine(registered ? defaultRate : '0')])
-                  }
-                >
-                  <Plus />
-                  {translate('addALineForAnotherVATRate')}
-                </Button>
-              </div>
+              <ExpenseLines
+                values={values}
+                errors={errors}
+                newRate={registered ? defaultRate : '0'}
+                describe={describe}
+                onValues={setAmounts}
+                onLine={setLine}
+              />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField field="currency" label={translate('currency')}>
@@ -966,7 +882,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                 )}
               </div>
 
-              <Totals expense={totals} foreign={foreign} loading={preview.isFetching} />
+              <ExpenseTotals expense={totals} foreign={foreign} loading={preview.isFetching} />
             </FormSection>
 
             <FormSection
@@ -1107,67 +1023,5 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
         {body}
       </SheetContent>
     </Sheet>
-  )
-}
-
-/** Net, VAT, gross and the reclaimable part, as the server computed them. */
-function Totals({
-  expense,
-  foreign,
-  loading,
-}: {
-  expense: Expense | undefined
-  foreign: boolean
-  loading: boolean
-}) {
-  if (!expense) return null
-  const rows = [
-    { label: translate('net2'), value: formatMoney(expense.net_total, expense.currency) },
-    ...expense.vat_breakdown
-      .filter((group) => group.rate !== '0')
-      .map((group) => ({
-        label: translate('vatOn', {
-          rate: group.rate,
-          value2: formatMoney(group.taxable_amount, expense.currency),
-        }),
-        value: formatMoney(group.vat_amount, expense.currency),
-      })),
-  ]
-  return (
-    <div
-      aria-live="polite"
-      className={cn(
-        'grid gap-1.5 rounded-lg px-4 py-3 text-[13.5px] ring-1 ring-border transition-opacity',
-        loading && 'opacity-60',
-      )}
-    >
-      {rows.map((row) => (
-        <div key={row.label} className="flex justify-between gap-4 text-muted-foreground">
-          <span>{row.label}</span>
-          <span className="tabular-nums">{row.value}</span>
-        </div>
-      ))}
-      <div className="flex justify-between gap-4 border-t border-border/70 pt-1.5 text-[15px] font-medium">
-        <span>{translate('total')}</span>
-        <span className="tabular-nums">{formatMoney(expense.total, expense.currency)}</span>
-      </div>
-      {foreign && (
-        <div className="flex justify-between gap-4 text-muted-foreground">
-          <span>
-            {translate('in2')}
-            {expense.base.currency}
-          </span>
-          <span className="tabular-nums">
-            {formatMoney(expense.base.total, expense.base.currency)}
-          </span>
-        </div>
-      )}
-      <div className="flex justify-between gap-4 text-success">
-        <span>{translate('reclaimableInputTax2')}</span>
-        <span className="tabular-nums">
-          {formatMoney(expense.base.deductible_vat, expense.base.currency)}
-        </span>
-      </div>
-    </div>
   )
 }

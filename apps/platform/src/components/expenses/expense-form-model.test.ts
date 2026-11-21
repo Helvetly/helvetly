@@ -1,11 +1,15 @@
 import {
   emptyValues,
   firstError,
+  itemAmount,
+  mergedByRate,
+  mergeLoses,
   newLine,
   serverFieldErrors,
   toInput,
   validate,
   withCategoryRate,
+  withEntryMode,
   withSupplierCountry,
   type FormValues,
 } from './expense-form-model'
@@ -175,4 +179,94 @@ describe('withCategoryRate', () => {
     const values = filled({ lines: linesAt(...rates) })
     expect(withCategoryRate(values, from, to).lines.map((line) => line.vat_rate)).toEqual(want)
   })
+})
+const item = (
+  amount: string,
+  vat_rate: string,
+  change: Partial<FormValues['lines'][number]> = {},
+) => ({
+  ...newLine(vat_rate),
+  amount,
+  ...change,
+})
+
+test('items send their category, quantity and unit price; one amount sends none of them', () => {
+  const values = filled({
+    entry_mode: 'itemised',
+    lines: [
+      item('108.10', '8.1', { category_id: 'exc_it', quantity: '2', unit_price: '54.05' }),
+      item('20', '0'),
+    ],
+  })
+  expect(toInput(values, options)).toMatchObject({
+    entry_mode: 'itemised',
+    lines: [
+      {
+        amount: '108.10',
+        vat_rate: '8.1',
+        category_id: 'exc_it',
+        quantity: '2',
+        unit_price: '54.05',
+      },
+      { amount: '20.00', vat_rate: '0', category_id: null, quantity: null, unit_price: null },
+    ],
+  })
+  const single = toInput(filled(), options)
+  expect(single.entry_mode).toBe('single')
+  expect(single.lines?.[0]).toEqual({ description: null, amount: '1080.50', vat_rate: '8.1' })
+})
+
+test('an item checks its quantity and unit price', () => {
+  const errors = validate(
+    filled({
+      entry_mode: 'itemised',
+      lines: [item('10', '8.1', { quantity: '0', unit_price: 'x' })],
+    }),
+    TODAY,
+    false,
+  )
+  expect(errors).toMatchObject({
+    'lines.0.quantity': expect.any(String),
+    'lines.0.unit_price': expect.any(String),
+  })
+})
+
+test('quantity × unit price is exact to the cent, rounded half up', () => {
+  expect(itemAmount('3', '0.335')).toBeNull() // three decimals is no price
+  expect(itemAmount('1.5', '2.35')).toBe('3.53')
+  expect(itemAmount("1'000", '0.10')).toBe('100.00')
+  expect(itemAmount('', '5')).toBeNull()
+  expect(itemAmount('-1', '5')).toBeNull()
+})
+
+test("items become one amount per VAT rate, exactly, keeping a lone line's description", () => {
+  const lines = [
+    item('0.10', '8.1'),
+    item('', '8.1'),
+    item('5.00', '2.6', { description: 'Book' }),
+    item('0.20', '8.1'),
+  ]
+  expect(
+    mergedByRate(lines).map(({ amount, vat_rate, description }) => [amount, vat_rate, description]),
+  ).toEqual([
+    ['0.30', '8.1', ''],
+    ['5.00', '2.6', 'Book'],
+  ])
+})
+
+test('merging asks first only when it drops something entered', () => {
+  expect(mergeLoses([item('10', '8.1', { description: 'Lunch' }), item('5', '2.6')])).toBe(false)
+  expect(mergeLoses([item('10', '8.1', { description: 'Lunch' }), item('5', '8.1')])).toBe(true)
+  expect(mergeLoses([item('10', '8.1', { category_id: 'exc_it' })])).toBe(true)
+  expect(mergeLoses([item('10', '8.1', { quantity: '2' })])).toBe(true)
+})
+
+test('switching to items keeps the lines; back to one amount merges them', () => {
+  const values = filled({ lines: [item('10', '8.1'), item('5', '8.1')] })
+  const itemised = withEntryMode(values, 'itemised')
+  expect(itemised.entry_mode).toBe('itemised')
+  expect(itemised.lines).toBe(values.lines)
+  const single = withEntryMode(itemised, 'single')
+  expect(single.lines.map((line) => line.amount)).toEqual(['15.00'])
+  expect(withEntryMode(single, 'single')).toBe(single)
 })
