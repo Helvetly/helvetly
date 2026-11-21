@@ -1080,7 +1080,8 @@ function ExpenseFormBody({
         }}
         showCloseButton={false}
         className={cn(
-          'w-full! max-w-none! gap-0 p-0 transition-[width] duration-200 dark:bg-card',
+          // The width follows the step at the sheet's own pace: a shorter duration would cut its slide out short.
+          'w-full! max-w-none! gap-0 p-0 transition-[width] dark:bg-card',
           step === 'form'
             ? 'sm:w-[min(900px,calc(100vw-6rem))]!'
             : 'sm:w-[min(600px,calc(100vw-6rem))]!',
