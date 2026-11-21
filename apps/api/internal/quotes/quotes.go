@@ -90,6 +90,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/quotes/{id}/decline", s.decide(false))
 	handle("POST /api/v1/quotes/{id}/revise", s.revise)
 	handle("POST /api/v1/quotes/{id}/invoice", s.toInvoice)
+	handle("POST /api/v1/quotes/{id}/duplicate", s.duplicate)
 	if s.approvals != nil {
 		s.approvals.Routes(func(p string, h func(http.ResponseWriter, *http.Request, store.Session) error) { handle(p, h) },
 			"/api/v1/quotes/{id}/approval", s.approvalLoad)

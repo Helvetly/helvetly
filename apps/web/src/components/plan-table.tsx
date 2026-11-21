@@ -2,6 +2,8 @@
 
 import type { Locale } from '@helvetly/i18n'
 import { useLanguage } from '@helvetly/ui/components/language-provider'
+import { PlanAmount } from '@helvetly/ui/components/plan-feature-text'
+import { planAllowance } from '@helvetly/ui/lib/plan-features'
 import { formatPrice } from '@helvetly/ui/lib/price'
 import { Check, Minus } from 'lucide-react'
 
@@ -9,6 +11,7 @@ import { Cta } from '@/components/cta'
 import { useOfferStatus } from '@/components/offer-provider'
 import { cn } from '@/lib/cn'
 import { translatorFor } from '@/lib/i18n'
+import { projectPlans } from '@/lib/offer'
 import {
   type FeatureRow,
   type LimitKey,
@@ -24,7 +27,10 @@ import { type Tone, TONES } from '@/lib/tones'
 // The same colours as the pricing cards: Basic sky, Pro lilac (the recommended plan), Business mint.
 const PLAN_TONE: Record<PlanId, Tone> = { basic: 'sky', pro: 'lilac', business: 'mint' }
 
-/** Under an allowance's number: "per workspace" for a workspace cap, "/ month" for a monthly pool, none for storage (the legend says whose it is). */
+// The offer the pricing cards read too, so both show the same amounts the same way.
+const OFFER = projectPlans()
+
+/** After an allowance's number: "per workspace" for a workspace cap, "/ month" for a monthly pool, none for storage (the legend says whose it is). */
 function unitOf(limit: LimitKey, language: Locale): string {
   const translate = translatorFor(language)
   if (plansIn(language).LIMITS[limit].scope === 'workspace') return translate('perWorkspaceShort')
@@ -34,7 +40,6 @@ function unitOf(limit: LimitKey, language: Locale): string {
 function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
   const language = useLanguage()
   const translate = translatorFor(language)
-  const { formatLimit, isUnlimited } = plansIn(language)
   if (!row.plans[plan])
     return (
       <span className="inline-flex text-muted-foreground/60">
@@ -42,17 +47,22 @@ function Cell({ row, plan }: { row: FeatureRow; plan: PlanId }) {
         <span className="sr-only">{translate('notIncluded')}</span>
       </span>
     )
-  if (row.limit)
+  const allowance = row.limit && planAllowance(OFFER, row.limit, plan, language)
+  if (row.limit && allowance) {
+    const unit = unitOf(row.limit, language)
+    // One line, "300 / month"; on a narrow phone the unit wraps whole under the number.
     return (
-      <span className="font-medium tabular-nums">
-        {formatLimit(row.limit, plan)}
-        {!isUnlimited(row.limit, plan) && unitOf(row.limit, language) && (
-          <span className="block text-caption font-normal text-muted-foreground">
-            {unitOf(row.limit, language)}
-          </span>
+      <span className="tabular-nums">
+        <PlanAmount amount={allowance.amount} spoken={allowance.spoken} />
+        {unit && (
+          <>
+            {' '}
+            <span className="whitespace-nowrap text-muted-foreground">{unit}</span>
+          </>
         )}
       </span>
     )
+  }
   return (
     <span
       className={cn(

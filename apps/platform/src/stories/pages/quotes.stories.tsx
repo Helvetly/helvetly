@@ -483,3 +483,171 @@ export const EditorFooterAtTheBottom: Story = {
     await expectFooterAtTheBottom(within(editor).getByRole('article'))
   },
 }
+
+const row = (canvasElement: HTMLElement, name: string) =>
+  page(canvasElement).getByRole('checkbox', { name: `Select ${name}` })
+/** Which of `names` the scope does not show as a visible `role`; [] when it shows them all. */
+const missing = (scope: ReturnType<typeof within>, role: 'button' | 'menuitem', names: string[]) =>
+  names.filter((name) => !scope.queryByRole(role, { name })?.checkVisibility())
+const bulkBar = (canvasElement: HTMLElement) =>
+  within(page(canvasElement).getByRole('toolbar', { name: 'Selected rows' }))
+
+/** Rows are picked with their checkboxes; the bar offers only what the picked quotes allow, then marks them. */
+export const SelectAndBulkMark: Story = {
+  play: async (context) => {
+    const { canvasElement } = context
+    await shows('Keller Holzbau AG')?.(context)
+    await userEvent.click(row(canvasElement, 'Draft · Alpenglow Studio GmbH'))
+    await userEvent.click(row(canvasElement, 'Q-2026-004 · Keller Holzbau AG'))
+    const bar = bulkBar(canvasElement)
+    await expect(
+      page(canvasElement).getByRole('toolbar', { name: 'Selected rows' }),
+    ).toHaveTextContent('2')
+    await expect(
+      missing(bar, 'button', [
+        'Download PDFs',
+        'Mark 1 as sent',
+        'Mark 1 accepted',
+        'Mark 1 declined',
+        'Duplicate',
+        'Delete draft',
+      ]),
+    ).toEqual([])
+    await expect(bar.queryByRole('button', { name: /Delete 2/ })).toBeNull()
+
+    await userEvent.click(bar.getByRole('button', { name: 'Mark 1 accepted' }))
+    const confirm = await page(canvasElement).findByRole('dialog', {
+      name: 'Mark 1 quote accepted?',
+    })
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Mark accepted' }))
+    await toasted(canvasElement, '1 quote updated.')
+    await waitFor(() =>
+      expect(page(canvasElement).queryByRole('toolbar', { name: 'Selected rows' })).toBeNull(),
+    )
+  },
+}
+export const SelectAndBulkMarkDark = dark(SelectAndBulkMark)
+
+/** The header's checkbox picks every quote in the view; a failure is said with how many and why. */
+export const SelectAllPartialFailure: Story = {
+  parameters: quotes({}, [
+    http.post('/api/v1/quotes/quo_sent/duplicate', () =>
+      HttpResponse.json(
+        { error: { code: 'limit_reached', message: 'Your plan’s quotes are used up.' } },
+        { status: 402 },
+      ),
+    ),
+  ]),
+  play: async (context) => {
+    const { canvasElement } = context
+    await shows('Keller Holzbau AG')?.(context)
+    await userEvent.click(page(canvasElement).getByRole('checkbox', { name: 'Select all quotes' }))
+    await expect(
+      page(canvasElement).getByRole('toolbar', { name: 'Selected rows' }),
+    ).toHaveTextContent('5')
+    await userEvent.click(bulkBar(canvasElement).getByRole('button', { name: 'Duplicate' }))
+    await toasted(
+      canvasElement,
+      /1 of 5 quotes couldn’t be changed: Your plan’s quotes are used up/,
+    )
+  },
+}
+
+/** Headers sort: the sorted one says so (and which way), a click on another goes to the URL. */
+export const SortByHeader: Story = {
+  parameters: quotes({ sort: 'client' }),
+  play: async (context) => {
+    const { canvasElement } = context
+    await shows('Keller Holzbau AG')?.(context)
+    const body = page(canvasElement)
+    const client = body.getByRole('columnheader', { name: /Client/ })
+    await expect(client).toHaveAttribute('aria-sort', 'ascending')
+    const names = within(body.getAllByRole('rowgroup')[1] ?? canvasElement)
+      .getAllByRole('row')
+      .map((tr) => tr.textContent ?? '')
+    await expect(names[0]).toContain('Alpenglow Studio GmbH')
+    await expect(names.at(-1)).toContain('Sophie Meier')
+
+    await userEvent.click(
+      within(body.getByRole('columnheader', { name: /Total/ })).getByRole('button', {
+        name: 'Total',
+      }),
+    )
+    await waitFor(() =>
+      expect(new URL(window.location.href).searchParams.get('sort')).toBe('-total'),
+    )
+    await userEvent.click(within(client).getByRole('button', { name: 'Client' }))
+    await waitFor(() =>
+      expect(new URL(window.location.href).searchParams.get('sort')).toBe('-client'),
+    )
+  },
+}
+
+/** A row's "…" offers what its state allows, the PDF, and no clipboard items; Duplicate opens the copy. */
+export const RowMenu: Story = {
+  play: async (context) => {
+    const { canvasElement } = context
+    await shows('Keller Holzbau AG')?.(context)
+    const body = page(canvasElement)
+    await userEvent.click(
+      body.getByRole('button', { name: 'Actions for Q-2026-004 · Keller Holzbau AG' }),
+    )
+    const menu = await body.findByRole('menu')
+    await expect(
+      missing(within(menu), 'menuitem', [
+        'Open details',
+        'Send again',
+        'Accept',
+        'Decline',
+        'Revise',
+        'Duplicate',
+        'Download PDF',
+      ]),
+    ).toEqual([])
+    await expect(within(menu).queryByRole('menuitem', { name: /Copy|Edit|Delete/ })).toBeNull()
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Duplicate' }))
+    await toasted(canvasElement, 'Copy of Quote Q-2026-004 created as a draft.')
+    await waitFor(() =>
+      expect(new URL(window.location.href).searchParams.get('id')).toMatch(/^quo_/),
+    )
+  },
+}
+
+/** Right-click on a draft's row: its own menu, with Edit and Delete; on a picked row among others, the bulk actions. */
+export const RowContextMenus: Story = {
+  play: async (context) => {
+    const { canvasElement } = context
+    await shows('Keller Holzbau AG')?.(context)
+    const body = page(canvasElement)
+    const draftRow = row(canvasElement, 'Draft · Alpenglow Studio GmbH').closest('tr')
+    if (!draftRow) throw new Error('no draft row')
+    await userEvent.pointer({ keys: '[MouseRight]', target: draftRow })
+    const menu = await body.findByRole('menu')
+    await expect(within(menu).getByRole('menuitem', { name: 'Edit' })).toBeVisible()
+    await expect(within(menu).getByRole('menuitem', { name: 'Delete draft' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
+
+    await userEvent.click(row(canvasElement, 'Draft · Alpenglow Studio GmbH'))
+    await userEvent.click(row(canvasElement, 'Q-2026-003 · Sophie Meier'))
+    await userEvent.pointer({ keys: '[MouseRight]', target: draftRow })
+    const bulk = await body.findByRole('menu')
+    await expect(within(bulk).getByText('2 selected')).toBeVisible()
+    await expect(within(bulk).getByRole('menuitem', { name: 'Delete draft' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
+  },
+}
+
+/** Whoever may only read quotes can pick rows for their PDFs, but gets no status change. */
+export const ReadOnlyBulk: Story = {
+  parameters: quotes({}, [sessionHandler({ role: 'member', scopes: ['read:*'] })]),
+  play: async (context) => {
+    const { canvasElement } = context
+    await shows('Keller Holzbau AG')?.(context)
+    await userEvent.click(row(canvasElement, 'Draft · Alpenglow Studio GmbH'))
+    const bar = bulkBar(canvasElement)
+    await expect(bar.getByRole('button', { name: 'Download PDFs' })).toBeVisible()
+    await expect(bar.queryByRole('button', { name: /Mark|Duplicate|Delete/ })).toBeNull()
+  },
+}

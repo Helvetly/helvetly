@@ -3,12 +3,9 @@ import { localizedHref } from '@helvetly/i18n'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
-import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -18,22 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/component
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import {
-  Check,
-  Download,
-  Ellipsis,
-  ExternalLink,
-  FilePen,
-  Pencil,
-  ReceiptText,
-  Send,
-  Trash2,
-  X,
-  type LucideIcon,
-} from 'lucide-react'
+import { Check, Download, Ellipsis, ExternalLink, Pencil, ReceiptText, Send, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
-import { toast } from 'sonner'
 
 import {
   ApprovalGate,
@@ -41,6 +25,7 @@ import {
   awaitsApproval,
   showsApproval,
 } from '@/components/approvals/approval-panel'
+import { dropdownKit } from '@/components/data/menus'
 import { Money } from '@/components/invoices/invoice-bits'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { HeroFact, RecordHero } from '@/components/invoices/record-hero'
@@ -55,23 +40,29 @@ import {
   quoteName,
   quoteNumber,
   quotePdfUrl,
-  quotesApi,
-  useDeleteQuote,
   useQuote,
-  useQuoteAction,
   type Quote,
   type QuoteCommand,
 } from '@/lib/quotes'
 
 import { QuoteRowStatus } from './quote-bits'
-import { failQuote, QuoteDecisionDialog, QuoteSendDialog } from './quote-dialogs'
+import { ACTIONS, commandLabel, QuoteMenuItems, useQuoteCommands } from './quote-commands'
 import { EDITOR_WIDTH, QuoteEditor } from './quote-editor'
 
 /** One quote in a drawer from the right (full screen on phones); editing happens in the same drawer. */
-export function QuoteDetail({ id, onClose }: { id: string; onClose: () => void }) {
+export function QuoteDetail({
+  id,
+  onClose,
+  edit = false,
+}: {
+  id: string
+  onClose: () => void
+  /** Opens in the editor (a draft's Edit in a list). */
+  edit?: boolean
+}) {
   const query = useQuote(id)
   const quote = query.data
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(edit)
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
@@ -116,21 +107,6 @@ export function QuoteDetail({ id, onClose }: { id: string; onClose: () => void }
   )
 }
 
-type Action = { command: QuoteCommand; label: string; icon: LucideIcon }
-
-const ACTIONS: Record<QuoteCommand, Action> = {
-  edit: { command: 'edit', label: translate('editDraft2'), icon: Pencil },
-  send: { command: 'send', label: translate('send'), icon: Send },
-  accept: { command: 'accept', label: translate('accept'), icon: Check },
-  decline: { command: 'decline', label: translate('decline'), icon: X },
-  revise: { command: 'revise', label: translate('revise'), icon: FilePen },
-  invoice: { command: 'invoice', label: translate('createInvoice'), icon: ReceiptText },
-  delete: { command: 'delete', label: translate('deleteDraft2'), icon: Trash2 },
-}
-
-/** The "…" menu's order; Edit has its own button. */
-const MENU: QuoteCommand[] = ['send', 'accept', 'decline', 'revise', 'invoice', 'delete']
-
 /** The main button for the quote's state; the rest goes in the "…" menu. */
 export function primaryCommand(quote: Quote): QuoteCommand | null {
   const can = quoteCommands(quote)
@@ -152,56 +128,26 @@ function Detail({
 }) {
   const router = useRouter()
   const writable = useCan('write:invoices')
-  const [dialog, setDialog] = useState<QuoteCommand | null>(null)
   const [pages, setPages] = useState<number | null>(null)
-  const remove = useDeleteQuote()
-  const revise = useQuoteAction(() => quotesApi.revise(quote.id))
-  const invoice = useQuoteAction(() => quotesApi.invoice(quote.id))
-  const busy = revise.isPending || invoice.isPending || remove.isPending
+  const commands = useQuoteCommands({
+    onEdit,
+    onOpen: (copy) => router.push(`/quotes?id=${encodeURIComponent(copy)}`),
+    onDeleted: onClose,
+    onInvoice: (invoice) => router.push(`/invoices?id=${encodeURIComponent(invoice)}`),
+  })
   const can = quoteCommands(quote)
   const primary = writable ? primaryCommand(quote) : null
   const target = { doc: 'quotes', id: quote.id } as const
   const approval = useApproval(target, quote.status === 'draft').data
   // Sending a draft (or a new revision) waits for its approval when the policy asks for one.
   const gated = quote.status === 'draft' && awaitsApproval(approval)
-  const menu = MENU.filter(
-    (command) => writable && can[command] && command !== primary && !(gated && command === 'send'),
-  )
+  const skip: QuoteCommand[] = [
+    'edit',
+    ...(primary ? [primary] : []),
+    ...(gated ? (['send'] as const) : []),
+  ]
   const name = quoteName(quote)
-
-  const run = (command: QuoteCommand) => (command === 'edit' ? onEdit() : setDialog(command))
-  const decide = (approved: boolean) => {
-    const command = dialog
-    setDialog(null)
-    if (!approved) return
-    if (command === 'revise')
-      revise.mutate(undefined, {
-        onSuccess: (revised) => {
-          toast.success(
-            translate('isADraftAgainChangeItThenSendIt', { value1: quoteName(revised) }),
-          )
-          onEdit()
-        },
-        onError: failQuote,
-      })
-    if (command === 'invoice')
-      invoice.mutate(undefined, {
-        onSuccess: (converted) => {
-          toast.success(translate('draftInvoiceCreatedFrom', { name: name }))
-          if (converted.invoice)
-            router.push(`/invoices?id=${encodeURIComponent(converted.invoice.id)}`)
-        },
-        onError: failQuote,
-      })
-    if (command === 'delete')
-      remove.mutate(quote.id, {
-        onSuccess: () => {
-          toast.success(translate('draftQuoteDeleted'))
-          onClose()
-        },
-        onError: failQuote,
-      })
-  }
+  const run = (command: QuoteCommand) => commands.run(command, quote)
 
   return (
     <Tabs defaultValue="overview" className="min-h-full gap-0">
@@ -224,32 +170,13 @@ function Detail({
                 <TooltipContent>{translate('moreActions')}</TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end" className="min-w-52">
-                {menu
-                  .filter((command) => command !== 'delete')
-                  .map((command) => {
-                    const { label, icon: Icon } = ACTIONS[command]
-                    return (
-                      <DropdownMenuItem key={command} onSelect={() => run(command)}>
-                        <Icon />{' '}
-                        {command === 'send' && quote.sent_at ? translate('sendAgain') : label}
-                      </DropdownMenuItem>
-                    )
-                  })}
-                <DropdownMenuItem asChild>
-                  <a href={localizedHref(quotePdfUrl(quote.id, true))} download>
-                    <Download />
-                    {translate('downloadPDF2')}
-                  </a>
-                </DropdownMenuItem>
-                {menu.includes('delete') && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive" onSelect={() => run('delete')}>
-                      <Trash2 />
-                      {translate('deleteDraft')}
-                    </DropdownMenuItem>
-                  </>
-                )}
+                <QuoteMenuItems
+                  kit={dropdownKit}
+                  quote={quote}
+                  writable={writable}
+                  run={commands.run}
+                  skip={skip}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
             {writable && can.edit && (
@@ -263,7 +190,7 @@ function Detail({
                 <Send /> {ACTIONS.send.label}
               </ApprovalGate>
             ) : (
-              <PrimaryButton quote={quote} command={primary} busy={busy} onRun={run} />
+              <PrimaryButton quote={quote} command={primary} busy={commands.busy} onRun={run} />
             )}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -495,41 +422,7 @@ function Detail({
         />
       </TabsContent>
 
-      {dialog === 'send' && <QuoteSendDialog quote={quote} onClose={() => setDialog(null)} />}
-      {(dialog === 'accept' || dialog === 'decline') && (
-        <QuoteDecisionDialog
-          quote={quote}
-          accept={dialog === 'accept'}
-          onClose={() => setDialog(null)}
-        />
-      )}
-      {dialog === 'revise' && (
-        <ConfirmDialog
-          title={translate('revise2', { name: name })}
-          body={translate('itBecomesADraftAgainAsRevisionWithThe', { value1: quote.revision + 1 })}
-          confirmLabel={translate('revise')}
-          tone="default"
-          onDecide={decide}
-        />
-      )}
-      {dialog === 'invoice' && (
-        <ConfirmDialog
-          title={translate('createAnInvoiceFrom', { name: name })}
-          body={translate('aDraftInvoiceWithThisQuoteSClientLines')}
-          confirmLabel={translate('createInvoice')}
-          tone="default"
-          onDecide={decide}
-        />
-      )}
-      {dialog === 'delete' && (
-        <ConfirmDialog
-          title={translate('deleteThisDraftQuote')}
-          body={translate('theDraftForIsRemovedForGoodItWas', { name: quote.client.name })}
-          confirmLabel={translate('deleteDraft2')}
-          tone="destructive"
-          onDecide={decide}
-        />
-      )}
+      {commands.dialogs}
     </Tabs>
   )
 }
@@ -562,10 +455,10 @@ function PrimaryButton({
         </a>
       </Button>
     )
-  const { label, icon: Icon } = ACTIONS[command]
+  const Icon = ACTIONS[command].icon
   return (
     <Button className="gap-1.5" disabled={busy} onClick={() => onRun(command)}>
-      <Icon /> {command === 'send' && quote.sent_at ? translate('sendAgain') : label}
+      <Icon /> {commandLabel(command, quote)}
     </Button>
   )
 }

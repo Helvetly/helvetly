@@ -82,7 +82,7 @@ type EngagementFilter struct {
 	Today       string
 	Limit       int // zero: no limit
 	Offset      int
-	Sort        string // "", "-created_at", "title" or "client"; "" keeps newest number first
+	Sort        string // "", "-created_at", "[-]title" or "[-]client"; "" keeps newest number first
 }
 
 var engagementOrder = map[string]string{
@@ -90,6 +90,8 @@ var engagementOrder = map[string]string{
 	"-created_at": "e.created_at DESC, ",
 	"title":       `lower(e.title) COLLATE "C", `,
 	"client":      `lower(c.name) COLLATE "C", `,
+	"-title":      `lower(e.title) COLLATE "C" DESC, `,
+	"-client":     `lower(c.name) COLLATE "C" DESC, `,
 }
 
 const dateFmt = `'YYYY-MM-DD'`

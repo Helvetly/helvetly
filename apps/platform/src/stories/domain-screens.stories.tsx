@@ -7,6 +7,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { AccountSettings } from '@/components/account/account-settings'
 import { billingFixture } from '@/components/billing/billing-fixture'
 import { PlanCards } from '@/components/billing/plan-cards'
+import publicOffer from '@/components/billing/public-offer.fixture.json'
 import { ClientsPage } from '@/components/clients/clients-page'
 import { Dashboard } from '@/components/dashboard/dashboard'
 import { DocumentsPage } from '@/components/documents/documents-page'
@@ -234,19 +235,22 @@ export const AccountProfile: Story = {
 }
 
 export const BillingPeriod: Story = {
-  render: () => <PlanCards billing={billingFixture()} />,
+  render: () => <PlanCards billing={billingFixture()} offer={publicOffer} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
-    await expect(canvas.getByRole('radio', { name: 'Yearly' })).toBeChecked()
+    await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
+    await expect(canvas.getByRole('radio', { name: /^Yearly/ })).toBeChecked()
     await expect(canvas.getByRole('region', { name: 'Basic' })).toHaveTextContent('CHF 183')
     await expect(canvas.getByRole('region', { name: 'Pro' })).toHaveTextContent(
       '7 days, up to 2 people, card required',
     )
+    await expect(canvas.getByRole('region', { name: 'Business' })).toHaveTextContent(
+      'Everything in Pro, plus:',
+    )
   },
 }
 export const BillingReadOnly: Story = {
-  render: () => <PlanCards billing={billingFixture({ can_manage: false })} />,
+  render: () => <PlanCards billing={billingFixture({ can_manage: false })} offer={publicOffer} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
@@ -748,6 +752,55 @@ export const TrashReadOnly: Story = {
   },
 }
 const documentWrite = fn()
+const trashed = (id: string, name: string, deleted: string) => ({
+  type: 'file' as const,
+  id,
+  name,
+  content_type: 'application/pdf',
+  size: 1234,
+  item_count: 0,
+  location: null,
+  retained_until: null,
+  deleted_at: deleted,
+  deleted_by: null,
+  purge_at: '2026-12-01T00:00:00Z',
+})
+/** A header sorts: the sorted column says so, rows follow it, and a click writes the other way to the URL. */
+export const TrashSorted: Story = {
+  parameters: {
+    nextjs: { navigation: { pathname: '/documents', query: { sort: 'name' } } },
+    msw: {
+      handlers: [sessionHandler({ role: 'owner', scopes: [] }), ...screenHandlers],
+    },
+  },
+  render: () => (
+    <TrashView
+      items={[
+        trashed('t1', 'Zeta.pdf', '2026-11-03T00:00:00Z'),
+        trashed('t2', 'Alpha.pdf', '2026-11-01T00:00:00Z'),
+      ]}
+      error={null}
+      onRetry={fn()}
+      selected={new Set()}
+      onToggle={fn()}
+      onToggleAll={fn()}
+      onOpen={fn()}
+      onRestore={fn()}
+      onDelete={fn()}
+      onEmpty={fn()}
+      canDelete
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const header = await canvas.findByRole('button', { name: 'Name' })
+    await expect(header.closest('th')).toHaveAttribute('aria-sort', 'ascending')
+    const names = canvas.getAllByText(/\.pdf$/).map((cell) => cell.textContent)
+    await expect(names).toEqual(['Alpha.pdf', 'Zeta.pdf'])
+    await userEvent.click(header)
+    await waitFor(() => expect(window.location.search).toContain('sort=-name'))
+  },
+}
 export const DocumentsReadOnlyKeyboard: Story = {
   parameters: {
     msw: {

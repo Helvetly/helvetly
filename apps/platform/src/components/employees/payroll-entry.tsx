@@ -19,7 +19,13 @@ import { Combobox, CURRENCY_OPTIONS, inputClass, NativeSelect } from '@/componen
 import { loadProblemText } from '@/components/data/load-problem'
 import { apiFieldErrors, type FieldErrors } from '@/components/section-form'
 import { ApiError, errorMessage } from '@/lib/api'
-import { formatPay, fullName, useEmployeeList, useEmploymentSettings } from '@/lib/employees'
+import {
+  DEFAULT_PARAMS,
+  formatPay,
+  fullName,
+  useEmployeeList,
+  useEmploymentSettings,
+} from '@/lib/employees'
 import { translate } from '@/lib/i18n'
 import {
   approvalBlock,
@@ -523,7 +529,7 @@ function EntryForm({
   const [errors, setErrors] = useState<FieldErrors>({})
   const [stale, setStale] = useState(false)
   const save = useSaveEntry()
-  const people = useEmployeeList({ search: '', status: 'all', department: null })
+  const people = useEmployeeList({ ...DEFAULT_PARAMS, status: 'all' })
   const options = people.data?.data ?? []
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setValues((current) => ({ ...current, [key]: value }))

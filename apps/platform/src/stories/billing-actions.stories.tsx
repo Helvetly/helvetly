@@ -4,6 +4,7 @@ import { expect, within } from 'storybook/test'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import { PlanCards } from '@/components/billing/plan-cards'
+import publicOffer from '@/components/billing/public-offer.fixture.json'
 
 const meta = { title: 'Design system/Billing actions' } satisfies Meta
 export default meta
@@ -18,7 +19,7 @@ export const SharedActions: Story = {
           Secondary action
         </Button>
       </div>
-      <PlanCards billing={billingFixture()} />
+      <PlanCards billing={billingFixture()} offer={publicOffer} />
     </div>
   ),
   play: async ({ canvasElement }) => {

@@ -13,7 +13,7 @@ export const listTable = {
   table: 'w-full table-fixed text-[15px]',
   head: 'h-11 border-b bg-muted/50 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase',
   /** `relative group/th`: a column's resize handle sits on its right edge, shown on hover. */
-  th: 'group/th relative px-3 font-medium first:pl-5 last:pr-5',
+  th: 'group/th relative px-3 font-medium whitespace-nowrap first:pl-5 last:pr-5',
   row: 'h-[58px] border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-brand-surface/60 data-attention:not-data-selected:bg-warning-surface/50',
   td: 'truncate px-3 first:pl-5 last:pr-5',
   /**

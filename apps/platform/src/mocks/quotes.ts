@@ -350,6 +350,26 @@ export const quoteHandlers = [
       }),
     )
   }),
+  http.post<Params>('/api/v1/quotes/:id/duplicate', ({ params }) => {
+    const quote = find(params.id)
+    if (!quote) return notFound()
+    const id = `quo_${Math.random().toString(36).slice(2, 10)}`
+    return one(
+      store({
+        ...quote,
+        id,
+        number: null,
+        revision: 1,
+        status: 'draft',
+        sent_at: null,
+        decided_at: null,
+        decided_by: null,
+        decision_note: null,
+        invoice: null,
+      }),
+      201,
+    )
+  }),
   http.post<Params>('/api/v1/quotes/:id/invoice', ({ params }) => {
     const quote = find(params.id)
     if (!quote) return notFound()

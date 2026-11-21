@@ -5,7 +5,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Lock, RotateCcw, Trash2 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useSearchParams, usePathname } from 'next/navigation'
+import { useMemo, type ReactNode } from 'react'
 
 import { listTable } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
@@ -14,11 +15,23 @@ import {
   ResizableTable,
   useResizableColumns,
 } from '@/components/data/resizable-columns'
+import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { LoadingRows, State } from '@/components/data/table-page'
-import { daysLeft, formatSize, isRetained, type TrashItem } from '@/lib/documents'
+import {
+  daysLeft,
+  DEFAULT_TRASH_SORT,
+  formatSize,
+  isRetained,
+  TRASH_SORTS,
+  trashSortValue,
+  type TrashItem,
+  type TrashSortField,
+} from '@/lib/documents'
 import { translate } from '@/lib/i18n'
+import { nextSort, parseSort, sortParam, sortRows } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { folderLabel } from '@/lib/system-folders'
+import { setUrlQuery } from '@/lib/url-query'
 
 import { FolderMark } from './folder-art'
 import { KindIcon, kindOfType } from './kind'
@@ -51,6 +64,31 @@ export function TrashView({
 }) {
   const widths = useResizableColumns('trash', ['name', 'was', 'deleted', 'size'], { flex: 'name' })
   const canWrite = useCan('write:documents')
+  const pathname = usePathname()
+  const query = useSearchParams()
+  const sort = parseSort(query.get('sort'), TRASH_SORTS, DEFAULT_TRASH_SORT)
+  const rows = useMemo(
+    () => sortRows(items ?? [], (item) => trashSortValue(item, sort.field), sort.desc),
+    [items, sort.field, sort.desc],
+  )
+  const sortBy = (field: TrashSortField) => {
+    const next = new URLSearchParams(query)
+    const value = sortParam(
+      nextSort(sort, field, field === 'deleted' || field === 'size'),
+      DEFAULT_TRASH_SORT,
+    )
+    if (value) next.set('sort', value)
+    else next.delete('sort')
+    setUrlQuery(pathname, next)
+  }
+  const header = (field: TrashSortField, label: string) => (
+    <SortButton
+      label={label}
+      sorted={sort.field === field}
+      desc={sort.desc}
+      onClick={() => sortBy(field)}
+    />
+  )
   if (error) return <LoadProblem error={error} what={translate('theTrash')} onRetry={onRetry} />
   if (!items) return <LoadingRows />
   if (items.length === 0)
@@ -94,33 +132,50 @@ export function TrashView({
               column="name"
               label={translate('name')}
               className={listTable.th}
-            />
+              aria-sort={ariaSort(sort.field === 'name', sort.desc)}
+            >
+              {header('name', translate('name'))}
+            </ResizableHead>
             <ResizableHead
               columns={widths}
               column="was"
               label={translate('wasIn')}
               className={cn(listTable.th, 'hidden w-[18%] @4xl:table-cell')}
-            />
+              aria-sort={ariaSort(sort.field === 'was', sort.desc)}
+            >
+              {header('was', translate('wasIn'))}
+            </ResizableHead>
             <ResizableHead
               columns={widths}
               column="deleted"
               label={translate('deleted2')}
               className={cn(listTable.th, 'hidden w-[18%] @5xl:table-cell')}
-            />
+              aria-sort={ariaSort(sort.field === 'deleted', sort.desc)}
+            >
+              {header('deleted', translate('deleted2'))}
+            </ResizableHead>
             <ResizableHead
               columns={widths}
               column="size"
               label={translate('size')}
               className={cn(listTable.th, listTable.numeric, 'w-[10%]')}
-            />
-            <th className={cn(listTable.th, 'w-[150px]')}>{translate('deletedForGood')}</th>
+              aria-sort={ariaSort(sort.field === 'size', sort.desc)}
+            >
+              {header('size', translate('size'))}
+            </ResizableHead>
+            <th
+              className={cn(listTable.th, 'w-[150px]')}
+              aria-sort={ariaSort(sort.field === 'purge', sort.desc)}
+            >
+              {header('purge', translate('deletedForGood'))}
+            </th>
             <th className="w-[92px] pr-3">
               <span className="sr-only">{translate('actions')}</span>
             </th>
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => {
+          {rows.map((item) => {
             const left = daysLeft(item.purge_at)
             const kept = isRetained(item.retained_until)
             return (

@@ -8,11 +8,11 @@ export function About({ lang }: { lang: Locale }) {
   const translate = translatorFor(lang)
   return (
     <section id="about" className="py-10 sm:py-14">
-      <Container className="flex max-w-3xl flex-col gap-3 text-center">
+      <Container className="flex max-w-5xl flex-col gap-3 text-center">
         <h2 data-reveal className="text-title font-semibold">
           {translate('whatIsHelvetly')}
         </h2>
-        <p data-reveal className="text-lead text-pretty text-muted-foreground">
+        <p data-reveal className="text-lead text-balance text-muted-foreground">
           {translate('whatIsHelvetlyAnswer')}
         </p>
       </Container>

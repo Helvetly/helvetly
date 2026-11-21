@@ -135,7 +135,6 @@ export type Plan = {
   monthly: number
   tagline: string
   pitch: string
-  highlights: string[]
 }
 
 /** The trial: Pro features and limits for a short time, for a small team (the offer's trial has no overrides). */
@@ -242,16 +241,6 @@ export const plansIn = perLanguage((translate, language) => {
   const tokens = (n: number) => (n >= 1_000_000 ? `${count(n / 1_000_000)}M` : count(n))
 
   const isUnlimited = (key: LimitKey, plan: PlanId) => LIMITS[key].values[plan] === UNLIMITED
-
-  /** One allowance as the usage table shows it: "Unlimited" without a cap; null when the plan does not include it. */
-  function formatLimit(key: LimitKey, plan: PlanId): string | null {
-    const { unit, values } = LIMITS[key]
-    const amount = values[plan]
-    if (amount === null) return null
-    if (amount === UNLIMITED) return translate('unlimited')
-    if (unit === 'byte') return bytes(amount)
-    return unit === 'token' ? tokens(amount) : count(amount)
-  }
 
   /** A capped allowance's number; one that is not included or not capped has none to quote. */
   function value(key: LimitKey, plan: PlanId): number {
@@ -404,6 +393,7 @@ export const plansIn = perLanguage((translate, language) => {
         { key: 'invoice_corrections', label: translate('featureCorrections'), plans: PRO_UP },
         { key: 'invoice_reminders', label: translate('featureReminders'), plans: PRO_UP },
         { key: 'invoice_instalments', label: translate('featureInstalments'), plans: PRO_UP },
+        { key: 'document_approvals', label: translate('featureApprovals'), plans: BUSINESS_ONLY },
         {
           key: 'einvoice_xml',
           label: translate('eInvoiceXMLExport'),
@@ -444,6 +434,11 @@ export const plansIn = perLanguage((translate, language) => {
           plans: ALL,
         },
         { key: 'client_portal', label: translate('clientPortal'), plans: BUSINESS_ONLY },
+        {
+          key: 'custom_portal_domain',
+          label: translate('featureCustomPortalDomain'),
+          plans: BUSINESS_ONLY,
+        },
       ],
     },
     {
@@ -526,16 +521,6 @@ export const plansIn = perLanguage((translate, language) => {
     business: translate('business'),
   }
 
-  const storage = (plan: PlanId) => bytes(value('storage_bytes', plan))
-
-  /** The people limit as a plan fact: "Up to 5 people", "Unlimited people". */
-  const people = (plan: PlanId) => {
-    const most = SELF_SERVICE_SEATS[plan]
-    return most === null
-      ? translate('planPeopleUnlimited')
-      : translate('planPeopleUpTo', { count: count(most) })
-  }
-
   const PLANS: Plan[] = [
     {
       id: 'basic',
@@ -543,17 +528,6 @@ export const plansIn = perLanguage((translate, language) => {
       monthly: 19,
       tagline: translate('startInvoicing'),
       pitch: translate('forFreelancersWithASmallClientBase'),
-      highlights: [
-        people('basic'),
-        translate('clientsPerWorkspace', { value1: n('clients', 'basic') }),
-        translate('invoicesAndQuotesPerTeamMemberAMonth', {
-          invoices: n('invoices_per_month', 'basic'),
-          quotes: n('quotes_per_month', 'basic'),
-        }),
-        translate('swissQRBillsAndRevolutPaymentLinks'),
-        translate('upToEngagementsManagedByHand', { value1: n('engagements', 'basic') }),
-        translate('storagePerTeamMember', { value1: storage('basic') }),
-      ],
     },
     {
       id: 'pro',
@@ -561,43 +535,13 @@ export const plansIn = perLanguage((translate, language) => {
       monthly: 49,
       tagline: translate('runYourBusinessWithHeidi'),
       pitch: translate('forABusinessThatWantsItsWholeBackOffice'),
-      highlights: [
-        people('pro'),
-        translate('invoicesQuotesAndExpensesPerTeamMemberAMonth', {
-          invoices: n('invoices_per_month', 'pro'),
-          quotes: n('quotes_per_month', 'pro'),
-          expenses: n('expenses_per_month', 'pro'),
-        }),
-        translate('clientsPerWorkspace', { value1: n('clients', 'pro') }),
-        translate('heidiWithSharedAITokensPerTeamMemberAMonth', {
-          value1: tokens(value('ai_tokens_per_month', 'pro')),
-        }),
-        translate('templatesSimpleSignaturesCorrectionsAndVATReturns'),
-        translate('ledgerDataExportsAndAutomatedActionsPerTeamMemberAMonth', {
-          value1: n('automation_actions_per_month', 'pro'),
-        }),
-        translate('storagePerTeamMember', { value1: storage('pro') }),
-      ],
     },
     {
       id: 'business',
       name: PLAN_NAMES.business,
       monthly: 99,
       tagline: translate('workWithClientsAtScale'),
-      pitch: translate('everythingInProPlusTheClientPortalAndE'),
-      highlights: [
-        people('business'),
-        translate('clientPortalPortalRecipientsAreNotPaidSeats'),
-        translate('eInvoiceXMLExportsInSupportedFormats'),
-        translate('employeesAndPayrollRegister'),
-        translate('unlimitedClientsProductsAndEngagements'),
-        translate('unlimitedInvoicesQuotesExpensesAndSignatureRequests'),
-        translate('aiTokensAndAutomatedActionsPerTeamMemberAMonth', {
-          value1: tokens(value('ai_tokens_per_month', 'business')),
-          value2: n('automation_actions_per_month', 'business'),
-        }),
-        translate('storagePerTeamMember', { value1: storage('business') }),
-      ],
+      pitch: translate('forGrowingTeamsThatWorkCloselyWithClients'),
     },
   ]
 
@@ -614,7 +558,6 @@ export const plansIn = perLanguage((translate, language) => {
     count,
     bytes,
     tokens,
-    formatLimit,
     BENEFITS,
     FEATURE_GROUPS,
     PLANS,

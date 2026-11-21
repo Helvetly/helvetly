@@ -11,6 +11,7 @@ import {
   matchesTeamFilter,
   parseTeamFilter,
   teamFilterToQuery,
+  teamSortValue,
   useInvite,
   useSwitchWorkspace,
 } from './members'
@@ -135,4 +136,15 @@ test('an invitation is searched by its email alone', () => {
   const filter = { invited: true, search: 'jonas', roles: [] }
   expect(matchesTeamFilter({ email: 'jonas@muster.ch', role: 'member' }, filter)).toBe(true)
   expect(matchesTeamFilter({ email: 'luca@muster.ch', role: 'member' }, filter)).toBe(false)
+})
+
+test('team rows sort by name or email, role rank and last activity or expiry', () => {
+  const member = { name: 'Ann', role: 'admin', last_active_at: '2026-01-02' } as const
+  const invitation = { email: 'b@x.ch', role: 'member', expires_at: '2026-02-01' } as const
+  expect([member, invitation].map((row) => teamSortValue(row, 'member'))).toEqual(['Ann', 'b@x.ch'])
+  expect([member, invitation].map((row) => teamSortValue(row, 'role'))).toEqual([1, 2])
+  expect([member, invitation].map((row) => teamSortValue(row, 'active'))).toEqual([
+    '2026-01-02',
+    '2026-02-01',
+  ])
 })

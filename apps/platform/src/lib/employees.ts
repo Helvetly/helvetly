@@ -14,6 +14,7 @@ import {
 import { request, type ApiError } from '@/lib/api'
 import type { Page } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
+import { parseSort, sortParam, type Sort } from '@/lib/list-sort'
 
 export type EmployeeStatus = 'active' | 'upcoming' | 'ended' | 'archived'
 export type EmploymentType =
@@ -117,12 +118,21 @@ export const formatPay = (value: string | null | undefined, currency: string) =>
   value === null || value === undefined || value === '' ? '—' : formatMoney(value, currency)
 
 /** The list's state as in the URL. */
+export const SORT_FIELDS = ['name', 'position', 'department', 'since'] as const
+export type SortField = (typeof SORT_FIELDS)[number]
 export type ListParams = {
   search: string
   status: EmployeeStatus | 'all'
   department: string | null
+  sort: Sort<SortField>
 }
-export const DEFAULT_PARAMS: ListParams = { search: '', status: 'active', department: null }
+export const DEFAULT_SORT: Sort<SortField> = { field: 'name', desc: false }
+export const DEFAULT_PARAMS: ListParams = {
+  search: '',
+  status: 'active',
+  department: null,
+  sort: DEFAULT_SORT,
+}
 
 const isStatus = (value: string | null): value is ListParams['status'] =>
   STATUSES.some((status) => status.value === value)
@@ -133,16 +143,19 @@ export function parseListParams(query: URLSearchParams): ListParams {
     search: query.get('q') ?? '',
     status: isStatus(status) ? status : DEFAULT_PARAMS.status,
     department: query.get('department') || null,
+    sort: parseSort(query.get('sort'), SORT_FIELDS, DEFAULT_SORT),
   }
 }
 
 /** The list's state as URL query, without defaults; keeps other keys (`id`, `new`). */
 export function listParamsToQuery(params: ListParams, base = new URLSearchParams()) {
   const query = new URLSearchParams(base)
-  for (const key of ['q', 'status', 'department']) query.delete(key)
+  for (const key of ['q', 'status', 'department', 'sort']) query.delete(key)
   if (params.search) query.set('q', params.search)
   if (params.status !== DEFAULT_PARAMS.status) query.set('status', params.status)
   if (params.department) query.set('department', params.department)
+  const sort = sortParam(params.sort, DEFAULT_SORT)
+  if (sort) query.set('sort', sort)
   return query
 }
 
@@ -151,6 +164,8 @@ export function apiQuery(params: ListParams) {
   const search = params.search.trim()
   if (search) query.set('search', search)
   if (params.department) query.set('department', params.department)
+  const sort = sortParam(params.sort, DEFAULT_SORT)
+  if (sort) query.set('sort', sort)
   return query
 }
 

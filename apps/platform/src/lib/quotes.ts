@@ -16,6 +16,7 @@ import {
   type Totals,
   type VatMode,
 } from '@/lib/invoices'
+import { sortRows, type Sort, type SortValue } from '@/lib/list-sort'
 
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired'
 
@@ -126,7 +127,15 @@ export function searchQuotes(quotes: Quote[], search: string) {
   )
 }
 
-export type QuoteCommand = 'edit' | 'delete' | 'send' | 'accept' | 'decline' | 'revise' | 'invoice'
+export type QuoteCommand =
+  | 'edit'
+  | 'delete'
+  | 'send'
+  | 'accept'
+  | 'decline'
+  | 'revise'
+  | 'invoice'
+  | 'duplicate'
 
 /** What staff may do to a quote in its state (the lifecycle table of the contract). */
 export function quoteCommands(quote: Pick<Quote, 'status' | 'number' | 'invoice'>) {
@@ -139,8 +148,43 @@ export function quoteCommands(quote: Pick<Quote, 'status' | 'number' | 'invoice'
     decline: status === 'sent' || status === 'expired',
     revise: status === 'sent' || status === 'expired' || status === 'declined',
     invoice: status === 'accepted' && quote.invoice === null,
+    duplicate: true,
   } satisfies Record<QuoteCommand, boolean>
 }
+
+/** Which of the selected quotes each bulk action applies to; the others are left as they are. */
+export function bulkTargets(quotes: Quote[]) {
+  const where = (command: QuoteCommand) => quotes.filter((quote) => quoteCommands(quote)[command])
+  return {
+    // Marking sent numbers a draft; a sent quote is already marked. One awaiting its approval stays a draft
+    // (the API answers 409 approval_required for one that needs a request nobody made yet).
+    markSent: quotes.filter(
+      (quote) => quote.status === 'draft' && quote.approval_state !== 'pending',
+    ),
+    accept: where('accept'),
+    decline: where('decline'),
+    remove: where('delete'),
+  }
+}
+
+export const QUOTE_SORT_FIELDS = ['number', 'client', 'date', 'valid', 'total', 'status'] as const
+export type QuoteSortField = (typeof QUOTE_SORT_FIELDS)[number]
+/** Newest first by date; equal dates keep the API's order (the newest made first). */
+export const DEFAULT_QUOTE_SORT: Sort<QuoteSortField> = { field: 'date', desc: true }
+
+const SORT_VALUES: Record<QuoteSortField, (quote: Quote) => SortValue> = {
+  // Drafts have no number yet and go last.
+  number: (quote) => quote.number && `${quote.number} ${quote.revision}`,
+  client: (quote) => quote.client.name,
+  date: (quote) => quote.issue_date,
+  valid: (quote) => quote.valid_until,
+  total: (quote) => Number(quote.payable_total),
+  // In the order of the lifecycle, as the tabs show it.
+  status: (quote) => QUOTE_STATUSES.findIndex((entry) => entry.value === quote.status),
+}
+
+export const sortQuotes = (quotes: Quote[], sort: Sort<QuoteSortField>) =>
+  sortRows(quotes, SORT_VALUES[sort.field], sort.desc)
 
 /** A friendly sentence for a refused write; the server's message for anything else. */
 export function quoteErrorMessage(error: unknown) {
@@ -184,6 +228,7 @@ export const quotesApi = {
     request<One<Quote>>(`${path(id)}/decline`, post(note ? { note } : {})),
   revise: (id: string) => request<One<Quote>>(`${path(id)}/revise`, post()),
   invoice: (id: string) => request<One<Quote>>(`${path(id)}/invoice`, post()),
+  duplicate: (id: string) => request<One<Quote>>(`${path(id)}/duplicate`, post()),
 }
 
 /** A plain link, so the browser sends the session cookie and saves or shows the file. */

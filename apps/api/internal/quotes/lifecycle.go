@@ -3,6 +3,7 @@ package quotes
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
@@ -306,6 +307,54 @@ func (s *Service) revise(w http.ResponseWriter, r *http.Request, sess store.Sess
 		return err
 	}
 	return s.respond(w, r, sess, http.StatusOK, id)
+}
+
+// duplicate makes a new draft with another quote's content, dated today and valid for as many days as the original;
+// it gets its own number on its first send.
+func (s *Service) duplicate(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	ctx, now, id := r.Context(), s.now(), auth.NewID("quo")
+	day := today(sess.Workspace, now)
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		src, err := q.Quote(ctx, sess.Workspace.ID, r.PathValue("id"), day, false)
+		if err != nil {
+			return err
+		}
+		if _, err := q.Client(ctx, sess.Workspace.ID, src.ClientID); errors.Is(err, store.ErrNotFound) {
+			return invalidState("The client of this quote was deleted.")
+		} else if err != nil {
+			return err
+		}
+		t := src
+		t.ID, t.Number, t.Revision, t.Status, t.PDFKey, t.Invoice = id, nil, 1, "draft", nil, nil
+		t.SentAt, t.DecidedAt, t.DecidedBy, t.DecisionNote = nil, nil, nil, nil
+		t.IssueDate, t.ValidUntil = day, addDays(day, validDays(src))
+		t.Lines = make([]store.InvoiceLine, len(src.Lines))
+		for i, l := range src.Lines {
+			l.ID = auth.NewID("lin")
+			t.Lines[i] = l
+		}
+		t.Instalments = carrySchedule(src.Instalments, day)
+		if t.Instalments != nil { // as on create: the invoice made from it needs the feature
+			if err := q.RequireFeature(ctx, sess.Workspace.ID, store.FeatureInvoiceInstalments); err != nil {
+				return err
+			}
+		}
+		return q.SaveQuote(ctx, sess.Workspace.ID, t, now)
+	})
+	if err != nil {
+		return err
+	}
+	return s.respond(w, r, sess, http.StatusCreated, id)
+}
+
+// validDays: how long the quote was valid from its date, the default for a span that cannot be read.
+func validDays(t store.Quote) int {
+	from, err1 := time.Parse(time.DateOnly, t.IssueDate)
+	until, err2 := time.Parse(time.DateOnly, t.ValidUntil)
+	if err1 != nil || err2 != nil || until.Before(from) {
+		return defaultValidDays
+	}
+	return int(until.Sub(from).Hours() / 24)
 }
 
 var errInvoiced = auth.Error(http.StatusConflict, "quote_invoiced", "An invoice was already made from this quote.", nil)

@@ -2,6 +2,8 @@
 import { Badge } from '@helvetly/ui/components/badge'
 import { Callout } from '@helvetly/ui/components/callout'
 import { useLanguage } from '@helvetly/ui/components/language-provider'
+import { PlanFeatureText } from '@helvetly/ui/components/plan-feature-text'
+import { planFootnote } from '@helvetly/ui/lib/plan-features'
 import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
 import { Ban, Check, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
 import { useState } from 'react'
@@ -11,6 +13,7 @@ import { useOfferStatus } from '@/components/offer-provider'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/lib/currency'
 import { translatorFor } from '@/lib/i18n'
+import { planLines } from '@/lib/offer'
 import {
   type Interval,
   plansIn,
@@ -29,6 +32,7 @@ export function PricingCards() {
   const language = useLanguage()
   const translate = translatorFor(language)
   const { PLANS } = plansIn(language)
+  const lines = planLines(language)
   const [interval, setInterval] = useState<Interval>('year')
   const currency = useCurrency()
   const offer = useOfferStatus()
@@ -57,8 +61,10 @@ export function PricingCards() {
               className="absolute inset-0 cursor-pointer appearance-none opacity-0"
             />
             {value === 'month' ? translate('monthly') : translate('yearly')}
+            {/* The space is for the spoken name: "Yearly −20%". */}
+            {value === 'year' && ' '}
             {value === 'year' && (
-              <Badge tone="blue" size="sm" className="ml-1.5">
+              <Badge tone="green" size="sm" className="ml-1.5">
                 −{YEARLY_DISCOUNT_PERCENT}%
               </Badge>
             )}
@@ -102,6 +108,7 @@ export function PricingCards() {
       <div className="mt-12 grid w-full gap-4 lg:grid-cols-3">
         {PLANS.map((plan, i) => {
           const featured = plan.id === RECOMMENDED
+          const included = lines[i]
           return (
             <article
               key={plan.id}
@@ -196,9 +203,10 @@ export function PricingCards() {
                 {translate('choose3')}
                 {plan.name}
               </Cta>
-              <ul className="mt-7 grid gap-2.5 text-body">
-                {plan.highlights.map((item) => (
-                  <li key={item} className="flex gap-2.5">
+              {included?.basis && <p className="mt-7 text-body font-medium">{included.basis}</p>}
+              <ul className={cn('grid gap-2.5 text-body', included?.basis ? 'mt-3' : 'mt-7')}>
+                {included?.lines.map((line) => (
+                  <li key={line.key} className="flex gap-2.5">
                     <span
                       className={cn(
                         'mt-0.5 inline-flex size-4.5 shrink-0 items-center justify-center rounded-full',
@@ -209,7 +217,7 @@ export function PricingCards() {
                     >
                       <Check aria-hidden className="size-3" />
                     </span>
-                    {item}
+                    <PlanFeatureText line={line} />
                   </li>
                 ))}
               </ul>
@@ -221,7 +229,7 @@ export function PricingCards() {
         data-slot="allowance-legend"
         className="mt-8 max-w-3xl text-center text-body-sm text-pretty text-muted-foreground"
       >
-        {translate('allowanceLegend')} {translate('allowanceMonthlyNote')}
+        {planFootnote(language)}
       </p>
       <ul className="mt-14 grid w-full max-w-5xl gap-x-6 gap-y-4 text-body-sm sm:grid-cols-2 lg:grid-cols-4">
         {[
