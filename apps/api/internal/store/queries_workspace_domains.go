@@ -83,8 +83,12 @@ func (q Q) WorkspaceDomainOf(ctx context.Context, workspaceID string) (Workspace
 }
 
 // WorkspaceDomainByHostname is the domain, not removed, of whichever workspace has host; ErrNotFound for none.
-func (q Q) WorkspaceDomainByHostname(ctx context.Context, host string) (WorkspaceDomain, error) {
-	return scanDomain(q.db.QueryRow(ctx, `SELECT `+domainColumns+domainFrom+`WHERE d.hostname = $1 AND d.status <> 'removed'`, host))
+func (q Q) WorkspaceDomainByHostname(ctx context.Context, host string, forUpdate bool) (WorkspaceDomain, error) {
+	lock := ""
+	if forUpdate {
+		lock = " FOR UPDATE OF d"
+	}
+	return scanDomain(q.db.QueryRow(ctx, `SELECT `+domainColumns+domainFrom+`WHERE d.hostname = $1 AND d.status <> 'removed'`+lock, host))
 }
 
 // SaveWorkspaceDomainCheck stores what a check found and when to look again, only while the domain's status is still
