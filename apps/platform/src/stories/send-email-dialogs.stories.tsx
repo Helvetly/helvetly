@@ -4,8 +4,12 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { SendDialog } from '@/components/invoices/invoice-dialogs'
 import { QuoteSendDialog } from '@/components/quotes/quote-dialogs'
+import type { Client } from '@/lib/clients'
 import { sampleQuote } from '@/mocks/quotes'
 import { listItem, sampleInvoice } from '@/test/invoice-api'
+import { sampleClient } from '@/test/invoice-fixtures'
+
+import { sessionHandler } from './screen-fixtures'
 
 const meta = { title: 'Invoices/Send email dialogs' } satisfies Meta
 export default meta
@@ -242,5 +246,47 @@ export const MessageBox: Story = {
       await dialog.findByText('Enter a message of at most 2500 characters.'),
     ).toBeVisible()
     await expect(field).toHaveAttribute('aria-invalid', 'true')
+  },
+}
+
+let customer: Client
+/**
+ * A client without an email: the dialog says so and opens the client's form in place on the email; once saved, the
+ * address fills To.
+ */
+export const InvoiceClientWithoutEmail: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        http.get('/api/v1/clients/tags', () => HttpResponse.json({ data: [] })),
+        http.get('/api/v1/clients/:id', () => HttpResponse.json({ data: customer })),
+        http.patch<never, Partial<Client>>('/api/v1/clients/:id', async ({ request }) => {
+          customer = { ...customer, ...(await request.json()) }
+          return HttpResponse.json({ data: customer })
+        }),
+        http.get('/api/v1/invoices/:id/email', () =>
+          HttpResponse.json({ data: { ...draft, to: [] } }),
+        ),
+      ],
+    },
+  },
+  beforeEach: () => {
+    customer = sampleClient({ id: invoice.client.id, email: null, billing_email: null })
+  },
+  render: () => <SendDialog invoice={invoice} onClose={() => {}} />,
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement.ownerDocument.body)
+    const dialog = within(await page.findByRole('dialog', { name: /Send/ }))
+    await expect(await dialog.findByText('The client has no email address.')).toBeVisible()
+    await userEvent.click(dialog.getByRole('button', { name: 'Add the client’s email' }))
+    const form = await page.findByRole('dialog', { name: `Edit ${customer.name}` })
+    const email = within(form).getByRole('textbox', { name: 'Email' })
+    await waitFor(() => expect(email).toHaveFocus())
+    await userEvent.type(email, 'anna@acme.ch')
+    await userEvent.click(within(form).getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(form).not.toBeInTheDocument())
+    await waitFor(() => expect(dialog.queryByText('The client has no email address.')).toBeNull())
+    await expect(dialog.getByRole('textbox', { name: /^To/ })).toHaveValue('anna@acme.ch')
   },
 }

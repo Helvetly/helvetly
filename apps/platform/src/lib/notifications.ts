@@ -376,3 +376,13 @@ export function shortTime(iso: string, now = new Date()) {
     ? at.toLocaleTimeString(languageTag, { hour: '2-digit', minute: '2-digit' })
     : at.toLocaleDateString(languageTag, { day: 'numeric', month: 'short' })
 }
+
+/** Where an arrow key moves the focus among the bubble's rows (`at` -1: none focused), or null for any other key. */
+export function rowStep(key: string, at: number, count: number): number | null {
+  if (count === 0) return null
+  if (key === 'Home') return 0
+  if (key === 'End') return count - 1
+  if (key === 'ArrowDown') return at < 0 ? 0 : Math.min(at + 1, count - 1)
+  if (key === 'ArrowUp') return at < 0 ? count - 1 : Math.max(at - 1, 0)
+  return null
+}

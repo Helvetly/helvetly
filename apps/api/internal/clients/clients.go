@@ -135,6 +135,9 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := s.db.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureClientPortal); err != nil {
 			return err
 		}
+		if fields["email"] == nil && fields["billing_email"] == nil {
+			return errNoPortalLogin
+		}
 	}
 	if format, ok := fields["einvoice_format"].(string); ok && format != "none" {
 		if err := s.db.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureEInvoiceXML); err != nil {
@@ -189,6 +192,10 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 			if err := q.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureClientPortal); err != nil {
 				return err
 			}
+		}
+		// Turning the portal on invites the client, which needs an address to sign in with.
+		if after.PortalEnabled && !before.PortalEnabled && PortalLogin(after) == "" {
+			return errNoPortalLogin
 		}
 		// Asking for XML needs a plan with it; a client that asked before keeps its choice until changed.
 		if after.EInvoiceFormat != "none" && after.EInvoiceFormat != before.EInvoiceFormat {

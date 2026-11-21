@@ -13,7 +13,8 @@ import { Children, type ReactNode } from 'react'
  * (a check's result, a preview, an undo). The control gets `id`; its error has the id `${id}-error`.
  * `width` is the field's span in a settings form grid (settings.css); `group` labels a set of
  * controls (radios, a photo) rather than one input: a caption, as the controls name themselves
- * (a Segmented's legend).
+ * (a Segmented's legend). `mark` is a quiet sign after the label (what the field is needed for), in the label's
+ * row so it never moves the control.
  */
 export type FieldWidth = 'xs' | 'sm' | 'md' | 'lg' | 'full'
 
@@ -25,6 +26,7 @@ export function FormField({
   status,
   required,
   tip,
+  mark,
   width,
   group,
   className,
@@ -37,6 +39,7 @@ export function FormField({
   status?: ReactNode
   required?: boolean
   tip?: string
+  mark?: ReactNode
   width?: FieldWidth
   group?: boolean
   className?: string
@@ -72,6 +75,7 @@ export function FormField({
             )}
           </HelpTip>
         )}
+        {mark}
       </span>
       {/* Each control in a gap-free box: a zero-size node a browser extension adds beside an input
           (a password manager's icon host) would otherwise become a grid row and push the rest down by the gap. */}
