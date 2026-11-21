@@ -99,7 +99,13 @@ test('a receipt is filed in Expenses/<category>/<year> and follows the draft’s
   })
   const file = `folder-${randomUUID().slice(0, 8)}.pdf`
   await openPage(page, `/expenses?id=${text(expense.id)}`, 'Expenses')
+  // The name shows as a pending row before the upload is stored: wait for the upload itself.
+  const uploaded = page.waitForResponse(
+    (r) =>
+      r.request().method() === 'POST' && r.url().endsWith(`/expenses/${text(expense.id)}/receipts`),
+  )
   await page.getByRole('dialog').getByLabel('Upload receipts').setInputFiles(receiptFile(file))
+  expect((await uploaded).status()).toBe(201)
   await expect(page.getByRole('dialog').getByText(file)).toBeVisible()
 
   const year = today().slice(0, 4)
