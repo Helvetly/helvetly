@@ -359,7 +359,7 @@ export const Company: Story = {
     await sectionsAreBands(canvasElement)
     await formGridAligned(canvasElement)
     await headerRuled(canvasElement)
-    // The readiness notice ends where the form grid ends, not at the panel's edge.
+    // The readiness notice ends where the form grid ends (both fill a wide card).
     const notice = canvasElement.querySelector<HTMLElement>('[data-slot="settings-notice"]')
     const name = canvas
       .getByRole('textbox', { name: /^Company name/ })

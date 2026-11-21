@@ -78,7 +78,7 @@ export function SettingsPage({
           <div
             data-slot="settings-sections"
             className={cn(
-              '@container/sections grid min-w-0 gap-7',
+              '@container/sections grid max-w-[90rem] min-w-0 gap-7',
               aside && '@5xl:col-start-1 @5xl:row-start-1',
             )}
           >
