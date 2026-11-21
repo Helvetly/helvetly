@@ -196,7 +196,7 @@
   "allEngagements": "Tutti gli incarichi ",
   "allFiguresByZiffer": "Tutte le figure di Ziffer ",
   "allFiles": "Tutti i file",
-  "allNotifications": "Tutte le notifiche",
+  "viewAllNotifications": "Vedi tutte le notifiche",
   "allowanceLegend": "Le quote di ogni membro pagante del team si sommano in un’unica quota condivisa nello spazio di lavoro. I limiti dello spazio di lavoro si applicano all’intero spazio.",
   "allowanceMonthlyNote": "Le quote mensili si azzerano e ripartono ogni mese; lo spazio di archiviazione è una capacità, non una quota mensile.",
   "allowancePer": "{scope, select, workspace { / spazio di lavoro} other {}}{monthly, select, true { / mese} other {}}",

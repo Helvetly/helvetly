@@ -886,6 +886,37 @@ h1 .accent {
   }
 }
 
+/* The sidebar bell while anything is unread: a short swing from its top, about a second, then rest; it rings again
+   every 10 seconds. Nothing with reduced motion. `rotate` is its own property, so the hover motion stays. */
+@keyframes bell-ring {
+  0%,
+  9.6%,
+  100% {
+    rotate: 0deg;
+  }
+  1.2% {
+    rotate: 14deg;
+  }
+  2.7% {
+    rotate: -12deg;
+  }
+  4.2% {
+    rotate: 9deg;
+  }
+  5.7% {
+    rotate: -6deg;
+  }
+  7.2% {
+    rotate: 3deg;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bell-ring {
+    transform-origin: 50% 2px;
+    animation: bell-ring 10s ease-in-out 0.6s infinite;
+  }
+}
+
 /* Reduced motion, app-wide (WCAG 2.3.3): drawers, dialogs, menus, the sidebar and meters appear in place
    instead of sliding, fading or growing. Spinners stop as well; Loader still says what it is doing. */
 @media (prefers-reduced-motion: reduce) {

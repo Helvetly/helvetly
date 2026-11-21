@@ -36,6 +36,7 @@ vi.mock('next/navigation', () => ({
 import {
   bellCounts,
   bellSections,
+  rowStep,
   BUBBLE_KEEP_MS,
   byDay,
   listQuery,
@@ -183,6 +184,18 @@ test('the bubble counts and sections: a settled item stays under Needs you but n
   expect(bellSections([update], 'needs')).toEqual([])
 })
 
+test('arrow keys, Home and End step through the rows and stop at the ends', () => {
+  expect(rowStep('ArrowDown', -1, 3)).toBe(0)
+  expect(rowStep('ArrowDown', 1, 3)).toBe(2)
+  expect(rowStep('ArrowDown', 2, 3)).toBe(2)
+  expect(rowStep('ArrowUp', -1, 3)).toBe(2)
+  expect(rowStep('ArrowUp', 0, 3)).toBe(0)
+  expect(rowStep('Home', 2, 3)).toBe(0)
+  expect(rowStep('End', 0, 3)).toBe(2)
+  expect(rowStep('Enter', 0, 3)).toBeNull()
+  expect(rowStep('ArrowDown', -1, 0)).toBeNull()
+})
+
 test('the bubble shows "now" within a minute, the time today and the day before that', () => {
   const now = new Date(2026, 10, 12, 12, 0, 30)
   expect(shortTime(new Date(2026, 10, 12, 12, 0).toISOString(), now)).toBe('now')
@@ -216,15 +229,15 @@ test('the bell shows the count; opening it marks nothing read, groups and filter
   await user.click(within(filters).getByRole('button', { name: 'Updates 2' }))
   expect(within(dialog).queryByRole('region', { name: 'Needs you' })).toBeNull()
 
-  expect(within(dialog).getByRole('link', { name: 'All notifications' })).toHaveAttribute(
+  expect(within(dialog).getByRole('link', { name: 'View all notifications' })).toHaveAttribute(
     'href',
     '/notifications',
   )
-  expect(within(dialog).getByRole('link', { name: 'Notification settings' })).toHaveAttribute(
-    'href',
-    '/notifications?prefs=1',
-  )
-  expect(await within(dialog).findByText('Also sent by email')).toBeVisible()
+  const settings = within(dialog).getByRole('link', { name: 'Notification settings' })
+  expect(settings).toHaveAttribute('href', '/notifications?prefs=1')
+  // Whether email goes out too is in the settings button's tooltip.
+  await user.hover(settings)
+  expect(await screen.findByRole('tooltip')).toHaveTextContent('Also sent by email')
 
   await user.click(within(dialog).getByRole('button', { name: 'Mark all as read' }))
   await waitFor(() => expect(screen.queryByTestId('bell-count')).toBeNull())
@@ -233,15 +246,15 @@ test('the bell shows the count; opening it marks nothing read, groups and filter
   expect(within(dialog).getByRole('button', { name: 'Mark all as read' })).toBeDisabled()
 })
 
-test("an item's button opens it, marks it read and closes the bubble", async () => {
+test("an item's row opens it, marks it read and closes the bubble", async () => {
   const user = userEvent.setup()
   renderBell()
   await user.click(await screen.findByRole('button', { name: /^Notifications/ }))
   const dialog = await screen.findByRole('dialog')
   await user.click(
     await within(dialog).findByRole('link', {
-      name: 'View the request',
-      description: /Ana Keller signed/,
+      name: 'Ana Keller signed “Service agreement”',
+      description: /View the request/,
     }),
   )
   await waitFor(() => expect(one).toContain('ntf_5:read'))

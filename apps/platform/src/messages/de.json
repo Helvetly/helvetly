@@ -196,7 +196,7 @@
   "allEngagements": "Alle Aufträge ",
   "allFiguresByZiffer": "Alle Figuren von Ziffer ",
   "allFiles": "Alle Dateien",
-  "allNotifications": "Alle Benachrichtigungen",
+  "viewAllNotifications": "Alle Benachrichtigungen ansehen",
   "allowanceLegend": "Die Kontingente pro zahlendem Teammitglied werden zu einem gemeinsamen Workspace-Kontingent zusammengefasst. Workspace-Limits gelten für den gesamten Workspace.",
   "allowanceMonthlyNote": "Monatliche Kontingente beginnen jeden Monat neu; Speicher ist eine Kapazität, kein monatliches Kontingent.",
   "allowancePer": "{scope, select, workspace { / Arbeitsbereich} other {}}{monthly, select, true { / Monat} other {}}",
