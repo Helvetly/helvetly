@@ -34,6 +34,8 @@ export function leaveExitGhost(
     document.body.append(ghost)
     for (const copy of copies) {
       copy.restore()
+      // A part that finishes first (a shorter slide than its backdrop's fade) stays gone, not back in place.
+      copy.node.style.animationFillMode = 'forwards'
       copy.node.setAttribute('data-state', 'closed')
       copy.node.removeAttribute('data-open')
       copy.node.setAttribute('data-closed', '')

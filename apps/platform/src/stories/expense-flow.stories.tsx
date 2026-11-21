@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
+import { useState } from 'react'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { AIApprovalProvider } from '@/components/ai/ai-approval'
@@ -270,5 +271,37 @@ export const SeveralFiles: Story = {
     await expect(onImport).toHaveBeenCalledOnce()
     await expect(onImport.mock.calls[0]?.[0]).toHaveLength(2)
     await expect(previews).not.toHaveBeenCalled()
+  },
+}
+
+const closed = fn()
+/** The page's way: closing unmounts the form. */
+function Closable() {
+  const [open, setOpen] = useState(true)
+  return open ? (
+    <AIApprovalProvider>
+      <ExpenseForm
+        start
+        onClose={() => {
+          closed()
+          setOpen(false)
+        }}
+        onSaved={fn()}
+      />
+    </AIApprovalProvider>
+  ) : null
+}
+
+/** Cancel closes the sheet once: it does not come back after it has gone. */
+export const ClosesOnce: Story = {
+  render: () => <Closable />,
+  beforeEach: () => closed.mockClear(),
+  play: async () => {
+    const view = await sheet()
+    await userEvent.click(await view.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(document.querySelector('[data-slot="sheet-content"]')).toBeNull())
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    await expect(document.querySelector('[data-slot="sheet-content"]')).toBeNull()
+    await expect(closed).toHaveBeenCalledOnce()
   },
 }
