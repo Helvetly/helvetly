@@ -47,7 +47,7 @@ func TestRereadReadsADraftsReceiptsAndStoresNothing(t *testing.T) {
 	first := pngBytes(t)
 	second := append(pngBytes(t), 0) // a different page, still a valid PNG
 	id := e.draftWithReceipts("ws_a", first, second)
-	e.model.replies = []func(aimodel.Request) (aimodel.Reply, error){answer(recordJSON(t, threeRates(c.ID)))}
+	e.model.replies = []func(aimodel.Request) (aimodel.Reply, error){answer(recordJSON(t, threeRates(*c.Preset)))}
 	w := e.reread(id, "request-0001")
 	if w.Code != 200 {
 		t.Fatalf("%d %s", w.Code, w.Body)

@@ -12,6 +12,8 @@ const travel = {
   id: 'exc_1',
   name: 'Travel',
   account_code: '6640',
+  preset: 'travel',
+  vat_treatment: 'standard',
   is_archived: false,
   expenses_count: 0,
 }
@@ -22,7 +24,7 @@ function setup(role: string, categories: unknown[], by: 'id' | 'name' = 'id', va
     'fetch',
     vi.fn<typeof globalThis.fetch>(async (input, init) => {
       const url = String(input)
-      if (url.endsWith('/expense-categories') && init?.method === 'POST') {
+      if (url.includes('/expense-categories?') && init?.method === 'POST') {
         const body: unknown = JSON.parse(String(init.body))
         posts.push(body)
         return json(
@@ -30,7 +32,7 @@ function setup(role: string, categories: unknown[], by: 'id' | 'name' = 'id', va
           201,
         )
       }
-      if (url.endsWith('/expense-categories')) return json({ data: categories })
+      if (url.includes('/expense-categories?')) return json({ data: categories })
       return json({}, 404)
     }),
   )
@@ -100,4 +102,31 @@ test('a name no category carries is offered as a new category, keeping the name'
   await userEvent.click(screen.getAllByRole('button', { name: 'Create' })[1] as HTMLElement)
   await waitFor(() => expect(posts).toHaveLength(1))
   await waitFor(() => expect(onChange).toHaveBeenCalledWith('Software'))
+})
+
+test('categories sit under their account headings, presets in the user’s language, and an account code finds one', async () => {
+  const lodging = { ...travel, id: 'exc_3', name: 'Lodging', preset: 'lodging' }
+  const coworking = {
+    ...travel,
+    id: 'exc_4',
+    name: 'Coworking',
+    account_code: '6000',
+    preset: null,
+  }
+  setup('member', [coworking, lodging, travel])
+  await userEvent.click(await screen.findByRole('button', { name: /Choose a category/ }))
+  expect(screen.getByRole('group', { name: 'Premises & equipment' })).toHaveTextContent('Coworking')
+  expect(screen.getByRole('group', { name: 'Marketing & travel' }).textContent).toMatch(
+    /Lodging.*Travel/,
+  )
+  await userEvent.type(screen.getByRole('combobox'), '6000')
+  expect(screen.getByRole('option', { name: /Coworking/ })).toBeVisible()
+  expect(screen.queryByRole('option', { name: /Travel/ })).toBeNull()
+})
+
+test('the name mode keeps the stored name as the value, whatever the label', async () => {
+  const { onChange } = setup('member', [travel], 'name')
+  await userEvent.click(await screen.findByRole('button', { name: /Choose a category/ }))
+  await userEvent.click(screen.getByRole('option', { name: /Travel/ }))
+  expect(onChange).toHaveBeenCalledWith('Travel')
 })

@@ -49,6 +49,7 @@ import { ApprovalBadge } from '@/components/invoices/invoice-bits'
 import { RecordPageButton } from '@/components/record-link'
 import { useApproval } from '@/lib/approvals'
 import { useFolders, type Folder } from '@/lib/documents'
+import { categoryLabel } from '@/lib/expense-categories'
 import {
   expenseState,
   FOREIGN_VAT_HINT,
@@ -170,7 +171,7 @@ function Detail({
   const aiBlock = useReceiptAIBlock()
   const rereadable = draft && expense.receipts_count > 0
   const subtitle = [
-    expense.category?.name,
+    expense.category && categoryLabel(expense.category),
     expense.document_date && formatDay(expense.document_date),
   ]
     .filter(Boolean)
@@ -482,7 +483,7 @@ function AmountCard({ expense }: { expense: Expense }) {
                 {line.description ?? translate('line', { position: line.position })}
                 {line.category && (
                   <Badge size="sm" tone="neutral" className="ml-2">
-                    {line.category.name}
+                    {categoryLabel(line.category)}
                   </Badge>
                 )}
               </span>
@@ -652,7 +653,7 @@ function BookingCard({ expense }: { expense: Expense }) {
       <p className="text-body-sm">
         {expense.category ? (
           <>
-            {expense.category.name}{' '}
+            {categoryLabel(expense.category)}{' '}
             <span className="text-muted-foreground tabular-nums">
               {expense.category.account_code}
             </span>

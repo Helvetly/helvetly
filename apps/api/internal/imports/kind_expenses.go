@@ -360,17 +360,13 @@ func receiptCategories(ctx context.Context, q store.Q, workspaceID string) ([]re
 	if err != nil {
 		return nil, "", err
 	}
-	presets, err := q.ExpenseCategoryPresets(ctx, workspaceID)
-	if err != nil {
-		return nil, "", err
-	}
 	out := make([]receiptCategory, len(list))
 	var b strings.Builder
 	b.WriteString("The categories (key | name | account):")
 	for i, c := range list {
 		key := c.ID
-		if p := presets[c.ID]; p != "" {
-			key = p
+		if c.Preset != nil {
+			key = *c.Preset
 		}
 		out[i] = receiptCategory{Key: key, ID: c.ID, Name: c.Name, AccountCode: c.AccountCode}
 		// one line each: a name never starts a new instruction

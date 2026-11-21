@@ -24,6 +24,7 @@ import {
   Pencil,
   ReceiptText,
   SearchX,
+  Tags,
   Trash2,
   Layers,
   ScanSearch,
@@ -59,6 +60,7 @@ import {
   useResizableColumns,
 } from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
+import { ExpenseCategoriesSheet } from '@/components/expenses/expense-categories-sheet'
 import { handOffImport } from '@/components/import/hand-off'
 import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -66,6 +68,7 @@ import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/imp
 import { PageHeader } from '@/components/shell/page-header'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
+import { categoryLabel } from '@/lib/expense-categories'
 import {
   canManageExpenses,
   DEFAULT_PARAMS,
@@ -290,6 +293,7 @@ export function ExpensesPage() {
     update({ sort: field, desc: params.sort === field ? !params.desc : field !== 'supplier' })
   // Receipts go through the AI import: read into drafts that are reviewed in its drawer, then land in "To review".
   const importDrawer = useImportDrawer()
+  const [managingCategories, setManagingCategories] = useState(false)
   const importReceipts = importDrawer.open
   // Dropping a file anywhere on the page reads it (not while a drawer is open).
   const dropping = useImportDrop('expenses', canAdd && !formState && !openId)
@@ -344,6 +348,12 @@ export function ExpensesPage() {
         {translate('exportCSV')}
         {filtered || params.view !== 'all' ? translate('thisView') : ''}
       </ExportItem>
+      {canManage && (
+        <Item onSelect={() => setManagingCategories(true)}>
+          <Tags />
+          {translate('expenseCategories')}
+        </Item>
+      )}
     </>
   )
   const access = useMemo(() => ({ canManage, canWrite }), [canManage, canWrite])
@@ -606,6 +616,9 @@ export function ExpensesPage() {
         />
       )}
       {importDrawer.isOpen && <ImportDrawer kind="expenses" onClose={importDrawer.close} />}
+      {managingCategories && (
+        <ExpenseCategoriesSheet onClose={() => setManagingCategories(false)} />
+      )}
       {formState && (
         <ExpenseForm
           key={`form:${formState.expense?.id ?? 'new'}`}
@@ -830,7 +843,7 @@ function Filters({
                   onChange({ categories: toggleIn(params.categories, category.id) })
                 }
               />
-              <span className="min-w-0 flex-1 truncate">{category.name}</span>
+              <span className="min-w-0 flex-1 truncate">{categoryLabel(category)}</span>
               <span className="text-xs text-muted-foreground tabular-nums">
                 {category.account_code}
               </span>
@@ -916,7 +929,7 @@ const ExpenseRow = memo(function ExpenseRow({ expense, selected, bulk, access, a
         <td className="hidden px-3 @6xl:table-cell">
           {expense.category ? (
             <span className="grid leading-tight">
-              <span>{expense.category.name}</span>
+              <span>{categoryLabel(expense.category)}</span>
               <span className="text-caption text-muted-foreground tabular-nums">
                 {expense.category.account_code}
               </span>
@@ -995,7 +1008,10 @@ const ExpenseItem = memo(function ExpenseItem({ expense, selected, bulk, access,
               {expense.supplier_name ?? translate('noSupplier')}
             </span>
             <span className="truncate text-[13px] text-muted-foreground">
-              {[expense.document_date && formatDay(expense.document_date), expense.category?.name]
+              {[
+                expense.document_date && formatDay(expense.document_date),
+                expense.category && categoryLabel(expense.category),
+              ]
                 .filter(Boolean)
                 .join(' · ') || `#${expense.number}`}
             </span>

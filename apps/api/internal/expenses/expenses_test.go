@@ -409,6 +409,32 @@ func (e *env) categories(b *browser) map[string]category {
 	return byCode
 }
 
+// categoryList: the categories as the API names them for a ?lang and an Accept-Language (either may be empty).
+func (e *env) categoryList(b *browser, lang, acceptLanguage string) []presetCategory {
+	e.t.Helper()
+	req, err := http.NewRequest("GET", e.srv.URL+"/api/v1/expense-categories?include_archived=1&lang="+lang, nil)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	req.AddCookie(&http.Cookie{Name: "helvetly_session", Value: b.token})
+	if acceptLanguage != "" {
+		req.Header.Set("Accept-Language", acceptLanguage)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out struct{ Data []presetCategory }
+	if resp.StatusCode != 200 {
+		e.t.Fatalf("categories: status %d", resp.StatusCode)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		e.t.Fatal(err)
+	}
+	return out.Data
+}
+
 func (e *env) upload(b *browser, id, name string, content []byte) *http.Response {
 	e.t.Helper()
 	var buf bytes.Buffer
@@ -432,7 +458,7 @@ func TestLifecycle(t *testing.T) {
 	owner := e.workspace()
 	member := e.join(owner.workspace, "member")
 	travel := e.categories(owner)["6640"]
-	if travel.Name != "Travel" || len(e.categories(owner)) != len(store.DefaultCategories) {
+	if travel.Name != "Travel" || len(e.categoryList(owner, "", "")) != len(store.CategoryPresets) {
 		t.Fatalf("seeded categories: %+v", e.categories(owner))
 	}
 

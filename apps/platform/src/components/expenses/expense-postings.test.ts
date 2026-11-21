@@ -9,7 +9,9 @@ const line = (id: string, amount: string, account: string | null): ExpenseLine =
   description: null,
   amount,
   vat_rate: '8.1',
-  category: account ? { id: `cat_${account}`, name: account, account_code: account } : null,
+  category: account
+    ? { id: `cat_${account}`, name: account, account_code: account, preset: null }
+    : null,
   quantity: null,
   unit_price: null,
 })
@@ -22,7 +24,7 @@ test('one account: the cost without reclaimable VAT, and the VAT to other input 
 })
 
 test('material costs reclaim to 1170; nothing reclaimable leaves the VAT row out', () => {
-  const goods = { id: 'cat_goods', name: 'Goods', account_code: '4000' }
+  const goods = { id: 'cat_goods', name: 'Goods', account_code: '4000', preset: null }
   expect(postingPreview(expense({ category: goods }))[1]).toEqual({
     debit: '1170',
     credit: '2000',
