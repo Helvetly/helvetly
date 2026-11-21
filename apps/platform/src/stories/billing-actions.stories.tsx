@@ -1,6 +1,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, within } from 'storybook/test'
+import { http, HttpResponse } from 'msw'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import { PlanCards } from '@/components/billing/plan-cards'
@@ -54,3 +55,46 @@ export const SharedActions: Story = {
 }
 
 export const SharedActionsDark: Story = { ...SharedActions, parameters: { dark: true } }
+
+const launch20 = {
+  code: 'LAUNCH20',
+  percent_off: 20,
+  amount_off: null,
+  currency: null,
+  duration: 'repeating',
+  duration_in_months: 3,
+  plans: ['basic', 'pro'],
+  expires_at: null,
+}
+
+/** The one promotion code entry: the link opens the popover, Apply shows the discount, Cancel closes. */
+export const PromotionCodeEntry: Story = {
+  render: () => <PlanCards billing={billingFixture()} offer={publicOffer} />,
+  parameters: {
+    msw: {
+      handlers: [
+        http.post('/api/v1/billing/promotion-code', () => HttpResponse.json({ data: launch20 })),
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const link = () => canvas.getByRole('button', { name: 'Have a promotion code?' })
+
+    await userEvent.click(link())
+    await expect(await body.findByText('Promotion code')).toBeVisible()
+    await userEvent.click(body.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(body.queryByText('Promotion code')).not.toBeInTheDocument())
+
+    await userEvent.click(link())
+    await userEvent.type(await body.findByLabelText(/^Code/), 'launch20')
+    await userEvent.click(body.getByRole('button', { name: 'Apply' }))
+    await expect(await canvas.findByText('LAUNCH20')).toBeVisible()
+    await expect(canvas.getByText('LAUNCH20').parentElement).toHaveTextContent(
+      'LAUNCH20 · −20% for 3 months',
+    )
+    await expect(canvas.getByRole('button', { name: 'Change' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Remove' })).toBeVisible()
+  },
+}
