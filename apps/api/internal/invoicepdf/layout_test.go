@@ -91,8 +91,8 @@ func TestFooterTextInThePageFooter(t *testing.T) {
 				above := number.y // each footer line sits above the next, the last above the contact line
 				if tt.contact {
 					contact, ok := at(page, "rechnung@muster.ch")
-					if !ok || contact.y >= number.y {
-						t.Fatalf("page %d: contact line missing or not above the page number", i+1)
+					if !ok || math.Abs(number.y-contact.y-(pageNoY-contactY)) > 0.05 {
+						t.Fatalf("page %d: contact line missing or not %.0f mm above the page number", i+1, pageNoY-contactY)
 					}
 					above = contact.y
 				}
@@ -101,10 +101,10 @@ func TestFooterTextInThePageFooter(t *testing.T) {
 					if !ok {
 						t.Fatalf("page %d: footer line %q not printed", i+1, tt.want[j])
 					}
-					// footerH apart; the last one's 3.4 mm cell ends where the 4 mm cell below it starts
+					// footerH apart; the last one's 3.4 mm cell ends footerGap above the 4 mm cell below it
 					gap, want := above-p.y, footerH
 					if j == len(tt.want)-1 {
-						want = footerH + (4-footerH)/2
+						want = footerH + (4-footerH)/2 + footerGap
 					}
 					if math.Abs(gap-want) > 0.05 {
 						t.Errorf("page %d: footer line %q %.2f mm above the next line, want %.2f", i+1, tt.want[j], gap, want)

@@ -114,6 +114,8 @@ const (
 	left, right, contentW = 20.0, 190.0, 170.0
 	pageBottom            = 272.0  // the body's lowest line without a footer text
 	footerH, footerMax    = 3.4, 8 // the footer text's line height and most lines: it must leave the body room
+	// the page footer's rows, apart enough to read as footer text, contact line and page number, not one block
+	contactY, pageNoY, footerGap = 279.0, 285.0, 2.0
 )
 
 type renderer struct {
@@ -185,10 +187,10 @@ func newRenderer(d Document, title string) (*renderer, *bool, error) {
 			r.set("", 8)
 			pdf.SetTextColor(110, 110, 110)
 			if r.contact != "" {
-				r.cell(left, 280, contentW, 4, r.contact, "C")
+				r.cell(left, contactY, contentW, 4, r.contact, "C")
 			}
 			r.lines(left, r.footerTop(), contentW, footerH, r.footer, "C")
-			r.cell(left, 284, contentW, 4, fmt.Sprintf(l.Page, pdf.PageNo()), "C")
+			r.cell(left, pageNoY, contentW, 4, fmt.Sprintf(l.Page, pdf.PageNo()), "C")
 			pdf.SetTextColor(0, 0, 0)
 		}
 	})
@@ -756,13 +758,13 @@ func (r *renderer) setFooter(text *string) {
 	r.bottom = min(pageBottom, r.footerTop()-3)
 }
 
-// footerTop: where the footer text starts, stacked above the contact line (280) and the page number (284).
+// footerTop: where the footer text starts, footerGap above the contact line, or the page number without one.
 func (r *renderer) footerTop() float64 {
-	y := 284.0
+	y := pageNoY
 	if r.contact != "" {
-		y -= 4
+		y = contactY
 	}
-	return y - float64(len(r.footer))*footerH
+	return y - footerGap - float64(len(r.footer))*footerH
 }
 
 // pairs writes a bold heading and its rows (grey label, black value beside the block's own longest label), kept
