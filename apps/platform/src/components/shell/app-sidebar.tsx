@@ -454,21 +454,23 @@ function UserMenu({
             sideOffset={8}
             className="w-72 rounded-xl p-1.5 shadow-elevation-2 [&_[role=menuitem]]:h-9 [&_[role=menuitem]]:text-[15px] [&_svg]:stroke-[1.5]"
           >
-            {/* Name and email take what the role badge at the right leaves; both truncate or wrap. */}
+            {/* The role badge sits on the name's row so the email gets the full width beside the avatar. */}
             <DropdownMenuLabel className="flex items-start gap-2.5 px-2 py-2 font-normal">
               <UserAvatar user={user} />
-              <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
-                <span
-                  className="line-clamp-2 text-title-sm font-medium break-words text-foreground"
-                  title={displayName(user)}
-                >
-                  {displayName(user)}
+              <span className="grid min-w-0 flex-1 gap-px leading-tight">
+                <span className="flex items-start gap-2">
+                  <span
+                    className="line-clamp-2 min-w-0 flex-1 text-title-sm font-medium break-words text-foreground"
+                    title={displayName(user)}
+                  >
+                    {displayName(user)}
+                  </span>
+                  <MiniBadge className="mt-0.5 shrink-0">{capitalize(role)}</MiniBadge>
                 </span>
-                <span className="truncate text-body-sm" title={user.email}>
+                <span className="truncate text-xs text-muted-foreground" title={user.email}>
                   {user.email}
                 </span>
               </span>
-              <MiniBadge className="mt-0.5 shrink-0">{capitalize(role)}</MiniBadge>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

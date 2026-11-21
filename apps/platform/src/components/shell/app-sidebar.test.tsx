@@ -53,14 +53,14 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
-const renderSidebar = () =>
+const renderSidebar = (current: Session = session) =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
       <TooltipProvider>
         <SidebarProvider keyboardShortcut={false}>
-          <AppSidebar session={session} />
+          <AppSidebar session={current} />
         </SidebarProvider>
       </TooltipProvider>
     </QueryClientProvider>,
@@ -124,6 +124,20 @@ test('a truncated name or email stays readable in full on hover', async () => {
   expect(names).toHaveLength(2)
   expect(names.some((name) => menu.contains(name))).toBe(true)
   expect(within(menu).getByTitle(session.user.email)).toBeInTheDocument()
+})
+
+test('a long email gets the full width: the role badge shares the name row and the email is small', async () => {
+  renderSidebar({
+    ...session,
+    user: { ...session.user, name: 'Renata Giannini', email: 'info@deindeutschcoach.ch' },
+  })
+  await userEvent.click(screen.getByRole('button', { name: /Renata/ }))
+  const menu = await screen.findByRole('menu')
+  const email = within(menu).getByTitle('info@deindeutschcoach.ch')
+  expect(email).toHaveClass('text-xs', 'truncate')
+  const nameRow = within(menu).getByTitle('Renata Giannini').parentElement
+  expect(nameRow).toContainElement(within(menu).getByText('Owner'))
+  expect(nameRow).not.toContainElement(email)
 })
 
 test('the user menu lists Keyboard shortcuts with its key, and opens the dialog', async () => {
