@@ -235,3 +235,38 @@ test('payment terms offer the 7, 14 and 30 day presets with help, and keep a typ
   await userEvent.type(days, '45')
   expect(days).toHaveValue('45')
 })
+
+test('the client type is the first choice of the form, and a person is saved as one', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(async (_, init) =>
+    init?.method !== 'POST'
+      ? Response.json({ data: [] })
+      : Response.json({ error: { code: 'internal', message: 'Stop here.' } }, { status: 500 }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  renderForm()
+
+  const type = screen.getByRole('radiogroup', { name: 'Client type' })
+  expect(screen.getByRole('radio', { name: 'Company' })).toBeChecked()
+  expect(screen.getByRole('radio', { name: 'Company' })).toHaveAccessibleDescription(
+    'A business: company name, UID and VAT number',
+  )
+  // Ahead of every field one types into.
+  expect(
+    type.compareDocumentPosition(screen.getByRole('textbox', { name: 'Company name' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy()
+
+  await userEvent.click(screen.getByRole('radio', { name: 'Person' }))
+  expect(screen.getByRole('radio', { name: 'Person' })).toBeChecked()
+  await userEvent.type(screen.getByRole('textbox', { name: 'Full name' }), 'Anna Muster')
+  await userEvent.click(screen.getByRole('button', { name: 'Add client' }))
+
+  await waitFor(() =>
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true),
+  )
+  const post = fetch.mock.calls.find(([, init]) => init?.method === 'POST')
+  expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({
+    name: 'Anna Muster',
+    is_company: false,
+  })
+})
