@@ -175,13 +175,6 @@ const COLUMNS: ColumnDef[] = [
 
 /** Status keeps its width: badges are short and the same everywhere. */
 const RESIZABLE = ['number', 'client', 'date', 'valid', 'total']
-/** The least each column keeps when dragged: a full number, a date, an amount with its currency. */
-const LIMITS = {
-  number: { min: 112 },
-  date: { min: 104 },
-  valid: { min: 104 },
-  total: { min: 112 },
-}
 /** Dates and amounts start with the latest or largest; text from A. */
 const DESC_FIRST = new Set<QuoteSortField>(['date', 'valid', 'total'])
 
@@ -272,7 +265,7 @@ export function bulkActions(
 
 /** The quotes list; the status view, the search (?q=), the sort (?sort=), the open quote (?id=) and a new one (?new=1) live in the URL. */
 export function QuotesPage() {
-  const widths = useResizableColumns('quotes', RESIZABLE, { flex: 'client', limits: LIMITS })
+  const widths = useResizableColumns('quotes', RESIZABLE, { flex: 'client' })
   const canWrite = useCan('write:invoices')
   const router = useRouter()
   const pathname = usePathname()
