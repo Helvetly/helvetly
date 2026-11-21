@@ -112,10 +112,14 @@ const recognizedLabel = (field: string) =>
     document_date: translate('receiptDate'),
     due_date: translate('dueDate'),
     amounts: translate('amounts'),
+    payment: translate('payment'),
+    category_id: translate('category'),
   })[field] ?? field
 
 /** What the last Recognize receipt did, for the review note under the receipt. */
-type Recognized = (Pick<Applied, 'applied' | 'kept'> & { issues: string[] }) | { error: string }
+type Recognized =
+  | (Pick<Applied, 'applied' | 'kept' | 'uncertain'> & { issues: string[] })
+  | { error: string }
 
 type ExpenseFormProps = {
   expense?: Expense
@@ -233,13 +237,13 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       if (!(await ensure()) || stale()) return
       let suggestions
       try {
-        suggestions = await recognizeReceipt(file, crypto.randomUUID(), controller.signal)
+        suggestions = await recognizeReceipt([file], crypto.randomUUID(), controller.signal)
       } catch (error) {
         // The server still wanted approval (withdrawn elsewhere, a new notice since): ask once and retry once.
         if (!isAIConsentRequired(error) || stale()) throw error
         await queryClient.invalidateQueries({ queryKey: usageKey })
         if (!(await ensure()) || stale()) throw error
-        suggestions = await recognizeReceipt(file, crypto.randomUUID(), controller.signal)
+        suggestions = await recognizeReceipt([file], crypto.randomUUID(), controller.signal)
       }
       if (stale()) return
       const result = applyRecognition(latest.current, initial, touched.current, suggestions, {
@@ -261,6 +265,7 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
       setRecognized({
         applied: result.applied,
         kept: result.kept,
+        uncertain: result.uncertain,
         issues: Object.values(suggestions.issues),
       })
     } catch (error) {
@@ -625,6 +630,13 @@ function ExpenseFormBody({ expense, initialFiles = NO_FILES, onClose, onSaved }:
                               <span>
                                 {translate('keptYourEntries', {
                                   fields: recognized.kept.map(recognizedLabel).join(', '),
+                                })}
+                              </span>
+                            )}
+                            {recognized.uncertain.length > 0 && (
+                              <span>
+                                {translate('checkUnsureFromTheReceipt', {
+                                  fields: recognized.uncertain.map(recognizedLabel).join(', '),
                                 })}
                               </span>
                             )}

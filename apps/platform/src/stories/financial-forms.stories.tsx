@@ -8,6 +8,7 @@ import { ExpenseForm } from '@/components/expenses/expense-form'
 import { ProductForm } from '@/components/products/product-form'
 import type { ClientInput } from '@/lib/clients'
 import type { Product, ProductInput } from '@/lib/products'
+import { aiConsent, aiNotice } from '@/mocks/ai-notice'
 import { sampleSettings } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
@@ -390,6 +391,82 @@ export const ExpenseCreateCategory: Story = {
     )
     await userEvent.click(body.getByRole('button', { name: 'Create' }))
     await waitFor(() => expect(body.queryByRole('textbox', { name: 'Category name' })).toBeNull())
+  },
+}
+
+/** Reading a receipt fills a line per VAT rate and the category, and names what the AI was unsure of. */
+export const ExpenseReceiptReading: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/heidi/usage', () =>
+          HttpResponse.json({
+            period: '2026-11',
+            tokens_used: 0,
+            tokens_included: 500_000,
+            tokens_purchased: 0,
+            tokens_remaining: 500_000,
+            provider_available: true,
+            consent: aiConsent(true),
+          }),
+        ),
+        http.get('/api/v1/heidi/consent', () =>
+          HttpResponse.json({ data: aiConsent(true), notice: aiNotice }),
+        ),
+        http.post('/api/v1/expenses/receipt-preview', () =>
+          HttpResponse.json({
+            data: {
+              supplier: { name: 'Swisscom', vat_number: null, country: 'CH', iban: null },
+              document: { type: 'invoice', number: 'R-12', date: '2026-11-03', due_date: null },
+              description: null,
+              currency: 'CHF',
+              totals: { net: '200.00', vat: '10.70', gross: '210.70' },
+              vat_breakdown: [
+                { rate: '8.1', net: '100.00', vat: '8.10', gross: '108.10' },
+                { rate: '2.6', net: '100.00', vat: '2.60', gross: '102.60' },
+              ],
+              items: [],
+              payment: { status: 'unknown', method: null, paid_on: null },
+              reverse_charge: false,
+              category: {
+                id: 'exc_travel',
+                name: 'Travel',
+                account_code: '6640',
+                confidence: 0.4,
+                reason: null,
+              },
+              confidence: {},
+              issues: {},
+            },
+          }),
+        ),
+        ...baseHandlers,
+      ],
+    },
+  },
+  render: () => (
+    <ExpenseForm
+      onClose={fn()}
+      onSaved={savedExpense}
+      initialFiles={[new File(['x'], 'swisscom.png', { type: 'image/png' })]}
+    />
+  ),
+  play: async () => {
+    const body = within(document.body)
+    const recognize = await body.findByRole('button', { name: 'Recognize receipt' })
+    const supplier = body.getByRole('textbox', { name: /Supplier$/ })
+    // The AI approval belongs to the signed-in person and workspace: a click before the session has loaded is
+    // dropped without sending anything, so it is clicked again until the reading lands.
+    await waitFor(async () => {
+      if (
+        recognize.hasAttribute('disabled') === false &&
+        supplier.getAttribute('value') !== 'Swisscom'
+      )
+        await userEvent.click(recognize)
+      await expect(supplier).toHaveValue('Swisscom')
+    })
+    await expect(body.getByRole('textbox', { name: 'Line 2 amount' })).toHaveValue('102.60')
+    await expect(body.getByText('The AI was unsure, check: Category.')).toBeVisible()
   },
 }
 
