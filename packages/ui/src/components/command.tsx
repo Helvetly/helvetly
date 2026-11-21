@@ -166,6 +166,7 @@ function CommandCreateItem({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Item>) {
   // Sticky at the list's end and never filtered out: adding stays one row away whatever is typed or scrolled.
+  // An action, not an option: link-toned text at rest and a faint link tint when active, never the selection's grey.
   return (
     // A border, not a CommandSeparator: a listbox may hold only options and groups.
     <div className="sticky bottom-0 z-10 border-t bg-popover">
@@ -175,7 +176,7 @@ function CommandCreateItem({
           value={value}
           forceMount={forceMount}
           className={cn(
-            "flex cursor-pointer items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-sm font-medium text-muted-foreground outline-hidden select-none in-data-[slot=dialog-content]:rounded-lg! data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-muted data-selected:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+            "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm font-medium text-link outline-hidden select-none in-data-[slot=dialog-content]:rounded-lg! data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-link/8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
             className,
           )}
           {...props}
