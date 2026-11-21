@@ -1,5 +1,5 @@
 import { sampleQuote } from '@/mocks/quotes'
-import { sampleSettings } from '@/test/invoice-api'
+import { sampleSchedule, sampleSettings } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
 import { emptyQuoteValues, previewInput, toQuoteInput, valuesFromQuote } from './quote-model'
@@ -24,6 +24,7 @@ test('a saved quote round-trips into exactly the fields the API takes', () => {
       'currency',
       'discount_percent',
       'footer',
+      'instalments',
       'intro',
       'issue_date',
       'language',
@@ -62,4 +63,35 @@ test('a quote without lines still offers one to type into, and the preview sends
   expect(values.lines).toHaveLength(1)
   expect(previewInput(values).lines).toHaveLength(1)
   expect(toQuoteInput(values).input.lines).toEqual([])
+})
+
+test('a quote’s schedule round-trips: typed rows as they are, none as null', () => {
+  const quote = sampleQuote({ instalments: sampleSchedule() })
+  const values = valuesFromQuote(quote, settings)
+  expect(values.instalments).toEqual({
+    count: '3',
+    interval: 'monthly',
+    first_due_date: '2026-12-01',
+    items: [
+      { due_date: '2026-12-01', amount: '360.35' },
+      { due_date: '2027-01-01', amount: '360.35' },
+      { due_date: '2027-02-01', amount: '360.30' },
+    ],
+  })
+  expect(toQuoteInput(values).input.instalments).toEqual({
+    count: 3,
+    interval: 'monthly',
+    first_due_date: '2026-12-01',
+    items: [
+      { due_date: '2026-12-01', amount: '360.35' },
+      { due_date: '2027-01-01', amount: '360.35' },
+      { due_date: '2027-02-01', amount: '360.30' },
+    ],
+  })
+  expect(previewInput(values).instalments).toEqual({
+    count: 3,
+    interval: 'monthly',
+    first_due_date: '2026-12-01',
+  })
+  expect(toQuoteInput(valuesFromQuote(sampleQuote(), settings)).input.instalments).toBeNull()
 })

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 
@@ -15,7 +16,8 @@ import (
 
 // CreateDraft saves a new draft for a client inside the caller's transaction q (no transaction of its own). The
 // client's currency, language and terms and the settings' VAT mode are applied before fill, so fill can pick net or
-// gross from inv.VATMode; the lines it sets are checked like those of POST /invoices. An unknown client wraps
+// gross from inv.VATMode; the lines it sets are checked like those of POST /invoices, and a schedule it sets is saved
+// with the draft, which then falls due with its last instalment. An unknown client wraps
 // store.ErrNotFound.
 func (s *Service) CreateDraft(ctx context.Context, q store.Q, sess store.Session, clientID string, fill func(*store.Invoice)) (string, error) {
 	c, err := q.Client(ctx, sess.Workspace.ID, clientID)
@@ -49,11 +51,9 @@ func (s *Service) CreateDraft(ctx context.Context, q store.Q, sess store.Session
 	if t := compute(&inv); t.Payable() > maxPayable {
 		return "", validationFailed(map[string]string{"lines": "The total cannot exceed 999'999'999.99."})
 	}
+	syncSchedule(&inv)
 	draftPayment(&inv, set)
-	if err := q.SaveDraft(ctx, sess.Workspace.ID, inv, s.now()); err != nil {
-		return "", err
-	}
-	return inv.ID, wrote(ctx, q, sess, inv.ID)
+	return inv.ID, saveDraft(ctx, q, sess, inv, s.now())
 }
 
 // Seller returns the invoice settings' seller block, the logo bytes (nil for none) and the settings' language, for
@@ -72,7 +72,7 @@ func (s *Service) Seller(ctx context.Context, q store.Q, workspaceID string) (st
 
 // QuoteFields are the invoice input fields a quote takes (docs/quotes-contract.md); its valid_until is its own.
 var QuoteFields = []string{"client_id", "issue_date", "currency", "language", "vat_mode", "reference", "intro", "footer", "note",
-	"discount_percent", "lines"}
+	"discount_percent", "lines", "instalments"}
 
 // NewQuote: an invoice-shaped quote (kind "quote") for a client of the workspace, with the settings' and the client's
 // currency, language, VAT mode, footer and reference. A missing client is a validation error on client_id.
@@ -106,7 +106,25 @@ func (s *Service) ApplyQuote(ctx context.Context, q store.Q, workspaceID string,
 			return err
 		}
 	}
+	if inv.Instalments != nil && len(inv.Instalments.Items) > 0 { // the invoice made from it needs the feature too
+		if err := q.RequireFeature(ctx, workspaceID, store.FeatureInvoiceInstalments); err != nil {
+			return err
+		}
+	}
+	validUntil := inv.DueDate // a schedule moves an invoice's due date to its last instalment, never a quote's
+	syncSchedule(inv)
+	inv.DueDate = validUntil
 	return resolveContractDocument(ctx, q, workspaceID, inv, body)
+}
+
+// QuoteScheduleProblems: why the quote's schedule cannot be sent as it is (the invoice's issue rules: it adds up to
+// the total and starts on or after the quote's date), nil when it can or there is none.
+func (s *Service) QuoteScheduleProblems(inv store.Invoice) error {
+	reasons := scheduleReasons(inv)
+	if len(reasons) == 0 {
+		return nil
+	}
+	return auth.Error(http.StatusUnprocessableEntity, "cannot_send", reasons[0].Message, map[string]any{"reasons": reasons})
 }
 
 // QuoteNumber: Q-{YYYY}-{NNN}, or the workspace's format when it prints the type, so quotes follow it too. Quotes

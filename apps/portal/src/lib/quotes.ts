@@ -14,6 +14,8 @@ export type PortalQuote = {
   total: string
   decided_at: string | null
   decision_note: string | null
+  /** The payment schedule accepted with the quote; empty for none. */
+  instalments: { seq: number; due_date: string; amount: string }[]
 }
 
 export type QuoteDecision = 'accept' | 'decline'

@@ -6,7 +6,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { ClientsPage } from '@/components/clients/clients-page'
 import { QuotesPage } from '@/components/quotes/quotes-page'
 import { emailTemplateHandlers } from '@/mocks/email-templates'
-import { quoteHandlers, resetQuotesMock } from '@/mocks/quotes'
+import { quoteHandlers, quotePreviewHandler, resetQuotesMock } from '@/mocks/quotes'
 
 import { sessionHandler, unavailable } from '../screen-fixtures'
 import {
@@ -234,6 +234,81 @@ export const EditDraft: Story = {
   },
 }
 export const EditDraftDark = dark(EditDraft)
+
+/** The quote editor with the invoice's schedule controls, the preview answering a schedule's rows. */
+const scheduled = quotes({ id: 'quo_draft' }, [quotePreviewHandler])
+const openSchedule = async (canvasElement: HTMLElement) => {
+  const body = page(canvasElement)
+  await userEvent.click(await body.findByRole('button', { name: 'Edit' }, wait))
+  const editor = await body.findByRole('form', { name: 'Edit draft quote' })
+  await userEvent.click(within(editor).getByRole('switch', { name: 'Pay in instalments' }))
+  const dialog = await body.findByRole('dialog', { name: 'Pay in instalments' })
+  await seen(dialog)
+  return { body, editor, dialog }
+}
+
+/** A payment schedule is added, a row typed off the total and put back, then saved with the quote; no reminders. */
+export const ScheduleAdd: Story = {
+  parameters: scheduled,
+  play: async ({ canvasElement }) => {
+    const { body, editor, dialog } = await openSchedule(canvasElement)
+    await expect(
+      within(dialog).getByText(/The client accepts these due dates with the quote/),
+    ).toBeVisible()
+    await expect(within(dialog).queryByRole('switch', { name: /Payment reminders/ })).toBeNull()
+    const first = await within(dialog).findByRole('textbox', { name: 'Instalment 1 amount' }, wait)
+    await userEvent.clear(first)
+    await userEvent.type(first, '100.00')
+    await seen(await within(dialog).findByText(/Off by/))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Equal parts' }))
+    await waitFor(() => expect(within(dialog).queryByText(/Off by/)).toBeNull())
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(body.queryByRole('dialog', { name: 'Pay in instalments' })).toBeNull(),
+    )
+    await expect(within(editor).getByText(/3× · Monthly/)).toBeVisible()
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save changes' }))
+    await toasted(canvasElement, 'Quote saved.')
+  },
+}
+export const ScheduleAddDark = dark(ScheduleAdd)
+export const ScheduleAddPhone = phone(ScheduleAdd)
+
+/** The count is checked as on an invoice: outside 2 to 12 the dialog says so and cannot be saved. */
+export const ScheduleValidation: Story = {
+  parameters: scheduled,
+  play: async ({ canvasElement }) => {
+    const { dialog } = await openSchedule(canvasElement)
+    const count = within(dialog).getByRole('textbox', { name: 'Number of instalments' })
+    await userEvent.clear(count)
+    await userEvent.type(count, '1')
+    await seen(await within(dialog).findByText(/From 2 to 12/))
+    await expect(within(dialog).getByRole('button', { name: 'Save' })).toBeDisabled()
+  },
+}
+
+/** A saved schedule is edited (its rows open as saved) and removed again by switching it off. */
+export const ScheduleEditRemove: Story = {
+  parameters: scheduled,
+  play: async ({ canvasElement }) => {
+    const { body, editor, dialog } = await openSchedule(canvasElement)
+    const count = within(dialog).getByRole('textbox', { name: 'Number of instalments' })
+    await userEvent.clear(count)
+    await userEvent.type(count, '4')
+    await seen(await within(dialog).findByRole('textbox', { name: 'Instalment 4 amount' }, wait))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await userEvent.click(within(editor).getByRole('button', { name: 'Save changes' }))
+    await toasted(canvasElement, 'Quote saved.')
+
+    await userEvent.click(await body.findByRole('button', { name: 'Edit' }, wait))
+    const again = await body.findByRole('form', { name: 'Edit draft quote' })
+    await seen(await within(again).findByText(/4× · Monthly/))
+    await userEvent.click(within(again).getByRole('switch', { name: 'Pay in instalments' }))
+    await expect(within(again).queryByText(/4× · Monthly/)).toBeNull()
+    await userEvent.click(within(again).getByRole('button', { name: 'Save changes' }))
+    await toasted(canvasElement, 'Quote saved.')
+  },
+}
 
 /** Only Save saves: + Add line, the line menus, dates and discount controls leave the editor open and unsaved. */
 export const EditorButtonsDoNotSubmit: Story = {

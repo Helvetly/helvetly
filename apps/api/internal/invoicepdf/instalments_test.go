@@ -117,3 +117,27 @@ func sortedStreams(t *testing.T, d Document) [][]byte {
 	slices.SortFunc(all, bytes.Compare)
 	return all
 }
+
+// A quote prints its payment schedule under the totals, so the client accepts it with the quote, and no QR bill.
+func TestQuoteSchedule(t *testing.T) {
+	for lang, title := range map[string]string{"de": "Ratenplan", "fr": "Plan de paiement", "it": "Piano rateale",
+		"en": "Instalment schedule"} {
+		t.Run(lang, func(t *testing.T) {
+			d := withInstalments(sample(lang, 2))
+			d.Invoice.Kind, d.Bill = "quote", nil
+			out, err := Render(d)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := len(pageObject.FindAll(out, -1)); got != 1 {
+				t.Errorf("%d pages, want 1 (no QR bills)", got)
+			}
+			text := pageText(t, d)
+			for _, want := range []string{title, "01.12.2026", "01.01.2027", "01.02.2027", "CHF 360.35", "CHF 360.30"} {
+				if !shows(text, want) {
+					t.Errorf("no %q", want)
+				}
+			}
+		})
+	}
+}

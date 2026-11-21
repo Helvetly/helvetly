@@ -385,9 +385,9 @@ export function instalmentsSummary(schedule: EditorInstalments): string {
   })
 }
 
-/** A saved schedule as typed; the editor makes it generated again when it equals the preview's. */
-function editorInstalments(invoice: Invoice): EditorInstalments | null {
-  const schedule = invoice.instalments
+/** A saved schedule (an invoice's or a quote's) as typed; the editor makes it generated again when it equals the preview's. */
+export function editorInstalments(doc: Pick<Invoice, 'instalments'>): EditorInstalments | null {
+  const schedule = doc.instalments
   const first = schedule?.items[0]
   if (!schedule || !first) return null
   return {

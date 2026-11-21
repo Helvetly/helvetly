@@ -4599,6 +4599,7 @@
   "editInstalments": "Modifier les échéances",
   "instalmentsSummary": "{count}× · {interval} · dès le {date}",
   "instalmentsDialogDescription": "Une facture, plusieurs échéances, une QR-facture pour chacune.",
+  "quoteInstalmentsDescription": "Le client accepte ces échéances avec l’offre ; la facture qui en découle les reprend.",
   "assets": "Actifs",
   "liabilitiesAndEquity": "Passifs",
   "operatingRevenue": "Produits d’exploitation",

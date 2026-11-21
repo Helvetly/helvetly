@@ -18,16 +18,23 @@ func (s *Service) registerQuotes(handle func(string, handler)) {
 
 // quoteView: what the client sees of a quote it was sent (never a draft, an internal note or the invoice link).
 type quoteView struct {
-	ID           string      `json:"id"`
-	Number       string      `json:"number"` // set on the first send, and the portal shows sent quotes only
-	Revision     int         `json:"revision"`
-	Status       string      `json:"status"`
-	IssueDate    string      `json:"issue_date"`
-	ValidUntil   string      `json:"valid_until"`
-	Currency     string      `json:"currency"`
-	Total        store.Money `json:"total"`
-	DecidedAt    *time.Time  `json:"decided_at"`
-	DecisionNote *string     `json:"decision_note"`
+	ID           string       `json:"id"`
+	Number       string       `json:"number"` // set on the first send, and the portal shows sent quotes only
+	Revision     int          `json:"revision"`
+	Status       string       `json:"status"`
+	IssueDate    string       `json:"issue_date"`
+	ValidUntil   string       `json:"valid_until"`
+	Currency     string       `json:"currency"`
+	Total        store.Money  `json:"total"`
+	DecidedAt    *time.Time   `json:"decided_at"`
+	DecisionNote *string      `json:"decision_note"`
+	Instalments  []instalment `json:"instalments"` // the payment schedule accepted with the quote; empty for none
+}
+
+type instalment struct {
+	Seq     int         `json:"seq"`
+	DueDate string      `json:"due_date"`
+	Amount  store.Money `json:"amount"`
 }
 
 func viewOf(t store.Quote) quoteView {
@@ -35,7 +42,14 @@ func viewOf(t store.Quote) quoteView {
 	if t.Number != nil {
 		number = *t.Number
 	}
-	return quoteView{t.ID, number, t.Revision, t.Status, t.IssueDate, t.ValidUntil, t.Currency, t.PayableTotal, t.DecidedAt, t.DecisionNote}
+	v := quoteView{t.ID, number, t.Revision, t.Status, t.IssueDate, t.ValidUntil, t.Currency, t.PayableTotal, t.DecidedAt, t.DecisionNote,
+		[]instalment{}}
+	if t.Instalments != nil {
+		for _, it := range t.Instalments.Items {
+			v.Instalments = append(v.Instalments, instalment{it.Seq, it.DueDate, it.Amount})
+		}
+	}
+	return v
 }
 
 func (s *Service) quotes(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {

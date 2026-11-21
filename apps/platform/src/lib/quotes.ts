@@ -8,6 +8,8 @@ import { translate } from '@/lib/i18n'
 import {
   type Decimal,
   type DocLanguage,
+  type InstalmentInput,
+  type InstalmentSchedule,
   type Line,
   type LineInput,
   type Totals,
@@ -42,6 +44,8 @@ export type Quote = Totals & {
   note: string | null
   discount_percent: Decimal
   lines: Line[]
+  /** The payment schedule offered with the quote; the invoice made from it takes it over. */
+  instalments: InstalmentSchedule | null
   sent_at: string | null
   decided_at: string | null
   decided_by: 'staff' | 'client' | null
@@ -70,6 +74,7 @@ export type QuoteInput = Pick<
   client_number_display?: string | null
   contract_reference?: string | null
   contract_document_id?: string | null
+  instalments?: InstalmentInput | null
 }
 
 export type QuoteSendInput = {
