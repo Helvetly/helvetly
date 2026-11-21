@@ -700,7 +700,7 @@ function EntryForm({
                 <TooltipTrigger asChild>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="destructive-ghost"
                     size="icon-sm"
                     aria-label={translate('payrollComponentRemove', { n: index + 1 })}
                     onClick={() =>
@@ -710,7 +710,7 @@ function EntryForm({
                       )
                     }
                   >
-                    <X />
+                    <Trash2 />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{translate('payrollRemoveLine')}</TooltipContent>
