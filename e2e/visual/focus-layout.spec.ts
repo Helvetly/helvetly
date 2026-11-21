@@ -204,6 +204,9 @@ for (const app of ['platform', 'portal'] as const) {
         await page.setViewportSize(viewport)
         await render(page, app, id)
         await install(page)
+        // The audit focuses every field twice, so a long form needs time in proportion; the default 30 s
+        // fits a short one but not an 18-field editor on a busy CI shard.
+        test.setTimeout(30_000 + 1_500 * Number(await call(page, 'textFields')))
         const found = size === 'phone' ? strings(await call(page, 'zooming')) : []
         // A key press first: from then on, focus from script is keyboard focus (:focus-visible).
         await page.keyboard.press('Shift')

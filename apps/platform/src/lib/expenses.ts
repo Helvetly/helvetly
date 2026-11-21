@@ -498,58 +498,151 @@ export function uploadReceipts(
   return uploadInPacks<Receipt>(`/api/v1${path(id)}/receipts`, files, MAX_FILE_BYTES, onProgress)
 }
 
-/** The receipt fields the AI can suggest; a null is "not on the receipt" (or not trusted) and never clears a value. */
-export const RECOGNIZED_FIELDS = [
-  'supplier_name',
-  'supplier_vat_number',
-  'supplier_country',
-  'reference',
-  'description',
-  'document_date',
-  'due_date',
-  'currency',
-  'amount',
-  'vat_rate',
-  'amount_2',
-  'vat_rate_2',
+/** How clearly the AI could read a part of the receipt; the server lowers a part whose figures disagree. */
+export type ReadConfidence = 'high' | 'medium' | 'low'
+export const READ_GROUPS = [
+  'supplier',
+  'document',
+  'totals',
+  'vat_breakdown',
+  'items',
+  'payment',
 ] as const
-export type RecognizedField = (typeof RECOGNIZED_FIELDS)[number]
+export type ReadGroup = (typeof READ_GROUPS)[number]
+
+export type ReadBand = {
+  rate: string | null
+  net: string | null
+  vat: string | null
+  gross: string | null
+}
+export type ReadItem = {
+  description: string | null
+  quantity: string | null
+  unit_price: string | null
+  amount: string | null
+  vat_rate: string | null
+  /** The workspace category the AI put this item in, if any. */
+  category_id: string | null
+}
+
+/**
+ * Receipt reading v2 (POST /expenses/receipt-preview and POST /expenses/{id}/read), checked by the server: a null is
+ * "not on the receipt" (or not trusted) and never clears a value.
+ */
 export type ReceiptSuggestions = {
-  fields: Record<RecognizedField, string | null>
-  /** A message per field to check (`amounts` for the currency, amounts and VAT rates together). */
+  supplier: {
+    name: string | null
+    vat_number: string | null
+    country: string | null
+    iban: string | null
+  }
+  document: {
+    type: 'receipt' | 'invoice' | 'credit_note' | null
+    number: string | null
+    date: string | null
+    due_date: string | null
+  }
+  description: string | null
+  currency: string | null
+  totals: { net: string | null; vat: string | null; gross: string | null }
+  vat_breakdown: ReadBand[]
+  items: ReadItem[]
+  payment: {
+    status: 'paid' | 'unpaid' | 'unknown'
+    method: PaymentMethod | null
+    paid_on: string | null
+  }
+  reverse_charge: boolean
+  /** One of the workspace's categories, with the AI's confidence from 0 to 1. */
+  category: {
+    id: string
+    name: string
+    account_code: string
+    confidence: number
+    reason: string | null
+  } | null
+  confidence: Record<ReadGroup, ReadConfidence>
+  /** A message per part to check (supplier, document, totals, vat_breakdown, items, payment, category, reverse_charge). */
   issues: Record<string, string>
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
+const str = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
+const pick = <T extends string>(value: unknown, choices: readonly T[]): T | null =>
+  choices.find((choice) => choice === value) ?? null
+const rec = (value: unknown) => (isRecord(value) ? value : {})
+const list = (value: unknown) => (Array.isArray(value) ? value.map(rec) : [])
+const PAYMENT_METHODS = ['card', 'cash', 'bank_transfer', 'twint', 'other'] as const
 
-/** The answer of POST /expenses/receipt-preview, kept to the strings it should hold. */
+/** The answer of a receipt reading, kept to the shapes it should hold. */
 export function parseSuggestions(body: unknown): ReceiptSuggestions {
-  const data = isRecord(body) && isRecord(body.data) ? body.data : {}
-  const raw = isRecord(data.fields) ? data.fields : {}
-  const issues = isRecord(data.issues) ? data.issues : {}
-  const fields: ReceiptSuggestions['fields'] = {
-    supplier_name: null,
-    supplier_vat_number: null,
-    supplier_country: null,
-    reference: null,
-    description: null,
-    document_date: null,
-    due_date: null,
-    currency: null,
-    amount: null,
-    vat_rate: null,
-    amount_2: null,
-    vat_rate_2: null,
-  }
-  for (const field of RECOGNIZED_FIELDS) {
-    const value = raw[field]
-    if (typeof value === 'string' && value.trim()) fields[field] = value.trim()
-  }
+  const data = rec(rec(body).data)
+  const supplier = rec(data.supplier)
+  const document = rec(data.document)
+  const totals = rec(data.totals)
+  const payment = rec(data.payment)
+  const category = rec(data.category)
+  const confidence = rec(data.confidence)
+  const level = (group: ReadGroup) =>
+    pick(confidence[group], ['high', 'medium', 'low'] as const) ?? 'medium'
   return {
-    fields,
+    supplier: {
+      name: str(supplier.name),
+      vat_number: str(supplier.vat_number),
+      country: str(supplier.country),
+      iban: str(supplier.iban),
+    },
+    document: {
+      type: pick(document.type, ['receipt', 'invoice', 'credit_note'] as const),
+      number: str(document.number),
+      date: str(document.date),
+      due_date: str(document.due_date),
+    },
+    description: str(data.description),
+    currency: str(data.currency),
+    totals: { net: str(totals.net), vat: str(totals.vat), gross: str(totals.gross) },
+    vat_breakdown: list(data.vat_breakdown).map((band) => ({
+      rate: str(band.rate),
+      net: str(band.net),
+      vat: str(band.vat),
+      gross: str(band.gross),
+    })),
+    items: list(data.items).map((item) => ({
+      description: str(item.description),
+      quantity: str(item.quantity),
+      unit_price: str(item.unit_price),
+      amount: str(item.amount),
+      vat_rate: str(item.vat_rate),
+      category_id: str(item.category_id),
+    })),
+    payment: {
+      status: pick(payment.status, ['paid', 'unpaid'] as const) ?? 'unknown',
+      method: pick(payment.method, PAYMENT_METHODS),
+      paid_on: str(payment.paid_on),
+    },
+    reverse_charge: data.reverse_charge === true,
+    category:
+      str(category.id) && typeof category.confidence === 'number'
+        ? {
+            id: String(category.id),
+            name: str(category.name) ?? '',
+            account_code: str(category.account_code) ?? '',
+            confidence: Math.min(1, Math.max(0, category.confidence)),
+            reason: str(category.reason),
+          }
+        : null,
+    confidence: {
+      supplier: level('supplier'),
+      document: level('document'),
+      totals: level('totals'),
+      vat_breakdown: level('vat_breakdown'),
+      items: level('items'),
+      payment: level('payment'),
+    },
     issues: Object.fromEntries(
-      Object.entries(issues).filter(
+      Object.entries(rec(data.issues)).filter(
         (entry): entry is [string, string] => typeof entry[1] === 'string',
       ),
     ),
@@ -557,18 +650,29 @@ export function parseSuggestions(body: unknown): ReceiptSuggestions {
 }
 
 /**
- * Asks the AI to read one receipt for the unsaved form; nothing is stored. `requestId` names this one action, so
- * the server refuses a repeat of it instead of reading (and charging) twice.
+ * Asks the AI to read up to five files as the pages of one receipt for the unsaved form; nothing is stored.
+ * `requestId` names this one action, so the server refuses a repeat of it instead of reading (and charging) twice.
  */
-export async function recognizeReceipt(file: File, requestId: string, signal: AbortSignal) {
+export async function recognizeReceipt(files: File[], requestId: string, signal: AbortSignal) {
   const form = new FormData()
   form.set('request_id', requestId)
-  form.set('file', file, file.name)
+  for (const file of files) form.append('file', file, file.name)
   return parseSuggestions(
     await request<unknown>('/expenses/receipt-preview', { method: 'POST', form, signal }),
   )
 }
 
-/** Receipts worth sending: HEIC can't be read; the server explains anything else it refuses (WebP). */
+/** Reads a draft's stored receipts again; nothing is stored, the person applies what they choose. */
+export async function rereadExpense(id: string, requestId: string, signal?: AbortSignal) {
+  return parseSuggestions(
+    await request<unknown>(`/expenses/${id}/read`, {
+      method: 'POST',
+      json: { request_id: requestId },
+      signal,
+    }),
+  )
+}
+
+/** Receipts worth sending: HEIC can't be read; the server explains anything else it refuses. */
 export const canRecognize = (file: File) =>
   !isHeic(file) && /^(application\/pdf|image\/(png|jpeg|webp))$/.test(file.type)
