@@ -21,6 +21,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/config"
 	"helvetly.com/api/internal/invoices"
@@ -100,8 +101,11 @@ func newEnv(t *testing.T) *env {
 	inv := invoices.New(st, a, e.files, e.mail, discard)
 	e.svc = New(st, a, inv, e.files, e.mail, discard)
 	e.svc.now = func() time.Time { return fixedNow }
+	ap := approvals.New(st, a)
+	e.svc.SetApprovals(ap)
 	mux := http.NewServeMux()
 	a.Register(mux)
+	ap.Register(mux)
 	inv.Register(mux)
 	e.svc.Register(mux)
 	e.srv = httptest.NewServer(mux)

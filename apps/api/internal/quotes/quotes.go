@@ -15,6 +15,7 @@ import (
 	"slices"
 	"time"
 
+	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/store"
@@ -50,13 +51,14 @@ type Mailer interface {
 }
 
 type Service struct {
-	db       *store.Store
-	auth     Auth
-	invoices Invoices
-	files    Storage
-	mail     Mailer
-	log      *slog.Logger
-	now      func() time.Time
+	db        *store.Store
+	auth      Auth
+	invoices  Invoices
+	files     Storage
+	mail      Mailer
+	approvals *approvals.Service // nil: nothing is gated
+	log       *slog.Logger
+	now       func() time.Time
 }
 
 func New(db *store.Store, a Auth, inv Invoices, files Storage, mailer Mailer, log *slog.Logger) *Service {
@@ -88,6 +90,31 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/quotes/{id}/decline", s.decide(false))
 	handle("POST /api/v1/quotes/{id}/revise", s.revise)
 	handle("POST /api/v1/quotes/{id}/invoice", s.toInvoice)
+	if s.approvals != nil {
+		s.approvals.Routes(func(p string, h func(http.ResponseWriter, *http.Request, store.Session) error) { handle(p, h) },
+			"/api/v1/quotes/{id}/approval", s.approvalLoad)
+	}
+}
+
+// SetApprovals is startup wiring: draft quotes whose policy applies are approved before they are sent.
+func (s *Service) SetApprovals(a *approvals.Service) { s.approvals = a }
+
+func approvalDoc(t store.Quote) approvals.Doc {
+	return approvals.Doc{Type: "quote", Subject: "quote", Resource: "invoices", ID: t.ID, Draft: t.Status == "draft",
+		Kind: "quote", Client: t.Client.Name, Currency: t.Currency, Total: t.PayableTotal}
+}
+
+func (s *Service) approvalLoad(ctx context.Context, q store.Q, sess store.Session, id string, lock bool) (approvals.Doc, error) {
+	t, err := q.Quote(ctx, sess.Workspace.ID, id, today(sess.Workspace, s.now()), lock)
+	return approvalDoc(t), err
+}
+
+// wrote records the session's person as an author of the draft: an author never approves it (internal/approvals).
+func wrote(ctx context.Context, q store.Q, sess store.Session, id string) error {
+	if sess.User.ID == "" { // a job
+		return nil
+	}
+	return q.AddApprovalAuthor(ctx, sess.Workspace.ID, id, sess.User.ID)
 }
 
 const defaultValidDays = 30
@@ -231,7 +258,10 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := s.apply(ctx, q, sess.Workspace.ID, &t, body); err != nil {
 			return err
 		}
-		return q.SaveQuote(ctx, sess.Workspace.ID, t, s.now())
+		if err := q.SaveQuote(ctx, sess.Workspace.ID, t, s.now()); err != nil {
+			return err
+		}
+		return wrote(ctx, q, sess, t.ID)
 	})
 	if err != nil {
 		return err
@@ -256,7 +286,13 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := s.apply(ctx, q, sess.Workspace.ID, &t, body); err != nil {
 			return err
 		}
-		return q.SaveQuote(ctx, sess.Workspace.ID, t, s.now())
+		if err := q.SaveQuote(ctx, sess.Workspace.ID, t, s.now()); err != nil {
+			return err
+		}
+		if err := wrote(ctx, q, sess, t.ID); err != nil {
+			return err
+		}
+		return s.approvals.Reset(ctx, q, sess, approvalDoc(t))
 	})
 	if err != nil {
 		return err
@@ -265,15 +301,22 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 }
 
 func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	deleted, err := s.db.DeleteQuoteDraft(r.Context(), sess.Workspace.ID, r.PathValue("id"))
-	if err != nil {
-		return err
-	}
-	if !deleted {
-		if _, err := s.db.Quote(r.Context(), sess.Workspace.ID, r.PathValue("id"), "", false); err != nil {
+	ctx, id := r.Context(), r.PathValue("id")
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		deleted, err := q.DeleteQuoteDraft(ctx, sess.Workspace.ID, id)
+		if err != nil {
 			return err
 		}
-		return invalidState("A quote that was sent is kept: decline or revise it instead.")
+		if !deleted {
+			if _, err := q.Quote(ctx, sess.Workspace.ID, id, "", false); err != nil {
+				return err
+			}
+			return invalidState("A quote that was sent is kept: decline or revise it instead.")
+		}
+		return s.approvals.Forget(ctx, q, sess.Workspace.ID, id)
+	})
+	if err != nil {
+		return err
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil

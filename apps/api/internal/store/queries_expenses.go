@@ -115,6 +115,8 @@ type Expense struct {
 	VoidReason           *string             `json:"void_reason"`
 	CreatedAt            time.Time           `json:"created_at"`
 	UpdatedAt            time.Time           `json:"updated_at"`
+	// ApprovalState: of a draft's latest approval request before booking (internal/approvals), as on Invoice.
+	ApprovalState *string `json:"approval_state"`
 }
 
 // Derive sets what follows from the stored fields: completeness and whether it is overdue on `today`.
@@ -247,14 +249,14 @@ func (q Q) MemberName(ctx context.Context, workspaceID, userID string) (string, 
 
 // ---- expenses ----
 
-const expenseColumns = `e.id, e.number, e.status, e.source, e.supplier_name, e.supplier_vat_number, e.supplier_country, e.reference, e.description,
+var expenseColumns = `e.id, e.number, e.status, e.source, e.supplier_name, e.supplier_vat_number, e.supplier_country, e.reference, e.description,
 	e.category_id, c.name, c.account_code, e.document_date::text, e.due_date::text, e.currency, e.amount_mode, e.input_tax,
 	e.deductible_percent, e.net_total, e.vat_total, e.total, e.deductible_vat, e.vat_breakdown, e.exchange_rate,
 	e.exchange_rate_date::text, e.exchange_rate_source, e.base_currency, e.base_net_total, e.base_vat_total, e.base_total,
 	e.base_deductible_vat, e.payment_status, e.paid_on::text, e.payment_method, e.paid_by, pb.name, e.reimbursed_on::text, e.note,
 	e.receipt_missing_reason, (SELECT count(*) FROM expense_receipts r WHERE r.expense_id = e.id), e.created_by, cb.name,
 	e.booked_at, e.booked_by, bb.name, e.voided_at, e.voided_by, vb.name, e.void_reason, e.created_at, e.updated_at,
-	e.reverse_charge, e.input_tax_box`
+	e.reverse_charge, e.input_tax_box, ` + approvalStateOf("e")
 
 const expenseFrom = ` FROM expenses e LEFT JOIN expense_categories c ON c.id = e.category_id
 	LEFT JOIN users pb ON pb.id = e.paid_by LEFT JOIN users cb ON cb.id = e.created_by
@@ -278,7 +280,7 @@ func scanExpense(row interface{ Scan(...any) error }, today string) (Expense, er
 		&e.Base.DeductibleVAT, &e.PaymentStatus, &e.PaidOn, &e.PaymentMethod, &e.PaidByID, &paidByName, &e.ReimbursedOn, &e.Note,
 		&e.ReceiptMissingReason, &e.ReceiptsCount, &createdBy, &createdByName,
 		&e.BookedAt, &bookedBy, &bookedByName, &e.VoidedAt, &voidedBy, &voidedByName, &e.VoidReason, &e.CreatedAt, &e.UpdatedAt,
-		&e.ReverseCharge, &e.InputTaxBox)
+		&e.ReverseCharge, &e.InputTaxBox, &e.ApprovalState)
 	if err != nil {
 		return e, err
 	}

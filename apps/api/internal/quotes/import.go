@@ -21,5 +21,8 @@ func CreateImport(ctx context.Context, q store.Q, sess store.Session, inv store.
 		by := "staff"
 		t.DecidedAt, t.DecidedBy = &now, &by
 	}
-	return t.ID, q.SaveQuote(ctx, sess.Workspace.ID, t, now)
+	if err := q.SaveQuote(ctx, sess.Workspace.ID, t, now); err != nil {
+		return "", err
+	}
+	return t.ID, wrote(ctx, q, sess, t.ID)
 }

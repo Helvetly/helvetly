@@ -263,7 +263,10 @@ func (s *Service) uploadReceipts(w http.ResponseWriter, r *http.Request, sess st
 			}
 			list[i] = u.receipt
 		}
-		return nil
+		if booked {
+			return nil
+		}
+		return s.changed(r.Context(), q, sess, current) // the approver saw the receipts too
 	})
 	if err != nil {
 		cleanup()
@@ -420,6 +423,9 @@ func (s *Service) deleteReceipt(w http.ResponseWriter, r *http.Request, sess sto
 			return err
 		}
 		if err := q.DeleteReceipt(r.Context(), e.ID, f.ID); err != nil {
+			return err
+		}
+		if err := s.changed(r.Context(), q, sess, e); err != nil { // the approver saw the receipts too
 			return err
 		}
 		// The linked copy in Documents goes to the Trash with it, so the same file can be uploaded again.

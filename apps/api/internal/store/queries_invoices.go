@@ -339,9 +339,14 @@ var invoiceColumns = `i.id, i.kind, i.number, i.status, ` + fmt.Sprintf(isOverdu
 
 // approvalState: a draft's latest approval request as pending, approved or rejected; null without one or once it was
 // withdrawn or reset. An issued document shows only approved (one issued after its policy was turned off was not).
-const approvalState = `(SELECT CASE WHEN ar.status = 'approved' OR ar.status IN ('pending', 'rejected') AND i.status = 'draft'
+var approvalState = approvalStateOf("i")
+
+// approvalStateOf: approvalState of the documents of the table aliased alias (invoices, quotes or expenses).
+func approvalStateOf(alias string) string {
+	return fmt.Sprintf(`(SELECT CASE WHEN ar.status = 'approved' OR ar.status IN ('pending', 'rejected') AND %[1]s.status = 'draft'
 	THEN ar.status END FROM approval_requests ar
-	WHERE ar.workspace_id = i.workspace_id AND ar.doc_id = i.id ORDER BY ar.submitted_at DESC, ar.id DESC LIMIT 1)`
+	WHERE ar.workspace_id = %[1]s.workspace_id AND ar.doc_id = %[1]s.id ORDER BY ar.submitted_at DESC, ar.id DESC LIMIT 1)`, alias)
+}
 
 // invoicePlanJoin: the plan that issued the document, or the live plan the draft is the source of.
 const invoicePlanJoin = ` LEFT JOIN instalment_plans pl ON pl.id = COALESCE(i.plan_id, (SELECT sp.id FROM instalment_plans sp

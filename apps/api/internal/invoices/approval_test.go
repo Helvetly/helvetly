@@ -420,7 +420,7 @@ func TestApprovalSettingsRules(t *testing.T) {
 		}
 	}
 	e.do(tm.author, "GET", "/api/v1/approvals/settings", nil, http.StatusOK, &s)
-	if len(s.Data.Groups) != 2 || len(s.Data.Policies) != 4 || !s.Data.Policies[0].Enabled || s.Data.Policies[1].Enabled {
+	if len(s.Data.Groups) != 2 || len(s.Data.Policies) != 6 || !s.Data.Policies[0].Enabled || s.Data.Policies[1].Enabled {
 		t.Fatalf("settings %+v", s.Data)
 	}
 }

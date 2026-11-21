@@ -96,8 +96,10 @@ are the reference.
   `BackfillSystemFolders` (once per start, idempotent) files what came before. AI filing and organizing put a known
   client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
 - **Approvals** (`internal/approvals`, Business feature `document_approvals`): an optional approval before a draft is
-  issued, per document type (`invoice` for every invoice kind without its own, `credit_note`, `debit_note`,
-  `corrected`; quotes, expenses and payroll take the same shape later). Owners and admins keep approver groups and a
+  issued, sent or booked, per document type (`invoice` for every invoice kind without its own, `credit_note`,
+  `debit_note`, `corrected`: before issuing; `quote`: before a draft or revision is first sent, a revision resets it;
+  `expense`: before booking, single or bulk, where whoever created it and the member it is paid back to count as
+  authors; payroll takes the same shape later). Owners and admins keep approver groups and a
   policy per type: on/off, an optional minimum total (in the document's currency) and rules that must all hold
   (at least N approvals from a group, or from anyone who can read the documents). Approvals are matched to rule slots so
   one person counts once; nobody who wrote the draft (`approval_authors`: created or changed it) and not the submitter
@@ -105,8 +107,8 @@ are the reference.
   approval_changed` otherwise). The document stays
   `draft`; its latest request (`approval_requests`, one `pending|approved` at a time, decisions in
   `approval_decisions`) gives `approval_state`. The document package calls approvals in its own transaction with the
-  row locked: `Gate` before issuing (`409 approval_required`), `Reset` after an edit other than a reminders-only change,
-  `Forget` on delete. A change of the seller, IBAN or Revolut account resets open requests on editable drafts
+  row locked: `Gate` before issuing (`409 approval_required`), `Reset` after an edit other than a reminders-only change
+  (an expense's receipts too), `Forget` on delete; quotes and expenses register their routes through `Routes`. A change of the seller, IBAN or Revolut account resets open requests on editable drafts
   (`ResetAll`); approval actions, issue and plan creation share the invoice settings lock. An instalment plan needs
   its source draft's approval and keeps it as history. No policy or feature after a downgrade: nothing is gated. Not gated: a void's
   credit note, plan instalments (the plan itself needs the draft's approval) and invoices imported as issued

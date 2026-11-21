@@ -141,7 +141,7 @@ func (s *Service) View(ctx context.Context, q store.Q, sess store.Session, doc D
 // InboxItem is a document waiting for the session's person's decision.
 type InboxItem struct {
 	DocType string `json:"doc_type"`
-	store.ApprovalInvoice
+	store.ApprovalItem
 	SubmittedBy Person    `json:"submitted_by"`
 	SubmittedAt time.Time `json:"submitted_at"`
 }
@@ -167,8 +167,7 @@ func inbox(ctx context.Context, q store.Q, sess store.Session) ([]InboxItem, err
 	var ids, people []string
 	var mayI []store.ApprovalRequest
 	for _, r := range pending {
-		// every type so far is an invoice kind
-		if mayDecide(sess, Doc{Resource: "invoices"}, &r, mine, authors[r.DocID]) {
+		if mayDecide(sess, Doc{Resource: resource(r.DocType)}, &r, mine, authors[r.DocID]) {
 			mayI = append(mayI, r)
 			ids, people = append(ids, r.DocID), append(people, r.SubmittedBy)
 		}
@@ -176,7 +175,7 @@ func inbox(ctx context.Context, q store.Q, sess store.Session) ([]InboxItem, err
 	if len(mayI) == 0 {
 		return []InboxItem{}, nil
 	}
-	docs, err := q.DraftInvoicesByID(ctx, sess.Workspace.ID, ids)
+	docs, err := q.ApprovalDraftsByID(ctx, sess.Workspace.ID, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +186,7 @@ func inbox(ctx context.Context, q store.Q, sess store.Session) ([]InboxItem, err
 	out := []InboxItem{}
 	for _, r := range mayI {
 		if d, ok := docs[r.DocID]; ok {
-			out = append(out, InboxItem{DocType: r.DocType, ApprovalInvoice: d,
+			out = append(out, InboxItem{DocType: r.DocType, ApprovalItem: d,
 				SubmittedBy: Person{ID: r.SubmittedBy, Name: names[r.SubmittedBy]}, SubmittedAt: r.SubmittedAt})
 		}
 	}
