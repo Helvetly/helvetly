@@ -11,6 +11,15 @@ const opened = (page: Page) =>
   )
 
 /**
+ * Closes what a click opened and waits until it has left the page, exit animation and all: while it is still leaving,
+ * the next click's check would count it and send an Escape that reaches the editor ("Discard your changes?").
+ */
+async function closeOpened(page: Page) {
+  if ((await opened(page).count()) > 0) await page.keyboard.press('Escape')
+  await expect(opened(page)).toHaveCount(0)
+}
+
+/**
  * Clicks every visible, enabled button of `editor` but its submit and the `skip`ped ways out, closing what each
  * opens with Escape; the editor stays open throughout.
  */
@@ -25,7 +34,7 @@ async function clickEveryButton(page: Page, editor: Locator, skip: RegExp) {
       const name = ((await button.getAttribute('aria-label')) ?? (await button.innerText())).trim()
       if (!skip.test(name)) {
         await button.click()
-        if ((await opened(page).count()) > 0) await page.keyboard.press('Escape')
+        await closeOpened(page)
         await expect(editor, `after clicking "${name}"`).toBeVisible()
       }
     }
@@ -39,10 +48,10 @@ async function clickLineControls(page: Page, editor: Locator) {
   await editor.getByRole('button', { name: /^Add line/ }).click()
   await expect(editor.getByRole('textbox', { name: 'Line 2 description' })).toBeVisible()
   await editor.getByRole('button', { name: /^Add from catalogue/ }).click()
-  await page.keyboard.press('Escape')
+  await closeOpened(page)
   await editor.getByRole('button', { name: 'Actions for line 1' }).click()
   await expect(page.getByRole('menu')).toBeVisible()
-  await page.keyboard.press('Escape')
+  await closeOpened(page)
   await expect(editor).toBeVisible()
 }
 
@@ -96,6 +105,7 @@ test('a draft invoice editor stays open whatever control is clicked', async ({ a
   // The instalments switch opens its own settings; closing them changes nothing.
   await editor.getByRole('switch', { name: 'Pay in instalments' }).click()
   await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'Pay in instalments' })).toBeHidden()
   await clickEveryButton(
     page,
     editor,

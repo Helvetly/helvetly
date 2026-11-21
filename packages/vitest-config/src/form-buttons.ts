@@ -18,10 +18,29 @@ export function expectTypedFormButtons(root: ParentNode = document) {
 }
 
 // Layers a click can open on top of the form: menus, popovers, pickers and dialogs.
-const layers = () =>
-  document.querySelectorAll(
-    '[role="menu"], [role="dialog"], [role="alertdialog"], [data-slot="popover-content"]',
-  ).length
+const layerSelector =
+  '[role="menu"], [role="dialog"], [role="alertdialog"], [data-slot="popover-content"]'
+const layers = () => document.querySelectorAll(layerSelector).length
+// A closed layer stays in the page while it animates out; only an open one is what a click opened.
+const openLayers = () =>
+  document.querySelectorAll(`:is(${layerSelector}):not([data-state="closed"])`).length
+
+/** Closes what a click opened above the `base` layers and waits until it has left the page, animation and all. */
+async function closeLayers(base: { all: number; open: number }, after: string) {
+  if (openLayers() > base.open)
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+  // Before the next click: while a layer is still leaving, an Escape would reach the form's own drawer instead.
+  const end = Date.now() + 5000
+  const gone = async (): Promise<void> => {
+    if (layers() <= base.all) return
+    if (Date.now() > end) throw new Error(`A layer stayed open after clicking "${after}"`)
+    await tick()
+    await gone()
+  }
+  await gone()
+}
 
 /**
  * Clicks every enabled non-submit button inside the forms under `root` and fails when one of them submitted its form.
@@ -47,21 +66,16 @@ export async function expectButtonsDoNotSubmit(
       (button) => button.getAttribute('type') !== 'submit' && !skip?.test(describe(button)),
     )
     if (buttons.length === 0) throw new Error('No non-submit button inside a form to try')
+    const base = { all: layers(), open: openLayers() }
     // One after another: each click must settle (and what it opened close) before the next.
     const tryInTurn = async ([button, ...rest]: HTMLButtonElement[]): Promise<void> => {
       if (!button) return
       // A click before may have removed it (a deleted line) or disabled it.
       if (button.isConnected && !button.disabled) {
         current = describe(button)
-        const open = layers()
         button.click()
         await tick()
-        if (layers() > open) {
-          document.activeElement?.dispatchEvent(
-            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
-          )
-          await tick()
-        }
+        await closeLayers(base, current)
       }
       await tryInTurn(rest)
     }
