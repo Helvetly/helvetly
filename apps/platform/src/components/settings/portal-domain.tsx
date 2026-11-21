@@ -16,7 +16,6 @@ import {
   ExternalLink,
   Globe,
   Link2,
-  Loader2,
   Lock,
   RefreshCw,
   ShieldCheck,
@@ -308,7 +307,7 @@ function SetupSteps({ stage }: { stage: DomainStage }) {
             {state === 'done' ? (
               <Check aria-hidden className="size-3.5 text-success" />
             ) : state === 'active' ? (
-              <Loader2 aria-hidden className={`size-3.5 ${SPIN}`} />
+              <Timer aria-hidden className="size-3.5" />
             ) : (
               <Circle aria-hidden className="size-3.5" />
             )}
@@ -375,8 +374,7 @@ function DomainStatus({ domain, canEdit }: { domain: PortalDomain; canEdit: bool
         <Callout
           role={notice.tone === 'info' ? 'status' : 'alert'}
           tone={notice.tone}
-          icon={notice.tone === 'info' ? Loader2 : undefined}
-          iconClassName={notice.tone === 'info' ? SPIN : undefined}
+          icon={notice.tone === 'info' ? Timer : undefined}
           title={notice.title}
         >
           <p>{notice.body}</p>
