@@ -200,6 +200,134 @@ export const Detail: Story = {
 export const DetailDark = dark(Detail)
 export const DetailPhone = phone(Detail)
 
+/** Opens the History tab of the quote open in the drawer and answers its timeline. */
+async function openHistory(canvasElement: HTMLElement) {
+  const body = page(canvasElement)
+  await userEvent.click(await body.findByRole('tab', { name: 'History' }, wait))
+  return body.findByRole('list', { name: 'History' }, wait)
+}
+
+/** Each sent revision, newest first: when and to whom, the client's answer and reason, the current one marked. */
+export const History: Story = {
+  parameters: quotes({ id: 'quo_expired' }),
+  play: async ({ canvasElement }) => {
+    const timeline = within(await openHistory(canvasElement))
+    const [current, earlier] = timeline.getAllByRole('listitem')
+    await expect(current).toHaveTextContent(/Rev\. 2\s*Current/)
+    await expect(current).toHaveTextContent('Sent 1 Aug 2026 to anna@alpenglow.ch')
+    await expect(current).toHaveTextContent('Expired after 31 Aug 2026')
+    await expect(earlier).toHaveTextContent('Rev. 1')
+    await expect(earlier).toHaveTextContent('Declined 24 Jul 2026 by the client')
+    await expect(earlier).toHaveTextContent('“super bad!!!”')
+    // The current revision has nothing to compare with; the earlier one does.
+    await expect(
+      within(current!).queryByRole('button', { name: 'Compare with current' }),
+    ).toBeNull()
+    await seen(within(earlier!).getByRole('button', { name: 'Compare with current' }))
+  },
+}
+export const HistoryDark = dark(History)
+export const HistoryPhone = phone(History)
+
+/** A revision's PDF opens in the drawer's PDF tab, which goes back to the current one. */
+export const HistoryOpenPdf: Story = {
+  parameters: quotes({ id: 'quo_expired' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    const [, earlier] = within(await openHistory(canvasElement)).getAllByRole('listitem')
+    await userEvent.click(within(earlier!).getByRole('button', { name: 'Open PDF' }))
+    await expect(body.getByRole('tab', { name: 'PDF' })).toHaveAttribute('aria-selected', 'true')
+    await seen(body.getByRole('document', { name: 'Rev. 1 as sent' }))
+    await expect(body.getByRole('link', { name: 'Download' })).toHaveAttribute(
+      'href',
+      '/api/v1/quotes/quo_expired/revisions/1/pdf',
+    )
+    await userEvent.click(body.getByRole('button', { name: 'Back to current' }))
+    await seen(body.getByRole('document', { name: /PDF of/ }))
+  },
+}
+
+/** Compare with current: what changed in lines, totals and dates; the unchanged line folded away. */
+export const HistoryCompare: Story = {
+  parameters: quotes({ id: 'quo_expired' }),
+  play: async ({ canvasElement }) => {
+    const [, earlier] = within(await openHistory(canvasElement)).getAllByRole('listitem')
+    await userEvent.click(within(earlier!).getByRole('button', { name: 'Compare with current' }))
+    const diff = within(within(earlier!).getByRole('region', { name: 'Rev. 1 → current' }))
+    const changes = diff.getAllByRole('listitem')
+    await expect(changes[0]).toHaveTextContent(/Changed\s*Brand workshop/)
+    await expect(changes[0]).toHaveTextContent(/Quantity\s*6\s*→\s*8/)
+    await expect(changes[1]).toHaveTextContent(/Removed\s*Print run/)
+    await expect(diff.getByText('Totals')).toBeVisible()
+    await expect(diff.getByText('Valid until').closest('div')).toHaveTextContent(
+      /31 Jul 2026\s*→\s*31 Aug 2026/,
+    )
+    await expect(diff.queryByText('Logo design')).toBeNull()
+    await userEvent.click(diff.getByRole('button', { name: '1 unchanged line' }))
+    await seen(diff.getByText('Logo design'))
+    await userEvent.click(within(earlier!).getByRole('button', { name: 'Hide comparison' }))
+    await expect(within(earlier!).queryByRole('region')).toBeNull()
+  },
+}
+export const HistoryCompareDark = dark(HistoryCompare)
+export const HistoryComparePhone = phone(HistoryCompare)
+
+/** The Revision row of the details links to the History tab. */
+export const RevisionLinksHistory: Story = {
+  parameters: quotes({ id: 'quo_expired' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('button', { name: 'Rev. 2' }, wait))
+    await expect(body.getByRole('tab', { name: 'History' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await seen(await body.findByRole('list', { name: 'History' }, wait))
+  },
+}
+
+/** Revisions sent before the history was kept: the PDF where it is stored, nothing to compare. */
+export const HistoryWithoutSnapshot: Story = {
+  parameters: quotes({ id: 'quo_expired' }, [
+    http.get('/api/v1/quotes/:id/revisions', () =>
+      HttpResponse.json({
+        data: [3, 2, 1].map((revision) => ({
+          revision,
+          sent_at: revision === 1 ? null : '2026-08-01T10:00:00Z',
+          sent_to: [],
+          outcome: null,
+          outcome_at: null,
+          outcome_by: null,
+          reason: null,
+          current: false,
+          has_pdf: revision !== 1,
+          snapshot: null,
+        })),
+      }),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const timeline = within(await openHistory(canvasElement))
+    const [, middle, first] = timeline.getAllByRole('listitem')
+    await expect(middle).toHaveTextContent('Sent 1 Aug 2026')
+    await expect(middle).toHaveTextContent('only its PDF can be opened')
+    await expect(within(middle!).queryByRole('button', { name: 'Compare with current' })).toBeNull()
+    await expect(first).toHaveTextContent('Sent before the history was kept')
+    await expect(first).toHaveTextContent('Its PDF is no longer stored.')
+    await expect(within(first!).queryByRole('button', { name: 'Open PDF' })).toBeNull()
+  },
+}
+
+/** A quote that was never sent has no revisions yet. */
+export const HistoryEmpty: Story = {
+  parameters: quotes({ id: 'quo_draft' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await userEvent.click(await body.findByRole('tab', { name: 'History' }, wait))
+    await seen(await body.findByText(/Each revision appears here once it is sent/, {}, wait))
+  },
+}
+
 /** A new quote needs a client; once chosen, the draft is saved with its lines. */
 export const CreateDraft: Story = {
   parameters: quotes({ new: '1' }),

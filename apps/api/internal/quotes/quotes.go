@@ -18,6 +18,7 @@ import (
 	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/mail"
+	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
 )
 
@@ -40,8 +41,9 @@ type Invoices interface {
 	QuoteScheduleProblems(inv store.Invoice) error
 }
 
-// Storage keeps the PDF of each send, which the portal serves.
+// Storage keeps the PDF of each send, which the portal serves; earlier revisions' PDFs are downloaded through it.
 type Storage interface {
+	storage.Source
 	Put(ctx context.Context, key string, body io.Reader, size int64, contentType, filename string) error
 	Get(ctx context.Context, key string) ([]byte, error)
 }
@@ -85,6 +87,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("PATCH /api/v1/quotes/{id}", s.update)
 	handle("DELETE /api/v1/quotes/{id}", s.delete)
 	handle("GET /api/v1/quotes/{id}/pdf", s.pdf)
+	handle("GET /api/v1/quotes/{id}/revisions", s.revisions)
+	handle("GET /api/v1/quotes/{id}/revisions/{revision}/pdf", s.revisionPDF)
 	handle("GET /api/v1/quotes/{id}/email", s.emailDraft)
 	handle("POST /api/v1/quotes/{id}/send", s.send)
 	handle("POST /api/v1/quotes/{id}/accept", s.decide(true))

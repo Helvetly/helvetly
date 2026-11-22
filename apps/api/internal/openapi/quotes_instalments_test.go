@@ -16,6 +16,7 @@ func TestSchemasMatchGoTypesQuotesInstalments(t *testing.T) {
 		typ    reflect.Type
 	}{
 		{"Quote", reflect.TypeFor[store.Quote]()},
+		{"QuoteRevision", reflect.TypeFor[store.QuoteRevision]()},
 		{"Plan", reflect.TypeFor[invoices.PlanView]()},
 		{"PlanItem", reflect.TypeFor[invoices.PlanItemView]()},
 	} {
