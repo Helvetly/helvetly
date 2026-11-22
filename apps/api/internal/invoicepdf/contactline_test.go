@@ -7,9 +7,9 @@ func TestContactLine(t *testing.T) {
 		email, phone *string
 		want         string
 	}{
-		{ptr("info@muster.ch"), ptr("+41786533224"), "info@muster.ch · +41786533224"},
+		{ptr("info@muster.ch"), ptr("+41786533224"), "info@muster.ch · +41 78 653 32 24"},
 		{ptr("info@muster.ch"), nil, "info@muster.ch"},
-		{nil, ptr(" +41786533224 "), "+41786533224"},
+		{nil, ptr(" +41786533224 "), "+41 78 653 32 24"},
 		{ptr(" "), ptr(""), ""},
 		{nil, nil, ""},
 	} {

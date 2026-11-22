@@ -11,6 +11,7 @@ import (
 )
 
 func withInstalments(d Document, refs ...*string) Document {
+	d.Invoice.Footer = nil // the footer text and its gap would push the schedule onto a second page
 	d.Invoice.Instalments = &store.InstalmentSchedule{Interval: "monthly", Items: []store.InstalmentItem{
 		{Seq: 1, DueDate: "2026-12-01", Amount: 36035}, {Seq: 2, DueDate: "2027-01-01", Amount: 36035},
 		{Seq: 3, DueDate: "2027-02-01", Amount: 36030}}}
