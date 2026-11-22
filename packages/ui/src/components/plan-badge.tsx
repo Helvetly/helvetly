@@ -22,17 +22,22 @@ const isPlan = (plan: string | undefined): plan is PlanId => plan !== undefined 
 function PlanBadge({
   plan,
   locked = false,
+  size = 'default',
   className,
   children,
   ...props
-}: React.ComponentProps<'span'> & { plan?: string; locked?: boolean }) {
+}: React.ComponentProps<'span'> & { plan?: string; locked?: boolean; size?: 'default' | 'sm' }) {
   const id = isPlan(plan) ? plan : 'basic'
   return (
     <span
       data-slot="plan-badge"
       data-plan={id}
+      data-size={size}
       className={cn(
-        'inline-flex h-5 w-fit max-w-full shrink-0 items-center gap-1 rounded-md border border-(color:--plan-line) bg-(color:--plan-bg) px-1.5 text-caption font-medium whitespace-nowrap text-(color:--plan-ink) [&>svg]:size-3! [&>svg]:shrink-0 [&>svg]:text-current',
+        'inline-flex w-fit max-w-full shrink-0 items-center rounded-md border border-(color:--plan-line) bg-(color:--plan-bg) font-medium whitespace-nowrap text-(color:--plan-ink) [&>svg]:shrink-0 [&>svg]:text-current',
+        size === 'sm'
+          ? 'h-4 gap-0.5 rounded-sm px-1 text-micro [&>svg]:size-2.5!'
+          : 'h-5 gap-1 px-1.5 text-caption [&>svg]:size-3!',
         PLAN_VARS[id],
         className,
       )}
