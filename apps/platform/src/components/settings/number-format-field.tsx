@@ -65,9 +65,9 @@ export function NumberFormatField({
           { value: CUSTOM, label: translate('customNumberFormat') },
         ]}
         renderValue={(option) => (
-          <span className="flex items-baseline gap-2">
+          <span className="block truncate">
             <span className={cn(option.value !== CUSTOM && 'font-code')}>{option.label}</span>
-            {option.hint && <span className="text-muted-foreground">{option.hint}</span>}
+            {option.hint && <span className="ml-2 text-muted-foreground">{option.hint}</span>}
           </span>
         )}
         placeholder={translate('chooseAFormat')}

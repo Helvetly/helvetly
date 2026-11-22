@@ -142,7 +142,6 @@ export const Search: Story = {
   play: async (context) => {
     await shows('Keller Holzbau AG')?.(context)
     const body = page(context.canvasElement)
-    await userEvent.click(body.getByRole('button', { name: 'Search quotes' }))
     await userEvent.type(body.getByRole('searchbox', { name: 'Search quotes' }), 'holzbau')
     await waitFor(() => expect(window.location.search).toContain('q=holzbau'), wait)
   },
@@ -170,8 +169,7 @@ export const NoMatches: Story = {
     await shows('Nothing matches “nobody”')?.(context)
     const body = page(context.canvasElement)
     await userEvent.click(body.getByRole('button', { name: 'Clear search and filters' }))
-    // Emptied and not focused, the search folds back into its button.
-    await expect(body.getByRole('button', { name: 'Search quotes' })).toBeVisible()
+    await expect(body.getByRole('searchbox', { name: 'Search quotes' })).toHaveValue('')
     await expect(window.location.search).not.toMatch(/q=|status=/)
   },
 }
