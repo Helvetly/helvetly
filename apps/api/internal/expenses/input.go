@@ -470,7 +470,7 @@ func newDraft(d store.WorkspaceDefaults, user store.User) store.Expense {
 // bookReasons: why a draft cannot be booked yet, as sentences for the person.
 func bookReasons(e store.Expense, today string) []string {
 	labels := map[string]string{"supplier_name": "Enter the supplier.", "document_date": "Enter the document date.",
-		"category": "Choose a category.", "total": "Enter an amount above 0.",
+		"category": "Choose a category.", "total": "Enter an amount above 0.", "items": "Name every item.",
 		"exchange_rate": "Enter the exchange rate with its date and source.",
 		"receipt":       "Attach the receipt, or say why there is none (substitute receipt)."}
 	reasons := []string{}

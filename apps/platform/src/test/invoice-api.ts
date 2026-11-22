@@ -116,6 +116,21 @@ export const legalFormsHandler = http.get('/api/v1/invoice-settings/legal-forms'
   HttpResponse.json({ data: sampleLegalForms }),
 )
 
+/** Counters ahead of the first number, as a workspace that has issued some invoices has. */
+export const nextNumbersHandler = http.get('/api/v1/invoice-settings/next-numbers', () =>
+  HttpResponse.json({
+    data: {
+      series: {
+        invoice: { year: 42, ever: 42 },
+        credit_note: { year: 3, ever: 3 },
+        proforma: { year: 1, ever: 1 },
+        self_billed: { year: 1, ever: 1 },
+      },
+      quote: 7,
+    },
+  }),
+)
+
 export const sampleInvoice = (change: Partial<Invoice> = {}): Invoice => ({
   id: 'inv_1',
   kind: 'invoice',

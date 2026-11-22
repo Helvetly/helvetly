@@ -28,6 +28,7 @@ export type MissingField =
   | 'document_date'
   | 'category'
   | 'total'
+  | 'items'
   | 'exchange_rate'
   | 'receipt'
 type Person = { id: string; name: string }
@@ -180,6 +181,7 @@ export const MISSING_LABELS: Record<MissingField, string> = {
   document_date: translate('date'),
   category: translate('category'),
   total: translate('amount'),
+  items: translate('itemNames'),
   exchange_rate: translate('exchangeRate'),
   receipt: translate('receipt'),
 }

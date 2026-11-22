@@ -2,6 +2,7 @@ package expenses
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -180,5 +181,52 @@ func TestBookingWaitsForItemCategoryEdit(t *testing.T) {
 	}
 	if err := <-result; err != nil {
 		t.Fatal(err)
+	}
+}
+
+type missingRow struct {
+	ID            string   `json:"id"`
+	MissingFields []string `json:"missing_fields"`
+}
+
+// Booking needs a name on every item, and on each of several one-amount lines; one amount on one line is described
+// by the expense itself. A draft saves either way.
+func TestBookingNeedsNamedItems(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	cat := e.categories(b)["6500"].ID
+	for _, tt := range []struct {
+		name    string
+		mode    string
+		lines   []map[string]any
+		missing bool
+	}{
+		{"an item without a name", "itemised", []map[string]any{{"description": "Paper", "amount": "10.00"}, {"amount": "5.00"}}, true},
+		{"an item named with spaces", "itemised", []map[string]any{{"description": "  ", "amount": "10.00"}}, true},
+		{"named items", "itemised", []map[string]any{{"description": "Paper", "amount": "10.00"}, {"description": "Ink", "amount": "5.00"}}, false},
+		{"one amount without a name", "single", []map[string]any{{"amount": "10.00"}}, false},
+		{"two rates, one unnamed", "single", []map[string]any{{"description": "Room", "amount": "100.00", "vat_rate": "3.8"}, {"amount": "20.00", "vat_rate": "8.1"}}, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var out struct{ Data missingRow }
+			e.do(b, "POST", "/api/v1/expenses", map[string]any{"supplier_name": "Brack AG", "document_date": "2026-11-03",
+				"category_id": cat, "receipt_missing_reason": "Substitute voucher", "entry_mode": tt.mode, "lines": tt.lines}, 201, &out)
+			if got := slices.Contains(out.Data.MissingFields, "items"); got != tt.missing {
+				t.Fatalf("missing items %v, want %v: %v", got, tt.missing, out.Data.MissingFields)
+			}
+			var list struct{ Data []missingRow }
+			e.do(b, "GET", "/api/v1/expenses?incomplete=true", nil, 200, &list)
+			listed := slices.ContainsFunc(list.Data, func(x missingRow) bool {
+				return x.ID == out.Data.ID && slices.Contains(x.MissingFields, "items")
+			})
+			if listed != tt.missing {
+				t.Fatalf("listed as incomplete for items %v, want %v: %+v", listed, tt.missing, list.Data)
+			}
+			if tt.missing {
+				e.fails(b, "POST", "/api/v1/expenses/"+out.Data.ID+"/book", nil, 422, "cannot_book")
+			} else {
+				e.do(b, "POST", "/api/v1/expenses/"+out.Data.ID+"/book", nil, 200, nil)
+			}
+		})
 	}
 }

@@ -17,7 +17,8 @@ func TestExpenseFinancialFlowKeepsTaxPaymentAndExportSeparate(t *testing.T) {
 	local := e.create(b, map[string]any{
 		"supplier_name": "Hotel Bern", "supplier_country": "CH", "document_date": "2026-11-03",
 		"category_id": category.ID, "receipt_missing_reason": "Original lost; substitute voucher retained",
-		"lines":     []map[string]any{{"amount": "180.00", "vat_rate": "3.8"}, {"amount": "25.00", "vat_rate": "8.1"}},
+		"lines": []map[string]any{{"description": "Room", "amount": "180.00", "vat_rate": "3.8"},
+			{"description": "Breakfast", "amount": "25.00", "vat_rate": "8.1"}},
 		"input_tax": "partial", "deductible_percent": "50", "paid_by_member_id": b.user,
 	})
 	// The receipt contains 6.59 + 1.87 VAT. Deducting half per rate gives 3.30 + 0.94 = 4.24.
