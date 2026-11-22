@@ -1,8 +1,8 @@
 'use client'
 
-import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
+import { PlanBadge } from '@helvetly/ui/components/plan-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Download, Lock } from 'lucide-react'
 import Link from 'next/link'
@@ -75,11 +75,15 @@ export function PlanTag({
   className?: string
 }) {
   return (
-    <Badge size="sm" data-slot="plan-tag" className={cn('ml-auto', className)}>
-      <Lock className="size-3" aria-hidden />
+    <PlanBadge
+      plan={lock.plan?.id}
+      locked
+      data-slot="plan-tag"
+      className={cn('ml-auto', className)}
+    >
       {lock.plan?.name ?? translate('upgrade')}
       <span className="sr-only">: {lock.hint}</span>
-    </Badge>
+    </PlanBadge>
   )
 }
 

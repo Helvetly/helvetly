@@ -67,6 +67,7 @@ import {
   EXPENSE_HABITS,
   newValues,
   firstError,
+  namesLines,
   NOTE_MAX,
   serverFieldErrors,
   toInput,
@@ -841,6 +842,7 @@ function ExpenseFormBody({
                   mark={mark('description')}
                   label={translate('whatFor')}
                   error={errors.description}
+                  required={!namesLines(values)}
                   className="sm:col-span-2"
                 >
                   <input

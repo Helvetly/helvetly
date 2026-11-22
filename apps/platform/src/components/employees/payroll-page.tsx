@@ -23,6 +23,7 @@ import { LoadProblem } from '@/components/data/load-problem'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
+import { PageIntro } from '@/components/settings/layout'
 import { PageHeader } from '@/components/shell/page-header'
 import { formatPay } from '@/lib/employees'
 import { translate } from '@/lib/i18n'
@@ -113,6 +114,11 @@ export function PayrollPage() {
             </>
           )
         }
+      />
+      <PageIntro
+        title={translate('payrollTab')}
+        description={translate('payrollPageDescription')}
+        className="px-3 pt-4 md:px-5"
       />
       <HrLockNotice hr={hr} />
       {hr.blocked ? (

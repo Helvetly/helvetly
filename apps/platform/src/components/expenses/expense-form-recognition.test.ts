@@ -281,3 +281,32 @@ test('a saved country preference survives, even CH; the built-in fallback does n
   const fallback = run(blank(), new Set(), suggest({ supplier_country: 'DE' }))
   expect(fallback.values.supplier_country).toBe('DE')
 })
+
+const item = (description: string, amount: string, vat_rate: string | null = '8.1') => ({
+  description,
+  quantity: null,
+  unit_price: null,
+  amount,
+  vat_rate,
+  category_id: null,
+})
+const report = (items: ReceiptSuggestions['items'], gross = '232.40') =>
+  suggest(
+    { currency: 'CHF', amount: gross, vat_rate: '8.1' },
+    { items, totals: { net: null, vat: null, gross } },
+  )
+
+test('an expense report fills the items table when its items add up to the total', () => {
+  const nine = Array.from({ length: 9 }, (_, i) => item(`Taxi ${i + 1}`, i < 8 ? '25.80' : '26.00'))
+  const { values } = run(blank(), new Set(), report(nine))
+  expect(values.entry_mode).toBe('itemised')
+  expect(values.lines.map((line) => [line.description, line.amount, line.vat_rate])).toEqual(
+    nine.map((it) => [it.description, it.amount, '8.1']),
+  )
+  // Items that miss the total, lack a rate among several, or are a single one: the breakdown's lines instead.
+  const off = run(blank(), new Set(), report([...nine.slice(1), item('Taxi', '99.00')])).values
+  expect(off.entry_mode).toBe('single')
+  expect(off.lines).toHaveLength(1)
+  const single = run(blank(), new Set(), report([item('Hotel', '232.40')])).values
+  expect(single.entry_mode).toBe('single')
+})

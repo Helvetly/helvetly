@@ -118,14 +118,16 @@ type Expense struct {
 	ReceiptsCount        int                 `json:"receipts_count"`
 	IsComplete           bool                `json:"is_complete"`
 	MissingFields        []string            `json:"missing_fields"`
-	CreatedBy            *Person             `json:"created_by"`
-	BookedAt             *time.Time          `json:"booked_at"`
-	BookedBy             *Person             `json:"booked_by"`
-	VoidedAt             *time.Time          `json:"voided_at"`
-	VoidedBy             *Person             `json:"voided_by"`
-	VoidReason           *string             `json:"void_reason"`
-	CreatedAt            time.Time           `json:"created_at"`
-	UpdatedAt            time.Time           `json:"updated_at"`
+	// UnnamedItems: read with the row, for lists that do not load lines (see unnamedItems).
+	UnnamedItems bool       `json:"-"`
+	CreatedBy    *Person    `json:"created_by"`
+	BookedAt     *time.Time `json:"booked_at"`
+	BookedBy     *Person    `json:"booked_by"`
+	VoidedAt     *time.Time `json:"voided_at"`
+	VoidedBy     *Person    `json:"voided_by"`
+	VoidReason   *string    `json:"void_reason"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 	// ApprovalState: of a draft's latest approval request before booking (internal/approvals), as on Invoice.
 	ApprovalState *string `json:"approval_state"`
 }
@@ -141,6 +143,7 @@ func (e *Expense) Derive(today string) {
 		{"document_date", e.DocumentDate == nil},
 		{"category", e.CategoryID == nil},
 		{"total", e.Total == 0},
+		{"items", e.UnnamedItems || unnamedItems(e.EntryMode, e.Lines)},
 		{"exchange_rate", e.Currency != e.Base.Currency && (e.ExchangeRateDate == nil || e.ExchangeRateSource == nil)},
 		{"receipt", e.ReceiptsCount == 0 && e.ReceiptMissingReason == nil},
 	} {
@@ -151,6 +154,23 @@ func (e *Expense) Derive(today string) {
 	e.IsComplete = len(e.MissingFields) == 0
 	e.IsOverdue = e.Status != "void" && e.PaymentStatus == "unpaid" && e.DueDate != nil && *e.DueDate < today
 }
+
+// unnamedItems: an item, or one of several lines (one per VAT rate), has no description; a single line is described
+// by the expense's own description. Keep in step with unnamedItemsSQL.
+func unnamedItems(entryMode string, lines []ExpenseLine) bool {
+	if entryMode != "itemised" && len(lines) < 2 {
+		return false
+	}
+	for _, l := range lines {
+		if l.Description == nil || strings.TrimSpace(*l.Description) == "" {
+			return true
+		}
+	}
+	return false
+}
+
+const unnamedItemsSQL = `(e.entry_mode = 'itemised' OR (SELECT count(*) FROM expense_lines m WHERE m.expense_id = e.id) > 1)
+	AND EXISTS (SELECT 1 FROM expense_lines l WHERE l.expense_id = e.id AND btrim(coalesce(l.description, '')) = '')`
 
 // CategoryPreset is an entry of the category catalogue: an account of the KMU-Kontenrahmen and its usual VAT.
 type CategoryPreset struct{ Key, Name, Account, VAT string }
@@ -334,7 +354,7 @@ var expenseColumns = `e.id, e.number, e.status, e.source, e.supplier_name, e.sup
 	e.base_deductible_vat, e.payment_status, e.paid_on::text, e.payment_method, e.paid_by, pb.name, e.reimbursed_on::text, e.note,
 	e.receipt_missing_reason, (SELECT count(*) FROM expense_receipts r WHERE r.expense_id = e.id), e.created_by, cb.name,
 	e.booked_at, e.booked_by, bb.name, e.voided_at, e.voided_by, vb.name, e.void_reason, e.created_at, e.updated_at,
-	e.reverse_charge, e.input_tax_box, e.entry_mode, ` + approvalStateOf("e")
+	e.reverse_charge, e.input_tax_box, e.entry_mode, ` + unnamedItemsSQL + `, ` + approvalStateOf("e")
 
 const expenseFrom = ` FROM expenses e LEFT JOIN expense_categories c ON c.id = e.category_id
 	LEFT JOIN users pb ON pb.id = e.paid_by LEFT JOIN users cb ON cb.id = e.created_by
@@ -358,7 +378,7 @@ func scanExpense(row interface{ Scan(...any) error }, today string) (Expense, er
 		&e.Base.DeductibleVAT, &e.PaymentStatus, &e.PaidOn, &e.PaymentMethod, &e.PaidByID, &paidByName, &e.ReimbursedOn, &e.Note,
 		&e.ReceiptMissingReason, &e.ReceiptsCount, &createdBy, &createdByName,
 		&e.BookedAt, &bookedBy, &bookedByName, &e.VoidedAt, &voidedBy, &voidedByName, &e.VoidReason, &e.CreatedAt, &e.UpdatedAt,
-		&e.ReverseCharge, &e.InputTaxBox, &e.EntryMode, &e.ApprovalState)
+		&e.ReverseCharge, &e.InputTaxBox, &e.EntryMode, &e.UnnamedItems, &e.ApprovalState)
 	if err != nil {
 		return e, err
 	}
@@ -527,7 +547,8 @@ var expenseNumber = regexp.MustCompile(`^#?(\d{1,18})$`)
 // incompleteSQL mirrors Expense.Derive's missing fields for drafts.
 const incompleteSQL = `(e.status = 'draft' AND (e.supplier_name IS NULL OR e.document_date IS NULL OR e.category_id IS NULL OR e.total = 0
 	OR (e.currency <> e.base_currency AND (e.exchange_rate_date IS NULL OR e.exchange_rate_source IS NULL))
-	OR (e.receipt_missing_reason IS NULL AND NOT EXISTS (SELECT 1 FROM expense_receipts r WHERE r.expense_id = e.id))))`
+	OR (e.receipt_missing_reason IS NULL AND NOT EXISTS (SELECT 1 FROM expense_receipts r WHERE r.expense_id = e.id))
+	OR (` + unnamedItemsSQL + `)))`
 
 func (f ExpenseFilter) where(workspaceID, today string) (string, []any) {
 	args := []any{workspaceID}

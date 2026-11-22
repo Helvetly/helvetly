@@ -138,10 +138,8 @@ export function applyReread(
   if (money)
     next = {
       ...next,
-      entry_mode: 'single',
       amount_mode: 'gross',
-      currency: money.currency,
-      lines: money.lines,
+      ...money,
     }
   const paidOn = chosen.has('payment') ? paidOnOf(s) : null
   if (paidOn)

@@ -203,6 +203,16 @@
   --warning-solid: #dd7b26;
   --warning-surface: #fbf0e3;
   --warning-border: #f0dcc5;
+  /* Plan badges: ink ≥ 7:1 on its surface. Business is gold on black, Pro violet, Basic neutral. */
+  --plan-business: #4a3506;
+  --plan-business-surface: #fbf1d4;
+  --plan-business-border: #dcc27a;
+  --plan-pro: #4c3794;
+  --plan-pro-surface: #efeafb;
+  --plan-pro-border: #cfc2f0;
+  --plan-basic: var(--muted-foreground);
+  --plan-basic-surface: var(--muted);
+  --plan-basic-border: var(--border);
   /* Done, paid, saved, switched on. */
   --success: #11733a;
   --success-solid: #17a052;
@@ -282,6 +292,12 @@
   --warning-solid: oklch(0.76 0.15 58);
   --warning-surface: oklch(0.769 0.188 70.08 / 15%);
   --warning-border: oklch(0.4 0.06 85);
+  --plan-business: #f1cf6b;
+  --plan-business-surface: #241d0b;
+  --plan-business-border: #5e4a17;
+  --plan-pro: #cdbdf7;
+  --plan-pro-surface: #231c3d;
+  --plan-pro-border: #4a3d7d;
   --success: oklch(0.8 0.16 150);
   --success-solid: oklch(0.72 0.18 150);
   --success-surface: oklch(0.28 0.06 150);
