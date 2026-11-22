@@ -870,7 +870,6 @@ function productColumns(access: RowProps['access'], act: RowActions): DataColumn
       header: translate('actions'),
       headerContent: <span className="sr-only">{translate('actions')}</span>,
       size: 48,
-      resizable: false,
       cell: (product) => (
         <RowMenuButton
           label={translate('actionsFor', { name: product.name })}

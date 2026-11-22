@@ -363,7 +363,6 @@ function entryColumns(onOpen: (id: string) => void): DataColumn<PayrollEntry>[] 
       id: key,
       header: label,
       size: 128,
-      resizable: false,
       sortable: true,
       sortDescFirst: true,
       align: 'right',
@@ -373,7 +372,6 @@ function entryColumns(onOpen: (id: string) => void): DataColumn<PayrollEntry>[] 
       id: 'status',
       header: translate('employeeStatusLabel'),
       size: 132,
-      resizable: false,
       cell: (entry) => <EntryStatus entry={entry} />,
     },
   ]

@@ -413,7 +413,6 @@ function employeeColumns(onOpen?: (id: string) => void): DataColumn<Employee>[] 
       id: 'status',
       header: translate('employeeStatusLabel'),
       size: 132,
-      resizable: false,
       cell: (employee) => <EmployeeStatusBadge status={employee.status} />,
     },
   ]

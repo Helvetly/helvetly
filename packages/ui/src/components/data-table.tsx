@@ -107,8 +107,6 @@ export type DataColumn<T> = {
    * name. One per table. Once a person resizes any column it keeps the width it had.
    */
   flex?: boolean
-  /** A person may drag its edge (default: every column but the checkbox and row menu ones). */
-  resizable?: boolean
   /** Sorted through `sorting.onSort`. */
   sortable?: boolean
   /** The first click sorts it descending (dates, amounts): TanStack's `sortDescFirst`. */
@@ -172,7 +170,7 @@ const VIRTUAL_FROM = 100
 
 /** The checkbox and row menu columns keep their width and their place. */
 const isFixed = (id: string) => id === SELECT || id === ACTIONS
-const canResize = <T,>(column: DataColumn<T>) => !isFixed(column.id) && (column.resizable ?? true)
+const canResize = <T,>(column: DataColumn<T>) => !isFixed(column.id)
 
 /** A column's default width and its range. */
 function bounds<T>(column: DataColumn<T>) {
@@ -458,6 +456,8 @@ export function DataTable<T extends RowData>({
   const resizing = table.state.columnResizing.isResizingColumn
   const visibleColumns = table.getVisibleLeafColumns()
   const lastColumn = visibleColumns.at(-1)?.id
+  // A bar sits only between two data columns: none after the last one, so none at the row menu's edge.
+  const lastDataColumn = visibleColumns.findLast((column) => column.getCanResize())?.id
   // The row menu column stays at the right edge: the empty room goes before it.
   const fillerAt = lastColumn === ACTIONS ? visibleColumns.length - 1 : visibleColumns.length
   const withFiller = (cells: ReactNode[], cell: ReactNode) =>
@@ -562,7 +562,8 @@ export function DataTable<T extends RowData>({
                         </th>
                       )
                     const sorted = header.column.getIsSorted()
-                    const canResizeColumn = header.column.getCanResize()
+                    const canResizeColumn =
+                      header.column.getCanResize() && column.id !== lastDataColumn
                     const canMove = !isFixed(column.id)
                     return (
                       <th

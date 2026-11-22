@@ -804,7 +804,6 @@ function clientColumns(access: RowProps['access'], act: RowActions): DataColumn<
       id: 'status',
       header: translate('status'),
       size: 160,
-      resizable: false,
       cell: (client) => <ClientRowStatus client={client} />,
     },
     {
@@ -824,7 +823,6 @@ function clientColumns(access: RowProps['access'], act: RowActions): DataColumn<
       header: translate('actions'),
       headerContent: <span className="sr-only">{translate('actions')}</span>,
       size: 48,
-      resizable: false,
       cell: (client) => (
         <RowMenuButton
           label={translate('actionsFor', { name: client.name })}

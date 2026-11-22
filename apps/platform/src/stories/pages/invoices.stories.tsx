@@ -7,7 +7,16 @@ import { today, type Invoice } from '@/lib/invoices'
 import { scheduledInvoice } from '@/mocks/data'
 
 import { filtersPlay } from './filters'
-import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import {
+  barsBetweenDataColumns,
+  closeHeidi,
+  dark,
+  desktop,
+  Frame,
+  pageParameters,
+  phone,
+  shows,
+} from './frame'
 import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
 const meta = {
@@ -26,6 +35,9 @@ type Story = StoryObj<typeof meta>
 
 export const List: Story = { play: shows('Sophie Meier', 'Overdue') }
 export const ListDark = dark(List)
+export const ListResizeBars: Story = {
+  play: async ({ canvasElement }) => barsBetweenDataColumns(canvasElement),
+}
 export const ListPhone = phone(List)
 
 // A long one-line footer must wrap or truncate, never widen the drawer.
