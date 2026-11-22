@@ -97,10 +97,8 @@
   "tableResizeColumn": "Breite von {column} ändern",
   "tableFirstPage": "Erste Seite",
   "tableLastPage": "Letzte Seite",
-  "tablePage": "Seite",
-  "tableOfPages": "von {pages}",
-  "tableGoToPage": "Zu Seite",
-  "tableRowsPerPage": "{count} pro Seite",
+  "tablePage": "Seite {page}",
+  "tableRowsPerPage": "{count} / Seite",
   "tableMoveColumnUp": "{column} nach oben",
   "tableMoveColumnDown": "{column} nach unten",
   "tableResetColumns": "Standard wiederherstellen"
