@@ -186,9 +186,9 @@ function drag(handle: HTMLElement, dx: number) {
   const box = handle.getBoundingClientRect()
   const x = box.left + box.width / 2
   const y = box.top + box.height / 2
-  fireEvent.pointerDown(handle, { button: 0, clientX: x, clientY: y, pointerId: 1 })
-  fireEvent.pointerMove(window, { clientX: x + dx, clientY: y, pointerId: 1 })
-  fireEvent.pointerUp(window, { clientX: x + dx, clientY: y, pointerId: 1 })
+  fireEvent.mouseDown(handle, { button: 0, clientX: x, clientY: y })
+  fireEvent.mouseMove(document, { clientX: x + dx, clientY: y })
+  fireEvent.mouseUp(document, { clientX: x + dx, clientY: y })
 }
 
 const WIDTHS_KEY = 'helvetly.table.clients.columns'
@@ -198,7 +198,7 @@ const whole = (badge: HTMLElement) => badge.scrollWidth <= badge.clientWidth
 
 /**
  * Name gives way when another column widens, the row stays full, badge columns stop with their
- * badges whole, and the widths are kept per column in this browser.
+ * badges whole; past Name's minimum the list scrolls sideways; the widths are kept per column.
  */
 export const ResizeColumns: Story = {
   beforeEach: () => localStorage.removeItem(WIDTHS_KEY),
@@ -228,11 +228,11 @@ export const ResizeColumns: Story = {
     await waitFor(() => expect(handle).toHaveValue(String(least)))
     await expect(widthOf(type)).toBe(least)
 
-    // Name stops where its avatar and "Changes pending" still fit.
+    // Name stops where its avatar and "Changes pending" still fit; the list scrolls instead.
     await drag(body.getByRole('slider', { name: 'Resize City' }), 1000)
     await waitFor(() => expect(widthOf(name)).toBeLessThan(before - 60))
     await expect(badges.filter((badge) => !whole(badge))).toEqual([])
-    await expect(scroller?.scrollWidth).toBe(scroller?.clientWidth)
+    await expect(scroller?.scrollWidth).toBeGreaterThan(scroller?.clientWidth ?? 0)
 
     const stored: unknown = JSON.parse(localStorage.getItem(WIDTHS_KEY) ?? 'null')
     await expect(stored).toEqual({ city: expect.any(Number), type: least })
