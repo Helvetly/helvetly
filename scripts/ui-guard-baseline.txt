@@ -75,7 +75,6 @@
 1 shadow apps/platform/src/components/data/table-page.tsx
 1 shadow apps/platform/src/components/documents/documents-page.tsx
 1 shadow apps/platform/src/components/documents/preview.tsx
-1 shadow apps/platform/src/components/documents/storage-overview.tsx
 1 shadow apps/platform/src/components/expenses/expenses-page.tsx
 1 shadow apps/platform/src/components/initials.tsx
 1 shadow apps/platform/src/components/invoices/invoice-dialogs.tsx
@@ -98,7 +97,7 @@
 7 text-px apps/platform/src/components/dashboard/dashboard.tsx
 2 text-px apps/platform/src/components/data/table-page.tsx
 1 text-px apps/platform/src/components/documents/dialogs.tsx
-12 text-px apps/platform/src/components/documents/documents-page.tsx
+11 text-px apps/platform/src/components/documents/documents-page.tsx
 4 text-px apps/platform/src/components/documents/folder-tree.tsx
 1 text-px apps/platform/src/components/documents/inline-rename.tsx
 7 text-px apps/platform/src/components/documents/items-view.tsx
