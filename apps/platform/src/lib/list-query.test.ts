@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { setWorkspaceTimezone } from '@/lib/timezone'
 
 import {
+  chipTone,
+  chipValues,
   changeFor,
   formatTerm,
   inQuote,
@@ -128,6 +130,42 @@ describe('terms and params', () => {
     expect(formatTerm({ id: 'status', value: 'draft' })).toBe('status:draft')
     expect(termLabel(fields, { id: 'status', value: 'draft' })).toBe('Status: Draft')
     expect(termLabel(fields, { id: 'name', value: 'acme' })).toBe('Name: acme')
+  })
+
+  it('negates a value only for a negatable field, and types it back', () => {
+    const negatable = fields.map((field) =>
+      field.id === 'status' ? { ...field, negatable: true } : field,
+    )
+    expect(parseQuery('-status:draft -name:x', negatable)).toEqual({
+      terms: [{ id: 'status', value: '!draft' }],
+      text: '-name:x',
+    })
+    expect(formatTerm({ id: 'status', value: '!draft' })).toBe('-status:draft')
+    expect(termLabel(negatable, { id: 'status', value: '!draft' })).toBe('Status: not Draft')
+  })
+
+  it("groups a field's values into one chip text", () => {
+    const [status] = fields
+    expect(chipValues(status, ['active'])).toMatchObject({ text: 'Active', rest: 0 })
+    expect(chipValues(status, ['active', '!draft'])).toMatchObject({
+      text: 'Active or not Draft',
+      rest: 0,
+    })
+    expect(chipValues(status, ['active', 'draft', 'x', 'y'])).toEqual({
+      text: 'Active, Draft',
+      rest: 2,
+      labels: ['Active', 'Draft', 'x', 'y'],
+    })
+  })
+
+  it("tints a chip by its values' shared status tone, else by its field's kind", () => {
+    const [status, type] = fields
+    if (!status || !type) throw new Error('fields missing')
+    const toned = { ...status, tones: { active: 'green', draft: 'neutral' } as const }
+    expect(chipTone(toned, ['active'])).toBe('green')
+    expect(chipTone(toned, ['active', 'draft'])).toBe('violet')
+    expect(chipTone({ ...type, kind: 'location' }, ['person'])).toBe('green')
+    expect(chipTone(fields[2] ?? type, ['x'])).toBe('neutral')
   })
 })
 

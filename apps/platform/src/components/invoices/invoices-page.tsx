@@ -6,6 +6,7 @@ import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@helvetly/ui/components/dropdown-menu'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
@@ -798,6 +799,7 @@ function useQueryFields(params: ListParams): QueryField<ListParams>[] {
       label: translate('status'),
       type: 'enum',
       values: STATUS_OPTIONS,
+      tones: STATUS_TONES.invoice,
       placeholder: translate('anyStatus'),
       get: (current) => current.status,
       set: (status) => ({ status: among(LIST_STATUSES, status) }),

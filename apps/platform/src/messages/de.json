@@ -5081,6 +5081,8 @@
   "cashFlowHelp": "Rechnungszahlungen und Rückerstattungen gegenüber bezahlten Ausgaben: pro Monat für ein Jahr, pro Tag für 30 und 90 Tage.",
   "editFilter": "Filter bearbeiten {label}",
   "searchSuggestions": "Suchvorschläge",
+  "filterNot": "nicht {value}",
+  "filterOr": "{a} oder {b}",
   "issuedUntil": "Ausgestellt bis",
   "replyToEmail": "Antwortadresse für Kunden-E-Mails",
   "repliesGoTo": "Antworten gehen an {email}",

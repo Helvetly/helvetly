@@ -5081,6 +5081,8 @@
   "cashFlowHelp": "Pagamenti di fatture e rimborsi rispetto alle spese pagate: per mese su un anno, per giorno su 30 e 90 giorni.",
   "editFilter": "Modifica filtro {label}",
   "searchSuggestions": "Suggerimenti di ricerca",
+  "filterNot": "non {value}",
+  "filterOr": "{a} o {b}",
   "issuedUntil": "Emessa fino al",
   "replyToEmail": "Indirizzo di risposta per le e-mail ai clienti",
   "repliesGoTo": "Le risposte arrivano a {email}",

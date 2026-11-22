@@ -5081,6 +5081,8 @@
   "cashFlowHelp": "Invoice payments and refunds against paid expenses: by month for a year, by day for 30 and 90 days.",
   "editFilter": "Edit filter {label}",
   "searchSuggestions": "Search suggestions",
+  "filterNot": "not {value}",
+  "filterOr": "{a} or {b}",
   "issuedUntil": "Issued until",
   "replyToEmail": "Reply-to email for client emails",
   "repliesGoTo": "Replies go to {email}",
