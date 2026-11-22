@@ -66,6 +66,10 @@ func (s *Service) emailDraft(w http.ResponseWriter, r *http.Request, sess store.
 	if to == nil {
 		to = []string{}
 	}
-	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"to": to, "subject": tpl.Subject, "message": tpl.Body}))
+	replyTo, err := s.invoices.ReplyTo(ctx, sess)
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"to": to, "subject": tpl.Subject, "message": tpl.Body, "reply_to": replyTo}))
 	return nil
 }

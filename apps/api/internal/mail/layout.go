@@ -32,15 +32,24 @@ func layout(m Message, publicURL string) string {
 	if m.HTML == "" || strings.HasPrefix(strings.ToLower(strings.TrimSpace(m.HTML)), "<!doctype") {
 		return m.HTML
 	}
-	footer := m.Footer
-	if footer == "" {
+	footer, header := m.Footer, helvetlyHeader(publicURL)
+	switch {
+	case m.Brand != nil && footer == "":
+		footer, header = brandFooter(*m.Brand, m.Language, publicURL), brandHeader(*m.Brand, publicURL)
+	case m.Brand != nil:
+		header = brandHeader(*m.Brand, publicURL)
+	case footer == "":
 		footer = `Sent by <a href="` + html.EscapeString(publicURL) + `" style="color:` + muted + `">Helvetly</a>`
+	}
+	lang := "en"
+	if m.Language != "" {
+		lang = html.EscapeString(m.Language)
 	}
 	preview := ""
 	if m.Preview != "" {
 		preview = `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">` + html.EscapeString(m.Preview) + "</div>\n"
 	}
-	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+	return `<!doctype html><html lang="` + lang + `"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
 		// Light only: an inverted card would leave the fragments' own muted colours unreadable.
 		`<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">` +
 		`<title>` + html.EscapeString(m.Subject) + `</title>` +
@@ -51,16 +60,37 @@ func layout(m Message, publicURL string) string {
 		`<tr><td class="outer" align="center" style="padding:32px 16px">` + "\n" +
 		`<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->` +
 		`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px">` + "\n" +
-		`<tr><td style="padding:0 4px 20px;font-family:` + fonts + `">` +
-		`<a href="` + html.EscapeString(publicURL) + `" style="text-decoration:none;color:` + ink + `">` +
-		`<img src="` + html.EscapeString(publicURL) + `/email-logo.png" width="28" height="28" alt="" style="display:inline-block;border:0;` +
-		`vertical-align:middle;border-radius:7px">` +
-		`<span style="vertical-align:middle;margin-left:10px;font-size:17px;font-weight:700;letter-spacing:-0.01em;color:` + ink + `">Helvetly</span></a>` +
-		`</td></tr>` + "\n" +
+		`<tr><td style="padding:0 4px 20px;font-family:` + fonts + `">` + header + `</td></tr>` + "\n" +
 		`<tr><td class="card" bgcolor="#ffffff" style="background:#ffffff;border:1px solid ` + border + `;border-radius:12px;padding:32px;` +
 		`font-family:` + fonts + `;font-size:15px;line-height:1.6;color:` + text + `">` + "\n" +
 		m.HTML + "\n</td></tr>\n" +
 		`<tr><td style="padding:20px 4px 0;font-family:` + fonts + `;font-size:12px;line-height:1.6;color:` + muted + `">` + footer + `</td></tr>` + "\n" +
 		`</table><!--[if mso]></td></tr></table><![endif]-->` + "\n" +
 		`</td></tr></table></body></html>`
+}
+
+func helvetlyHeader(publicURL string) string {
+	return `<a href="` + html.EscapeString(publicURL) + `" style="text-decoration:none;color:` + ink + `">` +
+		`<img src="` + html.EscapeString(publicURL) + `/email-logo.png" width="28" height="28" alt="" style="display:inline-block;border:0;` +
+		`vertical-align:middle;border-radius:7px">` +
+		`<span style="vertical-align:middle;margin-left:10px;font-size:17px;font-weight:700;letter-spacing:-0.01em;color:` + ink + `">Helvetly</span></a>`
+}
+
+// brandHeader: the business's logo (if any) and name; a logo keeps its proportions at 36 px high.
+func brandHeader(b Brand, publicURL string) string {
+	logo := ""
+	if b.LogoPath != "" {
+		logo = `<img src="` + html.EscapeString(publicURL+b.LogoPath) + `" height="36" alt="" style="display:inline-block;border:0;` +
+			`height:36px;width:auto;max-width:180px;vertical-align:middle;margin-right:12px">`
+	}
+	return logo + `<span style="vertical-align:middle;font-size:17px;font-weight:700;letter-spacing:-0.01em;color:` + ink + `">` +
+		html.EscapeString(b.Name) + `</span>`
+}
+
+// plainText is the text part: the message, then the business footer for a branded email.
+func plainText(m Message, publicURL string) string {
+	if m.Brand == nil || m.Footer != "" {
+		return m.Text
+	}
+	return strings.TrimRight(m.Text, "\n") + brandText(*m.Brand, m.Language, publicURL)
 }

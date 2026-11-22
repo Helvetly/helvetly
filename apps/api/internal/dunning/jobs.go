@@ -144,7 +144,7 @@ func (st state) message(n store.DunningNotice, letter, invoicePDF []byte) mail.M
 	if inv.Seller != nil {
 		body += "\n" + inv.Seller.Name
 	}
-	m := mail.Message{To: []string{n.Email}, Subject: title + ": " + strings.TrimSpace(invoices.Title(inv)+" "+number), Text: body,
+	m := mail.Message{Language: inv.Language, To: []string{n.Email}, Subject: title + ": " + strings.TrimSpace(invoices.Title(inv)+" "+number), Text: body,
 		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(body), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: st.letterName(n), ContentType: "application/pdf", Data: letter}}}
 	if invoicePDF != nil {

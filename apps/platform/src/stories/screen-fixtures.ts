@@ -9,6 +9,7 @@ import type { Summary } from '@/lib/invoices'
 import { NOT_REQUIRED } from '@/mocks/approvals'
 import { portalAddressHandlers } from '@/mocks/portal-address'
 import { portalDomainHandlers } from '@/mocks/portal-domain'
+import { replyToHandlers } from '@/mocks/reply-to'
 import { legalFormsHandler, nextNumbersHandler, sampleSettings } from '@/test/invoice-api'
 
 export const storySession: Session = {
@@ -79,6 +80,7 @@ export const emptyExpenseSummary: ExpenseSummary = {
 export const screenHandlers = [
   sessionHandler(),
   ...portalAddressHandlers,
+  ...replyToHandlers,
   ...portalDomainHandlers,
   legalFormsHandler,
   nextNumbersHandler,

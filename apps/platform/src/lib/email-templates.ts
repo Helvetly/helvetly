@@ -19,7 +19,8 @@ export type EmailTemplate = {
 }
 export type EmailTemplateInput = { kind: EmailKind; language: EmailLanguage }
 export type EmailTemplateSave = EmailTemplateInput & { subject: string; body: string }
-export type EmailDraft = { to: string[]; subject: string; message: string }
+/** `reply_to`: where the client's answer goes (the reply-to email, else the company's, else the sender's). */
+export type EmailDraft = { to: string[]; subject: string; message: string; reply_to?: string }
 
 type One<T> = { data: T }
 
