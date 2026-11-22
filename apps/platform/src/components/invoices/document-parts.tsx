@@ -51,7 +51,7 @@ export function ProseField({
         value={value}
         maxLength={DOCUMENT_TEXT_MAX}
         rows={1}
-        className={className}
+        className={cn('block', className)}
       />
       <span
         data-slot="textarea-count"
