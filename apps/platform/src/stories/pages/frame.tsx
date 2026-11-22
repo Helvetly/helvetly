@@ -53,6 +53,23 @@ export const closeHeidi = () => {
 
 type Story = StoryObj
 
+/**
+ * A list's resize bars sit exactly between two data columns: one right of each, none right of the
+ * last (next to the row menu) and none on the checkbox or row menu column.
+ */
+export const barsBetweenDataColumns = async (canvasElement: HTMLElement) => {
+  const heads = await within(canvasElement.ownerDocument.body).findAllByRole(
+    'columnheader',
+    {},
+    { timeout: 8000 },
+  )
+  const movable = heads.filter((head) => head.querySelector('[draggable=true]'))
+  await expect(movable.length).toBeGreaterThan(1)
+  await expect(heads.map((head) => Boolean(head.querySelector('[data-column-resizer]')))).toEqual(
+    heads.map((head) => movable.includes(head) && head !== movable.at(-1)),
+  )
+}
+
 /** The shell is there and the page shows its main content (the texts given), not the loader. */
 export const shows =
   (...texts: (string | RegExp)[]): Story['play'] =>
