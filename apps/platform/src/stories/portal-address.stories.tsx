@@ -254,7 +254,7 @@ export const DomainLocked: Story = {
     )
     await expect(card.getByRole('link', { name: 'Compare plans' })).toHaveAttribute(
       'href',
-      expect.stringMatching(/^\/settings\/billing\/plans\/?#compare$/),
+      expect.stringMatching(/^\/settings\/billing\/plans\/?$/),
     )
     await expect(canvas.queryByLabelText(/^Domain/)).toBeNull()
   },

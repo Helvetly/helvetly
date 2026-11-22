@@ -68,7 +68,7 @@ export function UpsellCard({
             </Link>
           </Button>
           <Link
-            href={`${PLANS_HREF}#compare`}
+            href={PLANS_HREF}
             className="text-body-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
             {translate('comparePlans')}

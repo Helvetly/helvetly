@@ -10,7 +10,6 @@ import { people, trialDaysLeft, useBilling, usePublicOffer, type Billing } from 
 import { translate } from '@/lib/i18n'
 
 import { PlanCards } from './plan-cards'
-import { PlanComparison } from './plan-extras'
 
 /**
  * The plan picker, a full-screen page reached from Plan & billing's "Change plan"; Checkout and a
@@ -56,7 +55,6 @@ export function ChangePlan() {
           <PlanCards billing={data} offer={offer.data} />
         )}
       </div>
-      {data && offer.data && <PlanComparison offer={offer.data} current={data.plan} />}
     </PlanScreen>
   )
 }
