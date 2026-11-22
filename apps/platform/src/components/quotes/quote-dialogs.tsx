@@ -178,6 +178,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
         value={shownMessage}
         disabled={draft.isPending}
         onChange={setMessage}
+        replyTo={draft.data?.reply_to}
         context={{
           document: name,
           client: quote.client.name,

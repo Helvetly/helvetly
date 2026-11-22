@@ -98,6 +98,11 @@ func (s *Service) emailDraft(w http.ResponseWriter, r *http.Request, sess store.
 		return err
 	}
 	_, _, to := s.recipients(ctx, sess.Workspace.ID, inv, nil)
-	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"to": append([]string{}, to...), "subject": subject, "message": message}))
+	replyTo, err := s.ReplyTo(ctx, sess)
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"to": append([]string{}, to...), "subject": subject, "message": message,
+		"reply_to": replyTo}))
 	return nil
 }

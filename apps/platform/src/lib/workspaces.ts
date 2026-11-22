@@ -226,3 +226,25 @@ function useDebounced(value: string, ms = 300) {
   }, [value, ms])
   return debounced
 }
+
+const replyToKey = ['workspace', 'reply-to'] as const
+
+/** Where clients' answers to the workspace's email go; null: the company email of the invoice settings. */
+export function useReplyTo() {
+  return useQuery({
+    queryKey: replyToKey,
+    queryFn: async () =>
+      (await request<{ data: { reply_to_email: string | null } }>('/workspace/reply-to')).data
+        .reply_to_email,
+  })
+}
+
+/** Sets the reply-to email (owner or admin); a blank one clears it. */
+export function useSetReplyTo() {
+  const queryClient = useQueryClient()
+  return useMutation<{ data: { reply_to_email: string | null } }, ApiError, string>({
+    mutationFn: (address) =>
+      request('/workspace/reply-to', { method: 'PUT', json: { reply_to_email: address } }),
+    onSuccess: (result) => queryClient.setQueryData(replyToKey, result.data.reply_to_email),
+  })
+}

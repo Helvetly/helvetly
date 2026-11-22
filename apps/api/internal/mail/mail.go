@@ -36,6 +36,10 @@ type Message struct {
 	ListUnsubscribe     string // optional: the one-click unsubscribe URL (RFC 8058)
 	Preview             string // optional: the inbox preview line, hidden in the HTML
 	Footer              string // optional HTML under the card, such as why the email came; else "Sent by Helvetly"
+	Language            string // optional: the email's language (de, fr, it, en) for the business footer
+	// Members: a workspace's email to its own members (notifications, a signer's answer): sent as Helvetly, unbranded.
+	Members bool
+	Brand   *Brand // set by Branded: the business a client email comes from
 }
 
 type Attachment struct {
@@ -50,6 +54,14 @@ type Sender struct {
 
 func NewSender(cfg config.SMTP, publicURL string) *Sender {
 	return &Sender{cfg: cfg, publicURL: publicURL}
+}
+
+// FromAddress is MAIL_FROM's address ("" when it does not parse: Send then refuses).
+func (s *Sender) FromAddress() string {
+	if a, err := mail.ParseAddress(s.cfg.From); err == nil {
+		return a.Address
+	}
+	return ""
 }
 
 // ErrUncertain: the server may have accepted the message although Send failed (the connection dropped after the
@@ -134,7 +146,13 @@ func build(from *mail.Address, m Message, publicURL string, now time.Time) []byt
 	var b bytes.Buffer
 	boundary := "helvetly-" + rand.Text()
 	hdr := func(k, v string) { fmt.Fprintf(&b, "%s: %s\r\n", k, v) }
-	hdr("From", from.String())
+	sender := *from
+	if m.Brand != nil {
+		if name := displayName(m.Brand.Name); name != "" {
+			sender.Name = name // the address stays MAIL_FROM's: SPF and DKIM pass for it alone
+		}
+	}
+	hdr("From", sender.String())
 	hdr("To", headerSafe(strings.Join(m.To, ", ")))
 	if len(m.Cc) > 0 {
 		hdr("Cc", headerSafe(strings.Join(m.Cc, ", ")))
@@ -163,7 +181,7 @@ func build(from *mail.Address, m Message, publicURL string, now time.Time) []byt
 		hdr("Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
 	}
 	b.WriteString("\r\n")
-	for _, part := range []struct{ ct, body string }{{"text/plain", m.Text}, {"text/html", layout(m, publicURL)}} {
+	for _, part := range []struct{ ct, body string }{{"text/plain", plainText(m, publicURL)}, {"text/html", layout(m, publicURL)}} {
 		fmt.Fprintf(&b, "--%s\r\nContent-Type: %s; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n", boundary, part.ct)
 		qp := quotedprintable.NewWriter(&b)
 		_, _ = qp.Write([]byte(strings.ReplaceAll(part.body, "\n", "\r\n")))

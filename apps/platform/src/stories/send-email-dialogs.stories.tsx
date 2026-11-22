@@ -43,7 +43,7 @@ export const InvoicePrefilled: Story = {
         sendHandler,
         http.get('/api/v1/invoices/:id/email', async () => {
           await delay(300)
-          return HttpResponse.json({ data: draft })
+          return HttpResponse.json({ data: { ...draft, reply_to: 'office@muster.ch' } })
         }),
       ],
     },
@@ -57,6 +57,7 @@ export const InvoicePrefilled: Story = {
       expect(dialog.getByRole('textbox', { name: /^Subject/ })).toHaveValue(draft.subject),
     )
     await expect(dialog.getByRole('textbox', { name: /^Message/ })).toHaveValue(draft.message)
+    await expect(dialog.getByText('Replies go to office@muster.ch')).toBeVisible()
     // The whole prefilled message is in view, without scrolling the field.
     const field = dialog.getByRole('textbox', { name: /^Message/ })
     await expect(field.scrollHeight).toBeLessThanOrEqual(field.clientHeight)
