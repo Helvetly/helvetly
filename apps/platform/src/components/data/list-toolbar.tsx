@@ -317,14 +317,13 @@ function QueryInput<P>({
           <X />
         </Button>
       )}
-      {query && (
-        // Only a picture of the choices: the field keeps the focus and the keys.
+      {suggestions.length > 0 && (
+        // Only a picture of the choices, mounted only while there are some: the field keeps the focus and the keys.
         <Command
           ref={listRef}
           shouldFilter={false}
           value={keys[current] ?? ''}
           onValueChange={(key) => setActive(Math.max(0, keys.indexOf(key)))}
-          hidden={suggestions.length === 0}
           className="absolute top-full left-0 z-50 mt-1 size-auto w-64 shadow-elevation-2"
         >
           <CommandList label={translate('searchSuggestions')}>

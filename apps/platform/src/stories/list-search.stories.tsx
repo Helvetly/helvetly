@@ -100,18 +100,19 @@ export const Suggestions: Story = {
     const canvas = within(canvasElement)
     const search = canvas.getByRole('searchbox', { name: 'Search clients' })
     await userEvent.type(search, 't')
-    const list = canvas.getByRole('listbox', { name: 'Search suggestions' })
+    // Mounted only while it has choices, so each step looks it up again.
+    const list = () => canvas.getByRole('listbox', { name: 'Search suggestions' })
     // "t" starts both Type and Tags; arrows move through them.
     await expect(
-      within(list)
+      within(list())
         .getAllByRole('option')
         .map((option) => option.textContent),
     ).toEqual(['Typetype:', 'Tagstag:'])
     await userEvent.keyboard('{ArrowDown}{Tab}')
     await expect(search).toHaveValue('tag:')
-    await expect(within(list).getAllByRole('option')).toHaveLength(2)
+    await expect(within(list()).getAllByRole('option')).toHaveLength(2)
     await userEvent.type(search, 'su')
-    await expect(within(list).getByRole('option', { selected: true })).toHaveTextContent(
+    await expect(within(list()).getByRole('option', { selected: true })).toHaveTextContent(
       'Tags:super',
     )
     await userEvent.keyboard('{Enter}')
@@ -120,9 +121,9 @@ export const Suggestions: Story = {
     await expect(state(canvas)).toMatchObject({ tags: ['super'], search: '' })
     // A free-text field suggests just what was typed; Escape closes the list.
     await userEvent.type(search, 'city:Zü')
-    await expect(within(list).getByRole('option')).toHaveTextContent('City:Zü')
+    await expect(within(list()).getByRole('option')).toHaveTextContent('City:Zü')
     await userEvent.keyboard('{Escape}')
-    await expect(list).not.toBeVisible()
+    await expect(canvas.queryByRole('listbox')).toBeNull()
     await expect(search).toHaveValue('city:Zü')
   },
 }
