@@ -476,7 +476,11 @@ func (s *Service) verifyLog(w http.ResponseWriter, r *http.Request, sess store.S
 	if !ok {
 		at = &brokenAt
 	}
-	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"ok": ok, "broken_at": at}))
+	entries, err := s.db.EventCount(r.Context(), sess.Workspace.ID)
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"ok": ok, "broken_at": at, "entries": entries}))
 	return nil
 }
 

@@ -244,6 +244,16 @@ func (q Q) AuditActors(ctx context.Context, workspaceID string) ([]User, error) 
 	return out, rows.Err()
 }
 
+// EventCount: how many entries the workspace's log has.
+func (q Q) EventCount(ctx context.Context, workspaceID string) (int64, error) {
+	var n int64
+	err := q.db.QueryRow(ctx, `SELECT count(*) FROM financial_events WHERE workspace_id = $1`, workspaceID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("event count: %w", err)
+	}
+	return n, nil
+}
+
 // VerifyChain recomputes every hash; brokenAt is the first seq that is missing, out of order or changed.
 func (q Q) VerifyChain(ctx context.Context, workspaceID string) (ok bool, brokenAt int64, err error) {
 	rows, err := q.db.Query(ctx, `SELECT `+eventColumns+` FROM financial_events WHERE workspace_id = $1 ORDER BY seq`,

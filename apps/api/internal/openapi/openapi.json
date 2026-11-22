@@ -10181,9 +10181,13 @@
           "broken_at": {
             "type": ["integer", "null"],
             "description": "The seq where the chain breaks; null when ok."
+          },
+          "entries": {
+            "type": "integer",
+            "description": "How many entries the log has."
           }
         },
-        "required": ["ok", "broken_at"]
+        "required": ["ok", "broken_at", "entries"]
       },
       "EngagementEntryInput": {
         "type": "object",

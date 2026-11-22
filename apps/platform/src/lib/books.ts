@@ -19,11 +19,23 @@ export type MonthActivity = {
   invoices: ActivitySource | null
   expenses: ActivitySource | null
 }
+export type AuditCategory =
+  | 'payments'
+  | 'invoices'
+  | 'expenses'
+  | 'approvals'
+  | 'books'
+  | 'portal'
+  | 'employees'
+  | 'settings'
 export type FinancialEvent = {
   seq: number
   kind: string
-  subject_type: 'invoice' | 'expense' | 'period' | 'plan'
+  category: AuditCategory
+  subject_type: string
   subject_id: string
+  /** the invoice, quote or expense as it is now; null for other records or one that is gone */
+  subject: { number: string | null; party: string | null; currency: string | null } | null
   /** null for the hourly job or a deleted account */
   actor: Person | null
   at: string
@@ -31,6 +43,15 @@ export type FinancialEvent = {
   prev_hash: string
   hash: string
 }
+/** The list's filters as the API takes them; since/before are RFC 3339 instants. */
+export type AuditFilter = Partial<{
+  order: 'oldest' | 'newest'
+  category: AuditCategory
+  actor: string
+  since: string
+  before: string
+  q: string
+}>
 export type EventPage = { data: FinancialEvent[]; meta: { next_cursor: string | null } }
 export type ChainCheck = { ok: boolean; broken_at: number | null }
 export type SelfBillingAgreement = {
@@ -65,12 +86,14 @@ export const booksApi = {
     request<One<MonthActivity[]>>(
       `/periods/activity?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
     ),
-  events: (cursor?: string | null, limit?: number) => {
+  events: (cursor?: string | null, limit?: number, filter: AuditFilter = {}) => {
     const query = new URLSearchParams()
     if (cursor) query.set('cursor', cursor)
     if (limit) query.set('limit', String(limit))
+    for (const [key, value] of Object.entries(filter)) if (value) query.set(key, value)
     return request<EventPage>(`/audit-log${query.size ? `?${query}` : ''}`)
   },
+  people: () => request<One<Person[]>>('/audit-log/people'),
   verify: () => request<One<ChainCheck>>('/audit-log/verify'),
   agreements: (clientId: string) => request<One<SelfBillingAgreement[]>>(agreements(clientId)),
   createAgreement: (clientId: string, input: AgreementInput) =>

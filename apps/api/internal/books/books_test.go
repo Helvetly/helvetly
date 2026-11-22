@@ -329,17 +329,18 @@ func TestVerifyEndpoint(t *testing.T) {
 		Data struct {
 			OK       bool   `json:"ok"`
 			BrokenAt *int64 `json:"broken_at"`
+			Entries  int64  `json:"entries"`
 		} `json:"data"`
 	}
 	var v verify
 	e.do(owner, "GET", "/api/v1/audit-log/verify", nil, 200, &v)
-	if !v.Data.OK || v.Data.BrokenAt != nil {
+	if !v.Data.OK || v.Data.BrokenAt != nil || v.Data.Entries != 0 {
 		t.Fatalf("empty chain: %+v", v.Data)
 	}
 	e.logEvents(owner.workspace, &owner.user, "inv_1", "inv_2", "inv_3")
 	v = verify{}
 	e.do(owner, "GET", "/api/v1/audit-log/verify", nil, 200, &v)
-	if !v.Data.OK || v.Data.BrokenAt != nil {
+	if !v.Data.OK || v.Data.BrokenAt != nil || v.Data.Entries != 3 {
 		t.Fatalf("intact chain: %+v", v.Data)
 	}
 	ctx := context.Background()
