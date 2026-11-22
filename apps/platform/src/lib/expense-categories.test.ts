@@ -12,7 +12,7 @@ const keyOf = (preset: string) =>
 
 test('every preset has its name in all four languages, and no message names a preset the catalogue lacks', () => {
   const expected = Object.keys(PRESET_LABELS).map(keyOf).toSorted()
-  expect(expected).toHaveLength(40)
+  expect(expected).toHaveLength(65)
   for (const messages of [en, de, fr, it]) {
     const named = Object.entries(messages).filter(([key]) => /^expenseCategory[A-Z]/.test(key))
     expect(named.map(([key]) => key).toSorted()).toEqual(expected)
@@ -36,6 +36,7 @@ test.each([
   ['6570', 'Administration & IT'],
   ['6641', 'Marketing & travel'],
   ['6700', 'Other'],
+  ['6800', 'Finance & taxes'],
   ['6940', 'Finance & taxes'],
   ['8900', 'Finance & taxes'],
   ['1520', 'Other'],

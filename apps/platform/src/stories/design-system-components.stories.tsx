@@ -216,7 +216,7 @@ export const PickerWithAddRow: Story = {
               </CommandItem>
             ))}
           </CommandGroup>
-          <CommandCreateItem className="justify-start">
+          <CommandCreateItem>
             <Plus />
             Add category
           </CommandCreateItem>

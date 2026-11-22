@@ -158,7 +158,6 @@ export function Combobox({
             ))}
             {onCreate && (
               <CommandCreateItem
-                className="justify-start"
                 onSelect={() => {
                   creating.current = true
                   setOpen(false)
