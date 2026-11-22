@@ -8,7 +8,7 @@ import type { Summary } from '@/lib/invoices'
 import { NOT_REQUIRED } from '@/mocks/approvals'
 import { portalAddressHandlers } from '@/mocks/portal-address'
 import { portalDomainHandlers } from '@/mocks/portal-domain'
-import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
+import { legalFormsHandler, nextNumbersHandler, sampleSettings } from '@/test/invoice-api'
 
 export const storySession: Session = {
   user: { id: 'usr_story', name: 'Anna Muster', email: 'anna@example.com', avatar_url: null },
@@ -66,6 +66,7 @@ export const screenHandlers = [
   ...portalAddressHandlers,
   ...portalDomainHandlers,
   legalFormsHandler,
+  nextNumbersHandler,
   http.get('/api/v1/clients/tags', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/doc_story/content', () => new HttpResponse(null, { status: 204 })),
   http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture() })),

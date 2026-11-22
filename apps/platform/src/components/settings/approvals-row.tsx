@@ -1,4 +1,5 @@
 'use client'
+import { PlanBadge } from '@helvetly/ui/components/plan-badge'
 import { BadgeCheck } from 'lucide-react'
 import Link from 'next/link'
 
@@ -42,7 +43,9 @@ export function ApprovalsRow({ currency }: { currency: string }) {
         title={translate('approvalsRowTitle')}
         meta={
           lock ? (
-            <span>{translate('includedInPlan', { plan: lock.plan?.name ?? 'Business' })}</span>
+            <PlanBadge plan={lock.plan?.id ?? 'business'}>
+              {translate('includedInPlan', { plan: lock.plan?.name ?? 'Business' })}
+            </PlanBadge>
           ) : (
             <Summary currency={currency} />
           )

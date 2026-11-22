@@ -6,7 +6,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { CompanySettingsPage, InvoiceSettingsPage } from '@/components/settings/invoice-settings'
 import type { SettingsInput } from '@/lib/invoices'
-import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
+import { legalFormsHandler, nextNumbersHandler, sampleSettings } from '@/test/invoice-api'
 
 const session = {
   user: { id: 'usr_story', email: 'anna@example.com', name: 'Anna Muster', avatar_url: null },
@@ -28,6 +28,7 @@ const handlers = (put: Parameters<typeof http.put>[1]) => [
   ),
   http.put('/api/v1/invoice-settings', put),
   legalFormsHandler,
+  nextNumbersHandler,
 ]
 
 const saving = async ({ request }: { request: Request }) => {
@@ -195,8 +196,12 @@ export const CustomNumberFormat: Story = {
     await userEvent.click(placeholders.getByRole('button', { name: /{NNN}/ }))
     const year = new Date().getFullYear()
     const preview = numbering.getByRole('status', { name: 'Next numbers' })
-    await expect(preview).toHaveTextContent(`FV-INV-${year}-001`)
-    await expect(preview).toHaveTextContent(`FV-CN-${year}-001`)
+    await waitFor(() => expect(preview).toHaveTextContent(`FV-INV-${year}-042`))
+    await expect(preview).toHaveTextContent(`FV-Q-${year}-007`)
+    await expect(preview).toHaveTextContent(`FV-CN-${year}-003`)
+    await expect(preview).toHaveTextContent(
+      /Debit note.*Prepayment.*Proforma.*Corrected invoice.*Self-billed/s,
+    )
     await userEvent.click(numbering.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(lastSent()?.number_format).toBe('FV-{TYPE}-{YYYY}-{NNN}'))
   },
@@ -208,12 +213,12 @@ export const DiscardSection: Story = {
     sent.length = 0
     const numbering = await region(canvasElement, 'Numbering')
     const preview = await numbering.findByRole('status', { name: 'Next numbers' })
+    await waitFor(() => expect(preview).toHaveTextContent('042')) // the counters are read
     const before = preview.textContent
     await userEvent.click(numbering.getByRole('button', { name: /Number format/ }))
     const list = await within(document.body).findByRole('listbox')
     const options = within(list).getAllByRole('option')
-    const current = preview.querySelector('.font-code')?.textContent ?? ''
-    const other = options.find((option) => !option.textContent?.startsWith(current))
+    const other = options.find((option) => option.getAttribute('aria-selected') !== 'true')
     if (!other) throw new Error('Only one number format')
     await userEvent.click(other)
     await waitFor(() => expect(preview.textContent).not.toBe(before))

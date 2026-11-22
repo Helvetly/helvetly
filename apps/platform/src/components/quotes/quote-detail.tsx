@@ -29,6 +29,7 @@ import { Money } from '@/components/invoices/invoice-bits'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { HeroFact, RecordHero } from '@/components/invoices/record-hero'
 import { RecordLink, useOpenHref } from '@/components/record-link'
+import { tabIcons } from '@/components/tab-icons'
 import { errorMessage } from '@/lib/api'
 import { useApproval } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
@@ -267,12 +268,13 @@ function Detail({
 
           <TabsList variant="line" className="-mb-px h-10 gap-4 p-0">
             {[
-              { value: 'overview', label: translate('overview') },
-              { value: 'pdf', label: 'PDF' },
+              { value: 'overview' as const, label: translate('overview') },
+              { value: 'pdf' as const, label: 'PDF' },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
+                icon={tabIcons[tab.value]}
                 className="h-full flex-none px-0 text-body font-normal after:bottom-0! after:h-[2px] after:bg-primary"
               >
                 {tab.label}

@@ -21,6 +21,7 @@ import {
   displayStatus,
   dueLabel,
   exampleNumber,
+  nextNumberOf,
   numberFormatError,
   numberFormatsFor,
   formatAmount,
@@ -198,6 +199,31 @@ test('numbers follow the chosen format; credit notes get CN- unless it prints th
   expect(exampleNumber('{TYPE}-{YYYY}{MM}{DD}-{NN}', '2026-03-05', 3, 'credit_note')).toBe(
     'CN-20260305-03',
   )
+})
+
+test('each kind takes the next number of its own counter', () => {
+  const counters = {
+    series: {
+      invoice: { year: 42, ever: 90 },
+      credit_note: { year: 3, ever: 5 },
+      proforma: { year: 1, ever: 1 },
+      self_billed: { year: 1, ever: 1 },
+    },
+    quote: 7,
+  }
+  const next = (format: string, kind: Parameters<typeof nextNumberOf>[2]) =>
+    nextNumberOf(format, '2026-03-05', kind, counters)
+  expect(next('{YYYY}-{NNN}', 'invoice')).toBe('2026-042')
+  expect(next('{YYYY}-{NNN}', 'debit_note')).toBe('2026-042')
+  expect(next('{YYYY}-{NNN}', 'credit_note')).toBe('CN-2026-003')
+  expect(next('{YYYY}-{NNN}', 'proforma')).toBe('PF-2026-001')
+  expect(next('{NNN}', 'invoice')).toBe('090')
+  expect(next('{NNN}', 'credit_note')).toBe('CN-005')
+  expect(next('{TYPE}-{YYYY}-{NNN}', 'prepayment')).toBe('PP-2026-042')
+  expect(next('{TYPE}-{YYYY}-{NNN}', 'quote')).toBe('Q-2026-007')
+  // quotes count per year, so a format without one keeps the default
+  expect(next('{TYPE}-{NNN}', 'quote')).toBe('Q-2026-007')
+  expect(next('{YYYY}-{NNN}', 'quote')).toBe('Q-2026-007')
 })
 
 test('number formats are checked as the API checks them', () => {

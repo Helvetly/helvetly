@@ -1,6 +1,5 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
-import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -34,6 +33,7 @@ import { ImportDrawer } from '@/components/import/import-drawer'
 import { EditableValue, InlineAdd, InlineTextEditor } from '@/components/inline-add'
 import { ClientInvoices } from '@/components/invoices/client-invoices'
 import { ClientQuotes } from '@/components/quotes/client-quotes'
+import { tabIcons } from '@/components/tab-icons'
 import { FillTemplateDrawer } from '@/components/templates/fill-drawer'
 import { ApiError, errorMessage } from '@/lib/api'
 import { clientsApi, useClient, useSaveClient, type Client, type ClientInput } from '@/lib/clients'
@@ -380,28 +380,25 @@ function Detail({
             <div className="-mx-4 -my-1 [scrollbar-width:none] overflow-x-auto px-4 py-1 sm:-mx-6 sm:px-6">
               <TabsList variant="line" className="-mb-px h-10 gap-4 p-0">
                 {[
-                  { value: 'overview', label: translate('overview') },
+                  { value: 'overview' as const, label: translate('overview') },
                   {
-                    value: 'contacts',
+                    value: 'contacts' as const,
                     label: translate('contacts'),
                     count: client.contacts.length,
                   },
-                  { value: 'files', label: translate('files'), count: client.files_count },
-                  { value: 'invoices', label: translate('invoices') },
-                  { value: 'quotes', label: translate('quotes') },
-                  { value: 'engagements', label: translate('engagements') },
+                  { value: 'files' as const, label: translate('files'), count: client.files_count },
+                  { value: 'invoices' as const, label: translate('invoices') },
+                  { value: 'quotes' as const, label: translate('quotes') },
+                  { value: 'engagements' as const, label: translate('engagements') },
                 ].map((tab) => (
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
+                    icon={tabIcons[tab.value]}
+                    count={tab.count}
                     className="h-full flex-none px-0 text-[14px] font-normal after:bottom-0! after:h-[2px] after:bg-primary"
                   >
                     {tab.label}
-                    {Boolean(tab.count) && (
-                      <Badge size="sm" className="tabular-nums">
-                        {tab.count}
-                      </Badge>
-                    )}
                   </TabsTrigger>
                 ))}
               </TabsList>

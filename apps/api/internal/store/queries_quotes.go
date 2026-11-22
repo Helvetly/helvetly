@@ -158,6 +158,14 @@ func (q Q) NextQuoteNumber(ctx context.Context, workspaceID string, year int) (i
 	return seq, err
 }
 
+// PeekQuoteNumber: the number the next quote of the year would take, without taking it.
+func (q Q) PeekQuoteNumber(ctx context.Context, workspaceID string, year int) (int64, error) {
+	var seq int64
+	err := q.db.QueryRow(ctx, `SELECT COALESCE((SELECT seq FROM quote_counters WHERE workspace_id = $1 AND year = $2), 0) + 1`,
+		workspaceID, year).Scan(&seq)
+	return seq, err
+}
+
 // DeleteQuoteDraft deletes a quote that was never sent; false when there is none (sent meanwhile, or missing).
 func (q Q) DeleteQuoteDraft(ctx context.Context, workspaceID, id string) (bool, error) {
 	tag, err := q.db.Exec(ctx, `DELETE FROM quotes WHERE workspace_id = $1 AND id = $2 AND number IS NULL`, workspaceID, id)
