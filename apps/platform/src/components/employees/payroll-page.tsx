@@ -27,7 +27,7 @@ import { PageIntro } from '@/components/settings/layout'
 import { PageHeader } from '@/components/shell/page-header'
 import { formatPay } from '@/lib/employees'
 import { translate } from '@/lib/i18n'
-import { nextSort, parseSort, sortParam, sortRows, type Sort } from '@/lib/list-sort'
+import { parseSort, sortParam, sortRows, type Sort } from '@/lib/list-sort'
 import {
   DEFAULT_SORT,
   exportUrl,
@@ -196,9 +196,7 @@ export function PayrollPage() {
             <EntryList
               entries={entries.data}
               sort={sort}
-              onSort={(field) =>
-                go({ sort: sortParam(nextSort(sort, field, field !== 'employee'), DEFAULT_SORT) })
-              }
+              onSort={(field, desc) => go({ sort: sortParam({ field, desc }, DEFAULT_SORT) })}
               onOpen={open}
             />
           )}
@@ -283,7 +281,7 @@ function EntryList({
 }: {
   entries: PayrollEntry[]
   sort: Sort<SortField>
-  onSort: (field: SortField) => void
+  onSort: (field: SortField, desc: boolean) => void
   onOpen: (id: string) => void
 }) {
   const entries = sortRows(unsorted, (entry) => sortValue(entry, sort.field), sort.desc)
@@ -298,9 +296,9 @@ function EntryList({
         sorting={{
           column: sort.field,
           desc: sort.desc,
-          onSort: (column) => {
+          onSort: (column, desc) => {
             const field = SORT_FIELDS.find((entry) => entry === column)
-            if (field) onSort(field)
+            if (field) onSort(field, desc)
           },
         }}
         rowProps={(entry) => ({
@@ -357,6 +355,7 @@ function entryColumns(onOpen: (id: string) => void): DataColumn<PayrollEntry>[] 
       size: 124,
       minSize: 100,
       sortable: true,
+      sortDescFirst: true,
       className: 'tabular-nums',
       cell: (entry) => `${entry.period_start.slice(5)} – ${entry.period_end.slice(5)}`,
     },
@@ -366,6 +365,7 @@ function entryColumns(onOpen: (id: string) => void): DataColumn<PayrollEntry>[] 
       size: 128,
       resizable: false,
       sortable: true,
+      sortDescFirst: true,
       align: 'right',
       cell: (entry) => formatPay(entry[key], entry.currency),
     })),

@@ -33,7 +33,6 @@ import {
 } from '@/lib/employees'
 import { translate } from '@/lib/i18n'
 import { shownElsewhere, type QueryField } from '@/lib/list-query'
-import { nextSort } from '@/lib/list-sort'
 import { setUrlQuery } from '@/lib/url-query'
 
 import { EmployeeDetail } from './employee-detail'
@@ -236,9 +235,7 @@ export function EmployeesPage() {
             <EmployeeRows
               rows={rows}
               sort={params.sort}
-              onSort={(field) =>
-                setParams({ sort: nextSort(params.sort, field, field === 'since') })
-              }
+              onSort={(field, desc) => setParams({ sort: { field, desc } })}
               onOpen={canOpen ? (id) => go({ id }, true) : undefined}
             />
           )}
@@ -277,7 +274,7 @@ function EmployeeRows({
 }: {
   rows: Employee[]
   sort: ListParams['sort']
-  onSort: (field: SortField) => void
+  onSort: (field: SortField, desc: boolean) => void
   onOpen?: (id: string) => void
 }) {
   return (
@@ -291,9 +288,9 @@ function EmployeeRows({
         sorting={{
           column: sort.field,
           desc: sort.desc,
-          onSort: (column) => {
+          onSort: (column, desc) => {
             const field = SORT_FIELDS.find((entry) => entry === column)
-            if (field) onSort(field)
+            if (field) onSort(field, desc)
           },
         }}
       />
@@ -381,6 +378,7 @@ function employeeColumns(onOpen?: (id: string) => void): DataColumn<Employee>[] 
       size: 128,
       minSize: 96,
       sortable: true,
+      sortDescFirst: true,
       className: 'text-muted-foreground',
       cell: (employee) => formatDate(employee.employment_start),
     },

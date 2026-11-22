@@ -4,10 +4,11 @@ import { locale, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
+import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@helvetly/ui/components/dropdown-menu'
 import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
+import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -228,6 +229,7 @@ function invoiceColumns(access: boolean, act: RowActions): DataColumn<InvoiceLis
       size: 128,
       minSize: 100,
       sortable: true,
+      sortDescFirst: true,
       showFrom: 1100,
       cell: (invoice) => (
         <span className="text-muted-foreground">{formatDay(invoice.issue_date)}</span>
@@ -239,6 +241,7 @@ function invoiceColumns(access: boolean, act: RowActions): DataColumn<InvoiceLis
       size: 128,
       minSize: 112,
       sortable: true,
+      sortDescFirst: true,
       cell: (invoice) => <DueCell invoice={invoice} />,
     },
     {
@@ -247,6 +250,7 @@ function invoiceColumns(access: boolean, act: RowActions): DataColumn<InvoiceLis
       size: 180,
       minSize: 112,
       sortable: true,
+      sortDescFirst: true,
       align: 'right',
       cell: (invoice) => (
         <span className="grid justify-items-end leading-tight">
@@ -306,7 +310,8 @@ export function InvoicesPage() {
   const query = legacy ? new URLSearchParams() : urlQuery
   const listPath = legacy ? '/invoices' : pathname
   const compose = canWrite ? parseCompose(pathname, urlQuery) : null
-  const params = parseListParams(query)
+  const [pageSize, setPageSize] = usePageSize('invoices')
+  const params = { ...parseListParams(query), pageSize }
   const openId = query.get('id')
   const canManage = canManageInvoices(useSession().data?.role)
   const queryClient = useQueryClient()
@@ -381,11 +386,6 @@ export function InvoicesPage() {
       const next = new Set(current)
       if (!next.delete(id)) next.add(id)
       return next
-    })
-  const sortBy = (field: SortField) =>
-    update({
-      sort: field,
-      desc: params.sort === field ? !params.desc : field !== 'client' && field !== 'number',
     })
 
   const downloadPdfs = () => {
@@ -601,9 +601,9 @@ export function InvoicesPage() {
                 sorting={{
                   column: Object.keys(SORTS).find((column) => SORTS[column] === params.sort),
                   desc: params.desc,
-                  onSort: (column) => {
+                  onSort: (column, desc) => {
                     const field = SORTS[column]
-                    if (field) sortBy(field)
+                    if (field) update({ sort: field, desc })
                   },
                 }}
                 selection={{
@@ -630,23 +630,33 @@ export function InvoicesPage() {
                     {tr}
                   </RowContextMenu>
                 )}
+                pagination={
+                  meta && {
+                    page: meta.page,
+                    pageSize,
+                    total: meta.total,
+                    onChange: (page, size) => {
+                      setPageSize(size)
+                      update({ page })
+                    },
+                  }
+                }
+                footer={
+                  <ul className={cn(listTable.list, '@4xl:hidden')}>
+                    {rows.map((invoice) => (
+                      <InvoiceItem
+                        key={invoice.id}
+                        invoice={invoice}
+                        selected={selected.has(invoice.id)}
+                        bulk={selected.has(invoice.id) ? selection : undefined}
+                        isOpen={invoice.id === openId}
+                        access={canManage}
+                        act={act}
+                      />
+                    ))}
+                  </ul>
+                }
               />
-
-              <ul className={cn(listTable.list, '@4xl:hidden')}>
-                {rows.map((invoice) => (
-                  <InvoiceItem
-                    key={invoice.id}
-                    invoice={invoice}
-                    selected={selected.has(invoice.id)}
-                    bulk={selected.has(invoice.id) ? selection : undefined}
-                    isOpen={invoice.id === openId}
-                    access={canManage}
-                    act={act}
-                  />
-                ))}
-              </ul>
-
-              {meta && <Pager meta={meta} onPage={(page) => update({ page })} />}
             </div>
           )}
 

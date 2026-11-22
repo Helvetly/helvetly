@@ -47,7 +47,7 @@ import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { formatDay } from '@/lib/invoices'
 import { among, shownElsewhere, oneValue, type QueryField } from '@/lib/list-query'
-import { nextSort, parseSort, sortParam } from '@/lib/list-sort'
+import { parseSort, sortParam } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { usePrefetch } from '@/lib/queries'
 import {
@@ -93,9 +93,6 @@ const VIEWS: { status: QuoteStatus | null; label: string; icon: LucideIcon }[] =
     icon: STATUS_ICONS[entry.value],
   })),
 ]
-
-/** Dates and amounts start with the latest or largest; text from A. */
-const DESC_FIRST = new Set<QuoteSortField>(['date', 'valid', 'total'])
 
 /** What a bulk action does to one quote; `confirm` ones ask first. */
 type BulkKind = 'markSent' | 'accept' | 'decline' | 'remove'
@@ -262,9 +259,9 @@ export function QuotesPage() {
     })
   const openQuote = (id: string | null) => navigate({ id })
   const newQuote = () => navigate({ new: '1', client: null })
-  const sortBy = (field: QuoteSortField) =>
+  const sortBy = (field: QuoteSortField, desc: boolean) =>
     navigate({
-      sort: sortParam(nextSort(sort, field, DESC_FIRST.has(field)), DEFAULT_QUOTE_SORT),
+      sort: sortParam({ field, desc }, DEFAULT_QUOTE_SORT),
     })
   const toggleRow = (id: string) =>
     setSelected((current) => {
@@ -468,9 +465,9 @@ export function QuotesPage() {
                 sorting={{
                   column: sort.field,
                   desc: sort.desc,
-                  onSort: (column) => {
+                  onSort: (column, desc) => {
                     const field = QUOTE_SORT_FIELDS.find((entry) => entry === column)
-                    if (field) sortBy(field)
+                    if (field) sortBy(field, desc)
                   },
                 }}
                 selection={{
@@ -632,6 +629,7 @@ function quoteColumns(writable: boolean, act: RowActions): DataColumn<Quote>[] {
       size: 128,
       minSize: 100,
       sortable: true,
+      sortDescFirst: true,
       showFrom: 1100,
       cell: (quote) => <span className="text-muted-foreground">{formatDay(quote.issue_date)}</span>,
     },
@@ -641,6 +639,7 @@ function quoteColumns(writable: boolean, act: RowActions): DataColumn<Quote>[] {
       size: 128,
       minSize: 112,
       sortable: true,
+      sortDescFirst: true,
       cell: (quote) => (
         <span className={cn(quote.status !== 'sent' && 'text-muted-foreground')}>
           {formatDay(quote.valid_until)}
@@ -653,6 +652,7 @@ function quoteColumns(writable: boolean, act: RowActions): DataColumn<Quote>[] {
       size: 180,
       minSize: 112,
       sortable: true,
+      sortDescFirst: true,
       align: 'right',
       cell: (quote) => <Money value={quote.payable_total} currency={quote.currency} />,
     },

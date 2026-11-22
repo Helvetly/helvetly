@@ -22,7 +22,7 @@ import {
   type TrashSortField,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
-import { nextSort, parseSort, sortParam, sortRows } from '@/lib/list-sort'
+import { parseSort, sortParam, sortRows } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { folderLabel } from '@/lib/system-folders'
 import { setUrlQuery } from '@/lib/url-query'
@@ -64,12 +64,9 @@ export function TrashView({
     () => sortRows(items ?? [], (item) => trashSortValue(item, sort.field), sort.desc),
     [items, sort.field, sort.desc],
   )
-  const sortBy = (field: TrashSortField) => {
+  const sortBy = (field: TrashSortField, desc: boolean) => {
     const next = new URLSearchParams(query)
-    const value = sortParam(
-      nextSort(sort, field, field === 'deleted' || field === 'size'),
-      DEFAULT_TRASH_SORT,
-    )
+    const value = sortParam({ field, desc }, DEFAULT_TRASH_SORT)
     if (value) next.set('sort', value)
     else next.delete('sort')
     setUrlQuery(pathname, next)
@@ -125,9 +122,9 @@ export function TrashView({
         sorting={{
           column: sort.field,
           desc: sort.desc,
-          onSort: (column) => {
+          onSort: (column, desc) => {
             const field = TRASH_SORTS.find((entry) => entry === column)
-            if (field) sortBy(field)
+            if (field) sortBy(field, desc)
           },
         }}
         rowProps={(item) => ({
@@ -232,6 +229,7 @@ function trashColumns({
       size: 180,
       minSize: 120,
       sortable: true,
+      sortDescFirst: true,
       showFrom: 970,
       className: 'text-muted-foreground',
       cell: (item) => (
@@ -247,6 +245,7 @@ function trashColumns({
       size: 96,
       minSize: 72,
       sortable: true,
+      sortDescFirst: true,
       align: 'right',
       className: 'text-muted-foreground',
       cell: (item) => formatSize(item.size),

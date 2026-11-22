@@ -3,11 +3,12 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
+import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
 } from '@helvetly/ui/components/dropdown-menu'
+import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -70,7 +71,7 @@ import {
 } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import { shownElsewhere, type QueryField } from '@/lib/list-query'
-import { nextSort, parseSort, sortParam, type Sort } from '@/lib/list-sort'
+import { parseSort, sortParam, type Sort } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { queryKeys, usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
@@ -485,6 +486,7 @@ export function EngagementsPage() {
   const sort = parseSort(url.get('sort'), SORTS, DEFAULT_SORT)
   const [view, setView] = useState(0)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = usePageSize('engagements')
   const [search, setSearch] = useState('')
   const [term, setTerm] = useState('')
   const [creating, setCreating] = useState(false)
@@ -521,7 +523,7 @@ export function EngagementsPage() {
   const sortValue: EngagementQuery['sort'] =
     sort.field === 'title' ? (sort.desc ? '-title' : 'title') : sort.desc ? '-ends' : undefined
   const filters: EngagementQuery = { ...VIEWS[view]?.query, q: term || undefined, sort: sortValue }
-  const params: EngagementQuery = { ...filters, page }
+  const params: EngagementQuery = { ...filters, page, page_size: pageSize }
   const { items, digestToggle } = useMenu(filters)
   const list = useQuery({ ...engagementListQuery(params), placeholderData: keepPreviousData })
   const prefetch = usePrefetch(engagementQuery)
@@ -539,9 +541,9 @@ export function EngagementsPage() {
     setPage(next)
     setSelected(new Set())
   }
-  const sortBy = (field: (typeof SORTS)[number]) => {
+  const sortBy = (field: (typeof SORTS)[number], desc: boolean) => {
     const next = new URLSearchParams(url)
-    const value = sortParam(nextSort(sort, field, false), DEFAULT_SORT)
+    const value = sortParam({ field, desc }, DEFAULT_SORT)
     if (value) next.set('sort', value)
     else next.delete('sort')
     setUrlQuery(pathname, next)
@@ -776,9 +778,9 @@ export function EngagementsPage() {
                     (column) => SORT_COLUMN[column] === sort.field,
                   ),
                   desc: sort.desc,
-                  onSort: (column) => {
+                  onSort: (column, desc) => {
                     const field = SORT_COLUMN[column]
-                    if (field) sortBy(field)
+                    if (field) sortBy(field, desc)
                   },
                 }}
                 selection={{
@@ -797,15 +799,25 @@ export function EngagementsPage() {
                     </RowContextMenu>
                   )
                 }}
+                pagination={
+                  meta && {
+                    page: meta.page,
+                    pageSize,
+                    total: meta.total,
+                    onChange: (next, size) => {
+                      setPageSize(size)
+                      turnPage(next)
+                    },
+                  }
+                }
+                footer={
+                  <ul className={cn(listTable.list, '@4xl:hidden')}>
+                    {rows.map((engagement) => (
+                      <EngagementItem key={engagement.id} {...rowProps(engagement)} />
+                    ))}
+                  </ul>
+                }
               />
-
-              <ul className={cn(listTable.list, '@4xl:hidden')}>
-                {rows.map((engagement) => (
-                  <EngagementItem key={engagement.id} {...rowProps(engagement)} />
-                ))}
-              </ul>
-
-              {meta && <Pager meta={meta} onPage={turnPage} />}
             </div>
           )}
 

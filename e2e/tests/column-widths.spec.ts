@@ -6,7 +6,7 @@ const widthOf = (head: Locator) => async () =>
   Math.round(await head.evaluate((element) => element.getBoundingClientRect().width))
 
 async function drag(page: Page, column: string, by: number) {
-  const box = await page.getByRole('slider', { name: `Resize ${column}` }).boundingBox()
+  const box = await page.getByRole('button', { name: `Resize ${column}` }).boundingBox()
   if (!box) throw new Error('The resize handle has no box')
   const x = box.x + box.width / 2
   const y = box.y + box.height / 2
@@ -31,15 +31,15 @@ test('a dragged column width on the invoices list survives a reload', async ({ a
 
   await drag(page, 'Amount', -60)
   await expect.poll(widthOf(amount)).toBe(amountBefore - 60)
-  // The client column is the flexible one: it takes the room the others give up.
-  await expect.poll(widthOf(client)).toBe(clientBefore + 60)
+  // Only the dragged column changes: the table gets narrower, the client column stays.
+  await expect.poll(widthOf(client)).toBe(clientBefore)
 
   await page.reload()
   await expect(amount).toBeVisible()
   await expect.poll(widthOf(amount)).toBe(amountBefore - 60)
 })
 
-test('the clients name column takes the room a narrowed column frees, and one click opens the client', async ({
+test('the clients name column resizes like any other, and one click opens the client', async ({
   api,
   page,
 }) => {
@@ -49,17 +49,20 @@ test('the clients name column takes the room a narrowed column frees, and one cl
   const name = page.getByRole('columnheader', { name: /^Name/ })
   const city = page.getByRole('columnheader', { name: /^City/ })
   await expect(name).toBeVisible()
-  await expect(page.getByRole('slider', { name: 'Resize Name' })).toHaveCount(0)
   const nameBefore = await widthOf(name)()
   const cityBefore = await widthOf(city)()
 
   await drag(page, 'City', -40)
   await expect.poll(widthOf(city)).toBe(cityBefore - 40)
-  await expect.poll(widthOf(name)).toBe(nameBefore + 40)
+  await expect.poll(widthOf(name)).toBe(nameBefore)
+  await drag(page, 'Name', 80)
+  await expect.poll(widthOf(name)).toBe(nameBefore + 80)
+  await expect.poll(widthOf(city)).toBe(cityBefore - 40)
+  // 40 px wider than the box now: it scrolls sideways.
   const scroller = name.locator('xpath=ancestor::table/..')
   await expect
     .poll(() => scroller.evaluate((element) => element.scrollWidth - element.clientWidth))
-    .toBe(0)
+    .toBe(40)
 
   await page.getByRole('button', { name: new RegExp(`^${String(client.name)}`) }).click()
   await expect(page.getByRole('dialog', { name: new RegExp(String(client.name)) })).toBeVisible()

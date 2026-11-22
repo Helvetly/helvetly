@@ -1175,12 +1175,7 @@ export function DocumentsPage() {
                       from={showLocation ? '*' : current}
                       sort={view.sort}
                       desc={view.desc}
-                      onSort={(field) =>
-                        navigate({
-                          sort: field,
-                          desc: view.sort === field ? !view.desc : field !== 'name',
-                        })
-                      }
+                      onSort={(field, desc) => navigate({ sort: field, desc })}
                       onClick={onItemClick}
                       onToggle={(key) => {
                         setFocused(key)

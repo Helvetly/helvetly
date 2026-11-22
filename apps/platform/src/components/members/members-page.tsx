@@ -33,7 +33,7 @@ import { PageHeader } from '@/components/shell/page-header'
 import { seatCostLabel, useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { among, type QueryField } from '@/lib/list-query'
-import { nextSort, parseSort, sortParam, sortRows } from '@/lib/list-sort'
+import { parseSort, sortParam, sortRows } from '@/lib/list-sort'
 import {
   assignableRoles,
   canManage,
@@ -104,9 +104,9 @@ export function MembersPage() {
   })
 
   const sort = parseSort(query.get('sort'), TEAM_SORTS, DEFAULT_TEAM_SORT)
-  const sortBy = (field: TeamSortField) => {
+  const sortBy = (field: TeamSortField, desc: boolean) => {
     const next = new URLSearchParams(query)
-    const value = sortParam(nextSort(sort, field, field === 'active'), DEFAULT_TEAM_SORT)
+    const value = sortParam({ field, desc }, DEFAULT_TEAM_SORT)
     if (value) next.set('sort', value)
     else next.delete('sort')
     setUrlQuery(pathname, next)
@@ -257,9 +257,9 @@ export function MembersPage() {
             sorting={{
               column: sort.field,
               desc: sort.desc,
-              onSort: (column) => {
+              onSort: (column, desc) => {
                 const field = TEAM_SORTS.find((entry) => entry === column)
-                if (field) sortBy(field)
+                if (field) sortBy(field, desc)
               },
             }}
           />
@@ -337,6 +337,7 @@ function teamColumns(
       size: 168,
       minSize: 112,
       sortable: true,
+      sortDescFirst: true,
       showFrom: 850,
       cell: (row) =>
         row.kind === 'member' ? (

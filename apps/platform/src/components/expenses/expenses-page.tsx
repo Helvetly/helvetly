@@ -3,9 +3,10 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
+import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
+import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -128,7 +129,8 @@ const BULK_DONE: Record<BulkAction, string> = {
 export function ExpensesPage() {
   const pathname = usePathname()
   const query = useSearchParams()
-  const params = parseListParams(query)
+  const [pageSize, setPageSize] = usePageSize('expenses')
+  const params = { ...parseListParams(query), pageSize }
   const openId = query.get('id')
   const canManage = canManageExpenses(useSession().data?.role)
   const canWrite = useCan('write:expenses')
@@ -270,8 +272,6 @@ export function ExpensesPage() {
       )
   }
 
-  const sortBy = (field: SortField) =>
-    update({ sort: field, desc: params.sort === field ? !params.desc : field !== 'supplier' })
   // Receipts go through the AI import: read into drafts that are reviewed in its drawer, then land in "To review".
   const importDrawer = useImportDrawer()
   const [managingCategories, setManagingCategories] = useState(false)
@@ -493,9 +493,9 @@ export function ExpensesPage() {
                 sorting={{
                   column: Object.keys(SORTS).find((column) => SORTS[column] === params.sort),
                   desc: params.desc,
-                  onSort: (column) => {
+                  onSort: (column, desc) => {
                     const field = SORTS[column]
-                    if (field) sortBy(field)
+                    if (field) update({ sort: field, desc })
                   },
                 }}
                 selection={{
@@ -514,22 +514,32 @@ export function ExpensesPage() {
                     {tr}
                   </RowContextMenu>
                 )}
+                pagination={
+                  meta && {
+                    page: meta.page,
+                    pageSize,
+                    total: meta.total,
+                    onChange: (page, size) => {
+                      setPageSize(size)
+                      update({ page })
+                    },
+                  }
+                }
+                footer={
+                  <ul className={cn(listTable.list, '@4xl:hidden')}>
+                    {rows.map((expense) => (
+                      <ExpenseItem
+                        key={expense.id}
+                        expense={expense}
+                        selected={selected.has(expense.id)}
+                        bulk={selected.has(expense.id) ? selection : undefined}
+                        access={access}
+                        act={act}
+                      />
+                    ))}
+                  </ul>
+                }
               />
-
-              <ul className={cn(listTable.list, '@4xl:hidden')}>
-                {rows.map((expense) => (
-                  <ExpenseItem
-                    key={expense.id}
-                    expense={expense}
-                    selected={selected.has(expense.id)}
-                    bulk={selected.has(expense.id) ? selection : undefined}
-                    access={access}
-                    act={act}
-                  />
-                ))}
-              </ul>
-
-              {meta && <Pager meta={meta} onPage={(page) => update({ page })} />}
             </div>
           )}
 
@@ -862,6 +872,7 @@ function expenseColumns(access: RowProps['access'], act: RowActions): DataColumn
       size: 72,
       minSize: 56,
       sortable: true,
+      sortDescFirst: true,
       className: 'font-code text-muted-foreground',
       cell: (expense) => `#${expense.number}`,
     },
@@ -914,6 +925,7 @@ function expenseColumns(access: RowProps['access'], act: RowActions): DataColumn
       size: 124,
       minSize: 100,
       sortable: true,
+      sortDescFirst: true,
       className: 'text-muted-foreground tabular-nums',
       cell: (expense) => (expense.document_date ? formatDay(expense.document_date) : '—'),
     },
@@ -923,6 +935,7 @@ function expenseColumns(access: RowProps['access'], act: RowActions): DataColumn
       size: 150,
       minSize: 100,
       sortable: true,
+      sortDescFirst: true,
       align: 'right',
       cell: (expense) => formatMoney(expense.total, expense.currency),
     },
