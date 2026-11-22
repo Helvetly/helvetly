@@ -18,6 +18,7 @@ import {
   MarkSentButton,
   recipientErrors,
 } from '@/components/invoices/invoice-dialogs'
+import { RecipientFields } from '@/components/recipient-fields'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
 import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
@@ -51,6 +52,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
   // null = untouched: the draft shows through, and what the user typed is never replaced by it.
   const [to, setTo] = useState<string | null>(null)
   const [cc, setCc] = useState('')
+  const [bcc, setBcc] = useState('')
   const [subject, setSubject] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -82,7 +84,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
 
   const submit = () => {
     const found: Record<string, string> = {
-      ...recipientErrors(recipients, cc),
+      ...recipientErrors(recipients, cc, bcc),
       ...(shownSubject.trim() ? {} : { subject: translate('emailSubjectRequired') }),
       ...(shownMessage.trim() ? {} : { message: translate('emailMessageRequired') }),
     }
@@ -93,6 +95,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
       {
         to: list,
         ...(emails(cc).length ? { cc: emails(cc) } : {}),
+        ...(emails(bcc).length ? { bcc: emails(bcc) } : {}),
         // Left empty (draft failed), the server writes both in the quote's language.
         ...(shownSubject.trim() ? { subject: shownSubject.trim() } : {}),
         ...(shownMessage.trim() ? { message: shownMessage.trim() } : {}),
@@ -126,36 +129,19 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
         </Callout>
       )}
       <NoClientEmail client={client} />
-      <FormField
-        id="quote-send-to"
-        label={translate('to3')}
-        required
-        error={errors.to}
-        tip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient2')}
-      >
-        <input
-          {...describedBy('quote-send-to', errors.to)}
-          type="email"
-          multiple
-          value={recipients}
-          // Read-only, not disabled, while the draft loads: the dialog's first focus lands here.
-          readOnly={draft.isPending}
-          onChange={(event) => setTo(event.target.value)}
-          placeholder={translate('helloClientCh')}
-          className={fieldClass}
-        />
-      </FormField>
-      <FormField id="quote-send-cc" label={translate('cc')} error={errors.cc}>
-        <input
-          {...describedBy('quote-send-cc', errors.cc)}
-          type="email"
-          multiple
-          value={cc}
-          onChange={(event) => setCc(event.target.value)}
-          placeholder={translate('optional')}
-          className={fieldClass}
-        />
-      </FormField>
+      <RecipientFields
+        id="quote-send"
+        to={recipients}
+        onToChange={setTo}
+        toTip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient2')}
+        toPlaceholder={translate('helloClientCh')}
+        toReadOnly={draft.isPending}
+        cc={cc}
+        onCcChange={setCc}
+        bcc={bcc}
+        onBccChange={setBcc}
+        errors={errors}
+      />
       <FormField
         id="quote-send-subject"
         label={translate('subject')}

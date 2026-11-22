@@ -2,6 +2,7 @@ package invoices
 
 import (
 	"context"
+	"image/png"
 	"net/http"
 	"strings"
 	"testing"
@@ -89,7 +90,7 @@ func TestEmailLogo(t *testing.T) {
 		path string
 		want int
 	}{
-		{brand.LogoPath, http.StatusFound}, // no session: mail clients carry none
+		{brand.LogoPath, http.StatusOK}, // no session: mail clients carry none
 		{emailLogoPath + b.workspace + "/lgo_other", http.StatusNotFound},
 		{emailLogoPath + "wsp_nope/" + strings.TrimPrefix(brand.LogoPath, emailLogoPath+b.workspace+"/"), http.StatusNotFound},
 	} {
@@ -97,9 +98,15 @@ func TestEmailLogo(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp.Body.Close()
 		if resp.StatusCode != c.want {
 			t.Errorf("%s: %d, want %d", c.path, resp.StatusCode, c.want)
 		}
+		if c.want == http.StatusOK {
+			cfg, err := png.DecodeConfig(resp.Body)
+			if err != nil || cfg.Width != 72 || cfg.Height != 36 {
+				t.Errorf("email logo %dx%d, %v; want 72x36", cfg.Width, cfg.Height, err)
+			}
+		}
+		resp.Body.Close()
 	}
 }

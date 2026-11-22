@@ -42,4 +42,10 @@ test('send dialogs check the recipients before anything goes out', () => {
   expect(recipientErrors('a@b.ch', Array(11).fill('x@y.ch').join(','))).toEqual({
     cc: 'At most 10 addresses in Cc.',
   })
+  expect(recipientErrors('a@b.ch', 'nope', '')).toEqual({ cc: '“nope” isn’t an email address.' })
+  expect(recipientErrors('a@b.ch', '', 'c@d.ch, e@f.ch')).toEqual({})
+  expect(recipientErrors('a@b.ch', '', 'nope')).toEqual({ bcc: '“nope” isn’t an email address.' })
+  expect(recipientErrors('a@b.ch', '', Array(11).fill('x@y.ch').join(','))).toEqual({
+    bcc: 'At most 10 addresses in Bcc.',
+  })
 })

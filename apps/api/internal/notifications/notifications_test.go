@@ -439,17 +439,17 @@ func TestEmailMessage(t *testing.T) {
 			[]string{">Acme &amp; Co</p>", "&lt;b&gt;Jo&lt;/b&gt; asked to change", "ana@example.com sent the change from the client portal",
 				`href="https://app.example.com/clients?id=cli_1"`, ">Review the request</a>"},
 			[]string{"Acme & Co\n", "Review the request: https://app.example.com/clients?id=cli_1", "Unsubscribe: https://app.example.com/unsubscribe#"},
-			[]string{"<li>", "<b>Jo</b>", ">View</a>"}},
+			[]string{"<li>", "<b>Jo</b>"}},
 		{"a burst", "2 invoices were paid", []store.Notification{paid("1", "Acme AG", 0), paid("2", "<i>Berg</i>", 40*time.Second)},
-			[]string{">Invoice RE-1 was paid</div>", "CHF 10.00 received from Acme AG · 14:05</div>", "&lt;i&gt;Berg&lt;/i&gt; · 14:05",
-				`href="https://app.example.com/invoices?id=inv_2"`, ">View</a>", `href="https://app.example.com/notifications"`, ">Open notifications</a>"},
+			[]string{"<strong>Invoice RE-1 was paid</strong></a>", "CHF 10.00 received from Acme AG · 14:05</span>", "&lt;i&gt;Berg&lt;/i&gt; · 14:05",
+				`href="https://app.example.com/invoices?id=inv_2"`, `href="https://app.example.com/notifications"`, ">Open notifications</a>"},
 			[]string{"- Invoice RE-2 was paid\n  CHF 10.00 received from <i>Berg</i> · 14:05\n  https://app.example.com/invoices?id=inv_2\n",
 				"Open notifications: https://app.example.com/notifications"},
 			[]string{"<i>Berg</i>"}},
 	} {
 		m := s.message(c.burst)
 		if m.Subject != c.subject || m.To[0] != "a@example.com" || !strings.HasPrefix(m.ListUnsubscribe, "https://app.example.com/api/v1/public/notifications/unsubscribe?token=") ||
-			!strings.Contains(m.Footer, "Acme &amp; Co on Helvetly") || !strings.Contains(m.Footer, ">Unsubscribe</a>") || m.Preview == "" {
+			!strings.Contains(m.Footer, "Acme &amp; Co on Helvetly") || !strings.Contains(m.Footer, ">Unsubscribe</a>") {
 			t.Fatalf("%s: %+v", c.name, m)
 		}
 		if strings.Count(m.HTML, html.EscapeString(c.subject)) != 1 {

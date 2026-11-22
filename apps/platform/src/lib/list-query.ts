@@ -3,6 +3,7 @@
  * `name:"Acme AG"`). Terms map onto a list's own URL filters through each field's `get` and `set`,
  * so the URL stays the one source of truth for the search's chips and the Filters popover alike.
  */
+import { todayIn } from '@/lib/timezone'
 
 export type QueryFieldType = 'text' | 'enum' | 'tag' | 'date' | 'number'
 export type QueryOption = { value: string; label: string }
@@ -64,12 +65,12 @@ export type SincePreset = (typeof SINCE_PRESETS)[number]
 export const isoDay = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
-/** The first day a "since" preset covers, in the browser's calendar. */
-export function sinceDate(preset: SincePreset, today = new Date()) {
-  if (preset === 'year') return `${today.getFullYear()}-01-01`
-  const from = new Date(today)
-  from.setDate(from.getDate() - (preset === '7d' ? 6 : 29))
-  return isoDay(from)
+/** The first day a "since" preset covers, counted back from today (YYYY-MM-DD) in the workspace's time zone. */
+export function sinceDate(preset: SincePreset, today = todayIn()) {
+  if (preset === 'year') return `${today.slice(0, 4)}-01-01`
+  const from = new Date(`${today}T00:00:00Z`)
+  from.setUTCDate(from.getUTCDate() - (preset === '7d' ? 6 : 29))
+  return from.toISOString().slice(0, 10)
 }
 
 /** One field term, shaped like TanStack Table's `ColumnFilter`. */

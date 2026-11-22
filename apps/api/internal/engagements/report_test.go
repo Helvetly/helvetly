@@ -64,6 +64,13 @@ func TestSendReportNoEmail422(t *testing.T) {
 	e.fails(b, "POST", path+"/periods/"+e.periodList(b, v.ID)[0].ID+"/report/send", map[string]any{}, 422, "validation_failed", "to")
 }
 
+func TestSendReportBadBcc422(t *testing.T) {
+	e, b, v, path := reportEnv(t)
+	e.svc.SetMailer(&fakeMailer{}, "https://x")
+	e.fails(b, "POST", path+"/periods/"+e.periodList(b, v.ID)[0].ID+"/report/send", map[string]any{"to": []string{"a@example.com"},
+		"bcc": []string{"nope"}}, 422, "validation_failed", "bcc")
+}
+
 func TestSendReportAttachesPDF(t *testing.T) {
 	e, b, v, path := reportEnv(t)
 	m := &fakeMailer{}
@@ -74,8 +81,10 @@ func TestSendReportAttachesPDF(t *testing.T) {
 	var out struct {
 		Data struct{ To []string } `json:"data"`
 	}
-	e.do(b, "POST", path+"/periods/"+e.periodList(b, v.ID)[0].ID+"/report/send", map[string]any{"cc": []string{"cc@example.com"}}, 200, &out)
-	if len(m.sent) != 1 || strings.Join(out.Data.To, ",") != "bill@example.com" || strings.Join(m.sent[0].Cc, ",") != "cc@example.com" {
+	e.do(b, "POST", path+"/periods/"+e.periodList(b, v.ID)[0].ID+"/report/send", map[string]any{"cc": []string{"cc@example.com"},
+		"bcc": []string{"bill@example.com", "CC@example.com", "audit@example.com"}}, 200, &out)
+	if len(m.sent) != 1 || strings.Join(out.Data.To, ",") != "bill@example.com" || strings.Join(m.sent[0].Cc, ",") != "cc@example.com" ||
+		strings.Join(m.sent[0].Bcc, ",") != "audit@example.com" {
 		t.Fatalf("%+v %+v", out, m.sent)
 	}
 	a := m.sent[0].Attachments

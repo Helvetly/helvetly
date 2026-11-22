@@ -34,7 +34,7 @@ func (m Metered) Send(ctx context.Context, msg Message) error {
 	for _, a := range msg.Attachments {
 		attached += int64(len(a.Data))
 	}
-	settle, err := m.Meter.ReserveEmail(ctx, msg.Workspace, int64(len(msg.To)+len(msg.Cc)), attached)
+	settle, err := m.Meter.ReserveEmail(ctx, msg.Workspace, int64(len(msg.To)+len(msg.Cc)+len(msg.Bcc)), attached)
 	if err != nil {
 		return err
 	}

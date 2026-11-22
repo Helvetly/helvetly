@@ -243,7 +243,8 @@ type ClientFilter struct {
 	Company     *bool
 	Tags        []string // lowercase; a client must have all of them
 	Countries   []string
-	CreatedFrom string // YYYY-MM-DD, inclusive, UTC
+	CreatedFrom string // YYYY-MM-DD, inclusive, a day in Zone
+	Zone        string // IANA name the day is read in; "" is UTC
 	IDs         []string
 	Sort        string // a key of ClientSorts, "-" prefixed for descending
 }
@@ -305,7 +306,7 @@ func (f ClientFilter) where(workspaceID string) (string, []any) {
 		conds = append(conds, "c.country = ANY("+arg(f.Countries)+")")
 	}
 	if f.CreatedFrom != "" {
-		conds = append(conds, "c.created_at >= "+arg(f.CreatedFrom)+"::date")
+		conds = append(conds, "c.created_at >= "+dayStart(arg(f.CreatedFrom), arg(zoneOr(f.Zone)), 0))
 	}
 	if len(f.IDs) > 0 {
 		conds = append(conds, "c.id = ANY("+arg(f.IDs)+")")

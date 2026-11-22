@@ -11,7 +11,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// ReserveEmail holds a business email's recipients (To and Cc alike) in emails_per_month before the SMTP send
+// ReserveEmail holds a business email's recipients (To, Cc and Bcc alike) in emails_per_month before the SMTP send
 // (mail.Meter). A message whose attachments exceed max_email_attachment_bytes is refused as too large. settle(true)
 // records the whole reservation used (the server accepted the message), settle(false) releases it (it was not sent); an outcome
 // that stays unknown is not settled, so it keeps counting. Emails are often sent from inside a transaction that holds

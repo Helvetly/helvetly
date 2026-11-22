@@ -6,7 +6,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { ClientsPage } from '@/components/clients/clients-page'
 import { QuotesPage } from '@/components/quotes/quotes-page'
 import { emailTemplateHandlers } from '@/mocks/email-templates'
-import { quoteHandlers, quotePreviewHandler, resetQuotesMock } from '@/mocks/quotes'
+import { listQuotes, quoteHandlers, quotePreviewHandler, resetQuotesMock } from '@/mocks/quotes'
 
 import { sessionHandler, unavailable } from '../screen-fixtures'
 import { filtersPlay } from './filters'
@@ -127,6 +127,70 @@ export const LoadError: Story = {
   },
 }
 
+/** The list requests the stories made, newest last; the answer claims 120 quotes (the fake's rows on every page). */
+const requested: URLSearchParams[] = []
+const paged = http.get('/api/v1/quotes', ({ request }) => {
+  const query = new URL(request.url).searchParams
+  requested.push(query)
+  const first = new URLSearchParams(query)
+  first.set('page', '1')
+  const answer = listQuotes(first)
+  const { page_size } = answer.meta
+  return HttpResponse.json({
+    ...answer,
+    meta: {
+      page: Number(query.get('page')),
+      page_size,
+      total: 120,
+      total_pages: Math.ceil(120 / page_size),
+    },
+  })
+})
+const lastRequest = () => requested.at(-1)?.toString() ?? ''
+
+/** The server pages the list: page 2 of the URL is asked for, the pager moves on, and a search starts at page 1. */
+export const PagesOnTheServer: Story = {
+  parameters: quotes({ page: '2' }, [paged]),
+  play: async (context) => {
+    await shows('Keller Holzbau AG')?.(context)
+    await expect(lastRequest()).toBe('page=2&page_size=50&sort=-issue_date')
+    const body = page(context.canvasElement)
+    const pager = await body.findByRole('navigation', { name: 'Pages' }, wait)
+    await expect(within(pager).getByText('51–100 of 120')).toBeVisible()
+    await userEvent.click(within(pager).getByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(window.location.search).toContain('page=3'), wait)
+    await userEvent.type(body.getByRole('searchbox', { name: 'Search quotes' }), 'holzbau')
+    await waitFor(() => expect(window.location.search).toContain('q=holzbau'), wait)
+    await expect(window.location.search).not.toContain('page=')
+  },
+}
+export const PagesOnTheServerPhone = phone(PagesOnTheServer)
+
+/** Every filter in the URL (view, client, dates, amounts, sort) goes to the API, not to the browser. */
+export const FiltersGoToTheServer: Story = {
+  parameters: quotes(
+    {
+      status: 'sent',
+      client_name: 'Meier',
+      from: '2026-11-01',
+      to: '2026-11-30',
+      min: '1000',
+      max: '5000.50',
+      sort: '-total',
+    },
+    [paged],
+  ),
+  play: async () => {
+    await waitFor(
+      () =>
+        expect(lastRequest()).toBe(
+          'page=1&page_size=50&status=sent&client_name=Meier&issued_from=2026-11-01&issued_to=2026-11-30&total_min=1000&total_max=5000.50&sort=-total',
+        ),
+      wait,
+    )
+  },
+}
+
 /** The Expired view: a sent quote past its date reads as expired, muted like a declined one. */
 export const ExpiredView: Story = {
   parameters: quotes({ status: 'expired' }),
@@ -199,6 +263,22 @@ export const Detail: Story = {
 }
 export const DetailDark = dark(Detail)
 export const DetailPhone = phone(Detail)
+
+/** A declined quote: the badge and the decision notice both read in the destructive tone. */
+export const DetailDeclined: Story = {
+  parameters: quotes({ id: 'quo_declined' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    const notice = (
+      await body.findByText('“Too expensive for this year.”', undefined, wait)
+    ).closest('[data-slot="callout"]')
+    await expect(notice).toHaveAttribute('data-tone', 'danger')
+    const badge = body.getAllByText('Declined').find((el) => el.dataset.slot === 'badge')
+    await expect(badge).toBeVisible()
+    await expect(badge).toHaveAttribute('data-tone', 'red')
+  },
+}
+export const DetailDeclinedDark = dark(DetailDeclined)
 
 /** A new quote needs a client; once chosen, the draft is saved with its lines. */
 export const CreateDraft: Story = {

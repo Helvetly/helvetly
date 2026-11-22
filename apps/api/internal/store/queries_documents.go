@@ -526,7 +526,8 @@ type DocumentFilter struct {
 	Search       string
 	ContentTypes []string
 	UploadedBy   string
-	From, To     string // YYYY-MM-DD in the workspace's time zone
+	From, To     string // YYYY-MM-DD, inclusive, days in Zone
+	Zone         string // IANA name the days are read in; "" is UTC
 	ClientID     string
 	Tag          string
 	Sort         string // a key of DocumentSorts
@@ -560,12 +561,11 @@ func (q Q) ListDocuments(ctx context.Context, workspaceID string, f DocumentFilt
 	if f.UploadedBy != "" {
 		where = append(where, "d.uploaded_by = "+arg(f.UploadedBy))
 	}
-	local := "(d.created_at AT TIME ZONE (SELECT timezone FROM workspaces WHERE id = $1))::date"
 	if f.From != "" {
-		where = append(where, local+" >= "+arg(f.From)+"::date")
+		where = append(where, "d.created_at >= "+dayStart(arg(f.From), arg(zoneOr(f.Zone)), 0))
 	}
 	if f.To != "" {
-		where = append(where, local+" <= "+arg(f.To)+"::date")
+		where = append(where, "d.created_at < "+dayStart(arg(f.To), arg(zoneOr(f.Zone)), 1))
 	}
 	if f.ClientID != "" {
 		where = append(where, "EXISTS (SELECT 1 FROM document_links l WHERE l.document_id = d.id AND l.target_type = 'client' AND l.target_id = "+

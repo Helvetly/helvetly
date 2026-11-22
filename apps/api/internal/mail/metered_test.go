@@ -40,7 +40,7 @@ func (f *fakeEmailMeter) ReserveEmail(_ context.Context, _ string, recipients, a
 
 func TestMeteredCountsBusinessEmailOnly(t *testing.T) {
 	refused := errors.New("limit_reached")
-	business := Message{Workspace: "wsp_1", To: []string{"a@x.ch", "b@x.ch"}, Cc: []string{"c@x.ch"},
+	business := Message{Workspace: "wsp_1", To: []string{"a@x.ch", "b@x.ch"}, Cc: []string{"c@x.ch"}, Bcc: []string{"d@x.ch"},
 		Attachments: []Attachment{{Data: make([]byte, 700)}, {Data: make([]byte, 300)}}}
 	for _, tc := range []struct {
 		name    string
@@ -69,15 +69,16 @@ func TestMeteredCountsBusinessEmailOnly(t *testing.T) {
 			if len(sender.sent) != tc.sent || fmt.Sprint(tc.meter.settled) != tc.settled {
 				t.Fatalf("sent %d settled %v, want %d %s", len(sender.sent), tc.meter.settled, tc.sent, tc.settled)
 			}
-			if tc.msg.Workspace != "" && tc.meter.refuse == nil && (tc.meter.recipients != 3 || tc.meter.attached != 1000) {
-				t.Fatalf("reserved %d recipients, %d attachment bytes; want 3 (To and Cc) and 1000", tc.meter.recipients, tc.meter.attached)
+			if tc.msg.Workspace != "" && tc.meter.refuse == nil && (tc.meter.recipients != 4 || tc.meter.attached != 1000) {
+				t.Fatalf("reserved %d recipients, %d attachment bytes; want 4 (To, Cc and Bcc) and 1000", tc.meter.recipients, tc.meter.attached)
 			}
 		})
 	}
 }
 
 // fakeSMTP accepts one message up to its final dot, then answers final, or hangs up when final is "".
-func fakeSMTP(t *testing.T, final string) config.SMTP {
+// Each RCPT TO address goes to rcpt when it is not nil.
+func fakeSMTP(t *testing.T, final string, rcpt chan<- string) config.SMTP {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -111,6 +112,11 @@ func fakeSMTP(t *testing.T, final string) config.SMTP {
 					return // the message went out; no answer comes
 				}
 				fmt.Fprint(conn, final+"\r\n")
+			case strings.HasPrefix(cmd, "RCPT TO:"):
+				if rcpt != nil {
+					rcpt <- strings.ToLower(strings.Trim(strings.TrimSpace(line)[len("RCPT TO:"):], "<>"))
+				}
+				fmt.Fprint(conn, "250 ok\r\n")
 			case cmd == "QUIT":
 				fmt.Fprint(conn, "221 bye\r\n")
 				return
@@ -132,9 +138,26 @@ func TestSendTellsAnUnknownOutcomeFromARefusal(t *testing.T) {
 		uncertain bool
 		ok        bool
 	}{{"250 queued", false, true}, {"554 rejected", false, false}, {"", true, false}} {
-		err := NewSender(fakeSMTP(t, tc.final), "https://helvetly.test").Send(context.Background(), msg)
+		err := NewSender(fakeSMTP(t, tc.final, nil), "https://helvetly.test").Send(context.Background(), msg)
 		if (err == nil) != tc.ok || errors.Is(err, ErrUncertain) != tc.uncertain {
 			t.Fatalf("final %q: err %v, want uncertain=%v ok=%v", tc.final, err, tc.uncertain, tc.ok)
 		}
+	}
+}
+
+// TestSendDeliversBcc: hidden copies are envelope recipients like To and Cc.
+func TestSendDeliversBcc(t *testing.T) {
+	rcpt := make(chan string, 10)
+	msg := Message{To: []string{"a@x.ch"}, Cc: []string{"b@x.ch"}, Bcc: []string{"c@x.ch", "d@x.ch"}, Subject: "s", Text: "t"}
+	if err := NewSender(fakeSMTP(t, "250 queued", rcpt), "https://helvetly.test").Send(context.Background(), msg); err != nil {
+		t.Fatal(err)
+	}
+	close(rcpt)
+	var got []string
+	for a := range rcpt {
+		got = append(got, a)
+	}
+	if fmt.Sprint(got) != "[a@x.ch b@x.ch c@x.ch d@x.ch]" {
+		t.Fatalf("RCPT TO %v", got)
 	}
 }

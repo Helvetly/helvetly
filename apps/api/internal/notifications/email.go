@@ -78,33 +78,30 @@ func (s *Service) message(burst []store.Notification) mail.Message {
 
 	var text, body strings.Builder
 	fmt.Fprintf(&text, "%s\n%s\n\n", first.WorkspaceName, subject)
-	fmt.Fprintf(&body, `<p style="margin:0 0 8px;font-size:13px;color:#71717a">%s</p>`+"\n"+
-		`<h1 style="margin:0 0 12px;font-size:20px;line-height:28px;font-weight:600;color:#18181b">%s</h1>`+"\n", esc(first.WorkspaceName), esc(subject))
+	fmt.Fprintf(&body, `<p style="font-size:13px;color:#71717a">%s</p>`+"\n"+
+		`<h1 style="font-size:20px;color:#18181b">%s</h1>`+"\n", esc(first.WorkspaceName), esc(subject))
 	if summary != "" {
 		fmt.Fprintf(&text, "%s\n\n", summary)
 		fmt.Fprintf(&body, "<p>%s</p>\n", esc(summary))
 	}
 	if len(rows) > 1 {
-		body.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0">` + "\n")
+		body.WriteString("<ul>\n")
 		for i, m := range rows {
 			link, meta := s.publicURL+m.href, burst[i].CreatedAt.In(zone).Format("15:04")
 			if m.body != "" {
 				meta = strings.TrimSuffix(m.body, ".") + " · " + meta
 			}
 			fmt.Fprintf(&text, "- %s\n  %s\n  %s\n", m.title, meta, link)
-			fmt.Fprintf(&body, `<tr><td style="padding:14px 0;border-top:1px solid #e4e4e7">`+
-				`<div style="font-weight:600;color:#18181b">%s</div><div style="font-size:14px;color:#71717a">%s</div></td>`+
-				`<td align="right" valign="top" style="padding:14px 0 14px 16px;border-top:1px solid #e4e4e7;white-space:nowrap">`+
-				`<a href="%s" style="font-size:14px;font-weight:600">View</a></td></tr>`+"\n", esc(m.title), esc(meta), esc(link))
+			fmt.Fprintf(&body, `<li><a href="%s"><strong>%s</strong></a><br><span style="font-size:14px;color:#71717a">%s</span></li>`+"\n",
+				esc(link), esc(m.title), esc(meta))
 		}
-		body.WriteString("</table>\n")
+		body.WriteString("</ul>\n")
 		text.WriteString("\n")
 	}
 	fmt.Fprintf(&text, "%s: %s\n\n--\n%s\nNotification settings: %s\nUnsubscribe: %s\n", action, s.publicURL+href, because, prefs, unsub)
 	body.WriteString(mail.Button(action, s.publicURL+href))
 	footer := fmt.Sprintf(`%s<br><a href="%s" style="color:#71717a">Notification settings</a> &nbsp;·&nbsp; `+
 		`<a href="%s" style="color:#71717a">Unsubscribe</a>`, esc(because), esc(prefs), esc(unsub))
-	preview := or(summary, rows[0].title)
 	return mail.Message{Workspace: first.WorkspaceID, To: []string{first.Email}, Subject: subject, Text: text.String(), HTML: body.String(), ListUnsubscribe: oneClick,
-		Preview: preview, Footer: footer, Members: true}
+		Footer: footer, Members: true}
 }

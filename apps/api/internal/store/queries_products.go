@@ -172,7 +172,8 @@ type ProductFilter struct {
 	PriceMin    *int64  // in cents, inclusive
 	PriceMax    *int64
 	HasSKU      *bool
-	UpdatedFrom string   // YYYY-MM-DD, inclusive, UTC
+	UpdatedFrom string   // YYYY-MM-DD, inclusive, a day in Zone
+	Zone        string   // IANA name the day is read in; "" is UTC
 	IDs         []string // when set, the status filter is ignored (an export of a selection)
 	Sort        string   // a key of ProductSorts, "-" prefixed for descending
 }
@@ -218,7 +219,7 @@ func (f ProductFilter) where(workspaceID string) (string, []any) {
 		conds = append(conds, map[bool]string{true: "p.sku <> ''", false: "COALESCE(p.sku, '') = ''"}[*f.HasSKU])
 	}
 	if f.UpdatedFrom != "" {
-		conds = append(conds, "p.updated_at >= "+arg(f.UpdatedFrom)+"::date")
+		conds = append(conds, "p.updated_at >= "+dayStart(arg(f.UpdatedFrom), arg(zoneOr(f.Zone)), 0))
 	}
 	return strings.Join(conds, " AND "), args
 }

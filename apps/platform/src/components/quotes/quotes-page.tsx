@@ -3,6 +3,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
+import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -62,10 +63,7 @@ import {
   quotePdfUrl,
   quoteQuery,
   quotesApi,
-  searchQuotes,
-  filterQuotes,
   type QuoteFilters,
-  sortQuotes,
   useQuotes,
   type Quote,
   type QuoteCommand,
@@ -243,6 +241,8 @@ const QUERY_FIELDS: QueryField<QueryParams>[] = [
     ),
   },
 ]
+/** The URL keys that decide which quotes are listed. */
+const LIST_KEYS = new Set(['q', 'status', 'client_name', 'from', 'to', 'min', 'max', 'sort'])
 const isDay = (value: string | null) => (value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '')
 const STATUS_VALUES = QUOTE_STATUSES.map((entry) => entry.value)
 
@@ -271,15 +271,20 @@ export function QuotesPage() {
   const [confirming, setConfirming] = useState<{ kind: BulkKind; quotes: Quote[] } | null>(null)
   /** The quote whose drawer opens in the editor (Edit, a revised quote). */
   const [editId, setEditId] = useState<string | null>(null)
-  const list = useQuotes({ status })
-  const prefetch = usePrefetch(quoteQuery)
-  // shortcut: the API returns every quote unpaged, so search and sort happen here; move them to the API with paging.
-  const rows = sortQuotes(
-    filterQuotes(searchQuotes(list.data ?? [], term), filters).filter((quote) =>
-      quote.client.name.toLowerCase().includes(clientName.toLowerCase()),
-    ),
+  const [pageSize, setPageSize] = usePageSize('quotes')
+  const page = Math.max(1, Math.trunc(Number(query.get('page'))) || 1)
+  const list = useQuotes({
+    page,
+    pageSize,
+    search: term,
+    status,
+    clientName,
+    ...filters,
     sort,
-  )
+  })
+  const prefetch = usePrefetch(quoteQuery)
+  const rows = list.data?.data ?? []
+  const meta = list.data?.meta
   const selectedRows = rows.filter((row) => selected.has(row.id))
   const allSelected = rows.length > 0 && selectedRows.length === rows.length
   const active = VIEWS.findIndex((view) => view.status === status)
@@ -296,6 +301,8 @@ export function QuotesPage() {
 
   const navigate = (change: Record<string, string | null>) => {
     const next = new URLSearchParams(query)
+    // Another search, view, filter or sort starts again at the first page.
+    if (Object.keys(change).some((key) => LIST_KEYS.has(key))) next.delete('page')
     for (const [key, value] of Object.entries(change))
       if (value === null) next.delete(key)
       else next.set(key, value)
@@ -522,7 +529,12 @@ export function QuotesPage() {
               />
             )
           ) : (
-            <>
+            <div
+              className={cn(
+                'transition-opacity duration-150',
+                list.isPlaceholderData && 'opacity-60',
+              )}
+            >
               <DataTable
                 id="quotes"
                 className="hidden @4xl:table"
@@ -556,22 +568,34 @@ export function QuotesPage() {
                     {tr}
                   </RowContextMenu>
                 )}
+                pagination={
+                  meta && {
+                    page: meta.page,
+                    pageSize,
+                    total: meta.total,
+                    onChange: (next, size) => {
+                      setPageSize(size)
+                      navigate({ page: next > 1 && size === pageSize ? String(next) : null })
+                    },
+                  }
+                }
+                footer={
+                  <ul className={cn(listTable.list, '@4xl:hidden')}>
+                    {rows.map((quote) => (
+                      <QuoteItem
+                        key={quote.id}
+                        quote={quote}
+                        selected={selected.has(quote.id)}
+                        bulk={selected.has(quote.id) ? selection : undefined}
+                        isOpen={quote.id === openId}
+                        writable={canWrite}
+                        act={act}
+                      />
+                    ))}
+                  </ul>
+                }
               />
-
-              <ul className={cn(listTable.list, '@4xl:hidden')}>
-                {rows.map((quote) => (
-                  <QuoteItem
-                    key={quote.id}
-                    quote={quote}
-                    selected={selected.has(quote.id)}
-                    bulk={selected.has(quote.id) ? selection : undefined}
-                    isOpen={quote.id === openId}
-                    writable={canWrite}
-                    act={act}
-                  />
-                ))}
-              </ul>
-            </>
+            </div>
           )}
 
           {selectedRows.length > 0 && (

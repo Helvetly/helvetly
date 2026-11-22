@@ -281,7 +281,7 @@ func signInCodeMessage(to, code, publicURL string) mailer.Message {
 		"Helvetly · %s\n", code, publicURL)
 	link := html.EscapeString(publicURL)
 	body := `<p style="font-size:16px">Here is your code to sign in to <a href="` + link + `">Helvetly</a>:</p>
-<p style="font-size:32px;font-weight:700;letter-spacing:6px;font-family:ui-monospace,Menlo,Consolas,monospace">` + code + `</p>
+<p style="font-size:32px;font-family:ui-monospace,Menlo,Consolas,monospace"><strong>` + code + `</strong></p>
 <p style="font-size:14px;color:#57534e">Type it on the sign-in page you came from. It works <strong>once</strong> and expires in <strong>10 minutes</strong>.</p>
 <p style="font-size:14px;color:#57534e">Didn't try to sign in? You can ignore this email: nobody can sign in without this code. <strong>Never share it</strong> with anyone.</p>`
 	return mailer.Message{To: []string{to}, Subject: code + " is your Helvetly sign-in code", Text: text, HTML: body}
