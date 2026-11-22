@@ -137,9 +137,8 @@ func brandFooter(b Brand, language, publicURL string) string {
 		}
 		f.WriteString("<br>" + l)
 	}
-	f.WriteString(`<div style="margin-top:14px;padding-top:12px;border-top:1px solid ` + border + `;font-size:11px;color:` + muted + `">` +
-		html.EscapeString(wordsFor(language).sentWith) + ` <a href="` + html.EscapeString(publicURL) + `" style="color:` + muted +
-		`;text-decoration:underline">Helvetly</a></div>`)
+	f.WriteString(`<br><br><span style="font-size:11px">` + html.EscapeString(wordsFor(language).sentWith) + ` <a href="` +
+		html.EscapeString(publicURL) + `" style="color:` + muted + `">Helvetly</a></span>`)
 	return f.String()
 }
 

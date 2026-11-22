@@ -63,7 +63,7 @@ func completedMessage(done completed, to string) mail.Message {
 	return mail.Message{Workspace: req.WorkspaceID, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail, Subject: fmt.Sprintf("Signed: “%s”", req.Title),
 		Text: fmt.Sprintf("Hello,\n\n%s\n\n%s\n\n%s\n", lead, hashes, sesNote),
 		HTML: paragraphs("Hello,", lead) +
-			`<p style="font-size:12px;color:#78716c;font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all">` +
+			`<p style="font-size:12px;color:#78716c;font-family:ui-monospace,Menlo,Consolas,monospace">` +
 			strings.ReplaceAll(html.EscapeString(hashes), "\n", "<br>") + "</p>" + fine(sesNote),
 		Attachments: []mail.Attachment{{Name: done.name, ContentType: "application/pdf", Data: done.pdf}}}
 }

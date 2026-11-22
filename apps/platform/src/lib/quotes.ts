@@ -1,10 +1,17 @@
 'use client'
 // Quotes (Offerten), typed by hand from docs/quotes-contract.md. A quote shares the invoice's lines,
 // maths and fields; totals come from the server, never from here.
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query'
 
 import { ApiError, errorMessage, request } from '@/lib/api'
 import type { ApprovalState } from '@/lib/approvals'
+import type { Page } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import {
   type Decimal,
@@ -16,7 +23,7 @@ import {
   type Totals,
   type VatMode,
 } from '@/lib/invoices'
-import { sortRows, type Sort, type SortValue } from '@/lib/list-sort'
+import type { Sort } from '@/lib/list-sort'
 
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired'
 
@@ -116,30 +123,8 @@ export function quoteNumber(quote: Pick<Quote, 'number' | 'revision'>) {
 export const quoteName = (quote: Pick<Quote, 'number' | 'revision'>) =>
   quote.number ? translate('quote3', { value1: quoteNumber(quote) }) : translate('draftQuote')
 
-/** Quotes whose number, client or reference contain `search`, ignoring case; all of them for none. */
-export function searchQuotes(quotes: Quote[], search: string) {
-  const term = search.trim().toLowerCase()
-  if (!term) return quotes
-  return quotes.filter((quote) =>
-    [quoteNumber(quote), quote.client.name, quote.reference ?? ''].some((text) =>
-      text.toLowerCase().includes(term),
-    ),
-  )
-}
-
 /** The Filters popover's quote filters, as in the page URL; null or '' for none. */
 export type QuoteFilters = { from: string; to: string; min: string | null; max: string | null }
-
-/** Quotes dated within `from`–`to` whose total lies within `min`–`max`. */
-export function filterQuotes(quotes: Quote[], { from, to, min, max }: QuoteFilters) {
-  return quotes.filter(
-    (quote) =>
-      (!from || quote.issue_date >= from) &&
-      (!to || quote.issue_date <= to) &&
-      (min === null || Number(quote.payable_total) >= Number(min)) &&
-      (max === null || Number(quote.payable_total) <= Number(max)),
-  )
-}
 
 export type QuoteCommand =
   | 'edit'
@@ -183,22 +168,18 @@ export function bulkTargets(quotes: Quote[]) {
 
 export const QUOTE_SORT_FIELDS = ['number', 'client', 'date', 'valid', 'total', 'status'] as const
 export type QuoteSortField = (typeof QUOTE_SORT_FIELDS)[number]
-/** Newest first by date; equal dates keep the API's order (the newest made first). */
+/** Newest first by date; equal dates come newest made first (the API's tie-break). */
 export const DEFAULT_QUOTE_SORT: Sort<QuoteSortField> = { field: 'date', desc: true }
 
-const SORT_VALUES: Record<QuoteSortField, (quote: Quote) => SortValue> = {
-  // Drafts have no number yet and go last.
-  number: (quote) => quote.number && `${quote.number} ${quote.revision}`,
-  client: (quote) => quote.client.name,
-  date: (quote) => quote.issue_date,
-  valid: (quote) => quote.valid_until,
-  total: (quote) => Number(quote.payable_total),
-  // In the order of the lifecycle, as the tabs show it.
-  status: (quote) => QUOTE_STATUSES.findIndex((entry) => entry.value === quote.status),
+/** The API's sort key of each column (drafts have no number and go last either way; status in lifecycle order). */
+const SORT_KEYS: Record<QuoteSortField, string> = {
+  number: 'number',
+  client: 'client',
+  date: 'issue_date',
+  valid: 'valid_until',
+  total: 'total',
+  status: 'status',
 }
-
-export const sortQuotes = (quotes: Quote[], sort: Sort<QuoteSortField>) =>
-  sortRows(quotes, SORT_VALUES[sort.field], sort.desc)
 
 /** A friendly sentence for a refused write; the server's message for anything else. */
 export function quoteErrorMessage(error: unknown) {
@@ -216,20 +197,49 @@ const path = (id: string) => `/quotes/${encodeURIComponent(id)}`
 const post = (json: unknown = {}) => ({ method: 'POST' as const, json })
 type One<T> = { data: T }
 
-export type QuoteFilter = { clientId?: string | null; status?: QuoteStatus | null }
+/** Everything that decides which quotes the list shows: the page, the view, the search, the filters and the sort. */
+export type QuoteListParams = QuoteFilters & {
+  page: number
+  pageSize: number
+  search: string
+  status: QuoteStatus | null
+  clientId?: string | null
+  clientName: string
+  sort: Sort<QuoteSortField>
+}
 
-export function listQuery({ clientId, status }: QuoteFilter) {
-  const query = new URLSearchParams()
-  if (clientId) query.set('client_id', clientId)
+export const PAGE_SIZE = 50
+
+/** The list query: a client's quotes by default (newest made first), or the page's filters, sort and page. */
+export function listQuery({
+  page = 1,
+  pageSize = PAGE_SIZE,
+  search = '',
+  status = null,
+  clientId,
+  clientName = '',
+  from = '',
+  to = '',
+  min = null,
+  max = null,
+  sort,
+}: Partial<QuoteListParams>) {
+  const query = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  if (search.trim()) query.set('search', search.trim())
   if (status) query.set('status', status)
+  if (clientId) query.set('client_id', clientId)
+  if (clientName.trim()) query.set('client_name', clientName.trim())
+  if (from) query.set('issued_from', from)
+  if (to) query.set('issued_to', to)
+  if (min !== null) query.set('total_min', min)
+  if (max !== null) query.set('total_max', max)
+  if (sort) query.set('sort', `${sort.desc ? '-' : ''}${SORT_KEYS[sort.field]}`)
   return query
 }
 
 export const quotesApi = {
-  list: (filter: QuoteFilter = {}) => {
-    const query = listQuery(filter)
-    return request<{ data: Quote[] }>(`/quotes${query.size ? `?${query}` : ''}`)
-  },
+  list: (params: Partial<QuoteListParams> = {}) =>
+    request<Page<Quote>>(`/quotes?${listQuery(params)}`),
   get: (id: string) => request<One<Quote>>(path(id)),
   create: (input: Partial<QuoteInput>) => request<One<Quote>>('/quotes', post(input)),
   update: (id: string, input: Partial<QuoteInput>) =>
@@ -252,14 +262,17 @@ export const quotePdfUrl = (id: string, download = false) =>
 export const quoteKeys = {
   all: ['quotes'] as const,
   lists: ['quotes', 'list'] as const,
-  list: (filter: QuoteFilter) => ['quotes', 'list', listQuery(filter).toString()] as const,
+  list: (params: Partial<QuoteListParams>) =>
+    ['quotes', 'list', listQuery(params).toString()] as const,
   detail: (id: string) => ['quotes', 'detail', id] as const,
 }
 
-export function useQuotes(filter: QuoteFilter = {}) {
+/** One page of quotes; the previous page stays on screen while the next loads. */
+export function useQuotes(params: Partial<QuoteListParams> = {}) {
   return useQuery({
-    queryKey: quoteKeys.list(filter),
-    queryFn: async () => (await quotesApi.list(filter)).data,
+    queryKey: quoteKeys.list(params),
+    queryFn: () => quotesApi.list(params),
+    placeholderData: keepPreviousData,
   })
 }
 

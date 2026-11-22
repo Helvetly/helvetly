@@ -10,7 +10,8 @@ import type {
   Line,
   LineInput,
 } from '@/lib/invoices'
-import type { Quote, QuoteInput, QuoteSendInput } from '@/lib/quotes'
+import { sortRows, type SortValue } from '@/lib/list-sort'
+import { quoteNumber, type Quote, type QuoteInput, type QuoteSendInput } from '@/lib/quotes'
 
 const at = '2026-11-03T09:30:00Z'
 
@@ -264,18 +265,57 @@ function apply(
 
 type Params = { id: string }
 
+const STATUS_ORDER = ['draft', 'sent', 'accepted', 'declined', 'expired']
+const SORT_VALUES: Record<string, (quote: Quote) => SortValue> = {
+  number: (quote) => quote.number,
+  client: (quote) => quote.client.name,
+  issue_date: (quote) => quote.issue_date,
+  valid_until: (quote) => quote.valid_until,
+  total: (quote) => Number(quote.payable_total),
+  status: (quote) => STATUS_ORDER.indexOf(quote.status),
+  created_at: (quote) => quote.created_at,
+}
+
+const has = (text: string | null, term: string | null) =>
+  !term || (text ?? '').toLowerCase().includes(term.trim().toLowerCase())
+
+/** GET /api/v1/quotes as the API answers it: filtered, sorted (newest made first by default) and paged. */
+export function listQuotes(query: URLSearchParams) {
+  const statuses = query.getAll('status').flatMap((value) => value.split(','))
+  const search = query.get('search')
+  const [from, to] = [query.get('issued_from'), query.get('issued_to')]
+  const [min, max] = [query.get('total_min'), query.get('total_max')]
+  const matches = quotes.filter(
+    (quote) =>
+      [quoteNumber(quote), quote.client.name, quote.reference].some((text) => has(text, search)) &&
+      (!query.get('client_id') || quote.client_id === query.get('client_id')) &&
+      has(quote.client.name, query.get('client_name')) &&
+      (statuses.length === 0 || statuses.includes(quote.status)) &&
+      (!from || quote.issue_date >= from) &&
+      (!to || quote.issue_date <= to) &&
+      (min === null || Number(quote.payable_total) >= Number(min)) &&
+      (max === null || Number(quote.payable_total) <= Number(max)),
+  )
+  const sort = query.get('sort') ?? '-created_at'
+  const value = SORT_VALUES[sort.replace(/^-/, '')] ?? ((quote: Quote) => quote.created_at)
+  const sorted = sortRows(matches, value, sort.startsWith('-'))
+  const page = Number(query.get('page') ?? 1)
+  const size = Number(query.get('page_size') ?? 50)
+  return {
+    data: sorted.slice((page - 1) * size, page * size),
+    meta: {
+      page,
+      page_size: size,
+      total: sorted.length,
+      total_pages: Math.ceil(sorted.length / size),
+    },
+  }
+}
+
 export const quoteHandlers = [
   http.get('/api/v1/quotes', async ({ request }) => {
     await delay()
-    const query = new URL(request.url).searchParams
-    const clientId = query.get('client_id')
-    const status = query.get('status')
-    return HttpResponse.json({
-      data: quotes.filter(
-        (quote) =>
-          (!clientId || quote.client_id === clientId) && (!status || quote.status === status),
-      ),
-    })
+    return HttpResponse.json(listQuotes(new URL(request.url).searchParams))
   }),
   http.get<Params>('/api/v1/quotes/:id/pdf', () => new HttpResponse(null, { status: 204 })),
   http.get<Params>('/api/v1/quotes/:id', ({ params }) => {

@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatAmount, formatDate, formatRelative } from './format'
+import { formatAmount, formatDate, formatRelative, setDisplayTimeZone } from './format'
 
 test('civil dates keep their calendar day in every browser time zone', () => {
   expect(formatDate('2026-11-07')).toBe('7 Nov 2026')
   expect(formatDate('2027-01-01')).toBe('1 Jan 2027')
+})
+
+test('a timestamp shows its day in the display zone; a civil date stays as it is', () => {
+  try {
+    setDisplayTimeZone('Europe/Zurich')
+    expect(formatDate('2026-03-28T23:30:00Z')).toBe('29 Mar 2026')
+    setDisplayTimeZone('Pacific/Pago_Pago')
+    expect(formatDate('2026-11-16T10:00:00Z')).toBe('15 Nov 2026')
+    expect(formatDate('2026-11-16')).toBe('16 Nov 2026')
+  } finally {
+    setDisplayTimeZone(undefined)
+  }
 })
 
 describe('formatRelative', () => {

@@ -30,7 +30,12 @@ var employmentTypes = []string{"permanent", "fixed_term", "hourly", "temporary",
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	q := r.URL.Query()
 	f := store.EmployeeFilter{Status: q.Get("status"), Department: strings.TrimSpace(q.Get("department")),
-		Search: strings.TrimSpace(q.Get("search"))}
+		Search: strings.TrimSpace(q.Get("search")), StartFrom: q.Get("start_from"), StartTo: q.Get("start_to")}
+	for _, day := range []string{f.StartFrom, f.StartTo} {
+		if _, err := time.Parse("2006-01-02", day); day != "" && err != nil {
+			return badRequest("start_from and start_to must be dates as YYYY-MM-DD.")
+		}
+	}
 	if f.Status != "" && f.Status != "all" && f.Status != "active" && f.Status != "upcoming" && f.Status != "ended" &&
 		f.Status != "archived" {
 		return badRequest("status must be active, upcoming, ended, archived or all.")

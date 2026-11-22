@@ -34,7 +34,6 @@ type Message struct {
 	Subject, Text, HTML string
 	Attachments         []Attachment
 	ListUnsubscribe     string // optional: the one-click unsubscribe URL (RFC 8058)
-	Preview             string // optional: the inbox preview line, hidden in the HTML
 	Footer              string // optional HTML under the card, such as why the email came; else "Sent by Helvetly"
 	Language            string // optional: the email's language (de, fr, it, en) for the business footer
 	// Members: a workspace's email to its own members (notifications, a signer's answer): sent as Helvetly, unbranded.

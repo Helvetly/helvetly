@@ -3939,7 +3939,6 @@
   "employeeSearchLabel": "Search employees",
   "employeeSearchPlaceholder": "Search by name, number or email",
   "employeeStatusLabel": "Status",
-  "employeeAllDepartments": "All departments",
   "employeeAndMembersLabel": "Employees and members",
   "employeeAndMembersTip": "Employees are your company’s staff. Members are the people who have access to Helvetly. Adding an employee gives no access, sends no invitation and adds no paid seat. An employee can be linked to a member, which grants nothing.",
   "employeeTheEmployees": "The employees",

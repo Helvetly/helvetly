@@ -298,7 +298,7 @@ func (s *Service) search(w http.ResponseWriter, r *http.Request, sess store.Sess
 
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	q := r.URL.Query()
-	f, err := parseFilter(q)
+	f, err := parseFilter(q, sess.Workspace.Zone())
 	if err != nil {
 		return err
 	}
@@ -345,8 +345,8 @@ func listParam(q url.Values, key string) []string {
 }
 
 // parseFilter reads the list query shared by the list and the export.
-func parseFilter(q url.Values) (store.ProductFilter, error) {
-	f := store.ProductFilter{Search: q.Get("search"), Type: q.Get("type"), Sort: q.Get("sort"), IDs: listParam(q, "ids")}
+func parseFilter(q url.Values, zone string) (store.ProductFilter, error) {
+	f := store.ProductFilter{Search: q.Get("search"), Type: q.Get("type"), Sort: q.Get("sort"), IDs: listParam(q, "ids"), Zone: zone}
 	if f.Type != "" && f.Type != "product" && f.Type != "service" {
 		return f, badRequest("type must be product or service.")
 	}
@@ -411,7 +411,7 @@ var csvHeader = []string{"type", "name", "sku", "gtin", "unit", "price_basis", "
 	"currency", "vat_category", "vat_rate", "status", "description", "created_at", "updated_at"}
 
 func (s *Service) export(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	f, err := parseFilter(r.URL.Query())
+	f, err := parseFilter(r.URL.Query(), sess.Workspace.Zone())
 	if err != nil {
 		return err
 	}
