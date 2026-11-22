@@ -37,6 +37,7 @@ import { toast } from 'sonner'
 
 import { inputClass } from '@/components/clients/fields'
 import { loadProblemText } from '@/components/data/load-problem'
+import { tabIcons } from '@/components/tab-icons'
 import { errorMessage } from '@/lib/api'
 import {
   EMPLOYMENT_TYPES,
@@ -131,10 +132,10 @@ function Detail({
   const hasMenu = hr.seesEmployeeWrites || hr.owner
 
   const tabs = [
-    { value: 'employment', label: translate('employeeTabEmployment') },
-    ...(hr.readPayroll ? [{ value: 'pay', label: translate('employeeTabPay') }] : []),
-    { value: 'documents', label: translate('employeeTabDocuments') },
-    { value: 'history', label: translate('employeeTabHistory') },
+    { value: 'employment' as const, label: translate('employeeTabEmployment') },
+    ...(hr.readPayroll ? [{ value: 'pay' as const, label: translate('employeeTabPay') }] : []),
+    { value: 'documents' as const, label: translate('employeeTabDocuments') },
+    { value: 'history' as const, label: translate('employeeTabHistory') },
   ]
 
   const decide = (approved: boolean) => {
@@ -297,6 +298,7 @@ function Detail({
                 <TabsTrigger
                   key={entry.value}
                   value={entry.value}
+                  icon={tabIcons[entry.value]}
                   className="h-full flex-none px-0 text-body font-normal after:bottom-0! after:h-[2px] after:bg-primary"
                 >
                   {entry.label}

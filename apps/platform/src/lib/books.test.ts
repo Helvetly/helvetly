@@ -22,17 +22,32 @@ test('closed months are listed newest first, closed once and reopened', async ()
   await expect(booksApi.reopen('2026-08')).rejects.toMatchObject({ status: 404 })
 })
 
-test('the audit log pages by cursor through twenty events and verifies', async () => {
+test('the audit log pages by cursor through the events and verifies', async () => {
   const first = await booksApi.events(null, 15)
   expect(first.data.map((event) => event.seq)).toEqual(Array.from({ length: 15 }, (_, i) => i + 1))
   expect(first.meta.next_cursor).toBe('15')
   const rest = await booksApi.events(first.meta.next_cursor)
-  expect(rest.data.map((event) => event.seq)).toEqual([16, 17, 18, 19, 20])
+  expect(rest.data.map((event) => event.seq)).toEqual([16, 17, 18, 19])
   expect(rest.meta.next_cursor).toBeNull()
   expect(rest.data[0]?.prev_hash).toBe(first.data[14]?.hash)
   expect(first.data.every((event) => event.kind in EVENT_LABELS)).toBe(true)
-  expect((await booksApi.verify()).data).toEqual({ ok: true, broken_at: null })
+  expect((await booksApi.verify()).data).toEqual({ ok: true, broken_at: null, entries: 19 })
   await expect(booksApi.events('x')).rejects.toMatchObject({ status: 400 })
+})
+
+test('the audit log reads newest first and narrows by type, person and text', async () => {
+  const newest = await booksApi.events(null, 2, { order: 'newest' })
+  expect(newest.data.map((event) => event.seq)).toEqual([19, 18])
+  const older = await booksApi.events(newest.meta.next_cursor, 2, { order: 'newest' })
+  expect(older.data.map((event) => event.seq)).toEqual([17, 16])
+  const payments = await booksApi.events(null, 50, { category: 'payments' })
+  expect(payments.data.map((event) => event.kind)).toEqual(['payment.added', 'refund.added'])
+  const marco = await booksApi.events(null, 50, { actor: 'usr_mock_2', q: 'papeterie' })
+  expect(marco.data.map((event) => event.kind)).toEqual(['expense.booked'])
+  expect((await booksApi.people()).data.map((person) => person.name)).toEqual([
+    'Anna Muster',
+    'Marco Bernasconi',
+  ])
 })
 
 test('the export is a CSV of the chain', async () => {
@@ -40,7 +55,7 @@ test('the export is a CSV of the chain', async () => {
   expect(res.headers.get('content-type')).toContain('text/csv')
   const rows = (await res.text()).trim().split('\n')
   expect(rows[0]).toContain('seq,at,kind,subject_type,subject_id,actor,payload,prev_hash,hash')
-  expect(rows).toHaveLength(21)
+  expect(rows).toHaveLength(20)
 })
 
 test('agreements: every client starts with one; new ones can be deleted before use', async () => {
