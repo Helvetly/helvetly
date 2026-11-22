@@ -13,7 +13,10 @@ import (
 // Record paths: AI filing and organizing put a client's records into Clients/<client>/<record type>/<year> and
 // expenses into Expenses/<year>/<category>, the system folders, instead of folders of their own.
 
-const filingClients = 200
+const (
+	filingClients = 200    // clients and categories listed to the model
+	knownClients  = 10_000 // clients a record path or a match may name
+)
 
 // recordRules: what the model is told about the system folders.
 const recordRules = "Documents of one of the listed clients (issued to them or received from them) that are an " +
@@ -31,7 +34,7 @@ type recordNames struct {
 
 // recordNames: the workspace's names for record paths.
 func (s *Service) recordNames(ctx context.Context, workspaceID string) (recordNames, error) {
-	clients, err := s.db.ClientNames(ctx, workspaceID, filingClients)
+	clients, err := s.db.ClientNames(ctx, workspaceID, knownClients)
 	if err != nil {
 		return recordNames{}, err
 	}
@@ -115,11 +118,12 @@ func (p recordPlace) folder(ctx context.Context, q store.Q, workspaceID, userID 
 	return q.ExpenseYearFolder(ctx, workspaceID, p.categoryID, p.year, userID, now)
 }
 
-// recordList: the listed clients and expense categories for the model, one name per line.
+// recordList: the listed clients (the most recently changed filingClients) and expense categories for the model, one
+// name per line.
 func recordList(names recordNames) string {
 	var b strings.Builder
 	b.WriteString("Clients:\n")
-	for _, c := range names.clients {
+	for _, c := range names.clients[:min(len(names.clients), filingClients)] {
 		fmt.Fprintf(&b, "%s\n", strings.Join(strings.Fields(c.Name), " "))
 	}
 	if len(names.clients) == 0 {

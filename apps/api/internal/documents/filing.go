@@ -206,9 +206,36 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 		return err
 	}
 	mayMove := j.MayMove && doc.FolderID == nil
+	var data []byte
+	if doc.Size <= filingFileBytes {
+		if data, err = s.read(ctx, doc.ObjectKey); err != nil {
+			return err
+		}
+	}
+	text := ""
+	if data != nil {
+		text = s.text(data, filingTextBytes)
+	}
+	names, err := s.recordNames(ctx, ws.ID)
+	if err != nil {
+		return err
+	}
+	index, err := s.recordIndex(ctx, ws.ID, names.clients)
+	if err != nil {
+		return err
+	}
+	if m := index.match(doc, text); m != nil { // one of the workspace's own records: no model needed
+		if err := s.filingGate(ctx, s.db.Q, ws.ID, j.UserID); err != nil {
+			return err
+		}
+		f := filing{tags: []string{m.tag}}
+		if mayMove {
+			f.record = &m.place
+		}
+		return s.applyFiling(ctx, j, ws, f)
+	}
 	folders := map[string]bool{}
 	var listed []store.Folder
-	var names recordNames
 	if mayMove {
 		all, err := s.db.DocumentFolders(ctx, ws.ID, j.UserID)
 		if err != nil {
@@ -220,18 +247,12 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 				folders[f.ID] = true
 			}
 		}
-		if names, err = s.recordNames(ctx, ws.ID); err != nil {
-			return err
-		}
 	}
 	used, err := s.db.DocumentTags(ctx, ws.ID, 50)
 	if err != nil {
 		return err
 	}
-	req, err := s.filingRequest(ctx, doc, mayMove, listed, names, used)
-	if err != nil {
-		return err
-	}
+	req := filingRequest(doc, data, text, mayMove, listed, names, used)
 	budget := s.budget
 	budget.Gate = func(ctx context.Context, q store.Q, workspaceID string) error {
 		return s.filingGate(ctx, q, workspaceID, j.UserID)
@@ -252,12 +273,33 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if err != nil {
 		return err
 	}
+	if mayMove && decided.record == nil {
+		decided = toClient(decided, doc, listed, index.client(doc, text))
+	}
 	return s.applyFiling(ctx, j, ws, decided)
+}
+
+// toClient: an invoice or quote the model filed outside the system folders goes to its client's record folder when
+// the file names one known client.
+func toClient(f filing, doc store.Document, listed []store.Folder, client *store.ClientName) filing {
+	if client == nil {
+		return f
+	}
+	var path []string
+	if f.newFolder != "" {
+		path = []string{f.newFolder}
+	} else if i := slices.IndexFunc(listed, func(l store.Folder) bool { return l.ID == f.folderID }); f.folderID != "" && i >= 0 {
+		path = strings.Split(folderPath(listed, listed[i]), "/")
+	}
+	if kind := recordKind(path, f.tags); kind != "" {
+		return filing{tags: f.tags, record: &recordPlace{clientID: client.ID, kind: kind, year: recordYear(path, doc)}}
+	}
+	return f
 }
 
 // filingRequest is what the model sees: the file's name and type, its text or the file itself when small, the
 // folders it may choose from and the tags in use.
-func (s *Service) filingRequest(ctx context.Context, doc store.Document, mayMove bool, folders []store.Folder, names recordNames, tags []string) (aimodel.Request, error) {
+func filingRequest(doc store.Document, data []byte, text string, mayMove bool, folders []store.Folder, names recordNames, tags []string) aimodel.Request {
 	var msg strings.Builder
 	fmt.Fprintf(&msg, "File name: %s\nFile type: %s\n\n", doc.Name, doc.ContentType)
 	if mayMove {
@@ -276,20 +318,14 @@ func (s *Service) filingRequest(ctx context.Context, doc store.Document, mayMove
 		fmt.Fprintf(&msg, "Tags in use: %s\n\n", strings.Join(tags, ", "))
 	}
 	req := aimodel.Request{Instructions: filingInstructions, Schema: filingSchema}
-	if doc.Size <= filingFileBytes {
-		data, err := s.read(ctx, doc.ObjectKey)
-		if err != nil {
-			return req, err
-		}
-		if text := s.text(data, filingTextBytes); text != "" {
-			msg.WriteString("Text:\n" + text)
-		} else if attachable(doc.ContentType) {
-			msg.WriteString("The file is attached.")
-			req.Files = []aimodel.File{{Name: doc.Name, ContentType: doc.ContentType, Bytes: data}}
-		}
+	if text != "" {
+		msg.WriteString("Text:\n" + text)
+	} else if data != nil && attachable(doc.ContentType) {
+		msg.WriteString("The file is attached.")
+		req.Files = []aimodel.File{{Name: doc.Name, ContentType: doc.ContentType, Bytes: data}}
 	}
 	req.Message = msg.String()
-	return req, nil
+	return req
 }
 
 // attachable: the file types the model reads as files.

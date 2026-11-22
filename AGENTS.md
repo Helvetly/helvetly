@@ -98,6 +98,10 @@ are the reference.
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
   move along; the emptied old folders are deleted). AI filing and organizing put a known
   client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
+  Before the model is asked, a file that is one of the workspace's invoices or quotes (by the PDF it shares, the
+  imported invoice it is the original of, or a record number in its name or text, separators ignored) goes straight to
+  its client's folder (`documents/record_match.go`); several records found leave it to the model. An invoice or quote
+  the model files outside Clients goes to the client's folder when the file names one client (whole name or UID).
 - **Approvals** (`internal/approvals`, Business feature `document_approvals`): an optional approval before a draft is
   issued, sent or booked, per document type (`invoice` for every invoice kind without its own, `credit_note`,
   `debit_note`, `corrected`: before issuing; `quote`: before a draft or revision is first sent, a revision resets it;
