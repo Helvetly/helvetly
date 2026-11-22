@@ -5117,5 +5117,7 @@
   "anyRole": "Qualsiasi ruolo…",
   "anyDepartment": "Qualsiasi reparto…",
   "uploadedByMe": "Caricato da me",
-  "department": "Reparto"
+  "department": "Reparto",
+  "eGMusterCh": "ad es. muster.ch",
+  "enterAWebsiteSuchAsMusterCh": "Inserire un sito web come muster.ch."
 }

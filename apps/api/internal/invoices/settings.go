@@ -45,6 +45,7 @@ type Settings struct {
 type Seller struct {
 	store.Party
 	LegalForm *string `json:"legal_form"` // a code of legalform's list for the seller's country
+	Website   *string `json:"website"`    // an https URL; printed as its domain
 }
 
 func defaultSettings() Settings {
@@ -145,7 +146,7 @@ var bicPattern = regexp.MustCompile(`^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$
 var settingsKeys = []string{"seller", "vat_registered", "default_vat_mode", "default_vat_rate", "iban", "bank_name", "bic", "currency",
 	"language", "default_terms_days", "number_format", "footer", "qr_bill_enabled", "revolut_enabled", "revolut_username", "instalments", "dunning", "logo_file_id", "logo_url", "is_complete", "missing_fields"}
 
-var sellerKeys = []string{"name", "street", "street_number", "apt", "zip", "city", "country", "vat_number", "email", "phone", "electronic_address", "registration_number", "legal_form"}
+var sellerKeys = []string{"name", "street", "street_number", "apt", "zip", "city", "country", "vat_number", "email", "phone", "electronic_address", "registration_number", "legal_form", "website"}
 
 // putSettings: fields left out keep their value. Seller limits are the QR bill's (SPS 2.3, structured address).
 func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -198,7 +199,7 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 			norm func(string) (string, string)
 		}{
 			{"apt", &sl.Apt, 50, nil}, {"vat_number", &sl.VATNumber, 30, clients.NormaliseVATNumber},
-			{"email", &sl.Email, 254, clients.NormaliseEmail}, {"phone", &sl.Phone, 30, nil},
+			{"email", &sl.Email, 254, clients.NormaliseEmail}, {"phone", &sl.Phone, 30, nil}, {"website", &sl.Website, 200, normaliseWebsite},
 			{"registration_number", &sl.RegistrationNumber, 100, nil},
 		} {
 			if v, ok := seller[f.key]; ok {
