@@ -201,6 +201,7 @@ func (s *Service) sendReport(w http.ResponseWriter, r *http.Request, sess store.
 	var body struct {
 		To      []string `json:"to"`
 		Cc      []string `json:"cc"`
+		Bcc     []string `json:"bcc"`
 		Subject *string  `json:"subject"`
 		Message *string  `json:"message"`
 	}
@@ -220,7 +221,8 @@ func (s *Service) sendReport(w http.ResponseWriter, r *http.Request, sess store.
 		}
 	}
 	fields := map[string]string{}
-	to, cc := addresses("to", body.To, fields), addresses("cc", body.Cc, fields)
+	to := addresses("to", body.To, fields)
+	cc, bcc := mail.Copies(to, addresses("cc", body.Cc, fields), addresses("bcc", body.Bcc, fields))
 	if len(to) == 0 && fields["to"] == "" {
 		fields["to"] = "Enter an address: the client has no email address."
 	}
@@ -245,7 +247,7 @@ func (s *Service) sendReport(w http.ResponseWriter, r *http.Request, sess store.
 	if len(fields) > 0 {
 		return validationFailed(fields)
 	}
-	m := mail.Message{Workspace: sess.Workspace.ID, To: to, Cc: cc, Subject: subject, Text: message,
+	m := mail.Message{Workspace: sess.Workspace.ID, To: to, Cc: cc, Bcc: bcc, Subject: subject, Text: message,
 		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: rep.name, ContentType: "application/pdf", Data: rep.pdf}}}
 	if err := s.mailer.Send(r.Context(), m); err != nil {

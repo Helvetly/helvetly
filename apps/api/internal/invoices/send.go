@@ -27,6 +27,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	var body struct {
 		To      []string        `json:"to"`
 		Cc      []string        `json:"cc"`
+		Bcc     []string        `json:"bcc"`
 		Subject json.RawMessage `json:"subject"`
 		Message json.RawMessage `json:"message"`
 		Email   *bool           `json:"email"`
@@ -58,7 +59,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	client, clientErr, to := s.recipients(ctx, sess.Workspace.ID, inv, body.To)
 	p := newParser()
 	to = addresses(p, "to", to)
-	cc := addresses(p, "cc", body.Cc)
+	cc, bcc := mail.Copies(to, addresses(p, "cc", body.Cc), addresses(p, "bcc", body.Bcc))
 	if len(to) == 0 {
 		p.fail("to", "Enter an address: the client has no email address.")
 	}
@@ -83,7 +84,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if err != nil {
 		return err
 	}
-	m := mail.Message{Workspace: sess.Workspace.ID, To: to, Cc: cc, Subject: subject, Text: message,
+	m := mail.Message{Workspace: sess.Workspace.ID, To: to, Cc: cc, Bcc: bcc, Subject: subject, Text: message,
 		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: fileName(inv), ContentType: "application/pdf", Data: pdf}}}
 	if inv.Seller != nil && inv.Seller.Email != nil {
@@ -115,7 +116,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		if err := s.mail.Send(ctx, m); err != nil {
 			return fmt.Errorf("send invoice %s: %w", inv.ID, err)
 		}
-		return s.recordDelivery(ctx, inv.ID, &sess.User.ID, to, cc)
+		return s.recordDelivery(ctx, inv.ID, &sess.User.ID, to, cc, bcc)
 	})
 	if err != nil {
 		return err
@@ -185,11 +186,12 @@ func swissDate(d string) string {
 
 // recordDelivery writes a sent mail's delivery and sent_at. The mail is already out, so neither a client disconnect
 // nor a shutdown may cancel its record.
-func (s *Service) recordDelivery(ctx context.Context, invoiceID string, by *string, to, cc []string) error {
+func (s *Service) recordDelivery(ctx context.Context, invoiceID string, by *string, to, cc, bcc []string) error {
 	ctx = context.WithoutCancel(ctx)
 	return s.db.Tx(ctx, func(q store.Q) error {
 		now := s.now()
-		if err := q.CreateDelivery(ctx, invoiceID, by, store.Delivery{ID: auth.NewID("dlv"), To: to, Cc: cc, SentAt: now}); err != nil {
+		d := store.Delivery{ID: auth.NewID("dlv"), To: to, Cc: cc, Bcc: bcc, SentAt: now}
+		if err := q.CreateDelivery(ctx, invoiceID, by, d); err != nil {
 			return fmt.Errorf("record delivery of %s: %w", invoiceID, err)
 		}
 		return q.MarkSent(ctx, invoiceID, now)

@@ -536,5 +536,5 @@ func (s *Service) SendIssued(ctx context.Context, ws store.Workspace, inv store.
 	if err := s.mail.Send(ctx, m); err != nil {
 		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
 	}
-	return s.recordDelivery(ctx, inv.ID, nil, []string{*to}, []string{})
+	return s.recordDelivery(ctx, inv.ID, nil, []string{*to}, []string{}, []string{})
 }

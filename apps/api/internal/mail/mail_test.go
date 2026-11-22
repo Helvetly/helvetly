@@ -3,6 +3,7 @@ package mail
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -167,5 +168,58 @@ func TestBuildNoHeaderInjection(t *testing.T) {
 	}
 	if msg.Header.Get("Bcc") != "" || msg.Header.Get("X-Evil") != "" || bytes.Contains(raw, []byte("\r\nX-Evil")) || bytes.Contains(raw, []byte("\nBcc")) {
 		t.Fatalf("a header was injected: %v", msg.Header)
+	}
+}
+
+// TestBuildHidesBcc: a hidden copy is never in the message the recipients get, To and Cc are.
+func TestBuildHidesBcc(t *testing.T) {
+	from := &mail.Address{Name: "Helvetly", Address: "no-reply@helvetly.local"}
+	for _, tc := range []struct {
+		name   string
+		msg    Message
+		wantCc string
+	}{
+		{"bcc only", Message{To: []string{"a@x.ch"}, Bcc: []string{"secret@x.ch"}}, ""},
+		{"cc and bcc", Message{To: []string{"a@x.ch"}, Cc: []string{"b@x.ch"}, Bcc: []string{"secret@x.ch", "hidden@x.ch"}}, "b@x.ch"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw := build(from, tc.msg, "https://app.example.com", time.Now())
+			msg, err := mail.ReadMessage(bytes.NewReader(raw))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := msg.Header["Bcc"]; ok {
+				t.Fatal("the message has a Bcc header")
+			}
+			if msg.Header.Get("To") != "a@x.ch" || msg.Header.Get("Cc") != tc.wantCc {
+				t.Fatalf("To %q Cc %q", msg.Header.Get("To"), msg.Header.Get("Cc"))
+			}
+			for _, a := range tc.msg.Bcc {
+				if bytes.Contains(raw, []byte(a)) {
+					t.Fatalf("%s is in the message", a)
+				}
+			}
+		})
+	}
+}
+
+func TestCopies(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		to, cc, bcc     []string
+		wantCc, wantBcc string
+	}{
+		{"distinct", []string{"a@x.ch"}, []string{"b@x.ch"}, []string{"c@x.ch"}, "[b@x.ch]", "[c@x.ch]"},
+		{"cc repeats to", []string{"a@x.ch"}, []string{"a@x.ch", "b@x.ch"}, nil, "[b@x.ch]", "[]"},
+		{"bcc repeats to and cc", []string{"a@x.ch"}, []string{"b@x.ch"}, []string{"a@x.ch", "b@x.ch", "c@x.ch"}, "[b@x.ch]", "[c@x.ch]"},
+		{"bcc repeats a cc that repeats to", []string{"a@x.ch"}, []string{"a@x.ch"}, []string{"a@x.ch"}, "[]", "[]"},
+		{"none", []string{"a@x.ch"}, nil, nil, "[]", "[]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cc, bcc := Copies(tc.to, tc.cc, tc.bcc)
+			if fmt.Sprint(cc) != tc.wantCc || fmt.Sprint(bcc) != tc.wantBcc {
+				t.Fatalf("cc %v bcc %v, want %s %s", cc, bcc, tc.wantCc, tc.wantBcc)
+			}
+		})
 	}
 }
