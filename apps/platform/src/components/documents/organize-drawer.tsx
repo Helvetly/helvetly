@@ -9,7 +9,7 @@ import { Switch } from '@helvetly/ui/components/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, CircleCheck, FolderInput, FolderPlus, X } from 'lucide-react'
+import { ArrowRight, CircleCheck, FolderInput, FolderPlus, LoaderCircle, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -258,7 +258,11 @@ export function OrganizeDrawer({
                 </p>
               </div>
               <Button onClick={() => void start()} disabled={analyse.isPending}>
-                <HeidiSparkle />
+                {analyse.isPending ? (
+                  <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <HeidiSparkle />
+                )}
                 {analyse.isPending ? translate('organizeLookingShort') : translate('organizeStart')}
               </Button>
             </div>
