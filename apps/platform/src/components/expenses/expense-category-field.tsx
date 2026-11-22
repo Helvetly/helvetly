@@ -93,6 +93,7 @@ export function ExpenseCategoryField({
             options={options}
             invalid={invalid}
             disabled={categories.isSuccess && options.length === 0 && !canManage}
+            searchable
             onCreate={canManage ? openWith : undefined}
             createLabel={translate('addCategory')}
             placeholder={

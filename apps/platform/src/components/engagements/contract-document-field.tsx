@@ -69,6 +69,7 @@ export function ContractDocumentField({
         placeholder={recent.isPending ? translate('loading') : translate('contractDocumentNone')}
         invalid={invalid}
         disabled={empty}
+        searchable
         contentClassName="w-[min(26rem,calc(100vw-2rem))]"
         renderValue={(picked) =>
           picked.value ? (
