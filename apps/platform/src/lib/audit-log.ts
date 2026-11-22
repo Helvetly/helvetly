@@ -44,10 +44,17 @@ function recordOf(event: FinancialEvent) {
 
 function money(event: FinancialEvent, key: string) {
   const value = text(event.payload[key])
-  const currency = text(event.payload.currency) || event.subject?.currency
+  // An expense's base amounts are in the workspace's currency, the rest in the record's.
+  const currency =
+    (BASE.has(key) && text(event.payload.base_currency)) ||
+    text(event.payload.currency) ||
+    event.subject?.currency
   if (!value) return ''
   return currency ? formatMoney(value, currency) : value
 }
+
+const BASE = new Set(['base_total', 'deductible_vat'])
+const MONEY = new Set(['amount', 'payable_total', 'total', 'min_total', ...BASE])
 
 const month = (value: string) =>
   /^\d{4}-\d{2}$/.test(value)
@@ -263,7 +270,7 @@ export function payloadFacts(event: FinancialEvent): { key: string; value: strin
       value:
         typeof value === 'object'
           ? JSON.stringify(value)
-          : ['amount', 'payable_total', 'total', 'base_total', 'deductible_vat', 'min_total'].includes(key)
+          : MONEY.has(key)
             ? money(event, key) || String(value)
             : String(value),
     }))

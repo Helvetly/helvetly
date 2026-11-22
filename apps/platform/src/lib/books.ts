@@ -53,7 +53,7 @@ export type AuditFilter = Partial<{
   q: string
 }>
 export type EventPage = { data: FinancialEvent[]; meta: { next_cursor: string | null } }
-export type ChainCheck = { ok: boolean; broken_at: number | null }
+export type ChainCheck = { ok: boolean; broken_at: number | null; entries: number }
 export type SelfBillingAgreement = {
   id: string
   client_id: string

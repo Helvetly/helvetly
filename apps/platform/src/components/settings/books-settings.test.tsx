@@ -267,41 +267,69 @@ describe('PeriodsCard', () => {
 const event = (seq: number) => ({
   seq,
   kind: 'invoice.issued',
+  category: 'invoices',
   subject_type: 'invoice',
   subject_id: `inv_${seq}`,
+  subject: { number: `2026-00${seq}`, party: 'Acme AG', currency: 'CHF' },
   actor: null,
   at: '2026-10-01T09:00:00Z',
-  payload: {},
+  payload: { payable_total: '99.00' },
   prev_hash: '',
   hash: '',
 })
 
 describe('AuditLog', () => {
-  it('shows the verified chain and pages through the events', async () => {
+  it('shows the verified chain and pages through the events, newest first', async () => {
+    const orders: (string | null)[] = []
     server.use(
       http.get('/api/v1/audit-log', ({ request }) => {
-        const cursor = new URL(request.url).searchParams.get('cursor')
+        const query = new URL(request.url).searchParams
+        orders.push(query.get('order'))
         return HttpResponse.json(
-          cursor
-            ? { data: [event(2)], meta: { next_cursor: null } }
-            : { data: [event(1)], meta: { next_cursor: '1' } },
+          query.get('cursor')
+            ? { data: [event(1)], meta: { next_cursor: null } }
+            : { data: [event(2)], meta: { next_cursor: '2' } },
         )
       }),
     )
     wrap('owner', <AuditLog />)
-    expect(await screen.findByText('Chain verified')).toBeTruthy()
-    const first = screen.getByRole('listitem', { name: '#1 Invoice issued' })
-    expect(first.textContent).toContain('inv_1')
-    expect(first.textContent).toContain('System')
+    expect(await screen.findByText(/^Chain verified · \d+ entries intact$/)).toBeTruthy()
+    const second = await screen.findByRole('button', {
+      name: 'Details of: Invoice 2026-002 issued to Acme AG',
+    })
+    const row = second.closest('li')
+    expect(row?.textContent).toContain('CHF 99.00')
+    expect(row?.textContent).toContain('System')
+    expect(row?.textContent).not.toContain('inv_2')
     await userEvent.click(screen.getByRole('button', { name: 'Load more' }))
-    expect(await screen.findByRole('listitem', { name: '#2 Invoice issued' })).toBeTruthy()
+    expect(
+      await screen.findByRole('button', { name: 'Details of: Invoice 2026-001 issued to Acme AG' }),
+    ).toBeTruthy()
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull())
+    expect(orders.every((order) => order === 'newest')).toBe(true)
+  })
+
+  it('sends the chosen type and search to the API', async () => {
+    const queries: string[] = []
+    server.use(
+      http.get('/api/v1/audit-log', ({ request }) => {
+        queries.push(new URL(request.url).search)
+        return HttpResponse.json({ data: [event(1)], meta: { next_cursor: null } })
+      }),
+    )
+    wrap('owner', <AuditLog />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Type' }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Expenses' }))
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search the audit log' }), 'acme')
+    await waitFor(() =>
+      expect(queries.at(-1)).toMatch(/category=expenses.*q=acme|q=acme.*category=expenses/),
+    )
   })
 
   it('flags a broken chain', async () => {
     server.use(
       http.get('/api/v1/audit-log/verify', () =>
-        HttpResponse.json({ data: { ok: false, broken_at: 7 } }),
+        HttpResponse.json({ data: { ok: false, broken_at: 7, entries: 9 } }),
       ),
     )
     wrap('admin', <AuditLog />)
@@ -310,21 +338,21 @@ describe('AuditLog', () => {
 
   it('opens to a member with view of the audit log', async () => {
     wrap('member', <AuditLog />, ['read:audit-log'])
-    expect(await screen.findByText('Chain verified')).toBeTruthy()
+    expect(await screen.findByText(/^Chain verified/)).toBeTruthy()
   })
 })
 
 describe('eventLook', () => {
   it.each([
-    ['invoice.issued', 'blue'],
-    ['payment.added', 'green'],
-    ['expense.booked', 'amber'],
-    ['invoice.voided', 'red'],
-    ['payment.deleted', 'red'],
-    ['plan.cancelled', 'red'],
-    ['period.closed', 'neutral'],
-    ['something.new', 'neutral'],
-  ])('tints %s %s', (kind, tone) => {
-    expect(eventLook(kind).tone).toBe(tone)
+    ['invoice.issued', 'invoices', 'blue'],
+    ['payment.added', 'payments', 'green'],
+    ['expense.booked', 'expenses', 'amber'],
+    ['invoice.voided', 'invoices', 'red'],
+    ['payment.deleted', 'payments', 'red'],
+    ['plan.cancelled', 'invoices', 'red'],
+    ['approval.rejected', 'approvals', 'red'],
+    ['period.closed', 'books', 'neutral'],
+  ] as const)('tints %s %s', (kind, category, tone) => {
+    expect(eventLook({ kind, category }).tone).toBe(tone)
   })
 })

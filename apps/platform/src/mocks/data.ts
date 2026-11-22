@@ -689,45 +689,66 @@ export const closedPeriods: Period[] = [
   { month: '2026-09', closed_at: '2026-10-02T08:40:00Z', closed_by: anna },
 ]
 
-const eventKinds: [
-  FinancialEvent['kind'],
-  FinancialEvent['subject_type'],
-  Record<string, unknown>,
-][] = [
-  ['invoice.issued', 'invoice', { number: '2026-031', payable_total: '1200.00' }],
-  ['payment.added', 'invoice', { number: '2026-031', amount: '1200.00', paid_on: '2026-09-28' }],
-  ['expense.booked', 'expense', { number: 14, total: '86.40' }],
-  ['invoice.issued', 'invoice', { number: '2026-035', payable_total: '640.00' }],
-  ['plan.created', 'plan', { count: 6, interval: 'monthly' }],
-  ['period.closed', 'period', { month: '2026-09' }],
-  ['credit.issued', 'invoice', { number: 'CN-2026-004', payable_total: '120.00' }],
-  ['expense.payment_changed', 'expense', { number: 14, paid_on: '2026-10-05' }],
-  ['invoice.voided', 'invoice', { number: '2026-035', reason: 'Wrong client' }],
-  ['refund.added', 'invoice', { number: '2026-031', amount: '50.00' }],
-]
-
+const marco = { id: 'usr_mock_2', name: 'Marco Bernasconi' }
 const hex = (n: number) => n.toString(16).padStart(64, '0')
 
-/** Twenty events of one chain, oldest first; the hashes are placeholders that verify in the mock. */
-export const auditEvents: FinancialEvent[] = Array.from({ length: 20 }, (_, i) => {
-  const [kind, subject_type, payload] = eventKinds[i % eventKinds.length] ?? [
-    'invoice.issued',
-    'invoice',
-    {},
-  ]
-  const day = String(1 + i).padStart(2, '0')
-  return {
+type Sample = [
+  days: number,
+  clock: string,
+  kind: string,
+  category: FinancialEvent['category'],
+  subject: [type: string, id: string, number?: string, party?: string, currency?: string],
+  actor: typeof anna | null,
+  payload: Record<string, unknown>,
+]
+
+// Oldest first, relative to today: a week of invoicing, a closed month, and a portal switched off and on.
+const samples: Sample[] = [
+  [6, '09:12', 'invoice.issued', 'invoices', ['invoice', 'inv_mock_1', '2026-031', 'Muster AG', 'CHF'], anna, { number: '2026-031', kind: 'invoice', issue_date: '2026-11-04', currency: 'CHF', payable_total: '1200.00' }],
+  [6, '09:40', 'expense.booked', 'expenses', ['expense', 'exp_mock_14', '14', 'Papeterie SA', 'CHF'], marco, { number: 14, document_date: '2026-11-03', currency: 'CHF', total: '86.40', base_currency: 'CHF', base_total: '86.40', deductible_vat: '6.47' }],
+  [5, '14:05', 'payment.added', 'payments', ['invoice', 'inv_mock_1', '2026-031', 'Muster AG', 'CHF'], anna, { number: '2026-031', payment_id: 'pay_mock_1', amount: '1200.00', paid_on: '2026-11-05', method: 'bank_transfer' }],
+  [4, '10:30', 'period.closed', 'books', ['period', '2026-10'], anna, { month: '2026-10' }],
+  [3, '08:55', 'approval.submitted', 'approvals', ['invoice', 'inv_mock_2', '2026-035', 'Beispiel GmbH', 'EUR'], marco, { request_id: 'apr_mock_1', rules: [] }],
+  [3, '11:20', 'approval.approved', 'approvals', ['invoice', 'inv_mock_2', '2026-035', 'Beispiel GmbH', 'EUR'], anna, { request_id: 'apr_mock_1', comment: 'Looks right.' }],
+  [3, '11:24', 'invoice.issued', 'invoices', ['invoice', 'inv_mock_2', '2026-035', 'Beispiel GmbH', 'EUR'], anna, { number: '2026-035', kind: 'invoice', issue_date: '2026-11-07', currency: 'EUR', payable_total: '640.00' }],
+  [2, '16:02', 'credit.issued', 'invoices', ['invoice', 'inv_mock_2', '2026-035', 'Beispiel GmbH', 'EUR'], anna, { number: '2026-035', credit_note_id: 'inv_mock_3', credit_note_number: 'CN-2026-004', amount: '120.00' }],
+  [2, '16:40', 'workspace.portal_address_changed', 'portal', ['workspace', 'wsp_mock'], anna, { from: 'muster', to: 'muster-ag' }],
+  [1, '08:47', 'workspace.portal_turned_off', 'portal', ['workspace', 'wsp_mock'], marco, {}],
+  [1, '08:52', 'workspace.portal_turned_on', 'portal', ['workspace', 'wsp_mock'], marco, {}],
+  [1, '08:58', 'workspace.portal_turned_off', 'portal', ['workspace', 'wsp_mock'], marco, {}],
+  [1, '09:03', 'workspace.portal_turned_on', 'portal', ['workspace', 'wsp_mock'], marco, {}],
+  [1, '09:09', 'workspace.portal_turned_off', 'portal', ['workspace', 'wsp_mock'], marco, {}],
+  [1, '09:14', 'workspace.portal_turned_on', 'portal', ['workspace', 'wsp_mock'], marco, {}],
+  [1, '13:30', 'approvals.group_saved', 'settings', ['workspace', 'wsp_mock'], anna, { group_id: 'grp_mock_1', name: 'Finance', member_ids: [] }],
+  [0, '07:58', 'plan.created', 'invoices', ['plan', 'pln_mock_1'], null, { source_invoice_id: 'inv_mock_1', count: 6, interval: 'monthly' }],
+  [0, '08:15', 'invoice.voided', 'invoices', ['invoice', 'inv_mock_4', '2026-036', 'Muster AG', 'CHF'], anna, { number: '2026-036', reason: 'Wrong client' }],
+  [0, '08:41', 'refund.added', 'payments', ['invoice', 'inv_mock_1', '2026-031', 'Muster AG', 'CHF'], anna, { number: '2026-031', refund_id: 'ref_mock_1', amount: '50.00' }],
+]
+
+const at = (days: number, clock: string) => {
+  const [hours = 0, minutes = 0] = clock.split(':').map(Number)
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  date.setHours(hours, minutes, 0, 0)
+  return date.toISOString()
+}
+
+/** One chain, oldest first; the hashes are placeholders that verify in the mock. */
+export const auditEvents: FinancialEvent[] = samples.map(
+  ([days, clock, kind, category, [subject_type, subject_id, number, party, currency], actor, payload], i) => ({
     seq: i + 1,
     kind,
+    category,
     subject_type,
-    subject_id: subject_type === 'period' ? '2026-09' : `${subject_type.slice(0, 3)}_mock_${i + 1}`,
-    actor: i % 4 === 3 ? null : anna,
-    at: `2026-10-${day}T09:00:00Z`,
+    subject_id,
+    subject: number ? { number, party: party ?? null, currency: currency ?? null } : null,
+    actor,
+    at: at(days, clock),
     payload,
     prev_hash: i === 0 ? '' : hex(i),
     hash: hex(i + 1),
-  }
-})
+  }),
+)
 
 /** Every client starts with this agreement in the mock (client_id filled in on first read). */
 export const sampleAgreement: Omit<SelfBillingAgreement, 'client_id'> = {
