@@ -98,6 +98,10 @@ are the reference.
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
   move along; the emptied old folders are deleted). AI filing and organizing put a known
   client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
+  Before the model is asked, a file that is one of the workspace's invoices or quotes (by the PDF it shares, the
+  imported invoice it is the original of, or a record number in its name or text, separators ignored) goes straight to
+  its client's folder (`documents/record_match.go`); several records found leave it to the model. An invoice or quote
+  the model files outside Clients goes to the client's folder when the file names one client (whole name or UID).
 - **Documents grouped views** (`store/queries_document_groups.go`, `documents/groups.go`): Group by type, year or
   client is computed from each file, never stored, and moves nothing. Type: the record it belongs to (an invoice's or
   quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder, its tags, its
