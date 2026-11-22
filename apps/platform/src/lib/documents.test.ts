@@ -87,7 +87,7 @@ describe('listQuery', () => {
   })
 
   it('turns date presets into a first day', () => {
-    const today = new Date(2026, 10, 5)
+    const today = '2026-11-05'
     expect(presetFrom('7d', today)).toBe('2026-10-30')
     expect(presetFrom('30d', today)).toBe('2026-10-07')
     expect(presetFrom('year', today)).toBe('2026-01-01')

@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -381,6 +382,10 @@ func TestExpiryRevisionNumbers(t *testing.T) {
 	q = e.quote(b, "POST", "/api/v1/quotes/"+q.ID+"/revise", map[string]any{}, http.StatusOK)
 	if q.Status != "draft" || q.Revision != 2 || *q.Number != "Q-2026-001" || q.DecidedAt != nil {
 		t.Fatalf("revised: %+v", q)
+	}
+	e.do(b, "GET", "/api/v1/quotes?search="+url.QueryEscape("rev. 2"), nil, 200, &list)
+	if len(list.Data) != 1 || list.Data[0].ID != q.ID {
+		t.Fatalf("search by the number as shown: %d", len(list.Data))
 	}
 	e.quote(b, "PATCH", "/api/v1/quotes/"+q.ID, map[string]any{"issue_date": "2026-11-16", "valid_until": "2026-12-15"}, http.StatusOK)
 	q = e.quote(b, "POST", "/api/v1/quotes/"+q.ID+"/send", map[string]any{}, http.StatusOK)

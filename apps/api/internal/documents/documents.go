@@ -377,7 +377,7 @@ const (
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	v := r.URL.Query()
 	f := store.DocumentFilter{Folder: v.Get("folder_id"), Search: strings.TrimSpace(v.Get("search")),
-		UploadedBy: v.Get("uploaded_by"), ClientID: v.Get("client_id"), From: v.Get("from"), To: v.Get("to"),
+		UploadedBy: v.Get("uploaded_by"), ClientID: v.Get("client_id"), From: v.Get("from"), To: v.Get("to"), Zone: sess.Workspace.Zone(),
 		Tag: strings.ToLower(strings.TrimSpace(v.Get("tag")))}
 	for _, k := range v["kind"] {
 		if !slices.Contains(kinds, k) {

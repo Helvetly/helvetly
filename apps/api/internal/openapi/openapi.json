@@ -173,7 +173,7 @@
             "name": "created_from",
             "in": "query",
             "required": false,
-            "description": "Created on or after (YYYY-MM-DD).",
+            "description": "Created on or after this day (YYYY-MM-DD) in the workspace's time zone.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -1108,7 +1108,7 @@
             "name": "from",
             "in": "query",
             "required": false,
-            "description": "Uploaded on or after.",
+            "description": "Uploaded on or after this day (YYYY-MM-DD) in the workspace's time zone.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -1118,7 +1118,7 @@
             "name": "to",
             "in": "query",
             "required": false,
-            "description": "Uploaded on or before.",
+            "description": "Uploaded on or before this day (YYYY-MM-DD) in the workspace's time zone.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -1619,7 +1619,7 @@
             "name": "updated_from",
             "in": "query",
             "required": false,
-            "description": "Last changed on or after (YYYY-MM-DD).",
+            "description": "Last changed on or after this day (YYYY-MM-DD) in the workspace's time zone.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -1771,7 +1771,7 @@
             "name": "created_from",
             "in": "query",
             "required": false,
-            "description": "Created on or after (YYYY-MM-DD).",
+            "description": "Created on or after this day (YYYY-MM-DD) in the workspace's time zone.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -2289,7 +2289,7 @@
             "name": "updated_from",
             "in": "query",
             "required": false,
-            "description": "Last changed on or after (YYYY-MM-DD).",
+            "description": "Last changed on or after this day (YYYY-MM-DD) in the workspace's time zone.",
             "schema": {
               "type": "string",
               "format": "date"
@@ -6274,8 +6274,41 @@
         "operationId": "list_quotes",
         "tags": ["Quotes"],
         "summary": "List quotes",
-        "description": "Quotes of the workspace, newest first, not paged. Filter by client and status (expired is derived from valid_until).",
+        "description": "Quotes of the workspace, paged (page, page_size; meta has the totals) and filterable. Before paging was added this answered every quote at once; data keeps the same Quote objects, so a caller that needs them all reads page by page until meta.total_pages.",
         "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, from 1.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "description": "Items per page.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Matches number, client and reference.",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
           {
             "name": "client_id",
             "in": "query",
@@ -6286,13 +6319,69 @@
             }
           },
           {
+            "name": "client_name",
+            "in": "query",
+            "required": false,
+            "description": "Only clients whose name contains this.",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
-            "description": "Only quotes in this status.",
+            "description": "Comma-separated: draft, sent, accepted, declined, expired (expired is derived: sent and past valid_until).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "issued_from",
+            "in": "query",
+            "required": false,
+            "description": "Quote date on or after (YYYY-MM-DD).",
             "schema": {
               "type": "string",
-              "enum": ["draft", "sent", "accepted", "declined", "expired"]
+              "format": "date"
+            }
+          },
+          {
+            "name": "issued_to",
+            "in": "query",
+            "required": false,
+            "description": "Quote date on or before (YYYY-MM-DD).",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "total_min",
+            "in": "query",
+            "required": false,
+            "description": "Payable total at least this amount, such as 100 or 99.50.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "total_max",
+            "in": "query",
+            "required": false,
+            "description": "Payable total at most this amount.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "One of number, client, issue_date, valid_until, total, status, created_at; prefix - for descending. Default newest made first.",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -12777,9 +12866,12 @@
             "items": {
               "$ref": "#/components/schemas/Quote"
             }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
           }
         },
-        "required": ["data"]
+        "required": ["data", "meta"]
       },
       "PlanInput": {
         "type": "object",
