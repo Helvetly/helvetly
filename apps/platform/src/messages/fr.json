@@ -4400,6 +4400,7 @@
   "organizeTopLevel": "Racine",
   "organizeFolderFor": "Dossier pour {name}",
   "organizeNewFolder": "Nouveau dossier",
+  "organizeSystemOnly": "Helvetly gère les dossiers des clients et des dépenses. Choisissez-en un existant ou un dossier en dehors de Clients et Dépenses.",
   "organizeRemoveTag": "Retirer le tag {tag}",
   "organizeSelected": "{count, plural, =0 {Rien de sélectionné} one {# changement sélectionné} other {# changements sélectionnés}}",
   "organizeApply": "{count, plural, =0 {Appliquer} one {Appliquer # changement} other {Appliquer # changements}}",
