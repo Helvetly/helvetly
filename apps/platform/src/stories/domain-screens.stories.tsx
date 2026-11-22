@@ -459,8 +459,8 @@ export const ClientsSelection: Story = {
     )
     await userEvent.click(canvas.getByRole('button', { name: 'Clear selection' }))
     await expect(checkbox).not.toBeChecked()
-    await expect(canvas.getByRole('button', { name: 'Previous page' })).toBeDisabled()
-    await expect(canvas.getByRole('button', { name: 'Next page' })).toBeDisabled()
+    // One page of results: the pager stays hidden.
+    await expect(canvas.queryByRole('navigation', { name: 'Pages' })).not.toBeInTheDocument()
   },
 }
 export const InvoicesEmpty: Story = {
