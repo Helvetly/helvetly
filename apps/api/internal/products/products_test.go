@@ -320,8 +320,8 @@ func TestListSearchAndExport(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
 	e.create(b, map[string]any{"name": "Webdesign Paket", "unit_price": "900", "sku": "WEB"})
-	e.create(b, map[string]any{"name": "Hosting web", "unit_price": "20", "currency": "EUR"})
-	e.create(b, map[string]any{"name": "Stunde Web", "unit_price": "150"})
+	e.create(b, map[string]any{"name": "Hosting web", "unit_price": "20", "currency": "EUR", "vat_rate": "2.6"})
+	e.create(b, map[string]any{"name": "Stunde Web", "unit_price": "150", "unit": "hour"})
 	e.create(b, map[string]any{"name": "Webcam", "unit_price": "80", "type": "product", "currency": "EUR"})
 	e.create(b, map[string]any{"name": "=cmd()", "unit_price": "1", "type": "product", "description": "spreadsheet"})
 	gone := e.create(b, map[string]any{"name": "Web archive", "unit_price": "5"})
@@ -337,6 +337,14 @@ func TestListSearchAndExport(t *testing.T) {
 		{"currency=EUR", "Hosting web,Webcam"},
 		{"search=web&sort=-unit_price", "Webdesign Paket,Stunde Web,Webcam,Hosting web"},
 		{"search=spread", "=cmd()"},
+		{"unit=hour&unit=day", "Stunde Web"},
+		{"vat_rate=2.6,3.8", "Hosting web"},
+		{"price_min=80&price_max=150", "Stunde Web,Webcam"},
+		{"price_min=900.00", "Webdesign Paket"},
+		{"sku=with", "Webdesign Paket"},
+		{"sku=without&type=product", "=cmd(),Webcam"},
+		{"updated_from=2000-01-01&currency=EUR", "Hosting web,Webcam"},
+		{"updated_from=2999-01-01", ""},
 	}
 	for _, tt := range tests {
 		var out listOut
@@ -345,7 +353,9 @@ func TestListSearchAndExport(t *testing.T) {
 			t.Errorf("list ?%s = %s, want %s", tt.query, got, tt.want)
 		}
 	}
-	e.fails(b, "GET", "/api/v1/products?sort=price", nil, 400, "invalid_request")
+	for _, bad := range []string{"sort=price", "unit=week", "vat_rate=101", "price_min=abc", "price_max=-1", "sku=maybe", "updated_from=2026-13-01"} {
+		e.fails(b, "GET", "/api/v1/products?"+bad, nil, 400, "invalid_request")
+	}
 
 	var found struct{ Data []product }
 	e.do(b, "GET", "/api/v1/products/search?q=web&currency=EUR", nil, 200, &found)

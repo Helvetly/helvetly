@@ -768,3 +768,23 @@ export const SortedByTitle: Story = {
     await waitFor(() => expect(window.location.search).toContain('sort=-title'))
   },
 }
+
+/** The client filter picks from the client search; it shows as a chip in the search, and "Clear all" drops it. */
+export const ClientFilter: Story = {
+  play: async (context) => {
+    const body = within(context.canvasElement.ownerDocument.body)
+    await body.findByRole('searchbox', { name: 'Search engagements' }, { timeout: 8000 })
+    await userEvent.click(body.getByRole('button', { name: /^Filters/ }))
+    const filters = within(await body.findByRole('dialog', { name: 'Filters' }))
+    await userEvent.click(filters.getByRole('button', { name: /^Client/ }))
+    await userEvent.click(await body.findByRole('option', { name: /Keller Holzbau AG/ }))
+    await expect(
+      await body.findByRole('button', { name: 'Remove filter Client: Keller Holzbau AG' }),
+    ).toBeVisible()
+    await expect(body.getByRole('button', { name: /^Filters/ })).toHaveTextContent('1')
+    await userEvent.click(filters.getByRole('button', { name: 'Clear all' }))
+    await waitFor(() =>
+      expect(body.queryByRole('button', { name: /^Remove filter Client/ })).toBeNull(),
+    )
+  },
+}

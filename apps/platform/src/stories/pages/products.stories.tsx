@@ -6,6 +6,7 @@ import { ProductsPage } from '@/components/products/products-page'
 import type { Product } from '@/lib/products'
 
 import { products } from './api'
+import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
@@ -120,3 +121,15 @@ export const ReadOnlyNoDrop: Story = {
   parameters: readOnly('/products'),
   play: noDropTarget('Workshop day', 'products'),
 }
+
+/** The Filters popover and the search's chips show the URL's filters; a pick and "Clear all" go to the URL. */
+export const Filters: Story = {
+  parameters: pageParameters('/products', { unit: 'hour', min: '100' }),
+  play: filtersPlay({
+    chips: ['Unit: Hours', 'Min. price: 100'],
+    pick: { control: /^SKU/, option: 'With SKU', key: 'sku', value: 'with' },
+    cleared: ['unit', 'min', 'sku'],
+  }),
+}
+export const FiltersPhone = phone(Filters)
+export const FiltersDark = dark(Filters)

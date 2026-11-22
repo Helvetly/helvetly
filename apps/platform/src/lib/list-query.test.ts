@@ -9,6 +9,9 @@ import {
   termsOf,
   tokenize,
   type QueryField,
+  amountParam,
+  oneValue,
+  sinceDate,
 } from './list-query'
 
 type Params = { status: string[]; type: string | null; name: string; from: string; total: string }
@@ -87,6 +90,8 @@ describe('parseQuery', () => {
     ['bad date is text', 'from:2026-13-45', [], 'from:2026-13-45'],
     ['number', 'total:12.5', [{ id: 'total', value: '12.5' }], ''],
     ['bad number is text', 'total:abc', [], 'total:abc'],
+    ['negative amount is text', 'total:-5', [], 'total:-5'],
+    ['three decimals are text', 'total:1.234', [], 'total:1.234'],
   ])('%s', (_, input, terms, text) => {
     expect(parseQuery(input, fields)).toEqual({ terms, text })
   })
@@ -121,5 +126,32 @@ describe('terms and params', () => {
     expect(formatTerm({ id: 'status', value: 'draft' })).toBe('status:draft')
     expect(termLabel(fields, { id: 'status', value: 'draft' })).toBe('Status: Draft')
     expect(termLabel(fields, { id: 'name', value: 'acme' })).toBe('Name: acme')
+  })
+})
+
+describe('filter values', () => {
+  it('reads amounts from the URL as the API takes them', () => {
+    expect(amountParam('99.50')).toBe('99.50')
+    expect(amountParam('100')).toBe('100')
+    expect(amountParam('-1')).toBeNull()
+    expect(amountParam('1e3')).toBeNull()
+    expect(amountParam(null)).toBeNull()
+  })
+
+  it('turns a since preset into its first day', () => {
+    const today = new Date(2026, 10, 5)
+    expect(sinceDate('7d', today)).toBe('2026-10-30')
+    expect(sinceDate('30d', today)).toBe('2026-10-07')
+    expect(sinceDate('year', today)).toBe('2026-01-01')
+  })
+
+  it('marks a one-value field as single, and a new term replaces the old', () => {
+    const field = oneValue<{ unit: string | null }>(
+      (params) => params.unit,
+      (unit) => ({ unit }),
+    )
+    expect(field.single).toBe(true)
+    expect(field.set(['hour', 'day'])).toEqual({ unit: 'day' })
+    expect(field.set([])).toEqual({ unit: null })
   })
 })

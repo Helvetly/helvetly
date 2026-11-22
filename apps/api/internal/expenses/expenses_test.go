@@ -654,6 +654,9 @@ func TestListBulkExportSummary(t *testing.T) {
 			Skipped []struct{ ID, Reason string }
 		}
 	}
+	if resp := e.upload(b, draft.ID, "ticket.pdf", pdf); resp.StatusCode != 201 {
+		t.Fatalf("upload: %d", resp.StatusCode)
+	}
 	e.do(b, "POST", "/api/v1/expenses/bulk", map[string]any{"ids": []string{sbb.ID, swisscom.ID, october.ID, draft.ID}, "action": "book"}, 200, &bulk)
 	if bulk.Data.Updated != 3 || len(bulk.Data.Skipped) != 1 || bulk.Data.Skipped[0].ID != draft.ID {
 		t.Fatalf("bulk book: %+v", bulk.Data)
@@ -684,6 +687,11 @@ func TestListBulkExportSummary(t *testing.T) {
 		{"category_id=" + it, []int64{2}},
 		{"from=2026-11-01&to=2026-11-30&sort=document_date", []int64{2, 1}},
 		{"sort=-total&status=booked", []int64{3, 1, 2}},
+		{"total_min=100&total_max=200&sort=number", []int64{1}},
+		{"total_min=108.10&sort=number", []int64{1, 3}},
+		{"total_max=54.05", []int64{2, 4}},
+		{"receipt=attached", []int64{4}},
+		{"receipt=missing&sort=number", []int64{1, 2, 3}},
 	} {
 		if got := list(tt.query); !slices.Equal(got, tt.want) {
 			t.Errorf("%s: %v, want %v", tt.query, got, tt.want)
@@ -692,7 +700,9 @@ func TestListBulkExportSummary(t *testing.T) {
 	if got := list(""); !slices.Equal(got, []int64{1, 2, 3, 4}) {
 		t.Errorf("default sort (newest document first, undated last): %v", got)
 	}
-	e.fails(b, "GET", "/api/v1/expenses?sort=price", nil, 400, "invalid_request")
+	for _, bad := range []string{"sort=price", "total_min=abc", "total_max=1.234", "receipt=yes"} {
+		e.fails(b, "GET", "/api/v1/expenses?"+bad, nil, 400, "invalid_request")
+	}
 
 	var sum struct {
 		Data struct {
