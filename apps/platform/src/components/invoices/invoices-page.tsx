@@ -1136,7 +1136,11 @@ const InvoiceItem = memo(function InvoiceItem({ invoice, selected, bulk, access,
           <span className="grid min-w-0 flex-1 leading-snug">
             <span className="truncate text-[15px]">{invoice.client.name}</span>
             <span className="truncate text-[13px] text-muted-foreground">
-              {invoice.number && `${invoice.number} · `}
+              {invoice.number && (
+                <>
+                  <span className="font-code">{invoice.number}</span> ·{' '}
+                </>
+              )}
               {translate('due5')}
               {formatDay(invoice.due_date)}
             </span>

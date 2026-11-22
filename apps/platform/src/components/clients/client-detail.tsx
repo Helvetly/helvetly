@@ -479,7 +479,7 @@ function Detail({
               client.phone && (
                 <a
                   href={localizedHref(`tel:${client.phone}`)}
-                  className="tabular-nums underline underline-offset-2 hover:no-underline"
+                  className="font-code underline underline-offset-2 hover:no-underline"
                 >
                   {displayPhone(client.phone)}
                 </a>

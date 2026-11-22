@@ -132,7 +132,7 @@ const COLUMNS: ColumnDef[] = [
     visible: true,
     cell: (client) =>
       client.phone ? (
-        <span className="tabular-nums">{displayPhone(client.phone)}</span>
+        <span className="font-code">{displayPhone(client.phone)}</span>
       ) : (
         <span className="text-muted-foreground">—</span>
       ),

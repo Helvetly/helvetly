@@ -16,7 +16,7 @@ export function DuplicateWarning({ duplicate }: { duplicate: Expense['duplicate_
         {translate('thisReceiptMayAlreadyBeRecordedAs')}{' '}
         <Link href={`/expenses?id=${encodeURIComponent(duplicate.id)}`} className="underline">
           {translate('expense')}
-          {duplicate.number}
+          <span className="font-code">{duplicate.number}</span>
         </Link>
         {duplicate.date && translate('dynamicFrom3', { value1: formatDate(duplicate.date) })}
         {translate('checkBeforeBookingItTwice')}

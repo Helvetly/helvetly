@@ -864,7 +864,7 @@ function Editor({
                   {preceding}{' '}
                   <RecordLink
                     href={`/invoices?id=${encodeURIComponent(invoice.credited_invoice.id)}`}
-                    className="font-medium underline underline-offset-4 hover:no-underline"
+                    className="font-code font-medium underline underline-offset-4 hover:no-underline"
                   >
                     {invoice.credited_invoice.number}
                   </RecordLink>
