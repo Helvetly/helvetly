@@ -492,25 +492,17 @@ export const BillingFailure: Story = {
   },
 }
 
-export const ChangePlanFullComparison: Story = {
+export const ChangePlanYearly: Story = {
   parameters: { ownMain: true, msw: { handlers: billingHandlers } },
   render: () => <ChangePlan />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('heading', { name: 'Change your plan' })).toBeVisible()
     await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
-    await expect(await canvas.findByRole('heading', { name: 'Compare plans' })).toBeVisible()
-    // The offer's twelve business rows, then its allowances: "Not included" where the plan lacks a feature.
-    const portal = within(canvas.getByRole('row', { name: /^Client portal/ }))
-    await expect(portal.getAllByText('Not included')).toHaveLength(2)
-    await expect(portal.getAllByLabelText('Included')).toHaveLength(1)
-    const heidi = within(canvas.getByRole('row', { name: /^Heidi AI assistant/ }))
-    await expect(heidi.getByText('5M')).toBeVisible()
-    await expect(canvas.getByRole('rowheader', { name: /^Clients/ })).toHaveTextContent(
-      'Per workspace',
-    )
-    await expect(canvas.queryByRole('row', { name: /^API tokens/ })).toBeNull()
-    // The picker ends with the comparison: no feature grid, no questions.
+    await waitFor(() => expect(canvas.getByRole('radio', { name: /^Yearly/ })).toBeChecked())
+    // The picker ends with the plan cards: no comparison table, no feature grid, no questions.
+    await expect(canvas.queryByRole('heading', { name: 'Compare plans' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('table')).not.toBeInTheDocument()
     await expect(
       canvas.queryByRole('heading', { name: 'Every plan includes' }),
     ).not.toBeInTheDocument()
@@ -637,9 +629,9 @@ export const BillingActiveDetailsDark: Story = {
   ...BillingActiveDetails,
   parameters: { ...BillingActiveDetails.parameters, dark: true },
 }
-export const ChangePlanFullComparisonDark: Story = {
-  ...ChangePlanFullComparison,
-  parameters: { ...ChangePlanFullComparison.parameters, dark: true },
+export const ChangePlanYearlyDark: Story = {
+  ...ChangePlanYearly,
+  parameters: { ...ChangePlanYearly.parameters, dark: true },
 }
 export const CashFlowCurrenciesAndPeriodsDark: Story = {
   ...CashFlowCurrenciesAndPeriods,
