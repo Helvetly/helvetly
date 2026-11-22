@@ -5119,5 +5119,7 @@
   "anyRole": "Jede Rolle…",
   "anyDepartment": "Jede Abteilung…",
   "uploadedByMe": "Von mir hochgeladen",
-  "department": "Abteilung"
+  "department": "Abteilung",
+  "eGMusterCh": "z.B. muster.ch",
+  "enterAWebsiteSuchAsMusterCh": "Geben Sie eine Website wie muster.ch ein."
 }

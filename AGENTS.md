@@ -141,7 +141,7 @@ are the reference.
   capped by `max_email_attachment_bytes`) and goes out as the business through `mail.Branded`: the company name as
   From's display name (the address stays `MAIL_FROM`'s), Reply-To the workspace's reply-to email (`workspaces.reply_to_email`,
   Settings → Workspace), else the company email, else the member who sends, else the owner, never no-reply; its logo and
-  name head the email, its seller details sign it. Sign-in, security and invitation email never does either and stays Helvetly's.
+  name head the email, its seller details (with its website as a link) sign it. Sign-in, security and invitation email never does either and stays Helvetly's.
   Email HTML keeps to what caniemail lists as supported everywhere (Mailpit's HTML Check): no `<body>`, `<style>`,
   margin, padding, border, background, width or height; tags, `cellpadding` and inline colour and font only (the
   business logo has no size attributes: its email URL serves a copy scaled to 36 px high; `mail.TestEmailSourcesKeepToSupportedHTML`

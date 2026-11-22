@@ -97,6 +97,8 @@ func TestBrandedLayout(t *testing.T) {
 			`<html lang="de">`, `src="https://app.example.com/api/v1/public/email-logo/w/lgo_1"`, ">Müller &amp; Co AG</strong>",
 			">Müller &amp; Co AG</strong>", "<br>Bahnhofstrasse 1, 8001 Zürich", "<br>+41 44 123 45 67 · info@mueller.ch",
 			"<br>CHE-123.456.789 MWST", `Gesendet mit <a href="https://app.example.com"`}, []string{"Sent by"}},
+		{"a website: a link with the domain", Message{HTML: "<p>Hi</p>", Brand: &Brand{Name: "X", Email: "a@x.ch", Website: "https://www.firma.ch/"}},
+			[]string{`<br>a@x.ch · <a href="https://www.firma.ch/" style="color:#71717a">firma.ch</a>`}, nil},
 		{"name only, in French", Message{HTML: "<p>Bonjour</p>", Language: "fr", Brand: &Brand{Name: "Dupont SA", VAT: "FR12345678901"}}, []string{
 			">Dupont SA</strong><br>FR12345678901<br><br>", "Envoyé avec"}, []string{"<img", " · ", " TVA"}},
 		{"an unknown language: English", Message{HTML: "<p>Hi</p>", Language: "pl", Brand: &Brand{Name: "X", VAT: "CHE-111.222.333"}},

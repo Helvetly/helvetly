@@ -527,7 +527,7 @@ func Title(inv store.Invoice) string { return invoicepdf.TitleFor(inv) }
 
 // document: what the PDF shows. Issued documents use their snapshots; drafts the current settings and client.
 func (s *Service) document(inv store.Invoice, set Settings, draft bool, preceding *store.Invoice) invoicepdf.Document {
-	d := invoicepdf.Document{Invoice: inv, Seller: set.Seller.Party, Phone: set.Seller.Phone, BankName: set.BankName, BIC: set.BIC, Draft: draft,
+	d := invoicepdf.Document{Invoice: inv, Seller: set.Seller.Party, Phone: set.Seller.Phone, Website: set.Seller.Website, BankName: set.BankName, BIC: set.BIC, Draft: draft,
 		Created: s.now(), Refund: refunds(inv, preceding), SelfBilled: preceding != nil && preceding.Kind == "self_billed"}
 	if draft && inv.Number == nil {
 		number := draftNumber(set.NumberFormat, inv, preceding, s.now())

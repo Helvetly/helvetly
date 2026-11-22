@@ -28,6 +28,7 @@ type Document struct {
 	Invoice    store.Invoice // lines, totals, dates, kind, number and payment details
 	Seller     store.Party
 	Phone      *string
+	Website    *string // printed as its domain in the footer contact line
 	Buyer      store.Party
 	BankName   *string
 	BIC        *string
@@ -281,9 +282,9 @@ func (r *renderer) invoicePages() {
 	p, inv, l := r.pdf, r.d.Invoice, r.l
 	p.AddPage()
 	// a self-billed invoice is drawn up by the buyer: the buyer heads it and the seller gets it
-	issuer, recipient, phone := r.d.Seller, r.d.Buyer, r.d.Phone
+	issuer, recipient, phone, website := r.d.Seller, r.d.Buyer, r.d.Phone, r.d.Website
 	if inv.Kind == "self_billed" || r.d.SelfBilled {
-		issuer, recipient, phone = r.d.Buyer, r.d.Seller, nil
+		issuer, recipient, phone, website = r.d.Buyer, r.d.Seller, nil, nil
 	}
 
 	// document details, beside the title in the header
@@ -304,7 +305,7 @@ func (r *renderer) invoicePages() {
 		meta = append(meta, [2]string{l.Reference, *inv.Reference})
 	}
 	y := r.header(strings.TrimSpace(TitleFor(inv)+" "+number(inv)), meta)
-	r.contact = contactLine(issuer.Email, phone)
+	r.contact = contactLine(issuer.Email, phone, website)
 	r.setFooter(inv.Footer) // before any page closes: each page's footer prints it
 	y = r.parties(max(y+6, 45), issuer, recipient) + 6
 
@@ -398,7 +399,7 @@ func (r *renderer) parties(y float64, issuer, recipient store.Party) float64 {
 }
 
 // contactLine joins the issuer's email and phone for the footer: "info@muster.ch · +41 44 123 45 67".
-func contactLine(email, phone *string) string {
+func contactLine(email, phone, website *string) string {
 	var parts []string
 	if email != nil && strings.TrimSpace(*email) != "" {
 		parts = append(parts, strings.TrimSpace(*email))
@@ -406,7 +407,17 @@ func contactLine(email, phone *string) string {
 	if phone != nil && strings.TrimSpace(*phone) != "" {
 		parts = append(parts, displayPhone(*phone))
 	}
+	if website != nil && strings.TrimSpace(*website) != "" {
+		parts = append(parts, websiteDomain(*website))
+	}
 	return strings.Join(parts, " · ")
+}
+
+// websiteDomain is a stored website as people read it: "https://www.firma.ch/" becomes "firma.ch/".
+func websiteDomain(u string) string {
+	u = strings.TrimSpace(u)
+	u = strings.TrimPrefix(strings.TrimPrefix(u, "https://"), "http://")
+	return strings.TrimSuffix(strings.TrimPrefix(u, "www."), "/")
 }
 
 // countryName: the country's name in the document's language ("Schweiz", "Switzerland"), "" for an unknown code.
