@@ -4,6 +4,7 @@ import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
 import { ClientsPage } from '@/components/clients/clients-page'
 
 import { ringClipper } from '../focus-ring'
+import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
@@ -131,7 +132,7 @@ export const QuerySearch: Story = {
     await expect(body.getByRole('button', { name: 'Remove filter City: bas' })).toBeVisible()
 
     await userEvent.click(body.getByRole('button', { name: /Filters/ }))
-    await expect(await body.findByRole('checkbox', { name: 'People' })).toBeChecked()
+    await expect(await body.findByRole('button', { name: /^Type/ })).toHaveTextContent('People')
     await userEvent.keyboard('{Escape}')
 
     await userEvent.type(search, 'stat')
@@ -326,4 +327,14 @@ export const ReorderColumns: Story = {
     await waitFor(() => expect(names().indexOf('City')).toBe(city))
     await expect(localStorage.getItem(`${STORAGE}order`)).toBeNull()
   },
+}
+
+/** The Filters popover and the search's chips show the URL's filters; a pick and "Clear all" go to the URL. */
+export const Filters: Story = {
+  parameters: pageParameters('/clients', { created: '30d' }),
+  play: filtersPlay({
+    chips: ['Created: Last 30 days'],
+    pick: { control: /^Type/, option: 'Companies', key: 'type', value: 'company' },
+    cleared: ['created', 'type'],
+  }),
 }

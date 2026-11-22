@@ -16,6 +16,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
+	"helvetly.com/api/internal/invoicecalc"
 	"helvetly.com/api/internal/store"
 )
 
@@ -362,6 +363,40 @@ func parseFilter(q url.Values) (store.ProductFilter, error) {
 			return f, badRequest("currency must be three-letter ISO codes such as CHF.")
 		}
 		f.Currencies = append(f.Currencies, c)
+	}
+	for _, u := range listParam(q, "unit") {
+		if !slices.Contains(units, u) {
+			return f, badRequest("unit must be one of " + strings.Join(units, ", ") + ".")
+		}
+		f.Units = append(f.Units, u)
+	}
+	for _, v := range listParam(q, "vat_rate") {
+		r, ok := invoicecalc.ParsePercent(v)
+		if !ok {
+			return f, badRequest("vat_rate must be percentages from 0 to 100 such as 8.1.")
+		}
+		f.VATRates = append(f.VATRates, int64(r))
+	}
+	for key, dst := range map[string]**int64{"price_min": &f.PriceMin, "price_max": &f.PriceMax} {
+		if v := q.Get(key); v != "" {
+			n, ok := invoicecalc.ParseMoney(v)
+			if !ok {
+				return f, badRequest(key + " must be an amount such as 100 or 99.50.")
+			}
+			*dst = new(int64(n))
+		}
+	}
+	switch q.Get("sku") {
+	case "":
+	case "with", "without":
+		f.HasSKU = new(q.Get("sku") == "with")
+	default:
+		return f, badRequest("sku must be with or without.")
+	}
+	if f.UpdatedFrom = q.Get("updated_from"); f.UpdatedFrom != "" {
+		if _, err := time.Parse(time.DateOnly, f.UpdatedFrom); err != nil {
+			return f, badRequest("updated_from must be a date as YYYY-MM-DD.")
+		}
 	}
 	if f.Sort == "" {
 		f.Sort = "name"

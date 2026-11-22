@@ -18,7 +18,6 @@ import {
   ArchiveRestore,
   CopyPlus,
   Download,
-  ListFilter,
   Package,
   PanelRightOpen,
   Pencil,
@@ -26,7 +25,6 @@ import {
   SlidersHorizontal,
   Trash2,
   Wrench,
-  X,
   Layers,
   BriefcaseBusiness,
   type LucideIcon,
@@ -36,7 +34,8 @@ import { type ComponentProps, memo, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
-import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
+import { CURRENCY_OPTIONS } from '@/components/clients/fields'
+import { activeFilters, ListFilters, sinceOptions } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
@@ -55,8 +54,8 @@ import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/imp
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
-import { formatAmount, useInvoiceSettings } from '@/lib/invoices'
-import type { QueryField } from '@/lib/list-query'
+import { formatAmount, UNITS, useInvoiceSettings, VAT_RATES } from '@/lib/invoices'
+import { among, oneValue, SINCE_PRESETS, type QueryField } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import {
   canManageProducts,
@@ -216,7 +215,7 @@ export function ProductsPage() {
 
   const rows = list.data?.data ?? []
   const meta = list.data?.meta
-  const filtered = Boolean(params.search) || params.currencies.length > 0
+  const filtered = Boolean(params.search) || activeFilters(QUERY_FIELDS, params) > 0
   const viewIndex = VIEWS.findIndex(
     (view) => view.change.type === params.type && view.change.status === params.status,
   )
@@ -369,7 +368,7 @@ export function ProductsPage() {
       >
         <div className="relative flex flex-1 flex-col">
           <ListToolbar>
-            <Filters params={params} onChange={update} />
+            <ListFilters fields={QUERY_FIELDS} params={params} onChange={update} />
             <ListSearch
               label={translate('searchProductsAndServices')}
               placeholder={translate('searchNameSKUGTINOrDescription')}
@@ -708,91 +707,84 @@ function productMenu(
   }
 }
 
-/** The search's field terms: `currency:` (type and status are the view tabs). */
+const SKU_OPTIONS = [
+  { value: 'with', label: translate('withSku') },
+  { value: 'without', label: translate('withoutSku') },
+]
+
+/** The search's field terms and the Filters popover's controls (type and status are the view tabs). */
 const QUERY_FIELDS: QueryField<ListParams>[] = [
   {
     id: 'currency',
     label: translate('currency'),
     type: 'enum',
     values: CURRENCY_OPTIONS,
+    placeholder: translate('anyCurrency'),
     get: (params) => params.currencies,
     set: (currencies) => ({ currencies }),
   },
+  {
+    id: 'unit',
+    label: translate('unit'),
+    type: 'enum',
+    values: UNITS.map((unit) => ({ value: unit.value, label: unit.label })),
+    placeholder: translate('anyUnit'),
+    get: (params) => params.units,
+    set: (units) => ({ units: among(UNIT_VALUES, units) }),
+  },
+  {
+    id: 'vat',
+    label: translate('vat'),
+    type: 'enum',
+    values: [...VAT_RATES, '0'].map((rate) => ({ value: rate, label: `${rate}%` })),
+    placeholder: translate('anyVatRate'),
+    get: (params) => params.vatRates,
+    set: (vatRates) => ({ vatRates }),
+  },
+  {
+    id: 'min',
+    label: translate('minPrice'),
+    type: 'number',
+    placeholder: translate('minPrice'),
+    until: 'max',
+    ...oneValue(
+      (params) => params.priceMin,
+      (priceMin) => ({ priceMin }),
+    ),
+  },
+  {
+    id: 'max',
+    label: translate('maxPrice'),
+    type: 'number',
+    ...oneValue(
+      (params) => params.priceMax,
+      (priceMax) => ({ priceMax }),
+    ),
+  },
+  {
+    id: 'sku',
+    label: 'SKU',
+    type: 'enum',
+    values: SKU_OPTIONS,
+    placeholder: translate('anySku'),
+    ...oneValue(
+      (params) => params.sku,
+      (sku) => ({ sku: sku === 'with' || sku === 'without' ? sku : null }),
+    ),
+  },
+  {
+    id: 'updated',
+    label: translate('updated3'),
+    type: 'enum',
+    values: sinceOptions(),
+    placeholder: translate('updatedAnyTime'),
+    ...oneValue(
+      (params) => params.updated,
+      (updated) => ({ updated: SINCE_PRESETS.find((preset) => preset === updated) ?? null }),
+    ),
+  },
 ]
-
-function Filters({
-  params,
-  onChange,
-}: {
-  params: ListParams
-  onChange: (change: Partial<ListParams>) => void
-}) {
-  const count = params.currencies.length
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-title-sm font-normal">
-          <ListFilter className="stroke-[1.5]" />
-          {translate('filters')}
-          {count > 0 && (
-            <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
-              {count}
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="grid w-72 gap-3 p-3">
-        <fieldset className="grid gap-1.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">
-            {translate('currency')}
-          </legend>
-          {params.currencies.length > 0 && (
-            <div className="flex flex-wrap gap-1 px-1">
-              {params.currencies.map((code) => (
-                <span
-                  key={code}
-                  className="flex h-6 items-center gap-1 rounded-[5px] bg-muted pr-0.5 pl-2 text-[13px]"
-                >
-                  {code}
-                  <button
-                    type="button"
-                    aria-label={translate('remove8', { code: code })}
-                    onClick={() =>
-                      onChange({ currencies: params.currencies.filter((entry) => entry !== code) })
-                    }
-                    className="flex size-5 cursor-pointer items-center justify-center rounded text-muted-foreground hover:bg-card"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <Combobox
-            value=""
-            label={translate('addACurrency2')}
-            options={CURRENCY_OPTIONS.filter((option) => !params.currencies.includes(option.value))}
-            placeholder={translate('addACurrency')}
-            onChange={(code) => onChange({ currencies: [...params.currencies, code] })}
-          />
-        </fieldset>
-        <p className="px-2 text-[12.5px] text-muted-foreground">
-          {translate('theTabsAboveFilterByTypeAndArchive')}
-        </p>
-        {count > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-self-start text-muted-foreground"
-            onClick={() => onChange({ currencies: [] })}
-          >
-            {translate('clearFilters')}
-          </Button>
-        )}
-      </PopoverContent>
-    </Popover>
-  )
-}
+const UNIT_VALUES = UNITS.map((unit) => unit.value)
 
 type RowProps = {
   product: Product

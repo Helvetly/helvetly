@@ -21,7 +21,6 @@ import {
 } from '@helvetly/ui/components/dropdown-menu'
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Loader } from '@helvetly/ui/components/loader'
-import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -46,7 +45,6 @@ import {
   LayoutGrid,
   MousePointer2,
   List as ListIcon,
-  ListFilter,
   Pencil,
   Plus,
   RotateCcw,
@@ -77,6 +75,7 @@ import {
   type FeatureLock,
 } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { ListFilters, sinceOptions } from '@/components/data/list-filters'
 import { ListSearch } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { dropdownKit, PageContextMenu, titleClass, type MenuKit } from '@/components/data/menus'
@@ -112,7 +111,6 @@ import {
   useTrash,
   viewToQuery,
   type BulkResult,
-  type DatePreset,
   type DocFile,
   type Folder,
   type Kind,
@@ -122,7 +120,7 @@ import {
   type ViewParams,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
-import { among, oneValue, type QueryField } from '@/lib/list-query'
+import { among, oneValue, SINCE_PRESETS, type QueryField } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 import { folderLabel, isSystemFolder, withoutEmptySystem } from '@/lib/system-folders'
@@ -166,13 +164,6 @@ const SORT_LABELS: Record<SortField, string> = {
   updated_at: translate('dateModified'),
   size: 'Size',
   kind: 'Kind',
-}
-
-const DATE_PRESETS: DatePreset[] = ['7d', '30d', 'year']
-const DATE_LABELS: Record<DatePreset, string> = {
-  '7d': translate('last7Days'),
-  '30d': translate('last30Days'),
-  year: 'This year',
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
@@ -1667,6 +1658,7 @@ const QUERY_FIELDS: QueryField<ViewParams>[] = [
     label: translate('kind'),
     type: 'enum',
     values: KINDS.map((kind) => ({ value: kind, label: KIND_LABELS[kind] })),
+    placeholder: translate('anyKind'),
     get: (view) => view.kinds,
     set: (kinds) => ({ kinds: among(KINDS, kinds) }),
   },
@@ -1674,10 +1666,11 @@ const QUERY_FIELDS: QueryField<ViewParams>[] = [
     id: 'uploaded',
     label: translate('uploaded2'),
     type: 'enum',
-    values: DATE_PRESETS.map((preset) => ({ value: preset, label: DATE_LABELS[preset] })),
+    values: sinceOptions(),
+    placeholder: translate('uploadedAnyTime'),
     ...oneValue(
       (view) => view.date,
-      (date) => ({ date: DATE_PRESETS.find((preset) => preset === date) ?? null }),
+      (date) => ({ date: SINCE_PRESETS.find((preset) => preset === date) ?? null }),
     ),
   },
   {
@@ -1686,6 +1679,7 @@ const QUERY_FIELDS: QueryField<ViewParams>[] = [
     type: 'enum',
     // `by:me`; its chip reads "By me".
     values: [{ value: 'me', label: '' }],
+    placeholder: translate('uploadedByMe'),
     get: (view) => (view.mine ? ['me'] : []),
     set: (values) => ({ mine: values.includes('me') }),
   },
@@ -1698,95 +1692,25 @@ function Filters({
   view: ViewParams
   onChange: (change: Partial<ViewParams>) => void
 }) {
-  const count = view.kinds.length + (view.mine ? 1 : 0) + (view.date ? 1 : 0)
-  const toggleKind = (kind: (typeof KINDS)[number]) =>
-    onChange({
-      kinds: view.kinds.includes(kind)
-        ? view.kinds.filter((entry) => entry !== kind)
-        : [...view.kinds, kind],
-    })
   return (
-    <Popover>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                'cursor-pointer gap-1.5 font-normal text-foreground/80',
-                count > 0 && 'text-foreground',
-              )}
-            >
-              <ListFilter className="stroke-[1.5]" />
-              <span className="max-lg:sr-only">{translate('filter')}</span>
-              {count > 0 && (
-                <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground">
-                  {count}
-                </span>
-              )}
-            </Button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{translate('filter')}</TooltipContent>
-      </Tooltip>
-      <PopoverContent align="end" className="w-64 gap-0 p-2">
-        <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">{translate('kind')}</p>
-        <div className="grid grid-cols-2 gap-0.5">
-          {KINDS.map((kind) => (
-            <label
-              key={kind}
-              className="flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-muted"
-            >
-              <Checkbox
-                checked={view.kinds.includes(kind)}
-                onCheckedChange={() => toggleKind(kind)}
-              />
-              {KIND_LABELS[kind]}
-            </label>
-          ))}
-        </div>
-        <div className="my-2 h-px bg-border" />
-        <p className="px-2 pb-1.5 text-xs text-muted-foreground">{translate('uploaded2')}</p>
-        {DATE_PRESETS.map((preset) => (
-          <label
-            key={preset}
-            className="flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-muted"
-          >
+    <ListFilters
+      fields={QUERY_FIELDS}
+      params={view}
+      onChange={onChange}
+      variant="outline"
+      align="end"
+      custom={{
+        by: (
+          <label className="flex h-8 cursor-pointer items-center gap-2.5 px-1 text-sm">
             <Checkbox
-              checked={view.date === preset}
-              onCheckedChange={(checked) => onChange({ date: checked === true ? preset : null })}
+              checked={view.mine}
+              onCheckedChange={(checked) => onChange({ mine: checked === true })}
             />
-            {DATE_LABELS[preset]}
+            {translate('uploadedByMe')}
           </label>
-        ))}
-        <label
-          htmlFor="documents-mine"
-          className="flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-muted"
-        >
-          <Checkbox
-            id="documents-mine"
-            checked={view.mine}
-            onCheckedChange={(checked) => onChange({ mine: checked === true })}
-          />
-          {translate('byMe')}
-        </label>
-        {count > 0 && (
-          <>
-            <div className="my-2 h-px bg-border" />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full cursor-pointer justify-start gap-1.5 font-normal"
-              onClick={() => onChange({ kinds: [], mine: false, date: null })}
-            >
-              <X className="size-3.5" />
-              {translate('clearFilters2')}
-            </Button>
-          </>
-        )}
-      </PopoverContent>
-    </Popover>
+        ),
+      }}
+    />
   )
 }
 

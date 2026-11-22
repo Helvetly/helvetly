@@ -6,6 +6,7 @@ import { ExpensesPage } from '@/components/expenses/expenses-page'
 import type { Session } from '@/lib/api'
 
 import { storySession } from '../screen-fixtures'
+import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 import { dropOpensImport, emptyList, noDropTarget, readOnly } from './page-drop'
 
@@ -170,4 +171,14 @@ export const DropStartsImport: Story = {
 export const ReadOnlyNoDrop: Story = {
   parameters: readOnly('/expenses'),
   play: noDropTarget('Swisscom (Schweiz) AG', 'expenses'),
+}
+
+/** The Filters popover and the search's chips show the URL's filters; a pick and "Clear all" go to the URL. */
+export const Filters: Story = {
+  parameters: pageParameters('/expenses', { receipt: 'missing', min: '20' }),
+  play: filtersPlay({
+    chips: ['Receipt: Without receipt', 'Min. amount: 20'],
+    pick: { control: /^Currency/, option: /^Euro/, key: 'currency', value: 'EUR' },
+    cleared: ['receipt', 'min', 'currency'],
+  }),
 }

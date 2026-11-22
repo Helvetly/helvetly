@@ -11,6 +11,7 @@ import {
 import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
 import type { Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
+import { isoDay, sinceDate, type SincePreset } from '@/lib/list-query'
 import type { Sort, SortValue } from '@/lib/list-sort'
 import { queryKeys } from '@/lib/queries'
 import { folderLabel } from '@/lib/system-folders'
@@ -160,7 +161,7 @@ export const ACCEPT =
 
 export const SORT_FIELDS = ['name', 'created_at', 'updated_at', 'size', 'kind'] as const
 export type SortField = (typeof SORT_FIELDS)[number]
-export type DatePreset = '7d' | '30d' | 'year'
+export type DatePreset = SincePreset
 export type Section = 'files' | 'recent' | 'trash' | 'signatures' | 'templates'
 
 export type ViewParams = {
@@ -236,16 +237,7 @@ export function viewToQuery(view: ViewParams) {
   return query
 }
 
-const isoDay = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-
-/** The first day a date preset covers, in the browser's calendar. */
-export function presetFrom(preset: DatePreset, today = new Date()) {
-  if (preset === 'year') return `${today.getFullYear()}-01-01`
-  const from = new Date(today)
-  from.setDate(from.getDate() - (preset === '7d' ? 6 : 29))
-  return isoDay(from)
-}
+export const presetFrom = sinceDate
 
 /** The list query for a view. Search and "Recent" look in every folder. */
 export function listQuery(view: ViewParams, userId: string | undefined) {

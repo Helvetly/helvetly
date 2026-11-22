@@ -635,6 +635,7 @@ func TestSendListExportSummary(t *testing.T) {
 	}{
 		{"", 2}, {"?status=draft", 1}, {"?status=open,paid", 1}, {"?search=po-77", 1}, {"?client_id=" + clientID + "&kind=invoice", 2},
 		{"?kind=credit_note", 0}, {"?issued_from=2999-01-01", 0}, {"?status=overdue", 0},
+		{"?total_min=216.20&total_max=216.20", 2}, {"?total_min=216.21", 0}, {"?total_max=100", 0}, {"?status=draft&total_min=200", 1},
 	} {
 		e.do(b, "GET", "/api/v1/invoices"+tt.query, nil, http.StatusOK, &list)
 		if list.Meta.Total != tt.want {
@@ -643,6 +644,8 @@ func TestSendListExportSummary(t *testing.T) {
 	}
 	e.fails(b, "GET", "/api/v1/invoices?status=late", nil, http.StatusBadRequest, "invalid_request")
 	e.fails(b, "GET", "/api/v1/invoices?sort=amount", nil, http.StatusBadRequest, "invalid_request")
+	e.fails(b, "GET", "/api/v1/invoices?total_min=abc", nil, http.StatusBadRequest, "invalid_request")
+	e.fails(b, "GET", "/api/v1/invoices?total_max=1.234", nil, http.StatusBadRequest, "invalid_request")
 
 	resp, body := e.send(b, "GET", "/api/v1/invoices/export?status=open", nil)
 	if resp.StatusCode != 200 || !bytes.HasPrefix(body, []byte("\xEF\xBB\xBF")) {

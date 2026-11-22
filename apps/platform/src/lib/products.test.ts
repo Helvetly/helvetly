@@ -42,11 +42,21 @@ test('reads the list state from the URL and ignores what it does not know', () =
     type: 'product',
     status: 'archived',
     currencies: ['EUR'],
+    units: [],
+    vatRates: [],
+    priceMin: null,
+    priceMax: null,
+    sku: null,
+    updated: null,
     sort: 'unit_price',
     desc: true,
   })
   expect(
-    parseListParams(new URLSearchParams('page=0&type=robot&status=gone&sort=price&currency=E')),
+    parseListParams(
+      new URLSearchParams(
+        'page=0&type=robot&status=gone&sort=price&currency=E&unit=week&vat=abc&min=-1&max=1.234&sku=maybe&updated=1d',
+      ),
+    ),
   ).toEqual(DEFAULT_PARAMS)
 })
 
@@ -58,6 +68,12 @@ test('writes only what differs from the defaults and keeps other keys', () => {
     ...DEFAULT_PARAMS,
     page: 3,
     type: 'service' as const,
+    units: ['hour' as const, 'day' as const],
+    vatRates: ['8.1', '0'],
+    priceMin: '10',
+    priceMax: '99.50',
+    sku: 'without' as const,
+    updated: '30d' as const,
     sort: 'sku' as const,
     desc: true,
   }
@@ -69,6 +85,26 @@ test('asks the API for one page with the filters', () => {
     'page=1&page_size=50&search=web&status=active&currency=CHF&sort=name',
   )
   expect(apiQuery(DEFAULT_PARAMS, false).has('page')).toBe(false)
+})
+
+test('the column filters map to the API', () => {
+  vi.useFakeTimers({ now: new Date(2026, 10, 22) })
+  const query = apiQuery({
+    ...DEFAULT_PARAMS,
+    units: ['hour'],
+    vatRates: ['8.1', '2.6'],
+    priceMin: '10',
+    priceMax: '99.50',
+    sku: 'with',
+    updated: '7d',
+  })
+  vi.useRealTimers()
+  expect(query.getAll('unit')).toEqual(['hour'])
+  expect(query.getAll('vat_rate')).toEqual(['8.1', '2.6'])
+  expect(query.get('price_min')).toBe('10')
+  expect(query.get('price_max')).toBe('99.50')
+  expect(query.get('sku')).toBe('with')
+  expect(query.get('updated_from')).toBe('2026-11-16')
 })
 
 test('an item becomes an invoice line with the price of the invoice’s VAT mode', () => {

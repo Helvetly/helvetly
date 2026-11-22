@@ -12,7 +12,15 @@ import {
 import type { ApiError } from '@/lib/api'
 import { request } from '@/lib/api'
 import type { Page } from '@/lib/clients'
-import type { Decimal, LineInput, Unit, VatCategory, VatMode } from '@/lib/invoices'
+import {
+  UNITS,
+  type Decimal,
+  type LineInput,
+  type Unit,
+  type VatCategory,
+  type VatMode,
+} from '@/lib/invoices'
+import { amountParam, SINCE_PRESETS, sinceDate, type SincePreset } from '@/lib/list-query'
 
 export type ProductType = 'product' | 'service'
 export type PriceBasis = 'net' | 'gross'
@@ -69,6 +77,13 @@ export type ListParams = {
   type: ProductType | null
   status: ProductStatus
   currencies: string[]
+  units: Unit[]
+  /** VAT rates in percent, as the API takes them ("8.1"). */
+  vatRates: string[]
+  priceMin: string | null
+  priceMax: string | null
+  sku: 'with' | 'without' | null
+  updated: SincePreset | null
   sort: SortField
   desc: boolean
 }
@@ -80,6 +95,12 @@ export const DEFAULT_PARAMS: ListParams = {
   type: null,
   status: 'active',
   currencies: [],
+  units: [],
+  vatRates: [],
+  priceMin: null,
+  priceMax: null,
+  sku: null,
+  updated: null,
   sort: 'name',
   desc: false,
 }
@@ -92,6 +113,7 @@ export function parseListParams(query: URLSearchParams): ListParams {
   const page = Number(query.get('page'))
   const type = query.get('type')
   const field = (query.get('sort') ?? '').replace(/^-/, '')
+  const sku = query.get('sku')
   return {
     page: Number.isInteger(page) && page > 0 ? page : 1,
     search: query.get('q') ?? '',
@@ -105,20 +127,51 @@ export function parseListParams(query: URLSearchParams): ListParams {
           .filter((code) => /^[A-Z]{3}$/.test(code)),
       ),
     ],
+    units: [...new Set(query.getAll('unit'))].filter((unit): unit is Unit =>
+      UNITS.some((entry) => entry.value === unit),
+    ),
+    vatRates: [...new Set(query.getAll('vat'))].filter((rate) =>
+      /^\d{1,3}(\.\d{1,2})?$/.test(rate),
+    ),
+    priceMin: amountParam(query.get('min')),
+    priceMax: amountParam(query.get('max')),
+    sku: sku === 'with' || sku === 'without' ? sku : null,
+    updated: SINCE_PRESETS.find((preset) => preset === query.get('updated')) ?? null,
     sort: isSortField(field) ? field : DEFAULT_PARAMS.sort,
     desc: isSortField(field) ? (query.get('sort') ?? '').startsWith('-') : DEFAULT_PARAMS.desc,
   }
 }
 
+const FILTER_KEYS = [
+  'page',
+  'q',
+  'type',
+  'status',
+  'currency',
+  'unit',
+  'vat',
+  'min',
+  'max',
+  'sku',
+  'updated',
+  'sort',
+]
+
 /** The list's state as URL query, leaving out defaults so links stay short. Keeps other keys. */
 export function listParamsToQuery(params: ListParams, base = new URLSearchParams()) {
   const query = new URLSearchParams(base)
-  for (const key of ['page', 'q', 'type', 'status', 'currency', 'sort']) query.delete(key)
+  for (const key of FILTER_KEYS) query.delete(key)
   if (params.page > 1) query.set('page', String(params.page))
   if (params.search) query.set('q', params.search)
   if (params.type) query.set('type', params.type)
   if (params.status !== 'active') query.set('status', params.status)
   for (const code of params.currencies) query.append('currency', code)
+  for (const unit of params.units) query.append('unit', unit)
+  for (const rate of params.vatRates) query.append('vat', rate)
+  if (params.priceMin) query.set('min', params.priceMin)
+  if (params.priceMax) query.set('max', params.priceMax)
+  if (params.sku) query.set('sku', params.sku)
+  if (params.updated) query.set('updated', params.updated)
   if (params.sort !== DEFAULT_PARAMS.sort || params.desc !== DEFAULT_PARAMS.desc)
     query.set('sort', `${params.desc ? '-' : ''}${params.sort}`)
   return query
@@ -136,6 +189,12 @@ export function apiQuery(params: ListParams, paging = true) {
   if (params.type) query.set('type', params.type)
   query.set('status', params.status)
   for (const code of params.currencies) query.append('currency', code)
+  for (const unit of params.units) query.append('unit', unit)
+  for (const rate of params.vatRates) query.append('vat_rate', rate)
+  if (params.priceMin) query.set('price_min', params.priceMin)
+  if (params.priceMax) query.set('price_max', params.priceMax)
+  if (params.sku) query.set('sku', params.sku)
+  if (params.updated) query.set('updated_from', sinceDate(params.updated))
   query.set('sort', `${params.desc ? '-' : ''}${params.sort}`)
   return query
 }

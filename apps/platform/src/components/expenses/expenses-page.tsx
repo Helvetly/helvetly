@@ -4,8 +4,6 @@ import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
-import { inputClass } from '@helvetly/ui/components/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -18,7 +16,6 @@ import {
   Download,
   FileUp,
   HandCoins,
-  ListFilter,
   PanelRightOpen,
   Paperclip,
   Pencil,
@@ -43,6 +40,8 @@ import {
   useFeatureLock,
 } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { CURRENCY_OPTIONS } from '@/components/clients/fields'
+import { activeFilters, ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
@@ -65,7 +64,6 @@ import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
 import { categoryLabel } from '@/lib/expense-categories'
 import {
   canManageExpenses,
-  DEFAULT_PARAMS,
   expensesApi,
   exportIdsUrl,
   exportUrl,
@@ -113,9 +111,6 @@ const SORTS: Partial<Record<string, SortField>> = {
   date: 'document_date',
   total: 'total',
 }
-
-const toggleIn = <T,>(list: T[], value: T) =>
-  list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
 
 const BULK_DONE: Record<BulkAction, string> = {
   book: 'booked',
@@ -190,8 +185,7 @@ export function ExpensesPage() {
 
   const rows = list.data?.data ?? []
   const meta = list.data?.meta
-  const filtered =
-    Boolean(params.search) || params.categories.length > 0 || Boolean(params.from || params.to)
+  const filtered = Boolean(params.search) || activeFilters(queryFields, params) > 0
   // A workspace without expenses gets the welcome, not a band of zeros.
   const empty = rows.length === 0 && Boolean(list.data) && !filtered && params.view === 'all'
   // Whether the workspace has any expense at all, whatever is typed in the filters: the figures show only then.
@@ -391,7 +385,7 @@ export function ExpensesPage() {
       >
         <div className="relative flex flex-1 flex-col">
           <ListToolbar>
-            <Filters params={params} onChange={update} />
+            <ListFilters fields={queryFields} params={params} onChange={update} />
             <ListSearch
               label={translate('searchExpenses')}
               placeholder={translate('searchSupplierDescriptionReferenceOrNumber')}
@@ -740,6 +734,7 @@ function useQueryFields(): QueryField<ListParams>[] {
         value: category.id,
         label: categoryLabel(category),
       })),
+      placeholder: translate('anyCategory'),
       get: (params) => params.categories,
       set: (ids) => ({ categories: ids }),
     },
@@ -747,6 +742,8 @@ function useQueryFields(): QueryField<ListParams>[] {
       id: 'from',
       label: translate('from'),
       type: 'date',
+      placeholder: translate('anyDate'),
+      until: 'to',
       ...oneValue(
         (params) => params.from,
         (from) => ({ from: from ?? '' }),
@@ -761,91 +758,52 @@ function useQueryFields(): QueryField<ListParams>[] {
         (to) => ({ to: to ?? '' }),
       ),
     },
+    {
+      id: 'currency',
+      label: translate('currency'),
+      type: 'enum',
+      values: CURRENCY_OPTIONS,
+      placeholder: translate('anyCurrency'),
+      get: (params) => params.currencies,
+      set: (currencies) => ({ currencies }),
+    },
+    {
+      id: 'min',
+      label: translate('minAmount'),
+      type: 'number',
+      placeholder: translate('minAmount'),
+      until: 'max',
+      ...oneValue(
+        (params) => params.totalMin,
+        (totalMin) => ({ totalMin }),
+      ),
+    },
+    {
+      id: 'max',
+      label: translate('maxAmount'),
+      type: 'number',
+      ...oneValue(
+        (params) => params.totalMax,
+        (totalMax) => ({ totalMax }),
+      ),
+    },
+    {
+      id: 'receipt',
+      label: translate('receipt'),
+      type: 'enum',
+      values: [
+        { value: 'attached', label: translate('withReceipt') },
+        { value: 'missing', label: translate('withoutReceipt') },
+      ],
+      placeholder: translate('anyReceipt'),
+      ...oneValue(
+        (params) => params.receipt,
+        (receipt) => ({
+          receipt: receipt === 'attached' || receipt === 'missing' ? receipt : null,
+        }),
+      ),
+    },
   ]
-}
-
-function Filters({
-  params,
-  onChange,
-}: {
-  params: ListParams
-  onChange: (change: Partial<ListParams>) => void
-}) {
-  const categories = useExpenseCategories()
-  const count = params.categories.length + (params.from || params.to ? 1 : 0)
-  const dateClass = cn(inputClass, 'cursor-text px-2 tabular-nums')
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="cursor-pointer text-title-sm font-normal">
-          <ListFilter className="stroke-[1.5]" />
-          {translate('filters')}
-          {count > 0 && (
-            <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
-              {count}
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="grid max-h-[70svh] w-80 gap-3 overflow-y-auto p-3">
-        <fieldset className="grid gap-1.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">
-            {translate('receiptDate')}
-          </legend>
-          <div className="grid grid-cols-2 gap-2 px-1">
-            <input
-              type="date"
-              aria-label={translate('from')}
-              value={params.from}
-              max={params.to || undefined}
-              onChange={(event) => onChange({ from: event.target.value })}
-              className={dateClass}
-            />
-            <input
-              type="date"
-              aria-label={translate('to3')}
-              value={params.to}
-              min={params.from || undefined}
-              onChange={(event) => onChange({ to: event.target.value })}
-              className={dateClass}
-            />
-          </div>
-        </fieldset>
-        <fieldset className="grid gap-0.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">
-            {translate('category')}
-          </legend>
-          {(categories.data ?? []).map((category) => (
-            <label
-              key={category.id}
-              className="flex h-8 cursor-pointer items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted [&_[role=checkbox]]:bg-card"
-            >
-              <Checkbox
-                checked={params.categories.includes(category.id)}
-                onCheckedChange={() =>
-                  onChange({ categories: toggleIn(params.categories, category.id) })
-                }
-              />
-              <span className="min-w-0 flex-1 truncate">{categoryLabel(category)}</span>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {category.account_code}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        {count > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="cursor-pointer justify-self-start text-muted-foreground"
-            onClick={() => onChange({ categories: DEFAULT_PARAMS.categories, from: '', to: '' })}
-          >
-            {translate('clearFilters')}
-          </Button>
-        )}
-      </PopoverContent>
-    </Popover>
-  )
 }
 
 type RowProps = {
