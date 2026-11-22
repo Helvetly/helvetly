@@ -14,6 +14,7 @@ import {
   dark,
   desktop,
   expectFooterAtTheBottom,
+  expectPaperMeetsBottomPanel,
   Frame,
   pageParameters,
   phone,
@@ -481,6 +482,15 @@ export const EditorFooterAtTheBottom: Story = {
   play: async ({ canvasElement }) => {
     const editor = await page(canvasElement).findByRole('form', { name: 'New quote' }, wait)
     await expectFooterAtTheBottom(within(editor).getByRole('article'))
+  },
+}
+
+/** No empty band between the quote's paper and the bottom panel. */
+export const EditorPaperMeetsBottomPanel: Story = {
+  parameters: quotes({ new: '1' }),
+  play: async ({ canvasElement }) => {
+    const editor = await page(canvasElement).findByRole('form', { name: 'New quote' }, wait)
+    await expectPaperMeetsBottomPanel(within(editor).getByRole('article'))
   },
 }
 

@@ -12,6 +12,7 @@ import {
   dark,
   desktop,
   expectFooterAtTheBottom,
+  expectPaperMeetsBottomPanel,
   Frame,
   pageParameters,
   phone,
@@ -153,6 +154,28 @@ export const FooterAtTheBottom: Story = {
   },
 }
 export const FooterAtTheBottomPhone = phone(FooterAtTheBottom)
+
+/** With no client chosen nothing follows the paper, so it meets the bottom panel directly. */
+export const PaperMeetsBottomPanel: Story = {
+  parameters: {
+    ...meta.parameters,
+    ...pageParameters('/invoices', { compose: 'new' }, [autosave]),
+    a11y: meta.parameters.a11y,
+  },
+  render: () => (
+    <Frame>
+      <InvoiceEditorDrawer
+        compose={{ id: null, kind: 'invoice', client: null }}
+        onClose={() => {}}
+        onCreated={() => {}}
+      />
+    </Frame>
+  ),
+  play: async () => {
+    await expectPaperMeetsBottomPanel(await within(document.body).findByRole('article'))
+    await userEvent.keyboard('{Escape}')
+  },
+}
 
 /** The preview answers the schedule's rows, as the server does: the draft's 3'134.90 in three monthly parts. */
 const instalmentPreview = {
