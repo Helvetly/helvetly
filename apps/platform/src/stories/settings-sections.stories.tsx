@@ -197,7 +197,8 @@ export const CustomNumberFormat: Story = {
     await userEvent.type(field, '-')
     await userEvent.click(placeholders.getByRole('button', { name: /{NNN}/ }))
     const year = new Date().getFullYear()
-    const preview = numbering.getByRole('status', { name: 'Next numbers' })
+    await openNextNumbers(numbering)
+    const preview = await within(document.body).findByRole('dialog')
     await waitFor(() => expect(preview).toHaveTextContent(`FV-INV-${year}-042`))
     await expect(preview).toHaveTextContent(`FV-Q-${year}-007`)
     await expect(preview).toHaveTextContent(`FV-CN-${year}-003`)
@@ -209,27 +210,19 @@ export const CustomNumberFormat: Story = {
   },
 }
 
-/** The next-number rows never overlap one another or leave the list: two columns of four on a wide screen, one on a phone. */
-async function expectRowsApart(canvasElement: HTMLElement, columns: number) {
-  const numbering = await region(canvasElement, 'Numbering')
-  const preview = await numbering.findByRole('status', { name: 'Next numbers' })
-  await waitFor(() => expect(preview).toHaveTextContent('042'))
-  const rows = [...preview.querySelectorAll('[data-slot="settings-preview-row"]')]
-  await expect(rows).toHaveLength(8)
-  const lefts = () => new Set(rows.map((row) => Math.round(row.getBoundingClientRect().left)))
-  await waitFor(() => expect(lefts().size).toBe(columns)) // the story's viewport applies after the first paint
-  const box = preview.getBoundingClientRect()
-  const rects = rows.map((row) => row.getBoundingClientRect())
-  const format = numbering.getByRole('button', { name: /Number format/ }).getBoundingClientRect()
-  expect(format.bottom).toBeLessThanOrEqual(box.top) // the list sits below the select
-  for (const [i, a] of rects.entries()) {
-    expect(a.left).toBeGreaterThanOrEqual(box.left)
-    expect(a.right).toBeLessThanOrEqual(box.right + 0.5)
-    for (const b of rects.slice(i + 1)) {
-      const apart = a.bottom <= b.top + 0.5 || b.bottom <= a.top + 0.5 || a.right <= b.left + 0.5
-      expect(apart).toBe(true)
-    }
-  }
+/** Hovering or focusing the (i) opens the next numbers; the popover is portalled, so it is read from the body. */
+async function openNextNumbers(numbering: ReturnType<typeof within>) {
+  const info = numbering.getByRole('button', { name: 'Next numbers' })
+  await userEvent.hover(info)
+  return within(await within(document.body).findByRole('dialog'))
+}
+
+/** Every type is listed on one row, label left and the whole number right, never cut off. */
+async function expectFullRows() {
+  const popover = within(await within(document.body).findByRole('dialog'))
+  await waitFor(() => expect(popover.getAllByRole('listitem')).toHaveLength(8))
+  const rows = popover.getAllByRole('listitem')
+  await waitFor(() => expect(popover.getAllByText(/042/).length).toBeGreaterThan(0))
   for (const row of rows) {
     const [label, value] = row.children
     expect(label?.getBoundingClientRect().right).toBeLessThanOrEqual(
@@ -237,26 +230,46 @@ async function expectRowsApart(canvasElement: HTMLElement, columns: number) {
     )
     expect(value?.scrollWidth).toBeLessThanOrEqual(value?.clientWidth ?? 0)
   }
+  const tops = rows.map((row) => Math.round(row.getBoundingClientRect().top))
+  await expect(new Set(tops).size).toBe(8)
 }
 
-export const NextNumbersRows: Story = {
+export const NextNumbersHover: Story = {
   parameters: {
     viewport: {
       options: { desktop: { name: 'Desktop', styles: { width: '1440px', height: '900px' } } },
     },
   },
   globals: { viewport: { value: 'desktop' } },
-  play: async ({ canvasElement }) => expectRowsApart(canvasElement, 2),
+  play: async ({ canvasElement }) => {
+    const numbering = await region(canvasElement, 'Numbering')
+    await openNextNumbers(numbering)
+    await expectFullRows()
+  },
 }
 
-export const NextNumbersRowsPhone: Story = {
+export const NextNumbersKeyboard: Story = {
+  play: async ({ canvasElement }) => {
+    const numbering = await region(canvasElement, 'Numbering')
+    numbering.getByRole('button', { name: 'Next numbers' }).focus()
+    await expectFullRows()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull())
+  },
+}
+
+export const NextNumbersPhone: Story = {
   parameters: {
     viewport: {
       options: { phone: { name: 'Phone', styles: { width: '360px', height: '780px' } } },
     },
   },
   globals: { viewport: { value: 'phone' } },
-  play: async ({ canvasElement }) => expectRowsApart(canvasElement, 1),
+  play: async ({ canvasElement }) => {
+    const numbering = await region(canvasElement, 'Numbering')
+    await userEvent.click(numbering.getByRole('button', { name: 'Next numbers' }))
+    await expectFullRows()
+  },
 }
 
 /** Discard puts the section back as saved. */
@@ -264,19 +277,24 @@ export const DiscardSection: Story = {
   play: async ({ canvasElement }) => {
     sent.length = 0
     const numbering = await region(canvasElement, 'Numbering')
-    const preview = await numbering.findByRole('status', { name: 'Next numbers' })
-    await waitFor(() => expect(preview).toHaveTextContent('042')) // the counters are read
-    const before = preview.textContent
+    const read = async () => {
+      await userEvent.hover(numbering.getByRole('button', { name: 'Next numbers' }))
+      const text = (await within(document.body).findByRole('dialog')).textContent
+      await userEvent.keyboard('{Escape}')
+      return text
+    }
+    await waitFor(async () => expect(await read()).toContain('042')) // the counters are read
+    const before = await read()
     await userEvent.click(numbering.getByRole('button', { name: /Number format/ }))
     const list = await within(document.body).findByRole('listbox')
     const options = within(list).getAllByRole('option')
     const other = options.find((option) => option.getAttribute('aria-selected') !== 'true')
     if (!other) throw new Error('Only one number format')
     await userEvent.click(other)
-    await waitFor(() => expect(preview.textContent).not.toBe(before))
+    await waitFor(async () => expect(await read()).not.toBe(before))
     await expect(numbering.getByRole('button', { name: 'Save' })).toBeEnabled()
     await userEvent.click(numbering.getByRole('button', { name: 'Discard' }))
-    await expect(preview.textContent).toBe(before)
+    await expect(await read()).toBe(before)
     await expect(numbering.queryByRole('button', { name: 'Save' })).toBeNull()
     await expect(numbering.queryByText('Unsaved changes')).toBeNull()
     await expect(sent).toHaveLength(0)
