@@ -26,7 +26,6 @@ export function ClientFilter({
           <Button
             type="button"
             variant="ghost"
-            aria-label={translate('client')}
             // The Combobox's field look, so it matches the popover's other controls.
             className={cn(
               inputClass,
@@ -34,13 +33,14 @@ export function ClientFilter({
               value && 'pr-14',
             )}
           >
+            <span className="sr-only">{translate('client')} </span>
             <span className={cn('min-w-0 flex-1 truncate', !value && 'text-muted-foreground')}>
               {value ? (client?.name ?? translate('loading')) : `${translate('anyClient')}…`}
             </span>
             <ChevronsUpDown className="text-muted-foreground" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 p-0">
+        <PopoverContent align="start" aria-label={translate('client')} className="w-72 p-0">
           <ClientSearch
             selectedId={value}
             onSelect={(picked) => {

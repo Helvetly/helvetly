@@ -6,6 +6,7 @@ import { InvoicesPage } from '@/components/invoices/invoices-page'
 import { today, type Invoice } from '@/lib/invoices'
 import { scheduledInvoice } from '@/mocks/data'
 
+import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
@@ -336,4 +337,15 @@ export const NewFromIssuedNone: Story = {
       picker.getByText('Issue an invoice first; this document always refers to one.'),
     ).toBeVisible()
   },
+}
+
+/** The Filters popover and the search's chips show the URL's filters; a pick and "Clear all" go to the URL. */
+export const Filters: Story = {
+  parameters: pageParameters('/invoices', { status: 'open', min: '100', max: '5000' }),
+  play: filtersPlay({
+    chips: ['Status: Open', 'Min. amount: 100', 'Max. amount: 5000'],
+    pick: { control: /^Status/, option: 'Paid', key: 'status', value: 'paid' },
+    cleared: ['status', 'min', 'max'],
+    count: 2,
+  }),
 }

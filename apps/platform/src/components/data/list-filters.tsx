@@ -106,13 +106,17 @@ export function ListFilters<P>({
             {translate('filters').trim()}
           </span>
           {count > 0 && (
-            <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
+            <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-caption text-primary-foreground tabular-nums">
               {count}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align={align} className="grid max-h-[75svh] w-72 gap-2 overflow-y-auto p-3">
+      <PopoverContent
+        align={align}
+        aria-label={translate('filters').trim()}
+        className="grid max-h-[75svh] w-72 gap-2 overflow-y-auto p-3"
+      >
         {shown.map((field) => {
           const own = custom?.[field.id]
           if (own) return <Fragment key={field.id}>{own}</Fragment>

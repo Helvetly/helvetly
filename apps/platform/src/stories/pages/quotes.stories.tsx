@@ -9,6 +9,7 @@ import { emailTemplateHandlers } from '@/mocks/email-templates'
 import { quoteHandlers, quotePreviewHandler, resetQuotesMock } from '@/mocks/quotes'
 
 import { sessionHandler, unavailable } from '../screen-fixtures'
+import { filtersPlay } from './filters'
 import {
   closeHeidi,
   dark,
@@ -660,4 +661,19 @@ export const ReadOnlyBulk: Story = {
     await expect(bar.getByRole('button', { name: 'Download PDFs' })).toBeVisible()
     await expect(bar.queryByRole('button', { name: /Mark|Duplicate|Delete/ })).toBeNull()
   },
+}
+
+/** The Filters popover and the search's chips show the URL's filters; a pick and "Clear all" go to the URL. */
+export const Filters: Story = {
+  parameters: quotes({ min: '100' }),
+  play: filtersPlay({
+    chips: ['Min. amount: 100'],
+    pick: {
+      control: /^Any date/,
+      option: 'This year',
+      key: 'from',
+      value: `${new Date().getFullYear()}-01-01`,
+    },
+    cleared: ['min', 'from', 'to'],
+  }),
 }
