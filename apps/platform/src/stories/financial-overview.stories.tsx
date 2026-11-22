@@ -131,7 +131,7 @@ export const KeyFiguresPeriod: Story = {
   render: () => <Dashboard />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // One view: no tabs, no "+" and no visible title; the period filter sits in the bar instead.
+    // One view: no tabs, no "+" and no visible title; the greeting and the period filter lead the page.
     await expect(await canvas.findByRole('heading', { name: 'Dashboard' })).toHaveClass('sr-only')
     await expect(canvas.queryByRole('navigation', { name: 'Views' })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('button', { name: 'Save a view' })).not.toBeInTheDocument()

@@ -4,6 +4,7 @@ import { billingFixture } from '@/components/billing/billing-fixture'
 import publicOffer from '@/components/billing/public-offer.fixture.json'
 import type { Dashboard, Session } from '@/lib/api'
 import type { Usage } from '@/lib/documents'
+import type { Summary as ExpenseSummary } from '@/lib/expenses'
 import type { Summary } from '@/lib/invoices'
 import { NOT_REQUIRED } from '@/mocks/approvals'
 import { portalAddressHandlers } from '@/mocks/portal-address'
@@ -61,6 +62,20 @@ export const unavailable = () =>
     },
     { status: 503 },
   )
+export const emptyExpenseSummary: ExpenseSummary = {
+  currency: 'CHF',
+  this_month: { amount: '0.00', count: 0 },
+  last_month: { amount: '0.00', count: 0 },
+  unpaid: { amount: '0.00', count: 0 },
+  overdue: { amount: '0.00', count: 0 },
+  to_reimburse: { amount: '0.00', count: 0 },
+  input_vat: { period: '2026-Q4', amount: '0.00' },
+  incomplete: { count: 0 },
+  by_category: [],
+  monthly: [],
+  views: { review: 0, unpaid: 0, reimburse: 0 },
+}
+
 export const screenHandlers = [
   sessionHandler(),
   ...portalAddressHandlers,
@@ -89,6 +104,7 @@ export const screenHandlers = [
   http.get('/api/v1/engagement-settings', () => HttpResponse.json({ data: { digest: false } })),
   http.get('/api/v1/engagements', () => HttpResponse.json(emptyPage)),
   http.get('/api/v1/invoices/summary', () => HttpResponse.json({ data: emptySummary })),
+  http.get('/api/v1/expenses/summary', () => HttpResponse.json({ data: emptyExpenseSummary })),
   http.get('/api/v1/invoices', () => HttpResponse.json(emptyPage)),
   http.get('/api/v1/reports/key-figures', () => HttpResponse.json(emptyDashboard)),
   // Nothing recorded, so nothing to close on the dashboard's to-do list.
