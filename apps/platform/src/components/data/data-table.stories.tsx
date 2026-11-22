@@ -228,3 +228,38 @@ export const SortsAndSelects: Story = {
     await expect(canvas.getByText('Opened: 2026/INV/002')).toBeVisible()
   },
 }
+
+/** The row menu column (48 px) holds its button without clipping it into an ellipsis. */
+export const RowMenuFits: Story = {
+  render: () => (
+    <div className="w-[900px] rounded-xl border bg-card">
+      <DataTable
+        id={`${TABLE}-menu`}
+        columns={[
+          ...COLUMNS,
+          {
+            id: 'actions',
+            header: 'Actions',
+            headerContent: <span className="sr-only">Actions</span>,
+            size: 48,
+            resizable: false,
+            cell: (row) => (
+              <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${row.number}`}>
+                ⋯
+              </Button>
+            ),
+          },
+        ]}
+        data={ROWS}
+        getRowId={(row) => row.id}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const cell = (await canvas.findByRole('button', { name: 'Actions for 2026/INV/001' }))
+      .parentElement
+    if (!cell) throw new Error('The row menu has no cell')
+    await expect(cell.scrollWidth).toBe(cell.clientWidth)
+  },
+}

@@ -49,7 +49,7 @@ export const listTable = {
   row: 'h-[58px] border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-brand-surface/60 data-attention:not-data-selected:bg-warning-surface/50',
   td: 'truncate px-3 first:pl-5 last:pr-5',
   select: 'pl-5',
-  menu: 'pr-3 text-right',
+  menu: 'pr-3 text-right last:pr-3',
   numeric: 'text-right tabular-nums',
   /** The phone list that replaces the table on narrow screens. */
   list: 'divide-y divide-border/70',
