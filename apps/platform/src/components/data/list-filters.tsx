@@ -163,84 +163,43 @@ type ControlProps<P> = {
 const labelOf = <P,>(field: QueryField<P>, value: string) =>
   field.values?.find((option) => option.value === value)?.label || value
 
-/** A clear button inside a field's right edge. */
-function ClearButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-label={translate('removeFilter', { label })}
-      onClick={onClick}
-      className="absolute top-1/2 right-8 flex size-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-    >
-      <X className="size-3.5" />
-    </button>
-  )
-}
-
 function SingleSelect<P>({ field, params, onSet }: ControlProps<P>) {
   const value = field.get(params)[0] ?? ''
   return (
-    <div className="relative">
-      <Combobox
-        value={value}
-        label={field.label}
-        options={[...(field.values ?? [])]}
-        placeholder={field.placeholder ?? field.label}
-        disabled={!field.values?.length}
-        onChange={(next) => onSet(field, [next])}
-        className={cn(value && 'pr-14')}
-      />
-      {value && (
-        <ClearButton
-          label={`${field.label}: ${labelOf(field, value)}`}
-          onClick={() => onSet(field, [])}
-        />
-      )}
-    </div>
+    <Combobox
+      value={value}
+      label={field.label}
+      options={[...(field.values ?? [])]}
+      placeholder={field.placeholder ?? field.label}
+      disabled={!field.values?.length}
+      onChange={(next) => onSet(field, [next])}
+      onClear={() => onSet(field, [])}
+      clearLabel={translate('removeFilter', { label: `${field.label}: ${labelOf(field, value)}` })}
+    />
   )
 }
 
 function MultiSelect<P>({ field, params, onSet }: ControlProps<P>) {
   const values = field.get(params)
-  const options = (field.values ?? []).filter((option) => !values.includes(option.value))
   return (
-    <div className="grid gap-1.5">
-      {values.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {values.map((value) => (
-            <span
-              key={value}
-              className="flex h-6 items-center gap-1 rounded-md bg-muted pr-0.5 pl-2 text-body-sm"
-            >
-              {labelOf(field, value)}
-              <button
-                type="button"
-                aria-label={translate('removeFilter', {
-                  label: `${field.label}: ${labelOf(field, value)}`,
-                })}
-                onClick={() =>
-                  onSet(
-                    field,
-                    values.filter((entry) => entry !== value),
-                  )
-                }
-                className="flex size-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      <Combobox
-        value=""
-        label={field.label}
-        options={options}
-        placeholder={field.placeholder ?? field.label}
-        disabled={options.length === 0}
-        onChange={(value) => onSet(field, [...values, value])}
-      />
-    </div>
+    <Combobox
+      value=""
+      values={[...values]}
+      label={field.label}
+      options={[...(field.values ?? [])]}
+      placeholder={field.placeholder ?? field.label}
+      disabled={!field.values?.length}
+      onChange={(value) =>
+        onSet(
+          field,
+          values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value],
+        )
+      }
+      onClear={() => onSet(field, [])}
+      clearLabel={translate('removeFilter', {
+        label: `${field.label}: ${values.map((value) => labelOf(field, value)).join(', ')}`,
+      })}
+    />
   )
 }
 
@@ -297,32 +256,25 @@ function DateRange<P>({
     onChange({ ...from.set(a ? [a] : [], params), ...to.set(b ? [b] : [], params) })
   return (
     <div className="grid gap-1.5">
-      <div className="relative">
-        <Combobox
-          value={own ? CUSTOM : (preset?.label ?? '')}
-          label={from.placeholder ?? from.label}
-          placeholder={from.placeholder ?? from.label}
-          options={[
-            ...presets.map((entry) => ({ value: entry.label, label: entry.label })),
-            { value: CUSTOM, label: translate('customRange') },
-          ]}
-          onChange={(value) => {
-            const picked = presets.find((entry) => entry.label === value)
-            setCustom(value === CUSTOM)
-            if (picked) range(picked.from, picked.to)
-          }}
-          className={cn((own || preset) && 'pr-14')}
-        />
-        {(own || preset) && (
-          <ClearButton
-            label={from.placeholder ?? from.label}
-            onClick={() => {
-              setCustom(false)
-              range('', '')
-            }}
-          />
-        )}
-      </div>
+      <Combobox
+        value={own ? CUSTOM : (preset?.label ?? '')}
+        label={from.placeholder ?? from.label}
+        placeholder={from.placeholder ?? from.label}
+        options={[
+          ...presets.map((entry) => ({ value: entry.label, label: entry.label })),
+          { value: CUSTOM, label: translate('customRange') },
+        ]}
+        onChange={(value) => {
+          const picked = presets.find((entry) => entry.label === value)
+          setCustom(value === CUSTOM)
+          if (picked) range(picked.from, picked.to)
+        }}
+        onClear={() => {
+          setCustom(false)
+          range('', '')
+        }}
+        clearLabel={translate('removeFilter', { label: from.placeholder ?? from.label })}
+      />
       {own && (
         <div className="grid grid-cols-2 gap-2">
           <Input
