@@ -8096,11 +8096,11 @@
           },
           "intro": {
             "type": ["string", "null"],
-            "maxLength": 1000
+            "maxLength": 800
           },
           "footer": {
             "type": ["string", "null"],
-            "maxLength": 1000
+            "maxLength": 800
           },
           "note": {
             "type": ["string", "null"],
@@ -9795,11 +9795,11 @@
           },
           "intro": {
             "type": ["string", "null"],
-            "maxLength": 1000
+            "maxLength": 800
           },
           "footer": {
             "type": ["string", "null"],
-            "maxLength": 1000
+            "maxLength": 800
           },
           "note": {
             "type": ["string", "null"],
@@ -9921,11 +9921,11 @@
           },
           "intro": {
             "type": ["string", "null"],
-            "maxLength": 1000
+            "maxLength": 800
           },
           "footer": {
             "type": ["string", "null"],
-            "maxLength": 1000
+            "maxLength": 800
           },
           "note": {
             "type": ["string", "null"],
@@ -12914,11 +12914,11 @@
           },
           "intro": {
             "type": ["string", "null"],
-            "maxLength": 1000
+            "maxLength": 800
           },
           "footer": {
             "type": ["string", "null"],
-            "maxLength": 1000
+            "maxLength": 800
           },
           "note": {
             "type": ["string", "null"],

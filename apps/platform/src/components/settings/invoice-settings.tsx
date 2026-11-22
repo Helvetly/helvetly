@@ -51,6 +51,7 @@ import {
   NativeSelect,
 } from '@/components/clients/fields'
 import { State } from '@/components/data/table-page'
+import { DOCUMENT_TEXT_MAX } from '@/components/invoices/document-parts'
 import {
   apiFieldErrors,
   UnsavedDot,
@@ -1672,11 +1673,11 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                   <TextareaBox
                     {...describe('footer')}
                     rows={3}
-                    maxLength={1000}
+                    maxLength={DOCUMENT_TEXT_MAX}
                     value={values.footer}
                     onChange={(e) => set('footer', e.target.value)}
                     placeholder={translate('eGThankYouForYourTrustPayableWithin')}
-                    max={1000}
+                    max={DOCUMENT_TEXT_MAX}
                     className="min-h-24 leading-relaxed"
                   />
                 </FormField>

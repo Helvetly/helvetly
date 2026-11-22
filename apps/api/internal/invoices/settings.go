@@ -273,7 +273,7 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 			case "number_format":
 				set.NumberFormat = p.required(k, v, maxFormatLen, parseNumberFormat, "Enter a number format, such as {YYYY}-{NNN}.")
 			case "footer":
-				set.Footer = p.text(k, v, 1000, nil)
+				set.Footer = p.text(k, v, MaxDocumentText, nil)
 			case "qr_bill_enabled", "revolut_enabled":
 				into := map[string]*bool{"qr_bill_enabled": &set.QRBillEnabled, "revolut_enabled": &set.RevolutEnabled}[k]
 				if json.Unmarshal(v, into) != nil || isNull(v) {
