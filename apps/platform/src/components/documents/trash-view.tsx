@@ -254,7 +254,6 @@ function trashColumns({
       id: 'purge',
       header: translate('deletedForGood'),
       size: 150,
-      resizable: false,
       sortable: true,
       cell: (item) => {
         if (isRetained(item.retained_until))
@@ -286,7 +285,6 @@ function trashColumns({
       header: translate('actions'),
       headerContent: <span className="sr-only">{translate('actions')}</span>,
       size: 92,
-      resizable: false,
       cell: (item) => (
         <span className="flex justify-end gap-0.5">
           {canWrite && (

@@ -720,7 +720,6 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
       id: 'status',
       header: translate('status'),
       size: 150,
-      resizable: false,
       showFrom: 720,
       cell: (row) =>
         'folder' in row ? (
@@ -735,7 +734,6 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
       headerContent: <span className="sr-only">{translate('actions')}</span>,
       // The share button and the menu.
       size: 80,
-      resizable: false,
       className:
         'pl-1 opacity-0 transition-opacity group-hover/row:opacity-100 group-data-selected/row:opacity-100 has-focus-visible:opacity-100',
       cell: (row) =>

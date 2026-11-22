@@ -293,7 +293,6 @@ function engagementColumns(
       header: translate('actions'),
       headerContent: <span className="sr-only">{translate('actions')}</span>,
       size: 48,
-      resizable: false,
       cell: (engagement) => (
         <RowMenuButton
           label={translate('actionsFor', { name: engagement.title })}

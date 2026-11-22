@@ -751,7 +751,6 @@ function quoteColumns(writable: boolean, act: RowActions): DataColumn<Quote>[] {
       id: 'status',
       header: translate('status'),
       size: 132,
-      resizable: false,
       sortable: true,
       cell: (quote) => <QuoteRowStatus quote={quote} />,
     },
@@ -760,7 +759,6 @@ function quoteColumns(writable: boolean, act: RowActions): DataColumn<Quote>[] {
       header: translate('actions'),
       headerContent: <span className="sr-only">{translate('actions')}</span>,
       size: 48,
-      resizable: false,
       cell: (quote) => (
         <RowMenuButton
           label={translate('actionsFor', { name: rowName(quote) })}

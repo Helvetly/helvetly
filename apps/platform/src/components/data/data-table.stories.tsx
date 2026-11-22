@@ -55,7 +55,7 @@ const COLUMNS: DataColumn<Row>[] = [
     sortDescFirst: true,
     cell: (row) => row.total,
   },
-  { id: 'status', header: 'Status', size: 112, resizable: false, cell: () => 'Paid' },
+  { id: 'status', header: 'Status', size: 112, cell: () => 'Paid' },
 ]
 
 function Table() {
@@ -340,13 +340,14 @@ export const KeyboardResizes: Story = {
 }
 
 /**
- * Every column but the checkbox, row menu and fixed ones has a handle: a dashed 1 px line at its
- * right edge, in a 12 px strip that takes the pointer.
+ * A handle sits between two data columns: a dashed 1 px line at the right edge of every one but the
+ * last, in a 12 px strip that takes the pointer.
  */
 export const HandlesOnlyOnResizable: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('button', { name: 'Resize Status' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Resize Amount' })).not.toBeNull()
     await expect(canvas.queryByRole('button', { name: 'Resize Select all' })).toBeNull()
     await expect(canvas.getAllByRole('button', { name: /^Resize / })).toHaveLength(4)
     const handle = resizer(canvas, 'Client')
@@ -412,7 +413,7 @@ export const ReordersByDrag: Story = {
       expect(order(canvas)).toEqual(['select', 'Due', 'Client', 'Amount', 'Status', 'Number']),
     )
     // Widths follow their columns, and resizing still changes only the dragged one.
-    await expectDragChangesOnly(canvas, 'Number', 80)
+    await expectDragChangesOnly(canvas, 'Status', 80)
     // A press on a handle never drags the header, even once the widened column brings its
     // label under the point the press began at.
     const handle = resizer(canvas, 'Due')
@@ -593,7 +594,6 @@ export const RowMenuFits: Story = {
             header: 'Actions',
             headerContent: <span className="sr-only">Actions</span>,
             size: 48,
-            resizable: false,
             cell: (row) => (
               <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${row.number}`}>
                 ⋯
@@ -615,6 +615,9 @@ export const RowMenuFits: Story = {
     const head = canvas.getByRole('columnheader', { name: 'Actions' })
     await expect(Math.round(head.getBoundingClientRect().width)).toBe(48)
     await expect(canvas.queryByRole('button', { name: 'Resize Actions' })).toBeNull()
+    // No bar at the row menu's edge: Status, the last data column, has none; Amount, before it, has.
+    await expect(canvas.queryByRole('button', { name: 'Resize Status' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Resize Amount' })).not.toBeNull()
     await expect(head.querySelector('[draggable=true]')).toBeNull()
     await expectDragChangesOnly(canvas, 'Client', -60)
     await expect(right(head)).toBe(right(head.closest('tr') ?? head))

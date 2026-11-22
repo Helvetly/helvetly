@@ -901,14 +901,12 @@ function expenseColumns(access: RowProps['access'], act: RowActions): DataColumn
       id: 'status',
       header: translate('status'),
       size: 132,
-      resizable: false,
       cell: (expense) => <ExpenseBadge expense={expense} />,
     },
     {
       id: 'receipt',
       header: translate('receipt'),
       size: 76,
-      resizable: false,
       cell: (expense) =>
         expense.receipts_count > 0 ? (
           <span
@@ -939,7 +937,6 @@ function expenseColumns(access: RowProps['access'], act: RowActions): DataColumn
       header: translate('actions'),
       headerContent: <span className="sr-only">{translate('actions')}</span>,
       size: 48,
-      resizable: false,
       cell: (expense) => (
         <RowMenuButton
           label={translate('actionsForExpense', { number: expense.number })}

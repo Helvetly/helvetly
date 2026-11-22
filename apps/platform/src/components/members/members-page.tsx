@@ -350,7 +350,6 @@ function teamColumns(
       id: 'status',
       header: translate('status'),
       size: 112,
-      resizable: false,
       cell: (row) =>
         row.kind === 'member' ? (
           <Badge tone={STATUS_TONES.member.active}>{translate('active')}</Badge>
@@ -363,7 +362,6 @@ function teamColumns(
       header: translate('actions'),
       headerContent: <span className="sr-only">{translate('actions')}</span>,
       size: 48,
-      resizable: false,
       cell: (row) => {
         const menu = actions(row)
         return menu && <RowMenuButton label={menu.label} menu={menu.menu} />
