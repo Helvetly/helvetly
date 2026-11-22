@@ -4,7 +4,7 @@
  * the `segment-on` variant (`globals.css`), so tabs (`data-state`), toggle buttons (`aria-pressed`) and radio
  * labels share it. The callers pick the display (`inline-flex`, `grid`) and, where a field sits beside it, the height.
  */
-export const segmentTrack = 'items-stretch rounded-xl bg-muted p-1'
+export const segmentTrack = 'items-stretch rounded-xl bg-muted p-1 ring-1 ring-input ring-inset'
 
 export const segmentItem =
   'relative inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-transparent px-3 text-sm whitespace-nowrap text-muted-foreground transition-colors duration-150 outline-none hover:text-foreground ' +

@@ -233,7 +233,7 @@ export function SettingsPreview({
 }: {
   label: string
   items?: { label: string; value: string }[]
-  /** A long list: rows in two columns on a wide screen, one on a phone. */
+  /** A long list: one row per item, label left and value right; two columns only when the box is wide. */
   columns?: boolean
   children?: ReactNode
 }) {
@@ -243,20 +243,32 @@ export function SettingsPreview({
       data-slot="settings-preview"
       className={cn(
         'min-h-9 rounded-lg bg-muted/60 px-3 py-2 text-body-sm text-muted-foreground',
-        columns
-          ? 'grid gap-x-8 gap-y-1 sm:grid-cols-2'
-          : 'flex flex-wrap items-center gap-x-5 gap-y-1',
+        columns ? 'block pt-0.5 pb-0' : 'flex flex-wrap items-center gap-x-5 gap-y-1',
       )}
     >
-      {items?.map((item) => (
-        <span
-          key={item.label}
-          className={cn('flex items-baseline gap-2', columns && 'justify-between')}
-        >
-          {item.label}
-          <span className="font-code text-foreground">{item.value}</span>
-        </span>
-      ))}
+      {columns ? (
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-x-8">
+          {items?.map((item) => (
+            <li
+              key={item.label}
+              data-slot="settings-preview-row"
+              className="flex items-baseline justify-between gap-4 border-b py-1.5"
+            >
+              <span className="shrink-0 whitespace-nowrap">{item.label}</span>
+              <span className="font-code min-w-0 truncate text-right text-foreground">
+                {item.value}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        items?.map((item) => (
+          <span key={item.label} className="flex items-baseline gap-2">
+            {item.label}
+            <span className="font-code text-foreground">{item.value}</span>
+          </span>
+        ))
+      )}
       {children && <span className="text-pretty">{children}</span>}
     </output>
   )
