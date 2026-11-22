@@ -94,8 +94,5 @@
   "tableNextPage": "Volgende pagina",
   "tableRange": "{from}–{to} van {total}",
   "tablePageOf": "Pagina {page} van {pages}",
-  "tableResizeColumn": "Breedte van {column} aanpassen",
-  "tableSelectRow": "Rij selecteren",
-  "tableActions": "Acties",
-  "tableResetWidths": "Kolombreedtes herstellen"
+  "tableResizeColumn": "Breedte van {column} aanpassen"
 }

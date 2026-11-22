@@ -3,14 +3,13 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   Archive,
   ArchiveRestore,
-  ArrowDown,
-  ArrowUp,
   CopyPlus,
   Download,
   ListFilter,
@@ -27,12 +26,11 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { type ComponentProps, memo, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type ComponentProps, memo, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
-import { listTable, Pager } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
@@ -43,12 +41,6 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
-import {
-  ColumnResizer,
-  ResetColumnWidths,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
@@ -97,83 +89,15 @@ const VIEWS: { label: string; icon: LucideIcon; change: Pick<ListParams, 'type' 
   { label: translate('archived'), icon: Archive, change: { type: null, status: 'archived' } },
 ]
 
-type ColumnId = 'name' | 'type' | 'sku' | 'unit' | 'price' | 'vat' | 'updated'
-type ColumnDef = {
-  id: ColumnId
-  label: string
-  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
-  width?: string
-  sort?: SortField
-  align?: 'right'
-  /** Only from a wide panel (≥72rem), where there is room. */
-  wide?: boolean
-  visible: boolean
-  cell: (product: Product) => ReactNode
+/** Which list sort each sortable column asks for. */
+const SORTS: Partial<Record<string, SortField>> = {
+  name: 'name',
+  sku: 'sku',
+  price: 'unit_price',
+  updated: 'updated_at',
 }
 
 const dash = <span className="text-muted-foreground">—</span>
-
-const COLUMNS: ColumnDef[] = [
-  {
-    id: 'name',
-    label: translate('name'),
-    sort: 'name',
-    visible: true,
-    cell: () => null,
-  },
-  {
-    id: 'type',
-    label: translate('type'),
-    width: 'w-[104px]',
-    visible: true,
-    cell: (product) => <ProductTypeBadge type={product.type} />,
-  },
-  {
-    id: 'sku',
-    label: 'SKU',
-    width: 'w-[16%]',
-    sort: 'sku',
-    visible: true,
-    cell: (product) =>
-      product.sku ? <span className="font-code break-all">{product.sku}</span> : dash,
-  },
-  {
-    id: 'unit',
-    label: translate('unit'),
-    width: 'w-[110px]',
-    wide: true,
-    visible: true,
-    cell: (product) => unitLabel(product.unit) ?? dash,
-  },
-  {
-    id: 'price',
-    label: translate('unitPrice'),
-    width: 'w-[168px]',
-    sort: 'unit_price',
-    align: 'right',
-    visible: true,
-    cell: (product) => <PriceCell product={product} />,
-  },
-  {
-    id: 'vat',
-    label: translate('vat'),
-    width: 'w-[120px]',
-    align: 'right',
-    visible: true,
-    cell: (product) => <span className="tabular-nums">{vatLabel(product)}</span>,
-  },
-  {
-    id: 'updated',
-    label: translate('updated3'),
-    width: 'w-[124px]',
-    sort: 'updated_at',
-    wide: true,
-    visible: true,
-    cell: (product) => (
-      <span className="text-muted-foreground">{formatDate(product.updated_at)}</span>
-    ),
-  },
-]
 
 function PriceCell({ product }: { product: Product }) {
   const unit = unitShort(product.unit)
@@ -194,24 +118,22 @@ function PriceCell({ product }: { product: Product }) {
 const COLUMNS_KEY = 'helvetly:products:columns'
 
 /** Which columns show: a per-browser choice, so storage may be missing. */
-function useColumns() {
-  const [hidden, setHidden] = useState<ColumnId[]>(() => {
+function useHiddenColumns() {
+  const [hidden, setHidden] = useState<string[]>(() => {
     try {
       const stored: unknown = JSON.parse(localStorage.getItem(COLUMNS_KEY) ?? 'null')
-      if (Array.isArray(stored))
-        return stored.filter((id): id is ColumnId => COLUMNS.some((column) => column.id === id))
+      if (Array.isArray(stored)) return stored.filter((id): id is string => typeof id === 'string')
     } catch {}
     return []
   })
-  const toggle = (id: ColumnId) => {
+  const toggle = (id: string) => {
     const next = hidden.includes(id) ? hidden.filter((entry) => entry !== id) : [...hidden, id]
     setHidden(next)
     try {
       localStorage.setItem(COLUMNS_KEY, JSON.stringify(next))
     } catch {}
   }
-  const visible = useMemo(() => COLUMNS.filter((column) => !hidden.includes(column.id)), [hidden])
-  return { visible, hidden, toggle }
+  return { hidden, toggle }
 }
 
 const toastError = (error: unknown) => toast.error(errorMessage(error))
@@ -225,12 +147,8 @@ function bulkMessage(result: BulkResult, verb: string) {
     : done
 }
 
-/** Every column but the checkbox and the menu. */
-const RESIZABLE = ['name', 'type', 'sku', 'unit', 'price', 'vat', 'updated']
-
 /** The catalogue: server-side search, filters, sort and paging, all kept in the URL. */
 export function ProductsPage() {
-  const widths = useResizableColumns('products', RESIZABLE, { flex: 'name' })
   const pathname = usePathname()
   const query = useSearchParams()
   const params = parseListParams(query)
@@ -251,7 +169,7 @@ export function ProductsPage() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [form, setForm] = useState<{ product?: Product } | null>(null)
   const [deleting, setDeleting] = useState<Product[] | null>(null)
-  const columns = useColumns()
+  const hiddenColumns = useHiddenColumns()
 
   const list = useProductList(params)
   const prefetch = usePrefetch(productQuery)
@@ -414,6 +332,11 @@ export function ProductsPage() {
     () => ({ open, toggle, prefetch, command: run }),
     [open, toggle, prefetch, run],
   )
+  const allColumns = useMemo(() => productColumns(access, act), [access, act])
+  const columns = useMemo(
+    () => allColumns.filter((column) => !hiddenColumns.hidden.includes(column.id)),
+    [allColumns, hiddenColumns.hidden],
+  )
 
   return (
     <>
@@ -465,19 +388,20 @@ export function ProductsPage() {
                 <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">
                   {translate('columns')}
                 </p>
-                {COLUMNS.filter((column) => column.id !== 'name').map((column) => (
-                  <label
-                    key={column.id}
-                    className="flex h-8 cursor-pointer items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted"
-                  >
-                    <Checkbox
-                      checked={!columns.hidden.includes(column.id)}
-                      onCheckedChange={() => columns.toggle(column.id)}
-                    />
-                    {column.label}
-                  </label>
-                ))}
-                <ResetColumnWidths columns={widths} />
+                {allColumns
+                  .filter((column) => column.id !== 'name' && column.id !== 'actions')
+                  .map((column) => (
+                    <label
+                      key={column.id}
+                      className="flex h-8 cursor-pointer items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted"
+                    >
+                      <Checkbox
+                        checked={!hiddenColumns.hidden.includes(column.id)}
+                        onCheckedChange={() => hiddenColumns.toggle(column.id)}
+                      />
+                      {column.header}
+                    </label>
+                  ))}
               </PopoverContent>
             </Popover>
           </ListToolbar>
@@ -557,84 +481,37 @@ export function ProductsPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
-                <thead>
-                  <tr className={listTable.head}>
-                    <th className={listTable.select}>
-                      <Checkbox
-                        aria-label={translate('selectAllItemsOnThisPage')}
-                        className="bg-card"
-                        checked={allSelected}
-                        onCheckedChange={(checked) =>
-                          setSelected(new Set(checked ? rows.map((row) => row.id) : []))
-                        }
-                      />
-                    </th>
-                    {columns.visible.map((column) => {
-                      const sorted = column.sort === params.sort
-                      return (
-                        <th
-                          key={column.id}
-                          {...widths.head(column.id)}
-                          aria-sort={
-                            sorted ? (params.desc ? 'descending' : 'ascending') : undefined
-                          }
-                          className={cn(
-                            listTable.th,
-                            column.width,
-                            column.align === 'right' && 'text-right',
-                            column.wide && 'hidden @6xl:table-cell',
-                          )}
-                        >
-                          {column.sort ? (
-                            <button
-                              type="button"
-                              onClick={() => column.sort && sortBy(column.sort)}
-                              className={cn(
-                                'inline-flex cursor-pointer items-center gap-1 uppercase hover:text-foreground',
-                                sorted && 'text-foreground',
-                              )}
-                            >
-                              {column.label}
-                              {sorted &&
-                                (params.desc ? (
-                                  <ArrowDown className="size-3.5" />
-                                ) : (
-                                  <ArrowUp className="size-3.5" />
-                                ))}
-                            </button>
-                          ) : (
-                            column.label
-                          )}
-                          {RESIZABLE.includes(column.id) && (
-                            <ColumnResizer
-                              columns={widths}
-                              column={column.id}
-                              label={column.label}
-                            />
-                          )}
-                        </th>
-                      )
-                    })}
-                    <th className={listTable.menu}>
-                      <span className="sr-only">{translate('actions')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((product) => (
-                    <ProductRow
-                      key={product.id}
-                      product={product}
-                      columns={columns.visible}
-                      selected={selected.has(product.id)}
-                      bulk={selected.has(product.id) ? selection : undefined}
-                      access={access}
-                      act={act}
-                    />
-                  ))}
-                </tbody>
-              </ResizableTable>
+              <DataTable
+                id="products"
+                className="hidden @4xl:table"
+                columns={columns}
+                data={rows}
+                getRowId={(product) => product.id}
+                sorting={{
+                  column: Object.keys(SORTS).find((column) => SORTS[column] === params.sort),
+                  desc: params.desc,
+                  onSort: (column) => {
+                    const field = SORTS[column]
+                    if (field) sortBy(field)
+                  },
+                }}
+                selection={{
+                  selected,
+                  onChange: setSelected,
+                  allLabel: translate('selectAllItemsOnThisPage'),
+                  rowLabel: (product) => translate('select', { name: product.name }),
+                }}
+                onRowClick={(product) => act.open(product.id)}
+                rowProps={(product) => ({ onPointerEnter: () => act.prefetch(product.id) })}
+                renderRow={(product, tr) => (
+                  <RowContextMenu
+                    menu={productMenu(product, access, () => act.open(product.id), act.command)}
+                    bulk={selected.has(product.id) ? selection : undefined}
+                  >
+                    {tr}
+                  </RowContextMenu>
+                )}
+              />
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((product) => (
@@ -911,64 +788,82 @@ type RowActions = {
   command: (name: ProductCommand, product: Product) => void
 }
 
-const ProductRow = memo(function ProductRow({
-  product,
-  columns,
-  selected,
-  bulk,
-  access,
-  act,
-}: RowProps & { columns: ColumnDef[] }) {
-  const menu = productMenu(product, access, () => act.open(product.id), act.command)
-  return (
-    <RowContextMenu menu={menu} bulk={bulk}>
-      <tr
-        data-selected={selected || undefined}
-        onPointerEnter={() => act.prefetch(product.id)}
-        onClick={(event) => {
-          // The row's own controls, and portalled menus React bubbles up here, do their own thing.
-          const target = event.target
-          if (
-            !(target instanceof Element) ||
-            !event.currentTarget.contains(target) ||
-            target.closest('button, a, [role=checkbox], input')
-          )
-            return
-          act.open(product.id)
-        }}
-        className={cn(listTable.row, 'cursor-pointer')}
-      >
-        <td className={listTable.select}>
-          <Checkbox
-            aria-label={translate('select', { name: product.name })}
-            className="bg-card"
-            checked={selected}
-            onCheckedChange={() => act.toggle(product.id)}
-          />
-        </td>
-        {columns.map((column) => (
-          <td
-            key={column.id}
-            className={cn(
-              listTable.td,
-              column.align === 'right' && listTable.numeric,
-              column.wide && 'hidden @6xl:table-cell',
-            )}
-          >
-            {column.id === 'name' ? (
-              <NameCell product={product} onOpen={() => act.open(product.id)} />
-            ) : (
-              column.cell(product)
-            )}
-          </td>
-        ))}
-        <td className={listTable.menu}>
-          <RowMenuButton label={translate('actionsFor', { name: product.name })} menu={menu} />
-        </td>
-      </tr>
-    </RowContextMenu>
-  )
-})
+function productColumns(access: RowProps['access'], act: RowActions): DataColumn<Product>[] {
+  return [
+    {
+      id: 'name',
+      header: translate('name'),
+      flex: true,
+      sortable: true,
+      cell: (product) => <NameCell product={product} onOpen={() => act.open(product.id)} />,
+    },
+    {
+      id: 'type',
+      header: translate('type'),
+      size: 104,
+      minSize: 96,
+      cell: (product) => <ProductTypeBadge type={product.type} />,
+    },
+    {
+      id: 'sku',
+      header: 'SKU',
+      size: 150,
+      minSize: 72,
+      sortable: true,
+      cell: (product) =>
+        product.sku ? <span className="font-code break-all">{product.sku}</span> : dash,
+    },
+    {
+      id: 'unit',
+      header: translate('unit'),
+      size: 110,
+      minSize: 72,
+      showFrom: 1100,
+      cell: (product) => unitLabel(product.unit) ?? dash,
+    },
+    {
+      id: 'price',
+      header: translate('unitPrice'),
+      size: 168,
+      minSize: 120,
+      sortable: true,
+      align: 'right',
+      cell: (product) => <PriceCell product={product} />,
+    },
+    {
+      id: 'vat',
+      header: translate('vat'),
+      size: 120,
+      minSize: 72,
+      align: 'right',
+      cell: (product) => <span className="tabular-nums">{vatLabel(product)}</span>,
+    },
+    {
+      id: 'updated',
+      header: translate('updated3'),
+      size: 124,
+      minSize: 100,
+      sortable: true,
+      showFrom: 1100,
+      cell: (product) => (
+        <span className="text-muted-foreground">{formatDate(product.updated_at)}</span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: translate('actions'),
+      headerContent: <span className="sr-only">{translate('actions')}</span>,
+      size: 48,
+      resizable: false,
+      cell: (product) => (
+        <RowMenuButton
+          label={translate('actionsFor', { name: product.name })}
+          menu={productMenu(product, access, () => act.open(product.id), act.command)}
+        />
+      ),
+    },
+  ]
+}
 
 const ProductItem = memo(function ProductItem({ product, selected, bulk, access, act }: RowProps) {
   const menu = productMenu(product, access, () => act.open(product.id), act.command)

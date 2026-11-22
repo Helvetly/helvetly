@@ -94,8 +94,5 @@
   "tableNextPage": "Nästa sida",
   "tableRange": "{from}–{to} av {total}",
   "tablePageOf": "Sida {page} av {pages}",
-  "tableResizeColumn": "Ändra bredd på {column}",
-  "tableSelectRow": "Välj rad",
-  "tableActions": "Åtgärder",
-  "tableResetWidths": "Återställ kolumnbredder"
+  "tableResizeColumn": "Ändra bredd på {column}"
 }

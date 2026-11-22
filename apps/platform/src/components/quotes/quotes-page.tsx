@@ -2,6 +2,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -25,7 +26,6 @@ import { toast } from 'sonner'
 
 import { ApprovalInbox } from '@/components/approvals/approval-inbox'
 import { useFeatureLock } from '@/components/billing/feature-lock'
-import { listTable } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
@@ -35,12 +35,6 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
-import {
-  ColumnResizer,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
-import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -98,84 +92,6 @@ const VIEWS: { status: QuoteStatus | null; label: string; icon: LucideIcon }[] =
   })),
 ]
 
-type ColumnDef = {
-  id: QuoteSortField
-  label: string
-  /** Leave it off the client column: that one takes the spare width (see `listTable`). */
-  width?: string
-  align?: 'right'
-  /** Only from a wide panel (≥72rem), where there is room. */
-  wide?: boolean
-  cell: (quote: Quote, open: (id: string) => void) => ReactNode
-  /** The cell shows what overflows it (a focus ring). */
-  overflow?: boolean
-}
-
-const COLUMNS: ColumnDef[] = [
-  {
-    id: 'number',
-    label: translate('number'),
-    width: 'w-[180px]',
-    // The row opens on click; the button makes it reachable by keyboard. It truncates itself, so
-    // the cell does not clip its focus ring.
-    cell: (quote, open) => (
-      <button
-        type="button"
-        onClick={() => open(quote.id)}
-        className={cn(
-          'max-w-full truncate rounded-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-          quote.number ? 'font-code' : 'text-muted-foreground',
-        )}
-      >
-        {quoteNumber(quote)}
-      </button>
-    ),
-    overflow: true,
-  },
-  {
-    id: 'client',
-    label: translate('client'),
-    cell: (quote) => (
-      <span className="flex min-w-0 items-center gap-2.5">
-        <Initials name={quote.client.name} />
-        <span className="truncate">{quote.client.name}</span>
-      </span>
-    ),
-  },
-  {
-    id: 'date',
-    label: translate('date'),
-    width: 'w-[128px]',
-    wide: true,
-    cell: (quote) => <span className="text-muted-foreground">{formatDay(quote.issue_date)}</span>,
-  },
-  {
-    id: 'valid',
-    label: translate('validUntil3'),
-    width: 'w-[128px]',
-    cell: (quote) => (
-      <span className={cn(quote.status !== 'sent' && 'text-muted-foreground')}>
-        {formatDay(quote.valid_until)}
-      </span>
-    ),
-  },
-  {
-    id: 'total',
-    label: translate('total'),
-    width: 'w-[17%]',
-    align: 'right',
-    cell: (quote) => <Money value={quote.payable_total} currency={quote.currency} />,
-  },
-  {
-    id: 'status',
-    label: translate('status'),
-    width: 'w-[120px]',
-    cell: (quote) => <QuoteRowStatus quote={quote} />,
-  },
-]
-
-/** Status keeps its width: badges are short and the same everywhere. */
-const RESIZABLE = ['number', 'client', 'date', 'valid', 'total']
 /** Dates and amounts start with the latest or largest; text from A. */
 const DESC_FIRST = new Set<QuoteSortField>(['date', 'valid', 'total'])
 
@@ -266,7 +182,6 @@ export function bulkActions(
 
 /** The quotes list; the status view, the search (?q=), the sort (?sort=), the open quote (?id=) and a new one (?new=1) live in the URL. */
 export function QuotesPage() {
-  const widths = useResizableColumns('quotes', RESIZABLE, { flex: 'client' })
   const canWrite = useCan('write:invoices')
   const router = useRouter()
   const pathname = usePathname()
@@ -393,6 +308,7 @@ export function QuotesPage() {
     () => ({ open, toggle, prefetch, command: run }),
     [open, toggle, prefetch, run],
   )
+  const columns = useMemo(() => quoteColumns(canWrite, act), [canWrite, act])
 
   return (
     <>
@@ -505,68 +421,40 @@ export function QuotesPage() {
             )
           ) : (
             <>
-              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
-                <thead>
-                  <tr className={listTable.head}>
-                    <th className={listTable.select}>
-                      <Checkbox
-                        aria-label={translate('selectAllQuotes')}
-                        className="bg-card"
-                        checked={allSelected}
-                        onCheckedChange={(checked) =>
-                          setSelected(new Set(checked ? rows.map((row) => row.id) : []))
-                        }
-                      />
-                    </th>
-                    {COLUMNS.map((column) => {
-                      const sorted = column.id === sort.field
-                      return (
-                        <th
-                          key={column.id}
-                          {...widths.head(column.id)}
-                          aria-sort={ariaSort(sorted, sort.desc)}
-                          className={cn(
-                            listTable.th,
-                            column.width,
-                            column.align === 'right' && 'text-right',
-                            column.wide && 'hidden @6xl:table-cell',
-                          )}
-                        >
-                          <SortButton
-                            label={column.label}
-                            sorted={sorted}
-                            desc={sort.desc}
-                            onClick={() => sortBy(column.id)}
-                          />
-                          {RESIZABLE.includes(column.id) && (
-                            <ColumnResizer
-                              columns={widths}
-                              column={column.id}
-                              label={column.label}
-                            />
-                          )}
-                        </th>
-                      )
-                    })}
-                    <th className={listTable.menu}>
-                      <span className="sr-only">{translate('actions')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((quote) => (
-                    <QuoteRow
-                      key={quote.id}
-                      quote={quote}
-                      selected={selected.has(quote.id)}
-                      bulk={selected.has(quote.id) ? selection : undefined}
-                      isOpen={quote.id === openId}
-                      writable={canWrite}
-                      act={act}
-                    />
-                  ))}
-                </tbody>
-              </ResizableTable>
+              <DataTable
+                id="quotes"
+                className="hidden @4xl:table"
+                columns={columns}
+                data={rows}
+                getRowId={(quote) => quote.id}
+                sorting={{
+                  column: sort.field,
+                  desc: sort.desc,
+                  onSort: (column) => {
+                    const field = QUOTE_SORT_FIELDS.find((entry) => entry === column)
+                    if (field) sortBy(field)
+                  },
+                }}
+                selection={{
+                  selected,
+                  onChange: setSelected,
+                  allLabel: translate('selectAllQuotes'),
+                  rowLabel: (quote) => translate('select', { name: rowName(quote) }),
+                }}
+                onRowClick={(quote) => act.open(quote.id)}
+                rowProps={(quote) => ({
+                  'data-open': quote.id === openId || undefined,
+                  onPointerEnter: () => act.prefetch(quote.id),
+                })}
+                renderRow={(quote, tr) => (
+                  <RowContextMenu
+                    menu={quoteMenu(quote, canWrite, act)}
+                    bulk={selected.has(quote.id) ? selection : undefined}
+                  >
+                    {tr}
+                  </RowContextMenu>
+                )}
+              />
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((quote) => (
@@ -664,62 +552,95 @@ type RowActions = {
 
 const rowName = (quote: Quote) => `${quoteNumber(quote)} · ${quote.client.name}`
 
-const QuoteRow = memo(function QuoteRow({
-  quote,
-  selected,
-  bulk,
-  isOpen,
-  writable,
-  act,
-}: RowProps) {
-  const menu = quoteMenu(quote, writable, act)
-  return (
-    <RowContextMenu menu={menu} bulk={bulk}>
-      <tr
-        data-selected={selected || undefined}
-        data-open={isOpen || undefined}
-        onPointerEnter={() => act.prefetch(quote.id)}
-        onClick={(event) => {
-          // Clicks on the row's own controls, and in portalled menus and dialogs, do their own thing.
-          const target = event.target
-          if (
-            !(target instanceof Element) ||
-            !event.currentTarget.contains(target) ||
-            target.closest('button, a, [role=checkbox], input')
-          )
-            return
-          act.open(quote.id)
-        }}
-        className={cn(listTable.row, 'cursor-pointer')}
-      >
-        <td className={listTable.select}>
-          <Checkbox
-            aria-label={translate('select', { name: rowName(quote) })}
-            className="bg-card"
-            checked={selected}
-            onCheckedChange={() => act.toggle(quote.id)}
-          />
-        </td>
-        {COLUMNS.map((column) => (
-          <td
-            key={column.id}
-            className={cn(
-              listTable.td,
-              column.align === 'right' && listTable.numeric,
-              column.wide && 'hidden @6xl:table-cell',
-              column.overflow && 'overflow-visible',
-            )}
-          >
-            {column.cell(quote, act.open)}
-          </td>
-        ))}
-        <td className={listTable.menu}>
-          <RowMenuButton label={translate('actionsFor', { name: rowName(quote) })} menu={menu} />
-        </td>
-      </tr>
-    </RowContextMenu>
-  )
-})
+function quoteColumns(writable: boolean, act: RowActions): DataColumn<Quote>[] {
+  return [
+    {
+      id: 'number',
+      header: translate('number'),
+      size: 180,
+      minSize: 112,
+      sortable: true,
+      // The cell shows the button's focus ring; the button truncates itself.
+      className: 'overflow-visible',
+      // The row opens on click; the button makes it reachable by keyboard.
+      cell: (quote) => (
+        <button
+          type="button"
+          onClick={() => act.open(quote.id)}
+          className={cn(
+            'max-w-full truncate rounded-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+            quote.number ? 'font-code' : 'text-muted-foreground',
+          )}
+        >
+          {quoteNumber(quote)}
+        </button>
+      ),
+    },
+    {
+      id: 'client',
+      header: translate('client'),
+      flex: true,
+      sortable: true,
+      cell: (quote) => (
+        <span className="flex min-w-0 items-center gap-2.5">
+          <Initials name={quote.client.name} />
+          <span className="truncate">{quote.client.name}</span>
+        </span>
+      ),
+    },
+    {
+      id: 'date',
+      header: translate('date'),
+      size: 128,
+      minSize: 100,
+      sortable: true,
+      showFrom: 1100,
+      cell: (quote) => <span className="text-muted-foreground">{formatDay(quote.issue_date)}</span>,
+    },
+    {
+      id: 'valid',
+      header: translate('validUntil3'),
+      size: 128,
+      minSize: 112,
+      sortable: true,
+      cell: (quote) => (
+        <span className={cn(quote.status !== 'sent' && 'text-muted-foreground')}>
+          {formatDay(quote.valid_until)}
+        </span>
+      ),
+    },
+    {
+      id: 'total',
+      header: translate('total'),
+      size: 180,
+      minSize: 112,
+      sortable: true,
+      align: 'right',
+      cell: (quote) => <Money value={quote.payable_total} currency={quote.currency} />,
+    },
+    {
+      id: 'status',
+      header: translate('status'),
+      size: 120,
+      resizable: false,
+      sortable: true,
+      cell: (quote) => <QuoteRowStatus quote={quote} />,
+    },
+    {
+      id: 'actions',
+      header: translate('actions'),
+      headerContent: <span className="sr-only">{translate('actions')}</span>,
+      size: 48,
+      resizable: false,
+      cell: (quote) => (
+        <RowMenuButton
+          label={translate('actionsFor', { name: rowName(quote) })}
+          menu={quoteMenu(quote, writable, act)}
+        />
+      ),
+    },
+  ]
+}
 
 const QuoteItem = memo(function QuoteItem({
   quote,

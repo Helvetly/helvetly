@@ -141,6 +141,7 @@ function useBoxWidth() {
  */
 export function DataTable<T extends RowData>({
   id,
+  label,
   columns,
   data,
   getRowId,
@@ -155,6 +156,8 @@ export function DataTable<T extends RowData>({
 }: {
   /** Names the stored widths: one per list. */
   id: string
+  /** The table's accessible name. */
+  label?: string
   columns: readonly DataColumn<T>[]
   data: readonly T[]
   getRowId: (row: T) => string
@@ -292,7 +295,11 @@ export function DataTable<T extends RowData>({
       ref={box}
       className={cn('overflow-x-clip transition-opacity duration-150', pending && 'opacity-60')}
     >
-      <table className={cn(listTable.table, className)} style={{ width: total }}>
+      <table
+        aria-label={label}
+        className={cn(listTable.table, className)}
+        style={{ width: total }}
+      >
         <colgroup>
           {sized.map((column) => (
             <col key={column.id} style={{ width: widths[column.id] }} />

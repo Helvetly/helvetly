@@ -4,14 +4,13 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { displayPhone } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
-  ArrowDown,
-  ArrowUp,
   CloudOff,
   Download,
   ListFilter,
@@ -27,12 +26,11 @@ import {
   Users,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { memo, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { listTable, Pager } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
@@ -42,12 +40,6 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
-import {
-  ColumnResizer,
-  ResetColumnWidths,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -87,141 +79,40 @@ import { ClientForm } from './client-form'
 import { countryName } from './client-form-model'
 import { Combobox, COUNTRY_OPTIONS } from './fields'
 
-type ColumnId = 'number' | 'name' | 'type' | 'phone' | 'city' | 'tags' | 'status' | 'created'
-type ColumnDef = {
-  /** Only from a wide panel (≥72rem), where there is room. */
-  wide?: boolean
-  id: ColumnId
-  label: string
-  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
-  width?: string
-  sort?: SortField
-  /** Shown until switched off in Customize. */
-  visible: boolean
-  cell: (client: Client) => ReactNode
+/** Which list sort each sortable column asks for. */
+const SORTS: Partial<Record<string, SortField>> = {
+  number: 'number',
+  name: 'name',
+  city: 'city',
+  created: 'created_at',
 }
-
-const COLUMNS: ColumnDef[] = [
-  {
-    id: 'number',
-    label: translate('no'),
-    width: 'w-[76px]',
-    sort: 'number',
-    visible: true,
-    cell: (client) => <span className="font-code text-muted-foreground">#{client.number}</span>,
-  },
-  {
-    id: 'name',
-    label: translate('name'),
-    sort: 'name',
-    visible: true,
-    cell: () => null,
-  },
-  {
-    id: 'type',
-    label: translate('type'),
-    width: 'w-[110px]',
-    visible: true,
-    cell: (client) => <ClientTypeBadge company={client.is_company} />,
-  },
-  {
-    id: 'phone',
-    wide: true,
-    label: translate('phone'),
-    width: 'w-[15%]',
-    visible: true,
-    cell: (client) =>
-      client.phone ? (
-        <span className="font-code">{displayPhone(client.phone)}</span>
-      ) : (
-        <span className="text-muted-foreground">—</span>
-      ),
-  },
-  {
-    id: 'city',
-    label: translate('city'),
-    width: 'w-[15%]',
-    sort: 'city',
-    visible: true,
-    cell: (client) =>
-      client.city || client.country ? (
-        <span>
-          {client.city}
-          {client.country && (
-            <span className="ml-1.5 text-xs text-muted-foreground">{client.country}</span>
-          )}
-        </span>
-      ) : (
-        <span className="text-muted-foreground">—</span>
-      ),
-  },
-  {
-    id: 'tags',
-    label: translate('tags'),
-    width: 'w-[14%]',
-    visible: false,
-    cell: (client) => (
-      <span className="flex gap-1 overflow-hidden">
-        {client.tags.map((tag) => (
-          <Badge variant="outline" size="sm" key={tag}>
-            {tag}
-          </Badge>
-        ))}
-      </span>
-    ),
-  },
-  {
-    id: 'status',
-    label: translate('status'),
-    width: 'w-[130px]',
-    visible: true,
-    cell: (client) => <ClientRowStatus client={client} />,
-  },
-  {
-    id: 'created',
-    wide: true,
-    label: translate('added3'),
-    width: 'w-[120px]',
-    sort: 'created_at',
-    visible: true,
-    cell: (client) => (
-      <span className="text-muted-foreground">{formatDate(client.created_at)}</span>
-    ),
-  },
-]
 
 const COLUMNS_KEY = 'helvetly:clients:columns'
 
 /** Which columns show: a per-browser choice, so storage may be missing. */
-function useColumns() {
-  const [hidden, setHidden] = useState<ColumnId[]>(() => {
+function useHiddenColumns() {
+  const [hidden, setHidden] = useState<string[]>(() => {
     try {
       const stored: unknown = JSON.parse(localStorage.getItem(COLUMNS_KEY) ?? 'null')
-      if (Array.isArray(stored))
-        return stored.filter((id): id is ColumnId => typeof id === 'string')
+      if (Array.isArray(stored)) return stored.filter((id): id is string => typeof id === 'string')
     } catch {}
-    return COLUMNS.filter((column) => !column.visible).map((column) => column.id)
+    return ['tags']
   })
-  const toggle = (id: ColumnId) => {
+  const toggle = (id: string) => {
     const next = hidden.includes(id) ? hidden.filter((entry) => entry !== id) : [...hidden, id]
     setHidden(next)
     try {
       localStorage.setItem(COLUMNS_KEY, JSON.stringify(next))
     } catch {}
   }
-  const visible = useMemo(() => COLUMNS.filter((column) => !hidden.includes(column.id)), [hidden])
-  return { visible, hidden, toggle }
+  return { hidden, toggle }
 }
 
 const toggleIn = <T,>(list: T[], value: T) =>
   list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
 
-/** Status keeps its width: badges are short and the same everywhere. */
-const RESIZABLE = ['number', 'name', 'type', 'phone', 'city', 'tags', 'created']
-
 /** The clients list: server-side search, filters, sort and paging, all kept in the URL. */
 export function ClientsPage() {
-  const widths = useResizableColumns('clients', RESIZABLE, { flex: 'name' })
   const pathname = usePathname()
   const query = useSearchParams()
   const params = parseListParams(query)
@@ -235,7 +126,7 @@ export function ClientsPage() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [form, setForm] = useState<{ client?: Client; focus?: 'address' } | null>(null)
   const [deleting, setDeleting] = useState<Client[] | null>(null)
-  const columns = useColumns()
+  const hiddenColumns = useHiddenColumns()
 
   const list = useClientList(params)
   const save = useSaveClient()
@@ -385,6 +276,11 @@ export function ClientsPage() {
     () => ({ open, toggle, prefetch, command: run }),
     [open, toggle, prefetch, run],
   )
+  const allColumns = useMemo(() => clientColumns(access, act), [access, act])
+  const columns = useMemo(
+    () => allColumns.filter((column) => !hiddenColumns.hidden.includes(column.id)),
+    [allColumns, hiddenColumns.hidden],
+  )
 
   return (
     <>
@@ -430,19 +326,20 @@ export function ClientsPage() {
                 <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">
                   {translate('columns')}
                 </p>
-                {COLUMNS.filter((column) => column.id !== 'name').map((column) => (
-                  <label
-                    key={column.id}
-                    className="flex h-8 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted"
-                  >
-                    <Checkbox
-                      checked={!columns.hidden.includes(column.id)}
-                      onCheckedChange={() => columns.toggle(column.id)}
-                    />
-                    {column.label === 'No.' ? translate('number') : column.label}
-                  </label>
-                ))}
-                <ResetColumnWidths columns={widths} />
+                {allColumns
+                  .filter((column) => column.id !== 'name' && column.id !== 'actions')
+                  .map((column) => (
+                    <label
+                      key={column.id}
+                      className="flex h-8 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted"
+                    >
+                      <Checkbox
+                        checked={!hiddenColumns.hidden.includes(column.id)}
+                        onCheckedChange={() => hiddenColumns.toggle(column.id)}
+                      />
+                      {column.id === 'number' ? translate('number') : column.header}
+                    </label>
+                  ))}
               </PopoverContent>
             </Popover>
           </ListToolbar>
@@ -511,83 +408,37 @@ export function ClientsPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
-                <thead>
-                  <tr className={listTable.head}>
-                    <th className={listTable.select}>
-                      <Checkbox
-                        aria-label={translate('selectAllClientsOnThisPage')}
-                        className="bg-card"
-                        checked={allSelected}
-                        onCheckedChange={(checked) =>
-                          setSelected(new Set(checked ? rows.map((row) => row.id) : []))
-                        }
-                      />
-                    </th>
-                    {columns.visible.map((column) => {
-                      const sorted = column.sort === params.sort
-                      return (
-                        <th
-                          key={column.id}
-                          {...widths.head(column.id)}
-                          aria-sort={
-                            sorted ? (params.desc ? 'descending' : 'ascending') : undefined
-                          }
-                          className={cn(
-                            listTable.th,
-                            column.width,
-                            column.wide && 'hidden @6xl:table-cell',
-                          )}
-                        >
-                          {column.sort ? (
-                            <button
-                              type="button"
-                              onClick={() => column.sort && sortBy(column.sort)}
-                              className={cn(
-                                'inline-flex items-center gap-1 uppercase hover:text-foreground',
-                                sorted && 'text-foreground',
-                              )}
-                            >
-                              {column.label}
-                              {sorted &&
-                                (params.desc ? (
-                                  <ArrowDown className="size-3.5" />
-                                ) : (
-                                  <ArrowUp className="size-3.5" />
-                                ))}
-                            </button>
-                          ) : (
-                            column.label
-                          )}
-                          {RESIZABLE.includes(column.id) && (
-                            <ColumnResizer
-                              columns={widths}
-                              column={column.id}
-                              label={column.label}
-                            />
-                          )}
-                        </th>
-                      )
-                    })}
-                    <th className={listTable.menu}>
-                      <span className="sr-only">{translate('actions')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((client) => (
-                    <ClientRow
-                      key={client.id}
-                      client={client}
-                      columns={columns.visible}
-                      selected={selected.has(client.id)}
-                      bulk={selected.has(client.id) ? selection : undefined}
-                      access={access}
-                      act={act}
-                    />
-                  ))}
-                </tbody>
-              </ResizableTable>
+              <DataTable
+                id="clients"
+                className="hidden @4xl:table"
+                columns={columns}
+                data={rows}
+                getRowId={(client) => client.id}
+                sorting={{
+                  column: Object.keys(SORTS).find((column) => SORTS[column] === params.sort),
+                  desc: params.desc,
+                  onSort: (column) => {
+                    const field = SORTS[column]
+                    if (field) sortBy(field)
+                  },
+                }}
+                selection={{
+                  selected,
+                  onChange: setSelected,
+                  allLabel: translate('selectAllClientsOnThisPage'),
+                  rowLabel: (client) => translate('select', { name: client.name }),
+                }}
+                onRowClick={(client) => act.open(client.id)}
+                rowProps={(client) => ({ onPointerEnter: () => act.prefetch(client.id) })}
+                renderRow={(client, tr) => (
+                  <RowContextMenu
+                    menu={clientMenu(client, access, () => act.open(client.id), act.command)}
+                    bulk={selected.has(client.id) ? selection : undefined}
+                  >
+                    {tr}
+                  </RowContextMenu>
+                )}
+              />
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((client) => (
@@ -979,58 +830,109 @@ type RowActions = {
   command: (name: ClientCommand, client: Client) => void
 }
 
-const ClientRow = memo(function ClientRow({
-  client,
-  columns,
-  selected,
-  bulk,
-  access,
-  act,
-}: RowProps & { columns: ColumnDef[] }) {
-  const menu = clientMenu(client, access, () => act.open(client.id), act.command)
-  return (
-    <RowContextMenu menu={menu} bulk={bulk}>
-      <tr
-        data-selected={selected || undefined}
-        onPointerEnter={() => act.prefetch(client.id)}
-        onClick={(event) => {
-          // Clicks on the row's own controls do their own thing, and so do clicks in portalled
-          // menus and dialogs, which React bubbles up to here although they're elsewhere.
-          const target = event.target
-          if (
-            !(target instanceof Element) ||
-            !event.currentTarget.contains(target) ||
-            target.closest('button, a, [role=checkbox], input')
-          )
-            return
-          act.open(client.id)
-        }}
-        className={cn(listTable.row, 'cursor-pointer')}
-      >
-        <td className={listTable.select}>
-          <Checkbox
-            aria-label={translate('select', { name: client.name })}
-            className="bg-card"
-            checked={selected}
-            onCheckedChange={() => act.toggle(client.id)}
-          />
-        </td>
-        {columns.map((column) => (
-          <td key={column.id} className={cn(listTable.td, column.wide && 'hidden @6xl:table-cell')}>
-            {column.id === 'name' ? (
-              <NameCell client={client} onOpen={() => act.open(client.id)} />
-            ) : (
-              column.cell(client)
+function clientColumns(access: RowProps['access'], act: RowActions): DataColumn<Client>[] {
+  return [
+    {
+      id: 'number',
+      header: translate('no'),
+      size: 76,
+      minSize: 56,
+      sortable: true,
+      cell: (client) => <span className="font-code text-muted-foreground">#{client.number}</span>,
+    },
+    {
+      id: 'name',
+      header: translate('name'),
+      flex: true,
+      sortable: true,
+      cell: (client) => <NameCell client={client} onOpen={() => act.open(client.id)} />,
+    },
+    {
+      id: 'type',
+      header: translate('type'),
+      size: 110,
+      minSize: 96,
+      cell: (client) => <ClientTypeBadge company={client.is_company} />,
+    },
+    {
+      id: 'phone',
+      header: translate('phone'),
+      size: 150,
+      minSize: 96,
+      showFrom: 1100,
+      cell: (client) =>
+        client.phone ? (
+          <span className="font-code">{displayPhone(client.phone)}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: 'city',
+      header: translate('city'),
+      size: 160,
+      minSize: 88,
+      sortable: true,
+      cell: (client) =>
+        client.city || client.country ? (
+          <span>
+            {client.city}
+            {client.country && (
+              <span className="ml-1.5 text-xs text-muted-foreground">{client.country}</span>
             )}
-          </td>
-        ))}
-        <td className={listTable.menu}>
-          <RowMenuButton label={translate('actionsFor', { name: client.name })} menu={menu} />
-        </td>
-      </tr>
-    </RowContextMenu>
-  )
-})
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: 'tags',
+      header: translate('tags'),
+      size: 150,
+      minSize: 80,
+      cell: (client) => (
+        <span className="flex gap-1 overflow-hidden">
+          {client.tags.map((tag) => (
+            <Badge variant="outline" size="sm" key={tag}>
+              {tag}
+            </Badge>
+          ))}
+        </span>
+      ),
+    },
+    {
+      id: 'status',
+      header: translate('status'),
+      size: 160,
+      resizable: false,
+      cell: (client) => <ClientRowStatus client={client} />,
+    },
+    {
+      id: 'created',
+      header: translate('added3'),
+      size: 120,
+      minSize: 100,
+      sortable: true,
+      showFrom: 1100,
+      cell: (client) => (
+        <span className="text-muted-foreground">{formatDate(client.created_at)}</span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: translate('actions'),
+      headerContent: <span className="sr-only">{translate('actions')}</span>,
+      size: 48,
+      resizable: false,
+      cell: (client) => (
+        <RowMenuButton
+          label={translate('actionsFor', { name: client.name })}
+          menu={clientMenu(client, access, () => act.open(client.id), act.command)}
+        />
+      ),
+    },
+  ]
+}
 
 const ClientItem = memo(function ClientItem({ client, selected, bulk, access, act }: RowProps) {
   const menu = clientMenu(client, access, () => act.open(client.id), act.command)

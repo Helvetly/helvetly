@@ -4,14 +4,13 @@ import { locale, localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@helvetly/ui/components/dropdown-menu'
 import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowDown,
-  ArrowUp,
   CloudOff,
   Download,
   FileDown,
@@ -28,7 +27,6 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import {
   type ComponentProps,
   memo,
-  type ReactNode,
   useEffect,
   useContext,
   useEffectEvent,
@@ -44,7 +42,6 @@ import {
   unlessLocked,
   useFeatureLock,
 } from '@/components/billing/feature-lock'
-import { listTable, Pager } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
@@ -54,11 +51,6 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
-import {
-  ColumnResizer,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -158,15 +150,13 @@ export function datePresets(day = today()) {
 const toggleIn = <T,>(list: T[], value: T) =>
   list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
 
-type ColumnDef = {
-  id: string
-  label: string
-  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
-  width?: string
-  sort?: SortField
-  align?: 'right'
-  wide?: boolean
-  cell: (invoice: InvoiceListItem) => ReactNode
+/** Which list sort each sortable column asks for. */
+const SORTS: Partial<Record<string, SortField>> = {
+  number: 'number',
+  client: 'client',
+  issued: 'issue_date',
+  due: 'due_date',
+  total: 'total',
 }
 
 function DueCell({ invoice }: { invoice: InvoiceListItem }) {
@@ -198,93 +188,113 @@ function DueCell({ invoice }: { invoice: InvoiceListItem }) {
   )
 }
 
-const COLUMNS: ColumnDef[] = [
-  {
-    id: 'number',
-    label: translate('number'),
-    width: 'w-[128px]',
-    sort: 'number',
-    cell: (invoice) => (
-      <span className="grid leading-tight">
-        <span className="flex items-center gap-1.5">
-          <InvoiceNumber invoice={invoice} />
-          <PaymentMarks methods={invoice.payment_methods} />
-        </span>
-        {invoice.kind === 'credit_note' && (
-          <span className="text-caption text-muted-foreground">{translate('creditNote2')}</span>
-        )}
-      </span>
-    ),
-  },
-  {
-    id: 'client',
-    label: translate('client'),
-    sort: 'client',
-    cell: (invoice) => (
-      <span className="flex min-w-0 items-center gap-2.5">
-        <Initials name={invoice.client.name} />
-        <span className="truncate">{invoice.client.name}</span>
-      </span>
-    ),
-  },
-  {
-    id: 'issued',
-    label: translate('issued4'),
-    width: 'w-[128px]',
-    sort: 'issue_date',
-    wide: true,
-    cell: (invoice) => (
-      <span className="text-muted-foreground">{formatDay(invoice.issue_date)}</span>
-    ),
-  },
-  {
-    id: 'due',
-    label: translate('due'),
-    width: 'w-[128px]',
-    sort: 'due_date',
-    cell: (invoice) => <DueCell invoice={invoice} />,
-  },
-  {
-    id: 'total',
-    label: translate('amount'),
-    width: 'w-[17%]',
-    sort: 'total',
-    align: 'right',
-    cell: (invoice) => (
-      <span className="grid justify-items-end leading-tight">
-        <Money
-          value={invoice.payable_total}
-          currency={invoice.currency}
-          negative={isNegativeKind(invoice.kind)}
-        />
-        {/* Less due than the amount: partly paid or credited. */}
-        {invoice.status === 'open' && invoice.amount_due !== invoice.payable_total && (
-          <span className="text-caption text-muted-foreground tabular-nums">
-            {formatAmount(invoice.amount_due)}
-            {translate('due6')}
+function invoiceColumns(access: boolean, act: RowActions): DataColumn<InvoiceListItem>[] {
+  return [
+    {
+      id: 'number',
+      header: translate('number'),
+      size: 128,
+      minSize: 96,
+      sortable: true,
+      cell: (invoice) => (
+        <span className="grid leading-tight">
+          <span className="flex items-center gap-1.5">
+            <InvoiceNumber invoice={invoice} />
+            <PaymentMarks methods={invoice.payment_methods} />
           </span>
-        )}
-      </span>
-    ),
-  },
-  {
-    id: 'status',
-    label: translate('status'),
-    width: 'w-[112px]',
-    cell: (invoice) => (
-      <span className="flex flex-wrap items-center gap-1.5">
-        <RowStatus invoice={invoice} />
-      </span>
-    ),
-  },
-]
-
-/** Status keeps its width: badges are short and the same everywhere. */
-const RESIZABLE = ['number', 'client', 'issued', 'due', 'total']
+          {invoice.kind === 'credit_note' && (
+            <span className="text-caption text-muted-foreground">{translate('creditNote2')}</span>
+          )}
+        </span>
+      ),
+    },
+    {
+      id: 'client',
+      header: translate('client'),
+      flex: true,
+      sortable: true,
+      cell: (invoice) => (
+        <span className="flex min-w-0 items-center gap-2.5">
+          <Initials name={invoice.client.name} />
+          <span className="truncate">{invoice.client.name}</span>
+        </span>
+      ),
+    },
+    {
+      id: 'issued',
+      header: translate('issued4'),
+      size: 128,
+      minSize: 100,
+      sortable: true,
+      showFrom: 1100,
+      cell: (invoice) => (
+        <span className="text-muted-foreground">{formatDay(invoice.issue_date)}</span>
+      ),
+    },
+    {
+      id: 'due',
+      header: translate('due'),
+      size: 128,
+      minSize: 112,
+      sortable: true,
+      cell: (invoice) => <DueCell invoice={invoice} />,
+    },
+    {
+      id: 'total',
+      header: translate('amount'),
+      size: 180,
+      minSize: 112,
+      sortable: true,
+      align: 'right',
+      cell: (invoice) => (
+        <span className="grid justify-items-end leading-tight">
+          <Money
+            value={invoice.payable_total}
+            currency={invoice.currency}
+            negative={isNegativeKind(invoice.kind)}
+          />
+          {/* Less due than the amount: partly paid or credited. */}
+          {invoice.status === 'open' && invoice.amount_due !== invoice.payable_total && (
+            <span className="text-caption text-muted-foreground tabular-nums">
+              {formatAmount(invoice.amount_due)}
+              {translate('due6')}
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      id: 'status',
+      header: translate('status'),
+      size: 112,
+      resizable: false,
+      cell: (invoice) => (
+        <span className="flex flex-wrap items-center gap-1.5">
+          <RowStatus invoice={invoice} />
+        </span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: translate('actions'),
+      headerContent: <span className="sr-only">{translate('actions')}</span>,
+      size: 48,
+      resizable: false,
+      cell: (invoice) => (
+        <RowMenuButton
+          label={translate('actionsFor2', {
+            value1: invoice.number ?? translate('draft4'),
+            name: invoice.client.name,
+          })}
+          menu={invoiceMenu(invoice, access, act.command)}
+        />
+      ),
+    },
+  ]
+}
 
 /** The invoices list: server-side search, filters, sort and paging, all kept in the URL. */
 export function InvoicesPage() {
-  const widths = useResizableColumns('invoices', RESIZABLE, { flex: 'client' })
   const canWrite = useCan('write:invoices')
   const importDrawer = useImportDrawer()
   const pathname = usePathname()
@@ -431,6 +441,7 @@ export function InvoicesPage() {
     () => ({ open, toggle, prefetch, command: run }),
     [open, toggle, prefetch, run],
   )
+  const columns = useMemo(() => invoiceColumns(canManage, act), [canManage, act])
   const pageItems = ({ Item }: MenuKit) => (
     <>
       {canWrite && (
@@ -578,85 +589,45 @@ export function InvoicesPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
-                <thead>
-                  <tr className={listTable.head}>
-                    <th className={listTable.select}>
-                      <Checkbox
-                        aria-label={translate('selectAllInvoicesOnThisPage')}
-                        className="bg-card"
-                        checked={allSelected}
-                        onCheckedChange={(checked) =>
-                          setSelected(new Set(checked ? rows.map((row) => row.id) : []))
-                        }
-                      />
-                    </th>
-                    {COLUMNS.map((column) => {
-                      const sorted = column.sort === params.sort
-                      const resizable = RESIZABLE.includes(column.id)
-                      return (
-                        <th
-                          key={column.id}
-                          {...widths.head(column.id)}
-                          aria-sort={
-                            sorted ? (params.desc ? 'descending' : 'ascending') : undefined
-                          }
-                          className={cn(
-                            listTable.th,
-                            column.width,
-                            column.align === 'right' && 'text-right',
-                            column.wide && 'hidden @6xl:table-cell',
-                          )}
-                        >
-                          {column.sort ? (
-                            <button
-                              type="button"
-                              onClick={() => column.sort && sortBy(column.sort)}
-                              className={cn(
-                                'inline-flex items-center gap-1 uppercase hover:text-foreground',
-                                sorted && 'text-foreground',
-                              )}
-                            >
-                              {column.label}
-                              {sorted &&
-                                (params.desc ? (
-                                  <ArrowDown className="size-3.5" />
-                                ) : (
-                                  <ArrowUp className="size-3.5" />
-                                ))}
-                            </button>
-                          ) : (
-                            column.label
-                          )}
-                          {resizable && (
-                            <ColumnResizer
-                              columns={widths}
-                              column={column.id}
-                              label={column.label}
-                            />
-                          )}
-                        </th>
-                      )
-                    })}
-                    <th className={listTable.menu}>
-                      <span className="sr-only">{translate('actions')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((invoice) => (
-                    <InvoiceRow
-                      key={invoice.id}
-                      invoice={invoice}
-                      selected={selected.has(invoice.id)}
-                      bulk={selected.has(invoice.id) ? selection : undefined}
-                      isOpen={invoice.id === openId}
-                      access={canManage}
-                      act={act}
-                    />
-                  ))}
-                </tbody>
-              </ResizableTable>
+              <DataTable
+                id="invoices"
+                className="hidden @4xl:table"
+                columns={columns}
+                data={rows}
+                getRowId={(invoice) => invoice.id}
+                sorting={{
+                  column: Object.keys(SORTS).find((column) => SORTS[column] === params.sort),
+                  desc: params.desc,
+                  onSort: (column) => {
+                    const field = SORTS[column]
+                    if (field) sortBy(field)
+                  },
+                }}
+                selection={{
+                  selected,
+                  onChange: setSelected,
+                  allLabel: translate('selectAllInvoicesOnThisPage'),
+                  rowLabel: (invoice) =>
+                    translate('selectFor', {
+                      value1: invoice.number ?? translate('draft4'),
+                      name: invoice.client.name,
+                    }),
+                }}
+                onRowClick={(invoice) => act.open(invoice.id)}
+                rowProps={(invoice) => ({
+                  'data-attention': displayStatus(invoice) === 'overdue' || undefined,
+                  'data-open': invoice.id === openId || undefined,
+                  onPointerEnter: () => act.prefetch(invoice.id),
+                })}
+                renderRow={(invoice, tr) => (
+                  <RowContextMenu
+                    menu={invoiceMenu(invoice, canManage, act.command)}
+                    bulk={selected.has(invoice.id) ? selection : undefined}
+                  >
+                    {tr}
+                  </RowContextMenu>
+                )}
+              />
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((invoice) => (
@@ -1042,72 +1013,6 @@ type RowActions = {
   prefetch: (id: string) => void
   command: (name: InvoiceCommand, invoice: InvoiceListItem) => void
 }
-
-const InvoiceRow = memo(function InvoiceRow({
-  invoice,
-  selected,
-  bulk,
-  isOpen,
-  access,
-  act,
-}: RowProps) {
-  const menu = invoiceMenu(invoice, access, act.command)
-  return (
-    <RowContextMenu menu={menu} bulk={bulk}>
-      <tr
-        data-selected={selected || undefined}
-        data-attention={displayStatus(invoice) === 'overdue' || undefined}
-        onPointerEnter={() => act.prefetch(invoice.id)}
-        data-open={isOpen || undefined}
-        onClick={(event) => {
-          // Clicks on the row's own controls, and in portalled menus, do their own thing.
-          const target = event.target
-          if (
-            !(target instanceof Element) ||
-            !event.currentTarget.contains(target) ||
-            target.closest('button, a, [role=checkbox], input')
-          )
-            return
-          act.open(invoice.id)
-        }}
-        className={cn(listTable.row, 'cursor-pointer')}
-      >
-        <td className={listTable.select}>
-          <Checkbox
-            aria-label={translate('selectFor', {
-              value1: invoice.number ?? translate('draft4'),
-              name: invoice.client.name,
-            })}
-            className="bg-card"
-            checked={selected}
-            onCheckedChange={() => act.toggle(invoice.id)}
-          />
-        </td>
-        {COLUMNS.map((column) => (
-          <td
-            key={column.id}
-            className={cn(
-              listTable.td,
-              column.align === 'right' && listTable.numeric,
-              column.wide && 'hidden @6xl:table-cell',
-            )}
-          >
-            {column.cell(invoice)}
-          </td>
-        ))}
-        <td className={listTable.menu}>
-          <RowMenuButton
-            label={translate('actionsFor2', {
-              value1: invoice.number ?? translate('draft4'),
-              name: invoice.client.name,
-            })}
-            menu={menu}
-          />
-        </td>
-      </tr>
-    </RowContextMenu>
-  )
-})
 
 const InvoiceItem = memo(function InvoiceItem({ invoice, selected, bulk, access, act }: RowProps) {
   const menu = invoiceMenu(invoice, access, act.command)

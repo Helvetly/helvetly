@@ -3,6 +3,7 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
 import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
@@ -32,7 +33,6 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
-import { listTable, Pager } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
@@ -43,12 +43,6 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
-import {
-  ResizableHead,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
-import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -178,20 +172,98 @@ const TitleCell = ({ engagement }: { engagement: Engagement }) => (
   </span>
 )
 
-const HEADERS = [
-  ['engagement', translate('engagement2'), ''],
-  ['period', translate('period'), 'w-[17%]'],
-  ['progress', translate('progress'), 'w-[20%]'],
-  ['remaining', translate('remaining'), 'w-[10%] text-right'],
-  ['billing', translate('billing'), 'w-[10%]'],
-  ['attention', translate('attention'), 'w-[17%]'],
-] as const
-const RESIZABLE = HEADERS.map(([id]) => id)
-
 /** The columns the API sorts by, and what the header of each one asks for first. */
 const SORTS = ['ends', 'title'] as const
 const DEFAULT_SORT: Sort<(typeof SORTS)[number]> = { field: 'ends', desc: false }
-const SORT_COLUMN = { engagement: 'title', period: 'ends' } as const
+const SORT_COLUMN: Partial<Record<string, (typeof SORTS)[number]>> = {
+  engagement: 'title',
+  period: 'ends',
+}
+
+function engagementColumns(
+  open: (engagement: Engagement) => void,
+  menu: (engagement: Engagement) => RowMenuSpec,
+): DataColumn<Engagement>[] {
+  return [
+    {
+      id: 'engagement',
+      header: translate('engagement2'),
+      flex: true,
+      sortable: true,
+      cell: (engagement) => (
+        <button
+          type="button"
+          onClick={() => open(engagement)}
+          className="block w-full cursor-pointer text-left"
+        >
+          <TitleCell engagement={engagement} />
+        </button>
+      ),
+    },
+    {
+      id: 'period',
+      header: translate('period'),
+      size: 170,
+      minSize: 120,
+      sortable: true,
+      cell: (engagement) => <PeriodCell engagement={engagement} />,
+    },
+    {
+      id: 'progress',
+      header: translate('progress'),
+      size: 200,
+      minSize: 120,
+      cell: (engagement) =>
+        engagement.current_period ? (
+          <ProgressBar period={engagement.current_period} unit={engagement.unit} />
+        ) : (
+          dash
+        ),
+    },
+    {
+      id: 'remaining',
+      header: translate('remaining'),
+      size: 112,
+      minSize: 96,
+      align: 'right',
+      cell: (engagement) => <RemainingCell engagement={engagement} />,
+    },
+    {
+      id: 'billing',
+      header: translate('billing'),
+      size: 112,
+      minSize: 88,
+      cell: (engagement) => (
+        <BillingLabel engagement={{ ...engagement, billing: billingOf(engagement) }} />
+      ),
+    },
+    {
+      id: 'attention',
+      header: translate('attention'),
+      size: 170,
+      minSize: 120,
+      cell: (engagement) =>
+        engagement.attention.length ? (
+          <AttentionBadges attention={engagement.attention} />
+        ) : (
+          <EngagementStatusBadge status={engagement.status} />
+        ),
+    },
+    {
+      id: 'actions',
+      header: translate('actions'),
+      headerContent: <span className="sr-only">{translate('actions')}</span>,
+      size: 48,
+      resizable: false,
+      cell: (engagement) => (
+        <RowMenuButton
+          label={translate('actionsFor', { name: engagement.title })}
+          menu={menu(engagement)}
+        />
+      ),
+    },
+  ]
+}
 
 type Command = 'log' | 'edit' | 'renew' | 'cancel' | 'resume' | 'delete'
 type Access = { canWrite: boolean; canManage: boolean }
@@ -286,77 +358,6 @@ type RowProps = {
   onOpen: () => void
   onToggle: () => void
   onPrefetch: () => void
-}
-
-function EngagementRow({
-  engagement,
-  selected,
-  bulk,
-  menu,
-  onOpen,
-  onToggle,
-  onPrefetch,
-}: RowProps) {
-  return (
-    <RowContextMenu menu={menu} bulk={bulk}>
-      <tr
-        data-selected={selected || undefined}
-        onPointerEnter={onPrefetch}
-        onClick={(event) => {
-          // The row's own controls, and portalled menus React bubbles up here, do their own thing.
-          const target = event.target
-          if (
-            !(target instanceof Element) ||
-            !event.currentTarget.contains(target) ||
-            target.closest('button, a, [role=checkbox], input')
-          )
-            return
-          onOpen()
-        }}
-        className={cn(listTable.row, 'cursor-pointer')}
-      >
-        <td className={listTable.select}>
-          <Checkbox
-            aria-label={translate('select', { name: engagement.title })}
-            className="bg-card"
-            checked={selected}
-            onCheckedChange={onToggle}
-          />
-        </td>
-        <td className={listTable.td}>
-          <button type="button" onClick={onOpen} className="block w-full cursor-pointer text-left">
-            <TitleCell engagement={engagement} />
-          </button>
-        </td>
-        <td className={listTable.td}>
-          <PeriodCell engagement={engagement} />
-        </td>
-        <td className={listTable.td}>
-          {engagement.current_period ? (
-            <ProgressBar period={engagement.current_period} unit={engagement.unit} />
-          ) : (
-            dash
-          )}
-        </td>
-        <td className={cn(listTable.td, listTable.numeric)}>
-          <RemainingCell engagement={engagement} />
-        </td>
-        <td className={listTable.td}>
-          <BillingLabel engagement={{ ...engagement, billing: billingOf(engagement) }} />
-        </td>
-        <td className={listTable.td}>
-          {engagement.attention.length ? (
-            <AttentionBadges attention={engagement.attention} />
-          ) : (
-            <EngagementStatusBadge status={engagement.status} />
-          )}
-        </td>
-        <td className={listTable.menu}>
-          <RowMenuButton label={translate('actionsFor', { name: engagement.title })} menu={menu} />
-        </td>
-      </tr>
-    </RowContextMenu>
-  )
 }
 
 function EngagementItem({
@@ -458,7 +459,6 @@ function useMenu(filters: EngagementQuery) {
 
 /** The work you committed to per client: server-side views, search and paging. */
 export function EngagementsPage() {
-  const widths = useResizableColumns('engagements', RESIZABLE, { flex: 'engagement' })
   const canWrite = useCan('write:engagements')
   const importDrawer = useImportDrawer()
   const pathname = usePathname()
@@ -739,53 +739,42 @@ export function EngagementsPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
-                <thead>
-                  <tr className={listTable.head}>
-                    <th className={listTable.select}>
-                      <Checkbox
-                        aria-label={translate('selectAllItemsOnThisPage')}
-                        className="bg-card"
-                        checked={allSelected}
-                        onCheckedChange={(checked) =>
-                          setSelected(new Set(checked ? rows.map((row) => row.id) : []))
-                        }
-                      />
-                    </th>
-                    {HEADERS.map(([id, label, width]) => {
-                      const field = id === 'engagement' || id === 'period' ? SORT_COLUMN[id] : null
-                      const sorted = field === sort.field
-                      return (
-                        <ResizableHead
-                          key={id}
-                          columns={widths}
-                          column={id}
-                          label={label}
-                          className={cn(listTable.th, width)}
-                          aria-sort={field ? ariaSort(sorted, sort.desc) : undefined}
-                        >
-                          {field ? (
-                            <SortButton
-                              label={label}
-                              sorted={sorted}
-                              desc={sort.desc}
-                              onClick={() => sortBy(field)}
-                            />
-                          ) : undefined}
-                        </ResizableHead>
-                      )
-                    })}
-                    <th className={listTable.menu}>
-                      <span className="sr-only">{translate('actions')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((engagement) => (
-                    <EngagementRow key={engagement.id} {...rowProps(engagement)} />
-                  ))}
-                </tbody>
-              </ResizableTable>
+              <DataTable
+                id="engagements"
+                className="hidden @4xl:table"
+                columns={engagementColumns(
+                  (engagement) => openEngagement(engagement.id),
+                  (engagement) => rowProps(engagement).menu,
+                )}
+                data={rows}
+                getRowId={(engagement) => engagement.id}
+                sorting={{
+                  column: Object.keys(SORT_COLUMN).find(
+                    (column) => SORT_COLUMN[column] === sort.field,
+                  ),
+                  desc: sort.desc,
+                  onSort: (column) => {
+                    const field = SORT_COLUMN[column]
+                    if (field) sortBy(field)
+                  },
+                }}
+                selection={{
+                  selected,
+                  onChange: setSelected,
+                  allLabel: translate('selectAllItemsOnThisPage'),
+                  rowLabel: (engagement) => translate('select', { name: engagement.title }),
+                }}
+                onRowClick={(engagement) => openEngagement(engagement.id)}
+                rowProps={(engagement) => ({ onPointerEnter: () => prefetch(engagement.id) })}
+                renderRow={(engagement, tr) => {
+                  const { menu, bulk } = rowProps(engagement)
+                  return (
+                    <RowContextMenu menu={menu} bulk={bulk}>
+                      {tr}
+                    </RowContextMenu>
+                  )
+                }}
+              />
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((engagement) => (

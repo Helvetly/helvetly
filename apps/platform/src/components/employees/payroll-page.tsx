@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@helvetly/ui/components/button'
+import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Switch } from '@helvetly/ui/components/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
@@ -18,14 +19,7 @@ import {
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
-import { listTable } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
-import {
-  ResizableHead,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
-import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -287,83 +281,27 @@ function EntryList({
   onOpen: (id: string) => void
 }) {
   const entries = sortRows(unsorted, (entry) => sortValue(entry, sort.field), sort.desc)
-  const head = (field: SortField, label: string) => (
-    <SortButton
-      label={label}
-      sorted={sort.field === field}
-      desc={sort.desc}
-      onClick={() => onSort(field)}
-    />
-  )
-  // The amounts share what is left; the first of them keeps the room when the others grow.
-  const widths = useResizableColumns('payroll', ['employee', 'period'], { flex: AMOUNTS[0][0] })
   return (
     <>
-      <ResizableTable columns={widths} className={cn(listTable.table, 'hidden lg:table')}>
-        <thead>
-          <tr className={listTable.head}>
-            <ResizableHead
-              columns={widths}
-              column="employee"
-              label={translate('payrollColEmployee')}
-              aria-sort={ariaSort(sort.field === 'employee', sort.desc)}
-              className={cn(listTable.th, 'w-[17%]')}
-            >
-              {head('employee', translate('payrollColEmployee'))}
-            </ResizableHead>
-            <ResizableHead
-              columns={widths}
-              column="period"
-              label={translate('payrollColPeriod')}
-              aria-sort={ariaSort(sort.field === 'period', sort.desc)}
-              className={cn(listTable.th, 'w-[15%]')}
-            >
-              {head('period', translate('payrollColPeriod'))}
-            </ResizableHead>
-            {AMOUNTS.map(([key, label]) => (
-              <th
-                key={key}
-                data-column={key}
-                aria-sort={ariaSort(sort.field === key, sort.desc)}
-                className={cn(listTable.th, listTable.numeric)}
-              >
-                {head(key, label)}
-              </th>
-            ))}
-            <th className={cn(listTable.th, 'w-[15%]')}>{translate('employeeStatusLabel')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry) => (
-            <tr
-              key={entry.id}
-              data-superseded={entry.superseded_by ? true : undefined}
-              className={cn(listTable.row, 'data-superseded:text-muted-foreground')}
-            >
-              <td className={listTable.td}>
-                <button
-                  type="button"
-                  onClick={() => onOpen(entry.id)}
-                  className="cursor-pointer truncate text-left hover:underline"
-                >
-                  {entry.employee_name}
-                </button>
-              </td>
-              <td className={cn(listTable.td, 'tabular-nums')}>
-                {entry.period_start.slice(5)} – {entry.period_end.slice(5)}
-              </td>
-              {AMOUNTS.map(([key]) => (
-                <td key={key} className={cn(listTable.td, listTable.numeric)}>
-                  {formatPay(entry[key], entry.currency)}
-                </td>
-              ))}
-              <td className={listTable.td}>
-                <EntryStatus entry={entry} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </ResizableTable>
+      <DataTable
+        id="payroll"
+        className="hidden lg:table"
+        columns={entryColumns(onOpen)}
+        data={entries}
+        getRowId={(entry) => entry.id}
+        sorting={{
+          column: sort.field,
+          desc: sort.desc,
+          onSort: (column) => {
+            const field = SORT_FIELDS.find((entry) => entry === column)
+            if (field) onSort(field)
+          },
+        }}
+        rowProps={(entry) => ({
+          'data-superseded': entry.superseded_by ? true : undefined,
+          className: 'data-superseded:text-muted-foreground',
+        })}
+      />
       <ul className={cn(listTable.list, 'lg:hidden')}>
         {entries.map((entry) => (
           <li key={entry.id}>
@@ -388,4 +326,49 @@ function EntryList({
       </ul>
     </>
   )
+}
+
+function entryColumns(onOpen: (id: string) => void): DataColumn<PayrollEntry>[] {
+  return [
+    {
+      id: 'employee',
+      header: translate('payrollColEmployee'),
+      flex: true,
+      sortable: true,
+      cell: (entry) => (
+        <button
+          type="button"
+          onClick={() => onOpen(entry.id)}
+          className="cursor-pointer truncate text-left hover:underline"
+        >
+          {entry.employee_name}
+        </button>
+      ),
+    },
+    {
+      id: 'period',
+      header: translate('payrollColPeriod'),
+      size: 124,
+      minSize: 100,
+      sortable: true,
+      className: 'tabular-nums',
+      cell: (entry) => `${entry.period_start.slice(5)} – ${entry.period_end.slice(5)}`,
+    },
+    ...AMOUNTS.map(([key, label]): DataColumn<PayrollEntry> => ({
+      id: key,
+      header: label,
+      size: 128,
+      resizable: false,
+      sortable: true,
+      align: 'right',
+      cell: (entry) => formatPay(entry[key], entry.currency),
+    })),
+    {
+      id: 'status',
+      header: translate('employeeStatusLabel'),
+      size: 132,
+      resizable: false,
+      cell: (entry) => <EntryStatus entry={entry} />,
+    },
+  ]
 }

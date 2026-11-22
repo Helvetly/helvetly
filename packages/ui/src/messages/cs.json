@@ -94,8 +94,5 @@
   "tableNextPage": "Další stránka",
   "tableRange": "{from}–{to} z {total}",
   "tablePageOf": "Stránka {page} z {pages}",
-  "tableResizeColumn": "Změnit šířku sloupce {column}",
-  "tableSelectRow": "Vybrat řádek",
-  "tableActions": "Akce",
-  "tableResetWidths": "Obnovit šířky sloupců"
+  "tableResizeColumn": "Změnit šířku sloupce {column}"
 }

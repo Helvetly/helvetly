@@ -94,8 +94,5 @@
   "tableNextPage": "Nächste Seite",
   "tableRange": "{from}–{to} von {total}",
   "tablePageOf": "Seite {page} von {pages}",
-  "tableResizeColumn": "Breite von {column} ändern",
-  "tableSelectRow": "Zeile auswählen",
-  "tableActions": "Aktionen",
-  "tableResetWidths": "Spaltenbreiten zurücksetzen"
+  "tableResizeColumn": "Breite von {column} ändern"
 }

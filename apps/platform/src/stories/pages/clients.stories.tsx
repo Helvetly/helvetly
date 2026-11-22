@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
 
 import { ClientsPage } from '@/components/clients/clients-page'
-import { columnWidthsKey } from '@/lib/column-widths'
 
 import { ringClipper } from '../focus-ring'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
@@ -183,12 +182,17 @@ function drag(handle: HTMLElement, dx: number) {
   fireEvent.pointerUp(window, { clientX: x + dx, clientY: y, pointerId: 1 })
 }
 
+const WIDTHS_KEY = 'helvetly.table.clients.columns'
+
 const widthOf = (element: Element) => Math.round(element.getBoundingClientRect().width)
 const whole = (badge: HTMLElement) => badge.scrollWidth <= badge.clientWidth
 
-/** Name narrows when dragged left, the row stays full, and badge columns stop with their badges whole. */
+/**
+ * Name gives way when another column widens, the row stays full, badge columns stop with their
+ * badges whole, and the widths are kept per column in this browser.
+ */
 export const ResizeColumns: Story = {
-  beforeEach: () => localStorage.removeItem(columnWidthsKey('clients')),
+  beforeEach: () => localStorage.removeItem(WIDTHS_KEY),
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     const name = await body.findByRole('columnheader', { name: 'Name' }, { timeout: 8000 })
@@ -197,7 +201,7 @@ export const ResizeColumns: Story = {
     const scroller = table?.parentElement
     const before = widthOf(name)
 
-    await drag(body.getByRole('slider', { name: 'Resize Name' }), -60)
+    await drag(body.getByRole('slider', { name: 'Resize City' }), 60)
     await waitFor(() => expect(widthOf(name)).toBe(before - 60))
     await expect(scroller?.scrollWidth).toBe(scroller?.clientWidth)
 
@@ -216,10 +220,13 @@ export const ResizeColumns: Story = {
     await expect(widthOf(type)).toBe(least)
 
     // Name stops where its avatar and "Changes pending" still fit.
-    await drag(body.getByRole('slider', { name: 'Resize Name' }), -1000)
-    await waitFor(() => expect(widthOf(name)).toBeLessThan(before))
+    await drag(body.getByRole('slider', { name: 'Resize City' }), 1000)
+    await waitFor(() => expect(widthOf(name)).toBeLessThan(before - 60))
     await expect(badges.filter((badge) => !whole(badge))).toEqual([])
     await expect(scroller?.scrollWidth).toBe(scroller?.clientWidth)
+
+    const stored: unknown = JSON.parse(localStorage.getItem(WIDTHS_KEY) ?? 'null')
+    await expect(stored).toEqual({ city: expect.any(Number), type: least })
   },
 }
 export const ResizeColumnsDark = dark(ResizeColumns)

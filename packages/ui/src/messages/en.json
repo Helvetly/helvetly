@@ -94,8 +94,5 @@
   "tableNextPage": "Next page",
   "tableRange": "{from}–{to} of {total}",
   "tablePageOf": "Page {page} of {pages}",
-  "tableResizeColumn": "Resize {column}",
-  "tableSelectRow": "Select row",
-  "tableActions": "Actions",
-  "tableResetWidths": "Reset column widths"
+  "tableResizeColumn": "Resize {column}"
 }
