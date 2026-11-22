@@ -73,7 +73,7 @@ export const Empty: Story = {
   play: async ({ canvasElement }) => {
     await openPicker(canvasElement)
     await expect(await body.findByText('Your catalogue is empty.')).toBeVisible()
-    await expect(body.getByRole('option', { name: 'Add to catalogue' })).toBeVisible()
+    await expect(await body.findByRole('option', { name: 'Add to catalogue' })).toBeVisible()
   },
 }
 
