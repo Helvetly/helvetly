@@ -227,7 +227,7 @@ func (s *Service) email(ctx context.Context, sess store.Session, id, kind, descr
 	from := sess.User.Name + " <" + sess.User.Email + ">"
 	text := fmt.Sprintf("%s from %s\nWorkspace: %s (%s)\nPage: %s\nReport: %s\n\n%s\n", label, from, sess.Workspace.Name, sess.Workspace.ID, pagePath, id, description)
 	m := mail.Message{To: []string{s.to}, ReplyTo: sess.User.Email, Subject: label + ": " + summary(description), Text: text,
-		HTML: "<pre style=\"white-space:pre-wrap;font:inherit\">" + html.EscapeString(text) + "</pre>"}
+		HTML: "<p>" + strings.ReplaceAll(html.EscapeString(text), "\n", "<br>\n") + "</p>"}
 	for _, shot := range shots {
 		m.Attachments = append(m.Attachments, mail.Attachment{Name: shot.name, ContentType: shot.contentType, Data: shot.data})
 	}
