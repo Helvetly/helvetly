@@ -1,5 +1,4 @@
 'use client'
-import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
@@ -9,12 +8,11 @@ import { Switch } from '@helvetly/ui/components/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, CircleCheck, FolderInput, FolderPlus, X } from 'lucide-react'
+import { ArrowRight, CircleCheck, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
-import { inputClass } from '@/components/clients/fields'
 import { FileIcon } from '@/components/import/import-files'
 import { errorMessage } from '@/lib/api'
 import {
@@ -26,6 +24,8 @@ import {
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { pathLabel } from '@/lib/system-folders'
+
+import { FolderCombobox, folderProblem } from './folder-combobox'
 
 /** Every folder's path ("Invoices/2025"), lower-cased, to tell a proposed folder that exists from a new one. */
 export function folderPaths(folders: Folder[]): Set<string> {
@@ -141,66 +141,48 @@ export function OrganizeDrawer({
     )
 
   /** A row's proposed folder (editable) and tags (removable), with the reason. */
-  const proposed = (row: Row, isNew: boolean) => (
-    <div className="grid gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          {isNew ? (
-            <FolderPlus
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-heidi"
+  const proposed = (row: Row) => {
+    const problem = folderProblem(row.folderInput, existing)
+    return (
+      <div className="grid gap-1.5">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <FolderCombobox
+              folders={folders ?? []}
+              value={row.folderInput}
+              label={translate('organizeFolderFor', { name: row.name })}
+              invalid={problem !== null}
+              onChange={(path) => setFolder(row.document_id, path)}
             />
-          ) : (
-            <FolderInput
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-          )}
-          <input
-            aria-label={translate('organizeFolderFor', {
-              name: row.name,
-            })}
-            value={row.folderInput}
-            placeholder={translate('organizeTopLevel')}
-            onChange={(event) => setFolder(row.document_id, event.target.value)}
-            className={cn(inputClass, 'pl-8')}
-          />
+          </div>
         </div>
-        {isNew && (
-          <Badge tone="violet" size="sm">
-            {translate('organizeNewFolder')}
-          </Badge>
-        )}
-      </div>
-      {pathLabel(row.folderInput) !== row.folderInput && (
-        // The field keeps the canonical path the server matches; this is how it reads in the user's language.
-        <p className="truncate pl-1 text-caption text-muted-foreground">
-          {shownPath(row.folderInput)}
-        </p>
-      )}
-      <div className="flex flex-wrap items-center gap-1">
-        {row.tags.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-0.5 rounded-full bg-muted py-0.5 pr-1 pl-2 text-caption"
-          >
-            {tag}
-            <button
-              type="button"
-              aria-label={translate('organizeRemoveTag', { tag })}
-              onClick={() => removeTag(row.document_id, tag)}
-              className="grid size-4 place-items-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+        {problem && <p className="pl-1 text-caption text-destructive">{problem}</p>}
+        <div className="flex flex-wrap items-center gap-1">
+          {row.tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-0.5 rounded-full bg-muted py-0.5 pr-1 pl-2 text-caption"
             >
-              <X aria-hidden className="size-3" />
-            </button>
-          </span>
-        ))}
-        {row.reason && (
-          <span className="ml-1 text-caption text-pretty text-muted-foreground">{row.reason}</span>
-        )}
+              {tag}
+              <button
+                type="button"
+                aria-label={translate('organizeRemoveTag', { tag })}
+                onClick={() => removeTag(row.document_id, tag)}
+                className="grid size-4 place-items-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+              >
+                <X aria-hidden className="size-3" />
+              </button>
+            </span>
+          ))}
+          {row.reason && (
+            <span className="ml-1 text-caption text-pretty text-muted-foreground">
+              {row.reason}
+            </span>
+          )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <Sheet open onOpenChange={(next) => !next && onClose()}>
@@ -319,8 +301,6 @@ export function OrganizeDrawer({
                     </thead>
                     <tbody className="divide-y">
                       {shown.map((row) => {
-                        const target = row.folderInput.trim().replace(/^\/+|\/+$/g, '')
-                        const isNew = target !== '' && !existing.has(target.toLowerCase())
                         return (
                           <tr
                             key={row.document_id}
@@ -345,7 +325,7 @@ export function OrganizeDrawer({
                             <td className="px-0 py-2.5 text-muted-foreground">
                               <ArrowRight aria-hidden className="size-4" />
                             </td>
-                            <td className="min-w-80 px-2 py-2.5">{proposed(row, isNew)}</td>
+                            <td className="min-w-80 px-2 py-2.5">{proposed(row)}</td>
                           </tr>
                         )
                       })}
