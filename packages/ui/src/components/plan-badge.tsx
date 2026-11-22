@@ -17,7 +17,7 @@ const isPlan = (plan: string | undefined): plan is PlanId => plan !== undefined 
 
 /**
  * The one plan label: "Business", "🔒 Pro", "Included in Business". `locked` adds the lock; the icon is the
- * label's size and colour. An unknown or missing plan is shown as Basic's neutral tone.
+ * label's size and colour, kept even inside containers that size every svg (the sidebar). An unknown or missing plan is shown as Basic's neutral tone.
  */
 function PlanBadge({
   plan,
@@ -32,7 +32,7 @@ function PlanBadge({
       data-slot="plan-badge"
       data-plan={id}
       className={cn(
-        'inline-flex h-5 w-fit max-w-full shrink-0 items-center gap-1 rounded-md border border-(color:--plan-line) bg-(color:--plan-bg) px-1.5 text-caption font-medium whitespace-nowrap text-(color:--plan-ink) [&>svg]:size-3 [&>svg]:shrink-0 [&>svg]:text-current',
+        'inline-flex h-5 w-fit max-w-full shrink-0 items-center gap-1 rounded-md border border-(color:--plan-line) bg-(color:--plan-bg) px-1.5 text-caption font-medium whitespace-nowrap text-(color:--plan-ink) [&>svg]:size-3! [&>svg]:shrink-0 [&>svg]:text-current',
         PLAN_VARS[id],
         className,
       )}
