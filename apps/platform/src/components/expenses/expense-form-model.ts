@@ -183,6 +183,13 @@ const filledLines = (values: FormValues) =>
   )
 
 /**
+ * Whether each line carries its own name (items, or one amount per VAT rate on several lines); one amount on one line
+ * is described by the expense's "What for". The API's `items` missing field holds the same rule.
+ */
+export const namesLines = (values: Pick<FormValues, 'entry_mode' | 'lines'>) =>
+  values.entry_mode === 'itemised' || values.lines.length > 1
+
+/**
  * Errors the person can fix before saving. `booking` also requires what booking needs; dates are
  * compared as civil dates, so `today` is the workspace's (YYYY-MM-DD).
  */
@@ -230,6 +237,12 @@ export function validate(values: FormValues, today: string, booking: boolean): F
     if (!values.category_id) errors.category_id = translate('chooseACategoryToBook')
     if (!lines.some((line) => Number(parseDecimalInput(line.amount, 2) ?? 0) > 0))
       errors['lines.0.amount'] ??= translate('enterTheAmountToBook')
+    if (!namesLines(values)) {
+      if (!values.description.trim()) errors.description = translate('enterWhatItWasForToBook')
+    } else
+      for (const line of lines)
+        if (!line.description.trim())
+          errors[`lines.${values.lines.indexOf(line)}.description`] = translate('nameTheItemToBook')
   }
   return errors
 }
