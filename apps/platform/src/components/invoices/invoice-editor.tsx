@@ -45,7 +45,6 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 import { toast } from 'sonner'
@@ -53,7 +52,7 @@ import { toast } from 'sonner'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { Combobox, CURRENCY_OPTIONS } from '@/components/clients/fields'
 import { State } from '@/components/data/table-page'
-import { RecordLink } from '@/components/record-link'
+import { RecordLink, useOpenHref } from '@/components/record-link'
 import { LetterheadLogo } from '@/components/settings/logo-upload'
 import { PercentInput } from '@/components/shared/percent-input'
 import { ApiError, errorMessage } from '@/lib/api'
@@ -342,9 +341,9 @@ function Planned({ invoice, onClose }: { invoice: Invoice; onClose: () => void }
           text={translate('thePlanIssuesOnePartialInvoicePerInstalmentFrom')}
           action={
             <Button asChild size="sm">
-              <Link href={`/invoices?id=${encodeURIComponent(invoice.id)}`}>
+              <RecordLink inPlace href={`/invoices?id=${encodeURIComponent(invoice.id)}`}>
                 {translate('openTheDraft')}
-              </Link>
+              </RecordLink>
             </Button>
           }
         />
@@ -363,9 +362,9 @@ function Locked({ invoice, onClose }: { invoice: Invoice; onClose: () => void })
         text={translate('issuedDocumentsCanTChangeToCorrectItCreate')}
         action={
           <Button asChild size="sm">
-            <Link href={`/invoices?id=${encodeURIComponent(invoice.id)}`}>
+            <RecordLink inPlace href={`/invoices?id=${encodeURIComponent(invoice.id)}`}>
               {translate('openTheInvoice')}
-            </Link>
+            </RecordLink>
           </Button>
         }
       />
@@ -390,7 +389,7 @@ function Editor({
   onClose: () => void
   onCreated: (id: string) => void
 }) {
-  const router = useRouter()
+  const showInPlace = useOpenHref(true)
   const kind = invoice?.kind ?? newKind
   const [values, setValues] = useState<EditorValues>(() =>
     invoice
@@ -683,7 +682,7 @@ function Editor({
         toast.success(translate('issued2', { value1: documentName(issued) }))
         // Straight to the credited invoice with the refund dialog open (?refund=1).
         const credited = issued.credited_invoice?.id
-        router.push(
+        showInPlace(
           thenRefund && credited
             ? `/invoices?id=${encodeURIComponent(credited)}&refund=1`
             : `/invoices?id=${encodeURIComponent(issued.id)}`,
@@ -1431,7 +1430,7 @@ function Editor({
           settings={settings}
           firstDue={values.due_date}
           onClose={() => setPlanning(false)}
-          onCreated={() => router.push(`/invoices?id=${encodeURIComponent(draftId)}`)}
+          onCreated={() => showInPlace(`/invoices?id=${encodeURIComponent(draftId)}`)}
         />
       )}
 

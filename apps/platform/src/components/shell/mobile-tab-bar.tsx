@@ -5,11 +5,11 @@ import { useSidebar } from '@helvetly/ui/components/sidebar'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Menu, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState, type ComponentType, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { useHeidi } from '@/components/heidi/heidi-provider'
+import { useOpenHref } from '@/components/record-link'
 import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { useScopes } from '@/lib/permissions'
@@ -122,7 +122,7 @@ function TabButton({
 
 /** "+": the records this person may create, and Heidi, in a sheet from the bottom. */
 function CreateSheet({ onClose }: { onClose: () => void }) {
-  const router = useRouter()
+  const openHref = useOpenHref()
   const scopes = useScopes()
   const billing = useBilling().data
   const heidi = useHeidi()
@@ -154,7 +154,7 @@ function CreateSheet({ onClose }: { onClose: () => void }) {
               key={label}
               icon={<Icon />}
               onClick={go(() =>
-                href ? router.push(href) : toast(translate('isComingSoon', { label: label })),
+                href ? openHref(href) : toast(translate('isComingSoon', { label: label })),
               )}
             >
               {label}

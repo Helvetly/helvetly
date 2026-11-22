@@ -19,7 +19,7 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { memo, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -47,6 +47,7 @@ import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Initials } from '@/components/initials'
 import { Money } from '@/components/invoices/invoice-bits'
+import { useOpenHref } from '@/components/record-link'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -268,7 +269,7 @@ export function bulkActions(
 export function QuotesPage() {
   const widths = useResizableColumns('quotes', RESIZABLE, { flex: 'client' })
   const canWrite = useCan('write:invoices')
-  const router = useRouter()
+  const openHref = useOpenHref()
   const pathname = usePathname()
   const query = useSearchParams()
   const queryClient = useQueryClient()
@@ -328,7 +329,7 @@ export function QuotesPage() {
     },
     onOpen: openQuote,
     onDeleted: (quote) => quote.id === openId && openQuote(null),
-    onInvoice: (invoice) => router.push(`/invoices?id=${encodeURIComponent(invoice)}`),
+    onInvoice: (invoice) => openHref(`/invoices?id=${encodeURIComponent(invoice)}`),
   })
 
   // Search waits for a pause in typing, then goes to the URL.

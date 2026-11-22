@@ -45,7 +45,7 @@ function Actions({ actions }: { actions: HeidiAction[] }) {
       case 'list_overdue_invoices':
         return router.push('/invoices?status=overdue&kind=invoice')
       case 'create_invoice':
-        return router.push('/invoices/new')
+        return openHref('/invoices/new')
       case 'send_invoice':
         return setSending(action)
     }

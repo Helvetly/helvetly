@@ -6,6 +6,10 @@ import { Children, memo, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
+import { parseRecordHref, RecordLink } from '@/components/record-link'
+
+const LINK = 'underline decoration-heidi/40 underline-offset-2 hover:decoration-heidi'
+
 const WORD_TONES: Record<string, Tone> = STATUS_TONES.word
 
 const NUMBER = /^[-+]?(CHF\s?)?[\d'’.,\s]+%?$/
@@ -57,15 +61,17 @@ const components: Components = {
   hr: () => <hr className="my-4 border-border" />,
   // Model text may follow instructions planted in a file: an image would load (and leak its URL) without a click.
   img: ({ alt }) => <>{alt}</>,
-  a: ({ children, href }) => (
-    <a
-      href={localizedHref(href)}
-      rel="noopener noreferrer"
-      className="underline decoration-heidi/40 underline-offset-2 hover:decoration-heidi"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ children, href }) =>
+    // A link to one of our records or forms opens its drawer over the page, like everywhere else.
+    href?.startsWith('/') && !href.startsWith('//') && parseRecordHref(href) ? (
+      <RecordLink href={href} className={LINK}>
+        {children}
+      </RecordLink>
+    ) : (
+      <a href={localizedHref(href)} rel="noopener noreferrer" className={LINK}>
+        {children}
+      </a>
+    ),
   code: ({ children, className }) => {
     const text = textOf(children)
     const tone = WORD_TONES[text.toLowerCase()]

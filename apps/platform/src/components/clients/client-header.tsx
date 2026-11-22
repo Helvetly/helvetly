@@ -34,7 +34,7 @@ import { dropdownKit } from '@/components/data/menus'
 import { ImportItem } from '@/components/import/import-button'
 import { initialsOf } from '@/components/initials'
 import { newInvoiceHref } from '@/components/invoices/compose'
-import { RecordPageButton } from '@/components/record-link'
+import { RecordLink, RecordPageButton } from '@/components/record-link'
 import type { Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 
@@ -189,10 +189,10 @@ export function ClientHeader({
           </Tip>
           <div className="flex items-center">
             <Button asChild className={cn(onImportInvoices && 'rounded-r-none')}>
-              <a href={localizedHref(newInvoiceHref(client.id))}>
+              <RecordLink href={newInvoiceHref(client.id)}>
                 <FilePlus2 className="size-3.5" />
                 {translate('newInvoice2')}
-              </a>
+              </RecordLink>
             </Button>
             {onImportInvoices && (
               <DropdownMenu>

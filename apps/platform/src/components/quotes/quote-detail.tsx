@@ -16,7 +16,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check, Download, Ellipsis, ExternalLink, Pencil, ReceiptText, Send, X } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 
 import {
@@ -29,7 +28,7 @@ import { dropdownKit } from '@/components/data/menus'
 import { Money } from '@/components/invoices/invoice-bits'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { HeroFact, RecordHero } from '@/components/invoices/record-hero'
-import { RecordLink } from '@/components/record-link'
+import { RecordLink, useOpenHref } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import { useApproval } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
@@ -126,14 +125,14 @@ function Detail({
   onClose: () => void
   onEdit: () => void
 }) {
-  const router = useRouter()
+  const openHref = useOpenHref()
   const writable = useCan('write:invoices')
   const [pages, setPages] = useState<number | null>(null)
   const commands = useQuoteCommands({
     onEdit,
-    onOpen: (copy) => router.push(`/quotes?id=${encodeURIComponent(copy)}`),
+    onOpen: (copy) => openHref(`/quotes?id=${encodeURIComponent(copy)}`),
     onDeleted: onClose,
-    onInvoice: (invoice) => router.push(`/invoices?id=${encodeURIComponent(invoice)}`),
+    onInvoice: (invoice) => openHref(`/invoices?id=${encodeURIComponent(invoice)}`),
   })
   const can = quoteCommands(quote)
   const primary = writable ? primaryCommand(quote) : null

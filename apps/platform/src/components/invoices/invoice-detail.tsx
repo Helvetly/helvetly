@@ -55,7 +55,7 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import { dropdownKit } from '@/components/data/menus'
 import { useMarkSent } from '@/components/invoices/invoice-dialogs'
 import { HeroFact, HeroLink, RecordHero } from '@/components/invoices/record-hero'
-import { RecordPageButton } from '@/components/record-link'
+import { RecordLink, RecordPageButton } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import { useInvoiceApproval, type Approval } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
@@ -432,10 +432,10 @@ function Detail({
             </DropdownMenu>
             {invoice.status === 'draft' && invoice.plan?.seq !== 0 && (
               <Button asChild variant="outline" className="gap-1.5">
-                <Link href={editHref(invoice.id)}>
+                <RecordLink inPlace href={editHref(invoice.id)}>
                   <Pencil className="size-3.5" />
                   {translate('edit4')}
-                </Link>
+                </RecordLink>
               </Button>
             )}
             {gated ? (

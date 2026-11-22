@@ -140,7 +140,7 @@ export function CommandPalette({
               <CommandItem
                 key={label}
                 onSelect={run(() =>
-                  href ? router.push(href) : toast(translate('isComingSoon', { label: label })),
+                  href ? openHref(href) : toast(translate('isComingSoon', { label: label })),
                 )}
               >
                 <Plus /> {label}

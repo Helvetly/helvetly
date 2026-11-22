@@ -9,6 +9,7 @@ import {
 import { withHabits, type Habits } from '@/lib/habits'
 import { translate } from '@/lib/i18n'
 import type { ImportValue } from '@/lib/imports'
+import type { InvoiceSettings } from '@/lib/invoices'
 import {
   fromCents,
   parseDecimalInput,
@@ -56,6 +57,15 @@ const MAX_PRICE_CENTS = 10_000_000_000n
 
 /** What a new item starts with: the workspace's currency and VAT defaults. */
 export type Defaults = { currency: string; vat_registered: boolean; default_vat_rate: string }
+
+/** A new item's defaults from the invoice settings, with Swiss ones while they load. */
+export const productDefaults = (
+  settings: Pick<InvoiceSettings, 'currency' | 'vat_registered' | 'default_vat_rate'> | undefined,
+): Defaults => ({
+  currency: settings?.currency ?? 'CHF',
+  vat_registered: settings?.vat_registered ?? true,
+  default_vat_rate: settings?.default_vat_rate ?? '8.1',
+})
 
 export function emptyValues(defaults: Defaults): FormValues {
   return {

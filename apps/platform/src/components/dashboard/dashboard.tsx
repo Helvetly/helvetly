@@ -30,7 +30,6 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 
@@ -44,7 +43,7 @@ import { EngagementsCard } from '@/components/engagements/engagements-card'
 import { Initials } from '@/components/initials'
 import { Money, RowStatus } from '@/components/invoices/invoice-bits'
 import { InvoiceKpis } from '@/components/invoices/invoice-kpis'
-import { RecordLink } from '@/components/record-link'
+import { RecordLink, useDrawers } from '@/components/record-link'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -83,7 +82,7 @@ function Section({
 }
 
 export function Dashboard() {
-  const router = useRouter()
+  const drawers = useDrawers()
   const session = useSession()
   const [period, setPeriod] = useRememberedPeriod()
   const canInvoice = useCan('write:invoices')
@@ -119,7 +118,7 @@ export function Dashboard() {
         tabs={[translate('dashboard')]}
         tabIcons={[LayoutGrid]}
         primary={canInvoice ? translate('newInvoice') : undefined}
-        onPrimary={() => router.push('/invoices/new')}
+        onPrimary={() => drawers.open({ kind: 'invoice', mode: 'new' })}
         actions={canReadInvoices && <PeriodFilter value={period} onChange={setPeriod} />}
       />
       {canReadInvoices && <InvoiceKpis period={period} />}

@@ -1,7 +1,7 @@
 'use client'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { usePathname, useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
@@ -9,10 +9,18 @@ import { ClientDetail, type ClientCommand } from '@/components/clients/client-de
 import { ClientForm } from '@/components/clients/client-form'
 import { Preview } from '@/components/documents/preview'
 import { EngagementDetail } from '@/components/engagements/engagement-detail'
+import { EngagementForm } from '@/components/engagements/engagement-form'
 import { ExpenseDetail, type ExpenseCommand } from '@/components/expenses/expense-detail'
+import { ExpenseForm } from '@/components/expenses/expense-form'
+import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
+import { handOffImport } from '@/components/import/hand-off'
 import { useInvoiceCommands } from '@/components/invoices/invoice-commands'
 import { InvoiceDetail } from '@/components/invoices/invoice-detail'
+import { InvoiceEditorDrawer } from '@/components/invoices/invoice-editor'
+import { ProductForm } from '@/components/products/product-form'
+import { productDefaults } from '@/components/products/product-form-model'
 import { QuoteDetail } from '@/components/quotes/quote-detail'
+import { NewQuoteSheet } from '@/components/quotes/quote-editor'
 import { RequestDrawer } from '@/components/signatures/request-drawer'
 import { canDeleteClients, useDeleteClient, useSaveClient, type Client } from '@/lib/clients'
 import {
@@ -23,51 +31,75 @@ import {
   type Expense,
 } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
-import { canManageInvoices } from '@/lib/invoices'
+import { canManageInvoices, useInvoiceSettings } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 
 import {
+  drawerKey,
   nextStack,
+  onOwnPage,
+  parseDrawerKey,
   RecordDrawersContext,
   RecordPageContext,
   recordPageHref,
   RecordReplaceContext,
+  type CreateRef,
+  type DrawerRef,
+  type EditRef,
   type RecordRef,
 } from './record-link'
 
 /**
- * Records opened from another record (or from anywhere outside their own page) show as drawers
- * stacked on top of the screen; closing one uncovers the one below. A page change clears them.
+ * Records opened from another record (or from anywhere outside their own page), and new records' forms,
+ * show as drawers stacked on top of the screen; closing one uncovers the one below. The stack is in the
+ * address (`?drawer=`), so a reload or coming back to the page shows it again; another page clears it.
  */
 export function RecordDrawers({ children }: { children: ReactNode }) {
-  const [stack, setStack] = useState<StackEntry[]>([])
+  const [stack, setStack] = useState<StackEntry[]>(readStack)
+  const latest = useRef(stack)
+  const router = useRouter()
   const pathname = usePathname()
   const [shownOn, setShownOn] = useState(pathname)
+  const [arrived, setArrived] = useState(false)
   if (shownOn !== pathname) {
     setShownOn(pathname)
     setStack([])
+    setArrived(true)
   }
+  // The router writes the new page's address after rendering it, so its stack is read once that is done.
+  useEffect(() => {
+    if (!arrived) return
+    latest.current = readStack()
+    setStack(latest.current)
+    setArrived(false)
+  }, [arrived])
+
+  const commit = useCallback((next: StackEntry[]) => {
+    latest.current = next
+    setStack(next)
+    markInAddress(next)
+  }, [])
   const open = useCallback(
-    (record: RecordRef) =>
-      setStack((current) =>
-        nextStack(current, record, window.location.pathname + window.location.search),
-      ),
-    [],
+    (record: DrawerRef) => {
+      const here = window.location.pathname + window.location.search
+      // On its own page with nothing stacked, a form is the page's own (its list knows of it).
+      if ('mode' in record && latest.current.length === 0 && onOwnPage(record, here))
+        return router.push(recordPageHref(record))
+      commit(nextStack(latest.current, record, here))
+    },
+    [commit, router],
   )
-  const leave = useCallback(() => setStack([]), [])
+  const leave = useCallback(() => commit([]), [commit])
   const replaceAt = useCallback(
-    (index: number, record: RecordRef) =>
-      setStack((current) => {
-        const here = current[index]
-        if (!here) return current
-        return [
-          ...current.slice(0, index),
-          { ...record, slot: here.slot ?? `${here.kind}:${here.id}` },
-        ]
-      }),
-    [],
+    (index: number, record: DrawerRef) => {
+      const here = latest.current[index]
+      if (!here) return
+      commit([...latest.current.slice(0, index), { ...record, slot: here.slot ?? drawerKey(here) }])
+    },
+    [commit],
   )
+  const closeAt = useCallback((index: number) => commit(latest.current.slice(0, index)), [commit])
 
   return (
     <RecordDrawersContext.Provider value={open}>
@@ -75,21 +107,44 @@ export function RecordDrawers({ children }: { children: ReactNode }) {
       {stack.map((record, index) => (
         <StackedRecord
           // A record shown in place of another keeps the slot's key: its drawer stays open (no flicker).
-          key={record.slot ?? `${record.kind}:${record.id}`}
+          key={record.slot ?? drawerKey(record)}
           record={record}
           index={index}
           open={open}
           replaceAt={replaceAt}
           leave={leave}
-          onClose={() => setStack((current) => current.slice(0, index))}
+          onClose={() => closeAt(index)}
         />
       ))}
     </RecordDrawersContext.Provider>
   )
 }
 
-/** A stacked record; `slot` is the key of the record it replaced in place, if any. */
-type StackEntry = RecordRef & { slot?: string }
+/** A stacked drawer; `slot` is the key of the one it replaced in place, if any. */
+type StackEntry = DrawerRef & { slot?: string }
+
+// The static export renders without a window: nothing is stacked there.
+const readStack = (): StackEntry[] =>
+  typeof window === 'undefined'
+    ? []
+    : new URLSearchParams(window.location.search)
+        .getAll('drawer')
+        .map(parseDrawerKey)
+        .filter((record) => record !== null)
+
+/** Writes the stack into the address through the history API: a router navigation would re-render the page under it. */
+function markInAddress(stack: DrawerRef[]) {
+  const query = new URLSearchParams(window.location.search)
+  query.delete('drawer')
+  for (const record of stack) query.append('drawer', drawerKey(record))
+  const search = query.size > 0 ? `?${query}` : ''
+  if (search === window.location.search) return
+  window.history.replaceState(
+    window.history.state,
+    '',
+    window.location.pathname + search + window.location.hash,
+  )
+}
 
 /** One drawer of the stack, telling what it shows which record page it stands for. */
 function StackedRecord({
@@ -100,21 +155,125 @@ function StackedRecord({
   leave,
   onClose,
 }: {
-  record: RecordRef
+  record: DrawerRef
   index: number
-  open: (record: RecordRef) => void
-  replaceAt: (index: number, record: RecordRef) => void
+  open: (record: DrawerRef) => void
+  replaceAt: (index: number, record: DrawerRef) => void
   leave: () => void
   onClose: () => void
 }) {
   const page = useMemo(() => ({ href: recordPageHref(record), leave }), [record, leave])
-  const replace = useCallback((next: RecordRef) => replaceAt(index, next), [replaceAt, index])
+  const replace = useCallback((next: DrawerRef) => replaceAt(index, next), [replaceAt, index])
   return (
     <RecordPageContext.Provider value={page}>
       <RecordReplaceContext.Provider value={replace}>
-        <RecordDrawer record={record} open={open} onClose={onClose} />
+        {'mode' in record ? (
+          <RecordForm record={record} replace={replace} onClose={onClose} />
+        ) : (
+          <RecordDrawer record={record} open={open} onClose={onClose} />
+        )}
       </RecordReplaceContext.Provider>
     </RecordPageContext.Provider>
+  )
+}
+
+const WRITE_NEED = {
+  invoice: 'write:invoices',
+  quote: 'write:invoices',
+  client: 'write:clients',
+  engagement: 'write:engagements',
+  expense: 'write:expenses',
+  product: 'write:products',
+} as const
+
+/** A new record's form (or a draft's editor) in place; once saved, the drawer shows the record. */
+function RecordForm({
+  record,
+  replace,
+  onClose,
+}: {
+  record: CreateRef | EditRef
+  replace: (record: DrawerRef) => void
+  onClose: () => void
+}) {
+  const allowed = useCan(WRITE_NEED[record.kind])
+  const router = useRouter()
+  if (!allowed) return null
+  const client = record.mode === 'new' ? (record.client ?? null) : null
+  if (record.kind === 'invoice')
+    return (
+      <InvoiceEditorDrawer
+        compose={{ id: record.mode === 'edit' ? record.id : null, kind: 'invoice', client }}
+        onClose={onClose}
+        // The draft made by the first save stays in the editor, as on the invoices page.
+        onCreated={(id) => replace({ kind: 'invoice', mode: 'edit', id })}
+      />
+    )
+  if (record.kind === 'quote')
+    return (
+      <NewQuoteSheet
+        clientId={client}
+        onClose={onClose}
+        onSaved={(quote) => replace({ kind: 'quote', id: quote.id })}
+      />
+    )
+  if (record.kind === 'client')
+    return (
+      <ClientForm
+        onClose={onClose}
+        onSaved={(saved, created) =>
+          created ? replace({ kind: 'client', id: saved.id }) : onClose()
+        }
+      />
+    )
+  if (record.kind === 'expense')
+    return (
+      <ExpenseForm
+        start
+        onImport={(files) => {
+          // One expense per file is the AI import's, which lives on the expenses page.
+          handOffImport('expenses', files)
+          onClose()
+          router.push('/expenses?import=1')
+        }}
+        onClose={onClose}
+        onSaved={(saved, created) =>
+          created ? replace({ kind: 'expense', id: saved.id }) : onClose()
+        }
+      />
+    )
+  if (record.kind === 'engagement') return <NewEngagement replace={replace} onClose={onClose} />
+  return <NewProduct onClose={onClose} />
+}
+
+/** The engagement form closes itself after saving; the drawer then shows the engagement instead. */
+function NewEngagement({
+  replace,
+  onClose,
+}: {
+  replace: (record: DrawerRef) => void
+  onClose: () => void
+}) {
+  const saved = useRef(false)
+  return (
+    <EngagementForm
+      open
+      onOpenChange={(isOpen) => !isOpen && !saved.current && onClose()}
+      onSaved={(engagement) => {
+        saved.current = true
+        replace({ kind: 'engagement', id: engagement.id })
+      }}
+    />
+  )
+}
+
+/** Products have no drawer outside their page: saving closes the form. */
+function NewProduct({ onClose }: { onClose: () => void }) {
+  const settings = useInvoiceSettings()
+  if (!settled(settings))
+    return <FormSheetLoading title={translate('newProductOrService')} onClose={onClose} />
+  return (
+    <ProductForm defaults={productDefaults(settings.data)} onClose={onClose} onSaved={onClose} />
   )
 }
 

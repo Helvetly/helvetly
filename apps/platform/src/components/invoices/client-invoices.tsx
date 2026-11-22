@@ -47,10 +47,10 @@ export function ClientInvoices({ clientId }: { clientId: string }) {
           {translate('invoicesForThisClientShowUpHereWithWhat')}
         </p>
         <Button asChild size="sm" className="mt-2">
-          <Link href={newInvoiceHref(clientId)}>
+          <RecordLink href={newInvoiceHref(clientId)}>
             <FilePlus2 />
             {translate('newInvoice2')}
-          </Link>
+          </RecordLink>
         </Button>
       </div>
     )
@@ -88,10 +88,10 @@ export function ClientInvoices({ clientId }: { clientId: string }) {
           </div>
         )}
         <Button asChild className="ml-auto">
-          <Link href={newInvoiceHref(clientId)}>
+          <RecordLink href={newInvoiceHref(clientId)}>
             <Plus />
             {translate('newInvoice2')}
-          </Link>
+          </RecordLink>
         </Button>
       </section>
       <ClientPlans clientId={clientId} />

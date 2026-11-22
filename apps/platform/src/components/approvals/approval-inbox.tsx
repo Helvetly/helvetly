@@ -3,9 +3,9 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { BadgeCheck, ChevronDown } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+import { useOpenHref } from '@/components/record-link'
 import { useApprovalInbox, type ApprovalDoc, type InboxItem } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
 import { formatMoney, kindInfo } from '@/lib/invoices'
@@ -27,12 +27,12 @@ const kindLabel = (item: InboxItem) =>
  */
 export function ApprovalInbox({ doc, onOpen }: { doc: ApprovalDoc; onOpen: (id: string) => void }) {
   const items = useApprovalInbox().data ?? []
-  const router = useRouter()
+  const openHref = useOpenHref()
   const [open, setOpen] = useState(true)
   const openItem = (item: InboxItem) =>
     docOf(item) === doc
       ? onOpen(item.doc_id)
-      : router.push(`/${docOf(item)}?id=${encodeURIComponent(item.doc_id)}`)
+      : openHref(`/${docOf(item)}?id=${encodeURIComponent(item.doc_id)}`)
   if (items.length === 0) return null
   return (
     <section

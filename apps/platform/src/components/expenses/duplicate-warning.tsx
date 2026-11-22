@@ -1,8 +1,8 @@
 'use client'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { TriangleAlert } from 'lucide-react'
-import Link from 'next/link'
 
+import { RecordLink } from '@/components/record-link'
 import type { Expense } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
 
@@ -14,10 +14,10 @@ export function DuplicateWarning({ duplicate }: { duplicate: Expense['duplicate_
       <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
       <span>
         {translate('thisReceiptMayAlreadyBeRecordedAs')}{' '}
-        <Link href={`/expenses?id=${encodeURIComponent(duplicate.id)}`} className="underline">
+        <RecordLink href={`/expenses?id=${encodeURIComponent(duplicate.id)}`} className="underline">
           {translate('expense')}
           <span className="font-code">{duplicate.number}</span>
-        </Link>
+        </RecordLink>
         {duplicate.date && translate('dynamicFrom3', { value1: formatDate(duplicate.date) })}
         {translate('checkBeforeBookingItTwice')}
       </span>
