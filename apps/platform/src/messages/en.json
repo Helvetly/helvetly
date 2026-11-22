@@ -5081,5 +5081,6 @@
   "nothingNeedsAttentionBody": "Open invoices, VAT returns and months to close show up here when they need you.",
   "cashFlowHelp": "Invoice payments and refunds against paid expenses: by month for a year, by day for 30 and 90 days.",
   "editFilter": "Edit filter {label}",
-  "searchSuggestions": "Search suggestions"
+  "searchSuggestions": "Search suggestions",
+  "issuedUntil": "Issued until"
 }

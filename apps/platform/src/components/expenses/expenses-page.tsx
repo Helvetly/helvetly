@@ -86,6 +86,7 @@ import {
 } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
 import { formatDay, formatMoney } from '@/lib/invoices'
+import { oneValue, type QueryField } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
@@ -142,6 +143,7 @@ export function ExpensesPage() {
   const [voiding, setVoiding] = useState<Expense | null>(null)
 
   const list = useExpenseList(params)
+  const queryFields = useQueryFields()
   const prefetch = usePrefetch(expenseQuery)
   const summary = useExpenseSummary()
   // The plain first page (shared with the list's own query when nothing is filtered).
@@ -395,6 +397,7 @@ export function ExpensesPage() {
               placeholder={translate('searchSupplierDescriptionReferenceOrNumber')}
               value={search}
               onChange={setSearch}
+              query={{ fields: queryFields, params, onChange: update }}
             />
           </ListToolbar>
 
@@ -713,6 +716,42 @@ function expenseMenu(
       </>
     ),
   }
+}
+
+/** The search's field terms: `category:`, and the receipt date's `from:` and `to:`. */
+function useQueryFields(): QueryField<ListParams>[] {
+  const categories = useExpenseCategories()
+  return [
+    {
+      id: 'category',
+      label: translate('category'),
+      type: 'enum',
+      values: categories.data?.map((category) => ({
+        value: category.id,
+        label: categoryLabel(category),
+      })),
+      get: (params) => params.categories,
+      set: (ids) => ({ categories: ids }),
+    },
+    {
+      id: 'from',
+      label: translate('from'),
+      type: 'date',
+      ...oneValue(
+        (params) => params.from,
+        (from) => ({ from: from ?? '' }),
+      ),
+    },
+    {
+      id: 'to',
+      label: translate('to3'),
+      type: 'date',
+      ...oneValue(
+        (params) => params.to,
+        (to) => ({ to: to ?? '' }),
+      ),
+    },
+  ]
 }
 
 function Filters({

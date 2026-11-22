@@ -5081,5 +5081,6 @@
   "nothingNeedsAttentionBody": "Les factures ouvertes, les décomptes TVA et les mois à clôturer apparaissent ici lorsqu’ils ont besoin de vous.",
   "cashFlowHelp": "Paiements de factures et remboursements face aux dépenses payées : par mois sur un an, par jour sur 30 et 90 jours.",
   "editFilter": "Modifier le filtre {label}",
-  "searchSuggestions": "Suggestions de recherche"
+  "searchSuggestions": "Suggestions de recherche",
+  "issuedUntil": "Émise jusqu’au"
 }

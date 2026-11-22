@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { expect, userEvent, within } from 'storybook/test'
 
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
-import { single, type QueryField } from '@/lib/list-query'
+import { oneValue, type QueryField } from '@/lib/list-query'
 
 type Params = { search: string; type: string | null; tags: string[]; city: string }
 
@@ -17,7 +17,7 @@ const fields: QueryField<Params>[] = [
       { value: 'company', label: 'Companies' },
       { value: 'person', label: 'People' },
     ],
-    ...single(
+    ...oneValue(
       (params) => params.type,
       (type) => ({ type }),
     ),
@@ -37,7 +37,7 @@ const fields: QueryField<Params>[] = [
     id: 'city',
     label: 'City',
     type: 'text',
-    ...single(
+    ...oneValue(
       (params) => params.city,
       (city) => ({ city: city ?? '' }),
     ),
@@ -88,7 +88,9 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const state = (canvas: ReturnType<typeof within>) => {
-  const params: unknown = JSON.parse(canvas.getByRole('status', { name: 'Params' }).textContent ?? '{}')
+  const params: unknown = JSON.parse(
+    canvas.getByRole('status', { name: 'Params' }).textContent ?? '{}',
+  )
   return params
 }
 
@@ -100,10 +102,11 @@ export const Suggestions: Story = {
     await userEvent.type(search, 't')
     const list = canvas.getByRole('listbox', { name: 'Search suggestions' })
     // "t" starts both Type and Tags; arrows move through them.
-    await expect(within(list).getAllByRole('option').map((option) => option.textContent)).toEqual([
-      'Typetype:',
-      'Tagstag:',
-    ])
+    await expect(
+      within(list)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Typetype:', 'Tagstag:'])
     await userEvent.keyboard('{ArrowDown}{Tab}')
     await expect(search).toHaveValue('tag:')
     await expect(within(list).getAllByRole('option')).toHaveLength(2)
@@ -138,7 +141,9 @@ export const Chips: Story = {
       city: 'St. Gallen',
     })
     await expect(canvas.getByRole('button', { name: 'Remove filter Type: People' })).toBeVisible()
-    await expect(canvas.getByRole('button', { name: 'Remove filter City: St. Gallen' })).toBeVisible()
+    await expect(
+      canvas.getByRole('button', { name: 'Remove filter City: St. Gallen' }),
+    ).toBeVisible()
 
     // A new term for a one-value field replaces the old chip.
     await userEvent.type(search, ' type:company ')
@@ -163,7 +168,7 @@ export const Chips: Story = {
 
     // The × at the end clears text and chips together.
     await userEvent.type(search, 'x')
-    await userEvent.click(canvas.getByRole('button', { name: 'Clear search and filters' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Clear search' }))
     await expect(state(canvas)).toEqual({ search: '', type: null, tags: [], city: '' })
   },
 }
@@ -173,7 +178,9 @@ export const SyncsWithFilters: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Companies' }))
-    await expect(canvas.getByRole('button', { name: 'Remove filter Type: Companies' })).toBeVisible()
+    await expect(
+      canvas.getByRole('button', { name: 'Remove filter Type: Companies' }),
+    ).toBeVisible()
     await userEvent.type(canvas.getByRole('searchbox'), 'type:person ')
     await expect(canvas.getByRole('checkbox', { name: 'People' })).toBeChecked()
     await expect(canvas.getByRole('checkbox', { name: 'Companies' })).not.toBeChecked()

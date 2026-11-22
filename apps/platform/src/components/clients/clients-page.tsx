@@ -35,7 +35,6 @@ import { toast } from 'sonner'
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
-import { among, single, type QueryField } from '@/lib/list-query'
 import {
   dropdownKit,
   PageContextMenu,
@@ -74,6 +73,7 @@ import {
   type SortField,
 } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
+import { among, oneValue, type QueryField } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
@@ -651,7 +651,7 @@ function useQueryFields(): QueryField<ListParams>[] {
         { value: 'company', label: translate('companies') },
         { value: 'person', label: translate('people') },
       ],
-      ...single(
+      ...oneValue(
         (params) => params.type,
         (type) => ({ type: type === 'company' || type === 'person' ? type : null }),
       ),
@@ -662,7 +662,7 @@ function useQueryFields(): QueryField<ListParams>[] {
       type: 'tag',
       values: tags.data?.map((tag) => ({ value: tag.name, label: tag.name })),
       get: (params) => params.tags,
-      set: (tags) => ({ tags }),
+      set: (names) => ({ tags: names }),
     },
     {
       id: 'country',
@@ -672,17 +672,15 @@ function useQueryFields(): QueryField<ListParams>[] {
       get: (params) => params.countries,
       set: (countries) => ({ countries }),
     },
-    ...TEXT_FIELDS.map(
-      ({ id, label }): QueryField<ListParams> => ({
-        id,
-        label,
-        type: 'text',
-        ...single(
-          (params) => params[id],
-          (value) => ({ [id]: value ?? '' }),
-        ),
-      }),
-    ),
+    ...TEXT_FIELDS.map(({ id, label }): QueryField<ListParams> => ({
+      id,
+      label,
+      type: 'text',
+      ...oneValue(
+        (params) => params[id],
+        (value) => ({ [id]: value ?? '' }),
+      ),
+    })),
   ]
 }
 

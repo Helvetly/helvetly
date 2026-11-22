@@ -32,6 +32,7 @@ import {
   type SortField,
 } from '@/lib/employees'
 import { translate } from '@/lib/i18n'
+import { shownElsewhere, type QueryField } from '@/lib/list-query'
 import { nextSort } from '@/lib/list-sort'
 import { setUrlQuery } from '@/lib/url-query'
 
@@ -42,6 +43,30 @@ import { HrLockNotice, HrUpsell, useHrAccess, useHrTabs } from './hr-access'
 import { RetentionReview } from './retention-review'
 
 /** Employees: the company's staff, apart from the members who use Helvetly. */
+/**
+ * The search's field terms `status:` and `department:`. Their selects beside the search show
+ * them, so they need no chips.
+ */
+const queryFields = (departments: string[]): QueryField<ListParams>[] => [
+  {
+    id: 'status',
+    label: translate('employeeStatusLabel'),
+    type: 'enum',
+    values: STATUSES,
+    ...shownElsewhere((value) => {
+      const status = STATUSES.find((entry) => entry.value === value)?.value
+      return status ? { status } : {}
+    }),
+  },
+  {
+    id: 'department',
+    label: translate('employeeDepartment'),
+    type: 'enum',
+    values: departments.map((department) => ({ value: department, label: department })),
+    ...shownElsewhere((department) => ({ department })),
+  },
+]
+
 export function EmployeesPage() {
   const pathname = usePathname()
   const query = useSearchParams()
@@ -129,6 +154,7 @@ export function EmployeesPage() {
               placeholder={translate('employeeSearchPlaceholder')}
               value={search}
               onChange={setSearch}
+              query={{ fields: queryFields(departments), params, onChange: setParams }}
             />
             <NativeSelect
               aria-label={translate('employeeStatusLabel')}

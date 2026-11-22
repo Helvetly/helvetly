@@ -24,6 +24,9 @@ test('reads the list state from the URL and ignores what it does not know', () =
     type: 'company',
     tags: [],
     countries: [],
+    name: '',
+    email: '',
+    city: '',
     sort: 'number',
     desc: true,
   })

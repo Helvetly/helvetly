@@ -122,6 +122,7 @@ import {
   type ViewParams,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
+import { among, oneValue, type QueryField } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 import { folderLabel, isSystemFolder, withoutEmptySystem } from '@/lib/system-folders'
@@ -1059,6 +1060,11 @@ export function DocumentsPage() {
                   placeholder={translate('searchAllFiles')}
                   value={search}
                   onChange={setSearch}
+                  query={{
+                    fields: QUERY_FIELDS,
+                    params: view,
+                    onChange: (change) => navigate(change),
+                  }}
                 />
                 <Filters view={view} onChange={(change) => navigate(change)} />
                 {view.section === 'files' && (
@@ -1658,6 +1664,37 @@ function SortMenu({
     </DropdownMenu>
   )
 }
+
+/** The search's field terms: `kind:`, `uploaded:` and `by:me`, the Filters popover's choices. */
+const QUERY_FIELDS: QueryField<ViewParams>[] = [
+  {
+    id: 'kind',
+    label: translate('kind'),
+    type: 'enum',
+    values: KINDS.map((kind) => ({ value: kind, label: KIND_LABELS[kind] })),
+    get: (view) => view.kinds,
+    set: (kinds) => ({ kinds: among(KINDS, kinds) }),
+  },
+  {
+    id: 'uploaded',
+    label: translate('uploaded2'),
+    type: 'enum',
+    values: DATE_PRESETS.map((preset) => ({ value: preset, label: DATE_LABELS[preset] })),
+    ...oneValue(
+      (view) => view.date,
+      (date) => ({ date: DATE_PRESETS.find((preset) => preset === date) ?? null }),
+    ),
+  },
+  {
+    id: 'by',
+    label: translate('byMe'),
+    type: 'enum',
+    // `by:me`; its chip reads "By me".
+    values: [{ value: 'me', label: '' }],
+    get: (view) => (view.mine ? ['me'] : []),
+    set: (values) => ({ mine: values.includes('me') }),
+  },
+]
 
 function Filters({
   view,

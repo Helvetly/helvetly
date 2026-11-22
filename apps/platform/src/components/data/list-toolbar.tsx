@@ -1,4 +1,5 @@
 import { Button } from '@helvetly/ui/components/button'
+import { Command, CommandItem, CommandList } from '@helvetly/ui/components/command'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Search, X } from 'lucide-react'
@@ -18,7 +19,6 @@ import {
   formatTerm,
   inQuote,
   parseQuery,
-  parseTerm,
   resolveValue,
   splitTerm,
   termLabel,
@@ -140,7 +140,8 @@ function QueryInput<P>({
   const [active, setActive] = useState(0)
   const ownRef = useRef<HTMLInputElement>(null)
   const ref = inputRef ?? ownRef
-  const listId = useId()
+  const inputId = useId()
+  const listRef = useRef<HTMLDivElement>(null)
 
   // The free text was changed elsewhere ("Clear search and filters"): show it.
   if (value !== shown) {
@@ -151,6 +152,21 @@ function QueryInput<P>({
   const { before, token } = splitTrailing(input)
   const suggestions = open && query ? suggestionsFor(token, fields, all) : []
   const current = Math.min(active, suggestions.length - 1)
+  const keys = suggestions.map(suggestionKey)
+
+  // cmdk names the list and its options; the field points at them for screen readers.
+  useEffect(() => {
+    const field = ref.current
+    if (!field) return
+    const list = listRef.current?.querySelector('[cmdk-list]')
+    const selected = list?.querySelector('[cmdk-item][aria-selected="true"]')
+    for (const [name, id] of [
+      ['aria-controls', list?.id],
+      ['aria-activedescendant', suggestions.length ? selected?.id : undefined],
+    ] as const)
+      if (id) field.setAttribute(name, id)
+      else field.removeAttribute(name)
+  })
 
   const setTerms = (next: QueryTerm[]) => query?.onChange(changeFor(fields, next, query.params))
   const show = (next: string) => {
@@ -161,14 +177,14 @@ function QueryInput<P>({
 
   /** Turns the input's finished terms (every one with `all`) into chips. */
   const commit = (next: string, everything: boolean) => {
-    const { before: done, token: typing } = everything
+    const { before: done, token: pending } = everything
       ? { before: next, token: '' }
       : splitTrailing(next)
     const parsed = parseQuery(done, fields)
     if (parsed.terms.length === 0) return show(next)
     setTerms([...terms, ...parsed.terms])
-    const rest = [parsed.text, typing].filter(Boolean).join(' ')
-    show(rest && !typing ? `${rest} ` : rest)
+    const rest = [parsed.text, pending].filter(Boolean).join(' ')
+    show(rest && !pending ? `${rest} ` : rest)
   }
 
   const accept = (suggestion: Suggestion<P>) => {
@@ -224,130 +240,128 @@ function QueryInput<P>({
   }
 
   return (
-    <div className={cn('relative min-w-0', className)}>
-      {/* Quiet, no border: the toolbar row is its box (field-surface.spec.ts). */}
-      <div
-        className="field-quiet flex h-8 w-full min-w-0 cursor-text items-center gap-2 rounded-md pr-1 pl-2 text-muted-foreground focus-within:text-foreground"
-        onMouseDown={(event) => {
-          // A click on the box, not on a chip, goes to the field.
-          if (event.target !== event.currentTarget) return
-          event.preventDefault()
-          ref.current?.focus()
-        }}
-      >
-        <Search className="pointer-events-none size-4 shrink-0 stroke-[1.5]" />
-        <div className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
-          {terms.map((term, index) => {
-            const text = termLabel(fields, term)
-            return (
-              <span
-                key={`${term.id}:${term.value}`}
-                className="flex h-6 shrink-0 items-center rounded-md bg-muted text-body-sm text-foreground"
-              >
-                <button
-                  type="button"
-                  aria-label={translate('editFilter', { label: text })}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => edit(index)}
-                  className="h-full rounded-l-md pl-2 hover:text-muted-foreground"
-                >
-                  {text}
-                </button>
-                <button
-                  type="button"
-                  aria-label={translate('removeFilter', { label: text })}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => remove(index)}
-                  className="flex size-6 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground"
-                >
-                  <X className="size-3" />
-                </button>
-              </span>
-            )
-          })}
-          <input
-            ref={ref}
-            type="search"
-            // Stays a searchbox (textbox), which takes these too; a combobox role would rename it for every test.
-            aria-autocomplete={query ? 'list' : undefined}
-            aria-controls={query ? listId : undefined}
-            aria-activedescendant={choiceId(listId, suggestions.length ? current : -1)}
-            aria-label={label}
-            aria-keyshortcuts={shortcut}
-            placeholder={terms.length ? undefined : placeholder}
-            value={input}
-            onChange={(event) => {
-              setOpen(true)
-              setAll(false)
-              commit(event.target.value, false)
-            }}
-            onKeyDown={onKeyDown}
-            onFocus={onFocus}
-            onBlur={() => {
-              setOpen(false)
-              setAll(false)
-              onBlur?.()
-            }}
-            // A full-height input centres its text by the font box, which lands on the icons' centre without a nudge.
-            className="h-full w-full min-w-24 flex-1 bg-transparent text-title-sm text-foreground outline-none placeholder:text-placeholder [&::-webkit-search-cancel-button]:hidden"
-          />
-        </div>
-        {(input !== '' || terms.length > 0) && (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label={translate(terms.length ? 'clearSearchAndFilters' : 'clearSearch')}
-            // Keeps the focus in the field, so clearing does not close it.
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={clear}
-            className="text-muted-foreground hover:bg-transparent hover:text-foreground"
-          >
-            <X />
-          </Button>
-        )}
-      </div>
-      {query && (
-        <ul
-          id={listId}
-          role="listbox"
-          aria-label={translate('searchSuggestions')}
-          hidden={suggestions.length === 0}
-          className="absolute top-full left-0 z-50 mt-1 max-h-72 w-64 overflow-y-auto rounded-xl bg-popover p-1 text-sm text-popover-foreground shadow-elevation-2"
-        >
-          {suggestions.map((suggestion, index) => (
-            <li
-              key={`${suggestion.kind}:${suggestion.field.id}:${suggestion.kind === 'value' ? suggestion.value : ''}`}
-              id={choiceId(listId, index)}
-              role="option"
-              aria-selected={index === current}
-              onMouseDown={(event) => event.preventDefault()}
-              onMouseMove={() => setActive(index)}
-              onClick={() => accept(suggestion)}
-              className="flex h-8 cursor-default items-center gap-2 rounded-md px-2 aria-selected:bg-muted"
-            >
-              {suggestion.kind === 'field' ? (
-                <>
-                  <span className="truncate">{suggestion.field.label}</span>
-                  <span className="ml-auto font-mono text-xs text-muted-foreground">
-                    {suggestion.field.id}:
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="shrink-0 text-muted-foreground">{suggestion.field.label}:</span>
-                  <span className="truncate">{suggestion.label}</span>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+    // Quiet, no border: the toolbar row is its box (field-surface.spec.ts).
+    <label
+      htmlFor={inputId}
+      className={cn(
+        'field-quiet relative flex h-8 min-w-0 cursor-text items-center gap-2 rounded-md pr-1 pl-2 text-muted-foreground focus-within:text-foreground',
+        className,
       )}
-    </div>
+    >
+      <Search className="pointer-events-none size-4 shrink-0 stroke-[1.5]" />
+      <div className="flex h-full min-w-0 flex-1 [scrollbar-width:none] items-center gap-1 overflow-x-auto">
+        {terms.map((term, index) => {
+          const text = termLabel(fields, term)
+          return (
+            <span
+              key={`${term.id}:${term.value}`}
+              className="flex h-6 shrink-0 items-center rounded-md bg-muted text-body-sm text-foreground"
+            >
+              <button
+                type="button"
+                aria-label={translate('editFilter', { label: text })}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => edit(index)}
+                className="h-full rounded-l-md pl-2 hover:text-muted-foreground"
+              >
+                {text}
+              </button>
+              <button
+                type="button"
+                aria-label={translate('removeFilter', { label: text })}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => remove(index)}
+                className="flex size-6 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          )
+        })}
+        <input
+          ref={ref}
+          id={inputId}
+          type="search"
+          // Stays a searchbox (a textbox, which takes these too); a combobox role would rename it for every test.
+          aria-autocomplete={query ? 'list' : undefined}
+          aria-label={label}
+          aria-keyshortcuts={shortcut}
+          placeholder={terms.length ? undefined : placeholder}
+          value={input}
+          onChange={(event) => {
+            setOpen(true)
+            setAll(false)
+            commit(event.target.value, false)
+          }}
+          onKeyDown={onKeyDown}
+          onFocus={onFocus}
+          onBlur={() => {
+            setOpen(false)
+            setAll(false)
+            onBlur?.()
+          }}
+          // A full-height input centres its text by the font box, which lands on the icons' centre without a nudge.
+          className="h-full w-full min-w-24 flex-1 bg-transparent text-title-sm text-foreground outline-none placeholder:text-placeholder [&::-webkit-search-cancel-button]:hidden"
+        />
+      </div>
+      {(input !== '' || terms.length > 0) && (
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={translate('clearSearch')}
+          // Keeps the focus in the field, so clearing does not close it.
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={clear}
+          className="text-muted-foreground hover:bg-transparent hover:text-foreground"
+        >
+          <X />
+        </Button>
+      )}
+      {query && (
+        // Only a picture of the choices: the field keeps the focus and the keys.
+        <Command
+          ref={listRef}
+          shouldFilter={false}
+          value={keys[current] ?? ''}
+          onValueChange={(key) => setActive(Math.max(0, keys.indexOf(key)))}
+          hidden={suggestions.length === 0}
+          className="absolute top-full left-0 z-50 mt-1 size-auto w-64 shadow-elevation-2"
+        >
+          <CommandList label={translate('searchSuggestions')}>
+            {suggestions.map((suggestion, index) => (
+              <CommandItem
+                key={keys[index]}
+                value={keys[index]}
+                onMouseDown={(event) => event.preventDefault()}
+                onSelect={() => accept(suggestion)}
+                className="h-8"
+              >
+                {suggestion.kind === 'field' ? (
+                  <>
+                    <span className="truncate">{suggestion.field.label}</span>
+                    <span className="ml-auto font-mono text-xs text-muted-foreground">
+                      {suggestion.field.id}:
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="shrink-0 text-muted-foreground">
+                      {suggestion.field.label}:
+                    </span>
+                    <span className="truncate">{suggestion.label}</span>
+                  </>
+                )}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      )}
+    </label>
   )
 }
 
-const choiceId = (listId: string, index: number) =>
-  index < 0 ? undefined : `${listId}-option-${index}`
+const suggestionKey = <P,>(suggestion: Suggestion<P>) =>
+  `${suggestion.kind}:${suggestion.field.id}:${suggestion.kind === 'value' ? suggestion.value : ''}`
 
 /**
  * The list's search: a magnifier button that opens into a field ("/" opens it too). It stays open
@@ -396,7 +410,7 @@ function CollapsibleSearch<P>(props: SearchProps<P>) {
             {...props}
             inputRef={input}
             shortcut="/"
-            className="w-full [&>.field-quiet]:bg-muted/60 dark:[&>.field-quiet]:bg-muted/40"
+            className="w-full bg-muted/60 dark:bg-muted/40"
             onFocus={() => setOpen(true)}
             onBlur={() => setOpen(false)}
             onEscape={() => {

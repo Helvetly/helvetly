@@ -5081,5 +5081,6 @@
   "nothingNeedsAttentionBody": "Offene Rechnungen, MWST-Abrechnungen und abzuschliessende Monate erscheinen hier, wenn sie Sie brauchen.",
   "cashFlowHelp": "Rechnungszahlungen und Rückerstattungen gegenüber bezahlten Ausgaben: pro Monat für ein Jahr, pro Tag für 30 und 90 Tage.",
   "editFilter": "Filter bearbeiten {label}",
-  "searchSuggestions": "Suchvorschläge"
+  "searchSuggestions": "Suchvorschläge",
+  "issuedUntil": "Ausgestellt bis"
 }

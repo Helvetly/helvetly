@@ -25,7 +25,7 @@ export const among = <T extends string>(options: readonly T[], values: readonly 
   values.filter((value): value is T => (options as readonly string[]).includes(value))
 
 /** `get` and `set` for a field kept as one value, where a new term replaces the old. */
-export const single = <P>(
+export const oneValue = <P>(
   read: (params: P) => string | null,
   write: (value: string | null) => Partial<P>,
 ) => ({
@@ -34,6 +34,18 @@ export const single = <P>(
     return value ? [value] : []
   },
   set: (values: string[]) => write(values.at(-1) ?? null),
+})
+
+/**
+ * `get` and `set` for a field a control beside the search already shows (a view tab, a select): it
+ * gets no chip, and a typed term sets the control.
+ */
+export const shownElsewhere = <P>(write: (value: string) => Partial<P>) => ({
+  get: (): string[] => [],
+  set: (values: string[]): Partial<P> => {
+    const value = values.at(-1)
+    return value === undefined ? {} : write(value)
+  },
 })
 
 /** One field term, shaped like TanStack Table's `ColumnFilter`. */
@@ -123,13 +135,14 @@ export const termsOf = <P>(fields: readonly QueryField<P>[], params: P): QueryTe
 /** The params change that makes `terms` the list's field filters. */
 export function changeFor<P>(fields: readonly QueryField<P>[], terms: QueryTerm[], params: P) {
   return fields.reduce<Partial<P>>(
-    (change, field) => ({
-      ...change,
-      ...field.set(
-        [...new Set(terms.filter((term) => term.id === field.id).map((term) => term.value))],
-        params,
+    (change, field) =>
+      Object.assign(
+        change,
+        field.set(
+          [...new Set(terms.filter((term) => term.id === field.id).map((term) => term.value))],
+          params,
+        ),
       ),
-    }),
     {},
   )
 }
@@ -138,5 +151,6 @@ export function changeFor<P>(fields: readonly QueryField<P>[], terms: QueryTerm[
 export function termLabel<P>(fields: readonly QueryField<P>[], term: QueryTerm) {
   const field = fields.find((entry) => entry.id === term.id)
   const value = field?.values?.find((option) => option.value === term.value)?.label ?? term.value
-  return `${field?.label ?? term.id}: ${value}`
+  // An option labelled '' names nothing more than its field ("Credit notes of one invoice").
+  return value ? `${field?.label ?? term.id}: ${value}` : (field?.label ?? term.id)
 }

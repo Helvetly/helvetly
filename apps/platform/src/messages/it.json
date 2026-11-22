@@ -5081,5 +5081,6 @@
   "nothingNeedsAttentionBody": "Fatture aperte, rendiconti IVA e mesi da chiudere compaiono qui quando hanno bisogno di te.",
   "cashFlowHelp": "Pagamenti di fatture e rimborsi rispetto alle spese pagate: per mese su un anno, per giorno su 30 e 90 giorni.",
   "editFilter": "Modifica filtro {label}",
-  "searchSuggestions": "Suggerimenti di ricerca"
+  "searchSuggestions": "Suggerimenti di ricerca",
+  "issuedUntil": "Emessa fino al"
 }
