@@ -20,7 +20,6 @@ import {
   CloudOff,
   Download,
   FilePen,
-  ListFilter,
   PanelRightOpen,
   PauseCircle,
   Pencil,
@@ -30,7 +29,6 @@ import {
   SlidersHorizontal,
   Trash2,
   UserPlus,
-  X,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -40,6 +38,7 @@ import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { ListFilters, sinceOptions } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
@@ -79,7 +78,7 @@ import {
   type SortField,
 } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
-import { among, oneValue, type QueryField } from '@/lib/list-query'
+import { among, oneValue, SINCE_PRESETS, type QueryField } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
@@ -88,8 +87,7 @@ import { useStableCallback } from '@/lib/use-stable-callback'
 import { ChangesPendingBadge, ClientRowStatus, ClientTypeBadge } from './client-bits'
 import { ClientDetail, type ClientCommand } from './client-detail'
 import { ClientForm } from './client-form'
-import { countryName } from './client-form-model'
-import { Combobox, COUNTRY_OPTIONS } from './fields'
+import { COUNTRY_OPTIONS } from './fields'
 
 const VIEW_ICONS: Record<StatusView, LucideIcon> = {
   all: Users,
@@ -126,9 +124,6 @@ function useHiddenColumns() {
   }
   return { hidden, toggle }
 }
-
-const toggleIn = <T,>(list: T[], value: T) =>
-  list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
 
 /** The clients list: server-side search, filters, sort and paging, all kept in the URL. */
 export function ClientsPage() {
@@ -194,6 +189,7 @@ export function ClientsPage() {
     params.type !== null ||
     params.tags.length > 0 ||
     params.countries.length > 0 ||
+    params.created !== null ||
     Boolean(params.name || params.email || params.city)
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id))
   const toggleRow = (id: string) =>
@@ -334,7 +330,7 @@ export function ClientsPage() {
       >
         <div className="relative flex flex-1 flex-col">
           <ListToolbar className="flex-wrap gap-y-2 py-2">
-            <Filters params={params} onChange={update} />
+            <ListFilters fields={queryFields} params={params} onChange={update} />
             <ListSearch
               label={translate('searchClients')}
               placeholder={translate('searchNameEmailCityVATOrNumber')}
@@ -665,6 +661,7 @@ function useQueryFields(): QueryField<ListParams>[] {
         { value: 'company', label: translate('companies') },
         { value: 'person', label: translate('people') },
       ],
+      placeholder: translate('anyType'),
       ...oneValue(
         (params) => params.type,
         (type) => ({ type: type === 'company' || type === 'person' ? type : null }),
@@ -675,6 +672,7 @@ function useQueryFields(): QueryField<ListParams>[] {
       label: translate('tags'),
       type: 'tag',
       values: tags.data?.map((tag) => ({ value: tag.name, label: tag.name })),
+      placeholder: translate('anyTag'),
       get: (params) => params.tags,
       set: (names) => ({ tags: names }),
     },
@@ -683,8 +681,20 @@ function useQueryFields(): QueryField<ListParams>[] {
       label: translate('country'),
       type: 'enum',
       values: COUNTRY_OPTIONS,
+      placeholder: translate('anyCountry'),
       get: (params) => params.countries,
       set: (countries) => ({ countries }),
+    },
+    {
+      id: 'created',
+      label: translate('created3'),
+      type: 'enum',
+      values: sinceOptions(),
+      placeholder: translate('createdAnyTime'),
+      ...oneValue(
+        (params) => params.created,
+        (created) => ({ created: SINCE_PRESETS.find((preset) => preset === created) ?? null }),
+      ),
     },
     ...TEXT_FIELDS.map(({ id, label }): QueryField<ListParams> => ({
       id,
@@ -703,112 +713,6 @@ const TEXT_FIELDS = [
   { id: 'email', label: translate('email') },
   { id: 'city', label: translate('city') },
 ] as const
-
-function Filters({
-  params,
-  onChange,
-}: {
-  params: ListParams
-  onChange: (change: Partial<ListParams>) => void
-}) {
-  const tags = useClientTags()
-  const count = (params.type ? 1 : 0) + params.tags.length + params.countries.length
-  const option =
-    'flex h-8 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted [&_[role=checkbox]]:bg-card'
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-title-sm font-normal">
-          <ListFilter className="stroke-[1.5]" />
-          {translate('filters')}
-          {count > 0 && (
-            <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
-              {count}
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="grid max-h-[70svh] w-72 gap-3 overflow-y-auto p-3">
-        <fieldset className="grid gap-0.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">{translate('type')}</legend>
-          {(['company', 'person'] as const).map((type) => (
-            <label key={type} className={option}>
-              <Checkbox
-                checked={params.type === type}
-                onCheckedChange={(on) => onChange({ type: on ? type : null })}
-              />
-              {type === 'company' ? translate('companies') : translate('people')}
-            </label>
-          ))}
-        </fieldset>
-        <fieldset className="grid gap-0.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">{translate('tags')}</legend>
-          {tags.data?.length ? (
-            tags.data.map((tag) => (
-              <label key={tag.name} className={option}>
-                <Checkbox
-                  checked={params.tags.includes(tag.name)}
-                  onCheckedChange={() => onChange({ tags: toggleIn(params.tags, tag.name) })}
-                />
-                <span className="truncate">{tag.name}</span>
-                <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                  {tag.count}
-                </span>
-              </label>
-            ))
-          ) : (
-            <p className="px-2 text-[13px] text-muted-foreground">{translate('noTagsYet')}</p>
-          )}
-        </fieldset>
-        <fieldset className="grid gap-1.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">
-            {translate('country')}
-          </legend>
-          {params.countries.length > 0 && (
-            <div className="flex flex-wrap gap-1 px-1">
-              {params.countries.map((code) => (
-                <span
-                  key={code}
-                  className="flex h-6 items-center gap-1 rounded-[5px] bg-muted pr-0.5 pl-2 text-[13px]"
-                >
-                  {countryName(code)}
-                  <button
-                    type="button"
-                    aria-label={translate('remove4', { value1: countryName(code) })}
-                    onClick={() =>
-                      onChange({ countries: params.countries.filter((entry) => entry !== code) })
-                    }
-                    className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-card"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <Combobox
-            value=""
-            label={translate('addACountry2')}
-            options={COUNTRY_OPTIONS.filter((country) => !params.countries.includes(country.value))}
-            placeholder={translate('addACountry')}
-            onChange={(code) => onChange({ countries: [...params.countries, code] })}
-          />
-        </fieldset>
-        {count > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-self-start text-muted-foreground"
-            onClick={() => onChange({ type: null, tags: [], countries: [] })}
-          >
-            {translate('clearFilters')}
-          </Button>
-        )}
-      </PopoverContent>
-    </Popover>
-  )
-}
 
 type RowProps = {
   client: Client

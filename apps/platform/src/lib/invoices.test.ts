@@ -63,6 +63,8 @@ test('reads the list state from the URL and ignores what it does not know', () =
     credited: null,
     from: '2026-10-01',
     to: null,
+    totalMin: null,
+    totalMax: null,
     sort: 'total',
     desc: true,
   })
@@ -113,10 +115,14 @@ test('speaks the API’s query names', () => {
     client: 'cli_1',
     from: '2026-01-01',
     to: '2026-03-31',
+    totalMin: '100',
+    totalMax: '2500.50',
   }
   expect(apiQuery(params).toString()).toBe(
-    'page=1&page_size=50&search=2026&kind=invoice&client_id=cli_1&issued_from=2026-01-01&issued_to=2026-03-31&sort=-issue_date',
+    'page=1&page_size=50&search=2026&kind=invoice&client_id=cli_1&issued_from=2026-01-01&issued_to=2026-03-31&total_min=100&total_max=2500.50&sort=-issue_date',
   )
+  expect(parseListParams(listParamsToQuery(params)).totalMax).toBe('2500.50')
+  expect(parseListParams(new URLSearchParams('min=-5&max=abc'))).toEqual(DEFAULT_PARAMS)
   expect(apiQuery(params, false).has('page')).toBe(false)
 })
 

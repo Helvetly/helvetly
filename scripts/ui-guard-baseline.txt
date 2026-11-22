@@ -43,7 +43,6 @@
 1 pulse apps/platform/src/components/signatures/signing-page.tsx
 2 radius apps/platform/src/app/(app)/layout.tsx
 1 radius apps/platform/src/components/api/api-tokens.tsx
-1 radius apps/platform/src/components/clients/clients-page.tsx
 2 radius apps/platform/src/components/clients/fields.tsx
 1 radius apps/platform/src/components/documents/documents-page.tsx
 1 radius apps/platform/src/components/documents/folder-tree.tsx
@@ -58,7 +57,6 @@
 1 radius apps/platform/src/components/invoices/payment-methods.tsx
 3 radius apps/platform/src/components/invoices/pdf-view.tsx
 1 radius apps/platform/src/components/kpi-band.tsx
-1 radius apps/platform/src/components/products/products-page.tsx
 1 radius apps/platform/src/components/settings/periods-settings.tsx
 2 radius apps/platform/src/components/shell/app-sidebar.tsx
 1 radius apps/platform/src/components/shell/page-header.tsx
@@ -91,12 +89,12 @@
 11 text-px apps/platform/src/components/clients/client-detail.tsx
 4 text-px apps/platform/src/components/clients/client-engagements.tsx
 1 text-px apps/platform/src/components/clients/client-form.tsx
-6 text-px apps/platform/src/components/clients/clients-page.tsx
+3 text-px apps/platform/src/components/clients/clients-page.tsx
 2 text-px apps/platform/src/components/clients/fields.tsx
 4 text-px apps/platform/src/components/clients/self-billing-agreements.tsx
 2 text-px apps/platform/src/components/data/table-page.tsx
 1 text-px apps/platform/src/components/documents/dialogs.tsx
-11 text-px apps/platform/src/components/documents/documents-page.tsx
+10 text-px apps/platform/src/components/documents/documents-page.tsx
 4 text-px apps/platform/src/components/documents/folder-tree.tsx
 1 text-px apps/platform/src/components/documents/inline-rename.tsx
 7 text-px apps/platform/src/components/documents/items-view.tsx
@@ -115,7 +113,7 @@
 1 text-px apps/platform/src/components/expenses/duplicate-warning.tsx
 11 text-px apps/platform/src/components/expenses/expense-detail.tsx
 3 text-px apps/platform/src/components/expenses/expense-form.tsx
-5 text-px apps/platform/src/components/expenses/expenses-page.tsx
+4 text-px apps/platform/src/components/expenses/expenses-page.tsx
 5 text-px apps/platform/src/components/fix-list.tsx
 4 text-px apps/platform/src/components/form-section.tsx
 4 text-px apps/platform/src/components/heidi/composer.tsx
@@ -136,7 +134,7 @@
 7 text-px apps/platform/src/components/invoices/instalments-section.tsx
 28 text-px apps/platform/src/components/invoices/invoice-detail.tsx
 6 text-px apps/platform/src/components/invoices/invoice-dialogs.tsx
-5 text-px apps/platform/src/components/invoices/invoices-page.tsx
+3 text-px apps/platform/src/components/invoices/invoices-page.tsx
 7 text-px apps/platform/src/components/invoices/lines-editor.tsx
 1 text-px apps/platform/src/components/invoices/payment-methods.tsx
 2 text-px apps/platform/src/components/invoices/pdf-view.tsx
@@ -154,7 +152,7 @@
 9 text-px apps/platform/src/components/products/product-detail.tsx
 5 text-px apps/platform/src/components/products/product-form.tsx
 1 text-px apps/platform/src/components/products/product-picker.tsx
-5 text-px apps/platform/src/components/products/products-page.tsx
+2 text-px apps/platform/src/components/products/products-page.tsx
 1 text-px apps/platform/src/components/section-form.tsx
 1 text-px apps/platform/src/components/settings/logo-upload.tsx
 8 text-px apps/platform/src/components/shell/app-sidebar.tsx

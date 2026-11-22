@@ -14,6 +14,7 @@ import type { ApprovalState } from '@/lib/approvals'
 import type { ClientFile, Page } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import type { Decimal, PaymentMethod } from '@/lib/invoices'
+import { amountParam } from '@/lib/list-query'
 import { queryKeys } from '@/lib/queries'
 import { MAX_FILE_BYTES, uploadInPacks } from '@/lib/upload-packs'
 
@@ -210,6 +211,10 @@ export type ListParams = {
   categories: string[]
   from: string
   to: string
+  currencies: string[]
+  totalMin: string | null
+  totalMax: string | null
+  receipt: 'attached' | 'missing' | null
   sort: SortField
   desc: boolean
 }
@@ -222,6 +227,10 @@ export const DEFAULT_PARAMS: ListParams = {
   categories: [],
   from: '',
   to: '',
+  currencies: [],
+  totalMin: null,
+  totalMax: null,
+  receipt: null,
   sort: 'document_date',
   desc: true,
 }
@@ -239,6 +248,7 @@ export function parseListParams(query: URLSearchParams): ListParams {
   const view = query.get('view')
   const from = query.get('from')
   const to = query.get('to')
+  const receipt = query.get('receipt')
   return {
     page: Number.isInteger(page) && page > 0 ? page : 1,
     search: query.get('q') ?? '',
@@ -246,6 +256,17 @@ export function parseListParams(query: URLSearchParams): ListParams {
     categories: [...new Set(query.getAll('category').filter(Boolean))],
     from: isDate(from) ? from : '',
     to: isDate(to) ? to : '',
+    currencies: [
+      ...new Set(
+        query
+          .getAll('currency')
+          .map((code) => code.toUpperCase())
+          .filter((code) => /^[A-Z]{3}$/.test(code)),
+      ),
+    ],
+    totalMin: amountParam(query.get('min')),
+    totalMax: amountParam(query.get('max')),
+    receipt: receipt === 'attached' || receipt === 'missing' ? receipt : null,
     sort: oneOf(SORT_FIELDS, field) ? field : DEFAULT_PARAMS.sort,
     desc: oneOf(SORT_FIELDS, field) ? sort.startsWith('-') : DEFAULT_PARAMS.desc,
   }
@@ -254,13 +275,30 @@ export function parseListParams(query: URLSearchParams): ListParams {
 /** The list's state as URL query, leaving out defaults so links stay short. Keeps other keys. */
 export function listParamsToQuery(params: ListParams, base = new URLSearchParams()) {
   const query = new URLSearchParams(base)
-  for (const key of ['page', 'q', 'view', 'category', 'from', 'to', 'sort']) query.delete(key)
+  for (const key of [
+    'page',
+    'q',
+    'view',
+    'category',
+    'from',
+    'to',
+    'currency',
+    'min',
+    'max',
+    'receipt',
+    'sort',
+  ])
+    query.delete(key)
   if (params.page > 1) query.set('page', String(params.page))
   if (params.search) query.set('q', params.search)
   if (params.view !== 'all') query.set('view', params.view)
   for (const id of params.categories) query.append('category', id)
   if (params.from) query.set('from', params.from)
   if (params.to) query.set('to', params.to)
+  for (const code of params.currencies) query.append('currency', code)
+  if (params.totalMin) query.set('min', params.totalMin)
+  if (params.totalMax) query.set('max', params.totalMax)
+  if (params.receipt) query.set('receipt', params.receipt)
   if (params.sort !== DEFAULT_PARAMS.sort || params.desc !== DEFAULT_PARAMS.desc)
     query.set('sort', `${params.desc ? '-' : ''}${params.sort}`)
   return query
@@ -286,6 +324,10 @@ export function apiQuery(params: ListParams, paging = true) {
   for (const id of params.categories) query.append('category_id', id)
   if (params.from) query.set('from', params.from)
   if (params.to) query.set('to', params.to)
+  for (const code of params.currencies) query.append('currency', code)
+  if (params.totalMin) query.set('total_min', params.totalMin)
+  if (params.totalMax) query.set('total_max', params.totalMax)
+  if (params.receipt) query.set('receipt', params.receipt)
   query.set('sort', `${params.desc ? '-' : ''}${params.sort}`)
   return query
 }

@@ -6,23 +6,10 @@ import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@helvetly/ui/components/dropdown-menu'
-import { inputClass } from '@helvetly/ui/components/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  CloudOff,
-  Download,
-  FileDown,
-  FilePlus2,
-  ListFilter,
-  ReceiptText,
-  Search,
-  SearchX,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { CloudOff, Download, FileDown, FilePlus2, ReceiptText, SearchX, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import {
@@ -43,6 +30,8 @@ import {
   unlessLocked,
   useFeatureLock,
 } from '@/components/billing/feature-lock'
+import { ClientFilter } from '@/components/data/client-filter'
+import { ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
@@ -68,7 +57,6 @@ import { useClient } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import {
   displayStatus,
-  addDays,
   canManageInvoices,
   daysBetween,
   DEFAULT_PARAMS,
@@ -102,7 +90,6 @@ import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
 
-import { ClientSearch } from './client-search'
 import { composeQuery, isLegacyEditorPath, parseCompose } from './compose'
 import { DERIVED, DerivePicker, type DeriveFrom } from './derive-picker'
 import { InvoiceNumber, KIND_ICONS, Money, RowStatus } from './invoice-bits'
@@ -130,28 +117,6 @@ const STATUS_OPTIONS: { value: ListStatus; label: string }[] = [
   { value: 'replaced', label: translate('replaced') },
   { value: 'refund_due', label: translate('refundDue') },
 ]
-
-/** Date presets for the issue date filter, relative to today in the workspace time zone. */
-export function datePresets(day = today()) {
-  const month = day.slice(0, 7)
-  const startOfMonth = `${month}-01`
-  const lastMonthEnd = addDays(startOfMonth, -1)
-  const quarter = Math.floor((Number(day.slice(5, 7)) - 1) / 3) * 3 + 1
-  return [
-    { label: translate('thisMonth2'), from: startOfMonth, to: day },
-    { label: translate('lastMonth'), from: `${lastMonthEnd.slice(0, 7)}-01`, to: lastMonthEnd },
-    {
-      label: translate('thisQuarter'),
-      from: `${day.slice(0, 4)}-${String(quarter).padStart(2, '0')}-01`,
-      to: day,
-    },
-    { label: translate('last90Days2'), from: addDays(day, -89), to: day },
-    { label: translate('thisYear'), from: `${day.slice(0, 4)}-01-01`, to: day },
-  ]
-}
-
-const toggleIn = <T,>(list: T[], value: T) =>
-  list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
 
 /** Which list sort each sortable column asks for. */
 const SORTS: Partial<Record<string, SortField>> = {
@@ -377,7 +342,9 @@ export function InvoicesPage() {
     params.client !== null ||
     params.credited !== null ||
     params.from !== null ||
-    params.to !== null
+    params.to !== null ||
+    params.totalMin !== null ||
+    params.totalMax !== null
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id))
   const selectedRows = rows.filter((row) => selected.has(row.id))
   const selectedDrafts = selectedRows.filter((row) => row.status === 'draft')
@@ -500,7 +467,16 @@ export function InvoicesPage() {
           <ApprovalInbox doc="invoices" onOpen={open} />
           {isReceivable(params.kind) && <InvoiceKpis />}
           <ListToolbar>
-            <Filters params={params} onChange={update} />
+            <ListFilters
+              fields={queryFields}
+              params={params}
+              onChange={update}
+              custom={{
+                client: (
+                  <ClientFilter value={params.client} onChange={(client) => update({ client })} />
+                ),
+              }}
+            />
             <ListSearch
               label={translate('searchInvoices')}
               placeholder={translate('searchNumberClientOrReference')}
@@ -822,6 +798,7 @@ function useQueryFields(params: ListParams): QueryField<ListParams>[] {
       label: translate('status'),
       type: 'enum',
       values: STATUS_OPTIONS,
+      placeholder: translate('anyStatus'),
       get: (current) => current.status,
       set: (status) => ({ status: among(LIST_STATUSES, status) }),
     },
@@ -831,6 +808,7 @@ function useQueryFields(params: ListParams): QueryField<ListParams>[] {
       type: 'enum',
       // shortcut: only the chosen client resolves by name; the Filters popover picks others.
       values: params.client ? [{ value: params.client, label: client?.name ?? '…' }] : [],
+      placeholder: translate('anyClient'),
       ...oneValue(
         (current) => current.client,
         (value) => ({ client: value }),
@@ -841,6 +819,8 @@ function useQueryFields(params: ListParams): QueryField<ListParams>[] {
       label: translate('issuedFrom'),
       type: 'date',
       values: day(params.from),
+      placeholder: translate('anyIssueDate'),
+      until: 'to',
       ...oneValue(
         (current) => current.from,
         (from) => ({ from }),
@@ -866,158 +846,27 @@ function useQueryFields(params: ListParams): QueryField<ListParams>[] {
         (credited) => ({ credited }),
       ),
     },
+    {
+      id: 'min',
+      label: translate('minAmount'),
+      type: 'number',
+      placeholder: translate('minAmount'),
+      until: 'max',
+      ...oneValue(
+        (current) => current.totalMin,
+        (totalMin) => ({ totalMin }),
+      ),
+    },
+    {
+      id: 'max',
+      label: translate('maxAmount'),
+      type: 'number',
+      ...oneValue(
+        (current) => current.totalMax,
+        (totalMax) => ({ totalMax }),
+      ),
+    },
   ]
-}
-
-function Filters({
-  params,
-  onChange,
-}: {
-  params: ListParams
-  onChange: (change: Partial<ListParams>) => void
-}) {
-  const [picking, setPicking] = useState(false)
-  const client = useClient(params.client).data
-  const count = params.status.length + (params.client ? 1 : 0) + (params.from || params.to ? 1 : 0)
-  const option =
-    'flex h-8 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted [&_[role=checkbox]]:bg-card'
-  const presets = datePresets()
-
-  return (
-    <Popover onOpenChange={(open) => !open && setPicking(false)}>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-title-sm font-normal">
-          <ListFilter className="stroke-[1.5]" />
-          {translate('filters')}
-          {count > 0 && (
-            <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground tabular-nums">
-              {count}
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className={cn(
-          'grid max-h-[75svh] gap-3 overflow-y-auto p-3',
-          picking ? 'w-80 p-0' : 'w-80',
-        )}
-      >
-        {picking ? (
-          <ClientSearch
-            selectedId={params.client}
-            onSelect={(picked) => {
-              onChange({ client: picked.id })
-              setPicking(false)
-            }}
-          />
-        ) : (
-          <>
-            <fieldset className="grid gap-0.5">
-              <legend className="px-2 pb-1 text-xs text-muted-foreground">
-                {translate('status')}
-              </legend>
-              {STATUS_OPTIONS.map((status) => (
-                <label key={status.value} className={option}>
-                  <Checkbox
-                    checked={params.status.includes(status.value)}
-                    onCheckedChange={() =>
-                      onChange({ status: toggleIn(params.status, status.value) })
-                    }
-                  />
-                  {status.label}
-                </label>
-              ))}
-            </fieldset>
-            <fieldset className="grid gap-1">
-              <legend className="px-2 pb-1 text-xs text-muted-foreground">
-                {translate('client')}
-              </legend>
-              <div className="relative">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setPicking(true)}
-                  className="w-full justify-between px-3 font-normal"
-                >
-                  <span className={cn('truncate', !params.client && 'text-muted-foreground')}>
-                    {params.client
-                      ? (client?.name ?? translate('loading'))
-                      : translate('anyClient')}
-                  </span>
-                  {!params.client && <Search className="size-3.5 text-muted-foreground" />}
-                </Button>
-                {params.client && (
-                  <button
-                    type="button"
-                    aria-label={translate('anyClient')}
-                    onClick={() => onChange({ client: null })}
-                    className="absolute top-2 right-2 flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                )}
-              </div>
-            </fieldset>
-            <fieldset className="grid gap-1.5">
-              <legend className="px-2 pb-1 text-xs text-muted-foreground">
-                {translate('issueDate')}
-              </legend>
-              <div className="flex flex-wrap gap-1 px-1">
-                {presets.map((preset) => {
-                  const active = params.from === preset.from && params.to === preset.to
-                  return (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() =>
-                        onChange(
-                          active ? { from: null, to: null } : { from: preset.from, to: preset.to },
-                        )
-                      }
-                      className="h-7 rounded-md px-2 text-[13px] text-muted-foreground ring-1 ring-border ring-inset hover:bg-muted hover:text-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:ring-primary"
-                    >
-                      {preset.label}
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="grid grid-cols-2 gap-2 px-1">
-                <input
-                  type="date"
-                  aria-label={translate('issuedFrom')}
-                  value={params.from ?? ''}
-                  max={params.to ?? undefined}
-                  onChange={(event) => onChange({ from: event.target.value || null })}
-                  className={cn(inputClass, 'px-2 tabular-nums')}
-                />
-                <input
-                  type="date"
-                  aria-label={translate('issuedTo')}
-                  value={params.to ?? ''}
-                  min={params.from ?? undefined}
-                  onChange={(event) => onChange({ to: event.target.value || null })}
-                  className={cn(inputClass, 'px-2 tabular-nums')}
-                />
-              </div>
-            </fieldset>
-            {count > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="justify-self-start text-muted-foreground"
-                onClick={() => onChange({ status: [], client: null, from: null, to: null })}
-              >
-                {translate('clearFilters')}
-              </Button>
-            )}
-          </>
-        )}
-      </PopoverContent>
-    </Popover>
-  )
 }
 
 type RowProps = {

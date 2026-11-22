@@ -115,7 +115,7 @@ const (
 	pageBottom            = 272.0  // the body's lowest line without a footer text
 	footerH, footerMax    = 3.4, 8 // the footer text's line height and most lines: it must leave the body room
 	// the page footer's rows, apart enough to read as footer text, contact line and page number, not one block
-	contactY, pageNoY, footerGap = 279.0, 285.0, 2.0
+	contactY, pageNoY, footerGap = 279.0, 285.0, 6.0
 )
 
 type renderer struct {
@@ -328,7 +328,7 @@ func (r *renderer) invoicePages() {
 	}
 	if inv.Intro != nil {
 		r.set("", 10)
-		y = r.lines(left, y+1, contentW, 5, r.wrap(*inv.Intro, contentW), "L") + 2
+		y = r.lines(left, y+1, contentW, 5, r.wrap(*inv.Intro, contentW), "L") + 4 // with the +3 below: as far from the table as the address block is above
 	}
 	y = r.table(y + 3)
 	y = r.totals(y + 3)
@@ -400,10 +400,11 @@ func (r *renderer) parties(y float64, issuer, recipient store.Party) float64 {
 // contactLine joins the issuer's email and phone for the footer: "info@muster.ch · +41 44 123 45 67".
 func contactLine(email, phone *string) string {
 	var parts []string
-	for _, s := range []*string{email, phone} {
-		if s != nil && strings.TrimSpace(*s) != "" {
-			parts = append(parts, strings.TrimSpace(*s))
-		}
+	if email != nil && strings.TrimSpace(*email) != "" {
+		parts = append(parts, strings.TrimSpace(*email))
+	}
+	if phone != nil && strings.TrimSpace(*phone) != "" {
+		parts = append(parts, displayPhone(*phone))
 	}
 	return strings.Join(parts, " · ")
 }
@@ -426,6 +427,9 @@ func (r *renderer) letterhead(issuer, recipient store.Party, phone *string) {
 		if s != nil {
 			info = append(info, *s)
 		}
+	}
+	if phone != nil {
+		info[len(info)-1] = displayPhone(*phone)
 	}
 	if v := r.vatNumber(issuer.VATNumber); v != "" {
 		info = append(info, v)

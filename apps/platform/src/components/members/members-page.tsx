@@ -1,17 +1,14 @@
 'use client'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
-import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DataTable, type DataColumn } from '@helvetly/ui/components/data-table'
-import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { capitalize, formatDate } from '@helvetly/ui/lib/format'
 import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import {
   Check,
   KeyRound,
   Link2,
-  ListFilter,
   LogOut,
   Mail,
   RefreshCw,
@@ -25,6 +22,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
@@ -182,7 +180,7 @@ export function MembersPage() {
       <div className="flex flex-1 flex-col">
         <TeamSummary members={members.data?.length ?? 0} pending={invitations.data?.length ?? 0} />
         <ListToolbar>
-          <RoleFilter roles={filter.roles} onChange={(roles) => update({ roles })} />
+          <ListFilters fields={QUERY_FIELDS} params={filter} onChange={update} />
           <ListSearch
             label={translate('searchMembers')}
             placeholder={translate('searchNameOrEmail')}
@@ -381,61 +379,11 @@ const QUERY_FIELDS: QueryField<TeamFilter>[] = [
     label: translate('role'),
     type: 'enum',
     values: ROLES.map((role) => ({ value: role, label: capitalize(role) })),
+    placeholder: translate('anyRole'),
     get: (filter) => filter.roles,
     set: (roles) => ({ roles: among(ROLES, roles) }),
   },
 ]
-
-function RoleFilter({ roles, onChange }: { roles: Role[]; onChange: (roles: Role[]) => void }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-title-sm font-normal">
-          <ListFilter className="stroke-[1.5]" />
-          {translate('filters')}
-          {roles.length > 0 && (
-            <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-caption text-primary-foreground tabular-nums">
-              {roles.length}
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="grid w-72 gap-3 p-3">
-        <fieldset className="grid gap-0.5">
-          <legend className="px-2 pb-1 text-xs text-muted-foreground">{translate('role')}</legend>
-          {ROLES.map((role) => (
-            <label
-              key={role}
-              className="flex h-8 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted [&_[role=checkbox]]:bg-card"
-            >
-              <Checkbox
-                checked={roles.includes(role)}
-                onCheckedChange={() =>
-                  onChange(
-                    roles.includes(role)
-                      ? roles.filter((entry) => entry !== role)
-                      : ROLES.filter((entry) => entry === role || roles.includes(entry)),
-                  )
-                }
-              />
-              {capitalize(role)}
-            </label>
-          ))}
-        </fieldset>
-        {roles.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-self-start text-muted-foreground"
-            onClick={() => onChange([])}
-          >
-            {translate('clearFilters')}
-          </Button>
-        )}
-      </PopoverContent>
-    </Popover>
-  )
-}
 
 function memberMenu(
   member: Member,

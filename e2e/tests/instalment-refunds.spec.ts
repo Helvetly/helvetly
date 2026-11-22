@@ -55,7 +55,11 @@ const summary = (page: Page, label: string) =>
 async function refundDueList(page: Page, number: string, listed: boolean) {
   await page.goto('/invoices')
   await page.getByRole('button', { name: /Filters/ }).click()
-  await page.getByRole('checkbox', { name: 'Refund due' }).click()
+  await page
+    .getByRole('dialog', { name: 'Filters' })
+    .getByRole('button', { name: /^Status/ })
+    .click()
+  await page.getByRole('option', { name: 'Refund due' }).click()
   await page.keyboard.press('Escape')
   const row = page.getByRole('row', { name: new RegExp(number) })
   if (listed) await expect(row).toBeVisible()

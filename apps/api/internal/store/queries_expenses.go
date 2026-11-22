@@ -533,6 +533,9 @@ type ExpenseFilter struct {
 	CategoryIDs []string
 	Currencies  []string
 	From, To    string
+	TotalMin    *int64 // in cents of the expense's own currency, inclusive
+	TotalMax    *int64
+	Receipt     string // attached | missing
 	Incomplete  bool
 	IDs         []string
 	Sort        string // a key of ExpenseSorts, "-" prefixed for descending
@@ -590,6 +593,18 @@ func (f ExpenseFilter) where(workspaceID, today string) (string, []any) {
 	}
 	if f.To != "" {
 		conds = append(conds, "e.document_date <= "+arg(f.To)+"::date")
+	}
+	if f.TotalMin != nil {
+		conds = append(conds, "e.total >= "+arg(*f.TotalMin))
+	}
+	if f.TotalMax != nil {
+		conds = append(conds, "e.total <= "+arg(*f.TotalMax))
+	}
+	switch f.Receipt {
+	case "attached":
+		conds = append(conds, "EXISTS (SELECT 1 FROM expense_receipts r WHERE r.expense_id = e.id)")
+	case "missing":
+		conds = append(conds, "NOT EXISTS (SELECT 1 FROM expense_receipts r WHERE r.expense_id = e.id)")
 	}
 	if f.Incomplete {
 		conds = append(conds, incompleteSQL)

@@ -15,6 +15,10 @@ test('list state survives a round trip through the URL and leaves defaults out',
     categories: ['exc_1', 'exc_2'],
     from: '2026-10-01',
     to: '2026-10-31',
+    currencies: ['EUR'],
+    totalMin: '10',
+    totalMax: '99.50',
+    receipt: 'missing',
     sort: 'total',
     desc: false,
   }
@@ -26,7 +30,11 @@ test('list state survives a round trip through the URL and leaves defaults out',
 
 test('malformed URL values fall back to the defaults', () => {
   expect(
-    parseListParams(new URLSearchParams('page=-2&view=approved&sort=-price&from=yesterday')),
+    parseListParams(
+      new URLSearchParams(
+        'page=-2&view=approved&sort=-price&from=yesterday&currency=EURO&min=-1&max=1.234&receipt=yes',
+      ),
+    ),
   ).toEqual(DEFAULT_PARAMS)
 })
 
@@ -42,6 +50,20 @@ test('each tab asks the API for its status or payment filter', () => {
     apiQuery({ ...DEFAULT_PARAMS, categories: ['a', 'b'] }, false).getAll('category_id'),
   ).toEqual(['a', 'b'])
   expect(apiQuery(DEFAULT_PARAMS, false).has('page')).toBe(false)
+})
+
+test('amount, currency and receipt filters map to the API', () => {
+  const query = apiQuery({
+    ...DEFAULT_PARAMS,
+    currencies: ['EUR', 'USD'],
+    totalMin: '10',
+    totalMax: '99.50',
+    receipt: 'attached',
+  })
+  expect(query.getAll('currency')).toEqual(['EUR', 'USD'])
+  expect(query.get('total_min')).toBe('10')
+  expect(query.get('total_max')).toBe('99.50')
+  expect(query.get('receipt')).toBe('attached')
 })
 
 test.each([

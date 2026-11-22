@@ -56,7 +56,9 @@ export const RoleFilter: Story = {
     await shows('Luca Rossi')?.(context)
     const body = page(context.canvasElement)
     await userEvent.click(body.getByRole('button', { name: 'Filters' }))
-    await userEvent.click(await body.findByRole('checkbox', { name: 'Member' }))
+    const filters = within(await body.findByRole('dialog', { name: 'Filters' }))
+    await userEvent.click(filters.getByRole('button', { name: /^Role/ }))
+    await userEvent.click(await body.findByRole('option', { name: 'Member' }))
     await waitFor(() => expect(window.location.search).toContain('role=member'), wait)
     await userEvent.keyboard('{Escape}')
   },

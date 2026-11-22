@@ -1,0 +1,24 @@
+package invoicepdf
+
+import "testing"
+
+func TestDisplayPhone(t *testing.T) {
+	for in, want := range map[string]string{
+		"+41786533224":     "+41 78 653 32 24",
+		"+41782390999":     "+41 78 239 09 99",
+		"+41 44 123 45 67": "+41 44 123 45 67",
+		"0041441234567":    "+41 44 123 45 67",
+		"+4232321234":      "+423 232 12 34",
+		"+423660234567":    "+423 660 234 567",
+		"+4930123456":      "+49 30 12 34 56",
+		"+14155552671":     "+1 415 555 2671",
+		"0786533224":       "0786533224",
+		"call me":          "call me",
+		"+41 12":           "+41 12",
+		"":                 "",
+	} {
+		if got := displayPhone(in); got != want {
+			t.Errorf("displayPhone(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

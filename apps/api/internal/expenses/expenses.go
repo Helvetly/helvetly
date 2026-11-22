@@ -770,6 +770,18 @@ func parseFilter(q url.Values) (store.ExpenseFilter, error) {
 			}
 		}
 	}
+	for key, dst := range map[string]**int64{"total_min": &f.TotalMin, "total_max": &f.TotalMax} {
+		if v := q.Get(key); v != "" {
+			n, ok := parseMoney(v)
+			if !ok {
+				return f, badRequest(key + " must be an amount such as 100 or 99.50.")
+			}
+			*dst = &n
+		}
+	}
+	if f.Receipt = q.Get("receipt"); f.Receipt != "" && f.Receipt != "attached" && f.Receipt != "missing" {
+		return f, badRequest("receipt must be attached or missing.")
+	}
 	if f.Sort == "" {
 		f.Sort = "-document_date"
 	}

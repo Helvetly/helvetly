@@ -163,12 +163,18 @@ func (q Q) DeleteProducts(ctx context.Context, workspaceID string, ids []string,
 
 // ProductFilter narrows the list and the export.
 type ProductFilter struct {
-	Search     string
-	Type       string // "" for both
-	Archived   bool
-	Currencies []string
-	IDs        []string // when set, the status filter is ignored (an export of a selection)
-	Sort       string   // a key of ProductSorts, "-" prefixed for descending
+	Search      string
+	Type        string // "" for both
+	Archived    bool
+	Currencies  []string
+	Units       []string
+	VATRates    []int64 // in hundredths of a percent
+	PriceMin    *int64  // in cents, inclusive
+	PriceMax    *int64
+	HasSKU      *bool
+	UpdatedFrom string   // YYYY-MM-DD, inclusive, UTC
+	IDs         []string // when set, the status filter is ignored (an export of a selection)
+	Sort        string   // a key of ProductSorts, "-" prefixed for descending
 }
 
 func likePattern(term string) string {
@@ -195,6 +201,24 @@ func (f ProductFilter) where(workspaceID string) (string, []any) {
 	}
 	if len(f.Currencies) > 0 {
 		conds = append(conds, "p.currency = ANY("+arg(f.Currencies)+")")
+	}
+	if len(f.Units) > 0 {
+		conds = append(conds, "p.unit = ANY("+arg(f.Units)+")")
+	}
+	if len(f.VATRates) > 0 {
+		conds = append(conds, "p.vat_rate = ANY("+arg(f.VATRates)+")")
+	}
+	if f.PriceMin != nil {
+		conds = append(conds, "p.unit_price >= "+arg(*f.PriceMin))
+	}
+	if f.PriceMax != nil {
+		conds = append(conds, "p.unit_price <= "+arg(*f.PriceMax))
+	}
+	if f.HasSKU != nil {
+		conds = append(conds, map[bool]string{true: "p.sku <> ''", false: "COALESCE(p.sku, '') = ''"}[*f.HasSKU])
+	}
+	if f.UpdatedFrom != "" {
+		conds = append(conds, "p.updated_at >= "+arg(f.UpdatedFrom)+"::date")
 	}
 	return strings.Join(conds, " AND "), args
 }

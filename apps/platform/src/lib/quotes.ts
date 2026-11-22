@@ -127,6 +127,20 @@ export function searchQuotes(quotes: Quote[], search: string) {
   )
 }
 
+/** The Filters popover's quote filters, as in the page URL; null or '' for none. */
+export type QuoteFilters = { from: string; to: string; min: string | null; max: string | null }
+
+/** Quotes dated within `from`–`to` whose total lies within `min`–`max`. */
+export function filterQuotes(quotes: Quote[], { from, to, min, max }: QuoteFilters) {
+  return quotes.filter(
+    (quote) =>
+      (!from || quote.issue_date >= from) &&
+      (!to || quote.issue_date <= to) &&
+      (min === null || Number(quote.payable_total) >= Number(min)) &&
+      (max === null || Number(quote.payable_total) <= Number(max)),
+  )
+}
+
 export type QuoteCommand =
   | 'edit'
   | 'delete'

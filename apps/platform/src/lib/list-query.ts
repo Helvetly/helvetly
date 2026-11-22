@@ -18,6 +18,15 @@ export type QueryField<P> = {
   get: (params: P) => readonly string[]
   /** The params change that makes `values` this field's values. */
   set: (values: string[], params: P) => Partial<P>
+  /**
+   * The Filters popover's control for this field, named by its placeholder ("Any unit…"); fields without one
+   * (text the search covers, a view tab) have no control there.
+   */
+  placeholder?: string
+  /** A range's other end (`from` with `until: 'to'`, `min` with `until: 'max'`): one popover control for both. */
+  until?: string
+  /** Holds one value: a new term replaces the old one. */
+  single?: boolean
 }
 
 /** The values that are one of `options`, typed as such (an enum field's terms). */
@@ -34,6 +43,7 @@ export const oneValue = <P>(
     return value ? [value] : []
   },
   set: (values: string[]) => write(values.at(-1) ?? null),
+  single: true,
 })
 
 /**
@@ -47,6 +57,20 @@ export const shownElsewhere = <P>(write: (value: string) => Partial<P>) => ({
     return value === undefined ? {} : write(value)
   },
 })
+
+export const SINCE_PRESETS = ['7d', '30d', 'year'] as const
+export type SincePreset = (typeof SINCE_PRESETS)[number]
+
+export const isoDay = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+
+/** The first day a "since" preset covers, in the browser's calendar. */
+export function sinceDate(preset: SincePreset, today = new Date()) {
+  if (preset === 'year') return `${today.getFullYear()}-01-01`
+  const from = new Date(today)
+  from.setDate(from.getDate() - (preset === '7d' ? 6 : 29))
+  return isoDay(from)
+}
 
 /** One field term, shaped like TanStack Table's `ColumnFilter`. */
 export type QueryTerm = { id: string; value: string }
@@ -86,6 +110,13 @@ export function splitTerm<P>(token: string, fields: readonly QueryField<P>[]) {
   return match && field ? { field, raw: match[2] ?? match[3] ?? '' } : null
 }
 
+/** An amount as the API takes it: never negative, at most two decimals. */
+export const isAmount = (value: string) => /^\d+(\.\d{1,2})?$/.test(value)
+
+/** An amount from the page URL, or null when it is missing or malformed. */
+export const amountParam = (value: string | null) =>
+  value !== null && isAmount(value) ? value : null
+
 /** The value a field stores for what was typed, or null when the field cannot take it. */
 export function resolveValue<P>(field: QueryField<P>, raw: string): string | null {
   const value = raw.trim()
@@ -100,7 +131,7 @@ export function resolveValue<P>(field: QueryField<P>, raw: string): string | nul
     case 'date':
       return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) ? value : null
     case 'number':
-      return Number.isFinite(Number(value)) ? value : null
+      return isAmount(value) ? value : null
     default:
       return known ?? value
   }

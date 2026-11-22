@@ -16,6 +16,8 @@ import {
   quotePdfUrl,
   quotesApi,
   searchQuotes,
+  filterQuotes,
+  type QuoteFilters,
   sortQuotes,
   type Quote,
 } from './quotes'
@@ -161,6 +163,23 @@ test('search matches number, client and reference, ignoring case and spaces', ()
   expect(ids('holzbau')).toEqual(['c'])
   expect(ids('draft')).toEqual(['c'])
   expect(ids('nothing')).toEqual([])
+})
+
+test('filters keep quotes dated and totalled within the bounds', () => {
+  const quotes = [
+    { ...sampleQuote({ id: 'a', issue_date: '2026-10-01' }), payable_total: '100.00' },
+    { ...sampleQuote({ id: 'b', issue_date: '2026-11-01' }), payable_total: '2529.54' },
+    { ...sampleQuote({ id: 'c', issue_date: '2026-11-20' }), payable_total: '50.05' },
+  ]
+  const none: QuoteFilters = { from: '', to: '', min: null, max: null }
+  const ids = (filters: Partial<QuoteFilters>) =>
+    filterQuotes(quotes, { ...none, ...filters }).map((quote) => quote.id)
+  expect(ids({})).toEqual(['a', 'b', 'c'])
+  expect(ids({ from: '2026-11-01' })).toEqual(['b', 'c'])
+  expect(ids({ from: '2026-10-01', to: '2026-11-01' })).toEqual(['a', 'b'])
+  expect(ids({ min: '100' })).toEqual(['a', 'b'])
+  expect(ids({ min: '60', max: '2529.54' })).toEqual(['a', 'b'])
+  expect(ids({ max: '50' })).toEqual([])
 })
 
 describe('sorting the list', () => {

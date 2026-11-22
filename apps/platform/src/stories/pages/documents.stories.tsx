@@ -12,6 +12,7 @@ import fr from '../../messages/fr.json'
 import it from '../../messages/it.json'
 import { sessionHandler } from '../screen-fixtures'
 import { folders as sampleFolders } from './api'
+import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 
 const meta = {
@@ -439,3 +440,13 @@ export const ToolbarSearch: Story = {
   },
 }
 export const ToolbarSearchPhone = phone(ToolbarSearch)
+
+/** The Filters popover and the search's chips show the URL's filters; a pick and "Clear all" go to the URL. */
+export const Filters: Story = {
+  parameters: pageParameters('/documents', { date: '7d' }),
+  play: filtersPlay({
+    chips: ['Uploaded: Last 7 days'],
+    pick: { control: /^Kind/, option: 'PDF', key: 'kind', value: 'pdf' },
+    cleared: ['date', 'kind'],
+  }),
+}
