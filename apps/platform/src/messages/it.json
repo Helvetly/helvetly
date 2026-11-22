@@ -5020,7 +5020,7 @@
   "auditSentenceGroupDeleted": "Gruppo di approvatori eliminato",
   "auditSentencePolicySaved": "Regole di approvazione per {doc, select, quote {offerte} expense {spese} credit_note {note di credito} debit_note {note di addebito} corrected {fatture corrette} other {fatture}} salvate",
   "auditSentenceApproval": "{doc, select, quote {Offerta} expense {Spesa} other {Fattura}} {record} {action, select, submitted {inviata per approvazione} approved {approvata} rejected {rifiutata} withdrawn {ritirata dall’approvazione} reset {da approvare di nuovo dopo una modifica} other {approvazione modificata}}",
-  "auditSentencePortal": "{action, select, portal_turned_off {Portale clienti disattivato} portal_turned_on {Portale clienti attivato} portal_address_changed {Indirizzo del portale clienti cambiato in {to}} portal_domain_added {Dominio del portale {hostname} aggiunto} portal_domain_removed {Dominio del portale {hostname} rimosso} other {Impostazioni dello spazio di lavoro modificate}}",
+  "auditSentencePortal": "{action, select, portal_turned_off {Portale clienti disattivato} portal_turned_on {Portale clienti attivato} portal_address_changed {Indirizzo del portale clienti cambiato in {to}} portal_domain_added {Dominio del portale {hostname} aggiunto} portal_domain_removed {Dominio del portale {hostname} rimosso} reply_to_changed {Indirizzo di risposta per le e-mail ai clienti modificato} other {Impostazioni dello spazio di lavoro modificate}}",
   "auditSentencePortalToggled": "Portale clienti disattivato e riattivato {count, plural, one {# volta} other {# volte}}",
   "auditSentenceEmployee": "{action, select, created {Dipendente aggiunto} archived {Dipendente archiviato} unarchived {Dipendente ripristinato dall’archivio} deleted {Dipendente eliminato} erased {Dati personali di un dipendente cancellati} legal_hold_set {Conservazione legale attivata per un dipendente} legal_hold_lifted {Conservazione legale revocata per un dipendente} restricted {Fascicolo del dipendente limitato} unrestricted {Limitazione revocata su un fascicolo del dipendente} protected_viewed {Dati protetti di un dipendente visualizzati} document_added {Documento del dipendente aggiunto} document_deleted {Documento del dipendente eliminato} document_hold_set {Conservazione legale attivata per un documento del dipendente} document_hold_lifted {Conservazione legale revocata per un documento del dipendente} pay_terms_added {Condizioni salariali aggiunte} other {Fascicolo del dipendente modificato}}",
   "auditSentencePayroll": "{action, select, booked {Stipendi registrati} exported {Stipendi esportati} corrected {Cedolino corretto} approved {Cedolino approvato} paid {Cedolino segnato come pagato} unpaid {Cedolino segnato come non pagato} four_eyes_on {Secondo approvatore per gli stipendi attivato} four_eyes_off {Secondo approvatore per gli stipendi disattivato} other {Stipendi modificati}}",
@@ -5082,5 +5082,13 @@
   "cashFlowHelp": "Pagamenti di fatture e rimborsi rispetto alle spese pagate: per mese su un anno, per giorno su 30 e 90 giorni.",
   "editFilter": "Modifica filtro {label}",
   "searchSuggestions": "Suggerimenti di ricerca",
-  "issuedUntil": "Emessa fino al"
+  "issuedUntil": "Emessa fino al",
+  "replyToEmail": "Indirizzo di risposta per le e-mail ai clienti",
+  "repliesGoTo": "Le risposte arrivano a {email}",
+  "replyToEmailHelp": "Fatture, offerte, solleciti e altre e-mail ai clienti mostrano questo indirizzo come indirizzo di risposta, così le risposte dei clienti arrivano nella tua casella. Lascia vuoto per usare l’e-mail aziendale delle impostazioni di fatturazione.",
+  "replyToEmailPlaceholder": "L’e-mail aziendale",
+  "clientEmailReplies": "Risposte alle e-mail ai clienti",
+  "replyToSaved": "Indirizzo di risposta salvato",
+  "replyToAdminOnly": "Solo un proprietario o un amministratore può modificare l’indirizzo di risposta.",
+  "auditReplyToChanged": "Indirizzo di risposta modificato"
 }

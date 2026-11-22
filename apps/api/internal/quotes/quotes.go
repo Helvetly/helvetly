@@ -36,6 +36,7 @@ type Invoices interface {
 	QuoteNumber(ctx context.Context, q store.Q, workspaceID, issueDate string, seq int64) (string, error)
 	CreateDraft(ctx context.Context, q store.Q, sess store.Session, clientID string, fill func(*store.Invoice)) (string, error)
 	Seller(ctx context.Context, q store.Q, workspaceID string) (store.Party, []byte, string, error)
+	ReplyTo(ctx context.Context, sess store.Session) (string, error)
 	QuoteScheduleProblems(inv store.Invoice) error
 }
 

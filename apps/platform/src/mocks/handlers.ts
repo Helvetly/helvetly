@@ -26,6 +26,7 @@ import { notificationHandlers } from './notifications'
 import { portalAddressHandlers } from './portal-address'
 import { portalDomainHandlers } from './portal-domain'
 import { quoteHandlers } from './quotes'
+import { replyToHandlers } from './reply-to'
 import { templateHandlers } from './templates'
 
 const fail = (status: number, code: string, message: string, details?: unknown) =>
@@ -464,6 +465,7 @@ export const handlers = [
   ...(process.env.VITEST ? employeesHandlers : []),
   ...(process.env.VITEST ? emailTemplateHandlers : []),
   ...(process.env.VITEST ? portalAddressHandlers : []),
+  ...(process.env.VITEST ? replyToHandlers : []),
   ...(process.env.VITEST ? portalDomainHandlers : []),
   ...(process.env.VITEST ? approvalHandlers : []),
 ]

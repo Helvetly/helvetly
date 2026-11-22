@@ -5020,7 +5020,7 @@
   "auditSentenceGroupDeleted": "Approver group deleted",
   "auditSentencePolicySaved": "Approval rules for {doc, select, quote {quotes} expense {expenses} credit_note {credit notes} debit_note {debit notes} corrected {corrected invoices} other {invoices}} saved",
   "auditSentenceApproval": "{doc, select, quote {Quote} expense {Expense} other {Invoice}} {record} {action, select, submitted {submitted for approval} approved {approved} rejected {rejected} withdrawn {withdrawn from approval} reset {sent back for approval after a change} other {approval updated}}",
-  "auditSentencePortal": "{action, select, portal_turned_off {Client portal turned off} portal_turned_on {Client portal turned on} portal_address_changed {Client portal address changed to {to}} portal_domain_added {Portal domain {hostname} added} portal_domain_removed {Portal domain {hostname} removed} other {Workspace settings changed}}",
+  "auditSentencePortal": "{action, select, portal_turned_off {Client portal turned off} portal_turned_on {Client portal turned on} portal_address_changed {Client portal address changed to {to}} portal_domain_added {Portal domain {hostname} added} portal_domain_removed {Portal domain {hostname} removed} reply_to_changed {Reply-to email for client emails changed} other {Workspace settings changed}}",
   "auditSentencePortalToggled": "Client portal turned off and on {count, plural, one {# time} other {# times}}",
   "auditSentenceEmployee": "{action, select, created {Employee added} archived {Employee archived} unarchived {Employee restored from the archive} deleted {Employee deleted} erased {Employee’s personal data erased} legal_hold_set {Legal hold set on an employee} legal_hold_lifted {Legal hold lifted on an employee} restricted {Employee record restricted} unrestricted {Restriction lifted on an employee record} protected_viewed {Protected employee details viewed} document_added {Employee document added} document_deleted {Employee document deleted} document_hold_set {Legal hold set on an employee document} document_hold_lifted {Legal hold lifted on an employee document} pay_terms_added {Pay terms added for an employee} other {Employee record changed}}",
   "auditSentencePayroll": "{action, select, booked {Payroll booked} exported {Payroll exported} corrected {Payroll entry corrected} approved {Payroll entry approved} paid {Payroll entry marked paid} unpaid {Payroll entry marked unpaid} four_eyes_on {Second approver for payroll turned on} four_eyes_off {Second approver for payroll turned off} other {Payroll changed}}",
@@ -5082,5 +5082,13 @@
   "cashFlowHelp": "Invoice payments and refunds against paid expenses: by month for a year, by day for 30 and 90 days.",
   "editFilter": "Edit filter {label}",
   "searchSuggestions": "Search suggestions",
-  "issuedUntil": "Issued until"
+  "issuedUntil": "Issued until",
+  "replyToEmail": "Reply-to email for client emails",
+  "repliesGoTo": "Replies go to {email}",
+  "replyToEmailHelp": "Invoices, quotes, reminders and other client emails show this address as Reply-To, so your clients' answers land in your own mailbox. Leave it empty to use the company email from the invoice settings.",
+  "replyToEmailPlaceholder": "The company email",
+  "clientEmailReplies": "Replies to client emails",
+  "replyToSaved": "Reply-to email saved",
+  "replyToAdminOnly": "Only an owner or admin can change the reply-to email.",
+  "auditReplyToChanged": "Reply-to email changed"
 }

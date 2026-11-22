@@ -59,7 +59,7 @@ func reminderMessage(inv store.Invoice, t store.ReminderTarget, pdf []byte) mail
 	if inv.Seller != nil {
 		body += "\n" + inv.Seller.Name
 	}
-	m := mail.Message{Workspace: t.WorkspaceID, To: []string{t.ClientEmail}, Subject: text.subject + ": " + what, Text: body,
+	m := mail.Message{Workspace: t.WorkspaceID, Language: inv.Language, To: []string{t.ClientEmail}, Subject: text.subject + ": " + what, Text: body,
 		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(body), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: pdfName(inv), ContentType: "application/pdf", Data: pdf}}}
 	if inv.Seller != nil && inv.Seller.Email != nil {

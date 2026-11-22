@@ -100,6 +100,9 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			if m, err = s.message(ctx, q, sess.Workspace.ID, t, body.To, body.Cc, body.Subject, body.Message); err != nil {
 				return err
 			}
+			if m.ReplyTo == "" { // without a company email, the member who sends gets the answer
+				m.ReplyTo = sess.User.Email
+			}
 		}
 		var pdf []byte
 		if t.Status == "draft" || t.PDFKey == nil {
@@ -172,7 +175,7 @@ func (s *Service) message(ctx context.Context, q store.Q, workspaceID string, t 
 	if len(invalid) > 0 {
 		return mail.Message{}, validationFailed(invalid)
 	}
-	m := mail.Message{Workspace: workspaceID, To: to, Cc: cc, Subject: draft.Subject, Text: draft.Body}
+	m := mail.Message{Workspace: workspaceID, Language: t.Language, To: to, Cc: cc, Subject: draft.Subject, Text: draft.Body}
 	if subject != nil {
 		m.Subject = strings.TrimSpace(*subject)
 	}

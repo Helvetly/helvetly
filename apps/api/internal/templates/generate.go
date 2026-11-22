@@ -248,6 +248,6 @@ func emailMessage(sess store.Session, to, title string, message *string, name st
 		text += "\n" + *message + "\n"
 		body += "<p>" + strings.ReplaceAll(html.EscapeString(*message), "\n", "<br>") + "</p>\n"
 	}
-	return mail.Message{Workspace: sess.Workspace.ID, To: []string{to}, ReplyTo: sess.User.Email, Subject: fmt.Sprintf("%s sent you “%s”", from, title),
+	return mail.Message{Workspace: sess.Workspace.ID, Language: "en", To: []string{to}, ReplyTo: sess.User.Email, Subject: fmt.Sprintf("%s sent you “%s”", from, title),
 		Text: text, HTML: body, Attachments: []mail.Attachment{{Name: name, ContentType: "application/pdf", Data: pdf}}}
 }

@@ -94,6 +94,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/invoice-settings/next-numbers", s.getNextNumbers)
 	handle("GET /api/v1/invoice-settings/legal-forms", s.getLegalForms)
 	handle("GET /api/v1/invoice-settings/logo", s.getLogo)
+	mux.HandleFunc("GET "+emailLogoPath+"{workspace}/{id}", s.getEmailLogo)
 	handle("PUT /api/v1/invoice-settings/logo", s.putLogo)
 	handle("DELETE /api/v1/invoice-settings/logo", s.deleteLogo)
 	handle("GET /api/v1/invoices", s.list)
