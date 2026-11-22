@@ -4992,6 +4992,8 @@
   "ledgerCredit": "Credit",
   "amountColumn": "Amount",
   "chooseCategoryForEntries": "Choose a category to see the entries.",
+  "employeesPageDescription": "Your staff records: contracts, contacts and working hours.",
+  "payrollPageDescription": "The salary and payroll register, with a CSV export.",
   "auditTypeInvoices": "Invoices",
   "auditTypePayments": "Payments",
   "auditTypeExpenses": "Expenses",

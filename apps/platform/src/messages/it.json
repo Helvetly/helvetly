@@ -4992,6 +4992,8 @@
   "ledgerCredit": "Avere",
   "amountColumn": "Importo",
   "chooseCategoryForEntries": "Scegli una categoria per vedere le registrazioni.",
+  "employeesPageDescription": "Le schede del personale: contratti, contatti e orari di lavoro.",
+  "payrollPageDescription": "Il registro di stipendi e paghe, con esportazione CSV.",
   "auditTypeInvoices": "Fatture",
   "auditTypePayments": "Pagamenti",
   "auditTypeExpenses": "Spese",
