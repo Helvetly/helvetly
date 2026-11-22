@@ -619,9 +619,6 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
           onCheckedChange={() => props.onToggleAll(picked < total)}
         />
       ),
-      size: 40,
-      minSize: 40,
-      resizable: false,
       cell: (row) => (
         <ItemCheck
           props={props}

@@ -1,4 +1,5 @@
 import { Button } from '@helvetly/ui/components/button'
+import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { DataTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
@@ -116,25 +117,43 @@ const header = (canvas: ReturnType<typeof within>, name: string) => {
   return { head, width: () => Math.round(head.getBoundingClientRect().width) }
 }
 
-/** Drags the handle by `dx` pixels, as a pointer would. */
-async function drag(handle: HTMLElement, dx: number) {
+const point = (handle: HTMLElement) => {
   const box = handle.getBoundingClientRect()
-  const x = box.left + box.width / 2
-  const y = box.top + box.height / 2
-  // A pointer lands on whatever is on top there: the handle must not sit under the next header.
-  await expect(document.elementFromPoint(x, y)).toBe(handle)
-  fireEvent.pointerDown(handle, { button: 0, clientX: x, clientY: y, pointerId: 1 })
-  fireEvent.pointerMove(window, { clientX: x + dx / 2, clientY: y, pointerId: 1 })
-  fireEvent.pointerMove(window, { clientX: x + dx, clientY: y, pointerId: 1 })
-  fireEvent.pointerUp(window, { clientX: x + dx, clientY: y, pointerId: 1 })
+  return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
 }
 
-/** Dragging an edge resizes its column, the client column gives the room, and a reload keeps it. */
+/** Drags the handle by `dx` pixels with a mouse, as TanStack's resize handler listens for it. */
+async function drag(handle: HTMLElement, dx: number) {
+  const { x, y } = point(handle)
+  // A pointer lands on whatever is on top there: the handle must not sit under the next header.
+  await expect(document.elementFromPoint(x, y)).toBe(handle)
+  fireEvent.mouseDown(handle, { button: 0, clientX: x, clientY: y })
+  fireEvent.mouseMove(document, { clientX: x + dx / 2, clientY: y })
+  fireEvent.mouseMove(document, { clientX: x + dx, clientY: y })
+  fireEvent.mouseUp(document, { clientX: x + dx, clientY: y })
+}
+
+/** The same with a finger. */
+async function swipe(handle: HTMLElement, dx: number) {
+  const { x, y } = point(handle)
+  const touch = (clientX: number) => [
+    new Touch({ identifier: 1, target: handle, clientX, clientY: y }),
+  ]
+  fireEvent.touchStart(handle, { touches: touch(x) })
+  fireEvent.touchMove(document, { touches: touch(x + dx) })
+  fireEvent.touchEnd(document, { touches: [], changedTouches: touch(x + dx) })
+}
+
+/**
+ * Dragging an edge resizes only its column, 1:1 with the pointer; the client column, which fills
+ * the rest of the box, gives the room; a reload keeps the width.
+ */
 export const DragResizes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const number = header(canvas, 'Number')
     const client = header(canvas, 'Client')
+    const due = header(canvas, 'Due')
     const table = canvasElement.querySelector('table')
     const box = table?.parentElement
     await waitFor(() => expect(number.width()).toBe(128))
@@ -144,27 +163,51 @@ export const DragResizes: Story = {
     await drag(canvas.getByLabelText('Resize Number'), 72)
     await waitFor(() => expect(number.width()).toBe(200))
     await expect(client.width()).toBe(before - 72)
+    await expect(due.width()).toBe(128)
     await expect(table?.getBoundingClientRect().width).toBe(box?.clientWidth)
+    // The drag neither sorted nor left a text selection.
+    await expect(number.head).not.toHaveAttribute('aria-sort')
+    await expect(window.getSelection()?.toString()).toBe('')
     await expect(JSON.parse(localStorage.getItem(KEY) ?? '{}')).toEqual({ number: 200 })
     await userEvent.click(canvas.getByRole('button', { name: 'Reload' }))
     await waitFor(() => expect(header(canvas, 'Number').width()).toBe(200))
   },
 }
 
-/** A column stops at its max, at its min, and where the client column reaches its min. */
+/** A finger drags the edge too. */
+export const TouchResizes: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const due = header(canvas, 'Due')
+    await waitFor(() => expect(due.width()).toBe(128))
+    await swipe(canvas.getByLabelText('Resize Due'), 40)
+    await waitFor(() => expect(due.width()).toBe(168))
+  },
+}
+
+/**
+ * A column stops at its max and its min. Once the columns need more than the box, the client
+ * column keeps its min and the box scrolls sideways instead of squeezing the others.
+ */
 export const StopsAtItsRange: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const number = header(canvas, 'Number')
     const due = header(canvas, 'Due')
     const client = header(canvas, 'Client')
+    const total = header(canvas, 'Amount')
     await drag(canvas.getByLabelText('Resize Number'), 400)
     await waitFor(() => expect(number.width()).toBe(260))
     await drag(canvas.getByLabelText('Resize Number'), -400)
     await waitFor(() => expect(number.width()).toBe(80))
     await drag(canvas.getByLabelText('Resize Due'), 900)
-    await waitFor(() => expect(client.width()).toBe(200))
-    await expect(due.width()).toBeGreaterThan(128)
+    await waitFor(() => expect(due.width()).toBe(640))
+    await expect(client.width()).toBe(200)
+    await expect(total.width()).toBe(140)
+    const box = canvasElement.querySelector('table')?.parentElement
+    if (!box) throw new Error('The table has no box')
+    await expect(box.scrollWidth).toBeGreaterThan(box.clientWidth)
+    await expect(getComputedStyle(box).overflowX).toBe('auto')
   },
 }
 
@@ -182,7 +225,7 @@ export const DoubleClickResets: Story = {
   },
 }
 
-/** The handle is reachable by keyboard; the arrow keys resize in 16 px steps. */
+/** The handle is reachable by keyboard; the arrow keys resize in 16 px steps, Enter resets. */
 export const KeyboardResizes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -194,16 +237,77 @@ export const KeyboardResizes: Story = {
     await expect(handle).toHaveValue('160')
     await userEvent.keyboard('{ArrowLeft}')
     await waitFor(() => expect(due.width()).toBe(144))
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() => expect(due.width()).toBe(128))
   },
 }
 
-/** Only resizable columns get a handle: not the flexible client column, not the status. */
+/** Only resizable columns get a handle: not the select, flexible client or status column. */
 export const HandlesOnlyOnResizable: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByLabelText('Resize Client')).toBeNull()
     await expect(canvas.queryByLabelText('Resize Status')).toBeNull()
     await expect(canvas.getAllByRole('slider')).toHaveLength(3)
+    const handle = canvas.getByLabelText('Resize Number')
+    await expect(getComputedStyle(handle).cursor).toBe('col-resize')
+    await expect(handle.getBoundingClientRect().width).toBeGreaterThanOrEqual(12)
+  },
+}
+
+/** Every corner of the checkbox and its 3 px focus ring is inside its cell and on top there. */
+async function expectUnclipped(checkbox: HTMLElement) {
+  const cell = checkbox.closest('th, td')
+  if (!cell) throw new Error('The checkbox has no cell')
+  const box = checkbox.getBoundingClientRect()
+  const room = cell.getBoundingClientRect()
+  await expect(box.left - 3).toBeGreaterThanOrEqual(room.left)
+  await expect(box.right + 3).toBeLessThanOrEqual(room.right)
+  const corners = [
+    [box.left + 1, box.top + 1],
+    [box.right - 1, box.top + 1],
+    [box.left + 1, box.bottom - 1],
+    [box.right - 1, box.bottom - 1],
+  ] as const
+  await expect(
+    corners.filter(([x, y]) => !checkbox.contains(document.elementFromPoint(x, y))),
+  ).toEqual([])
+}
+
+/** The select-all and row checkboxes are whole: none is cut by its cell or covered by the next. */
+export const CheckboxesUnclipped: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expectUnclipped(canvas.getByRole('checkbox', { name: 'Select all' }))
+    await expectUnclipped(canvas.getByRole('checkbox', { name: 'Select 2026/INV/001' }))
+  },
+}
+
+/** A page's own checkbox column (the documents list) gets the same fixed, unclipped width. */
+export const OwnSelectColumnUnclipped: Story = {
+  render: () => (
+    <div className="w-[900px] rounded-xl border bg-card">
+      <DataTable
+        id={`${TABLE}-own-select`}
+        columns={[
+          {
+            id: 'select',
+            header: 'Select all',
+            headerContent: <Checkbox aria-label="Select all" className="bg-card" />,
+            cell: (row) => <Checkbox aria-label={`Select ${row.number}`} className="bg-card" />,
+          },
+          ...COLUMNS,
+        ]}
+        data={ROWS}
+        getRowId={(row) => row.id}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expectUnclipped(canvas.getByRole('checkbox', { name: 'Select all' }))
+    await expectUnclipped(canvas.getByRole('checkbox', { name: 'Select 2026/INV/002' }))
+    await expect(canvas.queryByLabelText('Resize Select all')).toBeNull()
   },
 }
 
