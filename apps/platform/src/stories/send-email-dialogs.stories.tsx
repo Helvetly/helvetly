@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
-import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { SendDialog } from '@/components/invoices/invoice-dialogs'
 import { QuoteSendDialog } from '@/components/quotes/quote-dialogs'
+import { RecipientFields } from '@/components/recipient-fields'
 import type { Client } from '@/lib/clients'
 import { sampleQuote } from '@/mocks/quotes'
 import { listItem, sampleInvoice } from '@/test/invoice-api'
@@ -288,5 +289,92 @@ export const InvoiceClientWithoutEmail: Story = {
     await waitFor(() => expect(form).not.toBeInTheDocument())
     await waitFor(() => expect(dialog.queryByText('The client has no email address.')).toBeNull())
     await expect(dialog.getByRole('textbox', { name: /^To/ })).toHaveValue('anna@acme.ch')
+  },
+}
+
+/**
+ * Cc and Bcc start folded: quiet buttons at the right of To's label reveal each with the cursor in it, an emptied one
+ * folds away again on blur without moving To within the dialog, and Send posts both.
+ */
+export const InvoiceCopiesOnDemand: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        noClient,
+        sendHandler,
+        http.get('/api/v1/invoices/:id/email', () => HttpResponse.json({ data: draft })),
+      ],
+    },
+  },
+  render: () => <SendDialog invoice={invoice} onClose={() => {}} />,
+  play: async ({ canvasElement }) => {
+    sent.body = null
+    const box = await within(canvasElement.ownerDocument.body).findByRole('dialog')
+    const dialog = within(box)
+    const to = dialog.getByRole('textbox', { name: /^To/ })
+    // The centred dialog grows around its middle; inside it, To stays where it is.
+    const toOffset = () => to.getBoundingClientRect().top - box.getBoundingClientRect().top
+    await waitFor(() => expect(to).toHaveValue('billing@acme.ch'))
+    await expect(dialog.queryByRole('textbox', { name: /^Cc/ })).toBeNull()
+    await expect(dialog.queryByRole('textbox', { name: /^Bcc/ })).toBeNull()
+    const ccButton = dialog.getByRole('button', { name: 'Cc' })
+    const bccButton = dialog.getByRole('button', { name: 'Bcc' })
+    // In To's label row, at its right.
+    const toBox = to.getBoundingClientRect()
+    await expect(bccButton.getBoundingClientRect().right).toBeCloseTo(toBox.right, 0)
+    await expect(bccButton.getBoundingClientRect().bottom).toBeLessThanOrEqual(toBox.top)
+    await expect(ccButton.getBoundingClientRect().right).toBeLessThan(
+      bccButton.getBoundingClientRect().left,
+    )
+    const toTop = toOffset()
+
+    await userEvent.click(bccButton)
+    const bcc = dialog.getByRole('textbox', { name: /^Bcc/ })
+    await expect(bcc).toHaveFocus()
+    await expect(dialog.queryByRole('button', { name: 'Bcc' })).toBeNull()
+    await expect(toOffset()).toBe(toTop)
+    // Left empty, it folds away again.
+    await userEvent.click(ccButton)
+    const cc = dialog.getByRole('textbox', { name: /^Cc/ })
+    await expect(cc).toHaveFocus()
+    await expect(dialog.queryByRole('textbox', { name: /^Bcc/ })).toBeNull()
+    await userEvent.type(cc, 'boss@acme.ch')
+    await userEvent.click(dialog.getByRole('button', { name: 'Bcc' }))
+    await userEvent.type(dialog.getByRole('textbox', { name: /^Bcc/ }), 'audit@muster.ch')
+    // A field with addresses stays.
+    await expect(dialog.getByRole('textbox', { name: /^Cc/ })).toHaveValue('boss@acme.ch')
+    await expect(toOffset()).toBe(toTop)
+
+    await userEvent.click(dialog.getByRole('button', { name: 'Send' }))
+    await waitFor(() =>
+      expect(read()).toEqual({ ...draft, cc: ['boss@acme.ch'], bcc: ['audit@muster.ch'] }),
+    )
+  },
+}
+
+/** A Cc that comes filled in shows from the start; Bcc stays folded behind its button. */
+export const RecipientsWithPrefilledCc: Story = {
+  render: () => (
+    <div className="grid max-w-md gap-4 p-6">
+      <RecipientFields
+        id="story"
+        to="billing@acme.ch"
+        onToChange={fn()}
+        toTip="Separate several addresses with commas."
+        toPlaceholder="accounts@client.ch"
+        cc="boss@acme.ch"
+        onCcChange={fn()}
+        bcc=""
+        onBccChange={fn()}
+        errors={{}}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('textbox', { name: /^Cc/ })).toHaveValue('boss@acme.ch')
+    await expect(canvas.queryByRole('button', { name: 'Cc' })).toBeNull()
+    await expect(canvas.queryByRole('textbox', { name: /^Bcc/ })).toBeNull()
+    await expect(canvas.getByRole('button', { name: 'Bcc' })).toBeVisible()
   },
 }

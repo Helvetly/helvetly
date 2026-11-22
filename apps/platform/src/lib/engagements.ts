@@ -341,7 +341,7 @@ export const putEngagementSettings = (body: { digest: boolean }) =>
 export const sendReport = (
   id: string,
   periodId: string,
-  body: { to?: string[]; cc?: string[]; subject?: string; message?: string },
+  body: { to?: string[]; cc?: string[]; bcc?: string[]; subject?: string; message?: string },
 ) =>
   request<{ data: { to: string[] } }>(
     `${path(id)}/periods/${encodeURIComponent(periodId)}/report/send`,

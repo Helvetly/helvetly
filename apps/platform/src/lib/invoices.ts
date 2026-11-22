@@ -522,6 +522,8 @@ export type SettingsInput = Omit<
 export type SendInput = {
   to?: string[]
   cc?: string[]
+  /** Hidden copies: delivered, in no header the others see. */
+  bcc?: string[]
   subject?: string
   message?: string
   /** false: only marks it sent (its PDF handed over another way), no email. */

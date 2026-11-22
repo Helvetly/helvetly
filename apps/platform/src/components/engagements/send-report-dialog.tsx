@@ -13,19 +13,12 @@ import { toast } from 'sonner'
 
 import { inputClass as fieldClass } from '@/components/clients/fields'
 import { EmailMessageField } from '@/components/email-message-field'
-import { fieldErrors } from '@/components/invoices/invoice-dialogs'
+import { emails, fieldErrors, recipientErrors } from '@/components/invoices/invoice-dialogs'
+import { RecipientFields } from '@/components/recipient-fields'
 import { errorMessage } from '@/lib/api'
 import { getEngagement, periodLabel, sendReport, type PeriodSummary } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
-
-const emails = (text: string) =>
-  text
-    .split(/[,;\s]+/)
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** E-mails the period's service report (PDF) to the client. */
 export function SendReportDialog({
@@ -47,6 +40,7 @@ export function SendReportDialog({
   }).data
   const [to, setTo] = useState<string | null>(null)
   const [cc, setCc] = useState('')
+  const [bcc, setBcc] = useState('')
   const [subject, setSubject] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -72,18 +66,13 @@ export function SendReportDialog({
 
   const submit = () => {
     const list = emails(recipients)
-    const copies = emails(cc)
-    const bad = [...list, ...copies].find((address) => !EMAIL.test(address))
-    const found: Record<string, string> = {}
-    if (list.length === 0) found.to = translate('addAtLeastOneEmailAddress')
-    else if (list.length > 10) found.to = translate('atMost10Recipients')
-    else if (bad) found.to = translate('isnTAnEmailAddress', { bad: bad })
-    if (copies.length > 10) found.cc = translate('atMost10AddressesInCc')
+    const found = recipientErrors(recipients, cc, bcc)
     setErrors(found)
     if (Object.keys(found).length) return
     send.mutate({
       to: list,
-      ...(copies.length ? { cc: copies } : {}),
+      ...(emails(cc).length ? { cc: emails(cc) } : {}),
+      ...(emails(bcc).length ? { bcc: emails(bcc) } : {}),
       subject: (subject ?? defaultSubject).trim(),
       ...(message.trim() ? { message: message.trim() } : {}),
     })
@@ -110,34 +99,18 @@ export function SendReportDialog({
             </DialogDescription>
           </div>
           <div className="grid gap-4 px-6 pt-5 pb-6">
-            <FormField
-              id="report-to"
-              label={translate('to3')}
-              required
-              error={errors.to}
-              tip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient')}
-            >
-              <input
-                {...describedBy('report-to', errors.to)}
-                type="email"
-                multiple
-                value={recipients}
-                onChange={(event) => setTo(event.target.value)}
-                placeholder={translate('accountsClientCh')}
-                className={fieldClass}
-              />
-            </FormField>
-            <FormField id="report-cc" label={translate('cc')} error={errors.cc}>
-              <input
-                {...describedBy('report-cc', errors.cc)}
-                type="email"
-                multiple
-                value={cc}
-                onChange={(event) => setCc(event.target.value)}
-                placeholder={translate('optional')}
-                className={fieldClass}
-              />
-            </FormField>
+            <RecipientFields
+              id="report"
+              to={recipients}
+              onToChange={setTo}
+              toTip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient')}
+              toPlaceholder={translate('accountsClientCh')}
+              cc={cc}
+              onCcChange={setCc}
+              bcc={bcc}
+              onBccChange={setBcc}
+              errors={errors}
+            />
             <FormField id="report-subject" label={translate('subject')} error={errors.subject}>
               <input
                 {...describedBy('report-subject', errors.subject)}
