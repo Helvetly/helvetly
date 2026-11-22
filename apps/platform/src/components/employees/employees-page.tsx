@@ -22,6 +22,7 @@ import {
 import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
+import { PageIntro } from '@/components/settings/layout'
 import { PageHeader } from '@/components/shell/page-header'
 import {
   fullName,
@@ -114,6 +115,11 @@ export function EmployeesPage() {
             </>
           )
         }
+      />
+      <PageIntro
+        title={translate('employees')}
+        description={translate('employeesPageDescription')}
+        className="px-3 pt-4 md:px-5"
       />
       <HrLockNotice hr={hr} />
       {hr.blocked ? (
