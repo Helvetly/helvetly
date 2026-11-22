@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@helvetly/ui/components/button'
+import { PlanBadge } from '@helvetly/ui/components/plan-badge'
 import type { LucideIcon } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import Link from 'next/link'
@@ -41,10 +42,10 @@ export function UpsellCard({
     >
       <div className="grid gap-1.5">
         {lock.plan && (
-          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-background/70 px-2 text-caption leading-5 font-medium text-brand ring-1 ring-brand-solid/20">
-            <Sparkles aria-hidden className="size-3" />
+          <PlanBadge plan={lock.plan.id}>
+            <Sparkles aria-hidden />
             {translate('includedInPlan', { plan: lock.plan.name })}
-          </span>
+          </PlanBadge>
         )}
         <Heading className="text-title-sm font-semibold text-balance">{title}</Heading>
         <p className="text-body-sm text-pretty text-muted-foreground">{pitch}</p>

@@ -1,4 +1,5 @@
 import { Badge, BADGE_TONES } from '@helvetly/ui/components/badge'
+import { PlanBadge } from '@helvetly/ui/components/plan-badge'
 import { cn } from '@helvetly/ui/lib/utils'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { CircleCheck } from 'lucide-react'
@@ -67,6 +68,53 @@ export const AllBadges: Story = {
     await expect(dot.querySelector('[aria-hidden]')).toBeInTheDocument()
     await expect(style(dot).borderColor).toBe(
       style(light.getAllByText('blue').find((n) => n.dataset.variant === 'dot')!).borderColor,
+    )
+  },
+}
+
+function Plans({ theme }: { theme: 'light' | 'dark' }) {
+  return (
+    <section
+      aria-label={`plans ${theme}`}
+      className={cn('flex flex-wrap items-center gap-2 rounded-xl bg-background p-5', theme)}
+    >
+      {(['basic', 'pro', 'business'] as const).map((plan) => (
+        <span key={plan} className="contents">
+          <PlanBadge plan={plan}>{plan}</PlanBadge>
+          <PlanBadge plan={plan} locked>
+            {plan} locked
+          </PlanBadge>
+        </span>
+      ))}
+    </section>
+  )
+}
+
+/** Plan badges, plain and locked, in both themes: the lock is the label's size and colour. */
+export const PlanBadges: Story = {
+  render: () => (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Plans theme="light" />
+      <Plans theme="dark" />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const root = within(canvasElement)
+    const locked = ['light', 'dark'].map((theme) =>
+      within(root.getByRole('region', { name: `plans ${theme}` })).getByText('business locked'),
+    )
+    for (const badge of locked) {
+      const icon = badge.querySelector('svg')!
+      expect(style(icon).color).toBe(style(badge).color)
+      expect(icon.getBoundingClientRect().width).toBeLessThanOrEqual(12)
+    }
+    const light = within(root.getByRole('region', { name: 'plans light' }))
+    const dark = within(root.getByRole('region', { name: 'plans dark' }))
+    await expect(style(light.getByText('business')).backgroundColor).not.toBe(
+      style(dark.getByText('business')).backgroundColor,
+    )
+    await expect(style(light.getByText('business')).backgroundColor).not.toBe(
+      style(light.getByText('pro')).backgroundColor,
     )
   },
 }
