@@ -12,11 +12,16 @@ import (
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/url"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/invoicecalc"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/store"
 )
@@ -213,15 +218,78 @@ func (s *Service) apply(ctx context.Context, q store.Q, workspaceID string, t *s
 }
 
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	list, err := s.db.Quotes(r.Context(), sess.Workspace.ID, r.URL.Query().Get("client_id"), today(sess.Workspace, s.now()))
+	q := r.URL.Query()
+	f, err := parseFilter(q)
 	if err != nil {
 		return err
 	}
-	if status := r.URL.Query().Get("status"); status != "" {
-		list = slices.DeleteFunc(list, func(t store.Quote) bool { return t.Status != status })
+	page, err := intParam(q, "page", 1, 1, 1_000_000)
+	if err != nil {
+		return err
 	}
-	auth.WriteJSON(w, http.StatusOK, data(list))
+	size, err := intParam(q, "page_size", 50, 1, 200)
+	if err != nil {
+		return err
+	}
+	list, total, err := s.db.ListQuotes(r.Context(), sess.Workspace.ID, today(sess.Workspace, s.now()), f, size, (page-1)*size)
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": list,
+		"meta": map[string]int{"page": page, "page_size": size, "total": total, "total_pages": (total + size - 1) / size}})
 	return nil
+}
+
+func intParam(q url.Values, key string, fallback, lo, hi int) (int, error) {
+	v := q.Get(key)
+	if v == "" {
+		return fallback, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < lo || n > hi {
+		return 0, badRequest(key + " must be a whole number from " + strconv.Itoa(lo) + " to " + strconv.Itoa(hi) + ".")
+	}
+	return n, nil
+}
+
+var listStatuses = []string{"draft", "sent", "accepted", "declined", "expired"}
+
+// parseFilter reads the list query: search, client, status (repeatable or comma-separated), dates, totals and sort.
+func parseFilter(q url.Values) (store.QuoteFilter, error) {
+	f := store.QuoteFilter{Search: q.Get("search"), ClientID: q.Get("client_id"), ClientName: q.Get("client_name"),
+		IssuedFrom: q.Get("issued_from"), IssuedTo: q.Get("issued_to"), Sort: q.Get("sort")}
+	if utf8.RuneCountInString(f.Search) > 200 || utf8.RuneCountInString(f.ClientName) > 200 {
+		return f, badRequest("search and client_name must be at most 200 characters.")
+	}
+	for _, v := range q["status"] {
+		for part := range strings.SplitSeq(v, ",") {
+			if part = strings.TrimSpace(part); part == "" {
+				continue
+			}
+			if !slices.Contains(listStatuses, part) {
+				return f, badRequest("status must be draft, sent, accepted, declined or expired.")
+			}
+			f.Statuses = append(f.Statuses, part)
+		}
+	}
+	for _, d := range []string{f.IssuedFrom, f.IssuedTo} {
+		if _, err := time.Parse(time.DateOnly, d); d != "" && err != nil {
+			return f, badRequest("issued_from and issued_to must be dates as YYYY-MM-DD.")
+		}
+	}
+	for key, dst := range map[string]**int64{"total_min": &f.TotalMin, "total_max": &f.TotalMax} {
+		if v := q.Get(key); v != "" {
+			n, ok := invoicecalc.ParseMoney(v)
+			if !ok {
+				return f, badRequest(key + " must be an amount such as 100 or 99.50.")
+			}
+			*dst = new(int64(n))
+		}
+	}
+	if _, ok := store.QuoteSorts[strings.TrimPrefix(f.Sort, "-")]; f.Sort != "" && !ok {
+		return f, badRequest("sort must be one of number, client, issue_date, valid_until, total, status, created_at, optionally prefixed with -.")
+	}
+	return f, nil
 }
 
 func (s *Service) respond(w http.ResponseWriter, r *http.Request, sess store.Session, status int, id string) error {

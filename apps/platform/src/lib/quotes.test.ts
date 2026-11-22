@@ -15,10 +15,7 @@ import {
   quoteNumber,
   quotePdfUrl,
   quotesApi,
-  searchQuotes,
-  filterQuotes,
-  type QuoteFilters,
-  sortQuotes,
+  type QuoteListParams,
   type Quote,
 } from './quotes'
 
@@ -71,9 +68,8 @@ test('statuses, filters and PDF links follow the contract', () => {
   expect(isQuoteStatus('open')).toBe(false)
   expect(isQuoteStatus(null)).toBe(false)
   expect(listQuery({ clientId: 'cli_1', status: 'sent' }).toString()).toBe(
-    'client_id=cli_1&status=sent',
+    'page=1&page_size=50&status=sent&client_id=cli_1',
   )
-  expect(listQuery({}).toString()).toBe('')
   expect(quotePdfUrl('quo_1')).toBe('/api/v1/quotes/quo_1/pdf')
   expect(quotePdfUrl('quo 1', true)).toBe('/api/v1/quotes/quo%201/pdf?download=1')
 })
@@ -144,84 +140,51 @@ test('a valid-until before the date is refused per field', async () => {
   expect(sampleQuote().payable_total).toBe('2529.54')
 })
 
-test('search matches number, client and reference, ignoring case and spaces', () => {
-  const quotes = [
-    sampleQuote({ id: 'a', number: 'Q-2026-004', reference: 'PO 4711' }),
-    sampleQuote({ id: 'b', number: 'Q-2026-002', revision: 2 }),
-    sampleQuote({
-      id: 'c',
-      number: null,
-      client: { id: 'cli_9', number: 9, name: 'Keller Holzbau AG' },
-    }),
-  ]
-  const ids = (search: string) => searchQuotes(quotes, search).map((quote) => quote.id)
-  expect(ids('')).toEqual(['a', 'b', 'c'])
-  expect(ids('  ')).toEqual(['a', 'b', 'c'])
-  expect(ids('q-2026-004')).toEqual(['a'])
-  expect(ids('rev. 2')).toEqual(['b'])
-  expect(ids(' po 47 ')).toEqual(['a'])
-  expect(ids('holzbau')).toEqual(['c'])
-  expect(ids('draft')).toEqual(['c'])
-  expect(ids('nothing')).toEqual([])
-})
+const listedIds = async (params: Partial<QuoteListParams>) =>
+  (await quotesApi.list(params)).data.map((quote) => quote.id)
 
-test('filters keep quotes dated and totalled within the bounds', () => {
-  const quotes = [
-    { ...sampleQuote({ id: 'a', issue_date: '2026-10-01' }), payable_total: '100.00' },
-    { ...sampleQuote({ id: 'b', issue_date: '2026-11-01' }), payable_total: '2529.54' },
-    { ...sampleQuote({ id: 'c', issue_date: '2026-11-20' }), payable_total: '50.05' },
-  ]
-  const none: QuoteFilters = { from: '', to: '', min: null, max: null }
-  const ids = (filters: Partial<QuoteFilters>) =>
-    filterQuotes(quotes, { ...none, ...filters }).map((quote) => quote.id)
-  expect(ids({})).toEqual(['a', 'b', 'c'])
-  expect(ids({ from: '2026-11-01' })).toEqual(['b', 'c'])
-  expect(ids({ from: '2026-10-01', to: '2026-11-01' })).toEqual(['a', 'b'])
-  expect(ids({ min: '100' })).toEqual(['a', 'b'])
-  expect(ids({ min: '60', max: '2529.54' })).toEqual(['a', 'b'])
-  expect(ids({ max: '50' })).toEqual([])
-})
-
-describe('sorting the list', () => {
-  const quotes = [
-    sampleQuote({ id: 'a', number: 'Q-2026-010', issue_date: '2026-10-01', status: 'sent' }),
-    sampleQuote({ id: 'b', number: null, issue_date: '2026-11-01', status: 'draft' }),
-    sampleQuote({ id: 'c', number: 'Q-2026-009', issue_date: '2026-09-01', status: 'accepted' }),
-    sampleQuote({
-      id: 'd',
-      number: 'Q-2026-009',
-      revision: 2,
-      issue_date: '2026-09-01',
+describe('the list query', () => {
+  test('sends the page, the view, the search, every filter and the sort as the API names them', () => {
+    const query = listQuery({
+      page: 3,
+      pageSize: 100,
+      search: '  holzbau ',
       status: 'expired',
-    }),
-  ]
+      clientName: ' Keller ',
+      from: '2026-10-01',
+      to: '2026-11-30',
+      min: '100',
+      max: '2500.50',
+      sort: { field: 'valid', desc: true },
+    })
+    expect(query.toString()).toBe(
+      'page=3&page_size=100&search=holzbau&status=expired&client_name=Keller&issued_from=2026-10-01&issued_to=2026-11-30&total_min=100&total_max=2500.50&sort=-valid_until',
+    )
+  })
 
-  test('by default the newest date first', () => {
-    expect(idsOf(sortQuotes(quotes, DEFAULT_QUOTE_SORT))).toEqual(['b', 'a', 'c', 'd'])
+  test('leaves out what does not narrow; a column maps onto its API sort key', () => {
+    expect(listQuery({}).toString()).toBe('page=1&page_size=50')
+    expect(listQuery({ sort: DEFAULT_QUOTE_SORT }).get('sort')).toBe('-issue_date')
+    expect(listQuery({ sort: { field: 'date', desc: false } }).get('sort')).toBe('issue_date')
+    expect(listQuery({ min: '0', clientId: 'cli_3' }).toString()).toBe(
+      'page=1&page_size=50&client_id=cli_3&total_min=0',
+    )
   })
-  test('numbers in order, a revision after its first, drafts last', () => {
-    expect(idsOf(sortQuotes(quotes, { field: 'number', desc: false }))).toEqual([
-      'c',
-      'd',
-      'a',
-      'b',
-    ])
-    expect(idsOf(sortQuotes(quotes, { field: 'number', desc: true }))).toEqual(['a', 'd', 'c', 'b'])
+
+  test('the answer is one page with the totals in meta', async () => {
+    const first = await quotesApi.list({ pageSize: 2 })
+    expect(first.data).toHaveLength(2)
+    expect(first.meta).toMatchObject({ page: 1, page_size: 2 })
+    expect(first.meta.total_pages).toBe(Math.ceil(first.meta.total / 2))
+    const last = await quotesApi.list({ page: first.meta.total_pages, pageSize: 2 })
+    expect(last.data.length).toBeGreaterThan(0)
+    expect(last.data.map((quote) => quote.id)).not.toContain(first.data[0]?.id)
   })
-  test('status in the order of the lifecycle', () => {
-    expect(idsOf(sortQuotes(quotes, { field: 'status', desc: false }))).toEqual([
-      'b',
-      'a',
-      'c',
-      'd',
-    ])
-  })
-  test('totals by amount, not as text', () => {
-    const totals = [
-      { ...sampleQuote({ id: 'x' }), payable_total: '900.00' },
-      { ...sampleQuote({ id: 'y' }), payable_total: '1200.00' },
-    ]
-    expect(idsOf(sortQuotes(totals, { field: 'total', desc: true }))).toEqual(['y', 'x'])
+
+  test('the number as shown, client and reference are searched', async () => {
+    expect(await listedIds({ search: 'rev. 2' })).toEqual(['quo_expired'])
+    expect(await listedIds({ search: 'nobody' })).toEqual([])
+    expect(await listedIds({ clientName: 'nobody' })).toEqual([])
   })
 })
 
