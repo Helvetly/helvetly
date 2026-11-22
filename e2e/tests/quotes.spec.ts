@@ -214,7 +214,6 @@ test('the quotes list searches by number and keeps the search over a reload', as
   const { quote } = await sentQuote(api)
   const number = text(quote.number)
   await page.goto('/quotes')
-  await page.getByRole('button', { name: 'Search quotes' }).click()
   const search = page.getByRole('searchbox', { name: 'Search quotes' })
   await search.fill(number.toLowerCase())
   await expect(page).toHaveURL(new RegExp(`q=${number.toLowerCase()}`))
@@ -226,8 +225,7 @@ test('the quotes list searches by number and keeps the search over a reload', as
   await search.fill('no such quote')
   await expect(page.getByText('Nothing matches “no such quote”')).toBeVisible()
   await page.getByRole('button', { name: 'Clear search and filters' }).click()
-  // Emptied and not focused, the search folds back into its button.
-  await expect(page.getByRole('button', { name: 'Search quotes' })).toBeVisible()
+  await expect(search).toHaveValue('')
   await expect(page.getByRole('button', { name: number, exact: true })).toBeVisible()
 })
 

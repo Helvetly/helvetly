@@ -1053,6 +1053,7 @@ export function DocumentsPage() {
             {listing && (
               <>
                 <ListSearch
+                  collapsible
                   className="mr-1 flex-none"
                   label={translate('searchFiles')}
                   placeholder={translate('searchAllFiles')}
