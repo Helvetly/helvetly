@@ -3317,6 +3317,66 @@
               "maximum": 200,
               "default": 50
             }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "description": "Oldest first (the default) or newest first; with newest, cursor pages to older events.",
+            "schema": {
+              "type": "string",
+              "enum": ["oldest", "newest"],
+              "default": "oldest"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Only events of one group: payments (payments and refunds), invoices (invoices, credit notes, instalment plans), expenses, approvals, books (closed periods), portal, employees (HR and payroll) or settings (anything else).",
+            "schema": {
+              "type": "string",
+              "enum": ["payments", "invoices", "expenses", "approvals", "books", "portal", "employees", "settings"]
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "description": "Only events by this user id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "description": "Only events at or after this time (RFC 3339).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "description": "Only events before this time (RFC 3339).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Text search, case-insensitive: the record's number, client or supplier, the person's name, the kind or any payload text. At most 200 characters.",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
           }
         ],
         "responses": {
@@ -3373,6 +3433,29 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuditVerificationResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/audit-log/people": {
+      "get": {
+        "operationId": "list_audit_log_people",
+        "tags": ["Books"],
+        "summary": "List the people in the audit log",
+        "description": "Everyone with an entry in the audit log whose account still exists, by name: the values for the actor filter. Only owners and admins may do this (403 forbidden otherwise). A member needs the settings permission.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPeopleResponse"
                 }
               }
             }
@@ -10212,6 +10295,35 @@
         },
         "required": ["data"]
       },
+      "AuditSubject": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": ["string", "null"]
+          },
+          "party": {
+            "type": ["string", "null"],
+            "description": "The client of an invoice or quote, the supplier of an expense."
+          },
+          "currency": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["number", "party", "currency"],
+        "description": "The event's invoice, quote or expense as it is now (null when it is another kind of record or gone); the payload keeps what was recorded at the time."
+      },
+      "AuditPeopleResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            }
+          }
+        },
+        "required": ["data"]
+      },
       "AuditEventList": {
         "type": "object",
         "properties": {
@@ -10972,11 +11084,26 @@
           "kind": {
             "type": "string"
           },
+          "category": {
+            "type": "string",
+            "enum": ["payments", "invoices", "expenses", "approvals", "books", "portal", "employees", "settings"],
+            "description": "The group the kind belongs to, as the category filter uses it."
+          },
           "subject_type": {
             "type": "string"
           },
           "subject_id": {
             "type": "string"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditSubject"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "actor": {
             "anyOf": [
@@ -11005,8 +11132,10 @@
         "required": [
           "seq",
           "kind",
+          "category",
           "subject_type",
           "subject_id",
+          "subject",
           "actor",
           "at",
           "payload",

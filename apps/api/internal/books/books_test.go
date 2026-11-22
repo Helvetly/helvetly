@@ -172,8 +172,10 @@ func (e *env) logEvents(ws string, actor *string, subjects ...string) {
 type eventOut struct {
 	Seq         int64           `json:"seq"`
 	Kind        string          `json:"kind"`
+	Category    string          `json:"category"`
 	SubjectType string          `json:"subject_type"`
 	SubjectID   string          `json:"subject_id"`
+	Subject     *subject        `json:"subject"`
 	Actor       *person         `json:"actor"`
 	Payload     json.RawMessage `json:"payload"`
 	PrevHash    string          `json:"prev_hash"`
@@ -498,3 +500,97 @@ func TestPeriodActivityEndpoint(t *testing.T) {
 		t.Fatalf("months %v, want %v", months, want)
 	}
 }
+
+// TestAuditLogFilters: order, category, person, time window and search narrow the list; the subject names the
+// record as it is now.
+func TestAuditLogFilters(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	admin := e.join(owner.workspace, "admin")
+	ws, ctx := owner.workspace, context.Background()
+	if err := e.st.CreateExpense(ctx, ws, &store.Expense{ID: "exp_1", Source: "manual", Currency: "EUR", AmountMode: "gross",
+		InputTax: "none", ExchangeRate: 1000000, PaymentStatus: "unpaid", SupplierName: ptr("Papeterie SA"),
+		Base: store.ExpenseBase{Currency: "CHF"}, CreatedBy: &store.Uploader{ID: owner.user}}, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	base := time.Date(2026, 3, 2, 9, 0, 0, 0, time.UTC)
+	for i, ev := range []struct {
+		kind, subjectType, subjectID string
+		actor                        *string
+		payload                      string
+	}{
+		{"invoice.issued", "invoice", "inv_gone", &owner.user, `{"number": "2026-001"}`},
+		{"payment.added", "invoice", "inv_gone", &admin.user, `{"number": "2026-001", "amount": "10.00"}`},
+		{"expense.booked", "expense", "exp_1", &owner.user, `{"number": 1}`},
+		{"workspace.portal_turned_off", "workspace", ws, &admin.user, `{}`},
+		{"approvals.group_saved", "workspace", ws, &owner.user, `{"name": "Finance 50%"}`},
+	} {
+		if err := e.st.LogEvent(ctx, store.FinancialEvent{WorkspaceID: ws, Kind: ev.kind, SubjectType: ev.subjectType,
+			SubjectID: ev.subjectID, ActorID: ev.actor, At: base.Add(time.Duration(i) * 24 * time.Hour),
+			Payload: json.RawMessage(ev.payload)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		name  string
+		query string
+		want  []int64
+	}{
+		{"oldest first by default", "", []int64{1, 2, 3, 4, 5}},
+		{"newest first", "order=newest", []int64{5, 4, 3, 2, 1}},
+		{"newest pages to older", "order=newest&cursor=4", []int64{3, 2, 1}},
+		{"payments", "category=payments", []int64{2}},
+		{"invoices without payments", "category=invoices", []int64{1}},
+		{"portal", "category=portal", []int64{4}},
+		{"settings", "category=settings", []int64{5}},
+		{"person", "actor=" + admin.user, []int64{2, 4}},
+		{"since", "since=2026-03-04T00:00:00Z", []int64{3, 4, 5}},
+		{"window", "since=2026-03-03T00:00:00Z&before=2026-03-05T00:00:00Z", []int64{2, 3}},
+		{"search number", "q=2026-001", []int64{1, 2}},
+		{"search supplier", "q=papeterie", []int64{3}},
+		{"search person", "q=anna%20admin", []int64{2, 4}},
+		{"search kind", "q=portal_turned", []int64{4}},
+		{"percent is literal", "q=50%25", []int64{5}},
+		{"underscore is literal", "q=x_y", []int64{}},
+		{"combined", "category=payments&actor=" + owner.user, []int64{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var page logPage
+			e.do(owner, "GET", "/api/v1/audit-log?"+tc.query, nil, 200, &page)
+			got := []int64{}
+			for _, d := range page.Data {
+				got = append(got, d.Seq)
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("seqs %v, want %v", got, tc.want)
+			}
+		})
+	}
+
+	var page logPage
+	e.do(owner, "GET", "/api/v1/audit-log", nil, 200, &page)
+	if s := page.Data[2].Subject; page.Data[2].Category != "expenses" || s == nil || *s.Number != "1" ||
+		*s.Party != "Papeterie SA" || *s.Currency != "EUR" {
+		t.Fatalf("expense subject: %+v %+v", page.Data[2], s)
+	}
+	if page.Data[0].Subject != nil || page.Data[3].Subject != nil {
+		t.Fatalf("gone or non-record subjects: %+v %+v", page.Data[0].Subject, page.Data[3].Subject)
+	}
+
+	for _, q := range []string{"order=up", "category=quotes", "since=yesterday", "before=2026-03-01", "q=" + strings.Repeat("a", 201)} {
+		e.fails(owner, "GET", "/api/v1/audit-log?"+q, nil, 400, "invalid_request")
+	}
+
+	var people struct{ Data []person }
+	e.do(admin, "GET", "/api/v1/audit-log/people", nil, 200, &people)
+	if len(people.Data) != 2 || people.Data[0].ID != admin.user || people.Data[1].ID != owner.user {
+		t.Fatalf("people: %+v", people.Data)
+	}
+	other := e.workspace()
+	e.do(other, "GET", "/api/v1/audit-log/people", nil, 200, &people)
+	if len(people.Data) != 0 {
+		t.Fatalf("other workspace's people: %+v", people.Data)
+	}
+}
+
+func ptr[T any](v T) *T { return &v }
