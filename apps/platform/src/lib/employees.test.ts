@@ -24,7 +24,13 @@ test('list params come from the URL, unknown values fall back to the defaults', 
     search: 'lara',
     status: 'archived',
     department: 'Studio',
+    startFrom: '',
+    startTo: '',
     sort: { field: 'name', desc: false },
+  })
+  expect(parseListParams(new URLSearchParams('from=2024-01-01&to=soon'))).toMatchObject({
+    startFrom: '2024-01-01',
+    startTo: '',
   })
   expect(parseListParams(new URLSearchParams('status=fired')).status).toBe('active')
   expect(parseListParams(new URLSearchParams('sort=-since')).sort).toEqual({
@@ -39,10 +45,17 @@ test('list params come from the URL, unknown values fall back to the defaults', 
 
 test('list params go back to the URL without defaults, keeping the drawer keys', () => {
   const query = listParamsToQuery(
-    { search: 'x', status: 'all', department: null, sort: { field: 'since', desc: true } },
+    {
+      search: 'x',
+      status: 'all',
+      department: null,
+      startFrom: '2024-01-01',
+      startTo: '',
+      sort: { field: 'since', desc: true },
+    },
     new URLSearchParams('id=emp_1&status=ended&sort=name'),
   )
-  expect(query.toString()).toBe('id=emp_1&q=x&status=all&sort=-since')
+  expect(query.toString()).toBe('id=emp_1&q=x&status=all&from=2024-01-01&sort=-since')
   expect(listParamsToQuery(DEFAULT_PARAMS).toString()).toBe('')
 })
 
@@ -53,6 +66,9 @@ test('the API query always names the status and trims the search', () => {
   expect(apiQuery({ ...DEFAULT_PARAMS, sort: { field: 'position', desc: true } }).toString()).toBe(
     'status=active&page_size=200&sort=-position',
   )
+  expect(
+    apiQuery({ ...DEFAULT_PARAMS, startFrom: '2024-01-01', startTo: '2024-12-31' }).toString(),
+  ).toBe('status=active&page_size=200&start_from=2024-01-01&start_to=2024-12-31')
 })
 
 test('history kinds read as words', () => {

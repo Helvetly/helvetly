@@ -358,20 +358,33 @@ func TestEmployeeValidationAndList(t *testing.T) {
 		return out
 	}
 	for path, want := range map[string]string{
-		"/api/v1/employees":                                  "Ben,Anna,Cleo",
-		"/api/v1/employees?status=active":                    "Anna",
-		"/api/v1/employees?status=upcoming":                  "Ben",
-		"/api/v1/employees?status=ended":                     "Cleo",
-		"/api/v1/employees?department=sales":                 "Ben",
-		"/api/v1/employees?search=mus":                       "Anna",
-		"/api/v1/employees?search=" + url.QueryEscape("E-3"): "Cleo",
-		"/api/v1/employees?sort=-name":                       "Cleo,Anna,Ben",
-		"/api/v1/employees?sort=since":                       "Cleo,Anna,Ben",
-		"/api/v1/employees?sort=-since":                      "Ben,Anna,Cleo",
-		"/api/v1/employees?sort=department":                  "Anna,Cleo,Ben",
+		"/api/v1/employees":                                           "Ben,Anna,Cleo",
+		"/api/v1/employees?status=active":                             "Anna",
+		"/api/v1/employees?status=upcoming":                           "Ben",
+		"/api/v1/employees?status=ended":                              "Cleo",
+		"/api/v1/employees?department=sales":                          "Ben",
+		"/api/v1/employees?search=mus":                                "Anna",
+		"/api/v1/employees?search=" + url.QueryEscape("E-3"):          "Cleo",
+		"/api/v1/employees?sort=-name":                                "Cleo,Anna,Ben",
+		"/api/v1/employees?sort=since":                                "Cleo,Anna,Ben",
+		"/api/v1/employees?sort=-since":                               "Ben,Anna,Cleo",
+		"/api/v1/employees?sort=department":                           "Anna,Cleo,Ben",
+		"/api/v1/employees?status=&start_to=2021-12-31":               "Cleo",
+		"/api/v1/employees?start_from=2099-01-01":                     "Ben",
+		"/api/v1/employees?start_from=2020-01-01&start_to=2020-01-01": "Cleo",
 	} {
 		if got := strings.Join(names(path), ","); got != want {
 			t.Errorf("%s = %s, want %s", path, got, want)
+		}
+	}
+}
+
+func TestEmployeeListRefusesBadStartDates(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	for _, query := range []string{"start_from=soon", "start_to=2020-13-01"} {
+		if status, _ := e.send(owner, "GET", "/api/v1/employees?"+query, nil); status != 400 {
+			t.Errorf("%s: %d", query, status)
 		}
 	}
 }
