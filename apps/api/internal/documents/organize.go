@@ -34,8 +34,8 @@ const (
 
 const organizeInstructions = "You organize a small business's document manager. For each listed document (a JSON " +
 	"line with its id, name, file type, current folder path, tags and the start of its text), propose the folder path it " +
-	"belongs in and its tags. Keep a calm, conventional structure, such as by kind and then year: Invoices/2025, " +
-	"Contracts, Receipts/2024. Prefer the existing folders; a new folder path has at most 3 levels separated by /, each a " +
+	"belongs in and its tags. Keep a calm, conventional structure, such as by kind and then year: Contracts/2025, " +
+	"Insurance, Bank Statements/2024. Prefer the existing folders; a new folder path has at most 3 levels separated by /, each a " +
 	"short Title Case name, plural where natural. " + recordRules + " folder is the whole path, or an empty string for the " +
 	"top level. Give 1 " +
 	"to 3 short lower-case tags, the first saying what kind of document it is (such as invoice, contract, receipt, " +
@@ -124,6 +124,44 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 		return err
 	}
 	snippets := s.snippets(ctx, docs)
+	index, err := s.recordIndex(ctx, ws.ID, names.clients)
+	if err != nil {
+		return err
+	}
+	byID, clients := map[string]proposal{}, map[string]store.ClientName{}
+	var rest []store.Document // the files no record decides, for the model
+	for _, d := range docs {
+		if p, ok := matchedProposal(index.match(d, snippets[d.ID]), d, folders, names); ok {
+			byID[d.ID] = p
+			continue
+		}
+		if c := index.client(d, snippets[d.ID]); c != nil {
+			clients[d.ID] = *c
+		}
+		rest = append(rest, d)
+	}
+	considered, err := s.organizeRest(ctx, sess, rest, snippets, folders, names, clients, used, byID)
+	if err != nil {
+		return err
+	}
+	proposals := []proposal{}
+	for _, d := range docs {
+		if p, ok := byID[d.ID]; ok {
+			proposals = append(proposals, p)
+		}
+	}
+	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"proposals": proposals, "considered": len(docs) - len(rest) + considered}))
+	return nil
+}
+
+// organizeRest asks the model about the files no record decides and adds its checked proposals to byID; the number of
+// files it considered.
+func (s *Service) organizeRest(ctx context.Context, sess store.Session, docs []store.Document, snippets map[string]string,
+	folders []store.Folder, names recordNames, clients map[string]store.ClientName, used []string, byID map[string]proposal) (int, error) {
+	if len(docs) == 0 {
+		return 0, nil
+	}
+	ws := sess.Workspace
 	budget := s.budget
 	budget.Gate = func(ctx context.Context, q store.Q, workspaceID string) error {
 		return s.filingGate(ctx, q, workspaceID, sess.User.ID)
@@ -137,14 +175,37 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 		reply, err = budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, used), call)
 	}
 	if err != nil {
-		return organizeError(err)
+		return 0, organizeError(err)
 	}
-	proposals, err := readOrganize(reply.Text, docs, folders, names)
+	proposals, err := readOrganize(reply.Text, docs, folders, names, clients)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"proposals": proposals, "considered": len(docs)}))
-	return nil
+	for _, p := range proposals {
+		byID[p.DocumentID] = p
+	}
+	return len(docs), nil
+}
+
+// matchedProposal: the proposal for a file a record decides: its client's record folder with the record's kind tag.
+func matchedProposal(m *recordMatch, d store.Document, folders []store.Folder, names recordNames) (proposal, bool) {
+	if m == nil {
+		return proposal{}, false
+	}
+	folder, ok := clientRecordPath(names, m.place)
+	if !ok {
+		return proposal{}, false // the client's name is not one record path can name: the model decides
+	}
+	from := currentPath(folders, d.FolderID)
+	p := proposal{DocumentID: d.ID, Name: d.Name, Folder: folder, Tags: []string{m.tag}, Reason: m.reason}
+	if d.FolderID != nil {
+		p.FromFolder = &from
+	}
+	p.Change = folder != from || !slices.Contains(d.Tags, m.tag)
+	if !p.Change {
+		p.Folder = from
+	}
+	return p, true
 }
 
 // inSubtree: f is root or below it.
@@ -256,7 +317,9 @@ func organizeError(err error) error {
 }
 
 // readOrganize checks the model's answer: only listed documents, each once, a usable path and tags.
-func readOrganize(text string, docs []store.Document, folders []store.Folder, names recordNames) ([]proposal, error) {
+// An invoice or quote outside the system folders goes to its client's record folder when the file names one known
+// client (clients, by document); else its reason says no client was found.
+func readOrganize(text string, docs []store.Document, folders []store.Folder, names recordNames, clients map[string]store.ClientName) ([]proposal, error) {
 	var out struct {
 		Proposals []struct {
 			DocumentID string   `json:"document_id"`
@@ -291,7 +354,7 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder, na
 		if d.FolderID != nil {
 			p.FromFolder = &from
 		}
-		if path, ok := splitPath(a.Folder, organizeApplyDepth); ok {
+		if path, ok := splitPath(a.Folder, organizeApplyDepth); ok && a.Change {
 			// a place in the system folders only by their structure; any other path as before
 			if place, system := recordPath(path, names); system && place != nil ||
 				!system && (existing[strings.Join(path, "/")] || len(path) <= organizeDepth) {
@@ -305,7 +368,22 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder, na
 		}
 		reason := []rune(strings.Join(strings.Fields(a.Reason), " "))
 		p.Reason = string(reason[:min(len(reason), 200)])
-		p.Change = a.Change && (p.Folder != from || slices.ContainsFunc(p.Tags, func(t string) bool { return !slices.Contains(d.Tags, t) }))
+		change := a.Change
+		path, _ := splitPath(p.Folder, organizeApplyDepth)
+		if _, system := recordPath(path, names); !system {
+			if kind := recordKind(path, p.Tags); kind != "" {
+				c, named := clients[d.ID]
+				folder, ok := clientRecordPath(names, recordPlace{clientID: c.ID, kind: kind, year: recordYear(path, d)})
+				switch {
+				case named && ok:
+					p.Folder, change = folder, true
+					p.Reason = fmt.Sprintf("%s for %s, so it goes in the client's folder.", map[string]string{"invoices": "An invoice", "quotes": "A quote"}[kind], strings.Join(strings.Fields(c.Name), " "))
+				case len(path) > 0:
+					p.Reason = strings.TrimSpace(p.Reason + " No known client could be found in it, so it stays outside Clients.")
+				}
+			}
+		}
+		p.Change = change && (p.Folder != from || slices.ContainsFunc(p.Tags, func(t string) bool { return !slices.Contains(d.Tags, t) }))
 		if !p.Change {
 			p.Folder = from
 		}

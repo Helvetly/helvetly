@@ -4400,6 +4400,7 @@
   "organizeTopLevel": "Top level",
   "organizeFolderFor": "Folder for {name}",
   "organizeNewFolder": "New folder",
+  "organizeSystemOnly": "Helvetly manages the client and expense folders. Pick an existing one or a folder outside Clients and Expenses.",
   "organizeRemoveTag": "Remove tag {tag}",
   "organizeSelected": "{count, plural, =0 {Nothing selected} one {# change selected} other {# changes selected}}",
   "organizeApply": "{count, plural, =0 {Apply} one {Apply # change} other {Apply # changes}}",
