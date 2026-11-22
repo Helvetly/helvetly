@@ -1,6 +1,6 @@
 import { SidebarInset, SidebarProvider } from '@helvetly/ui/components/sidebar'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
@@ -9,6 +9,7 @@ import { endedMonths, monthLabel, PeriodsSettings } from '@/components/settings/
 import type { FinancialEvent, Period } from '@/lib/books'
 import { today } from '@/lib/invoices'
 import { auditEvents, sampleActivity } from '@/mocks/data'
+import { filterAudit } from '@/mocks/handlers'
 
 const session = (role: string) => ({
   user: { id: 'usr_story', email: 'anna@example.com', name: 'Anna Muster', avatar_url: null },
@@ -52,11 +53,28 @@ const periodHandlers = [
 ]
 
 const auditHandlers = (events: FinancialEvent[], ok = true) => [
-  http.get('/api/v1/audit-log', () =>
-    HttpResponse.json({ data: events, meta: { next_cursor: null } }),
+  http.get('/api/v1/audit-log', ({ request }) => {
+    const query = new URL(request.url).searchParams
+    const data = filterAudit(events, query)
+    return HttpResponse.json({
+      data: query.get('order') === 'newest' ? data.toReversed() : data,
+      meta: { next_cursor: null },
+    })
+  }),
+  http.get('/api/v1/audit-log/people', () =>
+    HttpResponse.json({
+      data: [
+        { id: 'usr_mock_1', name: 'Anna Muster' },
+        { id: 'usr_mock_2', name: 'Marco Bernasconi' },
+      ].filter((person) => events.some((event) => event.actor?.id === person.id)),
+    }),
   ),
   http.get('/api/v1/audit-log/verify', () =>
-    HttpResponse.json({ data: ok ? { ok, broken_at: null } : { ok, broken_at: 7 } }),
+    HttpResponse.json({
+      data: ok
+        ? { ok, broken_at: null, entries: events.length }
+        : { ok, broken_at: 7, entries: events.length },
+    }),
   ),
 ]
 
@@ -304,7 +322,7 @@ export const PeriodsPickerSearch: Story = {
   },
 }
 
-/** Events as a timeline by day, each with its icon, reference, person and time. */
+/** Newest first by day, one sentence per event; the portal switched off and on folds into one row. */
 export const AuditLog: Story = {
   parameters: page('owner', auditHandlers(auditEvents)),
   render: () => (
@@ -314,11 +332,112 @@ export const AuditLog: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('Chain verified')).toBeVisible()
-    const first = await canvas.findByRole('listitem', { name: /^#1 Invoice issued/ })
-    await expect(within(first).getByText('Anna Muster')).toBeVisible()
-    await expect(within(first).getByText('2026-031')).toBeVisible()
-    await expect(canvas.getByRole('listitem', { name: /^#4 / })).toHaveTextContent('System')
+    await expect(await canvas.findByText('Chain verified · 19 entries intact')).toBeVisible()
+    const todays = await canvas.findByRole('region', { name: 'Today' })
+    await expect(within(todays).getByText('3 entries')).toBeVisible()
+    await expect(canvas.getByRole('region', { name: 'Yesterday' })).toBeVisible()
+    await expect(
+      within(todays).getByRole('button', { name: 'Details of: Invoice 2026-036 voided' }),
+    ).toBeVisible()
+    // The record's number links to its drawer; no internal id or chain number is shown.
+    await expect(within(todays).getAllByRole('link', { name: '2026-031' })[0]).toHaveAttribute(
+      'href',
+      expect.stringMatching(/\/invoices\/?\?id=inv_mock_1$/),
+    )
+    await expect(canvas.queryByText(/wsp_|#\d/)).toBeNull()
+    const folded = canvas.getByRole('button', {
+      name: 'Details of: Client portal turned off and on 6 times',
+    })
+    const row = folded.closest('li')
+    if (!row) throw new Error('The folded row is not a list item.')
+    await expect(row).toHaveTextContent(/08:47.09:14/)
+    await expect(row).toHaveTextContent('Marco Bernasconi')
+  },
+}
+
+/** A folded row opens to each of its entries. */
+export const AuditLogFoldOpen: Story = {
+  parameters: AuditLog.parameters,
+  render: AuditLog.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Show each' }))
+    await expect(
+      canvas.getAllByRole('button', { name: 'Details of: Client portal turned off' }),
+    ).toHaveLength(3)
+    await expect(
+      canvas.getAllByRole('button', { name: 'Details of: Client portal turned on' }),
+    ).toHaveLength(3)
+    await expect(canvas.getByRole('button', { name: 'Hide each' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  },
+}
+
+/** Type, person and search narrow the list; nothing matching says so and offers to clear. */
+export const AuditLogFilters: Story = {
+  parameters: AuditLog.parameters,
+  render: AuditLog.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const screen = body(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Type' }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Payments' }))
+    await expect(await canvas.findByText('2 entries shown')).toBeVisible()
+    await expect(
+      canvas.getByRole('button', { name: /Details of: Refund of CHF 50.00/ }),
+    ).toBeVisible()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Payments' }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'All types' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Person' }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: /Marco Bernasconi/ }))
+    await expect(await canvas.findByText('8 entries shown')).toBeVisible()
+
+    await userEvent.type(canvas.getByRole('searchbox', { name: 'Search the audit log' }), 'zzz')
+    await expect(await canvas.findByText('No entries match')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Clear search and filters' }))
+    await expect(await canvas.findByText('19 entries')).toBeVisible()
+  },
+}
+
+/** A row opens its details: who, when, the record, what was recorded and the chain's hashes. */
+export const AuditLogDetails: Story = {
+  parameters: AuditLog.parameters,
+  render: AuditLog.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(
+      await canvas.findByRole('button', {
+        name: 'Details of: Client portal address changed to muster-ag',
+      }),
+    )
+    const drawer = within(await body(canvasElement).findByRole('dialog'))
+    await expect(drawer.getByText('Anna Muster')).toBeVisible()
+    await expect(drawer.getByText('muster')).toBeVisible()
+    await expect(drawer.getByText('Before')).toBeVisible()
+    await userEvent.click(drawer.getByText('Technical details'))
+    await expect(drawer.getByText('#9')).toBeVisible()
+    await expect(drawer.getByRole('button', { name: 'Copy Hash' })).toBeVisible()
+    await expect(drawer.getByRole('button', { name: 'Copy Previous hash' })).toBeVisible()
+  },
+}
+
+/** While the first page loads: a quiet skeleton of rows. */
+export const AuditLogLoading: Story = {
+  parameters: page('owner', [
+    http.get('/api/v1/audit-log', async () => {
+      await delay('infinite')
+      return HttpResponse.json({})
+    }),
+    ...auditHandlers(auditEvents).slice(1),
+  ]),
+  render: AuditLog.render,
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByRole('status', { name: 'Loading' }),
+    ).toBeInTheDocument()
   },
 }
 
@@ -343,8 +462,8 @@ export const AuditLogEmpty: Story = {
   render: AuditLog.render,
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Nothing recorded yet')).toBeVisible()
-    // No "Entries" band (and no rule above it) while there is nothing to list.
-    await expect(within(canvasElement).queryByRole('heading', { name: 'Entries' })).toBeNull()
+    // No toolbar or filters while there is nothing to list.
+    await expect(within(canvasElement).queryByRole('searchbox')).toBeNull()
   },
 }
 
@@ -356,7 +475,7 @@ export const AuditLogPhone: Story = {
     </Phone>
   ),
   play: async ({ canvasElement }) => {
-    await within(canvasElement).findByText('Chain verified')
+    await within(canvasElement).findByText('Chain verified · 19 entries intact')
     await fitsPhone(canvasElement)
   },
 }

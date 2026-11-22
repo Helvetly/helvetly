@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -118,6 +119,139 @@ func (q Q) Events(ctx context.Context, workspaceID string, after int64, limit in
 		events = append(events, e)
 	}
 	return events, rows.Err()
+}
+
+// AuditCategories are the groups the audit log is filtered by, in the order eventCategory tests them.
+var AuditCategories = []string{"payments", "invoices", "expenses", "approvals", "books", "portal", "employees", "settings"}
+
+// eventCategory groups a kind for the reader: payments before invoices (a payment's subject is an invoice), and
+// whatever is not named (approver groups, policies, other workspace settings) is settings.
+const eventCategory = `CASE
+	WHEN e.kind LIKE 'payment.%' OR e.kind LIKE 'refund.%' THEN 'payments'
+	WHEN e.kind LIKE 'invoice.%' OR e.kind LIKE 'credit.%' OR e.kind LIKE 'plan.%' THEN 'invoices'
+	WHEN e.kind LIKE 'expense.%' THEN 'expenses'
+	WHEN e.kind LIKE 'approval.%' THEN 'approvals'
+	WHEN e.kind LIKE 'period.%' THEN 'books'
+	WHEN e.kind LIKE 'workspace.portal%' THEN 'portal'
+	WHEN e.kind LIKE 'employee.%' OR e.kind LIKE 'payroll.%' THEN 'employees'
+	ELSE 'settings' END`
+
+// AuditFilter narrows a page of the log; zero values filter nothing. After is the cursor: the last seq read.
+type AuditFilter struct {
+	After    int64
+	Newest   bool // newest first; After then means "older than"
+	Category string
+	ActorID  string
+	Since    *time.Time
+	Before   *time.Time
+	Search   string // number, client or supplier, person, kind or any payload text
+}
+
+// AuditEntry is an event with what a reader needs to make a sentence of it, read from the records as they are now:
+// the record's number, its client or supplier and currency (nil when the record is gone or is not one of these).
+type AuditEntry struct {
+	FinancialEvent
+	Category string
+	Number   *string
+	Party    *string
+	Currency *string
+}
+
+// AuditEntries reads a filtered page of the log. Read-only: the chained rows are only joined, never touched.
+func (q Q) AuditEntries(ctx context.Context, workspaceID string, f AuditFilter, limit int) ([]AuditEntry, error) {
+	args := []any{workspaceID}
+	arg := func(v any) string { args = append(args, v); return fmt.Sprintf("$%d", len(args)) }
+	where := []string{"e.workspace_id = $1"}
+	order := "e.seq"
+	if f.Newest {
+		order = "e.seq DESC"
+		if f.After > 0 {
+			where = append(where, "e.seq < "+arg(f.After))
+		}
+	} else {
+		where = append(where, "e.seq > "+arg(f.After))
+	}
+	if f.Category != "" {
+		where = append(where, eventCategory+" = "+arg(f.Category))
+	}
+	if f.ActorID != "" {
+		where = append(where, "e.actor_id = "+arg(f.ActorID))
+	}
+	if f.Since != nil {
+		where = append(where, "e.at >= "+arg(*f.Since))
+	}
+	if f.Before != nil {
+		where = append(where, "e.at < "+arg(*f.Before))
+	}
+	if f.Search != "" {
+		like := arg("%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(f.Search) + "%")
+		where = append(where, fmt.Sprintf(`(s.number ILIKE %[1]s OR s.party ILIKE %[1]s OR u.name ILIKE %[1]s
+			OR e.kind ILIKE %[1]s OR e.payload::text ILIKE %[1]s)`, like))
+	}
+	rows, err := q.db.Query(ctx, `SELECT e.workspace_id, e.seq, e.kind, e.subject_type, e.subject_id, e.actor_id, e.at,
+		e.payload::text, e.prev_hash, e.hash, `+eventCategory+`, s.number, s.party, s.currency
+		FROM financial_events e
+		LEFT JOIN users u ON u.id = e.actor_id
+		LEFT JOIN LATERAL (
+			SELECT i.number, c.name AS party, i.currency FROM invoices i JOIN clients c ON c.id = i.client_id
+			WHERE e.subject_type = 'invoice' AND i.workspace_id = e.workspace_id AND i.id = e.subject_id
+			UNION ALL
+			SELECT t.number, c.name, t.currency FROM quotes t JOIN clients c ON c.id = t.client_id
+			WHERE e.subject_type = 'quote' AND t.workspace_id = e.workspace_id AND t.id = e.subject_id
+			UNION ALL
+			SELECT x.number::text, x.supplier_name, x.currency FROM expenses x
+			WHERE e.subject_type = 'expense' AND x.workspace_id = e.workspace_id AND x.id = e.subject_id
+			LIMIT 1
+		) s ON true
+		WHERE `+strings.Join(where, " AND ")+` ORDER BY `+order+` LIMIT `+arg(limit), args...)
+	if err != nil {
+		return nil, fmt.Errorf("audit entries: %w", err)
+	}
+	defer rows.Close()
+	out := []AuditEntry{}
+	for rows.Next() {
+		var a AuditEntry
+		var payload string
+		var prev, hash []byte
+		if err := rows.Scan(&a.WorkspaceID, &a.Seq, &a.Kind, &a.SubjectType, &a.SubjectID, &a.ActorID, &a.At, &payload,
+			&prev, &hash, &a.Category, &a.Number, &a.Party, &a.Currency); err != nil {
+			return nil, fmt.Errorf("audit entries: %w", err)
+		}
+		a.Payload = json.RawMessage(payload)
+		a.PrevHash, a.Hash = hex.EncodeToString(prev), hex.EncodeToString(hash)
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// AuditActors: every user who has an entry in the workspace's log and still has an account, by name.
+func (q Q) AuditActors(ctx context.Context, workspaceID string) ([]User, error) {
+	rows, err := q.db.Query(ctx, `SELECT u.id, u.name FROM users u WHERE u.id IN
+		(SELECT DISTINCT actor_id FROM financial_events WHERE workspace_id = $1 AND actor_id IS NOT NULL)
+		ORDER BY lower(u.name), u.id`, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("audit actors: %w", err)
+	}
+	defer rows.Close()
+	out := []User{}
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Name); err != nil {
+			return nil, fmt.Errorf("audit actors: %w", err)
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// EventCount: how many entries the workspace's log has.
+func (q Q) EventCount(ctx context.Context, workspaceID string) (int64, error) {
+	var n int64
+	err := q.db.QueryRow(ctx, `SELECT count(*) FROM financial_events WHERE workspace_id = $1`, workspaceID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("event count: %w", err)
+	}
+	return n, nil
 }
 
 // VerifyChain recomputes every hash; brokenAt is the first seq that is missing, out of order or changed.

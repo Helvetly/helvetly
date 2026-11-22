@@ -17,6 +17,7 @@ func TestDocumentedResponsesMatch(t *testing.T) {
 		"PeriodActivitySource": reflect.TypeFor[activitySource](),
 		"PeriodActivityMonth":  reflect.TypeFor[monthActivity](),
 		"AuditEvent":           reflect.TypeFor[event](),
+		"AuditSubject":         reflect.TypeFor[subject](),
 	} {
 		// payload is raw JSON (an object): the drift check reads json.RawMessage as a string, so it is only checked by name.
 		for _, d := range openapi.Drift(schema, typ, extra[schema]...) {

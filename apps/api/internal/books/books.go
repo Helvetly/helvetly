@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -56,6 +58,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/audit-log", s.auditLog)
 	handle("GET /api/v1/audit-log/export", s.exportLog)
 	handle("GET /api/v1/audit-log/verify", s.verifyLog)
+	handle("GET /api/v1/audit-log/people", s.auditPeople)
 	handle("GET /api/v1/clients/{id}/self-billing-agreements", s.agreements)
 	handle("POST /api/v1/clients/{id}/self-billing-agreements", s.createAgreement)
 	handle("DELETE /api/v1/clients/{id}/self-billing-agreements/{agreementId}", s.deleteAgreement)
@@ -302,8 +305,10 @@ func (s *Service) periodActivity(w http.ResponseWriter, r *http.Request, sess st
 type event struct {
 	Seq         int64           `json:"seq"`
 	Kind        string          `json:"kind"`
+	Category    string          `json:"category"`
 	SubjectType string          `json:"subject_type"`
 	SubjectID   string          `json:"subject_id"`
+	Subject     *subject        `json:"subject"`
 	Actor       *person         `json:"actor"`
 	At          time.Time       `json:"at"`
 	Payload     json.RawMessage `json:"payload"`
@@ -311,25 +316,19 @@ type event struct {
 	Hash        string          `json:"hash"`
 }
 
+// subject is the event's record as it is now, for a readable entry; the hashed payload stays the record of the time.
+type subject struct {
+	Number   *string `json:"number"`
+	Party    *string `json:"party"`
+	Currency *string `json:"currency"`
+}
+
 func (s *Service) auditLog(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	q := r.URL.Query()
-	var cursor int64
-	if v := q.Get("cursor"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 64)
-		if err != nil || n < 0 {
-			return badQuery("cursor must be the last seq read.")
-		}
-		cursor = n
+	f, limit, err := auditQuery(r.URL.Query())
+	if err != nil {
+		return err
 	}
-	limit := 50
-	if v := q.Get("limit"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 || n > 200 {
-			return badQuery("limit must be a whole number from 1 to 200.")
-		}
-		limit = n
-	}
-	list, err := s.db.Events(r.Context(), sess.Workspace.ID, cursor, limit+1)
+	list, err := s.db.AuditEntries(r.Context(), sess.Workspace.ID, f, limit+1)
 	if err != nil {
 		return err
 	}
@@ -345,9 +344,72 @@ func (s *Service) auditLog(w http.ResponseWriter, r *http.Request, sess store.Se
 		if err != nil {
 			return err
 		}
-		out[i] = event{e.Seq, e.Kind, e.SubjectType, e.SubjectID, actor, e.At, e.Payload, e.PrevHash, e.Hash}
+		var sub *subject
+		if e.Number != nil || e.Party != nil || e.Currency != nil {
+			sub = &subject{e.Number, e.Party, e.Currency}
+		}
+		out[i] = event{e.Seq, e.Kind, e.Category, e.SubjectType, e.SubjectID, sub, actor, e.At, e.Payload, e.PrevHash, e.Hash}
 	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": out, "meta": map[string]any{"next_cursor": next}})
+	return nil
+}
+
+// auditQuery reads the list's paging and filters.
+func auditQuery(q url.Values) (store.AuditFilter, int, error) {
+	var f store.AuditFilter
+	if v := q.Get("cursor"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n < 0 {
+			return f, 0, badQuery("cursor must be the last seq read.")
+		}
+		f.After = n
+	}
+	limit := 50
+	if v := q.Get("limit"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 || n > 200 {
+			return f, 0, badQuery("limit must be a whole number from 1 to 200.")
+		}
+		limit = n
+	}
+	switch q.Get("order") {
+	case "", "oldest":
+	case "newest":
+		f.Newest = true
+	default:
+		return f, 0, badQuery("order must be oldest or newest.")
+	}
+	if f.Category = q.Get("category"); f.Category != "" && !slices.Contains(store.AuditCategories, f.Category) {
+		return f, 0, badQuery("category must be one of " + strings.Join(store.AuditCategories, ", ") + ".")
+	}
+	f.ActorID = q.Get("actor")
+	for name, dst := range map[string]**time.Time{"since": &f.Since, "before": &f.Before} {
+		if v := q.Get(name); v != "" {
+			t, err := time.Parse(time.RFC3339, v)
+			if err != nil {
+				return f, 0, badQuery(name + " must be an RFC 3339 time.")
+			}
+			*dst = &t
+		}
+	}
+	f.Search = strings.TrimSpace(q.Get("q"))
+	if utf8.RuneCountInString(f.Search) > 200 {
+		return f, 0, badQuery("q must be at most 200 characters.")
+	}
+	return f, limit, nil
+}
+
+// auditPeople lists who appears in the log, for the person filter.
+func (s *Service) auditPeople(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	users, err := s.db.AuditActors(r.Context(), sess.Workspace.ID)
+	if err != nil {
+		return err
+	}
+	out := make([]person, len(users))
+	for i, u := range users {
+		out[i] = person{u.ID, u.Name}
+	}
+	auth.WriteJSON(w, http.StatusOK, data(out))
 	return nil
 }
 
@@ -414,7 +476,11 @@ func (s *Service) verifyLog(w http.ResponseWriter, r *http.Request, sess store.S
 	if !ok {
 		at = &brokenAt
 	}
-	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"ok": ok, "broken_at": at}))
+	entries, err := s.db.EventCount(r.Context(), sess.Workspace.ID)
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"ok": ok, "broken_at": at, "entries": entries}))
 	return nil
 }
 
