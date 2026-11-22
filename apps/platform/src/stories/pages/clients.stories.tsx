@@ -46,20 +46,20 @@ export const DetailInlineFocus: Story = {
   },
 }
 
-/** The status view is a page tab; other filters show as removable chips under it. */
+/** The status view is a page tab; other filters show as removable chips in the search. */
 export const Filtered: Story = {
   parameters: pageParameters('/clients', { status: 'active', type: 'company' }),
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await expect(
-      await body.findByRole('button', { name: 'Remove filter Companies' }, { timeout: 8000 }),
+      await body.findByRole('button', { name: 'Remove filter Type: Companies' }, { timeout: 8000 }),
     ).toBeVisible()
     const views = body.getByRole('navigation', { name: 'Views' })
     await expect(within(views).getByRole('button', { name: /^Active/ })).toHaveAttribute(
       'aria-current',
       'page',
     )
-    await expect(body.queryByRole('button', { name: 'Remove filter Active' })).toBeNull()
+    await expect(body.queryByRole('button', { name: 'Remove filter Status: Active' })).toBeNull()
     await expect(body.queryByRole('button', { name: 'Clear all' })).toBeNull()
   },
 }
@@ -105,12 +105,49 @@ export const StatusOutsideViews: Story = {
     await expect(
       await body.findByRole(
         'button',
-        { name: 'Remove filter Complete address' },
+        { name: 'Remove filter Status: Complete address' },
         { timeout: 8000 },
       ),
     ).toBeVisible()
     const views = body.getByRole('navigation', { name: 'Views' })
     await expect(within(views).queryAllByRole('button', { current: 'page' })).toEqual([])
+  },
+}
+
+/**
+ * The clients list's field terms: the URL's filters show as chips in the search and in the Filters
+ * popover alike, and a term picked from the suggestions or a chip's × changes the URL. (The story
+ * URL does not re-render the page; data/list-search.stories.tsx plays the whole round trip.)
+ */
+export const QuerySearch: Story = {
+  parameters: pageParameters('/clients', { type: 'person', city: 'bas' }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const url = () => new URL(canvasElement.ownerDocument.location.href).searchParams
+    const search = await body.findByRole('searchbox', { name: 'Search clients' }, { timeout: 8000 })
+    await waitFor(() => expect(body.getAllByText('Sophie Meier')[0]).toBeVisible())
+    await expect(body.queryAllByText('Keller Holzbau AG')).toHaveLength(0)
+    await expect(body.getByRole('button', { name: 'Remove filter Type: People' })).toBeVisible()
+    await expect(body.getByRole('button', { name: 'Remove filter City: bas' })).toBeVisible()
+
+    await userEvent.click(body.getByRole('button', { name: /Filters/ }))
+    await expect(await body.findByRole('checkbox', { name: 'People' })).toBeChecked()
+    await userEvent.keyboard('{Escape}')
+
+    await userEvent.type(search, 'stat')
+    const suggestions = body.getByRole('listbox', { name: 'Search suggestions' })
+    await userEvent.keyboard('{Enter}')
+    await expect(search).toHaveValue('status:')
+    await userEvent.type(search, 'complete')
+    await expect(within(suggestions).getByRole('option', { selected: true })).toHaveTextContent(
+      'Status:Complete address',
+    )
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() => expect(url().getAll('status')).toEqual(['complete']))
+    await expect(url().get('type')).toBe('person')
+
+    await userEvent.click(body.getByRole('button', { name: 'Remove filter City: bas' }))
+    await waitFor(() => expect(url().get('city')).toBeNull())
   },
 }
 

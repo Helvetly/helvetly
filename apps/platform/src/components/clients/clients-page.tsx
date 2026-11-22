@@ -35,6 +35,7 @@ import { toast } from 'sonner'
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
+import { among, single, type QueryField } from '@/lib/list-query'
 import {
   dropdownKit,
   PageContextMenu,
@@ -57,6 +58,7 @@ import {
   listParamsToQuery,
   parseListParams,
   STATUS_VIEWS,
+  STATUSES,
   statusView,
   type StatusView,
   useBulkClients,
@@ -140,6 +142,7 @@ export function ClientsPage() {
   const hiddenColumns = useHiddenColumns()
 
   const list = useClientList(params)
+  const queryFields = useQueryFields()
   const save = useSaveClient()
   const remove = useDeleteClient()
   const bulk = useBulkClients()
@@ -183,7 +186,8 @@ export function ClientsPage() {
     params.status.length > 0 ||
     params.type !== null ||
     params.tags.length > 0 ||
-    params.countries.length > 0
+    params.countries.length > 0 ||
+    Boolean(params.name || params.email || params.city)
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id))
   const toggleRow = (id: string) =>
     setSelected((current) => {
@@ -332,6 +336,7 @@ export function ClientsPage() {
               placeholder={translate('searchNameEmailCityVATOrNumber')}
               value={search}
               onChange={setSearch}
+              query={{ fields: queryFields, params, onChange: update }}
             />
             <Popover>
               <PopoverTrigger asChild>
@@ -361,7 +366,6 @@ export function ClientsPage() {
               </PopoverContent>
             </Popover>
           </ListToolbar>
-          <ActiveFilters params={params} onChange={update} />
 
           {list.error ? (
             <State
@@ -623,78 +627,70 @@ const STATUS_LABELS: Record<ClientStatus, string> = {
   complete: translate('completeAddress'),
 }
 
-/** Chips under the toolbar for every filter in use, each with its own ×, and "Clear all". */
-function ActiveFilters({
-  params,
-  onChange,
-}: {
-  params: ListParams
-  onChange: (change: Partial<ListParams>) => void
-}) {
-  const chips: { label: string; clear: Partial<ListParams> }[] = [
-    ...(params.type
-      ? [
-          {
-            label: params.type === 'company' ? translate('companies') : translate('people'),
-            clear: { type: null },
-          },
-        ]
-      : []),
-    // A quick view shows in the toolbar; only another combination (from a link) needs chips.
-    ...(statusView(params.status) === null
-      ? params.status.map((status) => ({
-          label: STATUS_LABELS[status],
-          clear: { status: params.status.filter((entry) => entry !== status) },
-        }))
-      : []),
-    ...params.tags.map((tag) => ({
-      label: translate('tag', { tag: tag }),
-      clear: { tags: params.tags.filter((entry) => entry !== tag) },
-    })),
-    ...params.countries.map((code) => ({
-      label: countryName(code),
-      clear: { countries: params.countries.filter((entry) => entry !== code) },
-    })),
+/** The search's field terms: `status:`, `type:`, `tag:`, `country:`, `name:`, `email:`, `city:`. */
+function useQueryFields(): QueryField<ListParams>[] {
+  const tags = useClientTags()
+  return [
+    {
+      id: 'status',
+      label: translate('status'),
+      type: 'enum',
+      values: STATUSES.map((status) => ({ value: status, label: STATUS_LABELS[status] })),
+      // A quick view shows as the active tab; only another combination needs chips.
+      get: (params) => (statusView(params.status) === null ? params.status : []),
+      set: (status, params) =>
+        status.length || statusView(params.status) === null
+          ? { status: among(STATUSES, status) }
+          : {},
+    },
+    {
+      id: 'type',
+      label: translate('type'),
+      type: 'enum',
+      values: [
+        { value: 'company', label: translate('companies') },
+        { value: 'person', label: translate('people') },
+      ],
+      ...single(
+        (params) => params.type,
+        (type) => ({ type: type === 'company' || type === 'person' ? type : null }),
+      ),
+    },
+    {
+      id: 'tag',
+      label: translate('tags'),
+      type: 'tag',
+      values: tags.data?.map((tag) => ({ value: tag.name, label: tag.name })),
+      get: (params) => params.tags,
+      set: (tags) => ({ tags }),
+    },
+    {
+      id: 'country',
+      label: translate('country'),
+      type: 'enum',
+      values: COUNTRY_OPTIONS,
+      get: (params) => params.countries,
+      set: (countries) => ({ countries }),
+    },
+    ...TEXT_FIELDS.map(
+      ({ id, label }): QueryField<ListParams> => ({
+        id,
+        label,
+        type: 'text',
+        ...single(
+          (params) => params[id],
+          (value) => ({ [id]: value ?? '' }),
+        ),
+      }),
+    ),
   ]
-  if (chips.length === 0) return null
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 border-b px-3 py-2 md:px-4">
-      {chips.map((chip) => (
-        <span
-          key={chip.label}
-          className="flex h-7 items-center gap-1 rounded-md bg-muted pr-1 pl-2.5 text-body-sm"
-        >
-          {chip.label}
-          <button
-            type="button"
-            aria-label={translate('removeFilter', { label: chip.label })}
-            onClick={() => onChange(chip.clear)}
-            className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-card hover:text-foreground"
-          >
-            <X className="size-3" />
-          </button>
-        </span>
-      ))}
-      {chips.length > 1 && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-body-sm font-normal text-muted-foreground"
-          onClick={() =>
-            onChange({
-              ...(statusView(params.status) === null && { status: [] }),
-              type: null,
-              tags: [],
-              countries: [],
-            })
-          }
-        >
-          {translate('clearAll')}
-        </Button>
-      )}
-    </div>
-  )
 }
+
+const TEXT_FIELDS = [
+  { id: 'name', label: translate('name') },
+  { id: 'email', label: translate('email') },
+  { id: 'city', label: translate('city') },
+] as const
 
 function Filters({
   params,

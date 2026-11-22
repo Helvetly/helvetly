@@ -103,6 +103,36 @@
             }
           },
           {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "description": "Contained in the name or preferred name (case-insensitive).",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "required": false,
+            "description": "Contained in the email (case-insensitive).",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "description": "Contained in the city (case-insensitive).",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
@@ -1558,6 +1588,36 @@
             "description": "Matches name, number, email, city and more.",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "description": "Contained in the name or preferred name (case-insensitive).",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "required": false,
+            "description": "Contained in the email (case-insensitive).",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "description": "Contained in the city (case-insensitive).",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
             }
           },
           {

@@ -384,6 +384,15 @@ func TestList(t *testing.T) {
 		{"type=person&sort=number", []int64{1, 3, 4, 5, 6}},
 		{"country=ch", []int64{7, 3}},
 		{"search=jane&type=company", []int64{}},
+		{"name=JANE", []int64{4, 1}},               // name or preferred name, ignoring case
+		{"name=jane&city=bern", []int64{1}},        // every field filter holds
+		{"name=%25", []int64{5}},                   // a literal %, not a wildcard
+		{"name=+++", []int64{7, 6, 5, 4, 3, 2, 1}}, // blank: no filter
+		{"email=doe.ch", []int64{1}},
+		{"email=alpha", []int64{}}, // not the name
+		{"city=BA", []int64{5}},    // Basel; not "Aarau"'s other letters
+		{"city=a&type=company", []int64{7}},
+		{"name=12&search=bistro", []int64{7}}, // with the free search
 	} {
 		t.Run(tc.query, func(t *testing.T) {
 			if got := numbers(e.list(b, tc.query).Data); !slices.Equal(got, tc.want) {
@@ -401,7 +410,7 @@ func TestList(t *testing.T) {
 	}
 
 	for _, q := range []string{"sort=deleted_at", "sort=name%27--", "sort=lower(name)", "status=archived", "type=robot", "page=0",
-		"page_size=201", "page=x", "country=XX"} {
+		"page_size=201", "page=x", "country=XX", "name=" + strings.Repeat("a", 201), "city=" + strings.Repeat("b", 201)} {
 		e.fails(b, "GET", "/api/v1/clients?"+q, nil, 400, "invalid_request")
 	}
 }

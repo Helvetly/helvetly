@@ -174,6 +174,10 @@ export type ListParams = {
   type: ClientType | null
   tags: string[]
   countries: string[]
+  /** Contained in the name, email or city (the search's `name:`, `email:` and `city:`). */
+  name: string
+  email: string
+  city: string
   sort: SortField
   desc: boolean
 }
@@ -186,6 +190,9 @@ export const DEFAULT_PARAMS: ListParams = {
   type: null,
   tags: [],
   countries: [],
+  name: '',
+  email: '',
+  city: '',
   sort: 'created_at',
   desc: true,
 }
@@ -222,21 +229,28 @@ export function parseListParams(query: URLSearchParams): ListParams {
           .filter((code) => /^[A-Z]{2}$/.test(code)),
       ),
     ],
+    name: query.get('name')?.trim() ?? '',
+    email: query.get('email')?.trim() ?? '',
+    city: query.get('city')?.trim() ?? '',
     sort: isSortField(field) ? field : DEFAULT_PARAMS.sort,
     desc: isSortField(field) ? sort.startsWith('-') : DEFAULT_PARAMS.desc,
   }
 }
 
+const TEXT_KEYS = ['name', 'email', 'city'] as const
+
 /** The list's state as URL query, leaving out defaults so links stay short. Keeps other keys. */
 export function listParamsToQuery(params: ListParams, base = new URLSearchParams()) {
   const query = new URLSearchParams(base)
-  for (const key of ['page', 'q', 'status', 'type', 'tag', 'country', 'sort']) query.delete(key)
+  for (const key of ['page', 'q', 'status', 'type', 'tag', 'country', 'sort', ...TEXT_KEYS])
+    query.delete(key)
   if (params.page > 1) query.set('page', String(params.page))
   if (params.search) query.set('q', params.search)
   for (const status of params.status) query.append('status', status)
   if (params.type) query.set('type', params.type)
   for (const tag of params.tags) query.append('tag', tag)
   for (const country of params.countries) query.append('country', country)
+  for (const key of TEXT_KEYS) if (params[key]) query.set(key, params[key])
   if (params.sort !== DEFAULT_PARAMS.sort || params.desc !== DEFAULT_PARAMS.desc)
     query.set('sort', `${params.desc ? '-' : ''}${params.sort}`)
   return query
@@ -261,6 +275,7 @@ export function apiQuery(params: ListParams, paging = true) {
   if (params.type) query.set('type', params.type)
   for (const tag of params.tags) query.append('tag', tag)
   for (const country of params.countries) query.append('country', country)
+  for (const key of TEXT_KEYS) if (params[key]) query.set(key, params[key])
   query.set('sort', `${params.desc ? '-' : ''}${params.sort}`)
   return query
 }

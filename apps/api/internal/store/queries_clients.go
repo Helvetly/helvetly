@@ -235,6 +235,9 @@ func (q Q) BulkClients(ctx context.Context, workspaceID string, ids []string, ac
 // ClientFilter narrows the list and the export; a nil pointer does not narrow.
 type ClientFilter struct {
 	Search    string
+	Name      string // contained in the name or preferred name, ignoring case
+	Email     string // contained in the email, ignoring case
+	City      string // contained in the city, ignoring case
 	Active    *bool
 	Draft     *bool
 	Company   *bool
@@ -250,8 +253,11 @@ func (f ClientFilter) where(workspaceID string) (string, []any) {
 	args := []any{workspaceID}
 	arg := func(v any) string { args = append(args, v); return "$" + strconv.Itoa(len(args)) }
 	conds := []string{"c.workspace_id = $1", "c.deleted_at IS NULL"}
+	contains := func(term string) string {
+		return arg("%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(term) + "%")
+	}
 	if term := strings.TrimSpace(f.Search); term != "" {
-		p := arg("%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(term) + "%")
+		p := contains(term)
 		var or []string
 		for _, col := range []string{"c.name", "c.preferred_name", "c.email", "c.city", "c.internal_id", "c.vat_number"} {
 			or = append(or, col+" ILIKE "+p)
@@ -262,6 +268,16 @@ func (f ClientFilter) where(workspaceID string) (string, []any) {
 			or = append(or, "c.number = "+arg(n))
 		}
 		conds = append(conds, "("+strings.Join(or, " OR ")+")")
+	}
+	if term := strings.TrimSpace(f.Name); term != "" {
+		p := contains(term)
+		conds = append(conds, "(c.name ILIKE "+p+" OR c.preferred_name ILIKE "+p+")")
+	}
+	if term := strings.TrimSpace(f.Email); term != "" {
+		conds = append(conds, "c.email ILIKE "+contains(term))
+	}
+	if term := strings.TrimSpace(f.City); term != "" {
+		conds = append(conds, "c.city ILIKE "+contains(term))
 	}
 	if f.Active != nil {
 		conds = append(conds, "c.is_active = "+arg(*f.Active))
