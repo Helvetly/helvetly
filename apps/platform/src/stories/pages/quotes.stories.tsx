@@ -264,6 +264,22 @@ export const Detail: Story = {
 export const DetailDark = dark(Detail)
 export const DetailPhone = phone(Detail)
 
+/** A declined quote: the badge and the decision notice both read in the destructive tone. */
+export const DetailDeclined: Story = {
+  parameters: quotes({ id: 'quo_declined' }),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    const notice = (
+      await body.findByText('“Too expensive for this year.”', undefined, wait)
+    ).closest('[data-slot="callout"]')
+    await expect(notice).toHaveAttribute('data-tone', 'danger')
+    const badge = body.getAllByText('Declined').find((el) => el.dataset.slot === 'badge')
+    await expect(badge).toBeVisible()
+    await expect(badge).toHaveAttribute('data-tone', 'red')
+  },
+}
+export const DetailDeclinedDark = dark(DetailDeclined)
+
 /** A new quote needs a client; once chosen, the draft is saved with its lines. */
 export const CreateDraft: Story = {
   parameters: quotes({ new: '1' }),
