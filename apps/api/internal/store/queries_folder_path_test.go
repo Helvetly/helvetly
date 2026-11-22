@@ -32,7 +32,7 @@ func TestExpenseYearFolder(t *testing.T) {
 		}
 	}
 	travel := "exc_wsp_a"
-	var cat, again, uncategorised, other, before, after string
+	var cat, cat26, again, uncategorised, other, before, after string
 	err := s.Tx(ctx, func(q store.Q) (err error) {
 		if before, err = q.ExistingExpenseYearFolder(ctx, "wsp_a", &travel, 2025); err != nil {
 			return err
@@ -44,6 +44,9 @@ func TestExpenseYearFolder(t *testing.T) {
 			return err
 		}
 		if uncategorised, err = q.ExpenseYearFolder(ctx, "wsp_a", nil, 2025, "", t0); err != nil {
+			return err
+		}
+		if cat26, err = q.ExpenseYearFolder(ctx, "wsp_a", &travel, 2026, "", t0); err != nil {
 			return err
 		}
 		theirs := "exc_wsp_b"
@@ -73,20 +76,23 @@ func TestExpenseYearFolder(t *testing.T) {
 		})
 		return id
 	}
-	if got := path("wsp_a", "Expenses", "Travel - Trips", "2025"); got != cat {
-		t.Fatalf("Expenses/Travel - Trips/2025 = %q, want %q", got, cat)
+	if got := path("wsp_a", "Expenses", "2025", "Travel - Trips"); got != cat {
+		t.Fatalf("Expenses/2025/Travel - Trips = %q, want %q", got, cat)
 	}
-	if got := path("wsp_a", "Expenses", store.UncategorisedFolder, "2025"); got != uncategorised {
-		t.Fatalf("Expenses/Uncategorised/2025 = %q, want %q", got, uncategorised)
+	if got := path("wsp_a", "Expenses", "2025", store.UncategorisedFolder); got != uncategorised {
+		t.Fatalf("Expenses/2025/Uncategorised = %q, want %q", got, uncategorised)
 	}
-	// renaming the category renames its folder; the year folder stays where it is
+	// renaming the category renames its folder in every year; the year folders stay where they are
 	if err := s.Tx(ctx, func(q store.Q) error { return q.RenameCategoryFolder(ctx, "wsp_a", travel, "Reisen", t0) }); err != nil {
 		t.Fatal(err)
 	}
-	if got := path("wsp_a", "Expenses", "Reisen", "2025"); got != cat {
+	if got := path("wsp_a", "Expenses", "2025", "Reisen"); got != cat {
 		t.Fatalf("after rename: %q, want %q", got, cat)
 	}
-	if got := path("wsp_b", "Expenses", "Travel - Trips", "2025"); got != other {
+	if got := path("wsp_a", "Expenses", "2026", "Reisen"); got == "" || got != cat26 {
+		t.Fatalf("after rename, 2026: %q, want %q", got, cat26)
+	}
+	if got := path("wsp_b", "Expenses", "2025", "Travel - Trips"); got != other {
 		t.Fatalf("other workspace renamed too: %q", got)
 	}
 }

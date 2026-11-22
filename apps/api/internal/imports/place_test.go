@@ -95,12 +95,12 @@ func TestExpenseCreatePlacesTheDocument(t *testing.T) {
 	list, _ := st.ExpenseCategories(ctx, sess.Workspace.ID, false)
 	data := rec(map[string]string{"amount": `"10.00"`, "vat_rate": `"8.1"`, "document_date": `"2025-06-01"`, "category": `"` + list[0].Name + `"`})
 
-	t.Run("top level goes to Expenses/category/year with tags", func(t *testing.T) {
+	t.Run("top level goes to Expenses/year/category with tags", func(t *testing.T) {
 		id := categoryDoc(t, st, sess, "a.pdf", nil)
 		if _, err := createFrom(ctx, st, sess, data, Source{DocumentID: &id, Name: "a.pdf"}); err != nil {
 			t.Fatal(err)
 		}
-		if d := inFolder(t, st, sess, id, "Expenses", list[0].Name, "2025"); !slices.Equal(d.Tags, []string{"expense", tags.Slug(list[0].Name)}) {
+		if d := inFolder(t, st, sess, id, "Expenses", "2025", list[0].Name); !slices.Equal(d.Tags, []string{"expense", tags.Slug(list[0].Name)}) {
 			t.Fatalf("tags %v", d.Tags)
 		}
 	})
@@ -133,9 +133,9 @@ func TestExpenseCreatePlacesTheDocument(t *testing.T) {
 		if _, err := createFrom(ctx, st, sess, data, Source{DocumentID: &id, Name: "c.pdf"}); err != nil {
 			t.Fatal(err)
 		}
-		inFolder(t, st, sess, id, "Expenses", list[0].Name, "2025")
+		inFolder(t, st, sess, id, "Expenses", "2025", list[0].Name)
 	})
-	t.Run("no category: Expenses/Uncategorised/year, a taken name gets a free one", func(t *testing.T) {
+	t.Run("no category: Expenses/year/Uncategorised, a taken name gets a free one", func(t *testing.T) {
 		plain := rec(map[string]string{"amount": `"10.00"`, "vat_rate": `"8.1"`, "document_date": `"2025-06-01"`})
 		var names []string
 		for range 2 {
@@ -143,7 +143,7 @@ func TestExpenseCreatePlacesTheDocument(t *testing.T) {
 			if _, err := createFrom(ctx, st, sess, plain, Source{DocumentID: &id, Name: "z.pdf"}); err != nil {
 				t.Fatal(err)
 			}
-			names = append(names, inFolder(t, st, sess, id, "Expenses", store.UncategorisedFolder, "2025").Name)
+			names = append(names, inFolder(t, st, sess, id, "Expenses", "2025", store.UncategorisedFolder).Name)
 		}
 		if !slices.Equal(names, []string{"z.pdf", "z (2).pdf"}) {
 			t.Fatalf("names %v", names)

@@ -63,7 +63,7 @@ func TestReceiptIsCopiedToDocumentsAndFollowsCategoryChange(t *testing.T) {
 	ws := wsOf(e, b, x.ID)
 	list := e.docs(ws)
 	name := cats["6640"].Name
-	if len(list) != 1 || !slices.Equal(list[0].Folder, []string{"Expenses", name, "2026"}) || list[0].Name != "train.pdf" ||
+	if len(list) != 1 || !slices.Equal(list[0].Folder, []string{"Expenses", "2026", name}) || list[0].Name != "train.pdf" ||
 		!slices.Contains(list[0].Tags, "expense") || !slices.Contains(list[0].Tags, toLower(name)) {
 		t.Fatalf("documents: %+v", list)
 	}
@@ -82,18 +82,18 @@ func TestReceiptIsCopiedToDocumentsAndFollowsCategoryChange(t *testing.T) {
 	}
 	e.do(b, "PATCH", "/api/v1/expenses/"+x.ID, map[string]any{"category_id": other.ID, "document_date": "2025-12-30"}, 200, nil)
 	list = e.docs(ws)
-	if len(list) != 1 || !slices.Equal(list[0].Folder, []string{"Expenses", other.Name, "2025"}) ||
+	if len(list) != 1 || !slices.Equal(list[0].Folder, []string{"Expenses", "2025", other.Name}) ||
 		slices.Contains(list[0].Tags, toLower(name)) || !slices.Contains(list[0].Tags, toLower(other.Name)) || !slices.Contains(list[0].Tags, "expense") {
 		t.Fatalf("after change: %+v", list)
 	}
 
 	// renaming the category renames its folder; a draft without a category files under Uncategorised
 	e.do(b, "PATCH", "/api/v1/expense-categories/"+other.ID, map[string]any{"name": "Renamed / Category"}, 200, nil)
-	if list = e.docs(ws); !slices.Equal(list[0].Folder, []string{"Expenses", "Renamed - Category", "2025"}) {
+	if list = e.docs(ws); !slices.Equal(list[0].Folder, []string{"Expenses", "2025", "Renamed - Category"}) {
 		t.Fatalf("after rename: %+v", list)
 	}
 	e.do(b, "PATCH", "/api/v1/expenses/"+x.ID, map[string]any{"category_id": nil}, 200, nil)
-	if list = e.docs(ws); !slices.Equal(list[0].Folder, []string{"Expenses", store.UncategorisedFolder, "2025"}) {
+	if list = e.docs(ws); !slices.Equal(list[0].Folder, []string{"Expenses", "2025", store.UncategorisedFolder}) {
 		t.Fatalf("without a category: %+v", list)
 	}
 }
@@ -182,7 +182,7 @@ func TestReceiptReusesExistingDocument(t *testing.T) {
 		t.Fatalf("upload: %d", r.StatusCode)
 	}
 	list := e.docs(b.workspace)
-	if len(list) != 1 || list[0].ID != id || !slices.Equal(list[0].Folder, []string{"Expenses", cats["6640"].Name, "2026"}) || e.docLinks(id) != 1 {
+	if len(list) != 1 || list[0].ID != id || !slices.Equal(list[0].Folder, []string{"Expenses", "2026", cats["6640"].Name}) || e.docLinks(id) != 1 {
 		t.Fatalf("documents: %+v links %d", list, e.docLinks(id))
 	}
 	if len(e.files.receiptKeys()) != 1 {

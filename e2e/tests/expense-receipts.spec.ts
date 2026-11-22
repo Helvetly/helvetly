@@ -84,7 +84,7 @@ test('a receipt picked in the new-expense form counts as soon as the drawer open
 
 type Folder = { id: string; name: string; parent_id: string | null; system_kind: string | null }
 
-test('a receipt is filed in Expenses/<category>/<year> and follows the draft’s category', async ({
+test('a receipt is filed in Expenses/<year>/<category> and follows the draft’s category', async ({
   page,
   api,
 }) => {
@@ -128,17 +128,17 @@ test('a receipt is filed in Expenses/<category>/<year> and follows the draft’s
     return path
   }
   let path = await placeOf()
-  expect(path.map((f) => f.name)).toEqual(['Expenses', text(first.name), year])
-  expect(path.map((f) => f.system_kind)).toEqual(['expenses', 'expense_category', 'year'])
+  expect(path.map((f) => f.name)).toEqual(['Expenses', year, text(first.name)])
+  expect(path.map((f) => f.system_kind)).toEqual(['expenses', 'year', 'expense_category'])
 
   await api.save(`/expenses/${text(expense.id)}`, { category_id: text(second.id) }, 'PATCH')
   path = await placeOf()
-  expect(path.map((f) => f.name)).toEqual(['Expenses', text(second.name), year])
+  expect(path.map((f) => f.name)).toEqual(['Expenses', year, text(second.name)])
 
   await api.save(`/expenses/${text(expense.id)}`, { category_id: null }, 'PATCH')
-  expect((await placeOf('de')).map((f) => f.name)).toEqual(['Ausgaben', 'Ohne Kategorie', year])
+  expect((await placeOf('de')).map((f) => f.name)).toEqual(['Ausgaben', year, 'Ohne Kategorie'])
 
-  const category = path[1]
+  const category = path[2]
   const renamed = await api.write(`/documents/folders/${category?.id}`, { name: 'Mine' }, 'PATCH')
   expect(renamed.status()).toBe(409)
 })
