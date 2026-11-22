@@ -94,15 +94,15 @@ func TestBrandedLayout(t *testing.T) {
 		want, not []string
 	}{
 		{"every detail, in German", Message{HTML: "<p>Hallo</p>", Language: "de", Brand: &full}, []string{
-			`<html lang="de">`, `src="https://app.example.com/api/v1/public/email-logo/w/lgo_1"`, ">Müller &amp; Co AG</span>",
+			`<html lang="de">`, `src="https://app.example.com/api/v1/public/email-logo/w/lgo_1"`, `height="36"`, ">Müller &amp; Co AG</strong>",
 			">Müller &amp; Co AG</strong>", "<br>Bahnhofstrasse 1, 8001 Zürich", "<br>+41 44 123 45 67 · info@mueller.ch",
-			"<br>CHE-123.456.789 MWST", `Gesendet mit <a href="https://app.example.com"`}, []string{"email-logo.png", "Sent by"}},
+			"<br>CHE-123.456.789 MWST", `Gesendet mit <a href="https://app.example.com"`}, []string{"Sent by"}},
 		{"name only, in French", Message{HTML: "<p>Bonjour</p>", Language: "fr", Brand: &Brand{Name: "Dupont SA", VAT: "FR12345678901"}}, []string{
-			">Dupont SA</span>", ">Dupont SA</strong><br>FR12345678901<div", "Envoyé avec"}, []string{"<img", " · ", " TVA"}},
+			">Dupont SA</strong><br>FR12345678901<br><br>", "Envoyé avec"}, []string{"<img", " · ", " TVA"}},
 		{"an unknown language: English", Message{HTML: "<p>Hi</p>", Language: "pl", Brand: &Brand{Name: "X", VAT: "CHE-111.222.333"}},
 			[]string{"CHE-111.222.333 VAT", "Sent with"}, nil},
 		{"a footer of its own stays", Message{HTML: "<p>Hi</p>", Footer: "Why you got this", Brand: &Brand{Name: "X"}},
-			[]string{">X</span>", "Why you got this</td>"}, []string{"Sent with"}},
+			[]string{">X</strong>", "Why you got this</td>"}, []string{"Sent with"}},
 	} {
 		got := layout(c.m, site)
 		for _, w := range c.want {

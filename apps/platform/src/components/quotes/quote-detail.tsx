@@ -261,7 +261,7 @@ function Detail({
 
           {quote.decided_at && (
             <Callout
-              tone={quote.status === 'accepted' ? 'success' : 'neutral'}
+              tone={quote.status === 'accepted' ? 'success' : 'danger'}
               icon={quote.status === 'accepted' ? Check : X}
             >
               <span className="font-medium">
