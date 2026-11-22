@@ -376,7 +376,7 @@ function PlanText({
     <PlanBadge
       plan={plan}
       data-testid={testId}
-      className="mt-0.5 h-4 max-w-full justify-self-start truncate px-1 text-[11px]"
+      className="mt-0.5 max-w-full justify-self-start truncate"
     >
       {children}
     </PlanBadge>
