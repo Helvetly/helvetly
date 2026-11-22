@@ -107,11 +107,11 @@ test('Help & feedback lives in the user menu only, and opens its dialog', async 
   expect(await screen.findByRole('dialog', { name: 'Help & feedback' })).toBeInTheDocument()
 })
 
-test('the user menu shows the role at the right, without the workspace name', async () => {
+test('the user menu shows no role badge and no workspace name', async () => {
   renderSidebar()
   await userEvent.click(screen.getByRole('button', { name: /Anna/ }))
   const menu = await screen.findByRole('menu')
-  expect(within(menu).getByText('Owner')).toBeInTheDocument()
+  expect(within(menu).queryByText('Owner')).toBeNull()
   expect(menu).not.toHaveTextContent('Muster GmbH')
   expect(within(menu).getAllByRole('separator')).toHaveLength(3)
 })
@@ -126,18 +126,22 @@ test('a truncated name or email stays readable in full on hover', async () => {
   expect(within(menu).getByTitle(session.user.email)).toBeInTheDocument()
 })
 
-test('a long email gets the full width: the role badge shares the name row and the email is small', async () => {
+test('a long name wraps to two lines and a long email stays on one line', async () => {
   renderSidebar({
     ...session,
-    user: { ...session.user, name: 'Renata Giannini', email: 'info@deindeutschcoach.ch' },
+    user: {
+      ...session.user,
+      name: 'Renata Giannini-Oberholzer von Hohenstein',
+      email: 'info@deindeutschcoach.ch',
+    },
   })
   await userEvent.click(screen.getByRole('button', { name: /Renata/ }))
   const menu = await screen.findByRole('menu')
-  const email = within(menu).getByTitle('info@deindeutschcoach.ch')
-  expect(email).toHaveClass('text-xs', 'truncate')
-  const nameRow = within(menu).getByTitle('Renata Giannini').parentElement
-  expect(nameRow).toContainElement(within(menu).getByText('Owner'))
-  expect(nameRow).not.toContainElement(email)
+  expect(within(menu).getByTitle('info@deindeutschcoach.ch')).toHaveClass('text-xs', 'truncate')
+  expect(within(menu).getByTitle('Renata Giannini-Oberholzer von Hohenstein')).toHaveClass(
+    'line-clamp-2',
+    'break-words',
+  )
 })
 
 test('the user menu lists Keyboard shortcuts with its key, and opens the dialog', async () => {

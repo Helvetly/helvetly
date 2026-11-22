@@ -124,16 +124,17 @@ const widthFollowsScreen: Story['play'] = async ({ canvasElement }) => {
     columns.slice(0, 12).reduce((sum, column) => sum + column, 0) +
     11 * Number.parseFloat(style?.columnGap ?? '0')
   await expect(columns.length).toBeGreaterThanOrEqual(12)
-  // Below 64rem of sections the form is at most 44rem; in a wide card it fills the section's body.
+  // The form grid is at most 44rem; in a wide card (64rem of sections) the title column takes
+  // 7.5rem more and the form 7.5rem less, so the section keeps its width and fields their sizes.
   const sections = body.querySelector<HTMLElement>('[data-slot="settings-sections"]')
   const wideCard = (sections?.getBoundingClientRect().width ?? 0) >= 1024
-  if (wideCard) await expect(grid).toBeGreaterThan((fields?.getBoundingClientRect().width ?? 0) - 1)
-  else await expect(grid).toBeLessThanOrEqual(704.5)
-  // An md field is half of the form grid, never wider than 345px in the 44rem form.
-  const half = (grid - Number.parseFloat(style?.columnGap ?? '0')) / 2
-  await expect(field.getBoundingClientRect().width).toBeLessThanOrEqual(
-    width < 600 ? width : wideCard ? half + 1 : 345,
-  )
+  await expect(grid).toBeLessThanOrEqual(wideCard ? 584.5 : 704.5)
+  if (wideCard) {
+    const header = profile.querySelector('header')?.getBoundingClientRect().width ?? 0
+    await expect(header).toBeGreaterThan(423)
+    await expect(header).toBeLessThan(425)
+  }
+  await expect(field.getBoundingClientRect().width).toBeLessThanOrEqual(width < 600 ? width : 345)
   const email = within(profile).getByLabelText('Email').getBoundingClientRect()
   if (width >= 600) await expect(email.top).toBe(field.getBoundingClientRect().top)
 }

@@ -88,7 +88,7 @@ export default function SignedInLayout({ children }: { children: ReactNode }) {
                         <RecordDrawers>
                           <NotificationPrefsDrawers>
                             <AppSidebar session={session} />
-                            <SidebarInset className="@container min-w-0 overflow-y-auto bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:peer-data-[variant=inset]:my-2 md:peer-data-[variant=inset]:mr-2 md:peer-data-[variant=inset]:rounded-b-[14px] md:peer-data-[variant=inset]:shadow-none [&>header+*]:rounded-t-[14px] [&>header~*]:bg-card">
+                            <SidebarInset className="@container min-w-0 overflow-y-auto bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:peer-data-[variant=inset]:my-2 md:peer-data-[variant=inset]:mr-2 md:peer-data-[variant=inset]:rounded-b-[14px] md:peer-data-[variant=inset]:shadow-none [&>header+*]:rounded-t-[14px] [&>header~*]:bg-card [&>header~*:last-child]:flex-1">
                               <AccessGate>{children}</AccessGate>
                             </SidebarInset>
                             <HeidiPanel />
