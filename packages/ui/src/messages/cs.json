@@ -94,5 +94,14 @@
   "tableNextPage": "Další stránka",
   "tableRange": "{from}–{to} z {total}",
   "tablePageOf": "Stránka {page} z {pages}",
-  "tableResizeColumn": "Změnit šířku sloupce {column}"
+  "tableResizeColumn": "Změnit šířku sloupce {column}",
+  "tableFirstPage": "První stránka",
+  "tableLastPage": "Poslední stránka",
+  "tablePage": "Stránka",
+  "tableOfPages": "z {pages}",
+  "tableGoToPage": "Přejít na stránku",
+  "tableRowsPerPage": "{count} na stránku",
+  "tableMoveColumnUp": "Posunout {column} nahoru",
+  "tableMoveColumnDown": "Posunout {column} dolů",
+  "tableResetColumns": "Obnovit výchozí"
 }

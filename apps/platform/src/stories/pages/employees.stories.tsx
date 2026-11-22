@@ -46,7 +46,7 @@ export const SortByHeader: Story = {
   play: async (context) => {
     await shows('Lara Brunner')?.(context)
     await expect(nameHeader()).toHaveAttribute('aria-sort', 'ascending')
-    await userEvent.click(within(positionHeader()).getByRole('button', { name: /position/i }))
+    await userEvent.click(within(positionHeader()).getByRole('button', { name: /^position$/i }))
     await waitFor(() => expect(window.location.search).toContain('sort=position'))
   },
 }

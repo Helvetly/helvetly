@@ -4,10 +4,16 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
+import {
+  ColumnsCustomize,
+  DataTable,
+  listTable,
+  type DataColumn,
+} from '@helvetly/ui/components/data-table'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { displayPhone } from '@helvetly/ui/lib/phone'
+import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   CircleCheck,
@@ -126,7 +132,8 @@ const toggleIn = <T,>(list: T[], value: T) =>
 export function ClientsPage() {
   const pathname = usePathname()
   const query = useSearchParams()
-  const params = parseListParams(query)
+  const [pageSize, setPageSize] = usePageSize('clients')
+  const params = { ...parseListParams(query), pageSize }
   const openId = query.get('id')
   const role = useSession().data?.role
   const canWrite = useCan('write:clients')
@@ -249,9 +256,6 @@ export function ClientsPage() {
       )
   }
 
-  const sortBy = (field: SortField) =>
-    update({ sort: field, desc: params.sort === field ? !params.desc : field === 'created_at' })
-
   const exportLock = useFeatureLock('data_export')
   const aiLock = useFeatureLock('ai_import')
   const canImport = canWrite && !aiLock
@@ -340,24 +344,24 @@ export function ClientsPage() {
                   <span className="max-sm:sr-only">{translate('customize')}</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 gap-1 p-2">
+              <PopoverContent
+                align="end"
+                aria-label={translate('customize')}
+                className="w-64 gap-1 p-2"
+              >
                 <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">
                   {translate('columns')}
                 </p>
-                {allColumns
-                  .filter((column) => column.id !== 'name' && column.id !== 'actions')
-                  .map((column) => (
-                    <label
-                      key={column.id}
-                      className="flex h-8 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted"
-                    >
-                      <Checkbox
-                        checked={!hiddenColumns.hidden.includes(column.id)}
-                        onCheckedChange={() => hiddenColumns.toggle(column.id)}
-                      />
-                      {column.id === 'number' ? translate('number') : column.header}
-                    </label>
-                  ))}
+                <ColumnsCustomize
+                  table="clients"
+                  columns={allColumns.map((column) => ({
+                    id: column.id,
+                    label: column.id === 'number' ? translate('number') : column.header,
+                    required: column.id === 'name',
+                  }))}
+                  hidden={hiddenColumns.hidden}
+                  onToggle={hiddenColumns.toggle}
+                />
               </PopoverContent>
             </Popover>
           </ListToolbar>
@@ -435,9 +439,9 @@ export function ClientsPage() {
                 sorting={{
                   column: Object.keys(SORTS).find((column) => SORTS[column] === params.sort),
                   desc: params.desc,
-                  onSort: (column) => {
+                  onSort: (column, desc) => {
                     const field = SORTS[column]
-                    if (field) sortBy(field)
+                    if (field) update({ sort: field, desc })
                   },
                 }}
                 selection={{
@@ -456,22 +460,32 @@ export function ClientsPage() {
                     {tr}
                   </RowContextMenu>
                 )}
+                pagination={
+                  meta && {
+                    page: meta.page,
+                    pageSize,
+                    total: meta.total,
+                    onChange: (page, size) => {
+                      setPageSize(size)
+                      update({ page })
+                    },
+                  }
+                }
+                footer={
+                  <ul className={cn(listTable.list, '@4xl:hidden')}>
+                    {rows.map((client) => (
+                      <ClientItem
+                        key={client.id}
+                        client={client}
+                        selected={selected.has(client.id)}
+                        bulk={selected.has(client.id) ? selection : undefined}
+                        access={access}
+                        act={act}
+                      />
+                    ))}
+                  </ul>
+                }
               />
-
-              <ul className={cn(listTable.list, '@4xl:hidden')}>
-                {rows.map((client) => (
-                  <ClientItem
-                    key={client.id}
-                    client={client}
-                    selected={selected.has(client.id)}
-                    bulk={selected.has(client.id) ? selection : undefined}
-                    access={access}
-                    act={act}
-                  />
-                ))}
-              </ul>
-
-              {meta && <Pager meta={meta} onPage={(page) => update({ page })} />}
             </div>
           )}
 
@@ -901,6 +915,7 @@ function clientColumns(access: RowProps['access'], act: RowActions): DataColumn<
       size: 120,
       minSize: 100,
       sortable: true,
+      sortDescFirst: true,
       showFrom: 1100,
       cell: (client) => (
         <span className="text-muted-foreground">{formatDate(client.created_at)}</span>

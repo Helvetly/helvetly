@@ -94,5 +94,14 @@
   "tableNextPage": "Pagina successiva",
   "tableRange": "{from}–{to} di {total}",
   "tablePageOf": "Pagina {page} di {pages}",
-  "tableResizeColumn": "Ridimensiona {column}"
+  "tableResizeColumn": "Ridimensiona {column}",
+  "tableFirstPage": "Prima pagina",
+  "tableLastPage": "Ultima pagina",
+  "tablePage": "Pagina",
+  "tableOfPages": "di {pages}",
+  "tableGoToPage": "Vai alla pagina",
+  "tableRowsPerPage": "{count} per pagina",
+  "tableMoveColumnUp": "Sposta {column} su",
+  "tableMoveColumnDown": "Sposta {column} giù",
+  "tableResetColumns": "Ripristina predefinito"
 }

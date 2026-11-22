@@ -181,61 +181,110 @@ export const NameOpensClient: Story = {
   },
 }
 
-/** Drags a column's handle by `dx` pixels, as a mouse would. */
-function drag(handle: HTMLElement, dx: number) {
+/** Drags a column's handle by `dx` pixels, as a mouse would: moves and up on the document. */
+async function drag(handle: HTMLElement, dx: number) {
+  handle.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   const box = handle.getBoundingClientRect()
   const x = box.left + box.width / 2
   const y = box.top + box.height / 2
   fireEvent.mouseDown(handle, { button: 0, clientX: x, clientY: y })
+  fireEvent.mouseMove(document, { clientX: x + dx / 2, clientY: y })
+  await new Promise(requestAnimationFrame)
   fireEvent.mouseMove(document, { clientX: x + dx, clientY: y })
   fireEvent.mouseUp(document, { clientX: x + dx, clientY: y })
 }
 
-const WIDTHS_KEY = 'helvetly.table.clients.columns'
+/** Runs `step` for each item in turn, each after the one before has finished. */
+const inTurn = <T,>(items: readonly T[], step: (item: T) => Promise<void>) =>
+  items.reduce<Promise<void>>((done, item) => done.then(() => step(item)), Promise.resolve())
+
+const STORAGE = 'helvetly.table.clients.'
+const WIDTHS_KEY = `${STORAGE}columns`
 
 const widthOf = (element: Element) => Math.round(element.getBoundingClientRect().width)
 const whole = (badge: HTMLElement) => badge.scrollWidth <= badge.clientWidth
+const headers = (table: HTMLTableElement) =>
+  [...table.querySelectorAll<HTMLElement>('thead th:not([aria-hidden])')].map((head) => ({
+    name: head.getAttribute('aria-label') ?? head.textContent?.trim() ?? '',
+    width: widthOf(head),
+  }))
+const columnsWidth = (table: HTMLTableElement) =>
+  headers(table).reduce((sum, head) => sum + head.width, 0)
 
 /**
- * Name gives way when another column widens, the row stays full, badge columns stop with their
- * badges whole; past Name's minimum the list scrolls sideways; the widths are kept per column.
+ * Every column with a handle, Name too, follows the pointer 1:1: +80 then -40 changes only that
+ * column and the table's width by the same; the list scrolls sideways once wider than its box.
+ * Badge columns stop with their badges whole; the widths are kept per column.
  */
 export const ResizeColumns: Story = {
-  beforeEach: () => localStorage.removeItem(WIDTHS_KEY),
+  beforeEach: () => {
+    for (const key of Object.keys(localStorage))
+      if (key.startsWith(STORAGE)) localStorage.removeItem(key)
+  },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     const name = await body.findByRole('columnheader', { name: 'Name' }, { timeout: 8000 })
     await canvasElement.ownerDocument.fonts.ready
     const table = name.closest('table')
     const scroller = table?.parentElement
-    const before = widthOf(name)
+    if (!table || !scroller) throw new Error('The list has no table')
+    // On first load the columns fill the box exactly.
+    await expect(columnsWidth(table)).toBe(scroller.clientWidth)
 
-    await drag(body.getByRole('slider', { name: 'Resize City' }), 60)
-    await waitFor(() => expect(widthOf(name)).toBe(before - 60))
-    await expect(scroller?.scrollWidth).toBe(scroller?.clientWidth)
+    const handles = body.getAllByRole('button', { name: /^Resize / })
+    await expect(handles.map((handle) => handle.getAttribute('aria-label'))).toContain(
+      'Resize Name',
+    )
+    await inTurn(handles, (handle) => {
+      const column = handle.getAttribute('aria-label')?.replace('Resize ', '') ?? ''
+      return inTurn([80, -40], async (dx) => {
+        const before = headers(table)
+        await drag(handle, dx)
+        const expected = before.map((head) =>
+          head.name === column ? { ...head, width: head.width + dx } : head,
+        )
+        await waitFor(() => expect(headers(table)).toEqual(expected))
+        await expect(columnsWidth(table)).toBe(
+          before.reduce((sum, head) => sum + head.width, 0) + dx,
+        )
+      })
+    })
+    await expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth)
 
     const type = body.getByRole('columnheader', { name: 'Type' })
-    await drag(body.getByRole('slider', { name: 'Resize Type' }), -1000)
+    await drag(body.getByRole('button', { name: 'Resize Type' }), -1000)
     await waitFor(() => expect(widthOf(type)).toBeLessThan(110))
-    const badges = [...(table?.querySelectorAll<HTMLElement>('tbody [data-slot=badge]') ?? [])]
+    const badges = [...table.querySelectorAll<HTMLElement>('tbody [data-slot=badge]')]
     await expect(badges.length).toBeGreaterThan(0)
     await expect(badges.filter((badge) => !whole(badge))).toEqual([])
     // Smaller than its minimum is not possible by keyboard either.
-    const handle = body.getByRole('slider', { name: 'Resize Type' })
     const least = widthOf(type)
-    handle.focus()
+    body.getByRole('button', { name: 'Resize Type' }).focus()
     await userEvent.keyboard('{Shift>}{ArrowLeft}{/Shift}')
-    await waitFor(() => expect(handle).toHaveValue(String(least)))
     await expect(widthOf(type)).toBe(least)
 
-    // Name stops where its avatar and "Changes pending" still fit; the list scrolls instead.
-    await drag(body.getByRole('slider', { name: 'Resize City' }), 1000)
-    await waitFor(() => expect(widthOf(name)).toBeLessThan(before - 60))
-    await expect(badges.filter((badge) => !whole(badge))).toEqual([])
-    await expect(scroller?.scrollWidth).toBeGreaterThan(scroller?.clientWidth ?? 0)
-
     const stored: unknown = JSON.parse(localStorage.getItem(WIDTHS_KEY) ?? 'null')
-    await expect(stored).toEqual({ city: expect.any(Number), type: least })
+    await expect(stored).toMatchObject({ type: least, name: widthOf(name) })
   },
 }
 export const ResizeColumnsDark = dark(ResizeColumns)
+
+/** Customize moves a column in the list and Reset puts it back; the order is kept per browser. */
+export const ReorderColumns: Story = {
+  beforeEach: () => localStorage.removeItem(`${STORAGE}order`),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const name = await body.findByRole('columnheader', { name: 'Name' }, { timeout: 8000 })
+    const table = name.closest('table')
+    if (!table) throw new Error('The list has no table')
+    const names = () => headers(table).map((head) => head.name)
+    const city = names().indexOf('City')
+    await userEvent.click(body.getByRole('button', { name: 'Customize' }))
+    await userEvent.click(await body.findByRole('button', { name: 'Move City up' }))
+    await waitFor(() => expect(names().indexOf('City')).toBe(city - 1))
+    await expect(localStorage.getItem(`${STORAGE}order`)).toContain('city')
+    await userEvent.click(body.getByRole('button', { name: 'Reset to default' }))
+    await waitFor(() => expect(names().indexOf('City')).toBe(city))
+    await expect(localStorage.getItem(`${STORAGE}order`)).toBeNull()
+  },
+}

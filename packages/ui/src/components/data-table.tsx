@@ -1,30 +1,67 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
-import { readColumnSizes, writeColumnSizes } from '@helvetly/ui/lib/column-sizing'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@helvetly/ui/components/dropdown-menu'
+import { Input } from '@helvetly/ui/components/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { translate } from '@helvetly/ui/lib/i18n'
+import {
+  PAGE_SIZES,
+  readColumnSizes,
+  useColumnOrder,
+  writeColumnSizes,
+} from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
+  columnOrderingFeature,
   columnResizingFeature,
   columnSizingFeature,
   columnVisibilityFeature,
+  rowPaginationFeature,
   rowSelectionFeature,
   rowSortingFeature,
   tableFeatures,
   useTable,
   type ColumnDef,
+  type ColumnOrderState,
   type ColumnSizingState,
+  type PaginationState,
   type RowData,
   type RowSelectionState,
+  type SortingState,
   type Updater,
 } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  elementScroll,
+  Virtualizer,
+  type Rect,
+  type VirtualizerOptions,
+} from '@tanstack/react-virtual'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronUp,
+  RotateCcw,
+  type LucideIcon,
+} from 'lucide-react'
 import {
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
+  type DragEvent,
   type HTMLAttributes,
+  type KeyboardEvent,
   type MouseEvent,
   type ReactElement,
   type ReactNode,
@@ -61,12 +98,17 @@ export type DataColumn<T> = {
   size?: number
   minSize?: number
   maxSize?: number
-  /** Takes the width the other columns leave: the client, the supplier, the name. One per table. */
+  /**
+   * Its default width is what the other columns leave of the box: the client, the supplier, the
+   * name. One per table. Once a person resizes any column it keeps the width it had.
+   */
   flex?: boolean
-  /** A person may drag its edge (default: every column but the flexible one). */
+  /** A person may drag its edge (default: every column but the checkbox and row menu ones). */
   resizable?: boolean
   /** Sorted through `sorting.onSort`. */
   sortable?: boolean
+  /** The first click sorts it descending (dates, amounts): TanStack's `sortDescFirst`. */
+  sortDescFirst?: boolean
   align?: 'right'
   /** Classes for the column's cells (`td`). */
   className?: string
@@ -74,10 +116,19 @@ export type DataColumn<T> = {
   showFrom?: number
 }
 
+/** The server-side sort: one column at a time, never removed (a click turns its direction). */
 export type DataTableSorting = {
   column: string | undefined
   desc: boolean
-  onSort: (column: string) => void
+  onSort: (column: string, desc: boolean) => void
+}
+
+/** The server-side paging: `page` counts from 1, `total` is every row the query matches. */
+export type DataTablePagination = {
+  page: number
+  pageSize: number
+  total: number
+  onChange: (page: number, pageSize: number) => void
 }
 
 export type DataTableSelection<T> = {
@@ -88,15 +139,18 @@ export type DataTableSelection<T> = {
 }
 
 const features = tableFeatures({
+  columnOrderingFeature,
   columnSizingFeature,
   columnResizingFeature,
   columnVisibilityFeature,
+  rowPaginationFeature,
   rowSelectionFeature,
   rowSortingFeature,
 })
 
 /** The checkbox column, built in (`selection`) or a page's own column of this id. */
 const SELECT = 'select'
+const ACTIONS = 'actions'
 /** The checkbox column: its 20 px inset, the 16 px box and 16 px to the next column. */
 const SELECT_SIZE = 52
 const DEFAULT_SIZE = 140
@@ -104,30 +158,38 @@ const DEFAULT_MIN = 64
 const DEFAULT_MAX = 640
 const FLEX_MIN = 160
 const STEP = 16
+/** `listTable.row`'s height. */
+const ROW_HEIGHT = 58
+/** Longer lists render only the rows in view; a page of 50 or 100 renders plainly. */
+const VIRTUAL_FROM = 100
 
-/** The select and row menu columns keep their width; the flexible one fills the rest. */
-const isFixed = (id: string) => id === SELECT || id === 'actions'
-const canResize = <T,>(column: DataColumn<T>) =>
-  !column.flex && !isFixed(column.id) && (column.resizable ?? true)
+/** The checkbox and row menu columns keep their width and their place. */
+const isFixed = (id: string) => id === SELECT || id === ACTIONS
+const canResize = <T,>(column: DataColumn<T>) => !isFixed(column.id) && (column.resizable ?? true)
+
+/** A column's default width and its range. */
+function bounds<T>(column: DataColumn<T>) {
+  if (column.id === SELECT) return { size: SELECT_SIZE, min: SELECT_SIZE, max: SELECT_SIZE }
+  const min = column.minSize ?? (column.flex ? FLEX_MIN : DEFAULT_MIN)
+  const max = column.maxSize ?? (column.flex ? Number.MAX_SAFE_INTEGER : DEFAULT_MAX)
+  return { size: column.size ?? Math.max(min, DEFAULT_SIZE), min, max }
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
 const columnDef = <T extends RowData>(column: DataColumn<T>): ColumnDef<typeof features, T> => {
-  if (column.id === SELECT)
-    return {
-      id: SELECT,
-      size: SELECT_SIZE,
-      minSize: SELECT_SIZE,
-      maxSize: SELECT_SIZE,
-      enableResizing: false,
-    }
-  const minSize = column.minSize ?? (column.flex ? FLEX_MIN : DEFAULT_MIN)
+  const { size, min, max } = bounds(column)
   return {
     id: column.id,
-    // The flexible column's size is the least it takes; the table gives it the rest of its box.
-    size: column.flex ? minSize : (column.size ?? DEFAULT_SIZE),
-    minSize,
-    maxSize: column.maxSize ?? (column.flex ? Number.MAX_SAFE_INTEGER : DEFAULT_MAX),
+    size,
+    minSize: min,
+    maxSize: max,
     enableResizing: canResize(column),
     enableSorting: Boolean(column.sortable),
+    // TanStack sorts only columns with an accessor; the rows come sorted from the server.
+    accessorFn: () => null,
+    // Set either way: without it TanStack guesses from the first row's value, which we have none of.
+    sortDescFirst: Boolean(column.sortDescFirst),
   }
 }
 
@@ -146,10 +208,84 @@ function useBoxWidth() {
   return { box, width }
 }
 
+/** The nearest ancestor that scrolls vertically: a drawer's body, or the page itself. */
+function scrollParent(node: Element | null): Element | null {
+  for (let parent = node?.parentElement; parent; parent = parent.parentElement) {
+    if (/auto|scroll/.test(getComputedStyle(parent).overflowY)) return parent
+  }
+  return document.scrollingElement
+}
+
+const isRoot = (element: Element) => element === document.scrollingElement
+
+// The page's scroll fires on the window and its viewport is the window's, not <html>'s box.
+function observeRect(
+  instance: Virtualizer<Element, HTMLTableRowElement>,
+  update: (rect: Rect) => void,
+) {
+  const element = instance.scrollElement
+  if (!element) return
+  const measure = () =>
+    update({
+      width: element.clientWidth,
+      height: isRoot(element) ? window.innerHeight : element.clientHeight,
+    })
+  measure()
+  if (isRoot(element)) {
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }
+  const observer = new ResizeObserver(measure)
+  observer.observe(element)
+  return () => observer.disconnect()
+}
+
+function observeOffset(
+  instance: Virtualizer<Element, HTMLTableRowElement>,
+  update: (offset: number, isScrolling: boolean) => void,
+) {
+  const element = instance.scrollElement
+  if (!element) return
+  const target = isRoot(element) ? window : element
+  const measure = () => update(element.scrollTop, false)
+  measure()
+  target.addEventListener('scroll', measure, { passive: true })
+  return () => target.removeEventListener('scroll', measure)
+}
+
 /**
- * A list table on TanStack Table: row selection, server-side sorting, and column widths a person
- * drags with TanStack's resizing (`onChange` mode, kept per table in this browser). The flexible
- * column fills what the others leave; once they need more than the box, the box scrolls sideways.
+ * TanStack Virtual's `useVirtualizer` for the rows, on its `Virtualizer` directly (the hook is one
+ * the React Compiler rules refuse): one instance, its options set each render, then its mount and
+ * update steps; it re-renders when the rows in view change. The page or a drawer is what scrolls.
+ */
+function useRowVirtualizer(
+  options: Omit<
+    VirtualizerOptions<Element, HTMLTableRowElement>,
+    'observeElementRect' | 'observeElementOffset' | 'scrollToFn' | 'onChange'
+  >,
+) {
+  const [, rerender] = useReducer((count: number) => count + 1, 0)
+  const resolved: VirtualizerOptions<Element, HTMLTableRowElement> = {
+    ...options,
+    observeElementRect: observeRect,
+    observeElementOffset: observeOffset,
+    scrollToFn: elementScroll,
+    onChange: () => rerender(),
+  }
+  const [instance] = useState(() => new Virtualizer(resolved))
+  instance.setOptions(resolved)
+  useLayoutEffect(() => instance._didMount(), [instance])
+  useLayoutEffect(() => instance._willUpdate())
+  return instance
+}
+
+/**
+ * A list table on TanStack Table, as in TanStack's examples: every column has its own width a
+ * person drags (`onChange` resizing, widths as CSS variables, kept per table in this browser) and
+ * the table is as wide as its columns, scrolling sideways in its box when wider; headers sort
+ * through the server (`manualSorting`) and move by dragging (`columnOrder`, kept per table);
+ * `pagination` puts TanStack's pager under it (`manualPagination`); long lists render only the
+ * rows in view.
  */
 export function DataTable<T extends RowData>({
   id,
@@ -158,6 +294,7 @@ export function DataTable<T extends RowData>({
   data,
   getRowId,
   sorting,
+  pagination,
   selection,
   onRowClick,
   rowProps,
@@ -166,7 +303,7 @@ export function DataTable<T extends RowData>({
   pending,
   footer,
 }: {
-  /** Names the stored widths: one per list. */
+  /** Names the stored widths, order and page size: one per list. */
   id: string
   /** The table's accessible name. */
   label?: string
@@ -174,6 +311,7 @@ export function DataTable<T extends RowData>({
   data: readonly T[]
   getRowId: (row: T) => string
   sorting?: DataTableSorting
+  pagination?: DataTablePagination
   selection?: DataTableSelection<T>
   /** A click on the row outside its controls. */
   onRowClick?: (row: T) => void
@@ -185,7 +323,7 @@ export function DataTable<T extends RowData>({
   className?: string
   /** Shows the rows dimmed while the next ones load. */
   pending?: boolean
-  /** Under the table: the pager. */
+  /** Under the table, above the pager: e.g. the phone list that replaces it on narrow screens. */
   footer?: ReactNode
 }) {
   const { box, width: available } = useBoxWidth()
@@ -204,15 +342,53 @@ export function DataTable<T extends RowData>({
     [columns, selection],
   )
   const byId = new Map(all.map((column) => [column.id, column]))
-  const flex = all.find((column) => column.flex)?.id
+  const shown = all.filter((column) => !column.showFrom || available >= column.showFrom)
   // A new columns array each render keeps the same model while what it needs stays the same.
   const model = all.map(columnDef)
   const [defs, setDefs] = useState(model)
   if (JSON.stringify(model) !== JSON.stringify(defs)) setDefs(model)
 
+  // Until a person sizes it, the flexible column takes what the others leave of the box; the
+  // first resize of any column stores its width with the others', so only the dragged one moves.
+  const flex = shown.find((column) => column.flex)
+  const columnSizing = useMemo<ColumnSizingState>(() => {
+    if (!flex || flex.id in sizes) return sizes
+    const others = shown
+      .filter((column) => column !== flex)
+      .reduce((sum, column) => {
+        const { size, min, max } = bounds(column)
+        return sum + clamp(sizes[column.id] ?? size, min, max)
+      }, 0)
+    return { ...sizes, [flex.id]: Math.max(bounds(flex).min, available - others) }
+  }, [flex, shown, sizes, available])
+
+  const movable = all.filter((column) => !isFixed(column.id)).map((column) => column.id)
+  const { order, setOrder } = useColumnOrder(id, movable)
+  const columnOrder = useMemo<ColumnOrderState>(
+    () => [
+      ...all.filter((column) => column.id === SELECT).map((column) => column.id),
+      ...order,
+      ...all.filter((column) => column.id === ACTIONS).map((column) => column.id),
+    ],
+    [all, order],
+  )
+
   const rowSelection = useMemo<RowSelectionState>(
     () => Object.fromEntries([...(selection?.selected ?? [])].map((row) => [row, true])),
     [selection?.selected],
+  )
+  const sortColumn = sorting?.column
+  const sortDesc = sorting?.desc ?? false
+  const sortingState = useMemo<SortingState>(
+    () => (sortColumn ? [{ id: sortColumn, desc: sortDesc }] : []),
+    [sortColumn, sortDesc],
+  )
+  const paginationState = useMemo<PaginationState>(
+    () => ({
+      pageIndex: Math.max((pagination?.page ?? 1) - 1, 0),
+      pageSize: pagination?.pageSize ?? Math.max(data.length, 1),
+    }),
+    [pagination?.page, pagination?.pageSize, data.length],
   )
 
   const table = useTable({
@@ -220,30 +396,40 @@ export function DataTable<T extends RowData>({
     columns: defs,
     data: data as T[],
     getRowId: (row: T) => getRowId(row),
-    manualSorting: true,
     columnResizeMode: 'onChange',
+    columnResizeDirection: 'ltr',
+    manualSorting: true,
+    enableMultiSort: false,
+    enableSortingRemoval: false,
+    manualPagination: true,
+    rowCount: pagination?.total ?? data.length,
     enableRowSelection: Boolean(selection),
     state: {
-      columnSizing: sizes,
+      columnSizing,
+      columnOrder,
       columnVisibility: Object.fromEntries(
-        all.map((column) => [column.id, !column.showFrom || available >= column.showFrom]),
+        all.map((column) => [column.id, shown.includes(column)]),
       ),
       rowSelection,
-      sorting: sorting?.column ? [{ id: sorting.column, desc: sorting.desc }] : [],
+      sorting: sortingState,
+      pagination: paginationState,
     },
     onColumnSizingChange: (updater: Updater<ColumnSizingState>) => {
-      setSizes((old) => {
-        const next = typeof updater === 'function' ? updater(old) : updater
-        // Kept within each column's range, so a drag past its min or max stores the width shown.
-        const clamped = Object.fromEntries(
-          Object.entries(next).map(([column, width]) => {
-            const def = defs.find((entry) => entry.id === column)
-            return [column, Math.min(Math.max(width, def?.minSize ?? 0), def?.maxSize ?? width)]
-          }),
-        )
-        writeColumnSizes(id, clamped)
-        return clamped
-      })
+      const next = typeof updater === 'function' ? updater(columnSizing) : updater
+      writeColumnSizes(id, next)
+      setSizes(next)
+    },
+    onColumnOrderChange: (updater: Updater<ColumnOrderState>) => {
+      const next = typeof updater === 'function' ? updater(columnOrder) : updater
+      setOrder(next.filter((column) => !isFixed(column)))
+    },
+    onSortingChange: (updater: Updater<SortingState>) => {
+      const [next] = typeof updater === 'function' ? updater(sortingState) : updater
+      if (next) sorting?.onSort(next.id, next.desc)
+    },
+    onPaginationChange: (updater: Updater<PaginationState>) => {
+      const next = typeof updater === 'function' ? updater(paginationState) : updater
+      pagination?.onChange(next.pageIndex + 1, next.pageSize)
     },
     onRowSelectionChange: (updater: Updater<RowSelectionState>) => {
       const next = typeof updater === 'function' ? updater(rowSelection) : updater
@@ -252,182 +438,289 @@ export function DataTable<T extends RowData>({
   })
 
   const headers = table.getFlatHeaders()
-  // Sizes as CSS variables, as in TanStack's performant resizing example.
-  const vars = Object.fromEntries(
-    headers.map((header) => [`--col-${header.column.id}-size`, `${header.getSize()}px`]),
+  const sizing = table.state.columnSizing
+  // As in TanStack's performant example: the widths as CSS variables, built once per change.
+  const columnSizeVars = useMemo(
+    () =>
+      Object.fromEntries(
+        headers.map((header) => [
+          `--col-${header.column.id}-size`,
+          `${clamp(sizing[header.column.id] ?? header.column.columnDef.size ?? DEFAULT_SIZE, header.column.columnDef.minSize ?? 0, header.column.columnDef.maxSize ?? DEFAULT_MAX)}px`,
+        ]),
+      ),
+    [headers, sizing],
   )
   const total = table.getTotalSize()
+  // Narrower than its box: the empty room right of the columns is a cell of its own, so the
+  // header and every row's hover and border still reach the box's edge.
+  const filler = available > total
   const resizing = table.state.columnResizing.isResizingColumn
+  const visibleColumns = table.getVisibleLeafColumns()
+  const lastColumn = visibleColumns.at(-1)?.id
+
+  const rows = table.getRowModel().rows
+  const tbody = useRef<HTMLTableSectionElement>(null)
+  const virtual = rows.length > VIRTUAL_FROM
+  const [scrollMargin, setScrollMargin] = useState(0)
+  const virtualizer = useRowVirtualizer({
+    count: rows.length,
+    enabled: virtual,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10,
+    getScrollElement: () => scrollParent(box.current),
+    scrollMargin,
+  })
+  // Where the rows start inside what scrolls, so the virtualizer counts from the first row.
+  useLayoutEffect(() => {
+    const element = virtualizer.scrollElement
+    if (!virtual || !element || !tbody.current) return
+    const top =
+      tbody.current.getBoundingClientRect().top -
+      (isRoot(element) ? 0 : element.getBoundingClientRect().top) +
+      element.scrollTop
+    if (Math.abs(top - scrollMargin) > 1) setScrollMargin(top)
+  }, [virtual, virtualizer, scrollMargin])
+  const items = virtual ? virtualizer.getVirtualItems() : []
+  const slice = virtual
+    ? {
+        rows: items.flatMap((item) => rows[item.index] ?? []),
+        before: (items[0]?.start ?? scrollMargin) - scrollMargin,
+        after: virtualizer.getTotalSize() - ((items.at(-1)?.end ?? scrollMargin) - scrollMargin),
+      }
+    : { rows, before: 0, after: 0 }
+
+  const [dropTarget, setDropTarget] = useState<string>()
+  const dragged = useRef<string>(undefined)
+  const moveColumn = (from: string, to: string) => {
+    if (from === to || isFixed(to)) return
+    table.setColumnOrder((old) => {
+      const next = old.filter((column) => column !== from)
+      next.splice(old.indexOf(to), 0, from)
+      return next
+    })
+  }
 
   const allSelected = table.getIsAllRowsSelected()
   const someSelected = table.getIsSomeRowsSelected()
+  const spacer = (height: number, key: string) =>
+    height > 0 && (
+      <tr key={key} aria-hidden style={{ height }}>
+        <td aria-hidden colSpan={visibleColumns.length + Number(filler)} className="p-0" />
+      </tr>
+    )
 
   return (
-    <div
-      ref={box}
-      className={cn(
-        // Its width comes from its parent, never from the table, so a wide table scrolls in it
-        // instead of stretching a grid or flex parent.
-        'transition-opacity duration-150 [contain:inline-size]',
-        // Clipped while it fits, so the sticky header follows the page; scrolled once it does not.
-        total > available ? 'overflow-x-auto' : 'overflow-x-clip',
-        resizing && 'cursor-col-resize select-none',
-        pending && 'opacity-60',
-      )}
-    >
-      <table
-        aria-label={label}
-        className={cn(listTable.table, className)}
-        style={{ ...vars, width: '100%', minWidth: total }}
+    <div className={cn('transition-opacity duration-150', pending && 'opacity-60')}>
+      <div
+        ref={box}
+        className={cn(
+          // Its width comes from its parent, never from the table, so a wide table scrolls in it
+          // instead of stretching a grid or flex parent.
+          '[contain:inline-size]',
+          // Clipped while it fits, so the sticky header follows the page; scrolled once it does not.
+          total > available ? 'overflow-x-auto' : 'overflow-x-clip',
+          resizing && 'cursor-col-resize select-none',
+        )}
       >
-        <colgroup>
-          {headers.map((header) => (
-            <col
-              key={header.id}
-              style={{
-                width:
-                  header.column.id === flex ? undefined : `var(--col-${header.column.id}-size)`,
-              }}
-            />
-          ))}
-        </colgroup>
-        <thead>
-          {table.getHeaderGroups().map((group) => (
-            <tr key={group.id} className={listTable.head}>
-              {group.headers.map((header) => {
-                const column = byId.get(header.column.id)
-                if (!column) return null
-                if (column.id === SELECT && selection)
-                  return (
-                    <th key={header.id} className={cn(listTable.th, listTable.select)}>
-                      <Checkbox
-                        aria-label={selection.allLabel}
-                        className="cursor-pointer bg-card"
-                        checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                        onCheckedChange={(checked) => table.toggleAllRowsSelected(checked === true)}
-                      />
-                    </th>
-                  )
-                const sorted = sorting?.column === column.id
-                const canResizeColumn = header.column.getCanResize()
-                return (
-                  <th
-                    key={header.id}
-                    aria-sort={sorted ? (sorting.desc ? 'descending' : 'ascending') : undefined}
-                    // The resize handle inside would add its name to the header's.
-                    aria-label={canResizeColumn ? column.header : undefined}
-                    className={cn(
-                      listTable.th,
-                      'group/th relative',
-                      column.align === 'right' && 'text-right',
-                      column.id === SELECT && listTable.select,
-                      column.id === 'actions' && listTable.menu,
-                    )}
-                  >
-                    <span className={cn('block', column.id !== SELECT && 'truncate')}>
-                      {column.headerContent ??
-                        (column.sortable && sorting ? (
-                          <button
-                            type="button"
-                            onClick={() => sorting.onSort(column.id)}
-                            className={cn(
-                              'inline-flex max-w-full cursor-pointer items-center gap-1 uppercase hover:text-foreground',
-                              sorted && 'text-foreground',
-                            )}
-                          >
-                            <span className="truncate">{column.header}</span>
-                            {sorted &&
-                              (sorting.desc ? (
-                                <ArrowDown className="size-3.5 shrink-0" />
-                              ) : (
-                                <ArrowUp className="size-3.5 shrink-0" />
-                              ))}
-                          </button>
-                        ) : (
-                          column.header
-                        ))}
-                    </span>
-                    {canResizeColumn && (
-                      <ResizeHandle
-                        label={column.header}
-                        width={header.getSize()}
-                        min={header.column.columnDef.minSize ?? DEFAULT_MIN}
-                        max={header.column.columnDef.maxSize ?? DEFAULT_MAX}
-                        active={resizing === column.id}
-                        onStart={header.getResizeHandler()}
-                        onChange={(width) =>
-                          table.setColumnSizing((old) => ({ ...old, [column.id]: width }))
-                        }
-                        onReset={() => header.column.resetSize()}
-                      />
-                    )}
-                  </th>
-                )
-              })}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => {
-            const original = row.original
-            const extra = rowProps?.(original)
-            const tr = (
-              <tr
-                key={row.id}
-                data-selected={row.getIsSelected() || undefined}
-                {...extra}
-                onClick={
-                  onRowClick
-                    ? (event: MouseEvent<HTMLTableRowElement>) => {
-                        const target = event.target
-                        if (
-                          !(target instanceof Element) ||
-                          !event.currentTarget.contains(target) ||
-                          target.closest('button, a, [role=checkbox], input')
-                        )
-                          return
-                        onRowClick(original)
-                      }
-                    : undefined
-                }
-                className={cn(listTable.row, onRowClick && 'cursor-pointer', extra?.className)}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const column = byId.get(cell.column.id)
+        <table
+          aria-label={label}
+          aria-rowcount={virtual ? rows.length + 1 : undefined}
+          className={cn(listTable.table, className)}
+          style={{ ...columnSizeVars, width: filler ? available : total }}
+        >
+          <colgroup>
+            {headers.map((header) => (
+              <col key={header.id} style={{ width: `var(--col-${header.column.id}-size)` }} />
+            ))}
+            {filler && <col />}
+          </colgroup>
+          <thead>
+            {table.getHeaderGroups().map((group) => (
+              <tr key={group.id} className={listTable.head}>
+                {group.headers.map((header) => {
+                  const column = byId.get(header.column.id)
                   if (!column) return null
                   if (column.id === SELECT && selection)
                     return (
-                      <td key={cell.id} className={cn(listTable.td, listTable.select)}>
+                      <th key={header.id} className={cn(listTable.th, listTable.select)}>
                         <Checkbox
-                          aria-label={selection.rowLabel(original)}
+                          aria-label={selection.allLabel}
                           className="cursor-pointer bg-card"
-                          checked={row.getIsSelected()}
-                          onCheckedChange={(checked) => row.toggleSelected(checked === true)}
+                          checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                          onCheckedChange={(checked) =>
+                            table.toggleAllRowsSelected(checked === true)
+                          }
                         />
-                      </td>
+                      </th>
                     )
+                  const sorted = header.column.getIsSorted()
+                  const canResizeColumn = header.column.getCanResize()
+                  const canMove = !isFixed(column.id)
                   return (
-                    <td
-                      key={cell.id}
+                    <th
+                      key={header.id}
+                      aria-sort={
+                        sorted ? (sorted === 'desc' ? 'descending' : 'ascending') : undefined
+                      }
+                      // The resize handle inside would add its name to the header's.
+                      aria-label={canResizeColumn ? column.header : undefined}
+                      data-drop-target={dropTarget === column.id || undefined}
+                      onDragOver={(event: DragEvent) => {
+                        if (!canMove || dragged.current === undefined) return
+                        event.preventDefault()
+                        event.dataTransfer.dropEffect = 'move'
+                        setDropTarget(column.id)
+                      }}
+                      onDragLeave={() =>
+                        setDropTarget((target) => (target === column.id ? undefined : target))
+                      }
+                      onDrop={(event: DragEvent) => {
+                        event.preventDefault()
+                        if (dragged.current !== undefined) moveColumn(dragged.current, column.id)
+                        setDropTarget(undefined)
+                      }}
                       className={cn(
-                        listTable.td,
-                        column.align === 'right' && listTable.numeric,
+                        listTable.th,
+                        'group/th relative data-drop-target:bg-muted',
+                        column.align === 'right' && 'text-right',
                         column.id === SELECT && listTable.select,
-                        column.id === 'actions' && listTable.menu,
-                        column.className,
+                        column.id === ACTIONS && listTable.menu,
+                        filler && column.id === lastColumn && column.id !== ACTIONS && 'pr-5',
                       )}
                     >
-                      {column.cell(original)}
-                    </td>
+                      <span
+                        className={cn(
+                          'block',
+                          column.id !== SELECT && 'truncate',
+                          canMove && 'cursor-grab',
+                        )}
+                        // Not while a column is resized: Chromium would start the drag once the
+                        // widened column brings this label under the point the press began at.
+                        draggable={canMove && !resizing}
+                        onDragStart={(event: DragEvent) => {
+                          if (resizing) {
+                            event.preventDefault()
+                            return
+                          }
+                          dragged.current = column.id
+                          event.dataTransfer.effectAllowed = 'move'
+                          event.dataTransfer.setData('text/plain', column.header)
+                        }}
+                        onDragEnd={() => {
+                          dragged.current = undefined
+                          setDropTarget(undefined)
+                        }}
+                      >
+                        {column.headerContent ??
+                          (header.column.getCanSort() && sorting ? (
+                            <button
+                              type="button"
+                              onClick={header.column.getToggleSortingHandler()}
+                              className={cn(
+                                'group/sort inline-flex max-w-full cursor-pointer items-center gap-1.5 uppercase hover:text-foreground',
+                                sorted && 'text-foreground',
+                              )}
+                            >
+                              <span className="truncate">{column.header}</span>
+                              <SortCarets sorted={sorted} />
+                            </button>
+                          ) : (
+                            column.header
+                          ))}
+                      </span>
+                      {canResizeColumn && (
+                        <ColumnResizer
+                          label={column.header}
+                          width={header.getSize()}
+                          min={bounds(column).min}
+                          max={bounds(column).max}
+                          active={resizing === column.id}
+                          onStart={header.getResizeHandler()}
+                          onResize={(width) =>
+                            table.setColumnSizing((old) => ({ ...old, [column.id]: width }))
+                          }
+                          onReset={() => header.column.resetSize()}
+                        />
+                      )}
+                    </th>
                   )
                 })}
+                {filler && <th aria-hidden className={cn(listTable.th, 'p-0')} />}
               </tr>
-            )
-            return renderRow ? <WrappedRow key={row.id}>{renderRow(original, tr)}</WrappedRow> : tr
-          })}
-        </tbody>
-      </table>
+            ))}
+          </thead>
+          <tbody ref={tbody}>
+            {spacer(slice.before, 'before')}
+            {slice.rows.map((row) => {
+              const original = row.original
+              const extra = rowProps?.(original)
+              const tr = (
+                <tr
+                  key={row.id}
+                  aria-rowindex={virtual ? row.index + 2 : undefined}
+                  data-selected={row.getIsSelected() || undefined}
+                  {...extra}
+                  onClick={
+                    onRowClick
+                      ? (event: MouseEvent<HTMLTableRowElement>) => {
+                          const target = event.target
+                          if (
+                            !(target instanceof Element) ||
+                            !event.currentTarget.contains(target) ||
+                            target.closest('button, a, [role=checkbox], input')
+                          )
+                            return
+                          onRowClick(original)
+                        }
+                      : undefined
+                  }
+                  className={cn(listTable.row, onRowClick && 'cursor-pointer', extra?.className)}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const column = byId.get(cell.column.id)
+                    if (!column) return null
+                    if (column.id === SELECT && selection)
+                      return (
+                        <td key={cell.id} className={cn(listTable.td, listTable.select)}>
+                          <Checkbox
+                            aria-label={selection.rowLabel(original)}
+                            className="cursor-pointer bg-card"
+                            checked={row.getIsSelected()}
+                            onCheckedChange={(checked) => row.toggleSelected(checked === true)}
+                          />
+                        </td>
+                      )
+                    return (
+                      <td
+                        key={cell.id}
+                        className={cn(
+                          listTable.td,
+                          column.align === 'right' && listTable.numeric,
+                          column.id === SELECT && listTable.select,
+                          column.id === ACTIONS && listTable.menu,
+                          filler && column.id === lastColumn && column.id !== ACTIONS && 'pr-5',
+                          column.className,
+                        )}
+                      >
+                        {column.cell(original)}
+                      </td>
+                    )
+                  })}
+                  {filler && <td aria-hidden className="p-0" />}
+                </tr>
+              )
+              return renderRow ? (
+                <WrappedRow key={row.id}>{renderRow(original, tr)}</WrappedRow>
+              ) : (
+                tr
+              )
+            })}
+            {spacer(slice.after, 'after')}
+          </tbody>
+        </table>
+      </div>
       {footer}
+      {pagination && <Pager table={table} />}
     </div>
   )
 }
@@ -437,19 +730,33 @@ function WrappedRow({ children }: { children: ReactNode }) {
   return children
 }
 
+/** Two small carets, up over down: the one of the sorted direction is solid, the others faint. */
+const caret = (active: boolean) =>
+  active ? 'fill-foreground' : 'fill-muted-foreground/35 group-hover/sort:fill-muted-foreground/70'
+
+function SortCarets({ sorted }: { sorted: false | 'asc' | 'desc' }) {
+  return (
+    <svg aria-hidden viewBox="0 0 8 12" className="h-3 w-2 shrink-0">
+      <path d="M4 1.5 7.5 5.5h-7z" className={caret(sorted === 'asc')} />
+      <path d="M4 10.5.5 6.5h7z" className={caret(sorted === 'desc')} />
+    </svg>
+  )
+}
+
 /**
- * A column's right edge: TanStack's resize handler on mouse and touch; a double-click or Enter
- * gives the column its default width again. A range input, so it is focusable and announced with
- * the width as its value; the arrow keys resize in steps (Shift: bigger ones).
+ * A column's right edge, as in TanStack's resizing example: a thin bar that TanStack's handler
+ * drags on mouse and touch (it follows the pointer on the document until release); a double-click
+ * gives the column its default width again. A button, so it is focusable: the arrow keys resize in
+ * steps (Shift: bigger ones), Enter resets.
  */
-function ResizeHandle({
+function ColumnResizer({
   label,
   width,
   min,
   max,
   active,
   onStart,
-  onChange,
+  onResize,
   onReset,
 }: {
   label: string
@@ -458,86 +765,265 @@ function ResizeHandle({
   max: number
   active: boolean
   onStart: (event: unknown) => void
-  onChange: (width: number) => void
+  onResize: (width: number) => void
   onReset: () => void
 }) {
   return (
-    <span
+    <button
+      type="button"
+      aria-label={translate('tableResizeColumn', { column: label })}
       data-column-resizer=""
       data-resizing={active || undefined}
+      onMouseDown={onStart}
+      onTouchStart={onStart}
+      onDoubleClick={onReset}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event: KeyboardEvent) => {
+        const direction = { ArrowLeft: -1, ArrowRight: 1 }[event.key]
+        if (event.key === 'Enter') onReset()
+        else if (direction)
+          onResize(clamp(width + direction * (event.shiftKey ? STEP * 4 : STEP), min, max))
+        else return
+        event.preventDefault()
+      }}
       // Inside its own header: centred on the border, the next sticky header would cover its half.
-      className="group/resizer absolute inset-y-0 right-0 z-10 flex w-3 justify-end"
+      className="group/resizer absolute inset-y-0 right-0 z-10 flex w-3 cursor-col-resize touch-none justify-end outline-none select-none"
     >
-      <input
-        type="range"
-        aria-label={translate('tableResizeColumn', { column: label })}
-        min={min}
-        max={Math.max(min, max)}
-        step={1}
-        value={Math.round(width)}
-        onChange={(event) => onChange(Number(event.currentTarget.value))}
-        onMouseDown={(event) => {
-          if (event.button !== 0) return
-          // Not the range's own drag, no text selection, no sort click.
-          event.preventDefault()
-          event.currentTarget.focus({ preventScroll: true })
-          onStart(event)
-        }}
-        onTouchStart={onStart}
-        onKeyDown={(event) => {
-          const direction = { ArrowLeft: -1, ArrowRight: 1 }[event.key]
-          if (event.key === 'Enter') onReset()
-          else if (direction) onChange(width + direction * (event.shiftKey ? STEP * 4 : STEP))
-          else return
-          event.preventDefault()
-        }}
-        onClick={(event) => event.stopPropagation()}
-        onDoubleClick={onReset}
-        className="peer absolute inset-0 m-0 h-full w-full cursor-col-resize touch-none appearance-none opacity-0"
-      />
-      <span className="pointer-events-none my-2.5 w-0.5 rounded-full bg-border opacity-0 transition-opacity group-hover/resizer:bg-ring group-hover/th:opacity-100 group-data-resizing/resizer:bg-ring group-data-resizing/resizer:opacity-100 peer-focus-visible:bg-ring peer-focus-visible:opacity-100" />
-    </span>
+      <span className="my-2.5 w-0.5 rounded-full bg-border group-hover/resizer:bg-ring group-focus-visible/resizer:bg-ring group-data-resizing/resizer:bg-ring" />
+    </button>
   )
 }
 
-type PageMeta = { page: number; page_size: number; total: number; total_pages: number }
+/**
+ * The columns of a list's Customize menu: each shown or hidden (`required` ones always show) and
+ * moved up or down, in the order its table shows them (the same stored order); Reset gives back
+ * the default order. The checkbox and row menu columns are not listed: they never move.
+ */
+export function ColumnsCustomize({
+  table,
+  columns,
+  hidden,
+  onToggle,
+}: {
+  /** The table's `id`. */
+  table: string
+  columns: readonly { id: string; label: string; required?: boolean }[]
+  hidden: readonly string[]
+  onToggle: (column: string) => void
+}) {
+  const listed = columns.filter((column) => !isFixed(column.id))
+  const byId = new Map(listed.map((column) => [column.id, column]))
+  const { order, customised, setOrder } = useColumnOrder(
+    table,
+    listed.map((column) => column.id),
+  )
+  const move = (from: number, to: number) => {
+    const next = [...order]
+    const [column] = next.splice(from, 1)
+    if (column === undefined) return
+    next.splice(to, 0, column)
+    setOrder(next)
+  }
+  return (
+    <>
+      <ul>
+        {order.map((id, index) => {
+          const column = byId.get(id)
+          if (!column) return null
+          return (
+            <li
+              key={id}
+              className="flex h-8 items-center gap-0.5 rounded-md pr-1 pl-2 text-sm hover:bg-muted"
+            >
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5">
+                <Checkbox
+                  checked={column.required || !hidden.includes(id)}
+                  disabled={column.required}
+                  onCheckedChange={() => onToggle(id)}
+                />
+                <span className="truncate">{column.label}</span>
+              </label>
+              <IconButton
+                size="icon-xs"
+                label={translate('tableMoveColumnUp', { column: column.label })}
+                icon={ChevronUp}
+                disabled={index === 0}
+                onClick={() => move(index, index - 1)}
+              />
+              <IconButton
+                size="icon-xs"
+                label={translate('tableMoveColumnDown', { column: column.label })}
+                icon={ChevronDown}
+                disabled={index === order.length - 1}
+                onClick={() => move(index, index + 1)}
+              />
+            </li>
+          )
+        })}
+      </ul>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="justify-start font-normal"
+        disabled={!customised}
+        onClick={() => setOrder(null)}
+      >
+        <RotateCcw />
+        {translate('tableResetColumns')}
+      </Button>
+    </>
+  )
+}
 
-/** The footer under a paged list: the range shown, then previous and next. */
-export function Pager({ meta, onPage }: { meta: PageMeta; onPage: (page: number) => void }) {
+type PagerTable = {
+  state: { pagination: PaginationState }
+  getPageCount: () => number
+  getRowCount: () => number
+  getCanPreviousPage: () => boolean
+  getCanNextPage: () => boolean
+  firstPage: () => void
+  previousPage: () => void
+  nextPage: () => void
+  lastPage: () => void
+  setPageIndex: (index: number) => void
+  setPageSize: (size: number) => void
+}
+
+function IconButton({
+  label,
+  icon: Icon,
+  disabled,
+  onClick,
+  className,
+  size = 'icon-sm',
+}: {
+  label: string
+  icon: LucideIcon
+  disabled: boolean
+  onClick: () => void
+  className?: string
+  size?: 'icon-sm' | 'icon-xs'
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size={size}
+          aria-label={label}
+          disabled={disabled}
+          onClick={onClick}
+          className={className}
+        >
+          <Icon />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+/**
+ * Under a paged list, driven by TanStack's pagination: the rows shown, rows per page, then first,
+ * previous, the page (a field to jump to one), next and last. Phones keep previous, the page and next.
+ */
+function Pager({ table }: { table: PagerTable }) {
+  const { pageIndex, pageSize } = table.state.pagination
+  const pages = Math.max(table.getPageCount(), 1)
+  const total = table.getRowCount()
+  const page = pageIndex + 1
+  const go = (input: HTMLInputElement) => {
+    const wanted = Number(input.value)
+    if (!Number.isInteger(wanted)) {
+      input.value = String(page)
+      return
+    }
+    const next = clamp(wanted, 1, pages)
+    input.value = String(next)
+    if (next !== page) table.setPageIndex(next - 1)
+  }
   return (
     <nav
       aria-label={translate('tablePages')}
-      className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-[13px] text-muted-foreground md:px-5"
+      className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-2 text-[13px] text-muted-foreground md:px-5"
     >
       <span className="tabular-nums">
         {translate('tableRange', {
-          from: (meta.page - 1) * meta.page_size + 1,
-          to: Math.min(meta.page * meta.page_size, meta.total),
-          total: meta.total,
+          from: total ? pageIndex * pageSize + 1 : 0,
+          to: Math.min(page * pageSize, total),
+          total,
         })}
       </span>
       <span className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={translate('tablePreviousPage')}
-          disabled={meta.page <= 1}
-          onClick={() => onPage(meta.page - 1)}
-        >
-          <ChevronLeft />
-        </Button>
-        <span className="tabular-nums">
-          {translate('tablePageOf', { page: meta.page, pages: Math.max(meta.total_pages, 1) })}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={translate('tableNextPage')}
-          disabled={meta.page >= meta.total_pages}
-          onClick={() => onPage(meta.page + 1)}
-        >
-          <ChevronRight />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-2 font-normal text-muted-foreground max-sm:hidden"
+            >
+              {translate('tableRowsPerPage', { count: pageSize })}
+              <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuRadioGroup
+              value={String(pageSize)}
+              onValueChange={(value) => table.setPageSize(Number(value))}
+            >
+              {PAGE_SIZES.map((size) => (
+                <DropdownMenuRadioItem key={size} value={String(size)}>
+                  {size}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <IconButton
+          label={translate('tableFirstPage')}
+          icon={ChevronsLeft}
+          disabled={!table.getCanPreviousPage()}
+          onClick={() => table.firstPage()}
+          className="max-sm:hidden"
+        />
+        <IconButton
+          label={translate('tablePreviousPage')}
+          icon={ChevronLeft}
+          disabled={!table.getCanPreviousPage()}
+          onClick={() => table.previousPage()}
+        />
+        <span className="tabular-nums sm:hidden">{translate('tablePageOf', { page, pages })}</span>
+        <label className="flex items-center gap-1.5 tabular-nums max-sm:hidden">
+          <span>{translate('tablePage')}</span>
+          <Input
+            key={page}
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={pages}
+            defaultValue={page}
+            aria-label={translate('tableGoToPage')}
+            onBlur={(event) => go(event.currentTarget)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') go(event.currentTarget)
+            }}
+            className="w-14 [appearance:textfield] px-2 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <span>{translate('tableOfPages', { pages })}</span>
+        </label>
+        <IconButton
+          label={translate('tableNextPage')}
+          icon={ChevronRight}
+          disabled={!table.getCanNextPage()}
+          onClick={() => table.nextPage()}
+        />
+        <IconButton
+          label={translate('tableLastPage')}
+          icon={ChevronsRight}
+          disabled={!table.getCanNextPage()}
+          onClick={() => table.lastPage()}
+          className="max-sm:hidden"
+        />
       </span>
     </nav>
   )

@@ -94,5 +94,14 @@
   "tableNextPage": "Nächste Seite",
   "tableRange": "{from}–{to} von {total}",
   "tablePageOf": "Seite {page} von {pages}",
-  "tableResizeColumn": "Breite von {column} ändern"
+  "tableResizeColumn": "Breite von {column} ändern",
+  "tableFirstPage": "Erste Seite",
+  "tableLastPage": "Letzte Seite",
+  "tablePage": "Seite",
+  "tableOfPages": "von {pages}",
+  "tableGoToPage": "Zu Seite",
+  "tableRowsPerPage": "{count} pro Seite",
+  "tableMoveColumnUp": "{column} nach oben",
+  "tableMoveColumnDown": "{column} nach unten",
+  "tableResetColumns": "Standard wiederherstellen"
 }

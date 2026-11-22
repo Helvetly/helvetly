@@ -63,6 +63,8 @@ export type ProductStatus = 'active' | 'archived'
 /** Everything that decides which items the list shows, as in the URL. */
 export type ListParams = {
   page: number
+  /** Rows per page, a choice kept in this browser (not in the URL). */
+  pageSize?: number
   search: string
   type: ProductType | null
   status: ProductStatus
@@ -127,7 +129,7 @@ export function apiQuery(params: ListParams, paging = true) {
   const query = new URLSearchParams()
   if (paging) {
     query.set('page', String(params.page))
-    query.set('page_size', String(PAGE_SIZE))
+    query.set('page_size', String(params.pageSize ?? PAGE_SIZE))
   }
   const search = params.search.trim()
   if (search) query.set('search', search)
