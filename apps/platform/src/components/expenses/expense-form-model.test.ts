@@ -272,16 +272,17 @@ test('switching to items keeps the lines; back to one amount merges them', () =>
   expect(withEntryMode(single, 'single')).toBe(single)
 })
 
+const named = (description: string, amount: string) => ({ ...newLine('8.1'), description, amount })
+
 test('booking needs a name on every item and on each of several lines; one line is named by what for', () => {
-  const item = (description: string, amount: string) => ({ ...newLine('8.1'), description, amount })
   const items = filled({
     description: '',
     entry_mode: 'itemised',
-    lines: [item('Cable', '10'), item(' ', '5'), newLine('8.1')],
+    lines: [named('Cable', '10'), named(' ', '5'), newLine('8.1')],
   })
   expect(validate(items, TODAY, false)).toEqual({})
   expect(validate(items, TODAY, true)).toEqual({ 'lines.1.description': 'Name the item to book.' })
-  const rates = filled({ description: '', lines: [item('', '100'), item('Breakfast', '20')] })
+  const rates = filled({ description: '', lines: [named('', '100'), named('Breakfast', '20')] })
   expect(Object.keys(validate(rates, TODAY, true))).toEqual(['lines.0.description'])
   expect(validate(filled({ description: ' ' }), TODAY, true)).toEqual({
     description: 'Say what it was for to book.',

@@ -22,6 +22,7 @@ import { Copy, Ellipsis, Plus, Tag, Trash2 } from 'lucide-react'
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import { inputClass } from '@/components/clients/fields'
+import { keepFocus } from '@/components/invoices/lines-editor'
 import { AmountInput } from '@/components/shared/amount-input'
 import { PercentInput } from '@/components/shared/percent-input'
 import { useExpenseCategories, type EntryMode, type Expense } from '@/lib/expenses'
@@ -46,7 +47,7 @@ const RATES_GRID =
   'grid-cols-[minmax(0,1fr)_136px_92px_32px] max-sm:grid-cols-[minmax(0,1fr)_120px_84px_32px]'
 // Items, sized by the form's column (not the screen): a table row each where it fits, # | item | qty | unit price |
 // VAT | amount | actions; else a card with the figures four to a row under the item.
-const ITEM_COLS = '@min-[34rem]:grid-cols-[1.25rem_minmax(0,1fr)_3.5rem_6rem_4.5rem_6.5rem_1.75rem]'
+const ITEM_COLS = '@min-[34rem]:grid-cols-[1.25rem_minmax(0,1fr)_3rem_5.5rem_4.25rem_6rem_1.75rem]'
 const ITEM_ROW = cn(
   'grid grid-cols-[1.25rem_minmax(0,1fr)_1.75rem] items-start gap-x-1.5 gap-y-2',
   "[grid-template-areas:'num_item_menu'_'nums_nums_nums'] @min-[34rem]:[grid-template-areas:none]",
@@ -61,6 +62,13 @@ type Describe = (field: string) => {
   'aria-invalid': boolean | undefined
   'aria-describedby': string | undefined
 }
+
+// A figure's name above it on a card; the table's header names it where the items are rows.
+const cardLabel = (text: string) => (
+  <span aria-hidden className="text-caption text-muted-foreground @min-[34rem]:hidden">
+    {text}
+  </span>
+)
 
 const Required = () => <span className="ml-0.5 text-destructive">*</span>
 
@@ -225,7 +233,10 @@ function RateLines({ values, errors, newRate, describe, onValues, onLine }: Line
               )}
             </div>
             {error && (
-              <p id={`expense-lines.${index}.${error.field}-error`} className="text-xs text-destructive">
+              <p
+                id={`expense-lines.${index}.${error.field}-error`}
+                className="text-xs text-destructive"
+              >
                 {error.message}
               </p>
             )}
@@ -339,11 +350,6 @@ function ItemTable({ values, errors, newRate, describe, onValues, onLine }: Line
           const own = line.category_id
             ? categories.find((category) => category.id === line.category_id)
             : undefined
-          const label = (text: string) => (
-            <span aria-hidden className="text-caption text-muted-foreground @min-[34rem]:hidden">
-              {text}
-            </span>
-          )
           return (
             <div
               key={line.key}
@@ -380,7 +386,7 @@ function ItemTable({ values, errors, newRate, describe, onValues, onLine }: Line
                 </div>
                 <div className="grid grid-cols-4 gap-1.5 [grid-area:nums] @min-[34rem]:contents">
                   <div className="grid min-w-0 gap-0.5">
-                    {label(translate('qty'))}
+                    {cardLabel(translate('qty'))}
                     <input
                       {...cell(index, 'quantity')}
                       aria-label={translate('lineQuantity', { value1: n })}
@@ -392,7 +398,7 @@ function ItemTable({ values, errors, newRate, describe, onValues, onLine }: Line
                     />
                   </div>
                   <div className="grid min-w-0 gap-0.5">
-                    {label(translate('unitPrice'))}
+                    {cardLabel(translate('unitPrice'))}
                     <AmountInput
                       {...cell(index, 'unit_price')}
                       aria-label={translate('lineUnitPrice', { value1: n })}
@@ -403,7 +409,7 @@ function ItemTable({ values, errors, newRate, describe, onValues, onLine }: Line
                     />
                   </div>
                   <div className="grid min-w-0 gap-0.5">
-                    {label(translate('vat2'))}
+                    {cardLabel(translate('vat2'))}
                     <PercentInput
                       {...cell(index, 'vat_rate')}
                       aria-label={translate('lineVATRate', { value1: n })}
@@ -416,7 +422,7 @@ function ItemTable({ values, errors, newRate, describe, onValues, onLine }: Line
                     />
                   </div>
                   <div className="grid min-w-0 gap-0.5">
-                    {label(translate('amount'))}
+                    {cardLabel(translate('amount'))}
                     <AmountInput
                       {...cell(index, 'amount')}
                       aria-label={translate('lineAmount', { value1: n })}
@@ -462,7 +468,9 @@ function ItemTable({ values, errors, newRate, describe, onValues, onLine }: Line
           >
             <Plus />
             {translate('addAnItem')}
-            <Kbd className="ml-1 hidden @min-[34rem]:inline-flex">{translate('enter')}</Kbd>
+            <Kbd aria-hidden className="ml-1 hidden @min-[34rem]:inline-flex">
+              {translate('enter')}
+            </Kbd>
           </Button>
           <span className="text-body-sm text-muted-foreground tabular-nums">
             {translate('itemCount', { count: lines.length })}
@@ -508,7 +516,7 @@ function ItemMenu({
           <Ellipsis />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-52">
+      <DropdownMenuContent align="end" className="min-w-52" onCloseAutoFocus={keepFocus}>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Tag />

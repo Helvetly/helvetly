@@ -79,7 +79,7 @@ const rowAt = (y: number) => {
  * A menu restores focus to its trigger once it has faded out. If the person moved on meanwhile
  * (Enter in a description, a click elsewhere), pulling focus back would swallow what they type.
  */
-const keepFocus = (event: Event) => {
+export const keepFocus = (event: Event) => {
   const active = document.activeElement
   if (active && active !== document.body && !active.closest('[role=menu]')) event.preventDefault()
 }
