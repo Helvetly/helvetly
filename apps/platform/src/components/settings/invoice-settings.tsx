@@ -16,6 +16,7 @@ import {
   type CountryCode,
 } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
+import { useQuery } from '@tanstack/react-query'
 import {
   BellRing,
   Building2,
@@ -64,7 +65,9 @@ import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
-  exampleNumber,
+  invoiceKeys,
+  invoicesApi,
+  nextNumberOf,
   numberFormatError,
   formatIban,
   ibanInfo,
@@ -85,7 +88,9 @@ import {
   type InstalmentSettings,
   type Interval,
   type InvoiceSettings,
+  type NextNumbers,
   type NumberFormat,
+  type NumberedKind,
   type SettingsInput,
   type VatMode,
   unsupportedSellerCountry,
@@ -699,6 +704,25 @@ function useSectionInView(first: SectionId) {
 export const currencyLock = (error: unknown) =>
   error instanceof ApiError && error.code === 'currency_locked' ? error.message : null
 
+const ONES = { year: 1, ever: 1 }
+/** Until the counters are read, and when they cannot be: every series starts at 1. */
+const FIRST_NUMBERS: NextNumbers = {
+  series: { invoice: ONES, credit_note: ONES, proforma: ONES, self_billed: ONES },
+  quote: 1,
+}
+
+/** Every document type the number format numbers. */
+const NEXT_NUMBER_KINDS: { kind: NumberedKind; label: () => string }[] = [
+  { kind: 'invoice', label: () => translate('invoice2') },
+  { kind: 'quote', label: () => translate('quote2') },
+  { kind: 'credit_note', label: () => translate('creditNote2') },
+  { kind: 'debit_note', label: () => translate('debitNote2') },
+  { kind: 'prepayment', label: () => translate('prepayment').trim() },
+  { kind: 'proforma', label: () => translate('proforma') },
+  { kind: 'corrected', label: () => translate('correctedInvoice') },
+  { kind: 'self_billed', label: () => translate('selfBilled') },
+]
+
 const bigInput = cn(inputClass, 'placeholder:text-placeholder')
 
 function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: SettingsPageId }) {
@@ -709,6 +733,11 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
   const remindersLock = useFeatureLock('automations')
   const save = useSaveInvoiceSettings()
   const legalForms = useLegalForms().data
+  const nextNumbers =
+    useQuery({
+      queryKey: [...invoiceKeys.settings, 'next-numbers'],
+      queryFn: invoicesApi.nextNumbers,
+    }).data ?? FIRST_NUMBERS
   // The API has no flag to read up front: the first refused change locks the field.
   const [currencyLocked, setCurrencyLocked] = useState<string | null>(null)
   const form = useSectionForm({
@@ -1336,16 +1365,11 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                 >
                   <SettingsPreview
                     label={translate('nextNumbers')}
-                    items={[
-                      {
-                        label: translate('invoice2'),
-                        value: exampleNumber(values.number_format, today(), 1),
-                      },
-                      {
-                        label: translate('creditNote2'),
-                        value: exampleNumber(values.number_format, today(), 1, 'credit_note'),
-                      },
-                    ]}
+                    columns
+                    items={NEXT_NUMBER_KINDS.map(({ kind, label }) => ({
+                      label: label(),
+                      value: nextNumberOf(values.number_format, today(), kind, nextNumbers),
+                    }))}
                   />
                 </FormField>
                 <ApprovalsRow currency={values.currency} />

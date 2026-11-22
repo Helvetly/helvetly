@@ -882,15 +882,33 @@ export const numberFormatsFor = (country: string | undefined): NumberFormat[] =>
     TYPED_FORMAT,
   ]
 
-/** What {TYPE} prints, as the API does; without {TYPE} a credit note gets the "CN-" prefix. */
-const TYPE_LETTERS = { invoice: 'INV', credit_note: 'CN' } as const
+/** What {TYPE} prints, as the API does; without {TYPE} a credit note, proforma or self-billed invoice gets its prefix. */
+const TYPE_LETTERS = {
+  invoice: 'INV',
+  partial: 'INV',
+  prepayment: 'PP',
+  debit_note: 'DN',
+  corrected: 'COR',
+  credit_note: 'CN',
+  proforma: 'PF',
+  self_billed: 'SB',
+  quote: 'Q',
+} as const
+
+export type NumberedKind = keyof typeof TYPE_LETTERS
+
+const SERIES_PREFIX: Partial<Record<NumberedKind, string>> = {
+  credit_note: 'CN-',
+  proforma: 'PF-',
+  self_billed: 'SB-',
+}
 
 /** The number a document of the kind issued on date (YYYY-MM-DD) gets with the sequence seq. */
 export function exampleNumber(
   format: NumberFormat,
   date: string,
   seq: number,
-  kind: keyof typeof TYPE_LETTERS = 'invoice',
+  kind: NumberedKind = 'invoice',
 ) {
   const parts: Record<string, string> = {
     YYYY: date.slice(0, 4),
@@ -902,7 +920,36 @@ export function exampleNumber(
   const number = format.replace(/\{([A-Z]+)\}/g, (token, name: string) =>
     /^N{1,6}$/.test(name) ? String(seq).padStart(name.length, '0') : (parts[name] ?? token),
   )
-  return kind === 'credit_note' && !format.includes('{TYPE}') ? `CN-${number}` : number
+  return format.includes('{TYPE}') ? number : `${SERIES_PREFIX[kind] ?? ''}${number}`
+}
+
+/** GET /invoice-settings/next-numbers: what the next document of each series takes, this year or for ever. */
+export type NextNumbers = {
+  series: Record<
+    'invoice' | 'credit_note' | 'proforma' | 'self_billed',
+    { year: number; ever: number }
+  >
+  quote: number
+}
+
+/** The kinds that share the invoice counter; the others count apart. */
+const own = new Set<NumberedKind>(['credit_note', 'proforma', 'self_billed'])
+
+/** The next number of each kind the format numbers, as the API will give it. */
+export function nextNumberOf(
+  format: NumberFormat,
+  date: string,
+  kind: NumberedKind,
+  counters: NextNumbers,
+) {
+  const yearly = /\{YY(YY)?\}/.test(format)
+  if (kind === 'quote') {
+    // quotes count per year, so a format without one keeps the default
+    const useFormat = format.includes('{TYPE}') && yearly ? format : 'Q-{YYYY}-{NNN}'
+    return exampleNumber(useFormat, date, counters.quote, kind)
+  }
+  const series = counters.series[own.has(kind) ? (kind as keyof NextNumbers['series']) : 'invoice']
+  return exampleNumber(format, date, yearly ? series.year : series.ever, kind)
 }
 
 /** Why the API would refuse the format, or null. */
@@ -1387,6 +1434,7 @@ export const invoicesApi = {
       ).data,
     ),
   createPlan: (id: string, body: PlanInput) => request<One<Plan>>(`${path(id)}/plan`, post(body)),
+  nextNumbers: async () => (await request<One<NextNumbers>>('/invoice-settings/next-numbers')).data,
   numberSuggestion: async () =>
     (await request<One<NumberSuggestion | null>>('/invoice-settings/number-suggestion')).data,
   applyNumberSuggestion: async () =>

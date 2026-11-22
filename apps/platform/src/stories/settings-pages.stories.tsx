@@ -393,7 +393,7 @@ export const Invoices: Story = {
     const numbering = within(canvas.getByRole('region', { name: 'Numbering' }))
     await expect(numbering.queryAllByRole('radio')).toHaveLength(0)
     await expect(numbering.getByRole('status', { name: 'Next numbers' })).toHaveTextContent(
-      /Invoice.*Credit note/,
+      /Invoice.*Quote.*Credit note/s,
     )
   },
 }
