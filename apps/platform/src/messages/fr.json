@@ -3939,7 +3939,6 @@
   "employeeSearchLabel": "Rechercher des employés",
   "employeeSearchPlaceholder": "Recherche par nom, numéro ou email",
   "employeeStatusLabel": "Statut",
-  "employeeAllDepartments": "Tous les départements",
   "employeeAndMembersLabel": "Employés et membres",
   "employeeAndMembersTip": "Les salariés sont le personnel de votre entreprise. Les membres sont les personnes qui ont accès à Helvetly. L’ajout d’un employé ne donne aucun accès, n’envoie aucune invitation et n’ajoute aucun siège payant. Un salarié peut être lié à un membre, ce qui ne donne rien.",
   "employeeTheEmployees": "Les salariés",

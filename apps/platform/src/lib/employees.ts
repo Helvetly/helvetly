@@ -124,6 +124,9 @@ export type ListParams = {
   search: string
   status: EmployeeStatus | 'all'
   department: string | null
+  /** The employment start's range, as days (YYYY-MM-DD); '' = open. */
+  startFrom: string
+  startTo: string
   sort: Sort<SortField>
 }
 export const DEFAULT_SORT: Sort<SortField> = { field: 'name', desc: false }
@@ -131,11 +134,15 @@ export const DEFAULT_PARAMS: ListParams = {
   search: '',
   status: 'active',
   department: null,
+  startFrom: '',
+  startTo: '',
   sort: DEFAULT_SORT,
 }
 
 const isStatus = (value: string | null): value is ListParams['status'] =>
   STATUSES.some((status) => status.value === value)
+
+const dayParam = (value: string | null) => (value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '')
 
 export function parseListParams(query: URLSearchParams): ListParams {
   const status = query.get('status')
@@ -143,6 +150,8 @@ export function parseListParams(query: URLSearchParams): ListParams {
     search: query.get('q') ?? '',
     status: isStatus(status) ? status : DEFAULT_PARAMS.status,
     department: query.get('department') || null,
+    startFrom: dayParam(query.get('from')),
+    startTo: dayParam(query.get('to')),
     sort: parseSort(query.get('sort'), SORT_FIELDS, DEFAULT_SORT),
   }
 }
@@ -150,10 +159,12 @@ export function parseListParams(query: URLSearchParams): ListParams {
 /** The list's state as URL query, without defaults; keeps other keys (`id`, `new`). */
 export function listParamsToQuery(params: ListParams, base = new URLSearchParams()) {
   const query = new URLSearchParams(base)
-  for (const key of ['q', 'status', 'department', 'sort']) query.delete(key)
+  for (const key of ['q', 'status', 'department', 'from', 'to', 'sort']) query.delete(key)
   if (params.search) query.set('q', params.search)
   if (params.status !== DEFAULT_PARAMS.status) query.set('status', params.status)
   if (params.department) query.set('department', params.department)
+  if (params.startFrom) query.set('from', params.startFrom)
+  if (params.startTo) query.set('to', params.startTo)
   const sort = sortParam(params.sort, DEFAULT_SORT)
   if (sort) query.set('sort', sort)
   return query
@@ -164,6 +175,8 @@ export function apiQuery(params: ListParams) {
   const search = params.search.trim()
   if (search) query.set('search', search)
   if (params.department) query.set('department', params.department)
+  if (params.startFrom) query.set('start_from', params.startFrom)
+  if (params.startTo) query.set('start_to', params.startTo)
   const sort = sortParam(params.sort, DEFAULT_SORT)
   if (sort) query.set('sort', sort)
   return query

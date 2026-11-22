@@ -161,6 +161,8 @@ func employeeErr(err error) error {
 // every one), a department and a search over names, number, email, position and department.
 type EmployeeFilter struct {
 	Status, Department, Search string
+	// StartFrom and StartTo (YYYY-MM-DD, "" = open) bound the employment start.
+	StartFrom, StartTo string
 	// Sort is one of the keys of employeeOrder ("" = by name); Desc reverses it.
 	Sort string
 	Desc bool
@@ -204,6 +206,12 @@ func (q Q) ListEmployees(ctx context.Context, workspaceID string, f EmployeeFilt
 	}
 	if f.Department != "" {
 		where = append(where, "lower(e.department) = lower("+arg(f.Department)+")")
+	}
+	if f.StartFrom != "" {
+		where = append(where, "e.employment_start >= "+arg(f.StartFrom)+"::date")
+	}
+	if f.StartTo != "" {
+		where = append(where, "e.employment_start <= "+arg(f.StartTo)+"::date")
 	}
 	if f.Search != "" {
 		p := arg("%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(f.Search) + "%")

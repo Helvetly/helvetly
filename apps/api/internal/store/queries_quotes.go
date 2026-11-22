@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"helvetly.com/api/internal/invoicecalc"
@@ -104,21 +106,102 @@ func (q Q) Quote(ctx context.Context, workspaceID, id, today string, forUpdate b
 
 // Quotes: the workspace's quotes, newest first, of one client when clientID is set.
 func (q Q) Quotes(ctx context.Context, workspaceID, clientID, today string) ([]Quote, error) {
-	rows, err := q.db.Query(ctx, quoteSelect+`WHERE q.workspace_id = $1 AND ($2 = '' OR q.client_id = $2)
-		ORDER BY q.created_at DESC, q.id DESC`, workspaceID, clientID)
+	list, _, err := q.ListQuotes(ctx, workspaceID, today, QuoteFilter{ClientID: clientID}, 0, 0)
+	return list, err
+}
+
+// quoteStatus is the status a reader sees (QuoteStatus in SQL), with today in $2.
+const quoteStatus = `CASE WHEN q.status = 'sent' AND q.valid_until < $2::date THEN 'expired' ELSE q.status END`
+
+// QuoteSorts maps the list's sort keys to their SQL; status sorts in the order of the lifecycle.
+var QuoteSorts = map[string]string{"number": "q.number", "client": "lower(c.name)", "issue_date": "q.issue_date",
+	"valid_until": "q.valid_until", "total": "q.total + q.rounding_amount", "created_at": "q.created_at",
+	"status": "array_position(ARRAY['draft','sent','accepted','declined','expired'], " + quoteStatus + ")"}
+
+// QuoteFilter narrows the quotes list; empty fields do not narrow.
+type QuoteFilter struct {
+	Search     string // number as shown ("Q-2026-001 (Rev. 2)"), client name or reference
+	ClientID   string
+	ClientName string   // part of the client's name
+	Statuses   []string // draft, sent, accepted, declined, expired (as QuoteStatus derives it)
+	IssuedFrom string   // YYYY-MM-DD, inclusive, on the quote's date
+	IssuedTo   string
+	TotalMin   *int64 // in cents, inclusive, of the payable total
+	TotalMax   *int64
+	Sort       string // a key of QuoteSorts, "-" prefixed for descending; "" for newest made first
+}
+
+func (f QuoteFilter) where(workspaceID, today string) (string, []any) {
+	args := []any{workspaceID, today}
+	arg := func(v any) string { args = append(args, v); return "$" + strconv.Itoa(len(args)) }
+	conds := []string{"q.workspace_id = $1", "$2::date IS NOT NULL"}
+	if term := strings.TrimSpace(f.Search); term != "" {
+		p := arg(likePattern(term))
+		conds = append(conds, "(q.number || CASE WHEN q.revision > 1 THEN ' (Rev. ' || q.revision || ')' ELSE '' END ILIKE "+p+
+			" OR c.name ILIKE "+p+" OR q.reference ILIKE "+p+")")
+	}
+	if f.ClientID != "" {
+		conds = append(conds, "q.client_id = "+arg(f.ClientID))
+	}
+	if term := strings.TrimSpace(f.ClientName); term != "" {
+		conds = append(conds, "c.name ILIKE "+arg(likePattern(term)))
+	}
+	if len(f.Statuses) > 0 {
+		conds = append(conds, quoteStatus+" = ANY("+arg(f.Statuses)+")")
+	}
+	if f.IssuedFrom != "" {
+		conds = append(conds, "q.issue_date >= "+arg(f.IssuedFrom)+"::date")
+	}
+	if f.IssuedTo != "" {
+		conds = append(conds, "q.issue_date <= "+arg(f.IssuedTo)+"::date")
+	}
+	if f.TotalMin != nil {
+		conds = append(conds, QuoteSorts["total"]+" >= "+arg(*f.TotalMin))
+	}
+	if f.TotalMax != nil {
+		conds = append(conds, QuoteSorts["total"]+" <= "+arg(*f.TotalMax))
+	}
+	return strings.Join(conds, " AND "), args
+}
+
+func (f QuoteFilter) orderBy() string {
+	key, dir := strings.TrimPrefix(f.Sort, "-"), " ASC"
+	if strings.HasPrefix(f.Sort, "-") {
+		dir = " DESC"
+	}
+	col, ok := QuoteSorts[key]
+	if !ok {
+		return "q.created_at DESC, q.id DESC"
+	}
+	return col + dir + " NULLS LAST, q.created_at" + dir + ", q.id" + dir
+}
+
+// ListQuotes returns one page of the filtered quotes and how many match in all; limit 0 returns every match.
+func (q Q) ListQuotes(ctx context.Context, workspaceID, today string, f QuoteFilter, limit, offset int) ([]Quote, int, error) {
+	where, args := f.where(workspaceID, today)
+	var total int
+	if err := q.db.QueryRow(ctx, `SELECT count(*) FROM quotes q JOIN clients c ON c.id = q.client_id WHERE `+where,
+		args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	page := ""
+	if limit > 0 {
+		page = fmt.Sprintf(" LIMIT %d OFFSET %d", limit, offset)
+	}
+	rows, err := q.db.Query(ctx, quoteSelect+`WHERE `+where+` ORDER BY `+f.orderBy()+page, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 	out := []Quote{}
 	for rows.Next() {
 		t, err := scanQuote(rows, today)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		out = append(out, t)
 	}
-	return out, rows.Err()
+	return out, total, rows.Err()
 }
 
 func (q Q) saveQuote(ctx context.Context, workspaceID string, t Quote, now time.Time) error {

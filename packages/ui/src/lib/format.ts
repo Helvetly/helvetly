@@ -5,11 +5,23 @@ const chf = new Intl.NumberFormat(numberLocale, {
   maximumFractionDigits: 2,
 })
 const whole = new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 0 })
-const day = new Intl.DateTimeFormat(languageTag, {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
+const dayOptions = { day: 'numeric', month: 'short', year: 'numeric' } as const
+const days = new Map<string, Intl.DateTimeFormat>()
+/** The IANA zone timestamps show their day in; undefined is the browser's. */
+let displayZone: string | undefined
+/** Names the zone timestamps are shown in (the platform: the workspace's); the portal keeps the browser's. */
+export const setDisplayTimeZone = (zone: string | undefined) => {
+  displayZone = zone
+}
+function dayIn(zone = displayZone) {
+  const key = zone ?? ''
+  let format = days.get(key)
+  if (!format) {
+    format = new Intl.DateTimeFormat(languageTag, { ...dayOptions, timeZone: zone })
+    days.set(key, format)
+  }
+  return format
+}
 const civilDay = new Intl.DateTimeFormat(languageTag, {
   day: 'numeric',
   month: 'short',
@@ -21,9 +33,9 @@ const civilDay = new Intl.DateTimeFormat(languageTag, {
 export const formatChf = (amount: number) => `CHF ${chf.format(amount)}`
 /** "48’250", for headline figures where the rappen are noise. */
 export const formatWhole = (amount: number) => whole.format(amount)
-/** "12 Nov 2026" */
+/** "12 Nov 2026": a calendar date as it is, a timestamp's day in the display zone. */
 export const formatDate = (iso: string) =>
-  (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? civilDay : day).format(new Date(iso))
+  (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? civilDay : dayIn()).format(new Date(iso))
 export const formatPercent = (share: number) => `${Math.round(share * 100)}%`
 export const formatFileSize = (bytes: number) =>
   bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`

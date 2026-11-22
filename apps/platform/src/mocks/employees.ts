@@ -504,13 +504,21 @@ export const employeesHandlers = [
     }),
   ),
   http.get('/api/v1/employees/:id', ({ params }) => one(employees, params.id)),
-  http.get('/api/v1/employees', () =>
-    HttpResponse.json({
-      data: employees,
+  http.get('/api/v1/employees', ({ request }) => {
+    const query = new URL(request.url).searchParams
+    const status = query.get('status')
+    const department = query.get('department')
+    const rows = employees.filter(
+      (row) =>
+        (!status || status === 'all' || row.status === status) &&
+        (!department || row.department === department),
+    )
+    return HttpResponse.json({
+      data: rows,
       departments,
-      meta: { page: 1, page_size: 200, total: employees.length, total_pages: 1 },
-    }),
-  ),
+      meta: { page: 1, page_size: 200, total: rows.length, total_pages: 1 },
+    })
+  }),
   http.post<never, Partial<Employee>>('/api/v1/employees', async ({ request }) =>
     HttpResponse.json(
       { data: employee({ id: 'emp_new', ...(await request.json()) }) },

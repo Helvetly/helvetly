@@ -19,11 +19,12 @@ const quoteHref = (id: string) => `/quotes?id=${encodeURIComponent(id)}`
 
 /** The client's quotes (GET /quotes?client_id=…), newest first; "New quote" opens the editor in place. */
 export function ClientQuotes({ clientId }: { clientId: string }) {
-  const list = useQuotes({ clientId })
+  // shortcut: the first 200 of the client's quotes; page this list when a client has more.
+  const list = useQuotes({ clientId, pageSize: 200 })
   const canWrite = useCan('write:invoices')
   const [creating, setCreating] = useState(false)
   const openHref = useOpenHref()
-  const rows = list.data ?? []
+  const rows = list.data?.data ?? []
 
   const newButton = canWrite && (
     <Button size="sm" onClick={() => setCreating(true)}>
