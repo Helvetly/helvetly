@@ -207,3 +207,27 @@ func TestIntroIsClearOfTheTable(t *testing.T) {
 		t.Errorf("intro baseline %.1f mm above the table header, want about 12", got)
 	}
 }
+
+// The longest intro and footer the API accepts (800 characters each) print in full, on every page of a
+// multi-page invoice: the footer is not cut to its line limit and the body stays above it.
+func TestLongestIntroAndFooterFit(t *testing.T) {
+	words := strings.TrimSpace(strings.Repeat("Zahlbar innert 30 Tagen netto, besten Dank für Ihren Auftrag. ", 14))
+	text := string([]rune(words)[:800])
+	d := sample("en", 60)
+	d.Invoice.Intro, d.Invoice.Footer = ptr(text), ptr(text)
+	pages := invoicePages(t, d)
+	if len(pages) < 2 {
+		t.Fatalf("%d invoice pages, want several", len(pages))
+	}
+	for i, page := range pages {
+		if _, ok := at(page, fmt.Sprintf("Page %d of %d", i+1, len(pages))); !ok {
+			t.Fatalf("page %d: no page number", i+1)
+		}
+		if bytes.Contains(page, unicodePDFLiteral(" …")) {
+			t.Errorf("page %d: the footer was cut", i+1)
+		}
+	}
+	if !bytes.Contains(pages[0], unicodePDFLiteral("Zahlbar innert")[:len(unicodePDFLiteral("Zahlbar innert"))-1]) {
+		t.Error("the intro is not printed")
+	}
+}

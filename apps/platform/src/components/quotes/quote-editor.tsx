@@ -23,6 +23,7 @@ import {
   ClientBlock,
   MetaLabel,
   PaperFooter,
+  ProseField,
   proseInput,
   SellerBlock,
   TotalLine,
@@ -422,15 +423,14 @@ function Editor({
                     </dl>
                   </div>
 
-                  <textarea
+                  <ProseField
                     aria-label={translate('introduction')}
                     aria-invalid={errors.intro ? true : undefined}
                     value={values.intro}
-                    maxLength={1000}
                     onChange={(event) => set('intro', event.target.value)}
                     placeholder={translate('printedAboveTheLinesEGThankYouFor')}
-                    rows={1}
-                    className={cn(proseInput, 'mt-10')}
+                    wrapperClassName="mt-10"
+                    className={proseInput}
                   />
 
                   {/* The padding (cancelled by the margins) leaves room for the controls' focus rings. */}
@@ -511,14 +511,12 @@ function Editor({
                   </dl>
 
                   <PaperFooter>
-                    <textarea
+                    <ProseField
                       aria-label={translate('footer')}
                       aria-invalid={errors.footer ? true : undefined}
                       value={values.footer}
-                      maxLength={1000}
                       onChange={(event) => set('footer', event.target.value)}
                       placeholder={translate('printedAtTheBottomEGTermsOrWhat')}
-                      rows={1}
                       className={cn(proseInput, 'text-body-sm text-muted-foreground')}
                     />
                   </PaperFooter>

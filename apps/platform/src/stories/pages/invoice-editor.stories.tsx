@@ -146,6 +146,41 @@ export const EngagementIsOptional: Story = {
   },
 }
 
+/**
+ * The header and footer texts hold at most 800 characters, counted at the bottom right while the field is
+ * focused; the field grows to 8 lines and then scrolls inside, so a long text never pushes the paper apart.
+ */
+export const HeaderAndFooterLimit: Story = {
+  play: async (context) => {
+    await shows('Alpenglow Studio GmbH')?.(context)
+    const page = within(document.body)
+    const intro = await page.findByRole('textbox', { name: 'Introduction' })
+    const count = intro.parentElement?.querySelector('[data-slot="textarea-count"]')
+    await expect(intro).toHaveAttribute('maxlength', '800')
+    await expect(count).not.toBeVisible()
+    await userEvent.click(intro)
+    await userEvent.type(intro, 'Hello')
+    await expect(count).toBeVisible()
+    await expect(count).toHaveTextContent('5 / 800')
+
+    await userEvent.clear(intro)
+    await userEvent.click(intro)
+    await userEvent.paste(Array.from({ length: 20 }, (_, n) => `Line ${n + 1}`).join('\n'))
+    const style = getComputedStyle(intro)
+    const lineHeight = Number.parseFloat(style.lineHeight)
+    const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom)
+    await expect(intro.clientHeight).toBeLessThanOrEqual(Math.ceil(8 * lineHeight + padding))
+    await expect(intro.scrollHeight).toBeGreaterThan(intro.clientHeight)
+
+    await userEvent.clear(intro)
+    await userEvent.paste('x'.repeat(900))
+    await expect(intro).toHaveValue('x'.repeat(800))
+    await expect(count).toHaveTextContent('800 / 800')
+    await userEvent.clear(intro)
+    await settled()
+  },
+}
+
 /** Like a printed page, the footer text sits at the bottom of the paper, with the free space above it. */
 export const FooterAtTheBottom: Story = {
   play: async (context) => {
