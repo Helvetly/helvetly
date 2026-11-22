@@ -359,3 +359,83 @@ export const SystemFolderNamesGerman: Story = {
     await expect(view.queryByText('Invoices')).toBeNull()
   },
 }
+
+const everyKind = http.get('/api/v1/documents/usage', () =>
+  HttpResponse.json({
+    data: {
+      files: 40,
+      size: 9_000_000,
+      by_kind: [
+        { kind: 'pdf', files: 15, size: 3_600_000 },
+        { kind: 'image', files: 6, size: 1_500_000 },
+        { kind: 'spreadsheet', files: 4, size: 1_000_000 },
+        { kind: 'document', files: 4, size: 900_000 },
+        { kind: 'presentation', files: 2, size: 800_000 },
+        { kind: 'text', files: 3, size: 500_000 },
+        { kind: 'archive', files: 2, size: 400_000 },
+        { kind: 'other', files: 4, size: 300_000 },
+      ],
+      trash: { files: 0, size: 0 },
+    },
+  }),
+)
+
+const colour = (node: Element) => getComputedStyle(node).backgroundColor
+
+/** Each kind's share has its own colour, and its legend dot the same one. */
+export const StorageColours: Story = {
+  parameters: pageParameters('/documents', {}, [everyKind]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const overview = await body.findByRole(
+      'region',
+      { name: 'Storage overview' },
+      { timeout: 8000 },
+    )
+    const dots = [...overview.querySelectorAll('li > [data-kind]')]
+    const segments = [...overview.querySelectorAll('[aria-hidden] > [data-kind]')]
+    await expect(dots).toHaveLength(8)
+    await expect(new Set(dots.map(colour)).size).toBe(8)
+    await expect(segments.map(colour)).toEqual(dots.map(colour))
+  },
+}
+export const StorageColoursDark = dark(StorageColours)
+
+/** The search is a button until asked for; opening it moves none of the other controls. */
+export const ToolbarSearch: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const open = await body.findByRole('button', { name: 'Search files' }, { timeout: 8000 })
+    await expect(body.queryByRole('searchbox')).toBeNull()
+    const grid = body.getByRole('button', { name: 'Grid' })
+    const before = grid.getBoundingClientRect().left
+
+    await userEvent.click(open)
+    const search = body.getByRole('searchbox', { name: 'Search files' })
+    await expect(search).toHaveFocus()
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    await expect(grid.getBoundingClientRect().left).toBe(before)
+
+    // Escape on an empty field folds it back and hands the focus to the button.
+    await userEvent.keyboard('{Escape}')
+    await expect(body.queryByRole('searchbox')).toBeNull()
+    await expect(body.getByRole('button', { name: 'Search files' })).toHaveFocus()
+
+    // "/" opens it too; with a query it stays open after leaving it and offers a clear button.
+    await userEvent.keyboard('/')
+    await expect(body.getByRole('searchbox', { name: 'Search files' })).toHaveFocus()
+    await userEvent.keyboard('budget')
+    await userEvent.tab()
+    await expect(body.getByRole('searchbox', { name: 'Search files' })).toHaveValue('budget')
+    await userEvent.click(body.getByRole('button', { name: 'Clear search' }))
+    await expect(body.getByRole('searchbox', { name: 'Search files' })).toHaveValue('')
+    await expect(body.getByRole('searchbox', { name: 'Search files' })).toHaveFocus()
+
+    // Escape clears a query first, then closes.
+    await userEvent.keyboard('x{Escape}')
+    await expect(body.getByRole('searchbox', { name: 'Search files' })).toHaveValue('')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('searchbox')).toBeNull())
+  },
+}
+export const ToolbarSearchPhone = phone(ToolbarSearch)

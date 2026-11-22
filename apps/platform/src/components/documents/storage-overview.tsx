@@ -42,9 +42,10 @@ export function StorageOverview({ usage, onTrash }: { usage: Usage; onTrash: () 
           <span
             key={share.kind}
             title={`${SHARE_LABELS[share.kind]}: ${files(share.files)}, ${formatSize(share.size)}`}
+            data-kind={share.kind}
             className={cn(
-              // A soft top-lit sheen over the hue, as the reference bar; the seam keeps neighbours apart.
-              'min-w-1.5 bg-[linear-gradient(180deg,rgb(255_255_255/0.28),rgb(255_255_255/0)_55%,rgb(0_0_0/0.06))] shadow-[inset_-1px_0_0_rgb(255_255_255/0.45)] last:shadow-none dark:bg-[linear-gradient(180deg,rgb(255_255_255/0.16),rgb(255_255_255/0)_55%,rgb(0_0_0/0.12))] dark:shadow-[inset_-1px_0_0_rgb(0_0_0/0.35)]',
+              // A thin seam in the page colour keeps neighbours apart.
+              'min-w-1.5 border-r border-card last:border-r-0',
               KIND_STYLE[share.kind].bar,
             )}
             style={{ flexGrow: share.size || 1 }}
@@ -54,7 +55,10 @@ export function StorageOverview({ usage, onTrash }: { usage: Usage; onTrash: () 
       <ul className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-[13px]">
         {usage.by_kind.map((share) => (
           <li key={share.kind} className="flex items-center gap-1.5">
-            <span className={cn('size-2 rounded-full', KIND_STYLE[share.kind].bar)} />
+            <span
+              data-kind={share.kind}
+              className={cn('size-2 rounded-full', KIND_STYLE[share.kind].bar)}
+            />
             <span className="text-muted-foreground">{SHARE_LABELS[share.kind]}</span>
             <span className="font-medium tabular-nums">{formatSize(share.size)}</span>
           </li>

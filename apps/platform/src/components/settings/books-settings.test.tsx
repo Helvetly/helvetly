@@ -320,6 +320,7 @@ describe('AuditLog', () => {
     wrap('owner', <AuditLog />)
     await userEvent.click(await screen.findByRole('button', { name: 'Type' }))
     await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Expenses' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Search the audit log' }))
     await userEvent.type(screen.getByRole('searchbox', { name: 'Search the audit log' }), 'acme')
     await waitFor(() =>
       expect(queries.at(-1)).toMatch(/category=expenses.*q=acme|q=acme.*category=expenses/),

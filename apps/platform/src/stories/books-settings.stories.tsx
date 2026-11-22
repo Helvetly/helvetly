@@ -395,6 +395,7 @@ export const AuditLogFilters: Story = {
     await userEvent.click(await screen.findByRole('menuitemradio', { name: /Marco Bernasconi/ }))
     await expect(await canvas.findByText('8 entries shown')).toBeVisible()
 
+    await userEvent.click(canvas.getByRole('button', { name: 'Search the audit log' }))
     await userEvent.type(canvas.getByRole('searchbox', { name: 'Search the audit log' }), 'zzz')
     await expect(await canvas.findByText('No entries match')).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Clear search and filters' }))
@@ -463,7 +464,9 @@ export const AuditLogEmpty: Story = {
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Nothing recorded yet')).toBeVisible()
     // No toolbar or filters while there is nothing to list.
-    await expect(within(canvasElement).queryByRole('searchbox')).toBeNull()
+    await expect(
+      within(canvasElement).queryByRole('button', { name: 'Search the audit log' }),
+    ).toBeNull()
   },
 }
 

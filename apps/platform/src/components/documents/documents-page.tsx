@@ -23,7 +23,6 @@ import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
-import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
@@ -52,7 +51,6 @@ import {
   Plus,
   RotateCcw,
   Scissors,
-  Search,
   SearchX,
   Trash2,
   Upload as UploadIcon,
@@ -79,6 +77,7 @@ import {
   type FeatureLock,
 } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { ListSearch } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { dropdownKit, PageContextMenu, titleClass, type MenuKit } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
@@ -1053,23 +1052,13 @@ export function DocumentsPage() {
             )}
             {listing && (
               <>
-                <label
-                  data-field-surface
-                  className={cn(
-                    fieldSurface,
-                    'mr-1 flex h-9 w-[clamp(140px,22vw,280px)] items-center gap-2 px-2.5 text-muted-foreground focus-within:text-foreground',
-                  )}
-                >
-                  <Search className="size-4 shrink-0 stroke-[1.5]" />
-                  <input
-                    type="search"
-                    aria-label={translate('searchFiles')}
-                    placeholder={translate('searchAllFiles')}
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    className="w-full min-w-0 bg-transparent text-[14px] text-foreground outline-none placeholder:text-placeholder"
-                  />
-                </label>
+                <ListSearch
+                  className="mr-1 flex-none"
+                  label={translate('searchFiles')}
+                  placeholder={translate('searchAllFiles')}
+                  value={search}
+                  onChange={setSearch}
+                />
                 <Filters view={view} onChange={(change) => navigate(change)} />
                 {view.section === 'files' && (
                   <SortMenu view={view} onChange={(change) => navigate(change)} />
