@@ -45,7 +45,7 @@ export function PricingCards() {
       <fieldset className={cn(segmentTrack, 'inline-flex h-10')}>
         <legend className="sr-only">{translate('billingInterval')}</legend>
         {(['month', 'year'] as const).map((value) => (
-          <label key={value} className={cn(segmentItem, 'gap-0 px-4')}>
+          <label key={value} className={cn(segmentItem, 'h-8 gap-0 px-4')}>
             <input
               type="radio"
               name="interval"

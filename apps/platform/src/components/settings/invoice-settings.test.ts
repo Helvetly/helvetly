@@ -182,6 +182,21 @@ test('the company phone opens in its national format, saves E.164 and refuses in
   expect(valuesFrom(german).phone_country).toBe('DE')
 })
 
+test('the company website is optional, a URL or a bare domain', () => {
+  const values = valuesFrom(sampleSettings())
+  expect(values.website).toBe('')
+  expect(toSettingsInput(values).seller.website).toBeNull()
+  expect(toSettingsInput({ ...values, website: ' firma.ch ' }).seller.website).toBe('firma.ch')
+  expect(
+    valuesFrom(
+      sampleSettings({ seller: { ...sampleSettings().seller, website: 'https://firma.ch' } }),
+    ).website,
+  ).toBe('https://firma.ch')
+  for (const ok of ['', 'firma.ch', 'https://www.firma.ch/de', 'http://firma.ch'])
+    expect(validate({ ...values, website: ok }).website).toBeUndefined()
+  for (const bad of ['firma', 'ftp://firma.ch', 'fir ma.ch'])
+    expect(validate({ ...values, website: bad }).website).toBe('Enter a website such as muster.ch.')
+})
 test('the server’s step errors land on the step', () => {
   expect(formField('dunning.steps.2.fee')).toBe('dunning_steps.2.fee')
   expect(formField('dunning.steps')).toBe('dunning_steps')

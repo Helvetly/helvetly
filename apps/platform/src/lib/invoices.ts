@@ -489,7 +489,7 @@ export type SummaryPeriod = (typeof SUMMARY_PERIODS)[number]['value']
 
 export type InvoiceSettings = {
   /** `legal_form`: a code of the country's list (lib/legal-forms). */
-  seller: Party & { phone: string | null; legal_form?: string | null }
+  seller: Party & { phone: string | null; website?: string | null; legal_form?: string | null }
   vat_registered: boolean
   default_vat_mode: VatMode
   default_vat_rate: Decimal
