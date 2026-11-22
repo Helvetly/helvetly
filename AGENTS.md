@@ -98,6 +98,14 @@ are the reference.
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
   move along; the emptied old folders are deleted). AI filing and organizing put a known
   client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
+- **Documents grouped views** (`store/queries_document_groups.go`, `documents/groups.go`): Group by type, year or
+  client is computed from each file, never stored, and moves nothing. Type: the record it belongs to (an invoice's or
+  quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder, its tags, its
+  name, else Other; year: the record's, the year folder's, else the upload's in the workspace's zone; client: the
+  record's, the `Clients/<client>` folder's, a client link, else none. A group is the list's `type`, `year` and
+  `client` filters (the search's chips); `GET /api/v1/documents/groups` answers a level's groups with counts or, once
+  every level is chosen, the page of files; `…/groups/zip` streams a group as one ZIP (at most 1000 files and 500 MB,
+  refused before reading; `check=1` only asks), audited as `documents.exported`, never counted as storage. Session-only.
 - **Approvals** (`internal/approvals`, Business feature `document_approvals`): an optional approval before a draft is
   issued, sent or booked, per document type (`invoice` for every invoice kind without its own, `credit_note`,
   `debit_note`, `corrected`: before issuing; `quote`: before a draft or revision is first sent, a revision resets it;
