@@ -8,6 +8,41 @@ import type { ReactNode } from 'react'
 import { SectionFooter, type SectionState } from '@/components/section-form'
 import { translate } from '@/lib/i18n'
 
+/** The title, one-line description and hairline that open a page; `className` sets its width and padding. */
+export function PageIntro({
+  title,
+  description,
+  actions,
+  className,
+}: {
+  title: string
+  description: ReactNode
+  /** The page's own controls, right of its title. */
+  actions?: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      data-slot="settings-page-header"
+      className={cn(
+        'flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b pb-5',
+        className,
+      )}
+    >
+      <div className="grid max-w-[68ch] min-w-0 gap-1">
+        <h1 className="text-title font-semibold tracking-[-0.015em]">{title}</h1>
+        <p
+          data-slot="settings-page-description"
+          className="text-body-sm text-pretty text-muted-foreground"
+        >
+          {description}
+        </p>
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  )
+}
+
 /**
  * A settings page under the settings tabs: its title, what it is for, and its sections as bands
  * divided by hairlines. `nav` lists the page's own sections in a sticky column on a wide panel
@@ -41,21 +76,12 @@ export function SettingsPage({
         )}
       >
         {/* Above the page's own nav too: one title line and hairline on every settings tab. */}
-        <div
-          data-slot="settings-page-header"
-          className="col-span-full -mx-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b px-4 pb-5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
-        >
-          <div className="grid max-w-[68ch] min-w-0 gap-1">
-            <h1 className="text-title font-semibold tracking-[-0.015em]">{title}</h1>
-            <p
-              data-slot="settings-page-description"
-              className="text-body-sm text-pretty text-muted-foreground"
-            >
-              {description}
-            </p>
-          </div>
-          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-        </div>
+        <PageIntro
+          title={title}
+          description={description}
+          actions={actions}
+          className="col-span-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+        />
         {nav && (
           <nav
             aria-label={translate('sections')}

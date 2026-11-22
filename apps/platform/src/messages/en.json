@@ -4994,5 +4994,7 @@
   "bookingEntriesHint": "Entries in your books",
   "ledgerCredit": "Credit",
   "amountColumn": "Amount",
-  "chooseCategoryForEntries": "Choose a category to see the entries."
+  "chooseCategoryForEntries": "Choose a category to see the entries.",
+  "employeesPageDescription": "Your staff records: contracts, contacts and working hours.",
+  "payrollPageDescription": "The salary and payroll register, with a CSV export."
 }
