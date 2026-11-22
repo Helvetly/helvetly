@@ -559,15 +559,15 @@ func YearOf(date string, fallback time.Time) int {
 	return fallback.Year()
 }
 
-// ClientName: a client as AI filing names it.
+// ClientName: a client as AI filing names it, with its UID (the verified one, else its VAT number) to recognise it by.
 type ClientName struct {
-	ID, Name string
+	ID, Name, UID string
 }
 
 // ClientNames: up to limit live clients of the workspace, most recently changed first.
 func (q Q) ClientNames(ctx context.Context, workspaceID string, limit int) ([]ClientName, error) {
-	rows, err := q.db.Query(ctx, `SELECT id, name FROM clients WHERE workspace_id = $1 AND deleted_at IS NULL
-		ORDER BY updated_at DESC, id LIMIT $2`, workspaceID, limit)
+	rows, err := q.db.Query(ctx, `SELECT id, name, coalesce(verified_uid, vat_number, '') FROM clients
+		WHERE workspace_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC, id LIMIT $2`, workspaceID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +575,7 @@ func (q Q) ClientNames(ctx context.Context, workspaceID string, limit int) ([]Cl
 	out := []ClientName{}
 	for rows.Next() {
 		var c ClientName
-		if err := rows.Scan(&c.ID, &c.Name); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.UID); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -603,6 +603,49 @@ func (q Q) ExpenseCategoryNames(ctx context.Context, workspaceID string, limit i
 			return nil, err
 		}
 		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// RecordRef: an invoice (any kind) or quote of a live client, as AI organizing and filing recognise its files: by its
+// number, its stored PDF (ObjectKey, "" for none; a quote has one row per sent revision's PDF) or the original file
+// an imported invoice was read from (DocumentID, "" for none).
+type RecordRef struct {
+	Kind       string // the client record folder: invoices or quotes
+	Type       string // the invoice kind, or quote
+	Number     string // "" for none (a draft)
+	ClientID   string
+	Year       int
+	ObjectKey  string
+	DocumentID string
+}
+
+// RecordRefs: up to limit records of the workspace with a number or a stored PDF.
+func (q Q) RecordRefs(ctx context.Context, workspaceID string, limit int) ([]RecordRef, error) {
+	rows, err := q.db.Query(ctx, `SELECT 'invoices', i.kind, coalesce(i.number, ''), i.client_id,
+			extract(year FROM i.issue_date)::int, coalesce(i.pdf_key, ''), coalesce(i.source_document_id, '')
+		FROM invoices i JOIN clients c ON c.id = i.client_id AND c.deleted_at IS NULL
+		WHERE i.workspace_id = $1 AND (i.number IS NOT NULL OR i.pdf_key IS NOT NULL OR i.source_document_id IS NOT NULL)
+		UNION ALL
+		SELECT 'quotes', 'quote', coalesce(t.number, ''), t.client_id, extract(year FROM t.issue_date)::int, coalesce(t.pdf_key, ''), ''
+		FROM quotes t JOIN clients c ON c.id = t.client_id AND c.deleted_at IS NULL
+		WHERE t.workspace_id = $1 AND (t.number IS NOT NULL OR t.pdf_key IS NOT NULL)
+		UNION ALL
+		SELECT 'quotes', 'quote', coalesce(t.number, ''), t.client_id, extract(year FROM t.issue_date)::int, r.pdf_key, ''
+		FROM quote_revisions r JOIN quotes t ON t.id = r.quote_id JOIN clients c ON c.id = t.client_id AND c.deleted_at IS NULL
+		WHERE r.workspace_id = $1 AND r.pdf_key IS NOT NULL AND r.pdf_key IS DISTINCT FROM t.pdf_key
+		LIMIT $2`, workspaceID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []RecordRef{}
+	for rows.Next() {
+		var r RecordRef
+		if err := rows.Scan(&r.Kind, &r.Type, &r.Number, &r.ClientID, &r.Year, &r.ObjectKey, &r.DocumentID); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
 	}
 	return out, rows.Err()
 }
