@@ -74,7 +74,7 @@ for (const app of [
 test('signed-in navigation keeps the chosen language and module-level labels', async ({ page }) => {
   await signIn(page.request, `languages-${randomUUID()}@example.test`)
   await page.goto('/clients?lang=de')
-  await expect(page.getByRole('heading', { name: 'Kunden', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Alle Kunden', exact: true })).toBeVisible()
 
   const screenshots = join(process.env.TMPDIR ?? tmpdir(), 'helvetly', 'panel-portal-languages')
   await mkdir(screenshots, { recursive: true })
