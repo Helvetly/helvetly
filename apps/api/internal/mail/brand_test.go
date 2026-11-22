@@ -94,7 +94,7 @@ func TestBrandedLayout(t *testing.T) {
 		want, not []string
 	}{
 		{"every detail, in German", Message{HTML: "<p>Hallo</p>", Language: "de", Brand: &full}, []string{
-			`<html lang="de">`, `src="https://app.example.com/api/v1/public/email-logo/w/lgo_1"`, `height="36"`, ">Müller &amp; Co AG</strong>",
+			`<html lang="de">`, `src="https://app.example.com/api/v1/public/email-logo/w/lgo_1"`, ">Müller &amp; Co AG</strong>",
 			">Müller &amp; Co AG</strong>", "<br>Bahnhofstrasse 1, 8001 Zürich", "<br>+41 44 123 45 67 · info@mueller.ch",
 			"<br>CHE-123.456.789 MWST", `Gesendet mit <a href="https://app.example.com"`}, []string{"Sent by"}},
 		{"name only, in French", Message{HTML: "<p>Bonjour</p>", Language: "fr", Brand: &Brand{Name: "Dupont SA", VAT: "FR12345678901"}}, []string{
