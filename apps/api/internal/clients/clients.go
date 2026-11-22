@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/sitecheck"
@@ -339,7 +340,13 @@ func listParam(q url.Values, key string) []string {
 
 // parseFilter reads the list query shared by the list and the export.
 func parseFilter(q url.Values) (store.ClientFilter, error) {
-	f := store.ClientFilter{Search: q.Get("search"), Sort: q.Get("sort"), IDs: listParam(q, "ids")}
+	f := store.ClientFilter{Search: q.Get("search"), Name: q.Get("name"), Email: q.Get("email"), City: q.Get("city"),
+		Sort: q.Get("sort"), IDs: listParam(q, "ids")}
+	for key, v := range map[string]string{"name": f.Name, "email": f.Email, "city": f.City} {
+		if utf8.RuneCountInString(v) > 200 {
+			return f, badQuery(key + " must be at most 200 characters.")
+		}
+	}
 	status := map[string]bool{}
 	for _, v := range listParam(q, "status") {
 		if v != "active" && v != "inactive" && v != "draft" && v != "complete" {

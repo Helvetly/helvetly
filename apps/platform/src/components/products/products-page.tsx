@@ -56,6 +56,7 @@ import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { formatAmount, useInvoiceSettings } from '@/lib/invoices'
+import type { QueryField } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import {
   canManageProducts,
@@ -374,6 +375,7 @@ export function ProductsPage() {
               placeholder={translate('searchNameSKUGTINOrDescription')}
               value={search}
               onChange={setSearch}
+              query={{ fields: QUERY_FIELDS, params, onChange: update }}
             />
             <Popover>
               <PopoverTrigger asChild>
@@ -705,6 +707,18 @@ function productMenu(
     ),
   }
 }
+
+/** The search's field terms: `currency:` (type and status are the view tabs). */
+const QUERY_FIELDS: QueryField<ListParams>[] = [
+  {
+    id: 'currency',
+    label: translate('currency'),
+    type: 'enum',
+    values: CURRENCY_OPTIONS,
+    get: (params) => params.currencies,
+    set: (currencies) => ({ currencies }),
+  },
+]
 
 function Filters({
   params,

@@ -74,6 +74,7 @@ import {
   type FinancialEvent,
 } from '@/lib/books'
 import { translate } from '@/lib/i18n'
+import { shownElsewhere, type QueryField } from '@/lib/list-query'
 
 import { HelpTip } from './help-tip'
 import { SettingsEmpty, SettingsPage } from './layout'
@@ -137,6 +138,38 @@ const dayStart = (day: string, plusDays = 0) => {
   const [y = 0, m = 1, d = 1] = day.split('-').map(Number)
   return new Date(y, m - 1, d + plusDays).toISOString()
 }
+
+/** The search's field terms set the filter controls beside it, which show them: no chips. */
+const queryFields = (people: { id: string; name: string }[]): QueryField<Filters>[] => [
+  {
+    id: 'type',
+    label: translate('type'),
+    type: 'enum',
+    values: AUDIT_CATEGORIES,
+    ...shownElsewhere((value) => ({
+      category: AUDIT_CATEGORIES.find((category) => category.value === value)?.value ?? '',
+    })),
+  },
+  {
+    id: 'person',
+    label: translate('person'),
+    type: 'enum',
+    values: people.map((person) => ({ value: person.id, label: person.name })),
+    ...shownElsewhere((actor) => ({ actor })),
+  },
+  {
+    id: 'from',
+    label: translate('from'),
+    type: 'date',
+    ...shownElsewhere((from) => ({ from })),
+  },
+  {
+    id: 'to',
+    label: translate('to3'),
+    type: 'date',
+    ...shownElsewhere((to) => ({ to })),
+  },
+]
 
 export function AuditLog() {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
@@ -214,6 +247,11 @@ export function AuditLog() {
             placeholder={translate('auditSearchPlaceholder')}
             value={search}
             onChange={setSearch}
+            query={{
+              fields: queryFields(people.data ?? []),
+              params: filters,
+              onChange: (change) => setFilters({ ...filters, ...change }),
+            }}
             className="min-w-48"
           />
           <span

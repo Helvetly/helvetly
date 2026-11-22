@@ -70,6 +70,7 @@ import {
   type EngagementQuery,
 } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
+import { shownElsewhere, type QueryField } from '@/lib/list-query'
 import { parseSort, sortParam, type Sort } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { queryKeys, usePrefetch, useSession } from '@/lib/queries'
@@ -115,6 +116,23 @@ const VIEWS: {
     query: { status: 'scheduled,active,ended', attention: 'to_invoice' },
   },
   { label: translate('ended'), icon: Archive, query: { status: 'ended,cancelled' } },
+]
+
+// What `status:` takes for each view, in the views' order.
+const VIEW_KEYS = ['all', 'active', 'ending_soon', 'behind_pace', 'to_invoice', 'ended']
+
+/** The search's field term `status:` picks the view tab, which shows it, so it needs no chip. */
+const QUERY_FIELDS: QueryField<{ view: number }>[] = [
+  {
+    id: 'status',
+    label: translate('status'),
+    type: 'enum',
+    values: VIEWS.map((view, index) => ({ value: VIEW_KEYS[index] ?? '', label: view.label })),
+    ...shownElsewhere<{ view: number }>((value) => {
+      const view = VIEW_KEYS.indexOf(value)
+      return view < 0 ? {} : { view }
+    }),
+  },
 ]
 
 const dash = <span className="text-muted-foreground">—</span>
@@ -676,6 +694,11 @@ export function EngagementsPage() {
               placeholder={translate('searchTitleClientOrReference')}
               value={search}
               onChange={setSearch}
+              query={{
+                fields: QUERY_FIELDS,
+                params: { view },
+                onChange: (change) => change.view !== undefined && select(change.view),
+              }}
             />
           </ListToolbar>
 

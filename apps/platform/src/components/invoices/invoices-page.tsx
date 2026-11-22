@@ -90,11 +90,13 @@ import {
   useInvoiceList,
   type InvoiceKind,
   type InvoiceListItem,
+  LIST_STATUSES,
   type ListParams,
   type ListStatus,
   type SortField,
   invoiceQuery,
 } from '@/lib/invoices'
+import { among, oneValue, type QueryField } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
@@ -319,6 +321,7 @@ export function InvoicesPage() {
   const [deleting, setDeleting] = useState<InvoiceListItem[] | null>(null)
   const [deriving, setDeriving] = useState<DeriveFrom | null>(null)
   const list = useInvoiceList(params)
+  const queryFields = useQueryFields(params)
   const prefetch = usePrefetch(invoiceQuery)
 
   const navigate = (next: URLSearchParams) => {
@@ -503,9 +506,9 @@ export function InvoicesPage() {
               placeholder={translate('searchNumberClientOrReference')}
               value={search}
               onChange={setSearch}
+              query={{ fields: queryFields, params, onChange: update }}
             />
           </ListToolbar>
-          <ActiveFilters params={params} onChange={update} />
 
           {list.error ? (
             <State
@@ -808,52 +811,62 @@ function invoiceMenu(
   }
 }
 
-/** Chips under the toolbar for filters the tabs don't show, each with its own ×. */
-function ActiveFilters({
-  params,
-  onChange,
-}: {
-  params: ListParams
-  onChange: (change: Partial<ListParams>) => void
-}) {
+const day = (value: string | null) => (value ? [{ value, label: formatDay(value) }] : [])
+
+/** The search's field terms: `status:`, `client:`, `from:`, `to:` and a link's `credited:`. */
+function useQueryFields(params: ListParams): QueryField<ListParams>[] {
   const client = useClient(params.client).data
-  const chips: { label: string; clear: Partial<ListParams> }[] = []
-  if (params.client)
-    chips.push({
-      label: translate('client5', { value1: client?.name ?? '…' }),
-      clear: { client: null },
-    })
-  if (params.credited)
-    chips.push({ label: translate('creditNotesOfOneInvoice'), clear: { credited: null } })
-  if (params.from || params.to)
-    chips.push({
-      label: translate('issued5', {
-        value1: params.from ? formatDay(params.from) : '…',
-        value2: params.to ? formatDay(params.to) : translate('today2'),
-      }),
-      clear: { from: null, to: null },
-    })
-  if (chips.length === 0) return null
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 border-b px-4 py-2 md:px-5">
-      {chips.map((chip) => (
-        <span
-          key={chip.label}
-          className="flex h-7 items-center gap-1 rounded-md bg-muted pr-1 pl-2.5 text-[13px]"
-        >
-          {chip.label}
-          <button
-            type="button"
-            aria-label={translate('removeFilter', { label: chip.label })}
-            onClick={() => onChange(chip.clear)}
-            className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-card hover:text-foreground"
-          >
-            <X className="size-3" />
-          </button>
-        </span>
-      ))}
-    </div>
-  )
+  return [
+    {
+      id: 'status',
+      label: translate('status'),
+      type: 'enum',
+      values: STATUS_OPTIONS,
+      get: (current) => current.status,
+      set: (status) => ({ status: among(LIST_STATUSES, status) }),
+    },
+    {
+      id: 'client',
+      label: translate('client'),
+      type: 'enum',
+      // shortcut: only the chosen client resolves by name; the Filters popover picks others.
+      values: params.client ? [{ value: params.client, label: client?.name ?? '…' }] : [],
+      ...oneValue(
+        (current) => current.client,
+        (value) => ({ client: value }),
+      ),
+    },
+    {
+      id: 'from',
+      label: translate('issuedFrom'),
+      type: 'date',
+      values: day(params.from),
+      ...oneValue(
+        (current) => current.from,
+        (from) => ({ from }),
+      ),
+    },
+    {
+      id: 'to',
+      label: translate('issuedUntil'),
+      type: 'date',
+      values: day(params.to),
+      ...oneValue(
+        (current) => current.to,
+        (to) => ({ to }),
+      ),
+    },
+    {
+      id: 'credited',
+      label: translate('creditNotesOfOneInvoice'),
+      type: 'enum',
+      values: params.credited ? [{ value: params.credited, label: '' }] : [],
+      ...oneValue(
+        (current) => current.credited,
+        (credited) => ({ credited }),
+      ),
+    },
+  ]
 }
 
 function Filters({
