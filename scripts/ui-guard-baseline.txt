@@ -136,7 +136,7 @@
 7 text-px apps/platform/src/components/invoices/instalments-section.tsx
 28 text-px apps/platform/src/components/invoices/invoice-detail.tsx
 6 text-px apps/platform/src/components/invoices/invoice-dialogs.tsx
-6 text-px apps/platform/src/components/invoices/invoices-page.tsx
+5 text-px apps/platform/src/components/invoices/invoices-page.tsx
 7 text-px apps/platform/src/components/invoices/lines-editor.tsx
 1 text-px apps/platform/src/components/invoices/payment-methods.tsx
 2 text-px apps/platform/src/components/invoices/pdf-view.tsx

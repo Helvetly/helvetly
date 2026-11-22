@@ -852,7 +852,9 @@ function Editor({
           <div
             ref={top}
             className={cn(
-              '@container flex min-w-0 flex-1 scroll-mt-16 flex-col px-3 pb-8 sm:px-6',
+              '@container flex min-w-0 flex-1 scroll-mt-16 flex-col px-3 sm:px-6',
+              // Room below the paper only when the prepayment picker follows it; else the paper meets the bottom panel.
+              kind === 'invoice' && values.client_id && 'pb-8',
               // The page starts at the options bar's line; only a notice above it needs the gap.
               banner && 'pt-4',
             )}
@@ -882,7 +884,7 @@ function Editor({
                 aria-label={title}
                 // A flat page: lines run to the edges of the work area (the container's padding is cancelled).
                 className={cn(
-                  'relative left-1/2 flex w-[calc(100cqw+1.5rem)] flex-1 -translate-x-1/2 flex-col border bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10',
+                  'relative left-1/2 flex w-[calc(100cqw+1.5rem)] flex-1 -translate-x-1/2 flex-col border border-b-0 bg-card px-5 py-8 sm:w-[calc(100cqw+3rem)] sm:px-10 sm:py-10',
                   !banner && 'border-t-0',
                 )}
               >

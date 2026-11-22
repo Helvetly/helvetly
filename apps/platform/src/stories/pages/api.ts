@@ -616,13 +616,18 @@ export const shellHandlers = [
   http.get('/api/v1/clients/:id', one(clients)),
   // Status as the Go API reads it: each value narrows the list (docs/clients-contract.md).
   http.get('/api/v1/clients', ({ request }) => {
-    const status = new URL(request.url).searchParams.getAll('status')
+    const query = new URL(request.url).searchParams
+    const status = query.getAll('status')
+    const type = query.get('type')
+    const city = query.get('city')?.toLowerCase()
     const match = clients.filter(
       (client) =>
         (!status.includes('active') || client.is_active) &&
         (!status.includes('inactive') || !client.is_active) &&
         (!status.includes('draft') || client.is_draft) &&
-        (!status.includes('complete') || !client.is_draft),
+        (!status.includes('complete') || !client.is_draft) &&
+        (!type || client.is_company === (type === 'company')) &&
+        (!city || Boolean(client.city?.toLowerCase().includes(city))),
     )
     return HttpResponse.json(page(match))
   }),

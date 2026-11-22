@@ -46,6 +46,7 @@ import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { formatDay } from '@/lib/invoices'
+import { among, shownElsewhere, oneValue, type QueryField } from '@/lib/list-query'
 import { parseSort, sortParam } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { usePrefetch } from '@/lib/queries'
@@ -178,6 +179,29 @@ export function bulkActions(
   ]
 }
 
+type QueryParams = { status: QuoteStatus | null; clientName: string }
+
+/** The search's field terms: `status:` picks the view tab, `client:` narrows by the client's name. */
+const QUERY_FIELDS: QueryField<QueryParams>[] = [
+  {
+    id: 'status',
+    label: translate('status'),
+    type: 'enum',
+    values: QUOTE_STATUSES,
+    ...shownElsewhere((value) => ({ status: among(STATUS_VALUES, [value])[0] ?? null })),
+  },
+  {
+    id: 'client',
+    label: translate('client'),
+    type: 'text',
+    ...oneValue(
+      (params) => params.clientName,
+      (clientName) => ({ clientName: clientName ?? '' }),
+    ),
+  },
+]
+const STATUS_VALUES = QUOTE_STATUSES.map((entry) => entry.value)
+
 /** The quotes list; the status view, the search (?q=), the sort (?sort=), the open quote (?id=) and a new one (?new=1) live in the URL. */
 export function QuotesPage() {
   const canWrite = useCan('write:invoices')
@@ -190,6 +214,7 @@ export function QuotesPage() {
   const openId = query.get('id')
   const creating = query.get('new') === '1' && canWrite
   const term = query.get('q') ?? ''
+  const clientName = query.get('client_name') ?? ''
   const sort = parseSort(query.get('sort'), QUOTE_SORT_FIELDS, DEFAULT_QUOTE_SORT)
   const [search, setSearch] = useState(term)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
@@ -199,7 +224,12 @@ export function QuotesPage() {
   const list = useQuotes({ status })
   const prefetch = usePrefetch(quoteQuery)
   // shortcut: the API returns every quote unpaged, so search and sort happen here; move them to the API with paging.
-  const rows = sortQuotes(searchQuotes(list.data ?? [], term), sort)
+  const rows = sortQuotes(
+    searchQuotes(list.data ?? [], term).filter((quote) =>
+      quote.client.name.toLowerCase().includes(clientName.toLowerCase()),
+    ),
+    sort,
+  )
   const selectedRows = rows.filter((row) => selected.has(row.id))
   const allSelected = rows.length > 0 && selectedRows.length === rows.length
   const active = VIEWS.findIndex((view) => view.status === status)
@@ -221,6 +251,12 @@ export function QuotesPage() {
       else next.set(key, value)
     setUrlQuery(pathname, next)
   }
+  const queryParams: QueryParams = { status, clientName }
+  const onQuery = (change: Partial<QueryParams>) =>
+    navigate({
+      ...(change.status !== undefined && { status: change.status }),
+      ...(change.clientName !== undefined && { client_name: change.clientName || null }),
+    })
   const openQuote = (id: string | null) => navigate({ id })
   const newQuote = () => navigate({ new: '1', client: null })
   const sortBy = (field: QuoteSortField, desc: boolean) =>
@@ -352,6 +388,7 @@ export function QuotesPage() {
               placeholder={translate('searchNumberClientOrReference')}
               value={search}
               onChange={setSearch}
+              query={{ fields: QUERY_FIELDS, params: queryParams, onChange: onQuery }}
             />
           </ListToolbar>
           {list.error ? (
@@ -368,10 +405,10 @@ export function QuotesPage() {
           ) : !list.data ? (
             <LoadingRows />
           ) : rows.length === 0 ? (
-            term ? (
+            term || clientName ? (
               <State
                 icon={<SearchX />}
-                title={translate('nothingMatches', { search: term })}
+                title={translate('nothingMatches', { search: term || clientName })}
                 text={translate('tryAnotherSearchOrClearTheFilters')}
                 action={
                   <Button
@@ -379,7 +416,7 @@ export function QuotesPage() {
                     size="sm"
                     onClick={() => {
                       setSearch('')
-                      navigate({ q: null, status: null })
+                      navigate({ q: null, status: null, client_name: null })
                     }}
                   >
                     {translate('clearSearchAndFilters')}

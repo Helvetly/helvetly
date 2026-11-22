@@ -24,6 +24,9 @@ test('reads the list state from the URL and ignores what it does not know', () =
     type: 'company',
     tags: [],
     countries: [],
+    name: '',
+    email: '',
+    city: '',
     sort: 'number',
     desc: true,
   })
@@ -46,6 +49,8 @@ test('round-trips through the URL', () => {
     ...DEFAULT_PARAMS,
     search: 'Zürich',
     type: 'person' as const,
+    name: 'Acme AG',
+    city: 'Bern',
     sort: 'city' as const,
   }
   expect(parseListParams(listParamsToQuery(params))).toEqual(params)

@@ -32,6 +32,7 @@ import { LoadingRows, State } from '@/components/data/table-page'
 import { PageHeader } from '@/components/shell/page-header'
 import { seatCostLabel, useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
+import { among, type QueryField } from '@/lib/list-query'
 import { parseSort, sortParam, sortRows } from '@/lib/list-sort'
 import {
   assignableRoles,
@@ -187,6 +188,7 @@ export function MembersPage() {
             placeholder={translate('searchNameOrEmail')}
             value={search}
             onChange={setSearch}
+            query={{ fields: QUERY_FIELDS, params: filter, onChange: update }}
           />
         </ListToolbar>
         {error ? (
@@ -371,6 +373,18 @@ function teamColumns(
     },
   ]
 }
+
+/** The search's field term `role:`. */
+const QUERY_FIELDS: QueryField<TeamFilter>[] = [
+  {
+    id: 'role',
+    label: translate('role'),
+    type: 'enum',
+    values: ROLES.map((role) => ({ value: role, label: capitalize(role) })),
+    get: (filter) => filter.roles,
+    set: (roles) => ({ roles: among(ROLES, roles) }),
+  },
+]
 
 function RoleFilter({ roles, onChange }: { roles: Role[]; onChange: (roles: Role[]) => void }) {
   return (
