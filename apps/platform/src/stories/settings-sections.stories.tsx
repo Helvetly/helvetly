@@ -207,6 +207,46 @@ export const CustomNumberFormat: Story = {
   },
 }
 
+/** The next-number rows never overlap one another or leave the grey box. */
+async function expectRowsApart(canvasElement: HTMLElement) {
+  const numbering = await region(canvasElement, 'Numbering')
+  const preview = await numbering.findByRole('status', { name: 'Next numbers' })
+  await waitFor(() => expect(preview).toHaveTextContent('042'))
+  const box = preview.getBoundingClientRect()
+  const rows = [...preview.querySelectorAll('[data-slot="settings-preview-row"]')]
+  await expect(rows).toHaveLength(8)
+  const rects = rows.map((row) => row.getBoundingClientRect())
+  for (const [i, a] of rects.entries()) {
+    expect(a.left).toBeGreaterThanOrEqual(box.left)
+    expect(a.right).toBeLessThanOrEqual(box.right + 0.5)
+    for (const b of rects.slice(i + 1)) {
+      const apart = a.bottom <= b.top + 0.5 || b.bottom <= a.top + 0.5 || a.right <= b.left + 0.5
+      expect(apart).toBe(true)
+    }
+  }
+  for (const row of rows) {
+    const [label, value] = row.children
+    expect(label?.getBoundingClientRect().right).toBeLessThanOrEqual(
+      (value?.getBoundingClientRect().left ?? 0) + 0.5,
+    )
+    expect(value?.scrollWidth).toBeLessThanOrEqual(value?.clientWidth ?? 0)
+  }
+}
+
+export const NextNumbersRows: Story = {
+  play: async ({ canvasElement }) => expectRowsApart(canvasElement),
+}
+
+export const NextNumbersRowsPhone: Story = {
+  parameters: {
+    viewport: {
+      options: { phone: { name: 'Phone', styles: { width: '360px', height: '780px' } } },
+    },
+  },
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvasElement }) => expectRowsApart(canvasElement),
+}
+
 /** Discard puts the section back as saved. */
 export const DiscardSection: Story = {
   play: async ({ canvasElement }) => {
