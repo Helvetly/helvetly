@@ -188,3 +188,22 @@ func TestDetailBlocksAlignToTheirOwnLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestIntroIsClearOfTheTable(t *testing.T) {
+	gapBelowIntro := func(d Document) float64 {
+		page := invoicePages(t, d)[0]
+		intro, ok := at(page, "wie besprochen:")
+		if !ok {
+			t.Fatal("intro not printed")
+		}
+		head, ok := at(page, "Pos.")
+		if !ok {
+			t.Fatal("table header not printed")
+		}
+		return head.y - intro.y
+	}
+	// the intro's last line, its 5 mm row and the section gap (7 mm, as below the address block) down to the header cell
+	if got := gapBelowIntro(sample("en", 3)); math.Abs(got-12.0) > 1 {
+		t.Errorf("intro baseline %.1f mm above the table header, want about 12", got)
+	}
+}
