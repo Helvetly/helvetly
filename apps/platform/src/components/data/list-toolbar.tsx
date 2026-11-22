@@ -26,7 +26,7 @@ const typing = (target: EventTarget | null) =>
  * while it holds a query; Escape clears the query, then closes it. Its slot keeps the same width
  * either way and the field grows leftwards inside it, so the other toolbar controls never move.
  */
-export function ListSearch({
+function CollapsibleSearch({
   label,
   placeholder,
   value,
@@ -143,5 +143,42 @@ export function ListSearch({
         )}
       </div>
     </div>
+  )
+}
+
+/** The list's search field: grows to fill the toolbar between its other controls. */
+export function ListSearch({
+  collapsible,
+  ...props
+}: {
+  label: string
+  placeholder: string
+  value: string
+  onChange: (value: string) => void
+  className?: string
+  /** Fold into a magnifier button until asked for (the Documents page). */
+  collapsible?: boolean
+}) {
+  if (collapsible) return <CollapsibleSearch {...props} />
+  const { label, placeholder, value, onChange, className } = props
+  return (
+    // Quiet: the toolbar row is its box (field-surface.spec.ts).
+    <label
+      className={cn(
+        'field-quiet flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded-md px-2 text-muted-foreground focus-within:text-foreground',
+        className,
+      )}
+    >
+      <Search className="size-4 shrink-0 stroke-[1.5]" />
+      <input
+        type="search"
+        aria-label={label}
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        // A full-height input centres its text by the font box, which lands on the icons' centre without a nudge.
+        className="h-full w-full min-w-0 bg-transparent text-title-sm text-foreground outline-none placeholder:text-placeholder"
+      />
+    </label>
   )
 }
