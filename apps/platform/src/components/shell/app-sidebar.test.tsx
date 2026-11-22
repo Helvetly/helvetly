@@ -189,9 +189,7 @@ test('the workspace switcher shows the plan, not the role, and the trial card si
     ),
   )
   renderSidebar()
-  await waitFor(() =>
-    expect(screen.getByTestId('workspace-plan')).toHaveTextContent('Basic · Trial'),
-  )
+  await waitFor(() => expect(screen.getByTestId('workspace-plan').textContent).toBe('Basic'))
   expect(screen.getByRole('region', { name: 'Plan' })).toHaveTextContent('Trial · 3 days left')
   expect(screen.getByRole('button', { name: /Anna/ })).toHaveTextContent(session.user.email)
 })

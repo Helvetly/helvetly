@@ -204,12 +204,12 @@
   --warning-surface: #fbf0e3;
   --warning-border: #f0dcc5;
   /* Plan badges: ink ≥ 7:1 on its surface. Business is gold on black, Pro violet, Basic neutral. */
-  --plan-business: #4a3506;
-  --plan-business-surface: #fbf1d4;
-  --plan-business-border: #dcc27a;
-  --plan-pro: #4c3794;
-  --plan-pro-surface: #efeafb;
-  --plan-pro-border: #cfc2f0;
+  --plan-business: #f3d77a;
+  --plan-business-surface: #17130a;
+  --plan-business-border: #9a7b25;
+  --plan-pro: #432b8f;
+  --plan-pro-surface: #e8e0fb;
+  --plan-pro-border: #b8a5ec;
   --plan-basic: var(--muted-foreground);
   --plan-basic-surface: var(--muted);
   --plan-basic-border: var(--border);
@@ -292,12 +292,12 @@
   --warning-solid: oklch(0.76 0.15 58);
   --warning-surface: oklch(0.769 0.188 70.08 / 15%);
   --warning-border: oklch(0.4 0.06 85);
-  --plan-business: #f1cf6b;
-  --plan-business-surface: #241d0b;
-  --plan-business-border: #5e4a17;
-  --plan-pro: #cdbdf7;
-  --plan-pro-surface: #231c3d;
-  --plan-pro-border: #4a3d7d;
+  --plan-business: #f6d977;
+  --plan-business-surface: #0b0905;
+  --plan-business-border: #a8862a;
+  --plan-pro: #d5c8fa;
+  --plan-pro-surface: #2a2052;
+  --plan-pro-border: #6a58b5;
   --success: oklch(0.8 0.16 150);
   --success-solid: oklch(0.72 0.18 150);
   --success-surface: oklch(0.28 0.06 150);

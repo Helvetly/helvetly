@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { Kbd } from '@helvetly/ui/components/kbd'
+import { PlanBadge } from '@helvetly/ui/components/plan-badge'
 import {
   Sidebar,
   SidebarContent,
@@ -106,7 +107,6 @@ export function AppSidebar({ session }: { session: Session }) {
   const { setOpenMobile, toggleSidebar } = useSidebar()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [addingWorkspace, setAddingWorkspace] = useState(false)
   // Null until the dialog is first opened, so it costs nothing before.
   const [help, setHelp] = useState<{ open: boolean } | null>(null)
   const openHelp = () => {
@@ -120,87 +120,12 @@ export function AppSidebar({ session }: { session: Session }) {
   useShortcut('shortcuts', () => setShortcutsOpen(true))
   useShortcut('sidebar', toggleSidebar)
   useShortcut('notifications', () => router.push('/notifications'))
-  const switchWorkspace = useSwitchWorkspace()
   const { billing } = useBillingStatus()
-  // Until the list loads, the current workspace comes from the session.
-  const workspaces: WorkspaceItem[] = useWorkspaces().data ?? [
-    { ...session.workspace, role: session.role, current: true },
-  ]
-  const switchTo = (workspace: WorkspaceItem) => {
-    if (workspace.current) return
-    switchWorkspace.mutate(workspace.id, {
-      onSuccess: () => router.replace('/'),
-      onError: toastError,
-    })
-  }
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="absolute h-full">
       <SidebarHeader className="gap-4 px-2 pt-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton className="h-12 gap-2.5 rounded-xl px-2 transition-colors duration-150 group-data-[collapsible=icon]:p-0! hover:bg-black/[0.04] dark:hover:bg-white/[0.06] data-open:bg-black/[0.04] dark:data-open:bg-white/[0.06]">
-              <WorkspaceMark name={session.workspace.name} logoUrl={session.workspace.logo_url} />
-              <span className="grid min-w-0 flex-1 leading-tight">
-                <span className="truncate text-[14px] font-semibold text-[#161618] dark:text-foreground">
-                  {session.workspace.name}
-                </span>
-                {/* The plan, not the role (that is in the user menu); nothing while billing is off or loading. */}
-                {planLabel(billing) && (
-                  <PlanText testId="workspace-plan">{planLabel(billing)}</PlanText>
-                )}
-              </span>
-              <ChevronsUpDown className="ml-auto size-4! stroke-[1.75] text-[#a8a7aa]" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            sideOffset={6}
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-60 rounded-xl p-1.5"
-          >
-            <DropdownMenuLabel className="px-2 pt-1 pb-1.5 text-[12px] font-normal text-[#a8a7aa] dark:text-muted-foreground">
-              {translate('workspaces')}
-            </DropdownMenuLabel>
-            {workspaces.map((workspace) => (
-              <DropdownMenuItem
-                key={workspace.id}
-                className="gap-2.5 rounded-lg px-2 py-1.5"
-                onSelect={() => switchTo(workspace)}
-              >
-                <WorkspaceMark
-                  name={workspace.name}
-                  logoUrl={workspace.logo_url}
-                  className="size-7 rounded-[7px] text-[12px]"
-                />
-                <span className="grid min-w-0 flex-1 leading-tight">
-                  <span className="truncate text-[14px] text-[#161618] dark:text-foreground">
-                    {workspace.name}
-                  </span>
-                  {rowPlan(workspace, billing) && (
-                    <PlanText>{rowPlan(workspace, billing)}</PlanText>
-                  )}
-                </span>
-                {workspace.current && <Check className="ml-auto text-foreground" />}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator className="my-1.5" />
-            <DropdownMenuItem
-              className="gap-2.5 rounded-lg px-2 py-1.5"
-              onSelect={() => setAddingWorkspace(true)}
-            >
-              <span
-                aria-hidden
-                className="flex size-7 shrink-0 items-center justify-center rounded-[7px] border border-dashed border-[#d4d4d7] text-[#8e8d90] dark:border-white/20 dark:text-muted-foreground"
-              >
-                <Plus className="size-4" />
-              </span>
-              <span className="text-[14px] text-[#161618] dark:text-foreground">
-                {translate('addWorkspace')}
-              </span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {addingWorkspace && <AddWorkspaceDialog onClose={() => setAddingWorkspace(false)} />}
+        <WorkspaceSwitcher session={session} />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -322,6 +247,98 @@ export function AppSidebar({ session }: { session: Session }) {
   )
 }
 
+/** The workspace name with its plan badge, and the list to switch or add a workspace. */
+export function WorkspaceSwitcher({ session }: { session: Session }) {
+  const [addingWorkspace, setAddingWorkspace] = useState(false)
+  const router = useRouter()
+  const switchWorkspace = useSwitchWorkspace()
+  const { billing } = useBillingStatus()
+  // Until the list loads, the current workspace comes from the session.
+  const workspaces: WorkspaceItem[] = useWorkspaces().data ?? [
+    { ...session.workspace, role: session.role, current: true },
+  ]
+  const switchTo = (workspace: WorkspaceItem) => {
+    if (workspace.current) return
+    switchWorkspace.mutate(workspace.id, {
+      onSuccess: () => router.replace('/'),
+      onError: toastError,
+    })
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <SidebarMenuButton className="h-12 gap-2.5 rounded-xl px-2 transition-colors duration-150 group-data-[collapsible=icon]:p-0! hover:bg-black/[0.04] dark:hover:bg-white/[0.06] data-open:bg-black/[0.04] dark:data-open:bg-white/[0.06]">
+            <WorkspaceMark name={session.workspace.name} logoUrl={session.workspace.logo_url} />
+            <span className="grid min-w-0 flex-1 leading-tight">
+              <span className="truncate text-[14px] font-semibold text-[#161618] dark:text-foreground">
+                {session.workspace.name}
+              </span>
+              {/* The plan, not the role (that is in the user menu); nothing while billing is off or loading. */}
+              {planLabel(billing) && (
+                <PlanText testId="workspace-plan" plan={billing?.plan}>
+                  {planLabel(billing)}
+                </PlanText>
+              )}
+            </span>
+            <ChevronsUpDown className="ml-auto size-4! stroke-[1.75] text-[#a8a7aa]" />
+          </SidebarMenuButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          sideOffset={6}
+          className="w-(--radix-dropdown-menu-trigger-width) min-w-60 rounded-xl p-1.5"
+        >
+          <DropdownMenuLabel className="px-2 pt-1 pb-1.5 text-[12px] font-normal text-muted-foreground">
+            {translate('workspaces')}
+          </DropdownMenuLabel>
+          {workspaces.map((workspace) => (
+            <DropdownMenuItem
+              key={workspace.id}
+              className="gap-2.5 rounded-lg px-2 py-1.5"
+              onSelect={() => switchTo(workspace)}
+            >
+              <WorkspaceMark
+                name={workspace.name}
+                logoUrl={workspace.logo_url}
+                className="size-7 rounded-[7px] text-[12px]"
+              />
+              <span className="grid min-w-0 flex-1 leading-tight">
+                <span className="truncate text-[14px] text-[#161618] dark:text-foreground">
+                  {workspace.name}
+                </span>
+                {rowPlan(workspace, billing) && (
+                  <PlanText plan={workspace.plan ?? undefined}>
+                    {rowPlan(workspace, billing)}
+                  </PlanText>
+                )}
+              </span>
+              {workspace.current && <Check className="ml-auto text-foreground" />}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator className="my-1.5" />
+          <DropdownMenuItem
+            className="gap-2.5 rounded-lg px-2 py-1.5"
+            onSelect={() => setAddingWorkspace(true)}
+          >
+            <span
+              aria-hidden
+              className="flex size-7 shrink-0 items-center justify-center rounded-[7px] border border-dashed border-[#d4d4d7] text-[#8e8d90] dark:border-white/20 dark:text-muted-foreground"
+            >
+              <Plus className="size-4" />
+            </span>
+            <span className="text-[14px] text-[#161618] dark:text-foreground">
+              {translate('addWorkspace')}
+            </span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {addingWorkspace && <AddWorkspaceDialog onClose={() => setAddingWorkspace(false)} />}
+    </>
+  )
+}
+
 function NewTag() {
   return (
     <Badge
@@ -345,12 +362,24 @@ function rowPlan(workspace: WorkspaceItem, billing: Billing | undefined): string
   )
 }
 
-/** The plan as a quiet second line under a workspace name: plain text reads calmer than a tag there. */
-function PlanText({ children, testId }: { children: ReactNode; testId?: string }) {
+/** The plan as a small badge under a workspace name, in the plan's own tone. */
+function PlanText({
+  children,
+  testId,
+  plan,
+}: {
+  children: ReactNode
+  testId?: string
+  plan?: string
+}) {
   return (
-    <span data-testid={testId} className="mt-0.5 truncate text-xs text-muted-foreground">
+    <PlanBadge
+      plan={plan}
+      data-testid={testId}
+      className="mt-0.5 max-w-full justify-self-start truncate"
+    >
       {children}
-    </span>
+    </PlanBadge>
   )
 }
 

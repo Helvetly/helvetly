@@ -62,12 +62,11 @@ function afterDiscount(billing: Billing, discount: Discount): string {
     : translate('dynamicApplies', { terms: terms })
 }
 
-/** The workspace's plan under its name in the switcher: "Pro", "Basic · Trial"; null without billing. */
+/** The workspace's plan under its name in the switcher: "Pro", "Basic · Payment due"; null without billing. */
 export function planLabel(billing: Billing | undefined): string | null {
   if (!billing?.enabled) return null
   if (billing.locked || billing.plan === '') return translate('noPlanReadOnly')
   const name = planName(billing)
-  if (billing.status === 'trialing') return translate('trial2', { name: name })
   if (failing(billing.status)) return translate('paymentDue', { name: name })
   return name
 }
