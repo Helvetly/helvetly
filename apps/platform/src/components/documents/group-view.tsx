@@ -85,7 +85,7 @@ export function GroupView({ dim, groups, layout, onOpen, onDownload }: Props) {
                   {groupLabel(dim, group)}
                 </span>
                 <ViewGlyph />
-                <span className="w-36 shrink-0 text-right text-[13px] text-muted-foreground tabular-nums max-sm:hidden">
+                <span className="w-36 shrink-0 text-right text-body-sm text-muted-foreground tabular-nums max-sm:hidden">
                   {files(group)}
                 </span>
               </button>
@@ -115,10 +115,10 @@ export function GroupView({ dim, groups, layout, onOpen, onDownload }: Props) {
                   <ViewGlyph className="absolute right-0 bottom-0" />
                 </span>
                 <span className="block w-full min-w-0 text-center">
-                  <span className="block truncate text-[13.5px] leading-5 font-medium">
+                  <span className="block truncate text-body font-medium">
                     {groupLabel(dim, group)}
                   </span>
-                  <span className="block truncate text-[12.5px] text-muted-foreground">
+                  <span className="block truncate text-caption text-muted-foreground">
                     {translate('groupFiles', { count: group.count })}
                   </span>
                 </span>

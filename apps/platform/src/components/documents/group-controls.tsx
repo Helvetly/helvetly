@@ -182,7 +182,7 @@ export function GroupCrumbs({
             aria-current={index === crumbs.length - 1 ? 'page' : undefined}
             onClick={crumb.onClick}
             title={crumb.label}
-            className="h-8 min-w-0 cursor-pointer truncate rounded-md px-2 text-[15px] text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+            className="h-8 min-w-0 cursor-pointer truncate rounded-md px-2 text-title-sm text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
           >
             {crumb.label}
           </button>
