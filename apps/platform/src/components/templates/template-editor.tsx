@@ -3,6 +3,8 @@ import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { Textarea } from '@helvetly/ui/components/textarea'
+import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
+import { cn } from '@helvetly/ui/lib/utils'
 import { LayoutTemplate, Loader2, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -230,7 +232,7 @@ export function TemplateEditor({
             title={translate('doesItNeedSignatures')}
             text={translate('aDocumentMadeFromTheTemplateCanSimplyBe')}
           />
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
+          <div className={cn(segmentTrack, 'grid grid-cols-2')}>
             {(
               [
                 [false, 'No signatures', 'Fill in, then save or email it.'],
@@ -245,10 +247,13 @@ export function TemplateEditor({
                   setSigning(value)
                   setActive(0)
                 }}
-                className="grid cursor-pointer gap-0.5 rounded-lg px-3 py-2 text-left transition-colors aria-pressed:bg-card aria-pressed:shadow-elevation-1"
+                className={cn(
+                  segmentItem,
+                  'grid justify-items-start gap-0.5 px-3 py-2 text-left whitespace-normal',
+                )}
               >
-                <span className="text-[13.5px] font-medium">{label}</span>
-                <span className="text-[12px] text-muted-foreground">{text}</span>
+                <span>{label}</span>
+                <span className="text-xs font-normal text-muted-foreground">{text}</span>
               </button>
             ))}
           </div>

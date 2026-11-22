@@ -3,6 +3,12 @@
 @import 'shadcn/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
+/* The chosen segment of a segmented control: a tab, a pressed toggle button or a radio's label. */
+@custom-variant segment-on {
+  &:where([data-state='active'], [aria-pressed='true'], :has(> input:checked)) {
+    @slot;
+  }
+}
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../../../components/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";

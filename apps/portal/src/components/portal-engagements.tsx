@@ -379,14 +379,11 @@ export function PortalEngagements() {
         onValueChange={(value) => isTab(value) && setChosen(value)}
         className="gap-4"
       >
-        <TabsList
-          aria-label={translate('show')}
-          className="h-9 max-w-full overflow-x-auto bg-card shadow-elevation-1"
-        >
+        <TabsList aria-label={translate('show')} className="max-w-full overflow-x-auto">
           {(['active', 'past'] as const).map((key) => (
-            <TabsTrigger key={key} value={key} className="px-3">
+            <TabsTrigger key={key} value={key}>
               {key === 'active' ? translate('activeEngagements') : translate('pastEngagements')}
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="text-xs font-normal text-muted-foreground tabular-nums">
                 {lists[key].length}
               </span>
             </TabsTrigger>

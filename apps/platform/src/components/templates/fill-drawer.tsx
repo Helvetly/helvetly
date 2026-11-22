@@ -2,9 +2,11 @@
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
+import { segmentLabels } from '@helvetly/ui/components/segmented'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { formatRelative } from '@helvetly/ui/lib/format'
+import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   Building2,
@@ -621,7 +623,7 @@ function RoleSigners({
         })}
       </ol>
       {template.signers.length > 1 && (
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
+        <div className={cn(segmentTrack, 'grid grid-cols-2')}>
           {(
             [
               ['parallel', 'Everyone at once'],
@@ -633,9 +635,9 @@ function RoleSigners({
               type="button"
               aria-pressed={order === value}
               onClick={() => onOrder(value)}
-              className="h-8 cursor-pointer rounded-lg text-[13px] transition-colors aria-pressed:bg-card aria-pressed:font-medium aria-pressed:shadow-elevation-1"
+              className={cn(segmentItem, 'h-7')}
             >
-              {label}
+              {segmentLabels(label)}
             </button>
           ))}
         </div>

@@ -24,6 +24,7 @@ import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { fieldSurface } from '@helvetly/ui/lib/field-surface'
+import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -1577,8 +1578,8 @@ function ToolbarButton({
           onClick={onClick}
           className={cn(
             'size-6.5 cursor-pointer text-muted-foreground hover:bg-transparent',
-            active &&
-              'bg-card text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.08)] ring-1 ring-border/70 hover:bg-card dark:bg-background/70 dark:ring-foreground/10 dark:hover:bg-background/70',
+            // A segment of a view switcher.
+            active !== undefined && cn(segmentItem, 'size-6 px-0 dark:hover:bg-transparent'),
           )}
         >
           {children}
@@ -1597,7 +1598,7 @@ function ViewToggle({
   onChange: (layout: 'grid' | 'list') => void
 }) {
   return (
-    <span className="ml-1 flex items-center gap-0.5 rounded-lg bg-muted p-0.5 dark:bg-muted/60">
+    <span className={cn(segmentTrack, 'ml-1 flex')}>
       <ToolbarButton
         label={translate('grid')}
         active={layout === 'grid'}
