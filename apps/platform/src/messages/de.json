@@ -4995,5 +4995,7 @@
   "bookingEntriesHint": "Buchungen in Ihrer Buchhaltung",
   "ledgerCredit": "Haben",
   "amountColumn": "Betrag",
-  "chooseCategoryForEntries": "Wählen Sie eine Kategorie, um die Buchungen zu sehen."
+  "chooseCategoryForEntries": "Wählen Sie eine Kategorie, um die Buchungen zu sehen.",
+  "employeesPageDescription": "Ihre Personalakten: Verträge, Kontakte und Arbeitszeiten.",
+  "payrollPageDescription": "Das Lohn- und Gehaltsregister, mit CSV-Export."
 }

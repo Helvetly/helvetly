@@ -4995,5 +4995,7 @@
   "bookingEntriesHint": "Écritures dans votre comptabilité",
   "ledgerCredit": "Crédit",
   "amountColumn": "Montant",
-  "chooseCategoryForEntries": "Choisissez une catégorie pour voir les écritures."
+  "chooseCategoryForEntries": "Choisissez une catégorie pour voir les écritures.",
+  "employeesPageDescription": "Vos dossiers du personnel : contrats, coordonnées et temps de travail.",
+  "payrollPageDescription": "Le registre des salaires et de la paie, avec export CSV."
 }
