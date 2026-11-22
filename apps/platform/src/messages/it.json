@@ -4994,5 +4994,7 @@
   "bookingEntriesHint": "Registrazioni nella tua contabilità",
   "ledgerCredit": "Avere",
   "amountColumn": "Importo",
-  "chooseCategoryForEntries": "Scegli una categoria per vedere le registrazioni."
+  "chooseCategoryForEntries": "Scegli una categoria per vedere le registrazioni.",
+  "employeesPageDescription": "Le schede del personale: contratti, contatti e orari di lavoro.",
+  "payrollPageDescription": "Il registro di stipendi e paghe, con esportazione CSV."
 }
