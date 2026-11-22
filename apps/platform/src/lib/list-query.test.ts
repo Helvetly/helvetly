@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+import { setWorkspaceTimezone } from '@/lib/timezone'
 
 import {
   changeFor,
@@ -139,10 +141,22 @@ describe('filter values', () => {
   })
 
   it('turns a since preset into its first day', () => {
-    const today = new Date(2026, 10, 5)
+    const today = '2026-11-05'
     expect(sinceDate('7d', today)).toBe('2026-10-30')
     expect(sinceDate('30d', today)).toBe('2026-10-07')
     expect(sinceDate('year', today)).toBe('2026-01-01')
+    expect(sinceDate('7d', '2026-03-31')).toBe('2026-03-25')
+  })
+
+  it('counts a since preset from today in the workspace zone, not the browser', () => {
+    vi.useFakeTimers({ now: new Date('2026-12-31T23:30:00Z'), toFake: ['Date'] })
+    setWorkspaceTimezone('Pacific/Kiritimati') // already 1 January 2027 there
+    try {
+      expect(sinceDate('year')).toBe('2027-01-01')
+    } finally {
+      setWorkspaceTimezone('Europe/Zurich')
+      vi.useRealTimers()
+    }
   })
 
   it('marks a one-value field as single, and a new term replaces the old', () => {

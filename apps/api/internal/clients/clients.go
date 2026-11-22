@@ -292,7 +292,7 @@ func (s *Service) tags(w http.ResponseWriter, r *http.Request, sess store.Sessio
 
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	q := r.URL.Query()
-	f, err := parseFilter(q)
+	f, err := parseFilter(q, sess.Workspace.Zone())
 	if err != nil {
 		return err
 	}
@@ -339,9 +339,9 @@ func listParam(q url.Values, key string) []string {
 }
 
 // parseFilter reads the list query shared by the list and the export.
-func parseFilter(q url.Values) (store.ClientFilter, error) {
+func parseFilter(q url.Values, zone string) (store.ClientFilter, error) {
 	f := store.ClientFilter{Search: q.Get("search"), Name: q.Get("name"), Email: q.Get("email"), City: q.Get("city"),
-		Sort: q.Get("sort"), IDs: listParam(q, "ids")}
+		Sort: q.Get("sort"), IDs: listParam(q, "ids"), Zone: zone}
 	for key, v := range map[string]string{"name": f.Name, "email": f.Email, "city": f.City} {
 		if utf8.RuneCountInString(v) > 200 {
 			return f, badQuery(key + " must be at most 200 characters.")
@@ -401,7 +401,7 @@ var csvHeader = []string{"number", "name", "preferred_name", "type", "active", "
 	"primary_contact", "internal_id", "note", "created_at", "updated_at"}
 
 func (s *Service) export(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	f, err := parseFilter(r.URL.Query())
+	f, err := parseFilter(r.URL.Query(), sess.Workspace.Zone())
 	if err != nil {
 		return err
 	}
