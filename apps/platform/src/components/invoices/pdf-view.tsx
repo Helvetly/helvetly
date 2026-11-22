@@ -147,7 +147,7 @@ export function PdfView({
       // Its own scroller: reachable by keyboard, and the wheel never carries over to the drawer around it.
       tabIndex={0}
       className={cn(
-        'overflow-auto overscroll-contain bg-muted/50 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset dark:bg-background',
+        'overflow-auto overscroll-contain bg-panel outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset dark:bg-background',
         className,
       )}
     >
@@ -213,7 +213,7 @@ function ProblemCard({
             />
           ))}
         </div>
-        <span className="absolute -right-3 -bottom-3 flex size-10 items-center justify-center rounded-full bg-[#fbe9e7] text-[#c2413f] shadow-elevation-1 ring-4 ring-muted/50 dark:bg-red-500/15 dark:text-red-300 dark:ring-background">
+        <span className="absolute -right-3 -bottom-3 flex size-10 items-center justify-center rounded-full bg-[#fbe9e7] text-[#c2413f] shadow-elevation-1 ring-4 ring-panel dark:bg-red-500/15 dark:text-red-300 dark:ring-background">
           <FileWarning className="size-5 stroke-[1.75]" />
         </span>
       </div>

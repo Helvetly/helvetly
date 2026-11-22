@@ -795,7 +795,7 @@ function Detail({
           title={translate('pdfOf', { value1: documentName(invoice) })}
           src={pdfUrl(invoice.id)}
           onPages={setPages}
-          className="min-h-[420px] flex-1 basis-0 rounded-lg"
+          className="min-h-[420px] flex-1 basis-0"
         />
       </TabsContent>
     </Tabs>

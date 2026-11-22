@@ -459,7 +459,7 @@ function Detail({
               key={pdfRevision}
               title={translate('quoteHistoryAsSent', { revision: pdfRevision })}
               src={quoteRevisionPdfUrl(quote.id, pdfRevision)}
-              className="min-h-[420px] flex-1 basis-0 rounded-lg"
+              className="min-h-[420px] flex-1 basis-0"
             />
           </>
         ) : (
@@ -493,7 +493,7 @@ function Detail({
               title={translate('pdfOf2', { name: name })}
               src={quotePdfUrl(quote.id)}
               onPages={setPages}
-              className="min-h-[420px] flex-1 basis-0 rounded-lg"
+              className="min-h-[420px] flex-1 basis-0"
             />
           </>
         )}
