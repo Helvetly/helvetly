@@ -59,6 +59,7 @@ import {
   type SectionState,
 } from '@/components/section-form'
 import { ApprovalsRow } from '@/components/settings/approvals-row'
+import { NextNumbersTip } from '@/components/settings/next-numbers-tip'
 import { NumberFormatField } from '@/components/settings/number-format-field'
 import { PercentInput } from '@/components/shared/percent-input'
 import { TextareaBox } from '@/components/textarea-box'
@@ -1348,23 +1349,25 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                   label={translate('numberFormat')}
                   error={shown.number_format}
                 >
-                  <NumberFormatField
-                    id={inputId('number_format')}
-                    country={values.country}
-                    value={values.number_format}
-                    invalid={Boolean(shown.number_format)}
-                    onChange={(format) => set('number_format', format)}
-                  />
-                </FormField>
-                <FormField id={inputId('number_preview')} label={translate('nextNumbers')} group>
-                  <SettingsPreview
-                    label={translate('nextNumbers')}
-                    columns
-                    items={NEXT_NUMBER_KINDS.map(({ kind, label }) => ({
-                      label: label(),
-                      value: nextNumberOf(values.number_format, today(), kind, nextNumbers),
-                    }))}
-                  />
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <NumberFormatField
+                        id={inputId('number_format')}
+                        country={values.country}
+                        value={values.number_format}
+                        invalid={Boolean(shown.number_format)}
+                        onChange={(format) => set('number_format', format)}
+                      />
+                    </div>
+                    <span className="flex h-9 items-center">
+                      <NextNumbersTip
+                        items={NEXT_NUMBER_KINDS.map(({ kind, label }) => ({
+                          label: label(),
+                          value: nextNumberOf(values.number_format, today(), kind, nextNumbers),
+                        }))}
+                      />
+                    </span>
+                  </div>
                 </FormField>
                 <ApprovalsRow currency={values.currency} />
               </Section>
