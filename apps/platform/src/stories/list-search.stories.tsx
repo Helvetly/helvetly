@@ -1,7 +1,7 @@
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { oneValue, type QueryField } from '@/lib/list-query'
@@ -267,15 +267,17 @@ export const EditsAndRemovesAGroup: Story = {
       canvas.getByRole('button', { name: 'Edit filter Country: Switzerland, Algeria +1' }),
     )
     const editor = await body.findByRole('dialog', { name: 'Country' })
-    await userEvent.click(
-      within(editor).getByRole('button', { name: 'Remove filter Country: Algeria' }),
-    )
+    // The multi-select toggles a picked value off in its own list.
+    await userEvent.click(within(editor).getByRole('button', { name: /^Country Switzerland/ }))
+    await userEvent.click(await body.findByRole('option', { name: 'Algeria' }))
     await expect(state(canvas)).toMatchObject({ countries: ['CH', 'AD'] })
     await expect(
       canvas.getByRole('button', { name: 'Edit filter Country: Switzerland or Andorra' }),
     ).toBeVisible()
     await userEvent.keyboard('{Escape}')
-    await expect(body.queryByRole('dialog', { name: 'Country' })).toBeNull()
+    await expect(body.queryByRole('option', { name: 'Algeria' })).toBeNull()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('dialog', { name: 'Country' })).toBeNull())
     await userEvent.click(
       canvas.getByRole('button', { name: 'Remove filter Country: Switzerland or Andorra' }),
     )
