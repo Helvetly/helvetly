@@ -12,6 +12,8 @@ import { ArrowRight, BellRing, DoorOpen, Plus, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
 import { expect, fn, userEvent, within } from 'storybook/test'
 
+import { tabIcons } from '@/components/tab-icons'
+
 const meta = {
   title: 'Design system/Controls',
   parameters: { layout: 'padded' },
@@ -411,6 +413,35 @@ export const KeyboardTabs: Story = {
       'aria-selected',
       'true',
     )
+  },
+}
+
+/** Drawer tabs: an icon before the label, a muted count after it; the name stays "Payments 2". */
+export const LineTabsWithIcons: Story = {
+  render: () => (
+    <Tabs defaultValue="overview">
+      <TabsList variant="line" aria-label="Invoice" className="h-10 gap-4 p-0">
+        <TabsTrigger value="overview" icon={tabIcons.overview} className="px-0">
+          Overview
+        </TabsTrigger>
+        <TabsTrigger value="payments" icon={tabIcons.payments} count={2} className="px-0">
+          Payments
+        </TabsTrigger>
+        <TabsTrigger value="pdf" icon={tabIcons.pdf} count={0} className="px-0">
+          PDF
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="overview">Overview</TabsContent>
+      <TabsContent value="payments">Payments</TabsContent>
+      <TabsContent value="pdf">PDF</TabsContent>
+    </Tabs>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const payments = canvas.getByRole('tab', { name: /Payments/ })
+    await expect(payments).toHaveTextContent('2')
+    await expect(payments.querySelector('svg')?.getBoundingClientRect().width).toBe(16)
+    await expect(canvas.getByRole('tab', { name: 'PDF' })).not.toHaveTextContent('0')
   },
 }
 

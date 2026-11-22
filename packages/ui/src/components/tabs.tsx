@@ -66,8 +66,15 @@ const lineTrigger =
 function TabsTrigger({
   className,
   children,
+  icon: Icon,
+  count,
   ...props
-}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+}: React.ComponentProps<typeof TabsPrimitive.Trigger> & {
+  /** A lucide icon before the label: 16 px, muted until the tab is chosen. */
+  icon?: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
+  /** How many records the tab holds, shown muted after the label; nothing for 0 or undefined. */
+  count?: number
+}) {
   const line = React.useContext(ListVariant) === 'line'
   return (
     <TabsPrimitive.Trigger
@@ -83,7 +90,11 @@ function TabsTrigger({
       )}
       {...props}
     >
+      {Icon && <Icon aria-hidden />}
       {line ? children : segmentLabels(children)}
+      {Boolean(count) && (
+        <span className="text-xs font-normal text-muted-foreground tabular-nums">{count}</span>
+      )}
     </TabsPrimitive.Trigger>
   )
 }
