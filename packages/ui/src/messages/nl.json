@@ -88,5 +88,14 @@
   "planLineEmployees": "Medewerkers: personeelsdossiers en salarisregister",
   "planLineStorage": "documentopslag",
   "planLineEmails": "{count, plural, one {e-mail} other {e-mails}} naar klanten / maand",
-  "planFootnote": "Maandelijkse hoeveelheden en opslag gelden per betaald teamlid en worden door het hele team gedeeld; maandelijkse hoeveelheden beginnen op de 1e opnieuw. Je klanten gebruiken het portaal zonder meerkosten."
+  "planFootnote": "Maandelijkse hoeveelheden en opslag gelden per betaald teamlid en worden door het hele team gedeeld; maandelijkse hoeveelheden beginnen op de 1e opnieuw. Je klanten gebruiken het portaal zonder meerkosten.",
+  "tablePages": "Pagina’s",
+  "tablePreviousPage": "Vorige pagina",
+  "tableNextPage": "Volgende pagina",
+  "tableRange": "{from}–{to} van {total}",
+  "tablePageOf": "Pagina {page} van {pages}",
+  "tableResizeColumn": "Breedte van {column} aanpassen",
+  "tableSelectRow": "Rij selecteren",
+  "tableActions": "Acties",
+  "tableResetWidths": "Kolombreedtes herstellen"
 }

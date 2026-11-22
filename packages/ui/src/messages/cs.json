@@ -88,5 +88,14 @@
   "planLineEmployees": "Zaměstnanci: osobní spisy a mzdový registr",
   "planLineStorage": "úložiště dokumentů",
   "planLineEmails": "{count, plural, one {e-mail} few {e-maily} other {e-mailů}} klientům / měsíc",
-  "planFootnote": "Měsíční objemy a úložiště platí na každého placeného člena týmu a sdílí je celý tým; měsíční objemy se obnovují 1. dne v měsíci. Klienti používají portál bez příplatku."
+  "planFootnote": "Měsíční objemy a úložiště platí na každého placeného člena týmu a sdílí je celý tým; měsíční objemy se obnovují 1. dne v měsíci. Klienti používají portál bez příplatku.",
+  "tablePages": "Stránky",
+  "tablePreviousPage": "Předchozí stránka",
+  "tableNextPage": "Další stránka",
+  "tableRange": "{from}–{to} z {total}",
+  "tablePageOf": "Stránka {page} z {pages}",
+  "tableResizeColumn": "Změnit šířku sloupce {column}",
+  "tableSelectRow": "Vybrat řádek",
+  "tableActions": "Akce",
+  "tableResetWidths": "Obnovit šířky sloupců"
 }
