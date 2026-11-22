@@ -12,6 +12,7 @@ import {
   changeFor,
   resolveValue,
   SINCE_PRESETS,
+  valueLabel,
   type QueryField,
   type QueryOption,
 } from '@/lib/list-query'
@@ -160,8 +161,7 @@ type ControlProps<P> = {
   onSet: (field: QueryField<P>, values: string[]) => void
 }
 
-const labelOf = <P,>(field: QueryField<P>, value: string) =>
-  field.values?.find((option) => option.value === value)?.label || value
+const labelOf = <P,>(field: QueryField<P>, value: string) => valueLabel(field, value) || value
 
 /** A clear button inside a field's right edge. */
 function ClearButton({ label, onClick }: { label: string; onClick: () => void }) {
@@ -177,7 +177,7 @@ function ClearButton({ label, onClick }: { label: string; onClick: () => void })
   )
 }
 
-function SingleSelect<P>({ field, params, onSet }: ControlProps<P>) {
+export function SingleSelect<P>({ field, params, onSet }: ControlProps<P>) {
   const value = field.get(params)[0] ?? ''
   return (
     <div className="relative">
@@ -200,7 +200,7 @@ function SingleSelect<P>({ field, params, onSet }: ControlProps<P>) {
   )
 }
 
-function MultiSelect<P>({ field, params, onSet }: ControlProps<P>) {
+export function MultiSelect<P>({ field, params, onSet }: ControlProps<P>) {
   const values = field.get(params)
   const options = (field.values ?? []).filter((option) => !values.includes(option.value))
   return (

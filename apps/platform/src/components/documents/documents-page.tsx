@@ -1667,6 +1667,7 @@ const QUERY_FIELDS: QueryField<ViewParams>[] = [
     label: translate('uploaded2'),
     type: 'enum',
     values: sinceOptions(),
+    kind: 'date',
     placeholder: translate('uploadedAnyTime'),
     ...oneValue(
       (view) => view.date,

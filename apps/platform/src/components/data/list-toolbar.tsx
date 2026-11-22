@@ -1,5 +1,7 @@
+import { TONES } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Command, CommandItem, CommandList } from '@helvetly/ui/components/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Search, X } from 'lucide-react'
@@ -13,15 +15,17 @@ import {
   type RefObject,
 } from 'react'
 
+import { MultiSelect, SingleSelect } from '@/components/data/list-filters'
 import { translate } from '@/lib/i18n'
 import {
   changeFor,
+  chipTone,
+  chipValues,
   formatTerm,
   inQuote,
   parseQuery,
   resolveValue,
   splitTerm,
-  termLabel,
   termsOf,
   tokenize,
   type QueryField,
@@ -195,12 +199,12 @@ function QueryInput<P>({
     setOpen(false)
   }
 
-  const remove = (index: number) => setTerms(terms.filter((_, at) => at !== index))
-  const edit = (index: number) => {
-    const term = terms[index]
-    if (!term) return
-    remove(index)
-    show(`${input && !/\s$/.test(input) ? `${input} ` : input}${formatTerm(term)}`)
+  const remove = (id: string) => setTerms(terms.filter((term) => term.id !== id))
+  /** A field without known values goes back into the input as typed, to edit there. */
+  const edit = (id: string) => {
+    remove(id)
+    const typed = terms.filter((term) => term.id === id).map(formatTerm)
+    show(`${input && !/\s$/.test(input) ? `${input} ` : input}${typed.join(' ')}`)
     setOpen(true)
     ref.current?.focus()
   }
@@ -230,7 +234,7 @@ function QueryInput<P>({
       commit(input, true)
     } else if (event.key === 'Backspace' && input === '' && terms.length) {
       event.preventDefault()
-      remove(terms.length - 1)
+      remove(terms.at(-1)?.id ?? '')
     } else if (event.key === 'Escape') {
       event.preventDefault()
       if (suggestions.length) return setOpen(false)
@@ -250,34 +254,21 @@ function QueryInput<P>({
     >
       <Search className="pointer-events-none size-4 shrink-0 stroke-[1.5]" />
       <div className="flex h-full min-w-0 flex-1 [scrollbar-width:none] items-center gap-1 overflow-x-auto">
-        {terms.map((term, index) => {
-          const text = termLabel(fields, term)
-          return (
-            <span
-              key={`${term.id}:${term.value}`}
-              className="flex h-6 shrink-0 items-center rounded-md bg-muted text-body-sm text-foreground"
-            >
-              <button
-                type="button"
-                aria-label={translate('editFilter', { label: text })}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => edit(index)}
-                className="h-full rounded-l-md pl-2 hover:text-muted-foreground"
-              >
-                {text}
-              </button>
-              <button
-                type="button"
-                aria-label={translate('removeFilter', { label: text })}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => remove(index)}
-                className="flex size-6 items-center justify-center rounded-r-md text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3" />
-              </button>
-            </span>
-          )
-        })}
+        {query &&
+          fields.map((field) => {
+            const values = field.get(query.params)
+            return values.length ? (
+              <FilterChip
+                key={field.id}
+                field={field}
+                values={values}
+                params={query.params}
+                onChange={query.onChange}
+                onRemove={() => remove(field.id)}
+                onEdit={() => edit(field.id)}
+              />
+            ) : null
+          })}
         <input
           ref={ref}
           id={inputId}
@@ -356,6 +347,89 @@ function QueryInput<P>({
         </Command>
       )}
     </label>
+  )
+}
+
+/** Keeps the focus in the search field. */
+const keepFocus = (event: { preventDefault: () => void }) => event.preventDefault()
+
+/**
+ * One field's filter as a chip: every value it holds ("Country: Switzerland or Algeria", "…, Algeria +3" with
+ * the whole list in a tooltip), tinted by the field's kind. A click opens the field's own choices to change
+ * (or, for a field without known values, puts its terms back into the input); × removes the field's filter.
+ */
+function FilterChip<P>({
+  field,
+  values,
+  params,
+  onChange,
+  onRemove,
+  onEdit,
+}: {
+  field: QueryField<P>
+  values: readonly string[]
+  params: P
+  onChange: (change: Partial<P>) => void
+  onRemove: () => void
+  onEdit: () => void
+}) {
+  const { text, rest, labels } = chipValues(field, values)
+  const full = text ? `${field.label}: ${rest ? labels.join(', ') : text}` : field.label
+  const choices = Boolean(field.values?.length)
+  const button = (
+    <button
+      type="button"
+      // Names what it shows (axe: label-content-name-mismatch); the tooltip and × carry the whole list.
+      aria-label={translate('editFilter', {
+        label: rest ? `${field.label}: ${text} +${rest}` : full,
+      })}
+      onMouseDown={choices ? undefined : keepFocus}
+      onClick={choices ? undefined : onEdit}
+      className="flex h-full min-w-0 items-center gap-1 rounded-l-md pl-2"
+    >
+      <span className="shrink-0">{text ? `${field.label}:` : field.label}</span>
+      {text && <span className="max-w-48 truncate text-foreground">{text}</span>}
+      {rest > 0 && <span className="shrink-0 text-foreground tabular-nums">+{rest}</span>}
+    </button>
+  )
+  const trigger = choices ? <PopoverTrigger asChild>{button}</PopoverTrigger> : button
+  const set = (target: QueryField<P>, next: string[]) => onChange(target.set(next, params))
+  return (
+    <span
+      className={cn(
+        'flex h-6 max-w-72 shrink-0 items-center rounded-md text-body-sm',
+        TONES[chipTone(field, values)],
+      )}
+    >
+      <Popover>
+        {rest > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+            <TooltipContent>{full}</TooltipContent>
+          </Tooltip>
+        ) : (
+          trigger
+        )}
+        {choices && (
+          <PopoverContent align="start" aria-label={field.label} className="grid w-72 gap-2 p-3">
+            {field.single ? (
+              <SingleSelect field={field} params={params} onSet={set} />
+            ) : (
+              <MultiSelect field={field} params={params} onSet={set} />
+            )}
+          </PopoverContent>
+        )}
+      </Popover>
+      <button
+        type="button"
+        aria-label={translate('removeFilter', { label: full })}
+        onMouseDown={keepFocus}
+        onClick={onRemove}
+        className="flex size-6 shrink-0 items-center justify-center rounded-r-md opacity-70 hover:opacity-100"
+      >
+        <X className="size-3" />
+      </button>
+    </span>
   )
 }
 
