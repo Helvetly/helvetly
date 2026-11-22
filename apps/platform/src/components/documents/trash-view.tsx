@@ -174,9 +174,6 @@ function trashColumns({
           onCheckedChange={(checked) => onToggleAll(checked === true)}
         />
       ),
-      size: 40,
-      minSize: 40,
-      resizable: false,
       cell: (item) => (
         <Checkbox
           aria-label={translate('select', { name: item.name })}

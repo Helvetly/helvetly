@@ -1,14 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
-import {
-  layoutColumns,
-  readColumnSizes,
-  resizeColumn,
-  writeColumnSizes,
-  type ColumnSizes,
-  type SizedColumn,
-} from '@helvetly/ui/lib/column-sizing'
+import { readColumnSizes, writeColumnSizes } from '@helvetly/ui/lib/column-sizing'
 import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -20,6 +13,7 @@ import {
   tableFeatures,
   useTable,
   type ColumnDef,
+  type ColumnSizingState,
   type RowData,
   type RowSelectionState,
   type Updater,
@@ -31,9 +25,7 @@ import {
   useRef,
   useState,
   type HTMLAttributes,
-  type KeyboardEvent,
   type MouseEvent,
-  type PointerEvent,
   type ReactElement,
   type ReactNode,
 } from 'react'
@@ -48,7 +40,8 @@ export const listTable = {
   th: 'sticky top-0 z-10 border-b bg-card bg-linear-to-b from-muted/50 to-muted/50 px-3 font-medium whitespace-nowrap first:pl-5 last:pr-5',
   row: 'h-[58px] border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-brand-surface/60 data-attention:not-data-selected:bg-warning-surface/50',
   td: 'truncate px-3 first:pl-5 last:pr-5',
-  select: 'pl-5',
+  /** The checkbox column: never clipped, its focus ring included (`SELECT_SIZE`). */
+  select: 'overflow-visible pr-0 pl-5 text-clip',
   menu: 'pr-3 text-right last:pr-3',
   numeric: 'text-right tabular-nums',
   /** The phone list that replaces the table on narrow screens. */
@@ -102,22 +95,41 @@ const features = tableFeatures({
   rowSortingFeature,
 })
 
-const SELECT = '__select'
+/** The checkbox column, built in (`selection`) or a page's own column of this id. */
+const SELECT = 'select'
+/** The checkbox column: its 20 px inset, the 16 px box and 16 px to the next column. */
+const SELECT_SIZE = 52
 const DEFAULT_SIZE = 140
-const DEFAULT_MIN = 56
+const DEFAULT_MIN = 64
 const DEFAULT_MAX = 640
 const FLEX_MIN = 160
 const STEP = 16
 
-const sizedColumn = <T,>(column: DataColumn<T>): SizedColumn => ({
-  id: column.id,
-  size: column.size ?? DEFAULT_SIZE,
-  min: column.minSize ?? (column.flex ? FLEX_MIN : DEFAULT_MIN),
-  max: column.maxSize ?? (column.flex ? Number.POSITIVE_INFINITY : DEFAULT_MAX),
-  flex: column.flex,
-})
+/** The select and row menu columns keep their width; the flexible one fills the rest. */
+const isFixed = (id: string) => id === SELECT || id === 'actions'
+const canResize = <T,>(column: DataColumn<T>) =>
+  !column.flex && !isFixed(column.id) && (column.resizable ?? true)
 
-const canResize = <T,>(column: DataColumn<T>) => !column.flex && (column.resizable ?? true)
+const columnDef = <T extends RowData>(column: DataColumn<T>): ColumnDef<typeof features, T> => {
+  if (column.id === SELECT)
+    return {
+      id: SELECT,
+      size: SELECT_SIZE,
+      minSize: SELECT_SIZE,
+      maxSize: SELECT_SIZE,
+      enableResizing: false,
+    }
+  const minSize = column.minSize ?? (column.flex ? FLEX_MIN : DEFAULT_MIN)
+  return {
+    id: column.id,
+    // The flexible column's size is the least it takes; the table gives it the rest of its box.
+    size: column.flex ? minSize : (column.size ?? DEFAULT_SIZE),
+    minSize,
+    maxSize: column.maxSize ?? (column.flex ? Number.MAX_SAFE_INTEGER : DEFAULT_MAX),
+    enableResizing: canResize(column),
+    enableSorting: Boolean(column.sortable),
+  }
+}
 
 /** The width of the box the table sits in, measured before paint and on every resize. */
 function useBoxWidth() {
@@ -136,8 +148,8 @@ function useBoxWidth() {
 
 /**
  * A list table on TanStack Table: row selection, server-side sorting, and column widths a person
- * drags (live, kept per table in this browser). The flexible column fills what the others leave,
- * so the table always fills its box; a column stops where the flexible one reaches its min.
+ * drags with TanStack's resizing (`onChange` mode, kept per table in this browser). The flexible
+ * column fills what the others leave; once they need more than the box, the box scrolls sideways.
  */
 export function DataTable<T extends RowData>({
   id,
@@ -177,41 +189,26 @@ export function DataTable<T extends RowData>({
   footer?: ReactNode
 }) {
   const { box, width: available } = useBoxWidth()
-  const [sizes, setSizes] = useState<ColumnSizes>(() =>
+  const [sizes, setSizes] = useState<ColumnSizingState>(() =>
     readColumnSizes(
       id,
       columns.filter(canResize).map((column) => column.id),
     ),
   )
 
-  const shown = columns.filter((column) => !column.showFrom || available >= column.showFrom)
-  const sized = [
-    ...(selection ? [{ id: SELECT, size: 40, min: 40, max: 40 }] : []),
-    ...shown.map(sizedColumn),
-  ]
-  const widths = layoutColumns(sized, available, sizes)
-  const total = sized.reduce((sum, column) => sum + (widths[column.id] ?? 0), 0)
-
-  const byId = new Map(columns.map((column) => [column.id, column]))
-  // What the table model needs of each column, as one string: a new columns array each render
-  // keeps the same model.
-  const shape = [
-    selection ? SELECT : '',
-    ...columns.map(
-      (column) => `${column.id}:${canResize(column) ? 1 : 0}${column.sortable ? 1 : 0}`,
-    ),
-  ].join(',')
-  const defs = useMemo(
-    () =>
-      shape
-        .split(',')
-        .filter(Boolean)
-        .map((entry): ColumnDef<typeof features, T> => {
-          const [column = '', flags = '00'] = entry.split(':')
-          return { id: column, enableResizing: flags[0] === '1', enableSorting: flags[1] === '1' }
-        }),
-    [shape],
+  const all = useMemo(
+    () => [
+      ...(selection ? [{ id: SELECT, header: selection.allLabel, cell: () => null }] : []),
+      ...columns,
+    ],
+    [columns, selection],
   )
+  const byId = new Map(all.map((column) => [column.id, column]))
+  const flex = all.find((column) => column.flex)?.id
+  // A new columns array each render keeps the same model while what it needs stays the same.
+  const model = all.map(columnDef)
+  const [defs, setDefs] = useState(model)
+  if (JSON.stringify(model) !== JSON.stringify(defs)) setDefs(model)
 
   const rowSelection = useMemo<RowSelectionState>(
     () => Object.fromEntries([...(selection?.selected ?? [])].map((row) => [row, true])),
@@ -227,12 +224,26 @@ export function DataTable<T extends RowData>({
     columnResizeMode: 'onChange',
     enableRowSelection: Boolean(selection),
     state: {
-      columnSizing: { ...sizes },
+      columnSizing: sizes,
       columnVisibility: Object.fromEntries(
-        columns.map((column) => [column.id, shown.includes(column)]),
+        all.map((column) => [column.id, !column.showFrom || available >= column.showFrom]),
       ),
       rowSelection,
       sorting: sorting?.column ? [{ id: sorting.column, desc: sorting.desc }] : [],
+    },
+    onColumnSizingChange: (updater: Updater<ColumnSizingState>) => {
+      setSizes((old) => {
+        const next = typeof updater === 'function' ? updater(old) : updater
+        // Kept within each column's range, so a drag past its min or max stores the width shown.
+        const clamped = Object.fromEntries(
+          Object.entries(next).map(([column, width]) => {
+            const def = defs.find((entry) => entry.id === column)
+            return [column, Math.min(Math.max(width, def?.minSize ?? 0), def?.maxSize ?? width)]
+          }),
+        )
+        writeColumnSizes(id, clamped)
+        return clamped
+      })
     },
     onRowSelectionChange: (updater: Updater<RowSelectionState>) => {
       const next = typeof updater === 'function' ? updater(rowSelection) : updater
@@ -240,52 +251,13 @@ export function DataTable<T extends RowData>({
     },
   })
 
-  const commit = (next: ColumnSizes) => {
-    setSizes(next)
-    writeColumnSizes(id, next)
-  }
-  const resized = (from: ColumnSizes, column: string, width: number) => ({
-    ...from,
-    [column]: resizeColumn(sized, available, from, column, width),
-  })
-
-  const startDrag = (event: PointerEvent<HTMLElement>, column: string) => {
-    if (event.button !== 0) return
-    event.preventDefault()
-    event.stopPropagation()
-    event.currentTarget.focus({ preventScroll: true })
-    const x = event.clientX
-    const start = widths[column] ?? 0
-    const from = sizes
-    let last = from
-    const follow = (move: globalThis.PointerEvent) => {
-      last = resized(from, column, start + move.clientX - x)
-      setSizes(last)
-    }
-    const end = () => {
-      window.removeEventListener('pointermove', follow)
-      window.removeEventListener('pointerup', end)
-      window.removeEventListener('pointercancel', end)
-      table.resetHeaderSizeInfo()
-      if (last !== from) commit(last)
-    }
-    window.addEventListener('pointermove', follow)
-    window.addEventListener('pointerup', end)
-    window.addEventListener('pointercancel', end)
-  }
-
-  const onHandleKey = (event: KeyboardEvent<HTMLElement>, column: string) => {
-    const direction = { ArrowLeft: -1, ArrowRight: 1 }[event.key]
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      commit(withoutSize(sizes, column))
-      return
-    }
-    if (!direction) return
-    event.preventDefault()
-    const step = event.shiftKey ? STEP * 4 : STEP
-    commit(resized(sizes, column, (widths[column] ?? 0) + direction * step))
-  }
+  const headers = table.getFlatHeaders()
+  // Sizes as CSS variables, as in TanStack's performant resizing example.
+  const vars = Object.fromEntries(
+    headers.map((header) => [`--col-${header.column.id}-size`, `${header.getSize()}px`]),
+  )
+  const total = table.getTotalSize()
+  const resizing = table.state.columnResizing.isResizingColumn
 
   const allSelected = table.getIsAllRowsSelected()
   const someSelected = table.getIsSomeRowsSelected()
@@ -293,46 +265,66 @@ export function DataTable<T extends RowData>({
   return (
     <div
       ref={box}
-      className={cn('overflow-x-clip transition-opacity duration-150', pending && 'opacity-60')}
+      className={cn(
+        // Its width comes from its parent, never from the table, so a wide table scrolls in it
+        // instead of stretching a grid or flex parent.
+        'transition-opacity duration-150 [contain:inline-size]',
+        // Clipped while it fits, so the sticky header follows the page; scrolled once it does not.
+        total > available ? 'overflow-x-auto' : 'overflow-x-clip',
+        resizing && 'cursor-col-resize select-none',
+        pending && 'opacity-60',
+      )}
     >
-      <table aria-label={label} className={cn(listTable.table, className)} style={{ width: total }}>
+      <table
+        aria-label={label}
+        className={cn(listTable.table, className)}
+        style={{ ...vars, width: '100%', minWidth: total }}
+      >
         <colgroup>
-          {sized.map((column) => (
-            <col key={column.id} style={{ width: widths[column.id] }} />
+          {headers.map((header) => (
+            <col
+              key={header.id}
+              style={{
+                width:
+                  header.column.id === flex ? undefined : `var(--col-${header.column.id}-size)`,
+              }}
+            />
           ))}
         </colgroup>
         <thead>
           {table.getHeaderGroups().map((group) => (
             <tr key={group.id} className={listTable.head}>
               {group.headers.map((header) => {
-                if (header.column.id === SELECT)
+                const column = byId.get(header.column.id)
+                if (!column) return null
+                if (column.id === SELECT && selection)
                   return (
                     <th key={header.id} className={cn(listTable.th, listTable.select)}>
                       <Checkbox
-                        aria-label={selection?.allLabel}
-                        className="cursor-pointer bg-card align-middle"
+                        aria-label={selection.allLabel}
+                        className="cursor-pointer bg-card"
                         checked={allSelected ? true : someSelected ? 'indeterminate' : false}
                         onCheckedChange={(checked) => table.toggleAllRowsSelected(checked === true)}
                       />
                     </th>
                   )
-                const column = byId.get(header.column.id)
-                if (!column) return null
                 const sorted = sorting?.column === column.id
+                const canResizeColumn = header.column.getCanResize()
                 return (
                   <th
                     key={header.id}
                     aria-sort={sorted ? (sorting.desc ? 'descending' : 'ascending') : undefined}
-                    // The resize handle inside would add its width to the header's name.
-                    aria-label={header.column.getCanResize() ? column.header : undefined}
+                    // The resize handle inside would add its name to the header's.
+                    aria-label={canResizeColumn ? column.header : undefined}
                     className={cn(
                       listTable.th,
                       'group/th relative',
                       column.align === 'right' && 'text-right',
+                      column.id === SELECT && listTable.select,
                       column.id === 'actions' && listTable.menu,
                     )}
                   >
-                    <span className="block truncate">
+                    <span className={cn('block', column.id !== SELECT && 'truncate')}>
                       {column.headerContent ??
                         (column.sortable && sorting ? (
                           <button
@@ -355,16 +347,18 @@ export function DataTable<T extends RowData>({
                           column.header
                         ))}
                     </span>
-                    {header.column.getCanResize() && (
+                    {canResizeColumn && (
                       <ResizeHandle
                         label={column.header}
-                        width={widths[column.id] ?? 0}
-                        min={sizedColumn(column).min}
-                        max={resizeColumn(sized, available, sizes, column.id, Infinity)}
-                        onPointerDown={(event) => startDrag(event, column.id)}
-                        onKeyDown={(event) => onHandleKey(event, column.id)}
-                        onDoubleClick={() => commit(withoutSize(sizes, column.id))}
-                        onChange={(next) => commit(resized(sizes, column.id, next))}
+                        width={header.getSize()}
+                        min={header.column.columnDef.minSize ?? DEFAULT_MIN}
+                        max={header.column.columnDef.maxSize ?? DEFAULT_MAX}
+                        active={resizing === column.id}
+                        onStart={header.getResizeHandler()}
+                        onChange={(width) =>
+                          table.setColumnSizing((old) => ({ ...old, [column.id]: width }))
+                        }
+                        onReset={() => header.column.resetSize()}
                       />
                     )}
                   </th>
@@ -399,25 +393,26 @@ export function DataTable<T extends RowData>({
                 className={cn(listTable.row, onRowClick && 'cursor-pointer', extra?.className)}
               >
                 {row.getVisibleCells().map((cell) => {
-                  if (cell.column.id === SELECT)
+                  const column = byId.get(cell.column.id)
+                  if (!column) return null
+                  if (column.id === SELECT && selection)
                     return (
                       <td key={cell.id} className={cn(listTable.td, listTable.select)}>
                         <Checkbox
-                          aria-label={selection?.rowLabel(original)}
-                          className="cursor-pointer bg-card align-middle"
+                          aria-label={selection.rowLabel(original)}
+                          className="cursor-pointer bg-card"
                           checked={row.getIsSelected()}
                           onCheckedChange={(checked) => row.toggleSelected(checked === true)}
                         />
                       </td>
                     )
-                  const column = byId.get(cell.column.id)
-                  if (!column) return null
                   return (
                     <td
                       key={cell.id}
                       className={cn(
                         listTable.td,
                         column.align === 'right' && listTable.numeric,
+                        column.id === SELECT && listTable.select,
                         column.id === 'actions' && listTable.menu,
                         column.className,
                       )}
@@ -442,39 +437,37 @@ function WrappedRow({ children }: { children: ReactNode }) {
   return children
 }
 
-const withoutSize = (sizes: ColumnSizes, column: string) =>
-  Object.fromEntries(Object.entries(sizes).filter(([entry]) => entry !== column))
-
 /**
- * A column's right edge: drag it, or focus it and use the arrow keys (Shift: bigger steps);
- * double-click or Enter gives the column its default width again. Shown on header hover.
+ * A column's right edge: TanStack's resize handler on mouse and touch; a double-click or Enter
+ * gives the column its default width again. A range input, so it is focusable and announced with
+ * the width as its value; the arrow keys resize in steps (Shift: bigger ones).
  */
 function ResizeHandle({
   label,
   width,
   min,
   max,
-  onPointerDown,
-  onKeyDown,
-  onDoubleClick,
+  active,
+  onStart,
   onChange,
+  onReset,
 }: {
   label: string
   width: number
   min: number
   max: number
-  onPointerDown: (event: PointerEvent<HTMLElement>) => void
-  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
-  onDoubleClick: () => void
+  active: boolean
+  onStart: (event: unknown) => void
   onChange: (width: number) => void
+  onReset: () => void
 }) {
   return (
     <span
       data-column-resizer=""
+      data-resizing={active || undefined}
       // Inside its own header: centred on the border, the next sticky header would cover its half.
-      className="group/resizer absolute inset-y-0 right-0 z-10 w-2"
+      className="group/resizer absolute inset-y-0 right-0 z-10 flex w-3 justify-end"
     >
-      {/* A range input: focusable, announced with the width as its value, arrow keys native. */}
       <input
         type="range"
         aria-label={translate('tableResizeColumn', { column: label })}
@@ -483,13 +476,26 @@ function ResizeHandle({
         step={1}
         value={Math.round(width)}
         onChange={(event) => onChange(Number(event.currentTarget.value))}
-        onPointerDown={onPointerDown}
-        onKeyDown={onKeyDown}
-        onDoubleClick={onDoubleClick}
+        onMouseDown={(event) => {
+          if (event.button !== 0) return
+          // Not the range's own drag, no text selection, no sort click.
+          event.preventDefault()
+          event.currentTarget.focus({ preventScroll: true })
+          onStart(event)
+        }}
+        onTouchStart={onStart}
+        onKeyDown={(event) => {
+          const direction = { ArrowLeft: -1, ArrowRight: 1 }[event.key]
+          if (event.key === 'Enter') onReset()
+          else if (direction) onChange(width + direction * (event.shiftKey ? STEP * 4 : STEP))
+          else return
+          event.preventDefault()
+        }}
         onClick={(event) => event.stopPropagation()}
+        onDoubleClick={onReset}
         className="peer absolute inset-0 m-0 h-full w-full cursor-col-resize touch-none appearance-none opacity-0"
       />
-      <span className="pointer-events-none absolute inset-y-3 right-0 w-px bg-border opacity-0 transition-opacity group-hover/th:opacity-100 peer-focus-visible:bg-ring peer-focus-visible:opacity-100 peer-active:bg-ring peer-active:opacity-100" />
+      <span className="pointer-events-none my-2.5 w-0.5 rounded-full bg-border opacity-0 transition-opacity group-hover/resizer:bg-ring group-hover/th:opacity-100 group-data-resizing/resizer:bg-ring group-data-resizing/resizer:opacity-100 peer-focus-visible:bg-ring peer-focus-visible:opacity-100" />
     </span>
   )
 }
