@@ -53,9 +53,10 @@ func TestLayout(t *testing.T) {
 		want []string
 	}{
 		{"fragment", Message{Subject: "Hi <you>", HTML: "<p>Hi</p>"}, []string{"<!doctype html>", "<title>Hi &lt;you&gt;</title>",
-			`src="https://app.example.com/email-logo.png"`, ">Helvetly</span>", "<p>Hi</p>", `max-width:600px`, `Sent by <a href="https://app.example.com"`}},
-		{"preview and footer", Message{HTML: "<p>Hi</p>", Preview: "Ana & Bob", Footer: "Why <a href=\"x\">you</a>"},
-			[]string{"display:none", "Ana &amp; Bob", "Why <a href=\"x\">you</a></td>"}},
+			`<a href="https://app.example.com" style="color:#18181b;font-size:20px"><strong>Helvetly</strong></a>`, "<p>Hi</p>",
+			`Sent by <a href="https://app.example.com"`}},
+		{"footer, and links in the brand colour", Message{HTML: `<p><a href="y">Go</a></p>`, Footer: "Why <a href=\"x\">you</a>"},
+			[]string{`<a style="color:#0b7268" href="y">Go</a>`, "Why <a href=\"x\">you</a></td>"}},
 	} {
 		got := layout(c.m, site)
 		for _, w := range c.want {
@@ -73,7 +74,7 @@ func TestLayout(t *testing.T) {
 
 func TestButton(t *testing.T) {
 	got := Button("Review <now>", "https://x.example/a?b=1&c=2")
-	for _, w := range []string{`href="https://x.example/a?b=1&amp;c=2"`, ">Review &lt;now&gt;</a>", `bgcolor="#18181b"`} {
+	for _, w := range []string{`href="https://x.example/a?b=1&amp;c=2"`, ">Review &lt;now&gt;</a></strong>", `<a style="color:#0b7268" href=`} {
 		if !strings.Contains(got, w) {
 			t.Errorf("no %q in %s", w, got)
 		}

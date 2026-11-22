@@ -141,7 +141,10 @@ are the reference.
   capped by `max_email_attachment_bytes`) and goes out as the business through `mail.Branded`: the company name as
   From's display name (the address stays `MAIL_FROM`'s), Reply-To the workspace's reply-to email (`workspaces.reply_to_email`,
   Settings → Workspace), else the company email, else the member who sends, else the owner, never no-reply; its logo and
-  seller details frame the card. Sign-in, security and invitation email never does either and stays Helvetly's.
+  name head the email, its seller details sign it. Sign-in, security and invitation email never does either and stays Helvetly's.
+  Email HTML keeps to what caniemail lists as supported everywhere (Mailpit's HTML Check): no `<body>`, `<style>`,
+  margin, padding, border, background or width; tags, `cellpadding` and inline colour and font only, the business
+  logo's `height` the one exception (`mail.TestEmailSourcesKeepToSupportedHTML` scans every email literal).
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
   and a monthly token budget per pool: Heidi's chat (`ai_tokens_per_month`) and the automation pool of AI import
