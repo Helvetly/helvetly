@@ -56,6 +56,7 @@ import { dropdownKit } from '@/components/data/menus'
 import { useMarkSent } from '@/components/invoices/invoice-dialogs'
 import { HeroFact, HeroLink, RecordHero } from '@/components/invoices/record-hero'
 import { RecordPageButton } from '@/components/record-link'
+import { tabIcons } from '@/components/tab-icons'
 import { errorMessage } from '@/lib/api'
 import { useInvoiceApproval, type Approval } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
@@ -507,34 +508,31 @@ function Detail({
 
           <TabsList variant="line" className="-mb-px h-10 gap-4 p-0">
             {[
-              { value: 'overview', label: translate('overview') },
+              { value: 'overview' as const, label: translate('overview') },
               {
-                value: 'payments',
+                value: 'payments' as const,
                 label: translate('payments'),
                 count: invoice.payments.length + invoice.refunds.length,
                 hidden: credit || proforma || invoice.status === 'draft',
               },
               {
-                value: 'emails',
+                value: 'emails' as const,
                 label: translate('emails'),
                 count: deliveries.data?.length,
                 hidden: invoice.status === 'draft',
               },
-              { value: 'pdf', label: 'PDF' },
+              { value: 'pdf' as const, label: 'PDF' },
             ]
               .filter((tab) => !tab.hidden)
               .map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
+                  icon={tabIcons[tab.value]}
+                  count={tab.count}
                   className="h-full flex-none px-0 text-[14px] font-normal after:bottom-0! after:h-[2px] after:bg-primary"
                 >
                   {tab.label}
-                  {Boolean(tab.count) && (
-                    <Badge size="sm" className="tabular-nums">
-                      {tab.count}
-                    </Badge>
-                  )}
                 </TabsTrigger>
               ))}
           </TabsList>
