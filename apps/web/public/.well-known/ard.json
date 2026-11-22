@@ -3,7 +3,7 @@
     {
       "identifier": "urn:air:helvetly.com:mcp:helvetly",
       "displayName": "Helvetly",
-      "description": "Swiss-built back-office software for small businesses in Switzerland, the EU and the US. MCP tools cover clients, quotes, invoices, payments, expenses, documents, engagements, products, books and VAT exports in one workspace. Authenticate with a personal API token.",
+      "description": "Swiss-built back-office software for small businesses, with Switzerland as the first market. MCP tools cover clients, quotes, invoices, payments, expenses, documents, engagements, products, books and VAT exports in one workspace. Authenticate with a personal API token.",
       "type": "application/mcp-server-card+json",
       "representativeQueries": [
         "Create and send a Swiss QR invoice",

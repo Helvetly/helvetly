@@ -67,6 +67,12 @@ describe('home page', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
       'Your back office, Swiss quality.',
     )
+    expect(screen.getByText(/Built around the needs of Swiss small businesses/)).toBeTruthy()
+    expect(
+      screen.getByText(
+        /Switzerland is our first market\. We plan to expand into the rest of Europe, then the US and other markets worldwide\./,
+      ),
+    ).toBeTruthy()
     expect(
       screen.getByRole('link', { name: /Start your 7-day Pro trial/ }).getAttribute('href'),
     ).toBe('http://localhost:8000/login')

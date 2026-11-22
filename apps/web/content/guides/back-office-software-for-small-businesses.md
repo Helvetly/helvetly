@@ -6,7 +6,7 @@ updated: 2026-11-20
 readingMinutes: 7
 ---
 
-The right back-office software connects the daily work of a small business: clients, quotes, invoices, expenses, documents, books and employee records. Whether you work in Switzerland, the EU or the US, check the currencies, document formats and local requirements you actually need. One shared workspace reduces duplicate data entry; specialist tools still make sense for complex needs.
+The right back-office software connects the daily work of a small business: clients, quotes, invoices, expenses, documents, books and employee records. Wherever your business is based, check the currencies, document formats and local requirements you actually need. One shared workspace reduces duplicate data entry; specialist tools still make sense for complex needs.
 
 This guide explains what to look for and when separate tools still make sense. For product-by-product details, see [bexio alternatives in Switzerland](/guides/bexio-alternatives).
 
