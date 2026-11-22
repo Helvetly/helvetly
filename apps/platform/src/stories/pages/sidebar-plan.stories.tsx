@@ -81,7 +81,7 @@ export const Trial: Story = {
       '/settings/billing/plans/',
     )
     const screen = body(canvasElement)
-    await expect(screen.getAllByTestId('workspace-plan')[0]).toHaveTextContent('Basic · Trial')
+    await expect(screen.getAllByTestId('workspace-plan')[0]).toHaveTextContent(/^Basic$/)
   },
 }
 export const TrialDark = dark(Trial)

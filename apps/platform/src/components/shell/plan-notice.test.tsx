@@ -16,7 +16,7 @@ const trial = live({ status: 'trialing', trial_end: '2026-11-16T12:00:00Z', tria
 test.each<[string, Partial<Billing> | undefined, string | null]>([
   ['billing off', { enabled: false }, null],
   ['no plan', { locked: true, plan: '' }, 'No plan · Read-only'],
-  ['trial', { status: 'trialing' }, 'Basic · Trial'],
+  ['trial', { status: 'trialing' }, 'Basic'],
   ['past due', { plan: 'pro', status: 'past_due' }, 'Pro · Payment due'],
   ['unpaid', { status: 'unpaid' }, 'Basic · Payment due'],
   ['active', { plan: 'business' }, 'Business'],
