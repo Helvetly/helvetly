@@ -1,6 +1,6 @@
 // Merges the AI's receipt suggestions into the unsaved expense form without overwriting anything the person did.
 import type { ReadGroup, ReceiptSuggestions } from '@/lib/expenses'
-import { parseDecimalInput } from '@/lib/invoices'
+import { parseDecimalInput, toCents } from '@/lib/invoices'
 
 import {
   newLine,
@@ -117,7 +117,7 @@ export function applyRecognition(
     if (AMOUNT_FIELDS.some((field) => touched.has(field)) || current.amount_mode !== 'gross')
       kept.push('amounts')
     else {
-      values = { ...values, amount_mode: 'gross', currency: money.currency, lines: money.lines }
+      values = { ...values, amount_mode: 'gross', ...money }
       applied.push('amounts')
     }
   }
@@ -157,14 +157,20 @@ export function applyRecognition(
 const PAYMENT_FIELDS = ['paid', 'paid_on', 'payment_method'] as const
 
 /**
- * One gross line per rate of the breakdown, or nothing: never a reverse charge (the form cannot record it yet), a
+ * The document's items when it lists several that add up to its gross total (an expense report, a hotel bill), else
+ * one gross line per rate of the breakdown, or nothing: never a reverse charge (the form cannot record it yet), a
  * total without its rate, or figures the server found disagreeing.
  */
-export function amountsFrom(s: ReceiptSuggestions, currencyOk: (code: string) => boolean) {
+export function amountsFrom(
+  s: ReceiptSuggestions,
+  currencyOk: (code: string) => boolean,
+): Pick<FormValues, 'currency' | 'entry_mode' | 'lines'> | null {
   const currency = s.currency?.toUpperCase()
   if (!currency || !currencyOk(currency) || s.reverse_charge || s.vat_breakdown.length === 0)
     return null
   if (s.confidence.totals === 'low' || s.confidence.vat_breakdown === 'low') return null
+  const items = itemsFrom(s)
+  if (items) return { currency, entry_mode: 'itemised', lines: items }
   const lines: LineValues[] = []
   for (const band of s.vat_breakdown) {
     const parsedAmount = parseDecimalInput(band.gross ?? '', 2, true)
@@ -173,5 +179,37 @@ export function amountsFrom(s: ReceiptSuggestions, currencyOk: (code: string) =>
       return null
     lines.push({ ...newLine(parsedRate), amount: parsedAmount })
   }
-  return { currency, lines }
+  return { currency, entry_mode: 'single', lines }
+}
+
+// As many as the form and the API take (expenses.maxLines).
+const MAX_ITEMS = 20
+
+/** The items as gross lines, or null unless every one has an amount and a rate and they add up to the total. */
+function itemsFrom(s: ReceiptSuggestions): LineValues[] | null {
+  if (s.items.length < 2 || s.items.length > MAX_ITEMS || s.confidence.items === 'low') return null
+  const onlyRate = s.vat_breakdown.length === 1 ? s.vat_breakdown[0]?.rate : null
+  const lines: LineValues[] = []
+  for (const item of s.items) {
+    const amount = parseDecimalInput(item.amount ?? '', 2, true)
+    const rate = parseDecimalInput(item.vat_rate ?? onlyRate ?? '', 2)
+    if (!amount || amount.startsWith('-') || !rate || Number(rate) > 100) return null
+    const price = parseDecimalInput(item.unit_price ?? '', 2, true)
+    lines.push({
+      ...newLine(rate),
+      description: item.description ?? '',
+      amount,
+      quantity: item.quantity ?? '',
+      unit_price: price && !price.startsWith('-') ? price : '',
+      // The expense's own category is the default, not an override.
+      category_id: item.category_id === s.category?.id ? '' : (item.category_id ?? ''),
+    })
+  }
+  const gross = parseDecimalInput(s.totals.gross ?? '', 2, true)
+  const sum = lines.reduce((total, line) => total + toCents(line.amount), 0n)
+  // The server's tolerance (imports.receipt_check): a cent of rounding per item, at least two.
+  const tolerance = BigInt(Math.max(2, lines.length))
+  if (gross === null) return null
+  const off = sum - toCents(gross)
+  return off <= tolerance && -off <= tolerance ? lines : null
 }

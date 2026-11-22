@@ -20,16 +20,17 @@ const filled = (change: Partial<FormValues> = {}): FormValues => ({
   supplier_name: ' SBB ',
   document_date: '2026-11-03',
   category_id: 'exc_travel',
+  description: 'Train to Bern',
   lines: [{ ...newLine('8.1'), amount: "1'080,50" }],
   ...change,
 })
 const options = { userId: 'usr_1', baseCurrency: 'CHF', booked: false }
 
-test('a draft saves with nothing filled in; booking needs supplier, date, category and amount', () => {
+test('a draft saves with nothing filled in; booking needs supplier, date, category, amount and what for', () => {
   const empty = emptyValues('CHF', '8.1', true)
   expect(validate(empty, TODAY, false)).toEqual({})
   expect(Object.keys(validate(empty, TODAY, true)).toSorted()).toEqual(
-    ['category_id', 'document_date', 'lines.0.amount', 'supplier_name'].toSorted(),
+    ['category_id', 'description', 'document_date', 'lines.0.amount', 'supplier_name'].toSorted(),
   )
   expect(validate(filled(), TODAY, true)).toEqual({})
 })
@@ -269,4 +270,20 @@ test('switching to items keeps the lines; back to one amount merges them', () =>
   const single = withEntryMode(itemised, 'single')
   expect(single.lines.map((line) => line.amount)).toEqual(['15.00'])
   expect(withEntryMode(single, 'single')).toBe(single)
+})
+
+test('booking needs a name on every item and on each of several lines; one line is named by what for', () => {
+  const item = (description: string, amount: string) => ({ ...newLine('8.1'), description, amount })
+  const items = filled({
+    description: '',
+    entry_mode: 'itemised',
+    lines: [item('Cable', '10'), item(' ', '5'), newLine('8.1')],
+  })
+  expect(validate(items, TODAY, false)).toEqual({})
+  expect(validate(items, TODAY, true)).toEqual({ 'lines.1.description': 'Name the item to book.' })
+  const rates = filled({ description: '', lines: [item('', '100'), item('Breakfast', '20')] })
+  expect(Object.keys(validate(rates, TODAY, true))).toEqual(['lines.0.description'])
+  expect(validate(filled({ description: ' ' }), TODAY, true)).toEqual({
+    description: 'Say what it was for to book.',
+  })
 })

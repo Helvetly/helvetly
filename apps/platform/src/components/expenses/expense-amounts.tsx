@@ -1,19 +1,32 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
-import { Combobox } from '@helvetly/ui/components/combobox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@helvetly/ui/components/dropdown-menu'
+import { Kbd } from '@helvetly/ui/components/kbd'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { Copy, Ellipsis, Plus, Tag, Trash2 } from 'lucide-react'
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import { inputClass } from '@/components/clients/fields'
 import { AmountInput } from '@/components/shared/amount-input'
 import { PercentInput } from '@/components/shared/percent-input'
 import { useExpenseCategories, type EntryMode, type Expense } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
-import { formatMoney, VAT_RATES } from '@/lib/invoices'
+import { formatMoney, fromCents, parseDecimalInput, toCents, VAT_RATES } from '@/lib/invoices'
 
 import {
   itemAmount,
@@ -27,33 +40,29 @@ import {
 
 const RATE_CHOICES = [...VAT_RATES, '0']
 const MAX_LINES = 20
-// Single: item | amount | VAT | remove. Itemised adds quantity, unit price and category.
-const SINGLE_GRID =
+// One amount: amount | VAT; several rates add a label and a remove button.
+const SINGLE_GRID = 'grid-cols-[minmax(0,1fr)_92px] sm:grid-cols-[minmax(0,14rem)_92px]'
+const RATES_GRID =
   'grid-cols-[minmax(0,1fr)_136px_92px_32px] max-sm:grid-cols-[minmax(0,1fr)_120px_84px_32px]'
-// Sized by the lines' own width (the form's column), not the screen: where it fits, item | quantity | unit price |
-// amount, with the category and VAT rate under them; else a card per item.
-const ITEM_COLS = '@min-[34rem]:grid-cols-[minmax(0,1fr)_64px_128px_128px_32px]'
-const ITEM_GRID = cn(
-  'grid-cols-[minmax(0,1fr)_minmax(0,1fr)_32px]',
-  "[grid-template-areas:'item_item_del'_'qty_price_price'_'vat_amount_amount'_'cat_cat_cat']",
+// Items, sized by the form's column (not the screen): a table row each where it fits, # | item | qty | unit price |
+// VAT | amount | actions; else a card with the figures four to a row under the item.
+const ITEM_COLS = '@min-[34rem]:grid-cols-[1.25rem_minmax(0,1fr)_3.5rem_6rem_4.5rem_6.5rem_1.75rem]'
+const ITEM_ROW = cn(
+  'grid grid-cols-[1.25rem_minmax(0,1fr)_1.75rem] items-start gap-x-1.5 gap-y-2',
+  "[grid-template-areas:'num_item_menu'_'nums_nums_nums'] @min-[34rem]:[grid-template-areas:none]",
   ITEM_COLS,
-  "@min-[34rem]:[grid-template-areas:'item_qty_price_amount_del'_'cat_cat_vat_._.']",
 )
-const area = {
-  item: '[grid-area:item]',
-  qty: '[grid-area:qty]',
-  price: '[grid-area:price]',
-  vat: '[grid-area:vat]',
-  amount: '[grid-area:amount]',
-  category: '[grid-area:cat]',
-  remove: '[grid-area:del]',
-}
+const ITEM_FIELDS = ['description', 'quantity', 'unit_price', 'vat_rate', 'amount'] as const
+type ItemField = (typeof ITEM_FIELDS)[number]
+const LINE_ERRORS = ['description', ...ITEM_FIELDS.slice(1), 'category_id']
 
 type Describe = (field: string) => {
   id: string
   'aria-invalid': boolean | undefined
   'aria-describedby': string | undefined
 }
+
+const Required = () => <span className="ml-0.5 text-destructive">*</span>
 
 /**
  * The expense's amounts: one amount per VAT rate, or items with quantity, price and an optional category of their
@@ -83,19 +92,6 @@ export function ExpenseLines({
     const next = withEntryMode(values, mode)
     onValues({ entry_mode: next.entry_mode, lines: next.lines })
   }
-  const setPrice = (
-    index: number,
-    line: LineValues,
-    change: Pick<LineValues, 'quantity'> | Pick<LineValues, 'unit_price'>,
-  ) => {
-    const next = { ...line, ...change }
-    const amount = itemAmount(next.quantity, next.unit_price)
-    onLine(index, amount === null ? change : { ...change, amount })
-  }
-  const errorField = (index: number) =>
-    ['amount', 'vat_rate', 'quantity', 'unit_price', 'category_id'].find(
-      (field) => errors[`lines.${index}.${field}`],
-    )
 
   return (
     <div className="@container grid gap-2">
@@ -108,144 +104,25 @@ export function ExpenseLines({
         ]}
         onChange={switchTo}
       />
-      {itemised && (
-        <p className="text-body-sm text-muted-foreground">{translate('oneLinePerItem')}</p>
+      {itemised ? (
+        <ItemTable
+          values={values}
+          errors={errors}
+          newRate={newRate}
+          describe={describe}
+          onValues={onValues}
+          onLine={onLine}
+        />
+      ) : (
+        <RateLines
+          values={values}
+          errors={errors}
+          newRate={newRate}
+          describe={describe}
+          onValues={onValues}
+          onLine={onLine}
+        />
       )}
-      <div
-        aria-hidden
-        className={cn(
-          'grid gap-2 text-body-sm font-medium',
-          itemised ? cn('hidden @min-[34rem]:grid', ITEM_COLS) : SINGLE_GRID,
-        )}
-      >
-        <span>{translate('item')}</span>
-        {itemised && <span>{translate('qty')}</span>}
-        {itemised && <span>{translate('unitPrice')}</span>}
-        {itemised || (
-          <span>
-            {translate('amount')}
-            <span className="ml-0.5 text-destructive">*</span>
-          </span>
-        )}
-        {itemised || <span>{translate('vat2')}</span>}
-        {itemised && (
-          <span>
-            {translate('amount')}
-            <span className="ml-0.5 text-destructive">*</span>
-          </span>
-        )}
-        <span />
-      </div>
-      {values.lines.map((line, index) => {
-        const n = index + 1
-        const description = (
-          <input
-            aria-label={translate('lineDescription', { value1: n })}
-            value={line.description}
-            onChange={(event) => onLine(index, { description: event.target.value })}
-            placeholder={index === 0 ? translate('optionalEGHotel') : translate('eGBreakfast')}
-            className={cn(inputClass, itemised && area.item)}
-          />
-        )
-        const amount = (
-          <AmountInput
-            {...describe(`lines.${index}.amount`)}
-            aria-label={translate('lineAmount', { value1: n })}
-            currency={values.currency}
-            value={line.amount}
-            onValueChange={(value) => onLine(index, { amount: value })}
-            placeholder="0.00"
-          />
-        )
-        const rate = (
-          <PercentInput
-            {...describe(`lines.${index}.vat_rate`)}
-            aria-label={translate('lineVATRate', { value1: n })}
-            list="expense-vat-rates"
-            value={line.vat_rate}
-            onValueChange={(value) => onLine(index, { vat_rate: value })}
-            placeholder="8.1"
-            className={cn(itemised && area.vat)}
-            inputClassName={cn(inputClass, 'text-right tabular-nums')}
-          />
-        )
-        const remove = (
-          <Button
-            type="button"
-            variant="destructive-ghost"
-            size="icon-sm"
-            aria-label={translate('removeLine', { value1: n })}
-            disabled={values.lines.length === 1}
-            className={cn('cursor-pointer', itemised && area.remove)}
-            onClick={() => onValues({ lines: values.lines.filter((_, i) => i !== index) })}
-          >
-            <Trash2 />
-          </Button>
-        )
-        const field = errorField(index)
-        return (
-          <div
-            key={line.key}
-            className={cn(
-              'grid gap-1',
-              itemised && index > 0 && '@min-[34rem]:border-t @min-[34rem]:pt-2',
-            )}
-          >
-            {itemised ? (
-              <div
-                data-testid="expense-item"
-                className={cn(
-                  'grid items-center gap-2 rounded-lg p-3 ring-1 ring-border',
-                  '@min-[34rem]:rounded-none @min-[34rem]:p-0 @min-[34rem]:ring-0',
-                  ITEM_GRID,
-                )}
-              >
-                {description}
-                <input
-                  {...describe(`lines.${index}.quantity`)}
-                  aria-label={translate('lineQuantity', { value1: n })}
-                  inputMode="decimal"
-                  value={line.quantity}
-                  onChange={(event) => setPrice(index, line, { quantity: event.target.value })}
-                  placeholder={translate('qty')}
-                  className={cn(inputClass, 'text-right tabular-nums', area.qty)}
-                />
-                <div className={cn('min-w-0', area.price)}>
-                  <AmountInput
-                    {...describe(`lines.${index}.unit_price`)}
-                    aria-label={translate('lineUnitPrice', { value1: n })}
-                    currency={values.currency}
-                    value={line.unit_price}
-                    onValueChange={(value) => setPrice(index, line, { unit_price: value })}
-                    placeholder={translate('unitPrice')}
-                  />
-                </div>
-                {rate}
-                <LineCategory
-                  index={index}
-                  value={line.category_id}
-                  invalid={Boolean(errors[`lines.${index}.category_id`])}
-                  onChange={(category_id) => onLine(index, { category_id })}
-                />
-                <div className={cn('min-w-0', area.amount)}>{amount}</div>
-                {remove}
-              </div>
-            ) : (
-              <div className={cn('grid items-center gap-2', SINGLE_GRID)}>
-                {description}
-                {amount}
-                {rate}
-                {remove}
-              </div>
-            )}
-            {field && (
-              <p id={`expense-lines.${index}.${field}-error`} className="text-xs text-destructive">
-                {errors[`lines.${index}.${field}`]}
-              </p>
-            )}
-          </div>
-        )
-      })}
       <datalist id="expense-vat-rates">
         {RATE_CHOICES.map((rate) => (
           <option key={rate} value={rate}>
@@ -253,17 +130,6 @@ export function ExpenseLines({
           </option>
         ))}
       </datalist>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={values.lines.length >= MAX_LINES}
-        className="cursor-pointer justify-self-start text-muted-foreground"
-        onClick={() => onValues({ lines: [...values.lines, newLine(newRate)] })}
-      >
-        <Plus />
-        {itemised ? translate('addAnItem') : translate('addALineForAnotherVATRate')}
-      </Button>
       {merging && (
         <ConfirmDialog
           title={translate('mergeItemsTitle')}
@@ -283,41 +149,400 @@ export function ExpenseLines({
   )
 }
 
-/** An item's category: the expense's own unless another active one is chosen. */
-function LineCategory({
-  index,
-  value,
-  invalid,
-  onChange,
-}: {
-  index: number
-  value: string
-  invalid: boolean
-  onChange: (value: string) => void
-}) {
-  const categories = useExpenseCategories().data ?? []
-  const options = [
-    { value: '', label: translate('defaultExpenseCategory') },
-    ...categories
-      .filter((category) => !category.is_archived || category.id === value)
-      .map((category) => ({
-        value: category.id,
-        label: category.name,
-        hint: category.account_code,
-      })),
-  ]
+type LinesProps = Parameters<typeof ExpenseLines>[0]
+
+const lineError = (errors: FieldErrors, index: number) => {
+  const field = LINE_ERRORS.find((name) => errors[`lines.${index}.${name}`])
+  return field && { field, message: errors[`lines.${index}.${field}`] }
+}
+
+/** One amount: a single line is described by the expense's "What for"; several (one per VAT rate) each need a label. */
+function RateLines({ values, errors, newRate, describe, onValues, onLine }: LinesProps) {
+  const several = values.lines.length > 1
   return (
-    <Combobox
-      id={`expense-lines.${index}.category_id`}
-      label={translate('lineCategory', { value1: index + 1 })}
-      value={value}
-      options={options}
-      invalid={invalid}
-      placeholder={translate('defaultExpenseCategory')}
-      contentClassName="w-64"
-      className={area.category}
-      onChange={onChange}
-    />
+    <>
+      <div
+        aria-hidden
+        className={cn('grid gap-2 text-body-sm font-medium', several ? RATES_GRID : SINGLE_GRID)}
+      >
+        {several && (
+          <span>
+            {translate('item')}
+            <Required />
+          </span>
+        )}
+        <span>
+          {translate('amount')}
+          <Required />
+        </span>
+        <span>{translate('vat2')}</span>
+        {several && <span />}
+      </div>
+      {values.lines.map((line, index) => {
+        const n = index + 1
+        const error = lineError(errors, index)
+        return (
+          <div key={line.key} className="grid gap-1">
+            <div className={cn('grid items-center gap-2', several ? RATES_GRID : SINGLE_GRID)}>
+              {several && (
+                <input
+                  {...describe(`lines.${index}.description`)}
+                  aria-label={translate('lineDescription', { value1: n })}
+                  value={line.description}
+                  onChange={(event) => onLine(index, { description: event.target.value })}
+                  placeholder={index === 0 ? translate('eGHotel') : translate('eGBreakfast')}
+                  className={inputClass}
+                />
+              )}
+              <AmountInput
+                {...describe(`lines.${index}.amount`)}
+                aria-label={translate('lineAmount', { value1: n })}
+                currency={values.currency}
+                value={line.amount}
+                onValueChange={(value) => onLine(index, { amount: value })}
+                placeholder="0.00"
+              />
+              <PercentInput
+                {...describe(`lines.${index}.vat_rate`)}
+                aria-label={translate('lineVATRate', { value1: n })}
+                list="expense-vat-rates"
+                value={line.vat_rate}
+                onValueChange={(value) => onLine(index, { vat_rate: value })}
+                placeholder="8.1"
+                inputClassName={cn(inputClass, 'text-right tabular-nums')}
+              />
+              {several && (
+                <Button
+                  type="button"
+                  variant="destructive-ghost"
+                  size="icon-sm"
+                  aria-label={translate('removeLine', { value1: n })}
+                  className="cursor-pointer"
+                  onClick={() => onValues({ lines: values.lines.filter((_, i) => i !== index) })}
+                >
+                  <Trash2 />
+                </Button>
+              )}
+            </div>
+            {error && (
+              <p id={`expense-lines.${index}.${error.field}-error`} className="text-xs text-destructive">
+                {error.message}
+              </p>
+            )}
+          </div>
+        )
+      })}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={values.lines.length >= MAX_LINES}
+        className="cursor-pointer justify-self-start text-muted-foreground"
+        onClick={() => onValues({ lines: [...values.lines, newLine(newRate)] })}
+      >
+        <Plus />
+        {translate('addALineForAnotherVATRate')}
+      </Button>
+    </>
+  )
+}
+
+const cellOf = (key: string, field: ItemField) =>
+  document.querySelector<HTMLInputElement>(`[data-item="${key}"][data-field="${field}"]`)
+
+/**
+ * Items as a line-item table: one row per item with its number, name, quantity, unit price, VAT and amount, its
+ * category and the rest in a menu. Enter goes to the same field of the next item, and on the last adds one.
+ */
+function ItemTable({ values, errors, newRate, describe, onValues, onLine }: LinesProps) {
+  const categories = useExpenseCategories().data ?? []
+  const lines = values.lines
+  // Focus moves once the new row is in the DOM, before the next keystroke lands.
+  const focusNext = useRef<{ key: string; field: ItemField } | null>(null)
+  useLayoutEffect(() => {
+    const target = focusNext.current
+    if (!target) return
+    focusNext.current = null
+    cellOf(target.key, target.field)?.focus()
+  })
+
+  const insertAfter = (index: number, line: LineValues) => {
+    onValues({ lines: [...lines.slice(0, index + 1), line, ...lines.slice(index + 1)] })
+    focusNext.current = { key: line.key, field: 'description' }
+  }
+  const add = () => {
+    if (lines.length >= MAX_LINES) return
+    // A new item keeps the VAT rate of the one above: items usually come in kind.
+    insertAfter(lines.length - 1, newLine(lines.at(-1)?.vat_rate ?? newRate))
+  }
+  const remove = (index: number) => {
+    const next = lines.filter((_, i) => i !== index)
+    onValues({ lines: next })
+    const neighbour = next[Math.max(0, index - 1)]
+    if (neighbour) focusNext.current = { key: neighbour.key, field: 'description' }
+  }
+  const setPrice = (
+    index: number,
+    line: LineValues,
+    change: Pick<LineValues, 'quantity'> | Pick<LineValues, 'unit_price'>,
+  ) => {
+    const next = { ...line, ...change }
+    const amount = itemAmount(next.quantity, next.unit_price)
+    onLine(index, amount === null ? change : { ...change, amount })
+  }
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>, index: number, field: ItemField) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey) return
+    event.preventDefault()
+    const next = lines[index + 1]
+    if (next) cellOf(next.key, field)?.focus()
+    else add()
+  }
+  const cell = (index: number, field: ItemField) => ({
+    ...describe(`lines.${index}.${field}`),
+    'data-item': lines[index]?.key,
+    'data-field': field,
+    onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => onKeyDown(event, index, field),
+  })
+  const subtotal = lines.reduce(
+    (sum, line) => sum + toCents(parseDecimalInput(line.amount, 2, true) ?? '0'),
+    0n,
+  )
+
+  return (
+    <>
+      <p className="text-body-sm text-muted-foreground">{translate('oneLinePerItem')}</p>
+      <div className="grid gap-2 @min-[34rem]:gap-0">
+        <div
+          aria-hidden
+          className={cn(
+            'hidden gap-x-1.5 border-b border-border pb-1.5 text-body-sm font-medium @min-[34rem]:grid',
+            ITEM_COLS,
+          )}
+        >
+          <span className="text-center text-muted-foreground">#</span>
+          <span>
+            {translate('item')}
+            <Required />
+          </span>
+          <span className="text-right">{translate('qty')}</span>
+          <span className="text-right">{translate('unitPrice')}</span>
+          <span className="text-right">{translate('vat2')}</span>
+          <span className="text-right">
+            {translate('amount')}
+            <Required />
+          </span>
+          <span />
+        </div>
+        {lines.map((line, index) => {
+          const n = index + 1
+          const error = lineError(errors, index)
+          const own = line.category_id
+            ? categories.find((category) => category.id === line.category_id)
+            : undefined
+          const label = (text: string) => (
+            <span aria-hidden className="text-caption text-muted-foreground @min-[34rem]:hidden">
+              {text}
+            </span>
+          )
+          return (
+            <div
+              key={line.key}
+              data-testid="expense-item"
+              className={cn(
+                'group/item grid gap-1 rounded-lg p-2.5 ring-1 ring-border/70 transition-colors',
+                '@min-[34rem]:rounded-none @min-[34rem]:border-b @min-[34rem]:border-border/60 @min-[34rem]:px-0 @min-[34rem]:py-1.5 @min-[34rem]:ring-0 @min-[34rem]:hover:bg-muted/40',
+              )}
+            >
+              <div className={ITEM_ROW}>
+                <span className="flex h-9 items-center justify-center text-body-sm text-muted-foreground tabular-nums [grid-area:num] @min-[34rem]:[grid-area:auto]">
+                  {n}
+                </span>
+                <div className="grid min-w-0 gap-1 [grid-area:item] @min-[34rem]:[grid-area:auto]">
+                  <input
+                    {...cell(index, 'description')}
+                    aria-label={translate('lineDescription', { value1: n })}
+                    value={line.description}
+                    onChange={(event) => onLine(index, { description: event.target.value })}
+                    placeholder={index === 0 ? translate('eGHotel') : translate('eGBreakfast')}
+                    className={inputClass}
+                  />
+                  {own && (
+                    <Badge
+                      variant="outline"
+                      size="sm"
+                      data-testid="item-category"
+                      title={`${own.account_code} · ${own.name}`}
+                    >
+                      <Tag />
+                      <span className="truncate">{own.name}</span>
+                    </Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 [grid-area:nums] @min-[34rem]:contents">
+                  <div className="grid min-w-0 gap-0.5">
+                    {label(translate('qty'))}
+                    <input
+                      {...cell(index, 'quantity')}
+                      aria-label={translate('lineQuantity', { value1: n })}
+                      inputMode="decimal"
+                      value={line.quantity}
+                      onChange={(event) => setPrice(index, line, { quantity: event.target.value })}
+                      placeholder="1"
+                      className={cn(inputClass, 'px-2 text-right tabular-nums')}
+                    />
+                  </div>
+                  <div className="grid min-w-0 gap-0.5">
+                    {label(translate('unitPrice'))}
+                    <AmountInput
+                      {...cell(index, 'unit_price')}
+                      aria-label={translate('lineUnitPrice', { value1: n })}
+                      value={line.unit_price}
+                      onValueChange={(value) => setPrice(index, line, { unit_price: value })}
+                      placeholder="0.00"
+                      className="px-2"
+                    />
+                  </div>
+                  <div className="grid min-w-0 gap-0.5">
+                    {label(translate('vat2'))}
+                    <PercentInput
+                      {...cell(index, 'vat_rate')}
+                      aria-label={translate('lineVATRate', { value1: n })}
+                      list="expense-vat-rates"
+                      value={line.vat_rate}
+                      onValueChange={(value) => onLine(index, { vat_rate: value })}
+                      placeholder="8.1"
+                      compact
+                      inputClassName={cn(inputClass, 'pl-2 text-right tabular-nums')}
+                    />
+                  </div>
+                  <div className="grid min-w-0 gap-0.5">
+                    {label(translate('amount'))}
+                    <AmountInput
+                      {...cell(index, 'amount')}
+                      aria-label={translate('lineAmount', { value1: n })}
+                      value={line.amount}
+                      onValueChange={(value) => onLine(index, { amount: value })}
+                      placeholder="0.00"
+                      className="px-2 font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="flex h-9 items-center justify-center [grid-area:menu] @min-[34rem]:[grid-area:auto]">
+                  <ItemMenu
+                    n={n}
+                    line={line}
+                    only={lines.length === 1}
+                    full={lines.length >= MAX_LINES}
+                    categories={categories}
+                    onCategory={(category_id) => onLine(index, { category_id })}
+                    onDuplicate={() => insertAfter(index, { ...line, key: newLine('').key })}
+                    onDelete={() => remove(index)}
+                  />
+                </div>
+              </div>
+              {error && (
+                <p
+                  id={`expense-lines.${index}.${error.field}-error`}
+                  className="text-xs text-destructive @min-[34rem]:pl-[1.625rem]"
+                >
+                  {error.message}
+                </p>
+              )}
+            </div>
+          )
+        })}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 @min-[34rem]:pt-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={lines.length >= MAX_LINES}
+            className="cursor-pointer text-muted-foreground"
+            onClick={add}
+          >
+            <Plus />
+            {translate('addAnItem')}
+            <Kbd className="ml-1 hidden @min-[34rem]:inline-flex">{translate('enter')}</Kbd>
+          </Button>
+          <span className="text-body-sm text-muted-foreground tabular-nums">
+            {translate('itemCount', { count: lines.length })}
+            {' · '}
+            {translate('subtotal')} {formatMoney(fromCents(subtotal), values.currency)}
+          </span>
+        </div>
+      </div>
+    </>
+  )
+}
+
+/** An item's actions: its own category (the expense's by default), duplicate, delete. */
+function ItemMenu({
+  n,
+  line,
+  only,
+  full,
+  categories,
+  onCategory,
+  onDuplicate,
+  onDelete,
+}: {
+  n: number
+  line: LineValues
+  only: boolean
+  full: boolean
+  categories: NonNullable<ReturnType<typeof useExpenseCategories>['data']>
+  onCategory: (id: string) => void
+  onDuplicate: () => void
+  onDelete: () => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={translate('actionsForItem', { value1: n })}
+          className="cursor-pointer text-muted-foreground"
+        >
+          <Ellipsis />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-52">
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Tag />
+            {translate('category')}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="max-h-80 min-w-56 overflow-y-auto">
+            <DropdownMenuRadioGroup value={line.category_id} onValueChange={onCategory}>
+              <DropdownMenuRadioItem value="">
+                {translate('defaultExpenseCategory')}
+              </DropdownMenuRadioItem>
+              {categories
+                .filter((category) => !category.is_archived || category.id === line.category_id)
+                .map((category) => (
+                  <DropdownMenuRadioItem key={category.id} value={category.id}>
+                    {category.name}
+                    <span className="ml-auto pl-3 text-xs text-muted-foreground tabular-nums">
+                      {category.account_code}
+                    </span>
+                  </DropdownMenuRadioItem>
+                ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuItem disabled={full} onSelect={onDuplicate}>
+          <Copy />
+          {translate('duplicateItem')}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" disabled={only} onSelect={onDelete}>
+          <Trash2 />
+          {translate('deleteItem')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
