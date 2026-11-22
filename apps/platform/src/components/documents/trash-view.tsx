@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
+import { DataTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -8,14 +9,7 @@ import { Lock, RotateCcw, Trash2 } from 'lucide-react'
 import { useSearchParams, usePathname } from 'next/navigation'
 import { useMemo, type ReactNode } from 'react'
 
-import { listTable } from '@/components/data/list-table'
 import { LoadProblem } from '@/components/data/load-problem'
-import {
-  ResizableHead,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
-import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { LoadingRows, State } from '@/components/data/table-page'
 import {
   daysLeft,
@@ -62,7 +56,6 @@ export function TrashView({
   onEmpty: () => void
   canDelete: boolean
 }) {
-  const widths = useResizableColumns('trash', ['name', 'was', 'deleted', 'size'], { flex: 'name' })
   const canWrite = useCan('write:documents')
   const pathname = usePathname()
   const query = useSearchParams()
@@ -81,13 +74,21 @@ export function TrashView({
     else next.delete('sort')
     setUrlQuery(pathname, next)
   }
-  const header = (field: TrashSortField, label: string) => (
-    <SortButton
-      label={label}
-      sorted={sort.field === field}
-      desc={sort.desc}
-      onClick={() => sortBy(field)}
-    />
+  const all = (items ?? []).every((item) => selected.has(item.id))
+  const columns = useMemo(
+    () =>
+      trashColumns({
+        all,
+        selected,
+        canWrite,
+        canDelete,
+        onToggle,
+        onToggleAll,
+        onOpen,
+        onRestore,
+        onDelete,
+      }),
+    [all, selected, canWrite, canDelete, onToggle, onToggleAll, onOpen, onRestore, onDelete],
   )
   if (error) return <LoadProblem error={error} what={translate('theTrash')} onRetry={onRetry} />
   if (!items) return <LoadingRows />
@@ -100,7 +101,6 @@ export function TrashView({
         action={null}
       />
     )
-  const all = items.every((item) => selected.has(item.id))
   return (
     <div className="grid content-start">
       <div className="flex min-h-11 flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-2 text-[13px] text-muted-foreground">
@@ -117,165 +117,200 @@ export function TrashView({
           </Button>
         )}
       </div>
-      <ResizableTable columns={widths} className={listTable.table}>
-        <thead>
-          <tr className={listTable.head}>
-            <th className={listTable.select}>
-              <Checkbox
-                aria-label={translate('selectEverythingInTheTrash')}
-                checked={all}
-                onCheckedChange={(checked) => onToggleAll(checked === true)}
-              />
-            </th>
-            <ResizableHead
-              columns={widths}
-              column="name"
-              label={translate('name')}
-              className={listTable.th}
-              aria-sort={ariaSort(sort.field === 'name', sort.desc)}
-            >
-              {header('name', translate('name'))}
-            </ResizableHead>
-            <ResizableHead
-              columns={widths}
-              column="was"
-              label={translate('wasIn')}
-              className={cn(listTable.th, 'hidden w-[18%] @4xl:table-cell')}
-              aria-sort={ariaSort(sort.field === 'was', sort.desc)}
-            >
-              {header('was', translate('wasIn'))}
-            </ResizableHead>
-            <ResizableHead
-              columns={widths}
-              column="deleted"
-              label={translate('deleted2')}
-              className={cn(listTable.th, 'hidden w-[18%] @5xl:table-cell')}
-              aria-sort={ariaSort(sort.field === 'deleted', sort.desc)}
-            >
-              {header('deleted', translate('deleted2'))}
-            </ResizableHead>
-            <ResizableHead
-              columns={widths}
-              column="size"
-              label={translate('size')}
-              className={cn(listTable.th, listTable.numeric, 'w-[10%]')}
-              aria-sort={ariaSort(sort.field === 'size', sort.desc)}
-            >
-              {header('size', translate('size'))}
-            </ResizableHead>
-            <th
-              className={cn(listTable.th, 'w-[150px]')}
-              aria-sort={ariaSort(sort.field === 'purge', sort.desc)}
-            >
-              {header('purge', translate('deletedForGood'))}
-            </th>
-            <th className="w-[92px] pr-3">
-              <span className="sr-only">{translate('actions')}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((item) => {
-            const left = daysLeft(item.purge_at)
-            const kept = isRetained(item.retained_until)
-            return (
-              <tr
-                key={item.id}
-                data-selected={selected.has(item.id) || undefined}
-                onDoubleClick={() => onOpen(item)}
-                className={cn(listTable.row, 'group/row')}
-              >
-                <td className={listTable.select}>
-                  <Checkbox
-                    aria-label={translate('select', { name: item.name })}
-                    checked={selected.has(item.id)}
-                    onCheckedChange={() => onToggle(item)}
-                  />
-                </td>
-                <td className="px-3">
-                  <button
-                    type="button"
-                    onClick={() => onOpen(item)}
-                    className="flex w-full min-w-0 cursor-pointer items-center gap-2.5 text-left"
-                  >
-                    {item.type === 'folder' ? (
-                      <span className="flex size-7 shrink-0 items-center justify-center">
-                        <FolderMark className="size-5" />
-                      </span>
-                    ) : (
-                      <KindIcon kind={kindOfType(item.content_type)} />
-                    )}
-                    <span className="min-w-0">
-                      <span className="block truncate">{item.name}</span>
-                      {item.type === 'folder' && (
-                        <span className="block text-[12px] text-muted-foreground">
-                          {item.item_count} {item.item_count === 1 ? 'item' : 'items'}
-                          {translate('inside')}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                </td>
-                <td className="hidden px-3 text-muted-foreground @4xl:table-cell">
-                  <span className="block truncate">
-                    {item.location ? folderLabel(item.location) : translate('allDocuments')}
-                  </span>
-                </td>
-                <td className="hidden px-3 text-muted-foreground @5xl:table-cell">
-                  <span className="block truncate">
-                    {formatDate(item.deleted_at)}
-                    {item.deleted_by?.name ? ` · ${item.deleted_by.name}` : ''}
-                  </span>
-                </td>
-                <td className={cn(listTable.td, listTable.numeric, 'text-muted-foreground')}>
-                  {formatSize(item.size)}
-                </td>
-                <td className="px-3">
-                  {kept ? (
-                    <span className="inline-flex h-6 items-center gap-1 rounded-[4px] bg-[#ece9d5] px-1.5 text-[13px] text-[#675d3a] dark:bg-amber-500/15 dark:text-amber-300">
-                      <Lock className="size-3" />
-                      {translate('kept')}
-                    </span>
-                  ) : (
-                    <span
-                      className={cn(
-                        'inline-flex h-6 items-center rounded-[4px] px-1.5 text-[13px] tabular-nums',
-                        left <= 3
-                          ? 'bg-[#f4e0e0] text-[#884848] dark:bg-rose-500/15 dark:text-rose-300'
-                          : 'bg-[#ededed] text-[#626266] dark:bg-muted dark:text-muted-foreground',
-                      )}
-                    >
-                      {left === 0
-                        ? translate('today')
-                        : translate('in3', { left: left, value2: left === 1 ? 'day' : 'days' })}
-                    </span>
-                  )}
-                </td>
-                <td className="pr-3">
-                  <span className="flex justify-end gap-0.5">
-                    {canWrite && (
-                      <RowAction label={translate('restore')} onClick={() => onRestore([item])}>
-                        <RotateCcw />
-                      </RowAction>
-                    )}
-                    {canDelete && (
-                      <RowAction
-                        label={translate('deleteForever')}
-                        destructive
-                        onClick={() => onDelete([item])}
-                      >
-                        <Trash2 />
-                      </RowAction>
-                    )}
-                  </span>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </ResizableTable>
+      <DataTable
+        id="trash"
+        columns={columns}
+        data={rows}
+        getRowId={(item) => item.id}
+        sorting={{
+          column: sort.field,
+          desc: sort.desc,
+          onSort: (column) => {
+            const field = TRASH_SORTS.find((entry) => entry === column)
+            if (field) sortBy(field)
+          },
+        }}
+        rowProps={(item) => ({
+          'data-selected': selected.has(item.id) || undefined,
+          onDoubleClick: () => onOpen(item),
+          className: 'group/row',
+        })}
+      />
     </div>
   )
+}
+
+type TrashColumnsInput = {
+  all: boolean
+  selected: ReadonlySet<string>
+  canWrite: boolean
+  canDelete: boolean
+  onToggle: (item: TrashItem) => void
+  onToggleAll: (all: boolean) => void
+  onOpen: (item: TrashItem) => void
+  onRestore: (items: TrashItem[]) => void
+  onDelete: (items: TrashItem[]) => void
+}
+
+function trashColumns({
+  all,
+  selected,
+  canWrite,
+  canDelete,
+  onToggle,
+  onToggleAll,
+  onOpen,
+  onRestore,
+  onDelete,
+}: TrashColumnsInput): DataColumn<TrashItem>[] {
+  return [
+    {
+      id: 'select',
+      header: translate('selectEverythingInTheTrash'),
+      headerContent: (
+        <Checkbox
+          aria-label={translate('selectEverythingInTheTrash')}
+          checked={all}
+          onCheckedChange={(checked) => onToggleAll(checked === true)}
+        />
+      ),
+      size: 40,
+      minSize: 40,
+      resizable: false,
+      cell: (item) => (
+        <Checkbox
+          aria-label={translate('select', { name: item.name })}
+          checked={selected.has(item.id)}
+          onCheckedChange={() => onToggle(item)}
+        />
+      ),
+    },
+    {
+      id: 'name',
+      header: translate('name'),
+      flex: true,
+      sortable: true,
+      cell: (item) => (
+        <button
+          type="button"
+          onClick={() => onOpen(item)}
+          className="flex w-full min-w-0 cursor-pointer items-center gap-2.5 text-left"
+        >
+          {item.type === 'folder' ? (
+            <span className="flex size-7 shrink-0 items-center justify-center">
+              <FolderMark className="size-5" />
+            </span>
+          ) : (
+            <KindIcon kind={kindOfType(item.content_type)} />
+          )}
+          <span className="min-w-0">
+            <span className="block truncate">{item.name}</span>
+            {item.type === 'folder' && (
+              <span className="block text-[12px] text-muted-foreground">
+                {item.item_count} {item.item_count === 1 ? 'item' : 'items'}
+                {translate('inside')}
+              </span>
+            )}
+          </span>
+        </button>
+      ),
+    },
+    {
+      id: 'was',
+      header: translate('wasIn'),
+      size: 180,
+      minSize: 100,
+      sortable: true,
+      showFrom: 850,
+      className: 'text-muted-foreground',
+      cell: (item) => (
+        <span className="block truncate">
+          {item.location ? folderLabel(item.location) : translate('allDocuments')}
+        </span>
+      ),
+    },
+    {
+      id: 'deleted',
+      header: translate('deleted2'),
+      size: 180,
+      minSize: 120,
+      sortable: true,
+      showFrom: 970,
+      className: 'text-muted-foreground',
+      cell: (item) => (
+        <span className="block truncate">
+          {formatDate(item.deleted_at)}
+          {item.deleted_by?.name ? ` · ${item.deleted_by.name}` : ''}
+        </span>
+      ),
+    },
+    {
+      id: 'size',
+      header: translate('size'),
+      size: 96,
+      minSize: 72,
+      sortable: true,
+      align: 'right',
+      className: 'text-muted-foreground',
+      cell: (item) => formatSize(item.size),
+    },
+    {
+      id: 'purge',
+      header: translate('deletedForGood'),
+      size: 150,
+      resizable: false,
+      sortable: true,
+      cell: (item) => {
+        if (isRetained(item.retained_until))
+          return (
+            <span className="inline-flex h-6 items-center gap-1 rounded-[4px] bg-[#ece9d5] px-1.5 text-[13px] text-[#675d3a] dark:bg-amber-500/15 dark:text-amber-300">
+              <Lock className="size-3" />
+              {translate('kept')}
+            </span>
+          )
+        const left = daysLeft(item.purge_at)
+        return (
+          <span
+            className={cn(
+              'inline-flex h-6 items-center rounded-[4px] px-1.5 text-[13px] tabular-nums',
+              left <= 3
+                ? 'bg-[#f4e0e0] text-[#884848] dark:bg-rose-500/15 dark:text-rose-300'
+                : 'bg-[#ededed] text-[#626266] dark:bg-muted dark:text-muted-foreground',
+            )}
+          >
+            {left === 0
+              ? translate('today')
+              : translate('in3', { left: left, value2: left === 1 ? 'day' : 'days' })}
+          </span>
+        )
+      },
+    },
+    {
+      id: 'actions',
+      header: translate('actions'),
+      headerContent: <span className="sr-only">{translate('actions')}</span>,
+      size: 92,
+      resizable: false,
+      cell: (item) => (
+        <span className="flex justify-end gap-0.5">
+          {canWrite && (
+            <RowAction label={translate('restore')} onClick={() => onRestore([item])}>
+              <RotateCcw />
+            </RowAction>
+          )}
+          {canDelete && (
+            <RowAction
+              label={translate('deleteForever')}
+              destructive
+              onClick={() => onDelete([item])}
+            >
+              <Trash2 />
+            </RowAction>
+          )}
+        </span>
+      ),
+    },
+  ]
 }
 
 function RowAction({

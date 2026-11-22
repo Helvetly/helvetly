@@ -2,6 +2,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
+import { DataTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { Separator } from '@helvetly/ui/components/separator'
 import {
   Tooltip,
@@ -11,7 +12,7 @@ import {
 } from '@helvetly/ui/components/tooltip'
 import { formatDate, formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ArrowDown, ArrowUp, Link2, Lock, Share2 } from 'lucide-react'
+import { Link2, Lock, Share2 } from 'lucide-react'
 import {
   useRef,
   useState,
@@ -22,12 +23,6 @@ import {
   type ReactNode,
 } from 'react'
 
-import { listTable } from '@/components/data/list-table'
-import {
-  ColumnResizer,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
 import { UserAvatar } from '@/components/user-avatar'
 import {
   docQuery,
@@ -171,6 +166,12 @@ export function ItemsView(props: ItemsProps) {
   )
 }
 
+const itemData = (props: ItemsProps, key: ItemKey) => ({
+  'data-key': key,
+  'data-selected': props.selected.has(key) || undefined,
+  'data-focused': props.focused === key || undefined,
+})
+
 /** Drag, click, double-click and context-menu wiring shared by every item. */
 function useItem(
   props: ItemsProps,
@@ -184,11 +185,7 @@ function useItem(
   const prefetch = usePrefetch(docQuery)
   return {
     over: isFolder && drop.over,
-    data: {
-      'data-key': key,
-      'data-selected': props.selected.has(key) || undefined,
-      'data-focused': props.focused === key || undefined,
-    },
+    data: itemData(props, key),
     drop: isFolder ? drop.props : {},
     handlers: {
       draggable: !system,
@@ -543,103 +540,214 @@ function FileBadges({ file, className }: { file: DocFile; className?: string }) 
 
 // ---- list ----
 
-type Column = { id: string; label: string; sort?: SortField; className: string }
+/** A folder or a file: the list shows folders first, in one table. */
+type Row = { key: ItemKey } & ({ folder: Folder } | { file: DocFile })
 
-/** Status and the menu keep their widths. */
-const RESIZABLE = ['name', 'location', 'uploaded', 'created', 'modified']
+/** Which list sort each sortable column asks for. */
+const SORTS: Partial<Record<string, SortField>> = {
+  name: 'name',
+  created: 'created_at',
+  modified: 'updated_at',
+}
 
 function List(props: ItemsProps) {
-  const keys = [
-    ...props.folders.map((folder) => folderKey(folder.id)),
-    ...props.files.map((file) => fileKey(file.id)),
+  const rows: Row[] = [
+    ...props.folders.map((folder) => ({ key: folderKey(folder.id), folder })),
+    ...props.files.map((file) => ({ key: fileKey(file.id), file })),
   ]
-  const picked = keys.filter((key) => props.selected.has(key)).length
-  const widths = useResizableColumns('documents', RESIZABLE, { flex: 'name' })
-  const columns: Column[] = [
-    { id: 'name', label: translate('name'), sort: 'name', className: 'pl-1' },
-    ...(props.showLocation
-      ? [{ id: 'location', label: translate('location'), className: 'w-[16%]' }]
-      : []),
-    { id: 'uploaded', label: translate('uploadedBy'), className: 'w-[18%] hidden @4xl:table-cell' },
-    {
-      id: 'created',
-      label: translate('created3'),
-      sort: 'created_at',
-      className: 'w-[12%] hidden @5xl:table-cell',
-    },
-    { id: 'modified', label: translate('modified'), sort: 'updated_at', className: 'w-[12%]' },
-    { id: 'status', label: translate('status'), className: 'w-[15%] hidden @3xl:table-cell' },
-    { id: 'menu', label: '', className: 'w-12 pr-3' },
-  ]
+  const picked = rows.filter((row) => props.selected.has(row.key)).length
   return (
-    <div>
-      <ResizableTable columns={widths} aria-label={translate('files')} className={listTable.table}>
-        <thead>
-          <tr className={listTable.head}>
-            <th className={listTable.select}>
-              <Checkbox
-                aria-label={translate('selectAll3')}
-                className="bg-card"
-                checked={picked === 0 ? false : picked === keys.length ? true : 'indeterminate'}
-                onCheckedChange={() => props.onToggleAll(picked < keys.length)}
-              />
-            </th>
-            {columns.map((column) => {
-              const sorted = column.sort === props.sort
-              return (
-                <th
-                  key={column.id}
-                  {...widths.head(column.id)}
-                  aria-sort={sorted ? (props.desc ? 'descending' : 'ascending') : undefined}
-                  className={cn(listTable.th, column.className)}
-                >
-                  {column.sort ? (
-                    <button
-                      type="button"
-                      onClick={() => column.sort && props.onSort(column.sort)}
-                      className={cn(
-                        'inline-flex cursor-pointer items-center gap-1 uppercase hover:text-foreground',
-                        sorted && 'text-foreground',
-                      )}
-                    >
-                      {column.label}
-                      {sorted &&
-                        (props.desc ? (
-                          <ArrowDown className="size-3.5" />
-                        ) : (
-                          <ArrowUp className="size-3.5" />
-                        ))}
-                    </button>
-                  ) : (
-                    column.label && <span>{column.label}</span>
-                  )}
-                  {RESIZABLE.includes(column.id) && (
-                    <ColumnResizer columns={widths} column={column.id} label={column.label} />
-                  )}
-                </th>
-              )
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {props.folders.map((folder) => (
-            <FolderRow key={folder.id} props={props} folder={folder} />
-          ))}
-          {props.files.map((file) => (
-            <FileRow key={file.id} props={props} file={file} />
-          ))}
-        </tbody>
-      </ResizableTable>
-    </div>
+    <DataTable
+      id="documents"
+      label={translate('files')}
+      columns={listColumns(props, picked, rows.length)}
+      data={rows}
+      getRowId={(row) => row.key}
+      sorting={{
+        column: Object.keys(SORTS).find((column) => SORTS[column] === props.sort),
+        desc: props.desc,
+        onSort: (column) => {
+          const field = SORTS[column]
+          if (field) props.onSort(field)
+        },
+      }}
+      rowProps={(row) => ({
+        ...itemData(props, row.key),
+        className:
+          'group/row cursor-pointer outline-none data-drop-over:bg-primary/10 data-focused:shadow-[inset_2px_0_0_var(--ring)]',
+      })}
+      renderRow={(row, tr) => (
+        <ListRow props={props} row={row}>
+          {tr}
+        </ListRow>
+      )}
+    />
   )
 }
 
-const rowClass = cn(
-  listTable.row,
-  'group/row cursor-pointer outline-none data-drop-over:bg-primary/10 data-focused:shadow-[inset_2px_0_0_var(--ring)]',
-)
+/** A row's drag, drop, click and context menu: merged onto the table's `<tr>` by the trigger. */
+function ListRow({ props, row, children }: { props: ItemsProps; row: Row; children: ReactNode }) {
+  const system = 'folder' in row && isSystemFolder(row.folder)
+  const item = useItem(props, row.key, rowName(row), 'folder' in row ? row.folder.id : null, system)
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger
+        asChild
+        {...item.handlers}
+        {...item.drop}
+        draggable={props.renaming !== row.key && !system}
+      >
+        {children}
+      </ContextMenuTrigger>
+      {props.menu(row.key)}
+    </ContextMenu>
+  )
+}
 
-const muted = cn(listTable.td, 'text-muted-foreground')
+const rowName = (row: Row) => ('folder' in row ? folderLabel(row.folder) : row.file.name)
+
+function listColumns(props: ItemsProps, picked: number, total: number): DataColumn<Row>[] {
+  return [
+    {
+      id: 'select',
+      header: translate('selectAll3'),
+      headerContent: (
+        <Checkbox
+          aria-label={translate('selectAll3')}
+          className="bg-card"
+          checked={picked === 0 ? false : picked === total ? true : 'indeterminate'}
+          onCheckedChange={() => props.onToggleAll(picked < total)}
+        />
+      ),
+      size: 40,
+      minSize: 40,
+      resizable: false,
+      cell: (row) => (
+        <ItemCheck
+          props={props}
+          item={row.key}
+          name={rowName(row)}
+          className="size-4 rounded-[4px] opacity-100"
+        />
+      ),
+    },
+    {
+      id: 'name',
+      header: translate('name'),
+      flex: true,
+      sortable: true,
+      cell: (row) =>
+        'folder' in row ? (
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-8 shrink-0 items-center justify-center">
+              <FolderMark className="size-6" />
+            </span>
+            <NameCell
+              props={props}
+              item={row.key}
+              name={folderLabel(row.folder)}
+              label={<FolderName folder={row.folder} />}
+              isFile={false}
+              detail={filesAndSize(row.folder.total_files, row.folder.total_size)}
+            />
+          </span>
+        ) : (
+          <span className="flex min-w-0 items-center gap-3">
+            <FileTile file={row.file} />
+            <NameCell
+              props={props}
+              item={row.key}
+              name={row.file.name}
+              isFile
+              detail={`${formatSize(row.file.size)} · ${KIND_LABELS[row.file.kind]}`}
+              aside={<TagChips tags={row.file.tags} />}
+            />
+          </span>
+        ),
+    },
+    ...(props.showLocation
+      ? [
+          {
+            id: 'location',
+            header: translate('location'),
+            size: 160,
+            minSize: 100,
+            className: 'text-muted-foreground',
+            cell: (row: Row) =>
+              'folder' in row ? (
+                '—'
+              ) : (
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <FolderMark className="size-4" />
+                  <span className="truncate">
+                    {row.file.folder ? folderLabel(row.file.folder) : translate('allDocuments')}
+                  </span>
+                </span>
+              ),
+          },
+        ]
+      : []),
+    {
+      id: 'uploaded',
+      header: translate('uploadedBy'),
+      size: 180,
+      minSize: 120,
+      showFrom: 850,
+      className: 'text-muted-foreground',
+      cell: (row) => (
+        <Person person={'folder' in row ? row.folder.created_by : row.file.uploaded_by} />
+      ),
+    },
+    {
+      id: 'created',
+      header: translate('created3'),
+      size: 120,
+      minSize: 96,
+      sortable: true,
+      showFrom: 970,
+      className: 'text-muted-foreground',
+      cell: (row) => formatDate('folder' in row ? row.folder.created_at : row.file.created_at),
+    },
+    {
+      id: 'modified',
+      header: translate('modified'),
+      size: 120,
+      minSize: 96,
+      sortable: true,
+      className: 'text-muted-foreground',
+      cell: (row) => formatDate('folder' in row ? row.folder.updated_at : row.file.updated_at),
+    },
+    {
+      id: 'status',
+      header: translate('status'),
+      size: 150,
+      resizable: false,
+      showFrom: 720,
+      cell: (row) =>
+        'folder' in row ? (
+          row.folder.starred && <StarGlyph className="size-3.5" />
+        ) : (
+          <StatusPill file={row.file} />
+        ),
+    },
+    {
+      id: 'actions',
+      header: translate('actions'),
+      headerContent: <span className="sr-only">{translate('actions')}</span>,
+      // The share button and the menu.
+      size: 80,
+      resizable: false,
+      className:
+        'pl-1 opacity-0 transition-opacity group-hover/row:opacity-100 group-data-selected/row:opacity-100 has-focus-visible:opacity-100',
+      cell: (row) =>
+        'folder' in row ? (
+          <MenuButton label={translate('actionsFor', { name: folderLabel(row.folder) })} />
+        ) : (
+          <FileActions file={row.file} />
+        ),
+    },
+  ]
+}
 
 /** Name over a muted second line, as every list row shows it. */
 function NameCell({
@@ -720,121 +828,15 @@ function StatusPill({ file }: { file: DocFile }) {
   )
 }
 
-const actions =
-  'pr-3 pl-1 opacity-0 transition-opacity group-hover/row:opacity-100 group-data-selected/row:opacity-100 has-focus-visible:opacity-100'
-
-function FolderRow({ props, folder }: { props: ItemsProps; folder: Folder }) {
-  const key = folderKey(folder.id)
-  const item = useItem(props, key, folderLabel(folder), folder.id, isSystemFolder(folder))
-  return (
-    <ItemMenu props={props} item={key}>
-      <tr
-        {...item.data}
-        {...item.handlers}
-        {...item.drop}
-        draggable={props.renaming !== key && !isSystemFolder(folder)}
-        className={rowClass}
-      >
-        <td className={listTable.select}>
-          <ItemCheck
-            props={props}
-            item={key}
-            name={folderLabel(folder)}
-            className="size-4 rounded-[4px] opacity-100"
-          />
-        </td>
-        <td className={listTable.td}>
-          <span className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-8 shrink-0 items-center justify-center">
-              <FolderMark className="size-6" />
-            </span>
-            <NameCell
-              props={props}
-              item={key}
-              name={folderLabel(folder)}
-              label={<FolderName folder={folder} />}
-              isFile={false}
-              detail={filesAndSize(folder.total_files, folder.total_size)}
-            />
-          </span>
-        </td>
-        {props.showLocation && <td className={muted}>—</td>}
-        <td className={cn(muted, 'hidden @4xl:table-cell')}>
-          <Person person={folder.created_by} />
-        </td>
-        <td className={cn(muted, 'hidden @5xl:table-cell')}>{formatDate(folder.created_at)}</td>
-        <td className={muted}>{formatDate(folder.updated_at)}</td>
-        <td className={cn(listTable.td, 'hidden @3xl:table-cell')}>
-          {folder.starred && <StarGlyph className="size-3.5" />}
-        </td>
-        <td className={actions}>
-          <MenuButton label={translate('actionsFor', { name: folderLabel(folder) })} />
-        </td>
-      </tr>
-    </ItemMenu>
-  )
-}
-
-function FileRow({ props, file }: { props: ItemsProps; file: DocFile }) {
-  const key = fileKey(file.id)
-  const item = useItem(props, key, file.name, null)
+function FileActions({ file }: { file: DocFile }) {
   const [sharing, setSharing] = useState(false)
   return (
-    <ItemMenu props={props} item={key}>
-      <tr
-        {...item.data}
-        {...item.handlers}
-        {...item.drop}
-        draggable={props.renaming !== key}
-        className={rowClass}
-      >
-        <td className={listTable.select}>
-          <ItemCheck
-            props={props}
-            item={key}
-            name={file.name}
-            className="size-4 rounded-[4px] opacity-100"
-          />
-        </td>
-        <td className={listTable.td}>
-          <span className="flex min-w-0 items-center gap-3">
-            <FileTile file={file} />
-            <NameCell
-              props={props}
-              item={key}
-              name={file.name}
-              isFile
-              detail={`${formatSize(file.size)} · ${KIND_LABELS[file.kind]}`}
-              aside={<TagChips tags={file.tags} />}
-            />
-          </span>
-        </td>
-        {props.showLocation && (
-          <td className={muted}>
-            <span className="flex min-w-0 items-center gap-1.5">
-              <FolderMark className="size-4" />
-              <span className="truncate">
-                {file.folder ? folderLabel(file.folder) : translate('allDocuments')}
-              </span>
-            </span>
-          </td>
-        )}
-        <td className={cn(muted, 'hidden @4xl:table-cell')}>
-          <Person person={file.uploaded_by} />
-        </td>
-        <td className={cn(muted, 'hidden @5xl:table-cell')}>{formatDate(file.created_at)}</td>
-        <td className={muted}>{formatDate(file.updated_at)}</td>
-        <td className={cn(listTable.td, 'hidden @3xl:table-cell')}>
-          <StatusPill file={file} />
-        </td>
-        <td className={actions}>
-          <span className="flex items-center">
-            <ShareButton file={file} onOpen={() => setSharing(true)} />
-            <MenuButton label={translate('actionsFor', { name: file.name })} />
-          </span>
-          {sharing && <ShareDrawer file={file} onClose={() => setSharing(false)} />}
-        </td>
-      </tr>
-    </ItemMenu>
+    <>
+      <span className="flex items-center justify-end">
+        <ShareButton file={file} onOpen={() => setSharing(true)} />
+        <MenuButton label={translate('actionsFor', { name: file.name })} />
+      </span>
+      {sharing && <ShareDrawer file={file} onClose={() => setSharing(false)} />}
+    </>
   )
 }

@@ -88,5 +88,11 @@
   "planLineEmployees": "Employés : dossiers du personnel et registre des salaires",
   "planLineStorage": "de stockage de documents",
   "planLineEmails": "{count, plural, one {e-mail} other {e-mails}} aux clients / mois",
-  "planFootnote": "Les volumes mensuels et le stockage s’entendent par membre payant et sont partagés par toute l’équipe ; les volumes mensuels repartent le 1er. Vos clients utilisent le portail sans surcoût."
+  "planFootnote": "Les volumes mensuels et le stockage s’entendent par membre payant et sont partagés par toute l’équipe ; les volumes mensuels repartent le 1er. Vos clients utilisent le portail sans surcoût.",
+  "tablePages": "Pages",
+  "tablePreviousPage": "Page précédente",
+  "tableNextPage": "Page suivante",
+  "tableRange": "{from}–{to} de {total}",
+  "tablePageOf": "Page {page} de {pages}",
+  "tableResizeColumn": "Redimensionner {column}"
 }

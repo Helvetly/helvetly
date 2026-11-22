@@ -158,10 +158,15 @@ test('no KPI band on the credit notes tab, and only credit notes show negative',
   renderPage()
   const table = await screen.findByRole('table')
   expect(screen.queryByText('Outstanding')).not.toBeInTheDocument()
+  // Narrow columns are left out below their width, so find the amount column by its header.
+  const column = within(table)
+    .getAllByRole('columnheader')
+    .findIndex((header) => header.textContent === 'Amount')
+  expect(column).toBeGreaterThan(0)
   const amounts = within(table)
     .getAllByRole('row')
     .slice(1)
-    .map((row) => row.querySelectorAll('td')[5]?.textContent ?? '')
+    .map((row) => row.querySelectorAll('td')[column]?.textContent ?? '')
   expect(amounts.filter((amount) => amount.includes('−'))).toHaveLength(1)
 })
 

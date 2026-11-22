@@ -88,5 +88,11 @@
   "planLineEmployees": "Employees: staff records and payroll register",
   "planLineStorage": "document storage",
   "planLineEmails": "{count, plural, one {email} other {emails}} to clients / month",
-  "planFootnote": "Monthly amounts and storage are per paid team member and shared by the whole team; monthly amounts renew on the 1st. Your clients use the portal at no extra cost."
+  "planFootnote": "Monthly amounts and storage are per paid team member and shared by the whole team; monthly amounts renew on the 1st. Your clients use the portal at no extra cost.",
+  "tablePages": "Pages",
+  "tablePreviousPage": "Previous page",
+  "tableNextPage": "Next page",
+  "tableRange": "{from}–{to} of {total}",
+  "tablePageOf": "Page {page} of {pages}",
+  "tableResizeColumn": "Resize {column}"
 }

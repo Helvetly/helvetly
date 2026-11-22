@@ -47,7 +47,7 @@
 2 radius apps/platform/src/components/clients/fields.tsx
 1 radius apps/platform/src/components/documents/documents-page.tsx
 1 radius apps/platform/src/components/documents/folder-tree.tsx
-5 radius apps/platform/src/components/documents/items-view.tsx
+4 radius apps/platform/src/components/documents/items-view.tsx
 2 radius apps/platform/src/components/documents/kind.tsx
 1 radius apps/platform/src/components/documents/storage-overview.tsx
 3 radius apps/platform/src/components/documents/thumbnail.tsx
@@ -96,7 +96,6 @@
 2 text-px apps/platform/src/components/clients/fields.tsx
 4 text-px apps/platform/src/components/clients/self-billing-agreements.tsx
 7 text-px apps/platform/src/components/dashboard/dashboard.tsx
-2 text-px apps/platform/src/components/data/list-table.tsx
 2 text-px apps/platform/src/components/data/table-page.tsx
 1 text-px apps/platform/src/components/documents/dialogs.tsx
 12 text-px apps/platform/src/components/documents/documents-page.tsx
@@ -178,5 +177,6 @@
 5 text-px apps/platform/src/components/wizard-sheet.tsx
 1 text-px packages/ui/src/components/calendar.tsx
 2 text-px packages/ui/src/components/confirm-dialog.tsx
+2 text-px packages/ui/src/components/data-table.tsx
 3 text-px packages/ui/src/components/disclosure.tsx
 1 text-px packages/ui/src/components/switch-row.tsx

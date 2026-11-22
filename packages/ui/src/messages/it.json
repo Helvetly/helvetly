@@ -88,5 +88,11 @@
   "planLineEmployees": "Dipendenti: schede del personale e registro salari",
   "planLineStorage": "di spazio per i documenti",
   "planLineEmails": "{count, plural, one {email} other {email}} ai clienti / mese",
-  "planFootnote": "Le quantità mensili e lo spazio valgono per ogni membro pagante e sono condivisi da tutto il team; le quantità mensili ripartono il 1° del mese. I tuoi clienti usano il portale senza costi aggiuntivi."
+  "planFootnote": "Le quantità mensili e lo spazio valgono per ogni membro pagante e sono condivisi da tutto il team; le quantità mensili ripartono il 1° del mese. I tuoi clienti usano il portale senza costi aggiuntivi.",
+  "tablePages": "Pagine",
+  "tablePreviousPage": "Pagina precedente",
+  "tableNextPage": "Pagina successiva",
+  "tableRange": "{from}–{to} di {total}",
+  "tablePageOf": "Pagina {page} di {pages}",
+  "tableResizeColumn": "Ridimensiona {column}"
 }

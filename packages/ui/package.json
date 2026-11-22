@@ -17,6 +17,7 @@
   "dependencies": {
     "@helvetly/i18n": "workspace:*",
     "@tanstack/react-query": "catalog:",
+    "@tanstack/react-table": "catalog:",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "catalog:",

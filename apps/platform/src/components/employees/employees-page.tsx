@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@helvetly/ui/components/button'
+import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { DropdownMenuItem } from '@helvetly/ui/components/dropdown-menu'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { formatDate } from '@helvetly/ui/lib/format'
@@ -11,15 +12,8 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { NativeSelect } from '@/components/clients/fields'
-import { listTable } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
-import {
-  ResizableHead,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
-import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { PageIntro } from '@/components/settings/layout'
@@ -28,6 +22,7 @@ import {
   fullName,
   listParamsToQuery,
   parseListParams,
+  SORT_FIELDS,
   STATUSES,
   useEmployee,
   useEmployeeList,
@@ -259,106 +254,23 @@ function EmployeeRows({
   onSort: (field: SortField) => void
   onOpen?: (id: string) => void
 }) {
-  const widths = useResizableColumns('employees', ['name', 'position', 'department', 'since'], {
-    flex: 'name',
-  })
   return (
     <>
-      <ResizableTable columns={widths} className={cn(listTable.table, 'hidden lg:table')}>
-        <thead>
-          <tr className={listTable.head}>
-            <ResizableHead
-              columns={widths}
-              column="name"
-              label={translate('employeeColName')}
-              aria-sort={ariaSort(sort.field === 'name', sort.desc)}
-              className={cn(listTable.th, 'w-[30%]')}
-            >
-              <SortButton
-                label={translate('employeeColName')}
-                sorted={sort.field === 'name'}
-                desc={sort.desc}
-                onClick={() => onSort('name')}
-              />
-            </ResizableHead>
-            <ResizableHead
-              columns={widths}
-              column="position"
-              label={translate('employeePosition')}
-              aria-sort={ariaSort(sort.field === 'position', sort.desc)}
-              className={cn(listTable.th, 'w-[22%]')}
-            >
-              <SortButton
-                label={translate('employeePosition')}
-                sorted={sort.field === 'position'}
-                desc={sort.desc}
-                onClick={() => onSort('position')}
-              />
-            </ResizableHead>
-            <ResizableHead
-              columns={widths}
-              column="department"
-              label={translate('employeeDepartment')}
-              aria-sort={ariaSort(sort.field === 'department', sort.desc)}
-              className={cn(listTable.th, 'w-[16%]')}
-            >
-              <SortButton
-                label={translate('employeeDepartment')}
-                sorted={sort.field === 'department'}
-                desc={sort.desc}
-                onClick={() => onSort('department')}
-              />
-            </ResizableHead>
-            <ResizableHead
-              columns={widths}
-              column="since"
-              label={translate('employeeColSince')}
-              aria-sort={ariaSort(sort.field === 'since', sort.desc)}
-              className={cn(listTable.th, 'w-[16%]')}
-            >
-              <SortButton
-                label={translate('employeeColSince')}
-                sorted={sort.field === 'since'}
-                desc={sort.desc}
-                onClick={() => onSort('since')}
-              />
-            </ResizableHead>
-            <th className={cn(listTable.th, 'w-[16%]')}>{translate('employeeStatusLabel')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((employee) => (
-            <tr key={employee.id} className={listTable.row}>
-              <td className={listTable.td}>
-                {onOpen ? (
-                  <button
-                    type="button"
-                    onClick={() => onOpen(employee.id)}
-                    className="cursor-pointer truncate text-left hover:underline"
-                  >
-                    {fullName(employee)}
-                  </button>
-                ) : (
-                  fullName(employee)
-                )}
-                {employee.employee_number && (
-                  <span className="font-code ml-2 text-caption text-muted-foreground">
-                    {employee.employee_number}
-                  </span>
-                )}
-              </td>
-              <td className={listTable.td}>{employee.position ?? '—'}</td>
-              <td className={listTable.td}>{employee.department ?? '—'}</td>
-              <td className={cn(listTable.td, 'text-muted-foreground')}>
-                {formatDate(employee.employment_start)}
-              </td>
-              <td className={listTable.td}>
-                <EmployeeStatusBadge status={employee.status} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </ResizableTable>
+      <DataTable
+        id="employees"
+        className="hidden lg:table"
+        columns={employeeColumns(onOpen)}
+        data={rows}
+        getRowId={(employee) => employee.id}
+        sorting={{
+          column: sort.field,
+          desc: sort.desc,
+          onSort: (column) => {
+            const field = SORT_FIELDS.find((entry) => entry === column)
+            if (field) onSort(field)
+          },
+        }}
+      />
       <ul className={cn(listTable.list, 'lg:hidden')}>
         {rows.map((employee) => {
           const content = (
@@ -391,6 +303,69 @@ function EmployeeRows({
       </ul>
     </>
   )
+}
+
+function employeeColumns(onOpen?: (id: string) => void): DataColumn<Employee>[] {
+  return [
+    {
+      id: 'name',
+      header: translate('employeeColName'),
+      flex: true,
+      sortable: true,
+      cell: (employee) => (
+        <>
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={() => onOpen(employee.id)}
+              className="cursor-pointer truncate text-left hover:underline"
+            >
+              {fullName(employee)}
+            </button>
+          ) : (
+            fullName(employee)
+          )}
+          {employee.employee_number && (
+            <span className="font-code ml-2 text-caption text-muted-foreground">
+              {employee.employee_number}
+            </span>
+          )}
+        </>
+      ),
+    },
+    {
+      id: 'position',
+      header: translate('employeePosition'),
+      size: 200,
+      minSize: 96,
+      sortable: true,
+      cell: (employee) => employee.position ?? '—',
+    },
+    {
+      id: 'department',
+      header: translate('employeeDepartment'),
+      size: 160,
+      minSize: 112,
+      sortable: true,
+      cell: (employee) => employee.department ?? '—',
+    },
+    {
+      id: 'since',
+      header: translate('employeeColSince'),
+      size: 128,
+      minSize: 96,
+      sortable: true,
+      className: 'text-muted-foreground',
+      cell: (employee) => formatDate(employee.employment_start),
+    },
+    {
+      id: 'status',
+      header: translate('employeeStatusLabel'),
+      size: 132,
+      resizable: false,
+      cell: (employee) => <EmployeeStatusBadge status={employee.status} />,
+    },
+  ]
 }
 
 function NewEmployee({

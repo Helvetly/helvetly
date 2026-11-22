@@ -88,5 +88,11 @@
   "planLineEmployees": "Anställda: personalregister och lönelista",
   "planLineStorage": "dokumentlagring",
   "planLineEmails": "{count, plural, one {mejl} other {mejl}} till kunder / månad",
-  "planFootnote": "Månadsvolymer och lagring gäller per betald teammedlem och delas av hela teamet; månadsvolymer börjar om den 1:a. Dina kunder använder portalen utan extra kostnad."
+  "planFootnote": "Månadsvolymer och lagring gäller per betald teammedlem och delas av hela teamet; månadsvolymer börjar om den 1:a. Dina kunder använder portalen utan extra kostnad.",
+  "tablePages": "Sidor",
+  "tablePreviousPage": "Föregående sida",
+  "tableNextPage": "Nästa sida",
+  "tableRange": "{from}–{to} av {total}",
+  "tablePageOf": "Sida {page} av {pages}",
+  "tableResizeColumn": "Ändra bredd på {column}"
 }

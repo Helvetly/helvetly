@@ -3,10 +3,10 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { DataTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { capitalize, formatDate } from '@helvetly/ui/lib/format'
 import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
-import { cn } from '@helvetly/ui/lib/utils'
 import {
   Check,
   KeyRound,
@@ -25,16 +25,9 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { listTable } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
-import {
-  ResizableHead,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
-import { ariaSort, SortButton } from '@/components/data/sort-header'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { PageHeader } from '@/components/shell/page-header'
 import { seatCostLabel, useBilling } from '@/lib/billing'
@@ -78,7 +71,6 @@ type Pending =
 
 /** The team list; the view, search and role filter live in the URL. */
 export function MembersPage() {
-  const widths = useResizableColumns('members', ['member', 'role', 'active'], { flex: 'member' })
   const router = useRouter()
   const pathname = usePathname()
   const query = useSearchParams()
@@ -238,125 +230,37 @@ export function MembersPage() {
             action={null}
           />
         ) : (
-          <ResizableTable columns={widths} className={listTable.table}>
-            <thead>
-              <tr className={listTable.head}>
-                <ResizableHead
-                  columns={widths}
-                  column="member"
-                  label={translate('member')}
-                  className={cn(listTable.th, 'w-[34%]')}
-                  aria-sort={ariaSort(sort.field === 'member', sort.desc)}
-                >
-                  <SortButton
-                    label={translate('member')}
-                    sorted={sort.field === 'member'}
-                    desc={sort.desc}
-                    onClick={() => sortBy('member')}
-                  />
-                </ResizableHead>
-                <ResizableHead
-                  columns={widths}
-                  column="role"
-                  label={translate('roleAndAccess')}
-                  className={cn(listTable.th, 'w-[26%]')}
-                  aria-sort={ariaSort(sort.field === 'role', sort.desc)}
-                >
-                  <SortButton
-                    label={translate('roleAndAccess')}
-                    sorted={sort.field === 'role'}
-                    desc={sort.desc}
-                    onClick={() => sortBy('role')}
-                  />
-                </ResizableHead>
-                <ResizableHead
-                  columns={widths}
-                  column="active"
-                  label={translate('lastActive')}
-                  className={cn(listTable.th, 'hidden w-[20%] @4xl:table-cell')}
-                  aria-sort={ariaSort(sort.field === 'active', sort.desc)}
-                >
-                  <SortButton
-                    label={translate('lastActive')}
-                    sorted={sort.field === 'active'}
-                    desc={sort.desc}
-                    onClick={() => sortBy('active')}
-                  />
-                </ResizableHead>
-                <th className={cn(listTable.th, 'w-[14%]')}>{translate('status')}</th>
-                <th className={listTable.menu}>
-                  <span className="sr-only">{translate('actions')}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {memberRows.map((member) => {
-                const menu = memberMenu(member, manager ? role : '', owners, memberRun)
-                return (
-                  <tr key={member.user_id} className={listTable.row}>
-                    <td className={listTable.td}>
-                      <MemberCell
-                        name={member.name}
-                        detail={member.email}
-                        url={member.avatar_url}
-                        you={member.is_you}
-                      />
-                    </td>
-                    <td className="px-3">
-                      <span className="flex flex-wrap items-center gap-1">
-                        <Badge>{capitalize(member.role)}</Badge>
-                        <AccessBadge role={member.role} scopes={member.scopes} />
-                      </span>
-                    </td>
-                    <td className="hidden px-3 @4xl:table-cell">
-                      <LastActive iso={member.last_active_at} />
-                    </td>
-                    <td className="px-3">
-                      <Badge tone={STATUS_TONES.member.active}>{translate('active')}</Badge>
-                    </td>
-                    <td className={listTable.menu}>
-                      {menu && (
-                        <RowMenuButton
-                          label={translate('actionsFor', { name: member.name })}
-                          menu={menu}
-                        />
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-              {invitationRows.map((invitation) => (
-                <tr key={invitation.id} className={listTable.row}>
-                  <td className={listTable.td}>
-                    <MemberCell
-                      name={invitation.email}
-                      detail={translate('invitedBy', { invited_by: invitation.invited_by })}
-                    />
-                  </td>
-                  <td className="px-3">
-                    <span className="flex flex-wrap items-center gap-1">
-                      <Badge>{capitalize(invitation.role)}</Badge>
-                      <AccessBadge role={invitation.role} scopes={invitation.scopes} />
-                    </span>
-                  </td>
-                  <td className="hidden px-3 text-muted-foreground @4xl:table-cell">
-                    {translate('expires3', { value1: formatDate(invitation.expires_at) })}
-                  </td>
-                  <td className="px-3">
-                    <Badge tone={STATUS_TONES.member.invited}>{translate('invited')}</Badge>
-                  </td>
-                  <td className={listTable.menu}>
-                    {manager && (
-                      <RowMenuButton
-                        label={translate('actionsFor3', { email: invitation.email })}
-                        menu={invitationMenu(invitation, links[invitation.id], invitationRun)}
-                      />
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </ResizableTable>
+          <DataTable
+            id="members"
+            columns={teamColumns((row) => {
+              if (row.kind === 'invitation')
+                return manager
+                  ? {
+                      label: translate('actionsFor3', { email: row.invitation.email }),
+                      menu: invitationMenu(row.invitation, links[row.invitation.id], invitationRun),
+                    }
+                  : null
+              const menu = memberMenu(row.member, manager ? role : '', owners, memberRun)
+              return menu && { label: translate('actionsFor', { name: row.member.name }), menu }
+            })}
+            data={[
+              ...memberRows.map((member): TeamRow => ({ kind: 'member', member })),
+              ...invitationRows.map((invitation): TeamRow => ({ kind: 'invitation', invitation })),
+            ]}
+            getRowId={(row) =>
+              row.kind === 'member'
+                ? `member:${row.member.user_id}`
+                : `invitation:${row.invitation.id}`
+            }
+            sorting={{
+              column: sort.field,
+              desc: sort.desc,
+              onSort: (column) => {
+                const field = TEAM_SORTS.find((entry) => entry === column)
+                if (field) sortBy(field)
+              },
+            }}
+          />
         )}
         {alone && <InvitePanel onInvite={manager ? () => setInviting(true) : undefined} />}
       </div>
@@ -382,6 +286,91 @@ export function MembersPage() {
 }
 
 /** The toolbar's Filters popover: one checkbox per role, as the invoices' status filter. */
+/** One row of the team list: a member, or an invitation still open. */
+type TeamRow = { kind: 'member'; member: Member } | { kind: 'invitation'; invitation: Invitation }
+
+function teamColumns(
+  actions: (row: TeamRow) => { label: string; menu: RowMenuSpec } | null,
+): DataColumn<TeamRow>[] {
+  return [
+    {
+      id: 'member',
+      header: translate('member'),
+      flex: true,
+      sortable: true,
+      cell: (row) =>
+        row.kind === 'member' ? (
+          <MemberCell
+            name={row.member.name}
+            detail={row.member.email}
+            url={row.member.avatar_url}
+            you={row.member.is_you}
+          />
+        ) : (
+          <MemberCell
+            name={row.invitation.email}
+            detail={translate('invitedBy', { invited_by: row.invitation.invited_by })}
+          />
+        ),
+    },
+    {
+      id: 'role',
+      header: translate('roleAndAccess'),
+      size: 260,
+      minSize: 160,
+      sortable: true,
+      cell: (row) => {
+        const { role, scopes } = row.kind === 'member' ? row.member : row.invitation
+        return (
+          <span className="flex flex-wrap items-center gap-1">
+            <Badge>{capitalize(role)}</Badge>
+            <AccessBadge role={role} scopes={scopes} />
+          </span>
+        )
+      },
+    },
+    {
+      id: 'active',
+      header: translate('lastActive'),
+      size: 168,
+      minSize: 112,
+      sortable: true,
+      showFrom: 850,
+      cell: (row) =>
+        row.kind === 'member' ? (
+          <LastActive iso={row.member.last_active_at} />
+        ) : (
+          <span className="text-muted-foreground">
+            {translate('expires3', { value1: formatDate(row.invitation.expires_at) })}
+          </span>
+        ),
+    },
+    {
+      id: 'status',
+      header: translate('status'),
+      size: 112,
+      resizable: false,
+      cell: (row) =>
+        row.kind === 'member' ? (
+          <Badge tone={STATUS_TONES.member.active}>{translate('active')}</Badge>
+        ) : (
+          <Badge tone={STATUS_TONES.member.invited}>{translate('invited')}</Badge>
+        ),
+    },
+    {
+      id: 'actions',
+      header: translate('actions'),
+      headerContent: <span className="sr-only">{translate('actions')}</span>,
+      size: 48,
+      resizable: false,
+      cell: (row) => {
+        const menu = actions(row)
+        return menu && <RowMenuButton label={menu.label} menu={menu.menu} />
+      },
+    },
+  ]
+}
+
 function RoleFilter({ roles, onChange }: { roles: Role[]; onChange: (roles: Role[]) => void }) {
   return (
     <Popover>

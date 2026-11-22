@@ -52,6 +52,7 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   server.resetHandlers()
   vi.clearAllMocks()
+  vi.restoreAllMocks()
 })
 afterAll(() => server.close())
 
@@ -225,6 +226,8 @@ test('shows counts, seats used and the relative last-active date', async () => {
       member({ user_id: 'usr_1', name: 'Olga Owner', last_active_at: new Date().toISOString() }),
     ].concat(people.slice(1)),
   )
+  // Last active shows only on a table wide enough for it; jsdom measures every box at 0.
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1200)
   renderPage()
   expect(await screen.findByText('3 members · 1 pending invitation')).toBeVisible()
   expect(await screen.findByText('3 of 3 seats used', { exact: false })).toBeVisible()

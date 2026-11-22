@@ -88,5 +88,11 @@
   "planLineEmployees": "Mitarbeitende: Personalakten und Lohnregister",
   "planLineStorage": "Dokumentenspeicher",
   "planLineEmails": "{count, plural, one {E-Mail} other {E-Mails}} an Kunden / Monat",
-  "planFootnote": "Monatsmengen und Speicher gelten pro bezahltem Teammitglied und werden im ganzen Team geteilt; Monatsmengen beginnen am 1. neu. Ihre Kunden nutzen das Portal ohne Aufpreis."
+  "planFootnote": "Monatsmengen und Speicher gelten pro bezahltem Teammitglied und werden im ganzen Team geteilt; Monatsmengen beginnen am 1. neu. Ihre Kunden nutzen das Portal ohne Aufpreis.",
+  "tablePages": "Seiten",
+  "tablePreviousPage": "Vorherige Seite",
+  "tableNextPage": "Nächste Seite",
+  "tableRange": "{from}–{to} von {total}",
+  "tablePageOf": "Seite {page} von {pages}",
+  "tableResizeColumn": "Breite von {column} ändern"
 }
