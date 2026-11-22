@@ -314,7 +314,6 @@ export function AppSidebar({ session }: { session: Session }) {
         />
         <UserMenu
           user={session.user}
-          role={session.role}
           onHelp={openHelp}
           onShortcuts={() => setShortcutsOpen(true)}
         />
@@ -355,23 +354,6 @@ function PlanText({ children, testId }: { children: ReactNode; testId?: string }
   )
 }
 
-/** A small neutral tag for a role. */
-function MiniBadge({
-  children,
-  className,
-  testId,
-}: {
-  children: ReactNode
-  className?: string
-  testId?: string
-}) {
-  return (
-    <Badge size="sm" data-testid={testId} className={cn('truncate', className)}>
-      {children}
-    </Badge>
-  )
-}
-
 function UserAvatar({ user, className }: { user: User; className?: string }) {
   return (
     // A rounded square in a thin border with a 2px gap: the gap sits inside the box, so the icon rail's 32px
@@ -390,12 +372,10 @@ function UserAvatar({ user, className }: { user: User; className?: string }) {
 /** The person at the bottom of the sidebar and their account menu. */
 function UserMenu({
   user,
-  role,
   onHelp,
   onShortcuts,
 }: {
   user: User
-  role: Session['role']
   onHelp: () => void
   onShortcuts: () => void
 }) {
@@ -449,18 +429,15 @@ function UserMenu({
             sideOffset={8}
             className="w-72 rounded-xl p-1.5 shadow-elevation-2 [&_[role=menuitem]]:h-9 [&_[role=menuitem]]:text-[15px] [&_svg]:stroke-[1.5]"
           >
-            {/* The role badge sits on the name's row so the email gets the full width beside the avatar. */}
-            <DropdownMenuLabel className="flex items-start gap-2.5 px-2 py-2 font-normal">
-              <UserAvatar user={user} />
-              <span className="grid min-w-0 flex-1 gap-px leading-tight">
-                <span className="flex items-start gap-2">
-                  <span
-                    className="line-clamp-2 min-w-0 flex-1 text-title-sm font-medium break-words text-foreground"
-                    title={displayName(user)}
-                  >
-                    {displayName(user)}
-                  </span>
-                  <MiniBadge className="mt-0.5 shrink-0">{capitalize(role)}</MiniBadge>
+            {/* Name wraps to two lines, email stays on one: nothing can outgrow the popover. */}
+            <DropdownMenuLabel className="flex items-center gap-3 px-2 py-2 font-normal">
+              <UserAvatar user={user} className="size-12" />
+              <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
+                <span
+                  className="line-clamp-2 text-title-sm font-medium break-words text-foreground"
+                  title={displayName(user)}
+                >
+                  {displayName(user)}
                 </span>
                 <span className="truncate text-xs text-muted-foreground" title={user.email}>
                   {user.email}
