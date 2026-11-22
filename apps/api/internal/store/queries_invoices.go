@@ -230,6 +230,7 @@ type Delivery struct {
 	ID     string    `json:"id"`
 	To     []string  `json:"to"`
 	Cc     []string  `json:"cc"`
+	Bcc    []string  `json:"bcc"`
 	SentAt time.Time `json:"sent_at"`
 	SentBy *Uploader `json:"sent_by"`
 }
@@ -769,14 +770,14 @@ func (q Q) LastCreditDate(ctx context.Context, invoiceID string) (string, error)
 
 // CreateDelivery records a send; userID is nil when the system sent it (an instalment plan).
 func (q Q) CreateDelivery(ctx context.Context, invoiceID string, userID *string, d Delivery) error {
-	_, err := q.db.Exec(ctx, `INSERT INTO invoice_deliveries (id, invoice_id, recipients, cc, sent_by, sent_at) VALUES ($1, $2, $3, $4, $5, $6)`,
-		d.ID, invoiceID, d.To, d.Cc, userID, d.SentAt)
+	_, err := q.db.Exec(ctx, `INSERT INTO invoice_deliveries (id, invoice_id, recipients, cc, bcc, sent_by, sent_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`, d.ID, invoiceID, d.To, d.Cc, d.Bcc, userID, d.SentAt)
 	return err
 }
 
 // Deliveries: the invoice's sends, newest first.
 func (q Q) Deliveries(ctx context.Context, invoiceID string) ([]Delivery, error) {
-	rows, err := q.db.Query(ctx, `SELECT d.id, d.recipients, d.cc, d.sent_at, u.id, u.name, `+avatarColumn+` FROM invoice_deliveries d
+	rows, err := q.db.Query(ctx, `SELECT d.id, d.recipients, d.cc, d.bcc, d.sent_at, u.id, u.name, `+avatarColumn+` FROM invoice_deliveries d
 		LEFT JOIN users u ON u.id = d.sent_by WHERE d.invoice_id = $1 ORDER BY d.sent_at DESC, d.id DESC`, invoiceID)
 	if err != nil {
 		return nil, err
@@ -784,7 +785,7 @@ func (q Q) Deliveries(ctx context.Context, invoiceID string) ([]Delivery, error)
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Delivery, error) {
 		var d Delivery
 		var uid, uname, uavatar *string
-		err := r.Scan(&d.ID, &d.To, &d.Cc, &d.SentAt, &uid, &uname, &uavatar)
+		err := r.Scan(&d.ID, &d.To, &d.Cc, &d.Bcc, &d.SentAt, &uid, &uname, &uavatar)
 		d.SentBy = uploader(uid, uname, uavatar)
 		return d, err
 	})

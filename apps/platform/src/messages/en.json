@@ -312,6 +312,7 @@
   "at": " at ",
   "atMost1000Characters": "At most 1000 characters.",
   "atMost10AddressesInCc": "At most 10 addresses in Cc.",
+  "atMost10AddressesInBcc": "At most 10 addresses in Bcc.",
   "atMost10Recipients": "At most 10 recipients.",
   "atMost300Characters": "At most 300 characters",
   "atMost60Characters": "At most 60 characters.",
@@ -447,6 +448,8 @@
   "catalogueLimitReached": "Catalogue limit reached",
   "category": "Category",
   "cc": "Cc",
+  "bcc": "Bcc",
+  "bccTip": "Hidden copies: these addresses get the email, and no other recipient sees them.",
   "certifiedInvoicingSoftwareATCUDQRCodeSAFT": "certified invoicing software (ATCUD, QR code, SAF-T)",
   "ch9300762011623852957": "CH93 0076 2011 6238 5295 7",
   "chainBrokenAtEntry": "Chain broken at entry #{broken_at}",
@@ -5146,5 +5149,7 @@
   "quoteHistoryShowHistory": "Show the history",
   "quoteHistoryPrices": "Prices",
   "quoteHistoryDiscountPercent": "Discount %",
-  "quoteHistoryComparing": "Rev. {revision} → current"
+  "quoteHistoryComparing": "Rev. {revision} → current",
+  "eGMusterCh": "e.g. muster.ch",
+  "enterAWebsiteSuchAsMusterCh": "Enter a website such as muster.ch."
 }

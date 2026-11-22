@@ -42,6 +42,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	var body struct {
 		To      []string `json:"to"`
 		Cc      []string `json:"cc"`
+		Bcc     []string `json:"bcc"`
 		Subject *string  `json:"subject"`
 		Message *string  `json:"message"`
 		Email   *bool    `json:"email"`
@@ -97,7 +98,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		}
 		var m mail.Message
 		if email {
-			if m, err = s.message(ctx, q, sess.Workspace.ID, t, body.To, body.Cc, body.Subject, body.Message); err != nil {
+			if m, err = s.message(ctx, q, sess.Workspace.ID, t, body.To, body.Cc, body.Bcc, body.Subject, body.Message); err != nil {
 				return err
 			}
 			if m.ReplyTo == "" { // without a company email, the member who sends gets the answer
@@ -148,13 +149,14 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 }
 
 // message: the email of a quote, the client's address and the default wording unless given.
-func (s *Service) message(ctx context.Context, q store.Q, workspaceID string, t store.Quote, to, cc []string, subject,
+func (s *Service) message(ctx context.Context, q store.Q, workspaceID string, t store.Quote, to, cc, bcc []string, subject,
 	message *string) (mail.Message, error) {
 	invalid := map[string]string{}
 	if len(to) == 0 {
 		to = clientAddress(ctx, q, workspaceID, t.ClientID)
 	}
-	to, cc = addresses(invalid, "to", to), addresses(invalid, "cc", cc)
+	to = addresses(invalid, "to", to)
+	cc, bcc = mail.Copies(to, addresses(invalid, "cc", cc), addresses(invalid, "bcc", bcc))
 	if len(to) == 0 && invalid["to"] == "" {
 		invalid["to"] = "Enter an address: the client has no email address."
 	}
@@ -178,7 +180,7 @@ func (s *Service) message(ctx context.Context, q store.Q, workspaceID string, t 
 	if len(invalid) > 0 {
 		return mail.Message{}, validationFailed(invalid)
 	}
-	m := mail.Message{Workspace: workspaceID, Language: t.Language, To: to, Cc: cc, Subject: draft.Subject, Text: draft.Body}
+	m := mail.Message{Workspace: workspaceID, Language: t.Language, To: to, Cc: cc, Bcc: bcc, Subject: draft.Subject, Text: draft.Body}
 	if subject != nil {
 		m.Subject = strings.TrimSpace(*subject)
 	}

@@ -38,6 +38,10 @@ func (p *parser) err() error {
 
 func isNull(raw json.RawMessage) bool { return string(raw) == "null" }
 
+// MaxDocumentText is the longest intro or footer text of an invoice, quote or default (characters, not bytes);
+// the editors count the same way (platform document-parts.tsx).
+const MaxDocumentText = 800
+
 // text: trimmed, blank meaning nil, at most max characters, then normalised (when normalise is set).
 func (p *parser) text(key string, raw json.RawMessage, max int, normalise func(string) (string, string)) *string {
 	if isNull(raw) {
@@ -234,9 +238,9 @@ func checkInput(inv *store.Invoice, body map[string]json.RawMessage, set Setting
 		case "tax_currency_rate":
 			inv.TaxCurrencyRate = p.text(k, raw, 19, fxRate)
 		case "intro":
-			inv.Intro = p.text(k, raw, 1000, nil)
+			inv.Intro = p.text(k, raw, MaxDocumentText, nil)
 		case "footer":
-			inv.Footer = p.text(k, raw, 1000, nil)
+			inv.Footer = p.text(k, raw, MaxDocumentText, nil)
 		case "note":
 			inv.Note = p.text(k, raw, 1000, nil)
 		case "discount_percent":

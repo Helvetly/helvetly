@@ -8,7 +8,6 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/mail"
-	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
 )
 
@@ -28,7 +27,7 @@ func (s *Service) MailBrand(ctx context.Context, workspaceID string) (mail.Brand
 		return mail.Brand{}, err
 	}
 	sl := set.Seller
-	b := mail.Brand{Name: strings.TrimSpace(sl.Name), Phone: deref(sl.Phone), Email: deref(sl.Email), VAT: deref(sl.VATNumber),
+	b := mail.Brand{Name: strings.TrimSpace(sl.Name), Phone: deref(sl.Phone), Website: deref(sl.Website), Email: deref(sl.Email), VAT: deref(sl.VATNumber),
 		Language: set.Language, ReplyTo: replyAddress(own, set, "")}
 	if b.Name == "" {
 		if b.Name, err = s.db.WorkspaceName(ctx, workspaceID); err != nil {
@@ -83,10 +82,26 @@ func (s *Service) getEmailLogo(w http.ResponseWriter, r *http.Request) {
 	case err != nil || set.LogoFileID == nil || *set.LogoFileID != id:
 		err = auth.ErrNotFound
 	default:
-		// App chrome like the portal's logo: no download allowance (the empty billing workspace).
-		err = storage.Serve(w, r, s.files, "", logoKey(workspaceID, id), "logo", "")
+		err = s.serveEmailLogo(w, r, workspaceID, id)
 	}
 	if err != nil {
 		s.auth.WriteError(w, r, err)
 	}
+}
+
+// serveEmailLogo answers with the logo at its size in the email (see scaleEmailLogo). The id names one immutable
+// upload, so the answer may be cached for good; the unscaled original stays what the platform and PDFs use.
+func (s *Service) serveEmailLogo(w http.ResponseWriter, r *http.Request, workspaceID, id string) error {
+	b, err := s.files.Get(r.Context(), logoKey(workspaceID, id))
+	if err != nil {
+		return err
+	}
+	small, err := scaleEmailLogo(b)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	_, err = w.Write(small)
+	return err
 }

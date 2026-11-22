@@ -312,6 +312,7 @@
   "at": " a ",
   "atMost1000Characters": "Al massimo 1000 caratteri.",
   "atMost10AddressesInCc": "Al massimo 10 indirizzi in Cc.",
+  "atMost10AddressesInBcc": "Al massimo 10 indirizzi in Ccn.",
   "atMost10Recipients": "Al massimo 10 destinatari.",
   "atMost300Characters": "Al massimo 300 caratteri",
   "atMost60Characters": "Al massimo 60 caratteri.",
@@ -446,7 +447,9 @@
   "catalogueItemDetails": "Dettagli articolo catalogo",
   "catalogueLimitReached": "Limite del catalogo raggiunto",
   "category": "Categoria",
-  "cc": "Ccc",
+  "cc": "Cc",
+  "bcc": "Ccn",
+  "bccTip": "Copie nascoste: questi indirizzi ricevono l’e-mail senza che gli altri destinatari li vedano.",
   "certifiedInvoicingSoftwareATCUDQRCodeSAFT": "software di fatturazione certificato (ATCUD, QR code, SAF-T)",
   "ch9300762011623852957": "CH93 0076 2011 6238 5295 7",
   "chainBrokenAtEntry": "Catena interrotta all’ingresso #{broken_at}",
@@ -5146,5 +5149,7 @@
   "quoteHistoryShowHistory": "Mostra la cronologia",
   "quoteHistoryPrices": "Prezzi",
   "quoteHistoryDiscountPercent": "Sconto %",
-  "quoteHistoryComparing": "Rev. {revision} → attuale"
+  "quoteHistoryComparing": "Rev. {revision} → attuale",
+  "eGMusterCh": "ad es. muster.ch",
+  "enterAWebsiteSuchAsMusterCh": "Inserire un sito web come muster.ch."
 }

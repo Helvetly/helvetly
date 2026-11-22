@@ -30,7 +30,8 @@ type Message struct {
 	// email no business limit may stop: sign-in codes, security notices, invitations to join, feedback to Helvetly.
 	Workspace           string
 	To, Cc              []string
-	ReplyTo             string // optional
+	Bcc                 []string // envelope recipients only: never written into a header
+	ReplyTo             string   // optional
 	Subject, Text, HTML string
 	Attachments         []Attachment
 	ListUnsubscribe     string // optional: the one-click unsubscribe URL (RFC 8058)
@@ -115,7 +116,7 @@ func (s *Sender) Send(ctx context.Context, m Message) error {
 	if err := cl.Mail(from.Address); err != nil {
 		return fmt.Errorf("smtp MAIL FROM: %w", err)
 	}
-	for _, rcpt := range append(slices.Clone(m.To), m.Cc...) {
+	for _, rcpt := range slices.Concat(m.To, m.Cc, m.Bcc) {
 		if err := cl.Rcpt(rcpt); err != nil {
 			return fmt.Errorf("smtp RCPT TO: %w", err)
 		}
@@ -136,6 +137,16 @@ func (s *Sender) Send(ctx context.Context, m Message) error {
 	}
 	_ = cl.Quit()
 	return nil
+}
+
+// Copies drops from cc the addresses already in to, and from bcc those in to or cc, so nobody gets the message
+// twice and a hidden copy never doubles a visible one.
+func Copies(to, cc, bcc []string) (ccOut, bccOut []string) {
+	ccOut = slices.DeleteFunc(slices.Clone(cc), func(a string) bool { return slices.Contains(to, a) })
+	bccOut = slices.DeleteFunc(slices.Clone(bcc), func(a string) bool {
+		return slices.Contains(to, a) || slices.Contains(ccOut, a)
+	})
+	return ccOut, bccOut
 }
 
 // headerSafe: no CR or LF from a value can start a header of its own.

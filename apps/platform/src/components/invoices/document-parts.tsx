@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { cn } from '@helvetly/ui/lib/utils'
 import { ArrowUpRight, CircleAlert, CircleHelp, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { type ReactNode, useState } from 'react'
+import { type ComponentProps, type ReactNode, useState } from 'react'
 
 import { addressLines } from '@/components/clients/client-bits'
 import { ClientFixButton } from '@/components/clients/client-fix'
@@ -23,9 +23,50 @@ import { ClientSearch } from './client-search'
 export const PARTY_LABEL =
   'text-caption font-medium tracking-[0.04em] text-muted-foreground uppercase'
 
-// The paper is its box: quiet like the meta values (`field-quiet`, e2e/visual/field-surface.spec.ts).
+/** The longest intro or footer text, in characters (the API refuses more: invoices.MaxDocumentText). */
+export const DOCUMENT_TEXT_MAX = 800
+
+// The paper is its box: quiet like the meta values (`field-quiet`, e2e/visual/field-surface.spec.ts). It grows
+// with its text up to 8 lines (`lh` is the field's own line height), then scrolls inside.
 export const proseInput =
-  'field-quiet w-full resize-none rounded-md bg-transparent px-2 py-1.5 -mx-2 text-body leading-relaxed outline-none transition-colors [field-sizing:content] placeholder:text-placeholder hover:bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring/40'
+  'field-quiet w-full resize-none overflow-y-auto rounded-md bg-transparent px-2 py-1.5 -mx-2 max-h-[calc(8lh+0.75rem)] text-body leading-relaxed outline-none transition-colors [field-sizing:content] placeholder:text-placeholder hover:bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring/40'
+
+/**
+ * A paper text (intro or footer) limited to DOCUMENT_TEXT_MAX characters, with its count at the bottom right: shown
+ * while the field is focused and from 90% of the limit on, red past it (an older, longer text must be shortened
+ * before saving). The count floats over the field, so showing it never moves anything.
+ */
+export function ProseField({
+  className,
+  wrapperClassName,
+  value,
+  ...props
+}: Omit<ComponentProps<'textarea'>, 'value'> & { value: string; wrapperClassName?: string }) {
+  const length = [...value].length
+  const over = length > DOCUMENT_TEXT_MAX
+  return (
+    <div className={cn('group relative', wrapperClassName)}>
+      <textarea
+        {...props}
+        value={value}
+        maxLength={DOCUMENT_TEXT_MAX}
+        rows={1}
+        className={cn('block', className)}
+      />
+      <span
+        data-slot="textarea-count"
+        className={cn(
+          'pointer-events-none absolute right-3 bottom-1 rounded bg-card/90 px-1 text-caption text-muted-foreground tabular-nums',
+          over
+            ? 'text-destructive'
+            : length < DOCUMENT_TEXT_MAX * 0.9 && 'hidden group-focus-within:block',
+        )}
+      >
+        {length} / {DOCUMENT_TEXT_MAX}
+      </span>
+    </div>
+  )
+}
 
 /** The paper's closing text: pinned to the bottom of the page, or after the content when that is longer. */
 export function PaperFooter({ children }: { children: ReactNode }) {

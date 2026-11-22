@@ -109,6 +109,8 @@ export type QuoteInput = Pick<
 export type QuoteSendInput = {
   to?: string[]
   cc?: string[]
+  /** Hidden copies: delivered, in no header the others see. */
+  bcc?: string[]
   subject?: string
   message?: string
   /** false: only marks it sent (numbered, PDF filed), no email. */

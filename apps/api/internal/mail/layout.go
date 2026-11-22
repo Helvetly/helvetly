@@ -16,7 +16,7 @@ const (
 
 // Only what every client in caniemail supports fully (Mailpit's HTML Check at 100%): tags, cellpadding, align and
 // inline colour, font family, size and style. No margin, padding, border, background, width or <style>: so no card,
-// no filled button and a fluid width; the logo's height is the one exception (see brandHeader).
+// no filled button and a fluid width.
 
 // Button is the call to action: a bold link on its own line, as a filled button needs a background.
 func Button(label, url string) string {
@@ -62,12 +62,12 @@ func helvetlyHeader(publicURL string) string {
 	return `<a href="` + html.EscapeString(publicURL) + `" style="color:` + ink + `;font-size:20px"><strong>Helvetly</strong></a>`
 }
 
-// brandHeader: the business's logo (if any) and name. The logo keeps height="36", the one attribute Mailpit counts
-// as partly supported: without it an upload (up to 4000 px) shows at full size, and the width follows the height.
+// brandHeader: the business's logo (if any) and name. The logo has no height or width (Mailpit counts both as partly
+// supported): the logo URL serves a file already scaled to 36 px high (invoices.scaleEmailLogo).
 func brandHeader(b Brand, publicURL string) string {
 	logo := ""
 	if b.LogoPath != "" {
-		logo = `<img src="` + html.EscapeString(publicURL+b.LogoPath) + `" height="36" alt="" style="vertical-align:middle"> &nbsp;`
+		logo = `<img src="` + html.EscapeString(publicURL+b.LogoPath) + `" alt="" style="vertical-align:middle"> &nbsp;`
 	}
 	return logo + `<strong style="vertical-align:middle;color:` + ink + `">` + html.EscapeString(b.Name) + `</strong>`
 }
