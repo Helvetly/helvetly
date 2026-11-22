@@ -11,7 +11,13 @@ import type {
   LineInput,
 } from '@/lib/invoices'
 import { sortRows, type SortValue } from '@/lib/list-sort'
-import { quoteNumber, type Quote, type QuoteInput, type QuoteSendInput } from '@/lib/quotes'
+import {
+  quoteNumber,
+  type Quote,
+  type QuoteInput,
+  type QuoteRevision,
+  type QuoteSendInput,
+} from '@/lib/quotes'
 
 const at = '2026-11-03T09:30:00Z'
 
@@ -159,6 +165,69 @@ export const sampleQuotes = (): Quote[] => [
     sent_at: '2026-08-01T10:00:00Z',
   }),
 ]
+
+/**
+ * The sent revisions of a quote: the current one as it stands, and before it an earlier send the client declined,
+ * with a smaller workshop, a print run since dropped and an earlier valid-until. A third revision back predates the
+ * history: only its PDF.
+ */
+export function sampleRevisions(quote: Quote): QuoteRevision[] {
+  const latest = quote.status === 'draft' ? quote.revision - 1 : quote.revision
+  if (!quote.number || latest < 1) return []
+  const earlier = (revision: number): QuoteRevision => ({
+    revision,
+    sent_at: '2026-07-20T09:00:00Z',
+    sent_to: ['anna@alpenglow.ch'],
+    outcome: 'declined',
+    outcome_at: '2026-07-24T15:30:00Z',
+    outcome_by: 'client',
+    reason: 'super bad!!!',
+    current: false,
+    has_pdf: true,
+    snapshot:
+      revision === latest - 1
+        ? withTotals({
+            ...quote,
+            revision,
+            status: 'sent',
+            valid_until: '2026-07-31',
+            decided_at: null,
+            decided_by: null,
+            decision_note: null,
+            lines: [
+              line(1, 'Brand workshop', '6', '180.00'),
+              line(2, 'Logo design', '6', '150.00'),
+              line(3, 'Print run', '1', '400.00'),
+            ],
+          })
+        : null,
+  })
+  return Array.from({ length: latest }, (_, i) => latest - i).map((revision) =>
+    revision === quote.revision
+      ? {
+          revision,
+          sent_at: quote.sent_at,
+          sent_to: ['anna@alpenglow.ch'],
+          outcome:
+            quote.status === 'accepted' || quote.status === 'declined' || quote.status === 'expired'
+              ? quote.status
+              : null,
+          outcome_at: quote.decided_at,
+          outcome_by: quote.decided_by,
+          reason: quote.decision_note,
+          current: true,
+          has_pdf: true,
+          snapshot: {
+            ...quote,
+            status: 'sent',
+            decided_at: null,
+            decided_by: null,
+            decision_note: null,
+          },
+        }
+      : earlier(revision),
+  )
+}
 
 let quotes = sampleQuotes()
 let sequence = 4
@@ -318,6 +387,14 @@ export const quoteHandlers = [
     return HttpResponse.json(listQuotes(new URL(request.url).searchParams))
   }),
   http.get<Params>('/api/v1/quotes/:id/pdf', () => new HttpResponse(null, { status: 204 })),
+  http.get<Params>('/api/v1/quotes/:id/revisions', ({ params }) => {
+    const quote = find(params.id)
+    return quote ? HttpResponse.json({ data: sampleRevisions(quote) }) : notFound()
+  }),
+  http.get<Params>(
+    '/api/v1/quotes/:id/revisions/:revision/pdf',
+    () => new HttpResponse(null, { status: 204 }),
+  ),
   http.get<Params>('/api/v1/quotes/:id', ({ params }) => {
     const quote = find(params.id)
     return quote ? one(quote) : notFound()

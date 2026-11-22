@@ -24,5 +24,15 @@ func CreateImport(ctx context.Context, q store.Q, sess store.Session, inv store.
 	if err := q.SaveQuote(ctx, sess.Workspace.ID, t, now); err != nil {
 		return "", err
 	}
+	if status != "draft" { // sent elsewhere: kept as imported, without a PDF of its own
+		if err := q.AddQuoteRevision(ctx, sess.Workspace.ID, asSent(t), nil, t.SentAt, now); err != nil {
+			return "", err
+		}
+		if t.DecidedAt != nil {
+			if err := q.SetQuoteRevisionOutcome(ctx, sess.Workspace.ID, t.ID, 1, status, t.DecidedAt, t.DecidedBy, nil); err != nil {
+				return "", err
+			}
+		}
+	}
 	return t.ID, wrote(ctx, q, sess, t.ID)
 }

@@ -15,7 +15,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/component
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, Download, Ellipsis, ExternalLink, Pencil, ReceiptText, Send, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  Check,
+  Download,
+  Ellipsis,
+  ExternalLink,
+  Pencil,
+  ReceiptText,
+  Send,
+  X,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
 import {
@@ -40,6 +50,7 @@ import {
   quoteName,
   quoteNumber,
   quotePdfUrl,
+  quoteRevisionPdfUrl,
   useQuote,
   type Quote,
   type QuoteCommand,
@@ -48,6 +59,9 @@ import {
 import { QuoteRowStatus } from './quote-bits'
 import { ACTIONS, commandLabel, QuoteMenuItems, useQuoteCommands } from './quote-commands'
 import { EDITOR_WIDTH, QuoteEditor } from './quote-editor'
+import { QuoteHistory } from './quote-history'
+
+type DetailTab = 'overview' | 'pdf' | 'history'
 
 /** One quote in a drawer from the right (full screen on phones); editing happens in the same drawer. */
 export function QuoteDetail({
@@ -129,6 +143,9 @@ function Detail({
   const openHref = useOpenHref()
   const writable = useCan('write:invoices')
   const [pages, setPages] = useState<number | null>(null)
+  const [activeTab, setActiveTab] = useState<DetailTab>('overview')
+  // The PDF tab shows this sent revision's PDF instead of the current one; null is the current.
+  const [pdfRevision, setPdfRevision] = useState<number | null>(null)
   const commands = useQuoteCommands({
     onEdit,
     onOpen: (copy) => openHref(`/quotes?id=${encodeURIComponent(copy)}`),
@@ -150,7 +167,15 @@ function Detail({
   const run = (command: QuoteCommand) => commands.run(command, quote)
 
   return (
-    <Tabs defaultValue="overview" className="min-h-full gap-0">
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => {
+        // The PDF tab picked by hand is the current PDF; a revision's opens from the History tab.
+        if (value === 'pdf') setPdfRevision(null)
+        setActiveTab(value === 'pdf' || value === 'history' ? value : 'overview')
+      }}
+      className="min-h-full gap-0"
+    >
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
         <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
           <Badge size="sm" className={cn('ml-1 tabular-nums', quote.number && 'font-code')}>
@@ -270,6 +295,7 @@ function Detail({
             {[
               { value: 'overview' as const, label: translate('overview') },
               { value: 'pdf' as const, label: 'PDF' },
+              { value: 'history' as const, label: translate('quoteHistory') },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -356,7 +382,22 @@ function Detail({
         <Panel title={translate('details')}>
           <Row label={translate('date')}>{formatDay(quote.issue_date)}</Row>
           <Row label={translate('validUntil3')}>{formatDay(quote.valid_until)}</Row>
-          {quote.revision > 1 && <Row label={translate('revision')}>{quote.revision}</Row>}
+          {quote.revision > 1 && (
+            <Row label={translate('revision')}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="underline underline-offset-4 hover:no-underline"
+                    onClick={() => setActiveTab('history')}
+                  >
+                    {translate('quoteHistoryRev', { revision: quote.revision })}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{translate('quoteHistoryShowHistory')}</TooltipContent>
+              </Tooltip>
+            </Row>
+          )}
           {quote.reference && (
             <Row label={translate('reference')}>
               <span className="font-code">{quote.reference}</span>
@@ -397,33 +438,74 @@ function Detail({
       </TabsContent>
 
       <TabsContent value="pdf" className="flex min-h-0 flex-col gap-3 p-4 sm:p-5">
-        <div className="flex items-center justify-end gap-2">
-          <span className="mr-auto pl-1 text-body-sm text-muted-foreground">
-            {quote.status === 'draft'
-              ? translate('draftPrintedWithADRAFTMarkUntilItIs')
-              : pages
-                ? translate('asLastSent', { pages: pages, value2: pages === 1 ? 'page' : 'pages' })
-                : translate('loading')}
-          </span>
-          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <a href={localizedHref(quotePdfUrl(quote.id))} target="_blank" rel="noreferrer">
-              <ExternalLink className="size-3.5" />
-              {translate('openInNewTab')}
-            </a>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <a href={localizedHref(quotePdfUrl(quote.id, true))} download>
-              <Download className="size-3.5" />
-              {translate('download3')}
-            </a>
-          </Button>
-        </div>
-        <PdfView
-          key={quote.updated_at}
-          title={translate('pdfOf2', { name: name })}
-          src={quotePdfUrl(quote.id)}
-          onPages={setPages}
-          className="min-h-[420px] flex-1 basis-0"
+        {pdfRevision !== null ? (
+          <>
+            <div className="flex items-center justify-end gap-2">
+              <span className="mr-auto pl-1 text-body-sm text-muted-foreground">
+                {translate('quoteHistoryAsSent', { revision: pdfRevision })}
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setPdfRevision(null)}>
+                <ArrowLeft className="size-3.5" />
+                {translate('quoteHistoryBackToCurrent')}
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <a href={localizedHref(quoteRevisionPdfUrl(quote.id, pdfRevision))} download>
+                  <Download className="size-3.5" />
+                  {translate('download3')}
+                </a>
+              </Button>
+            </div>
+            <PdfView
+              key={pdfRevision}
+              title={translate('quoteHistoryAsSent', { revision: pdfRevision })}
+              src={quoteRevisionPdfUrl(quote.id, pdfRevision)}
+              className="min-h-[420px] flex-1 basis-0"
+            />
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-end gap-2">
+              <span className="mr-auto pl-1 text-body-sm text-muted-foreground">
+                {quote.status === 'draft'
+                  ? translate('draftPrintedWithADRAFTMarkUntilItIs')
+                  : pages
+                    ? translate('asLastSent', {
+                        pages: pages,
+                        value2: pages === 1 ? 'page' : 'pages',
+                      })
+                    : translate('loading')}
+              </span>
+              <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+                <a href={localizedHref(quotePdfUrl(quote.id))} target="_blank" rel="noreferrer">
+                  <ExternalLink className="size-3.5" />
+                  {translate('openInNewTab')}
+                </a>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <a href={localizedHref(quotePdfUrl(quote.id, true))} download>
+                  <Download className="size-3.5" />
+                  {translate('download3')}
+                </a>
+              </Button>
+            </div>
+            <PdfView
+              key={quote.updated_at}
+              title={translate('pdfOf2', { name: name })}
+              src={quotePdfUrl(quote.id)}
+              onPages={setPages}
+              className="min-h-[420px] flex-1 basis-0"
+            />
+          </>
+        )}
+      </TabsContent>
+
+      <TabsContent value="history" className="grid content-start gap-3 p-4 sm:p-5">
+        <QuoteHistory
+          quote={quote}
+          onOpenPdf={(revision) => {
+            setPdfRevision(revision)
+            setActiveTab('pdf')
+          }}
         />
       </TabsContent>
 

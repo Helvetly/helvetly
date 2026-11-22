@@ -129,6 +129,9 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		if err := q.SaveQuote(ctx, sess.Workspace.ID, t, now); err != nil {
 			return err
 		}
+		if err := q.AddQuoteRevision(ctx, sess.Workspace.ID, t, m.To, &now, now); err != nil {
+			return err
+		}
 		if !email {
 			return nil
 		}
@@ -251,6 +254,9 @@ func Decide(ctx context.Context, q store.Q, ws store.Workspace, id, clientID str
 	if err := q.SaveQuote(ctx, ws.ID, t, now); err != nil {
 		return t, err
 	}
+	if err := q.SetQuoteRevisionOutcome(ctx, ws.ID, t.ID, t.Revision, t.Status, &now, &by, note); err != nil {
+		return t, err
+	}
 	if clientID == "" {
 		return t, nil
 	}
@@ -299,6 +305,11 @@ func (s *Service) revise(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return invalidState("This quote is already a draft.")
 		default:
 			return invalidState("An accepted quote is agreed: make an invoice from it instead.")
+		}
+		if t.Status == "expired" { // derived while current: the revision it was keeps it
+			if err := q.SetQuoteRevisionOutcome(ctx, sess.Workspace.ID, t.ID, t.Revision, "expired", nil, nil, nil); err != nil {
+				return err
+			}
 		}
 		t.Status, t.Revision, t.PDFKey = "draft", t.Revision+1, nil
 		t.DecidedAt, t.DecidedBy, t.DecisionNote = nil, nil, nil

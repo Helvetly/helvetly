@@ -96,12 +96,13 @@ const retentionSQL = `(SELECT to_char(make_date(max(extract(year FROM r.day))::i
 
 // retainedSQL: document d may not be trashed or deleted on the day in parameter $today; the original of an invoice
 // issued elsewhere stays as long as the invoice (invoices.source_document_id) points at it, and the filed PDF of an
-// invoice or quote as long as the record (pdf_key) keeps it: they share one object.
+// invoice or quote as long as the record (pdf_key) or a sent revision of the quote keeps it: they share one object.
 func retainedSQL(today string) string {
 	return `(coalesce(` + retentionSQL + ` >= ` + today + `, false)
 		OR EXISTS (SELECT 1 FROM invoices si WHERE si.source_document_id = d.id)
 		OR EXISTS (SELECT 1 FROM invoices pi WHERE pi.workspace_id = d.workspace_id AND pi.pdf_key = d.object_key)
-		OR EXISTS (SELECT 1 FROM quotes pq WHERE pq.workspace_id = d.workspace_id AND pq.pdf_key = d.object_key))`
+		OR EXISTS (SELECT 1 FROM quotes pq WHERE pq.workspace_id = d.workspace_id AND pq.pdf_key = d.object_key)
+		OR EXISTS (SELECT 1 FROM quote_revisions qr WHERE qr.workspace_id = d.workspace_id AND qr.pdf_key = d.object_key))`
 }
 
 // ---- folders ----
