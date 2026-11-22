@@ -7,7 +7,7 @@ updated: 2026-11-20
 readingMinutes: 7
 ---
 
-Rätt administrationsprogram knyter ihop småföretagets vardag: kunder, offerter, fakturor, utgifter, dokument, bokföring och personalregister. Kontrollera vilka valutor, dokumentformat och lokala krav du behöver i Schweiz, EU eller USA. En gemensam arbetsyta minskar dubbelinmatning; specialverktyg är fortfarande lämpliga för komplexa behov.
+Rätt administrationsprogram knyter ihop småföretagets vardag: kunder, offerter, fakturor, utgifter, dokument, bokföring och personalregister. Kontrollera vilka valutor, dokumentformat och lokala krav som gäller för ditt företag. En gemensam arbetsyta minskar dubbelinmatning; specialverktyg är fortfarande lämpliga för komplexa behov.
 
 Guiden förklarar vad du bör titta på och när separata verktyg ändå är rätt. För detaljer om varje produkt, se [alternativ till bexio i Schweiz](/guides/bexio-alternatives).
 

@@ -6,7 +6,7 @@ updated: 2026-11-20
 readingMinutes: 7
 ---
 
-De juiste backofficesoftware verbindt het dagelijkse werk van een klein bedrijf: klanten, offertes, facturen, kosten, documenten, boekhouding en personeelsdossiers. Controleer in Zwitserland, de EU of de VS welke valuta, documentformaten en lokale vereisten je nodig hebt. Een gedeelde werkruimte voorkomt dubbele invoer; voor complexe behoeften blijven gespecialiseerde tools zinvol.
+De juiste backofficesoftware verbindt het dagelijkse werk van een klein bedrijf: klanten, offertes, facturen, kosten, documenten, boekhouding en personeelsdossiers. Controleer welke valuta, documentformaten en lokale vereisten van belang zijn voor je bedrijf. Een gedeelde werkruimte voorkomt dubbele invoer; voor complexe behoeften blijven gespecialiseerde tools zinvol.
 
 Deze handleiding legt uit waar je op let en wanneer losse tools toch zinvol zijn. Voor details per product, zie [alternatieven voor bexio in Zwitserland](/guides/bexio-alternatives).
 
