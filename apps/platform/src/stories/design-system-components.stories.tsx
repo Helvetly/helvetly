@@ -262,3 +262,44 @@ export const AiActionButton: Story = {
 }
 
 export const AiActionButtonDark: Story = { ...AiActionButton, parameters: { dark: true } }
+
+function EditorToolbarDemo() {
+  const [language, setLanguage] = useState('en')
+  const [vat, setVat] = useState('none')
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2 border-b border-border/60 bg-muted/60 px-6 py-3">
+      <Segmented
+        size="sm"
+        label="Document language"
+        value={language}
+        onChange={setLanguage}
+        options={['de', 'fr', 'it', 'en'].map((code) => ({
+          value: code,
+          label: code.toUpperCase(),
+        }))}
+      />
+      <Segmented
+        size="sm"
+        label="VAT"
+        value={vat}
+        onChange={setVat}
+        options={[
+          { value: 'excl', label: 'Excl. VAT' },
+          { value: 'incl', label: 'Incl. VAT' },
+          { value: 'none', label: 'No VAT' },
+        ]}
+      />
+    </div>
+  )
+}
+
+/** The invoice and quote editors' options bar: segmented groups stay visible on the muted band. */
+export const EditorToolbar: Story = {
+  render: () => <EditorToolbarDemo />,
+  play: async ({ canvasElement }) => {
+    const group = within(canvasElement).getByRole('group', { name: 'VAT' })
+    await expect(getComputedStyle(group).boxShadow).not.toBe('none')
+    await userEvent.click(within(group).getByRole('radio', { name: 'Incl. VAT' }))
+    await expect(within(group).getByRole('radio', { name: 'Incl. VAT' })).toBeChecked()
+  },
+}
