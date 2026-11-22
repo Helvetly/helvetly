@@ -97,10 +97,8 @@
   "tableResizeColumn": "Ridimensiona {column}",
   "tableFirstPage": "Prima pagina",
   "tableLastPage": "Ultima pagina",
-  "tablePage": "Pagina",
-  "tableOfPages": "di {pages}",
-  "tableGoToPage": "Vai alla pagina",
-  "tableRowsPerPage": "{count} per pagina",
+  "tablePage": "Pagina {page}",
+  "tableRowsPerPage": "{count} / pagina",
   "tableMoveColumnUp": "Sposta {column} su",
   "tableMoveColumnDown": "Sposta {column} giù",
   "tableResetColumns": "Ripristina predefinito"

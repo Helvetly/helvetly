@@ -256,8 +256,8 @@ test('right-clicking a selected row acts on the whole selection', async () => {
 
 test('right-clicking the page outside the rows offers the page’s actions', async () => {
   renderPage()
-  await screen.findByRole('table')
-  fireEvent.contextMenu(screen.getByRole('navigation', { name: 'Pages' }))
+  const table = await screen.findByRole('table')
+  fireEvent.contextMenu(within(table).getAllByRole('columnheader')[1]!)
   const menu = await screen.findByRole('menu')
   expect(within(menu).getByText('Invoices')).toBeInTheDocument()
   expect(menuItems()).toEqual([

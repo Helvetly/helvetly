@@ -97,10 +97,8 @@
   "tableResizeColumn": "Změnit šířku sloupce {column}",
   "tableFirstPage": "První stránka",
   "tableLastPage": "Poslední stránka",
-  "tablePage": "Stránka",
-  "tableOfPages": "z {pages}",
-  "tableGoToPage": "Přejít na stránku",
-  "tableRowsPerPage": "{count} na stránku",
+  "tablePage": "Stránka {page}",
+  "tableRowsPerPage": "{count} / stránka",
   "tableMoveColumnUp": "Posunout {column} nahoru",
   "tableMoveColumnDown": "Posunout {column} dolů",
   "tableResetColumns": "Obnovit výchozí"

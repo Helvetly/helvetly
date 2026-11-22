@@ -630,11 +630,11 @@ const MANY: Row[] = Array.from({ length: 1000 }, (_, index) => ({
   total: `CHF ${index + 1}.00`,
 }))
 
-/** A server-paged list: the story answers each page from 312 rows, as the API would. */
-function Paged() {
+/** A server-paged list: the story answers each page from `total` rows, as the API would. */
+function Paged({ total = 312, initialSize = 25 }: { total?: number; initialSize?: number }) {
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(25)
-  const rows = MANY.slice(0, 312).slice((page - 1) * pageSize, page * pageSize)
+  const [pageSize, setPageSize] = useState(initialSize)
+  const rows = MANY.slice(0, total).slice((page - 1) * pageSize, page * pageSize)
   return (
     <div className="w-[900px] rounded-xl border bg-card">
       <DataTable
@@ -645,7 +645,7 @@ function Paged() {
         pagination={{
           page,
           pageSize,
-          total: 312,
+          total,
           onChange: (next, size) => {
             setPage(next)
             setPageSize(size)
@@ -657,44 +657,76 @@ function Paged() {
 }
 
 /**
- * TanStack's pagination drives the pager: first, previous, next and last, a page to jump to,
- * rows per page, and the range shown.
+ * TanStack's pagination drives the pager: first, previous, numbered pages with gaps, next and
+ * last, rows per page, and the range shown.
  */
 export const Paginates: Story = {
   render: () => <Paged />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const pages = within(canvas.getByRole('navigation', { name: 'Pages' }))
-    const field = () => pages.getByRole('spinbutton', { name: 'Go to page' })
+    const pageButton = (page: number) => pages.getByRole('button', { name: `Page ${page}` })
+    const numbers = () =>
+      pages.getAllByRole('button', { name: /^Page \d+$/ }).map((button) => button.textContent)
     await expect(pages.getByText('1–25 of 312')).toBeVisible()
-    await expect(pages.getByText('of 13')).toBeVisible()
+    await expect(numbers()).toEqual(['1', '2', '3', '4', '5', '13'])
+    await expect(pageButton(1)).toHaveAttribute('aria-current', 'page')
+    await expect(pages.queryByRole('spinbutton')).toBeNull()
     await expect(pages.getByRole('button', { name: 'First page' })).toBeDisabled()
     await expect(pages.getByRole('button', { name: 'Previous page' })).toBeDisabled()
     await userEvent.click(pages.getByRole('button', { name: 'Next page' }))
     await expect(pages.getByText('26–50 of 312')).toBeVisible()
     await expect(canvas.getByText('2026/INV/0026')).toBeVisible()
-    await expect(field()).toHaveValue(2)
+    await expect(pageButton(2)).toHaveAttribute('aria-current', 'page')
+    await expect(pageButton(1)).not.toHaveAttribute('aria-current')
     await userEvent.click(pages.getByRole('button', { name: 'Last page' }))
     await expect(pages.getByText('301–312 of 312')).toBeVisible()
+    await expect(numbers()).toEqual(['1', '9', '10', '11', '12', '13'])
     await expect(pages.getByRole('button', { name: 'Next page' })).toBeDisabled()
     await expect(pages.getByRole('button', { name: 'Last page' })).toBeDisabled()
     await userEvent.click(pages.getByRole('button', { name: 'Previous page' }))
     await expect(pages.getByText('276–300 of 312')).toBeVisible()
     await userEvent.click(pages.getByRole('button', { name: 'First page' }))
     await expect(pages.getByText('1–25 of 312')).toBeVisible()
-    await userEvent.clear(field())
-    await userEvent.type(field(), '5{Enter}')
+    await userEvent.click(pageButton(5))
     await expect(pages.getByText('101–125 of 312')).toBeVisible()
-    // Past the last page goes to the last one.
-    await userEvent.clear(field())
-    await userEvent.type(field(), '99{Enter}')
-    await expect(pages.getByText('301–312 of 312')).toBeVisible()
-    await userEvent.click(pages.getByRole('button', { name: 'First page' }))
-    await userEvent.click(pages.getByRole('button', { name: '25 per page' }))
+    await expect(numbers()).toEqual(['1', '4', '5', '6', '13'])
+    await userEvent.click(pageButton(1))
+    await userEvent.click(pages.getByRole('button', { name: '25 / page' }))
     await userEvent.click(await screen.findByRole('menuitemradio', { name: '100' }))
     await expect(pages.getByText('1–100 of 312')).toBeVisible()
-    await expect(pages.getByText('of 4')).toBeVisible()
+    await expect(numbers()).toEqual(['1', '2', '3', '4'])
     await expect(canvas.getAllByRole('row')).toHaveLength(101)
+  },
+}
+
+/** Every row fits the smallest page: no pager at all, the list ends with its last row. */
+export const OnePageHidesPager: Story = {
+  render: () => <Paged total={7} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('2026/INV/0007')).toBeVisible()
+    await expect(canvas.queryByRole('navigation', { name: 'Pages' })).toBeNull()
+  },
+}
+
+/**
+ * One page of a bigger size keeps the count and rows per page (to page again with a smaller one),
+ * without the page buttons; two pages bring them back.
+ */
+export const OnePageKeepsRowsPerPage: Story = {
+  render: () => <Paged total={60} initialSize={100} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const pages = within(canvas.getByRole('navigation', { name: 'Pages' }))
+    await expect(pages.getByText('1–60 of 60')).toBeVisible()
+    await expect(pages.queryByRole('button', { name: 'Next page' })).toBeNull()
+    await userEvent.click(pages.getByRole('button', { name: '100 / page' }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: '50' }))
+    await expect(pages.getByText('1–50 of 60')).toBeVisible()
+    await userEvent.click(pages.getByRole('button', { name: 'Page 2' }))
+    await expect(pages.getByText('51–60 of 60')).toBeVisible()
+    await expect(canvas.getByText('2026/INV/0060')).toBeVisible()
   },
 }
 

@@ -8,9 +8,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
-import { Input } from '@helvetly/ui/components/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { translate } from '@helvetly/ui/lib/i18n'
+import { pageItems } from '@helvetly/ui/lib/page-items'
 import {
   PAGE_SIZES,
   readColumnSizes,
@@ -982,28 +982,21 @@ function IconButton({
 }
 
 /**
- * Under a paged list, driven by TanStack's pagination: the rows shown, rows per page, then first,
- * previous, the page (a field to jump to one), next and last. Phones keep previous, the page and next.
+ * Under a paged list, driven by TanStack's pagination: the rows shown on the left; rows per page,
+ * first, previous, the pages (1 … 4 5 6 … 20), next and last on the right. With one page only the
+ * count and rows per page are left (a smaller size could make pages again), and nothing at all when
+ * every row fits the smallest size. Phones keep the count, previous, "2 / 7" and next.
  */
 function Pager({ table }: { table: PagerTable }) {
   const { pageIndex, pageSize } = table.state.pagination
   const pages = Math.max(table.getPageCount(), 1)
   const total = table.getRowCount()
   const page = pageIndex + 1
-  const go = (input: HTMLInputElement) => {
-    const wanted = Number(input.value)
-    if (!Number.isInteger(wanted)) {
-      input.value = String(page)
-      return
-    }
-    const next = clamp(wanted, 1, pages)
-    input.value = String(next)
-    if (next !== page) table.setPageIndex(next - 1)
-  }
+  if (pages < 2 && total <= PAGE_SIZES[0]) return null
   return (
     <nav
       aria-label={translate('tablePages')}
-      className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-2 text-[13px] text-muted-foreground md:px-5"
+      className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-2 text-body-sm text-muted-foreground md:px-5"
     >
       <span className="tabular-nums">
         {translate('tableRange', {
@@ -1018,7 +1011,7 @@ function Pager({ table }: { table: PagerTable }) {
             <Button
               variant="ghost"
               size="sm"
-              className="mr-2 font-normal text-muted-foreground max-sm:hidden"
+              className="font-normal text-muted-foreground tabular-nums max-sm:hidden"
             >
               {translate('tableRowsPerPage', { count: pageSize })}
               <ChevronDown />
@@ -1037,51 +1030,67 @@ function Pager({ table }: { table: PagerTable }) {
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-        <IconButton
-          label={translate('tableFirstPage')}
-          icon={ChevronsLeft}
-          disabled={!table.getCanPreviousPage()}
-          onClick={() => table.firstPage()}
-          className="max-sm:hidden"
-        />
-        <IconButton
-          label={translate('tablePreviousPage')}
-          icon={ChevronLeft}
-          disabled={!table.getCanPreviousPage()}
-          onClick={() => table.previousPage()}
-        />
-        <span className="tabular-nums sm:hidden">{translate('tablePageOf', { page, pages })}</span>
-        <label className="flex items-center gap-1.5 tabular-nums max-sm:hidden">
-          <span>{translate('tablePage')}</span>
-          <Input
-            key={page}
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={pages}
-            defaultValue={page}
-            aria-label={translate('tableGoToPage')}
-            onBlur={(event) => go(event.currentTarget)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') go(event.currentTarget)
-            }}
-            className="w-14 [appearance:textfield] px-2 text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          />
-          <span>{translate('tableOfPages', { pages })}</span>
-        </label>
-        <IconButton
-          label={translate('tableNextPage')}
-          icon={ChevronRight}
-          disabled={!table.getCanNextPage()}
-          onClick={() => table.nextPage()}
-        />
-        <IconButton
-          label={translate('tableLastPage')}
-          icon={ChevronsRight}
-          disabled={!table.getCanNextPage()}
-          onClick={() => table.lastPage()}
-          className="max-sm:hidden"
-        />
+        {pages > 1 && (
+          <>
+            <span aria-hidden className="mx-1 h-4 w-px bg-border max-sm:hidden" />
+            <IconButton
+              label={translate('tableFirstPage')}
+              icon={ChevronsLeft}
+              disabled={!table.getCanPreviousPage()}
+              onClick={() => table.firstPage()}
+              className="max-sm:hidden"
+            />
+            <IconButton
+              label={translate('tablePreviousPage')}
+              icon={ChevronLeft}
+              disabled={!table.getCanPreviousPage()}
+              onClick={() => table.previousPage()}
+            />
+            <span className="px-1 text-foreground tabular-nums sm:hidden">
+              <span aria-hidden>
+                {page} / {pages}
+              </span>
+              <span className="sr-only">{translate('tablePageOf', { page, pages })}</span>
+            </span>
+            <span className="flex items-center gap-0.5 max-sm:hidden">
+              {pageItems(page, pages).map((item) =>
+                typeof item === 'string' ? (
+                  <span key={item} aria-hidden className="w-7 text-center">
+                    …
+                  </span>
+                ) : (
+                  <Button
+                    key={item}
+                    variant={item === page ? 'secondary' : 'ghost'}
+                    size="sm"
+                    aria-label={translate('tablePage', { page: item })}
+                    aria-current={item === page ? 'page' : undefined}
+                    onClick={() => table.setPageIndex(item - 1)}
+                    className={cn(
+                      'min-w-7 px-1.5 tabular-nums',
+                      item === page ? 'text-foreground' : 'font-normal text-muted-foreground',
+                    )}
+                  >
+                    {item}
+                  </Button>
+                ),
+              )}
+            </span>
+            <IconButton
+              label={translate('tableNextPage')}
+              icon={ChevronRight}
+              disabled={!table.getCanNextPage()}
+              onClick={() => table.nextPage()}
+            />
+            <IconButton
+              label={translate('tableLastPage')}
+              icon={ChevronsRight}
+              disabled={!table.getCanNextPage()}
+              onClick={() => table.lastPage()}
+              className="max-sm:hidden"
+            />
+          </>
+        )}
       </span>
     </nav>
   )

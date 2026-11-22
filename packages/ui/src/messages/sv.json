@@ -97,10 +97,8 @@
   "tableResizeColumn": "Ändra bredd på {column}",
   "tableFirstPage": "Första sidan",
   "tableLastPage": "Sista sidan",
-  "tablePage": "Sida",
-  "tableOfPages": "av {pages}",
-  "tableGoToPage": "Gå till sida",
-  "tableRowsPerPage": "{count} per sida",
+  "tablePage": "Sida {page}",
+  "tableRowsPerPage": "{count} / sida",
   "tableMoveColumnUp": "Flytta {column} upp",
   "tableMoveColumnDown": "Flytta {column} ned",
   "tableResetColumns": "Återställ standard"

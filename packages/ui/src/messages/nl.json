@@ -97,10 +97,8 @@
   "tableResizeColumn": "Breedte van {column} aanpassen",
   "tableFirstPage": "Eerste pagina",
   "tableLastPage": "Laatste pagina",
-  "tablePage": "Pagina",
-  "tableOfPages": "van {pages}",
-  "tableGoToPage": "Ga naar pagina",
-  "tableRowsPerPage": "{count} per pagina",
+  "tablePage": "Pagina {page}",
+  "tableRowsPerPage": "{count} / pagina",
   "tableMoveColumnUp": "{column} omhoog",
   "tableMoveColumnDown": "{column} omlaag",
   "tableResetColumns": "Standaard herstellen"
