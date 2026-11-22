@@ -51,6 +51,7 @@ import {
   NativeSelect,
 } from '@/components/clients/fields'
 import { State } from '@/components/data/table-page'
+import { DOCUMENT_TEXT_MAX } from '@/components/invoices/document-parts'
 import {
   apiFieldErrors,
   UnsavedDot,
@@ -118,6 +119,7 @@ type Values = {
   email: string
   phone: string
   phone_country: CountryCode
+  website: string
   /** A code of the country's legal forms, '' when none is chosen. */
   legal_form: string
   vat_registered: boolean
@@ -182,6 +184,18 @@ export function reminderSummary(beforeTyped: string, afterTyped: string): string
   return translate('yourClientGetsAReminderEachDueDateUntil', { value1: parts.join(', and ') })
 }
 
+/** An http(s) URL or a bare domain, as the API accepts it. */
+function validWebsite(value: string): boolean {
+  const text = value.trim()
+  if (/\s/.test(text)) return false
+  try {
+    const url = new URL(text.includes('://') ? text : `https://${text}`)
+    return ['http:', 'https:'].includes(url.protocol) && url.hostname.includes('.')
+  } catch {
+    return false
+  }
+}
+
 export function valuesFrom(settings: InvoiceSettings): Values {
   const { seller } = settings
   const { instalments } = settings
@@ -197,6 +211,7 @@ export function valuesFrom(settings: InvoiceSettings): Values {
     email: seller.email ?? '',
     phone: phone.phone,
     phone_country: phone.country,
+    website: seller.website ?? '',
     legal_form: seller.legal_form ?? '',
     vat_registered: settings.vat_registered,
     vat_number: seller.vat_number ?? '',
@@ -256,6 +271,7 @@ export function toSettingsInput(values: Values): SettingsInput {
       email: orNull(values.email),
       // An invalid number goes as typed, for the API to refuse (the form shows the error first).
       phone: toE164(values.phone, values.phone_country) ?? orNull(values.phone),
+      website: orNull(values.website),
       registration_number: orNull(values.registration_number),
       legal_form: values.legal_form || null,
       electronic_address:
@@ -335,6 +351,8 @@ export function validate(values: Values): FieldErrors {
   if (numberFormat) errors.number_format = numberFormat
   if (values.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()))
     errors.email = translate('checkTheEmailAddress')
+  if (values.website.trim() && !validWebsite(values.website))
+    errors.website = translate('enterAWebsiteSuchAsMusterCh')
   if (values.phone.trim() && !toE164(values.phone, values.phone_country)) errors.phone = PHONE_ERROR
   if (values.revolut_username.trim() && !revolutUsername(values.revolut_username))
     errors.revolut_username = translate('message3To32LettersDigitsDotsDashesOrUnderscores')
@@ -445,6 +463,7 @@ const SECTIONS: {
       'email',
       'phone',
       'phone_country',
+      'website',
     ],
   },
   {
@@ -1078,6 +1097,22 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                       onCountryChange={(code) => set('phone_country', phoneCountryOr(code))}
                     />
                   </FormField>
+                  <FormField
+                    id={inputId('website')}
+                    label={translate('website')}
+                    width="md"
+                    error={shown.website}
+                  >
+                    <input
+                      {...describe('website')}
+                      type="text"
+                      inputMode="url"
+                      value={values.website}
+                      onChange={(e) => set('website', e.target.value)}
+                      placeholder={translate('eGMusterCh')}
+                      className={bigInput}
+                    />
+                  </FormField>
                 </>
               </Section>
             )}
@@ -1672,11 +1707,11 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                   <TextareaBox
                     {...describe('footer')}
                     rows={3}
-                    maxLength={1000}
+                    maxLength={DOCUMENT_TEXT_MAX}
                     value={values.footer}
                     onChange={(e) => set('footer', e.target.value)}
                     placeholder={translate('eGThankYouForYourTrustPayableWithin')}
-                    max={1000}
+                    max={DOCUMENT_TEXT_MAX}
                     className="min-h-24 leading-relaxed"
                   />
                 </FormField>

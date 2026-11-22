@@ -73,6 +73,26 @@ export const CompanyPhone: Story = {
   },
 }
 
+/** The company website is optional: a bare domain is accepted, text that is no website is refused. */
+export const CompanyWebsite: Story = {
+  parameters: CompanyPhone.parameters,
+  render: CompanyPhone.render,
+  play: async ({ canvasElement }) => {
+    saved.settings = null
+    const page = within(canvasElement)
+    const website = await page.findByLabelText('Website')
+    await expect(website).toHaveValue('')
+    await userEvent.type(website, 'firma')
+    await expect(await page.findByText('Enter a website such as muster.ch.')).toBeVisible()
+    await expect(website).toHaveAttribute('aria-invalid', 'true')
+    await userEvent.type(website, '.ch')
+    await expect(page.queryByText('Enter a website such as muster.ch.')).toBeNull()
+    const company = within(page.getByRole('region', { name: 'Company' }))
+    await userEvent.click(company.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(savedSettings()?.seller?.website).toBe('firma.ch'))
+  },
+}
+
 /** A contact's phone starts in the client's country and is saved as E.164. */
 export const ContactPhone: Story = {
   parameters: {

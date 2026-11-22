@@ -3182,7 +3182,6 @@
   "trash": "Corbeille",
   "trash2": "Corbeille ",
   "trial": "Procès",
-  "trial2": "{name} · Essai",
   "trialDaysLeft": "Jours d’essai restants",
   "trialDaysUsed": "Jours d’essai utilisés",
   "trialEnding": "Fin du procès",
@@ -5082,6 +5081,8 @@
   "cashFlowHelp": "Paiements de factures et remboursements face aux dépenses payées : par mois sur un an, par jour sur 30 et 90 jours.",
   "editFilter": "Modifier le filtre {label}",
   "searchSuggestions": "Suggestions de recherche",
+  "filterNot": "pas {value}",
+  "filterOr": "{a} ou {b}",
   "issuedUntil": "Émise jusqu’au",
   "replyToEmail": "Adresse de réponse des e-mails aux clients",
   "repliesGoTo": "Les réponses arrivent à {email}",
@@ -5119,5 +5120,7 @@
   "anyRole": "Tout rôle…",
   "anyDepartment": "Tout service…",
   "uploadedByMe": "Importé par moi",
-  "department": "Service"
+  "department": "Service",
+  "eGMusterCh": "par ex. muster.ch",
+  "enterAWebsiteSuchAsMusterCh": "Saisissez un site web tel que muster.ch."
 }

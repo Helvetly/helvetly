@@ -3,9 +3,14 @@
  * `name:"Acme AG"`). Terms map onto a list's own URL filters through each field's `get` and `set`,
  * so the URL stays the one source of truth for the search's chips and the Filters popover alike.
  */
+import type { Tone } from '@helvetly/ui/components/badge'
+
+import { translate } from '@/lib/i18n'
 import { todayIn } from '@/lib/timezone'
 
 export type QueryFieldType = 'text' | 'enum' | 'tag' | 'date' | 'number'
+/** What a field filters by, for its chip's tint: one colour per kind, the same on every list. */
+export type QueryKind = 'status' | 'tag' | 'location' | 'date' | 'amount' | 'text'
 export type QueryOption = { value: string; label: string }
 
 export type QueryField<P> = {
@@ -28,6 +33,36 @@ export type QueryField<P> = {
   until?: string
   /** Holds one value: a new term replaces the old one. */
   single?: boolean
+  /** Its chip's tint, when not the type's own (a country is a `location`, a "since" enum a `date`). */
+  kind?: QueryKind
+  /** Each value's status tone (`STATUS_TONES`): a chip whose values share one is painted with it. */
+  tones?: Readonly<Record<string, Tone>>
+  /** Takes `-field:value`, kept as the value `!value`: everything but it. */
+  negatable?: boolean
+}
+
+const KIND_OF_TYPE: Record<QueryFieldType, QueryKind> = {
+  enum: 'status',
+  tag: 'tag',
+  date: 'date',
+  number: 'amount',
+  text: 'text',
+}
+
+const KIND_TONES: Record<QueryKind, Tone> = {
+  status: 'violet',
+  tag: 'blue',
+  location: 'green',
+  date: 'amber',
+  amount: 'neutral',
+  text: 'neutral',
+}
+
+/** A chip's tone: the values' shared status tone, else its field kind's. */
+export function chipTone<P>(field: QueryField<P>, values: readonly string[]): Tone {
+  const tones = new Set(values.map((value) => field.tones?.[value]))
+  const [shared] = tones
+  return tones.size === 1 && shared ? shared : KIND_TONES[field.kind ?? KIND_OF_TYPE[field.type]]
 }
 
 /** The values that are one of `options`, typed as such (an enum field's terms). */
@@ -104,11 +139,16 @@ export function findField<P>(fields: readonly QueryField<P>[], name: string) {
   )
 }
 
-/** A token's field and raw value when it names a known field (`status:`, `name:"Ac`), else null. */
+/**
+ * A token's field and raw value when it names a known field (`status:`, `name:"Ac`), else null; `not` for a
+ * negatable field's `-field:`.
+ */
 export function splitTerm<P>(token: string, fields: readonly QueryField<P>[]) {
-  const match = TERM.exec(token)
+  const negated = token.startsWith('-')
+  const match = TERM.exec(negated ? token.slice(1) : token)
   const field = match?.[1] ? findField(fields, match[1]) : undefined
-  return match && field ? { field, raw: match[2] ?? match[3] ?? '' } : null
+  if (!match || !field || (negated && !field.negatable)) return null
+  return { field, raw: match[2] ?? match[3] ?? '', not: negated }
 }
 
 /** An amount as the API takes it: never negative, at most two decimals. */
@@ -141,7 +181,9 @@ export function resolveValue<P>(field: QueryField<P>, raw: string): string | nul
 export function parseTerm<P>(token: string, fields: readonly QueryField<P>[]): QueryTerm | null {
   const term = splitTerm(token, fields)
   const value = term && resolveValue(term.field, term.raw)
-  return term && value !== null ? { id: term.field.id, value } : null
+  return term && value !== null
+    ? { id: term.field.id, value: term.not ? `!${value}` : value }
+    : null
 }
 
 /** Terms for known fields with valid values; every other token (unknown fields too) is free text. */
@@ -158,7 +200,9 @@ export function parseQuery<P>(input: string, fields: readonly QueryField<P>[]) {
 
 /** A term as typed again, for editing a chip. */
 export function formatTerm(term: QueryTerm) {
-  return `${term.id}:${/[\s"]/.test(term.value) ? `"${term.value.replaceAll('"', '')}"` : term.value}`
+  const not = term.value.startsWith('!')
+  const value = not ? term.value.slice(1) : term.value
+  return `${not ? '-' : ''}${term.id}:${/[\s"]/.test(value) ? `"${value.replaceAll('"', '')}"` : value}`
 }
 
 export const termsOf = <P>(fields: readonly QueryField<P>[], params: P): QueryTerm[] =>
@@ -179,10 +223,40 @@ export function changeFor<P>(fields: readonly QueryField<P>[], terms: QueryTerm[
   )
 }
 
-/** A term's chip text: the field's label and the value's label. */
+/** A value's label: its option's, read "not …" when negated. */
+export function valueLabel<P>(field: QueryField<P> | undefined, value: string) {
+  const not = value.startsWith('!')
+  const own = not ? value.slice(1) : value
+  const label = field?.values?.find((option) => option.value === own)?.label ?? own
+  return not ? translate('filterNot', { value: label }) : label
+}
+
+/** A term's text: the field's label and the value's label. */
 export function termLabel<P>(fields: readonly QueryField<P>[], term: QueryTerm) {
   const field = fields.find((entry) => entry.id === term.id)
-  const value = field?.values?.find((option) => option.value === term.value)?.label ?? term.value
+  const value = valueLabel(field, term.value)
   // An option labelled '' names nothing more than its field ("Credit notes of one invoice").
   return value ? `${field?.label ?? term.id}: ${value}` : (field?.label ?? term.id)
+}
+
+/** How many values a chip names before "+N"; the rest are in its tooltip. */
+const SHOWN_VALUES = 2
+
+/**
+ * One chip's values, all of one field: "A", "A or B", or "A, B +3" with `rest` the count left out, so a
+ * field typed many times stays one short chip.
+ */
+export function chipValues<P>(field: QueryField<P> | undefined, values: readonly string[]) {
+  const labels = values.map((value) => valueLabel(field, value)).filter(Boolean)
+  if (labels.length <= SHOWN_VALUES)
+    return {
+      text: labels.length ? labels.reduce((a, b) => translate('filterOr', { a, b })) : '',
+      rest: 0,
+      labels,
+    }
+  return {
+    text: labels.slice(0, SHOWN_VALUES).join(', '),
+    rest: labels.length - SHOWN_VALUES,
+    labels,
+  }
 }

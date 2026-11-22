@@ -13,6 +13,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { displayPhone } from '@helvetly/ui/lib/phone'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -646,6 +647,7 @@ function useQueryFields(): QueryField<ListParams>[] {
       label: translate('status'),
       type: 'enum',
       values: STATUSES.map((status) => ({ value: status, label: STATUS_LABELS[status] })),
+      tones: STATUS_TONES.client,
       // A quick view shows as the active tab; only another combination needs chips.
       get: (params) => (statusView(params.status) === null ? params.status : []),
       set: (status, params) =>
@@ -681,6 +683,7 @@ function useQueryFields(): QueryField<ListParams>[] {
       label: translate('country'),
       type: 'enum',
       values: COUNTRY_OPTIONS,
+      kind: 'location',
       placeholder: translate('anyCountry'),
       get: (params) => params.countries,
       set: (countries) => ({ countries }),
@@ -690,6 +693,7 @@ function useQueryFields(): QueryField<ListParams>[] {
       label: translate('created3'),
       type: 'enum',
       values: sinceOptions(),
+      kind: 'date',
       placeholder: translate('createdAnyTime'),
       ...oneValue(
         (params) => params.created,
@@ -700,6 +704,7 @@ function useQueryFields(): QueryField<ListParams>[] {
       id,
       label,
       type: 'text',
+      kind: id === 'city' ? 'location' : 'text',
       ...oneValue(
         (params) => params[id],
         (value) => ({ [id]: value ?? '' }),

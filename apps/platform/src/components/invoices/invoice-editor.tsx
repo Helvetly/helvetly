@@ -104,6 +104,7 @@ import {
   MetaLabel,
   PaperFooter,
   PARTY_LABEL,
+  ProseField,
   proseInput,
   SellerBlock,
   TotalLine,
@@ -1029,14 +1030,14 @@ function Editor({
                   </dl>
                 </div>
 
-                <textarea
+                <ProseField
                   aria-label={translate('introduction')}
                   value={values.intro}
-                  maxLength={1000}
                   onChange={(event) => set('intro', event.target.value)}
                   placeholder={translate('addAMessageAboveTheLinesOptionalEG')}
-                  rows={1}
-                  className={cn(proseInput, 'mt-10')}
+                  wrapperClassName="mt-10"
+                  aria-invalid={errors.intro ? true : undefined}
+                  className={proseInput}
                 />
 
                 {/* The padding (cancelled by the margins) leaves room for the controls' focus rings. */}
@@ -1351,16 +1352,20 @@ function Editor({
                 </div>
 
                 <PaperFooter>
-                  <textarea
+                  <ProseField
                     aria-label={translate('footer')}
                     value={values.footer}
-                    maxLength={1000}
                     onChange={(event) => set('footer', event.target.value)}
+                    aria-invalid={errors.footer ? true : undefined}
                     placeholder={translate('footerPrintedAtTheBottomEGPaymentConditions')}
-                    rows={1}
                     className={cn(proseInput, 'text-body-sm text-muted-foreground')}
                   />
                 </PaperFooter>
+                {(errors.intro || errors.footer) && (
+                  <p className="mt-2 text-caption text-destructive">
+                    {errors.intro ?? errors.footer}
+                  </p>
+                )}
               </article>
 
               {kind === 'invoice' && values.client_id && (

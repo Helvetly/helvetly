@@ -6,7 +6,13 @@ import { expect, userEvent, within } from 'storybook/test'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { oneValue, type QueryField } from '@/lib/list-query'
 
-type Params = { search: string; type: string | null; tags: string[]; city: string }
+type Params = {
+  search: string
+  type: string | null
+  tags: string[]
+  countries: string[]
+  city: string
+}
 
 const fields: QueryField<Params>[] = [
   {
@@ -34,6 +40,22 @@ const fields: QueryField<Params>[] = [
     set: (tags) => ({ tags }),
   },
   {
+    id: 'country',
+    label: 'Country',
+    type: 'enum',
+    kind: 'location',
+    negatable: true,
+    values: [
+      { value: 'CH', label: 'Switzerland' },
+      { value: 'DZ', label: 'Algeria' },
+      { value: 'AG', label: 'Antigua & Barbuda' },
+      { value: 'AD', label: 'Andorra' },
+      { value: 'AL', label: 'Albania' },
+    ],
+    get: (params) => params.countries,
+    set: (countries) => ({ countries }),
+  },
+  {
     id: 'city',
     label: 'City',
     type: 'text',
@@ -45,11 +67,19 @@ const fields: QueryField<Params>[] = [
 ]
 
 /** A list's toolbar as the pages wire it: the params are the one state of chips and filters. */
-function Harness({ collapsible = false }: { collapsible?: boolean }) {
-  const [params, setParams] = useState<Params>({ search: '', type: null, tags: [], city: '' })
+const EMPTY: Params = { search: '', type: null, tags: [], countries: [], city: '' }
+
+function Harness({
+  collapsible = false,
+  narrow = false,
+}: {
+  collapsible?: boolean
+  narrow?: boolean
+}) {
+  const [params, setParams] = useState<Params>(EMPTY)
   const update = (change: Partial<Params>) => setParams((current) => ({ ...current, ...change }))
   return (
-    <div className="max-w-3xl rounded-xl border">
+    <div className={narrow ? 'max-w-md rounded-xl border' : 'max-w-3xl rounded-xl border'}>
       <ListToolbar>
         <fieldset className="flex gap-3 px-2 text-sm">
           <legend className="sr-only">Filters</legend>
@@ -136,9 +166,9 @@ export const Chips: Story = {
     await userEvent.type(search, 'acme type:people city:"St. Gallen" foo:bar{Enter}')
     await expect(search).toHaveValue('acme foo:bar')
     await expect(state(canvas)).toEqual({
+      ...EMPTY,
       search: 'acme foo:bar',
       type: 'person',
-      tags: [],
       city: 'St. Gallen',
     })
     await expect(canvas.getByRole('button', { name: 'Remove filter Type: People' })).toBeVisible()
@@ -170,7 +200,7 @@ export const Chips: Story = {
     // The × at the end clears text and chips together.
     await userEvent.type(search, 'x')
     await userEvent.click(canvas.getByRole('button', { name: 'Clear search' }))
-    await expect(state(canvas)).toEqual({ search: '', type: null, tags: [], city: '' })
+    await expect(state(canvas)).toEqual(EMPTY)
   },
 }
 
@@ -202,5 +232,86 @@ export const Collapsible: Story = {
     await userEvent.tab()
     await expect(canvas.getByRole('button', { name: 'Remove filter Tags: design' })).toBeVisible()
     await expect(canvas.getByRole('searchbox', { name: 'Search clients' })).toBeVisible()
+  },
+}
+
+/** A field typed again joins its chip: "A or B", then "A, B +N" with the whole list in its tooltip. */
+export const GroupsValues: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const search = canvas.getByRole('searchbox', { name: 'Search clients' })
+    await userEvent.type(search, 'country:ch country:algeria ')
+    const chip = canvas.getByRole('button', { name: 'Edit filter Country: Switzerland or Algeria' })
+    await expect(chip).toHaveTextContent('Country:Switzerland or Algeria')
+    await expect(canvas.getAllByRole('button', { name: /^Remove filter Country/ })).toHaveLength(1)
+    await userEvent.type(search, 'country:ag country:ad country:al ')
+    const all = 'Country: Switzerland, Algeria, Antigua & Barbuda, Andorra, Albania'
+    const grouped = canvas.getByRole('button', {
+      name: 'Edit filter Country: Switzerland, Algeria +3',
+    })
+    await expect(canvas.getByRole('button', { name: `Remove filter ${all}` })).toBeVisible()
+    await expect(grouped).toHaveTextContent('Country:Switzerland, Algeria+3')
+    await userEvent.hover(grouped)
+    await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(all)
+    await expect(state(canvas)).toMatchObject({ countries: ['CH', 'DZ', 'AG', 'AD', 'AL'] })
+  },
+}
+
+/** A click on a chip opens its field's choices; × removes the whole field's filter. */
+export const EditsAndRemovesAGroup: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(document.body)
+    await userEvent.type(canvas.getByRole('searchbox'), 'country:ch country:dz country:ad ')
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Edit filter Country: Switzerland, Algeria +1' }),
+    )
+    const editor = await body.findByRole('dialog', { name: 'Country' })
+    await userEvent.click(
+      within(editor).getByRole('button', { name: 'Remove filter Country: Algeria' }),
+    )
+    await expect(state(canvas)).toMatchObject({ countries: ['CH', 'AD'] })
+    await expect(
+      canvas.getByRole('button', { name: 'Edit filter Country: Switzerland or Andorra' }),
+    ).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await expect(body.queryByRole('dialog', { name: 'Country' })).toBeNull()
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Remove filter Country: Switzerland or Andorra' }),
+    )
+    await expect(state(canvas)).toMatchObject({ countries: [] })
+    await expect(canvas.queryByRole('button', { name: /Country/ })).toBeNull()
+  },
+}
+
+/** `-field:value` excludes a value; its chip reads "not …" and types back as `-field:`. */
+export const Negation: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const search = canvas.getByRole('searchbox', { name: 'Search clients' })
+    await userEvent.type(search, '-country:dz -type:person ')
+    await expect(state(canvas)).toMatchObject({ countries: ['!DZ'], search: '-type:person' })
+    await expect(
+      canvas.getByRole('button', { name: 'Edit filter Country: not Algeria' }),
+    ).toHaveTextContent('Country:not Algeria')
+  },
+}
+
+/** Many chips stay on one line: the field scrolls sideways inside the toolbar, which keeps its height. */
+export const Overflow: Story = {
+  render: () => <Harness narrow />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const search = canvas.getByRole('searchbox', { name: 'Search clients' })
+    const toolbar = canvasElement.querySelector<HTMLElement>('.border-b')
+    const height = toolbar?.offsetHeight
+    await userEvent.type(search, 'type:person tag:design tag:super country:ch city:Bern ')
+    await expect(toolbar?.offsetHeight).toBe(height)
+    const chips = canvas.getAllByRole('button', { name: /^Remove filter/ })
+    await expect(chips).toHaveLength(4)
+    const tops = new Set(chips.map((chip) => Math.round(chip.getBoundingClientRect().top)))
+    await expect(tops.size).toBe(1)
+    const strip = search.parentElement
+    await expect(strip && strip.scrollWidth > strip.clientWidth).toBe(true)
   },
 }

@@ -12,6 +12,7 @@ import {
   changeFor,
   resolveValue,
   SINCE_PRESETS,
+  valueLabel,
   type QueryField,
   type QueryOption,
 } from '@/lib/list-query'
@@ -160,10 +161,9 @@ type ControlProps<P> = {
   onSet: (field: QueryField<P>, values: string[]) => void
 }
 
-const labelOf = <P,>(field: QueryField<P>, value: string) =>
-  field.values?.find((option) => option.value === value)?.label || value
+const labelOf = <P,>(field: QueryField<P>, value: string) => valueLabel(field, value) || value
 
-function SingleSelect<P>({ field, params, onSet }: ControlProps<P>) {
+export function SingleSelect<P>({ field, params, onSet }: ControlProps<P>) {
   const value = field.get(params)[0] ?? ''
   return (
     <Combobox
@@ -179,7 +179,7 @@ function SingleSelect<P>({ field, params, onSet }: ControlProps<P>) {
   )
 }
 
-function MultiSelect<P>({ field, params, onSet }: ControlProps<P>) {
+export function MultiSelect<P>({ field, params, onSet }: ControlProps<P>) {
   const values = field.get(params)
   return (
     <Combobox

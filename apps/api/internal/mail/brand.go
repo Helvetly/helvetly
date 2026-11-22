@@ -17,6 +17,7 @@ type Brand struct {
 	Address  []string // the printed address lines: street, zip and city
 	Phone    string
 	Email    string
+	Website  string // an http(s) URL; shown as its domain
 	VAT      string // the VAT or UID number as registered
 	Language string // the workspace's document language, for a message without its own
 	ReplyTo  string // the workspace's reply address, else the company email; empty when it has neither
@@ -90,16 +91,29 @@ func vatLine(b Brand, language string) string {
 	return b.VAT
 }
 
-// lines are the footer's text lines: name, address, contact, VAT number; empty ones left out.
-func (b Brand) lines(language string) []string {
+// lines are the footer's text lines: name, address, contact, VAT number; empty ones left out. With rich the lines
+// are HTML (escaped, the website a link); without, plain text.
+func (b Brand) lines(language string, rich bool) []string {
+	esc := func(v string) string {
+		if rich {
+			return html.EscapeString(v)
+		}
+		return v
+	}
 	contact := []string{}
 	for _, c := range []string{b.Phone, b.Email} {
 		if c != "" {
-			contact = append(contact, c)
+			contact = append(contact, esc(c))
 		}
 	}
+	if d := websiteDomain(b.Website); d != "" {
+		if rich {
+			d = `<a href="` + html.EscapeString(b.Website) + `" style="color:` + muted + `">` + html.EscapeString(d) + `</a>`
+		}
+		contact = append(contact, d)
+	}
 	out := []string{}
-	for _, l := range []string{b.Name, strings.Join(b.Address, ", "), strings.Join(contact, " · "), vatLine(b, language)} {
+	for _, l := range []string{esc(b.Name), esc(strings.Join(b.Address, ", ")), strings.Join(contact, " · "), esc(vatLine(b, language))} {
 		if strings.TrimSpace(l) != "" {
 			out = append(out, l)
 		}
@@ -107,15 +121,21 @@ func (b Brand) lines(language string) []string {
 	return out
 }
 
+// websiteDomain: "https://www.firma.ch/" as "firma.ch".
+func websiteDomain(u string) string {
+	u = strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(u), "https://"), "http://")
+	return strings.TrimSuffix(strings.TrimPrefix(u, "www."), "/")
+}
+
 // brandFooter is the business footer under the card, then a muted "Sent with Helvetly".
 func brandFooter(b Brand, language, publicURL string) string {
 	var f strings.Builder
-	for i, l := range b.lines(language) {
+	for i, l := range b.lines(language, true) {
 		if i == 0 {
-			f.WriteString(`<strong style="color:` + text + `">` + html.EscapeString(l) + "</strong>")
+			f.WriteString(`<strong style="color:` + text + `">` + l + "</strong>")
 			continue
 		}
-		f.WriteString("<br>" + html.EscapeString(l))
+		f.WriteString("<br>" + l)
 	}
 	f.WriteString(`<br><br><span style="font-size:11px">` + html.EscapeString(wordsFor(language).sentWith) + ` <a href="` +
 		html.EscapeString(publicURL) + `" style="color:` + muted + `">Helvetly</a></span>`)
@@ -124,5 +144,5 @@ func brandFooter(b Brand, language, publicURL string) string {
 
 // brandText is the plain-text part's footer, after the signature delimiter.
 func brandText(b Brand, language, publicURL string) string {
-	return "\n\n-- \n" + strings.Join(b.lines(language), "\n") + "\n\n" + wordsFor(language).sentWith + " Helvetly: " + publicURL + "\n"
+	return "\n\n-- \n" + strings.Join(b.lines(language, false), "\n") + "\n\n" + wordsFor(language).sentWith + " Helvetly: " + publicURL + "\n"
 }

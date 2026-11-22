@@ -3182,7 +3182,6 @@
   "trash": "Trash",
   "trash2": "Trash ",
   "trial": "Trial",
-  "trial2": "{name} · Trial",
   "trialDaysLeft": "Trial days left",
   "trialDaysUsed": "Trial days used",
   "trialEnding": "Trial ending",
@@ -5082,6 +5081,8 @@
   "cashFlowHelp": "Invoice payments and refunds against paid expenses: by month for a year, by day for 30 and 90 days.",
   "editFilter": "Edit filter {label}",
   "searchSuggestions": "Search suggestions",
+  "filterNot": "not {value}",
+  "filterOr": "{a} or {b}",
   "issuedUntil": "Issued until",
   "replyToEmail": "Reply-to email for client emails",
   "repliesGoTo": "Replies go to {email}",
@@ -5119,5 +5120,7 @@
   "anyRole": "Any role…",
   "anyDepartment": "Any department…",
   "uploadedByMe": "Uploaded by me",
-  "department": "Department"
+  "department": "Department",
+  "eGMusterCh": "e.g. muster.ch",
+  "enterAWebsiteSuchAsMusterCh": "Enter a website such as muster.ch."
 }

@@ -3182,7 +3182,6 @@
   "trash": "Papierkorb",
   "trash2": "Papierkorb ",
   "trial": "Prozess",
-  "trial2": "{name} · Prozess",
   "trialDaysLeft": "Noch Probetage",
   "trialDaysUsed": "Probetage genutzt",
   "trialEnding": "Prozessende",
@@ -5082,6 +5081,8 @@
   "cashFlowHelp": "Rechnungszahlungen und Rückerstattungen gegenüber bezahlten Ausgaben: pro Monat für ein Jahr, pro Tag für 30 und 90 Tage.",
   "editFilter": "Filter bearbeiten {label}",
   "searchSuggestions": "Suchvorschläge",
+  "filterNot": "nicht {value}",
+  "filterOr": "{a} oder {b}",
   "issuedUntil": "Ausgestellt bis",
   "replyToEmail": "Antwortadresse für Kunden-E-Mails",
   "repliesGoTo": "Antworten gehen an {email}",
@@ -5119,5 +5120,7 @@
   "anyRole": "Jede Rolle…",
   "anyDepartment": "Jede Abteilung…",
   "uploadedByMe": "Von mir hochgeladen",
-  "department": "Abteilung"
+  "department": "Abteilung",
+  "eGMusterCh": "z.B. muster.ch",
+  "enterAWebsiteSuchAsMusterCh": "Geben Sie eine Website wie muster.ch ein."
 }

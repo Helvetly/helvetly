@@ -18,7 +18,7 @@
 1 hex apps/platform/src/components/invoices/plan-card.tsx
 1 hex apps/platform/src/components/onboarding/logo-card.tsx
 3 hex apps/platform/src/components/products/product-detail.tsx
-9 hex apps/platform/src/components/shell/app-sidebar.tsx
+8 hex apps/platform/src/components/shell/app-sidebar.tsx
 1 hex apps/platform/src/components/signatures/ink.ts
 3 hex apps/platform/src/components/signatures/request-drawer.tsx
 3 hex apps/platform/src/components/signatures/signing-page.tsx

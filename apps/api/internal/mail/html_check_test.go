@@ -13,7 +13,7 @@ import (
 
 // What Mailpit's HTML Check (caniemail) does not count as supported everywhere: email HTML must keep to the rest.
 var unsupportedHTML = regexp.MustCompile(`(?i)<style|<body|<hr|<pre|@media|!important|margin|padding:|border|background|bgcolor|` +
-	`\swidth=|[;"]\s*width:|display:|overflow|line-height|font-weight|letter-spacing|text-decoration|text-align|white-space|word-break|` +
+	`\s(width|height)=|[;"]\s*width:|display:|overflow|line-height|font-weight|letter-spacing|text-decoration|text-align|white-space|word-break|` +
 	`opacity|:last-child|font:`)
 
 func TestLayoutKeepsToSupportedHTML(t *testing.T) {
