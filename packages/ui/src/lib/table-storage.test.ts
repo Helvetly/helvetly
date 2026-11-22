@@ -11,16 +11,16 @@ describe('stored sizes', () => {
   it('round-trips and drops unknown or broken entries', () => {
     writeColumnSizes('t', { number: 120.37 })
     expect(readColumnSizes('t', ['number', 'total'])).toEqual({ number: 120 })
-    localStorage.setItem('helvetly.table.t.columns', '{"number":-1,"total":"x","gone":90}')
+    localStorage.setItem('helvetly.table.t.columns.v2', '{"number":-1,"total":"x","gone":90}')
     expect(readColumnSizes('t', ['number', 'total'])).toEqual({})
-    localStorage.setItem('helvetly.table.t.columns', 'not json')
+    localStorage.setItem('helvetly.table.t.columns.v2', 'not json')
     expect(readColumnSizes('t', ['number'])).toEqual({})
   })
 
   it('removes the entry on reset', () => {
     writeColumnSizes('t', { number: 120 })
     writeColumnSizes('t', {})
-    expect(localStorage.getItem('helvetly.table.t.columns')).toBeNull()
+    expect(localStorage.getItem('helvetly.table.t.columns.v2')).toBeNull()
   })
 
   it('survives storage that throws', () => {

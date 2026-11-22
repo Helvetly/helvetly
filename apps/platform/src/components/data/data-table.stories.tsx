@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { expect, fireEvent, screen, userEvent, waitFor, within } from 'storybook/test'
 
 const TABLE = 'story'
-const KEY = `helvetly.table.${TABLE}.columns`
+const KEY = `helvetly.table.${TABLE}.columns.v2`
 const ORDER_KEY = `helvetly.table.${TABLE}.order`
 
 type Row = { id: string; number: string; client: string; due: string; total: string }
@@ -226,11 +226,11 @@ const BOX = 898
 export const DragResizes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Before any resize the client column takes what the others leave of the box.
-    await waitFor(() =>
-      expect(header(canvas, 'Client').width()).toBe(BOX - 52 - 128 - 128 - 140 - 112),
-    )
-    await expect(sum(widths(canvas))).toBe(BOX)
+    // Before any resize the columns share the box, the client one getting the most of the room.
+    await waitFor(() => expect(sum(widths(canvas))).toBe(BOX))
+    const start = widths(canvas)
+    await expect(start.Number).toBeGreaterThan(128)
+    await expect((start.Client ?? 0) - 240).toBeGreaterThan((start.Number ?? 0) - 128)
     await inTurn(['Number', 'Client', 'Due', 'Amount'], async (name) => {
       await expectDragChangesOnly(canvas, name, 80)
       await expectDragChangesOnly(canvas, name, -40)
@@ -244,7 +244,12 @@ export const DragResizes: Story = {
     await expect(getComputedStyle(box).overflowX).toBe('auto')
     const stored = widths(canvas)
     const kept: unknown = JSON.parse(localStorage.getItem(KEY) ?? 'null')
-    await expect(kept).toMatchObject({ number: 168, client: stored.Client, due: 168, total: 180 })
+    await expect(kept).toMatchObject({
+      number: (start.Number ?? 0) + 40,
+      client: stored.Client,
+      due: (start.Due ?? 0) + 40,
+      total: (start.Amount ?? 0) + 40,
+    })
     await userEvent.click(canvas.getByRole('button', { name: 'Reload' }))
     await waitFor(() => expect(widths(canvas)).toEqual(stored))
   },
@@ -285,13 +290,15 @@ export const StopsAtItsRange: Story = {
     const canvas = within(canvasElement)
     const number = header(canvas, 'Number')
     const due = header(canvas, 'Due')
+    await waitFor(() => expect(sum(widths(canvas))).toBe(BOX))
+    const client = header(canvas, 'Client').width()
     await drag(resizer(canvas, 'Number'), 400)
     await waitFor(() => expect(number.width()).toBe(260))
     await drag(resizer(canvas, 'Number'), -400)
     await waitFor(() => expect(number.width()).toBe(80))
     await drag(resizer(canvas, 'Due'), 900)
     await waitFor(() => expect(due.width()).toBe(640))
-    await expect(header(canvas, 'Client').width()).toBe(BOX - 52 - 128 - 128 - 140 - 112)
+    await expect(header(canvas, 'Client').width()).toBe(client)
   },
 }
 
@@ -301,12 +308,13 @@ export const DoubleClickResets: Story = {
     const canvas = within(canvasElement)
     const number = header(canvas, 'Number')
     const client = header(canvas, 'Client')
-    await waitFor(() => expect(number.width()).toBe(128))
+    await waitFor(() => expect(sum(widths(canvas))).toBe(BOX))
+    const initial = number.width()
     const fill = client.width()
     await drag(resizer(canvas, 'Number'), 40)
-    await waitFor(() => expect(number.width()).toBe(168))
+    await waitFor(() => expect(number.width()).toBe(initial + 40))
     await userEvent.dblClick(resizer(canvas, 'Number'))
-    await waitFor(() => expect(number.width()).toBe(128))
+    await waitFor(() => expect(number.width()).toBe(initial))
     await drag(resizer(canvas, 'Client'), 50)
     await waitFor(() => expect(client.width()).toBe(fill + 50))
     await userEvent.dblClick(resizer(canvas, 'Client'))
@@ -319,18 +327,20 @@ export const KeyboardResizes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const due = header(canvas, 'Due')
+    await waitFor(() => expect(sum(widths(canvas))).toBe(BOX))
+    const initial = due.width()
     resizer(canvas, 'Due').focus()
     await userEvent.keyboard('{ArrowRight}{ArrowRight}')
-    await waitFor(() => expect(due.width()).toBe(160))
+    await waitFor(() => expect(due.width()).toBe(initial + 32))
     await userEvent.keyboard('{ArrowLeft}')
-    await waitFor(() => expect(due.width()).toBe(144))
+    await waitFor(() => expect(due.width()).toBe(initial + 16))
     await userEvent.keyboard('{Enter}')
-    await waitFor(() => expect(due.width()).toBe(128))
+    await waitFor(() => expect(due.width()).toBe(initial))
   },
 }
 
 /**
- * Every column but the checkbox, row menu and fixed ones has a handle: a thin visible bar at its
+ * Every column but the checkbox, row menu and fixed ones has a handle: a dashed 1 px line at its
  * right edge, in a 12 px strip that takes the pointer.
  */
 export const HandlesOnlyOnResizable: Story = {
@@ -345,8 +355,8 @@ export const HandlesOnlyOnResizable: Story = {
     await expect(handle.getBoundingClientRect().width).toBe(12)
     const bar = handle.firstElementChild
     if (!bar) throw new Error('The handle has no bar')
-    await expect(bar.getBoundingClientRect().width).toBe(2)
-    await expect(getComputedStyle(bar).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    await expect(bar.getBoundingClientRect().width).toBe(1)
+    await expect(getComputedStyle(bar).borderRightStyle).toBe('dashed')
     await expect(getComputedStyle(bar).transitionDuration).toBe('0s')
   },
 }
@@ -524,40 +534,37 @@ export const OwnSelectColumnUnclipped: Story = {
   },
 }
 
-/** The carets of a sortable header: [up, down], each solid (`on`) or faint. */
-const carets = (canvas: Canvas, name: string) =>
-  [...canvas.getByRole('columnheader', { name }).querySelectorAll('svg path')].map((path) =>
-    path.classList.contains('fill-foreground') ? 'on' : 'faint',
-  )
+/** The sort icon of a sortable header: `none`, `asc` or `desc`. */
+const sortIcon = (canvas: Canvas, name: string) =>
+  canvas.getByRole('columnheader', { name }).querySelector('svg')?.getAttribute('data-sort')
 
 /**
  * TanStack's sorting: a header sorts ascending (Amount, `sortDescFirst`, descending), a second
- * click reverses and never removes it; the carets show the direction at once. A row click opens
+ * click reverses and never removes it; the icon shows the direction at once. A row click opens
  * it, a checkbox only selects.
  */
 export const SortsAndSelects: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const client = () => canvas.getByRole('columnheader', { name: 'Client' })
-    await expect(carets(canvas, 'Client')).toEqual(['faint', 'faint'])
+    await expect(sortIcon(canvas, 'Client')).toBe('none')
     await expect(canvas.queryByRole('button', { name: 'Due' })).toBeNull()
     await userEvent.click(canvas.getByRole('button', { name: 'Client' }))
     await expect(client()).toHaveAttribute('aria-sort', 'ascending')
-    await expect(carets(canvas, 'Client')).toEqual(['on', 'faint'])
+    await expect(sortIcon(canvas, 'Client')).toBe('asc')
     await userEvent.click(canvas.getByRole('button', { name: 'Client' }))
     await expect(client()).toHaveAttribute('aria-sort', 'descending')
-    await expect(carets(canvas, 'Client')).toEqual(['faint', 'on'])
+    await expect(sortIcon(canvas, 'Client')).toBe('desc')
     await userEvent.click(canvas.getByRole('button', { name: 'Client' }))
     await expect(canvas.getByText('Sorted: client asc')).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Amount' }))
     await expect(canvas.getByText('Sorted: total desc')).toBeVisible()
     await expect(client()).not.toHaveAttribute('aria-sort')
-    await expect(carets(canvas, 'Amount')).toEqual(['faint', 'on'])
+    await expect(sortIcon(canvas, 'Amount')).toBe('desc')
+    await expect(sortIcon(canvas, 'Client')).toBe('none')
     const svg = client().querySelector('svg')
-    await expect(svg?.getBoundingClientRect().width).toBe(8)
-    await expect(getComputedStyle(svg?.querySelector('path') ?? client()).transitionDuration).toBe(
-      '0s',
-    )
+    await expect(svg?.getBoundingClientRect().width).toBe(14)
+    await expect(getComputedStyle(svg ?? client()).transitionDuration).toBe('0s')
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Select 2026/INV/001' }))
     await expect(canvas.getByText('Selected: 1')).toBeVisible()
     await expect(canvas.getByText('Opened:')).toBeVisible()
@@ -568,7 +575,12 @@ export const SortsAndSelects: Story = {
   },
 }
 
-/** The row menu column (48 px) holds its button without clipping it into an ellipsis. */
+const right = (element: Element) => Math.round(element.getBoundingClientRect().right)
+
+/**
+ * The row menu column is 48 px, has no handle, cannot be dragged and stays at the right edge, also
+ * when the columns leave room; it holds its button without clipping it into an ellipsis.
+ */
 export const RowMenuFits: Story = {
   render: () => (
     <div className="w-[900px] rounded-xl border bg-card">
@@ -600,6 +612,13 @@ export const RowMenuFits: Story = {
       .parentElement
     if (!cell) throw new Error('The row menu has no cell')
     await expect(cell.scrollWidth).toBe(cell.clientWidth)
+    const head = canvas.getByRole('columnheader', { name: 'Actions' })
+    await expect(Math.round(head.getBoundingClientRect().width)).toBe(48)
+    await expect(canvas.queryByRole('button', { name: 'Resize Actions' })).toBeNull()
+    await expect(head.querySelector('[draggable=true]')).toBeNull()
+    await expectDragChangesOnly(canvas, 'Client', -60)
+    await expect(right(head)).toBe(right(head.closest('tr') ?? head))
+    await expect(right(cell)).toBe(right(cell.closest('tr') ?? cell))
   },
 }
 

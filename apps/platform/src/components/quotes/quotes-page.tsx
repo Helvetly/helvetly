@@ -622,7 +622,7 @@ function quoteColumns(writable: boolean, act: RowActions): DataColumn<Quote>[] {
     {
       id: 'status',
       header: translate('status'),
-      size: 120,
+      size: 132,
       resizable: false,
       sortable: true,
       cell: (quote) => <QuoteRowStatus quote={quote} />,

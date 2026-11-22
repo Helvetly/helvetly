@@ -44,6 +44,9 @@ import {
   type VirtualizerOptions,
 } from '@tanstack/react-virtual'
 import {
+  ArrowDownWideNarrow,
+  ArrowUpDown,
+  ArrowUpNarrowWide,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -76,10 +79,11 @@ export const listTable = {
   head: 'h-11 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase',
   th: 'sticky top-0 z-10 border-b bg-card bg-linear-to-b from-muted/50 to-muted/50 px-3 font-medium whitespace-nowrap first:pl-5 last:pr-5',
   row: 'h-[58px] border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-brand-surface/60 data-attention:not-data-selected:bg-warning-surface/50',
-  td: 'truncate px-3 first:pl-5 last:pr-5',
+  // A badge in a cell is the small one (Badge `size="sm"`), whichever component draws it.
+  td: 'truncate px-3 first:pl-5 last:pr-5 [&_[data-slot=badge]]:h-5 [&_[data-slot=badge]]:gap-1 [&_[data-slot=badge]]:px-1.5 [&_[data-slot=badge]]:text-caption [&_[data-slot=badge]>svg]:size-3',
   /** The checkbox column: never clipped, its focus ring included (`SELECT_SIZE`). */
   select: 'overflow-visible pr-0 pl-5 text-clip',
-  menu: 'pr-3 text-right last:pr-3',
+  menu: 'px-2 text-right last:pr-2',
   numeric: 'text-right tabular-nums',
   /** The phone list that replaces the table on narrow screens. */
   list: 'divide-y divide-border/70',
@@ -153,7 +157,10 @@ const SELECT = 'select'
 const ACTIONS = 'actions'
 /** The checkbox column: its 20 px inset, the 16 px box and 16 px to the next column. */
 const SELECT_SIZE = 52
+/** The row menu column: one icon button. */
+const ACTIONS_SIZE = 48
 const DEFAULT_SIZE = 140
+const FLEX_SIZE = 240
 const DEFAULT_MIN = 64
 const DEFAULT_MAX = 640
 const FLEX_MIN = 160
@@ -170,9 +177,13 @@ const canResize = <T,>(column: DataColumn<T>) => !isFixed(column.id) && (column.
 /** A column's default width and its range. */
 function bounds<T>(column: DataColumn<T>) {
   if (column.id === SELECT) return { size: SELECT_SIZE, min: SELECT_SIZE, max: SELECT_SIZE }
+  if (column.id === ACTIONS) {
+    const size = column.size ?? ACTIONS_SIZE
+    return { size, min: size, max: size }
+  }
   const min = column.minSize ?? (column.flex ? FLEX_MIN : DEFAULT_MIN)
   const max = column.maxSize ?? (column.flex ? Number.MAX_SAFE_INTEGER : DEFAULT_MAX)
-  return { size: column.size ?? Math.max(min, DEFAULT_SIZE), min, max }
+  return { size: column.size ?? Math.max(min, column.flex ? FLEX_SIZE : DEFAULT_SIZE), min, max }
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
@@ -348,19 +359,9 @@ export function DataTable<T extends RowData>({
   const [defs, setDefs] = useState(model)
   if (JSON.stringify(model) !== JSON.stringify(defs)) setDefs(model)
 
-  // Until a person sizes it, the flexible column takes what the others leave of the box; the
-  // first resize of any column stores its width with the others', so only the dragged one moves.
-  const flex = shown.find((column) => column.flex)
-  const columnSizing = useMemo<ColumnSizingState>(() => {
-    if (!flex || flex.id in sizes) return sizes
-    const others = shown
-      .filter((column) => column !== flex)
-      .reduce((sum, column) => {
-        const { size, min, max } = bounds(column)
-        return sum + clamp(sizes[column.id] ?? size, min, max)
-      }, 0)
-    return { ...sizes, [flex.id]: Math.max(bounds(flex).min, available - others) }
-  }, [flex, shown, sizes, available])
+  // Until a person sizes them, the columns share what the box has beyond their default widths;
+  // the first resize of any column stores every width, so only the dragged one moves.
+  const columnSizing = useMemo(() => fitColumns(shown, sizes, available), [shown, sizes, available])
 
   const movable = all.filter((column) => !isFixed(column.id)).map((column) => column.id)
   const { order, setOrder } = useColumnOrder(id, movable)
@@ -457,6 +458,10 @@ export function DataTable<T extends RowData>({
   const resizing = table.state.columnResizing.isResizingColumn
   const visibleColumns = table.getVisibleLeafColumns()
   const lastColumn = visibleColumns.at(-1)?.id
+  // The row menu column stays at the right edge: the empty room goes before it.
+  const fillerAt = lastColumn === ACTIONS ? visibleColumns.length - 1 : visibleColumns.length
+  const withFiller = (cells: ReactNode[], cell: ReactNode) =>
+    filler ? [...cells.slice(0, fillerAt), cell, ...cells.slice(fillerAt)] : cells
 
   const rows = table.getRowModel().rows
   const tbody = useRef<HTMLTableSectionElement>(null)
@@ -529,123 +534,127 @@ export function DataTable<T extends RowData>({
           style={{ ...columnSizeVars, width: filler ? available : total }}
         >
           <colgroup>
-            {headers.map((header) => (
-              <col key={header.id} style={{ width: `var(--col-${header.column.id}-size)` }} />
-            ))}
-            {filler && <col />}
+            {withFiller(
+              headers.map((header) => (
+                <col key={header.id} style={{ width: `var(--col-${header.column.id}-size)` }} />
+              )),
+              <col key="filler" />,
+            )}
           </colgroup>
           <thead>
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id} className={listTable.head}>
-                {group.headers.map((header) => {
-                  const column = byId.get(header.column.id)
-                  if (!column) return null
-                  if (column.id === SELECT && selection)
+                {withFiller(
+                  group.headers.map((header) => {
+                    const column = byId.get(header.column.id)
+                    if (!column) return null
+                    if (column.id === SELECT && selection)
+                      return (
+                        <th key={header.id} className={cn(listTable.th, listTable.select)}>
+                          <Checkbox
+                            aria-label={selection.allLabel}
+                            className="cursor-pointer bg-card"
+                            checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                            onCheckedChange={(checked) =>
+                              table.toggleAllRowsSelected(checked === true)
+                            }
+                          />
+                        </th>
+                      )
+                    const sorted = header.column.getIsSorted()
+                    const canResizeColumn = header.column.getCanResize()
+                    const canMove = !isFixed(column.id)
                     return (
-                      <th key={header.id} className={cn(listTable.th, listTable.select)}>
-                        <Checkbox
-                          aria-label={selection.allLabel}
-                          className="cursor-pointer bg-card"
-                          checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                          onCheckedChange={(checked) =>
-                            table.toggleAllRowsSelected(checked === true)
-                          }
-                        />
-                      </th>
-                    )
-                  const sorted = header.column.getIsSorted()
-                  const canResizeColumn = header.column.getCanResize()
-                  const canMove = !isFixed(column.id)
-                  return (
-                    <th
-                      key={header.id}
-                      aria-sort={
-                        sorted ? (sorted === 'desc' ? 'descending' : 'ascending') : undefined
-                      }
-                      // The resize handle inside would add its name to the header's.
-                      aria-label={canResizeColumn ? column.header : undefined}
-                      data-drop-target={dropTarget === column.id || undefined}
-                      onDragOver={(event: DragEvent) => {
-                        if (!canMove || dragged.current === undefined) return
-                        event.preventDefault()
-                        event.dataTransfer.dropEffect = 'move'
-                        setDropTarget(column.id)
-                      }}
-                      onDragLeave={() =>
-                        setDropTarget((target) => (target === column.id ? undefined : target))
-                      }
-                      onDrop={(event: DragEvent) => {
-                        event.preventDefault()
-                        if (dragged.current !== undefined) moveColumn(dragged.current, column.id)
-                        setDropTarget(undefined)
-                      }}
-                      className={cn(
-                        listTable.th,
-                        'group/th relative data-drop-target:bg-muted',
-                        column.align === 'right' && 'text-right',
-                        column.id === SELECT && listTable.select,
-                        column.id === ACTIONS && listTable.menu,
-                        filler && column.id === lastColumn && column.id !== ACTIONS && 'pr-5',
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'block',
-                          column.id !== SELECT && 'truncate',
-                          canMove && 'cursor-grab',
-                        )}
-                        // Not while a column is resized: Chromium would start the drag once the
-                        // widened column brings this label under the point the press began at.
-                        draggable={canMove && !resizing}
-                        onDragStart={(event: DragEvent) => {
-                          if (resizing) {
-                            event.preventDefault()
-                            return
-                          }
-                          dragged.current = column.id
-                          event.dataTransfer.effectAllowed = 'move'
-                          event.dataTransfer.setData('text/plain', column.header)
+                      <th
+                        key={header.id}
+                        aria-sort={
+                          sorted ? (sorted === 'desc' ? 'descending' : 'ascending') : undefined
+                        }
+                        // The resize handle inside would add its name to the header's.
+                        aria-label={canResizeColumn ? column.header : undefined}
+                        data-drop-target={dropTarget === column.id || undefined}
+                        onDragOver={(event: DragEvent) => {
+                          if (!canMove || dragged.current === undefined) return
+                          event.preventDefault()
+                          event.dataTransfer.dropEffect = 'move'
+                          setDropTarget(column.id)
                         }}
-                        onDragEnd={() => {
-                          dragged.current = undefined
+                        onDragLeave={() =>
+                          setDropTarget((target) => (target === column.id ? undefined : target))
+                        }
+                        onDrop={(event: DragEvent) => {
+                          event.preventDefault()
+                          if (dragged.current !== undefined) moveColumn(dragged.current, column.id)
                           setDropTarget(undefined)
                         }}
+                        className={cn(
+                          listTable.th,
+                          'group/th relative data-drop-target:bg-muted',
+                          column.align === 'right' && 'text-right',
+                          column.id === SELECT && listTable.select,
+                          column.id === ACTIONS && listTable.menu,
+                          filler && column.id === lastColumn && column.id !== ACTIONS && 'pr-5',
+                        )}
                       >
-                        {column.headerContent ??
-                          (header.column.getCanSort() && sorting ? (
-                            <button
-                              type="button"
-                              onClick={header.column.getToggleSortingHandler()}
-                              className={cn(
-                                'group/sort inline-flex max-w-full cursor-pointer items-center gap-1.5 uppercase hover:text-foreground',
-                                sorted && 'text-foreground',
-                              )}
-                            >
-                              <span className="truncate">{column.header}</span>
-                              <SortCarets sorted={sorted} />
-                            </button>
-                          ) : (
-                            column.header
-                          ))}
-                      </span>
-                      {canResizeColumn && (
-                        <ColumnResizer
-                          label={column.header}
-                          width={header.getSize()}
-                          min={bounds(column).min}
-                          max={bounds(column).max}
-                          active={resizing === column.id}
-                          onStart={header.getResizeHandler()}
-                          onResize={(width) =>
-                            table.setColumnSizing((old) => ({ ...old, [column.id]: width }))
-                          }
-                          onReset={() => header.column.resetSize()}
-                        />
-                      )}
-                    </th>
-                  )
-                })}
-                {filler && <th aria-hidden className={cn(listTable.th, 'p-0')} />}
+                        <span
+                          className={cn(
+                            'block',
+                            column.id !== SELECT && 'truncate',
+                            canMove && 'cursor-grab',
+                          )}
+                          // Not while a column is resized: Chromium would start the drag once the
+                          // widened column brings this label under the point the press began at.
+                          draggable={canMove && !resizing}
+                          onDragStart={(event: DragEvent) => {
+                            if (resizing) {
+                              event.preventDefault()
+                              return
+                            }
+                            dragged.current = column.id
+                            event.dataTransfer.effectAllowed = 'move'
+                            event.dataTransfer.setData('text/plain', column.header)
+                          }}
+                          onDragEnd={() => {
+                            dragged.current = undefined
+                            setDropTarget(undefined)
+                          }}
+                        >
+                          {column.headerContent ??
+                            (header.column.getCanSort() && sorting ? (
+                              <button
+                                type="button"
+                                onClick={header.column.getToggleSortingHandler()}
+                                className={cn(
+                                  'group/sort inline-flex max-w-full cursor-pointer items-center gap-1.5 uppercase hover:text-foreground',
+                                  sorted && 'text-foreground',
+                                )}
+                              >
+                                <span className="truncate">{column.header}</span>
+                                <SortIcon sorted={sorted} />
+                              </button>
+                            ) : (
+                              column.header
+                            ))}
+                        </span>
+                        {canResizeColumn && (
+                          <ColumnResizer
+                            label={column.header}
+                            width={header.getSize()}
+                            min={bounds(column).min}
+                            max={bounds(column).max}
+                            active={resizing === column.id}
+                            onStart={header.getResizeHandler()}
+                            onResize={(width) =>
+                              table.setColumnSizing((old) => ({ ...old, [column.id]: width }))
+                            }
+                            onReset={() => header.column.resetSize()}
+                          />
+                        )}
+                      </th>
+                    )
+                  }),
+                  <th key="filler" aria-hidden className={cn(listTable.th, 'p-0')} />,
+                )}
               </tr>
             ))}
           </thead>
@@ -676,37 +685,39 @@ export function DataTable<T extends RowData>({
                   }
                   className={cn(listTable.row, onRowClick && 'cursor-pointer', extra?.className)}
                 >
-                  {row.getVisibleCells().map((cell) => {
-                    const column = byId.get(cell.column.id)
-                    if (!column) return null
-                    if (column.id === SELECT && selection)
+                  {withFiller(
+                    row.getVisibleCells().map((cell) => {
+                      const column = byId.get(cell.column.id)
+                      if (!column) return null
+                      if (column.id === SELECT && selection)
+                        return (
+                          <td key={cell.id} className={cn(listTable.td, listTable.select)}>
+                            <Checkbox
+                              aria-label={selection.rowLabel(original)}
+                              className="cursor-pointer bg-card"
+                              checked={row.getIsSelected()}
+                              onCheckedChange={(checked) => row.toggleSelected(checked === true)}
+                            />
+                          </td>
+                        )
                       return (
-                        <td key={cell.id} className={cn(listTable.td, listTable.select)}>
-                          <Checkbox
-                            aria-label={selection.rowLabel(original)}
-                            className="cursor-pointer bg-card"
-                            checked={row.getIsSelected()}
-                            onCheckedChange={(checked) => row.toggleSelected(checked === true)}
-                          />
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            listTable.td,
+                            column.align === 'right' && listTable.numeric,
+                            column.id === SELECT && listTable.select,
+                            column.id === ACTIONS && listTable.menu,
+                            filler && column.id === lastColumn && column.id !== ACTIONS && 'pr-5',
+                            column.className,
+                          )}
+                        >
+                          {column.cell(original)}
                         </td>
                       )
-                    return (
-                      <td
-                        key={cell.id}
-                        className={cn(
-                          listTable.td,
-                          column.align === 'right' && listTable.numeric,
-                          column.id === SELECT && listTable.select,
-                          column.id === ACTIONS && listTable.menu,
-                          filler && column.id === lastColumn && column.id !== ACTIONS && 'pr-5',
-                          column.className,
-                        )}
-                      >
-                        {column.cell(original)}
-                      </td>
-                    )
-                  })}
-                  {filler && <td aria-hidden className="p-0" />}
+                    }),
+                    <td key="filler" aria-hidden className="p-0" />,
+                  )}
                 </tr>
               )
               return renderRow ? (
@@ -730,17 +741,64 @@ function WrappedRow({ children }: { children: ReactNode }) {
   return children
 }
 
-/** Two small carets, up over down: the one of the sorted direction is solid, the others faint. */
-const caret = (active: boolean) =>
-  active ? 'fill-foreground' : 'fill-muted-foreground/35 group-hover/sort:fill-muted-foreground/70'
-
-function SortCarets({ sorted }: { sorted: false | 'asc' | 'desc' }) {
+/** Up and down arrows while unsorted (faint), then the arrow and bars of the sorted direction. */
+function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
+  const Icon = { asc: ArrowUpNarrowWide, desc: ArrowDownWideNarrow, none: ArrowUpDown }[
+    sorted || 'none'
+  ]
   return (
-    <svg aria-hidden viewBox="0 0 8 12" className="h-3 w-2 shrink-0">
-      <path d="M4 1.5 7.5 5.5h-7z" className={caret(sorted === 'asc')} />
-      <path d="M4 10.5.5 6.5h7z" className={caret(sorted === 'desc')} />
-    </svg>
+    <Icon
+      aria-hidden
+      data-sort={sorted || 'none'}
+      className={cn(
+        // Still on hover: the arrow nudge every other button's arrow icon has would read as motion.
+        'size-3.5 shrink-0 animate-none! transition-none! duration-0!',
+        sorted
+          ? 'text-foreground'
+          : 'text-muted-foreground/50 group-hover/sort:text-muted-foreground',
+      )}
+    />
   )
+}
+
+/**
+ * The widths of the shown columns: stored ones as they are, the others at their default; what
+ * the box has beyond that goes to the resizable ones without a stored width, in proportion to
+ * their default (the flexible one counts twice), so no column soaks up all of it. Short of room,
+ * the flexible one gives up width down to its minimum.
+ */
+export function fitColumns<T>(
+  shown: readonly DataColumn<T>[],
+  sizes: ColumnSizingState,
+  available: number,
+): ColumnSizingState {
+  const width = (column: DataColumn<T>) => {
+    const { size, min, max } = bounds(column)
+    return clamp(sizes[column.id] ?? size, min, max)
+  }
+  const used = shown.reduce((sum, column) => sum + width(column), 0)
+  const growing = shown.filter((column) => canResize(column) && !(column.id in sizes))
+  if (growing.length === 0) return sizes
+  const extra = available - used
+  const flex = growing.find((column) => column.flex)
+  const fitted = new Map(growing.map((column) => [column.id, width(column)]))
+  if (extra < 0 && flex) fitted.set(flex.id, Math.max(bounds(flex).min, width(flex) + extra))
+  if (extra > 0) {
+    const weight = (column: DataColumn<T>) => width(column) * (column.flex ? 2 : 1)
+    const weights = growing.reduce((sum, column) => sum + weight(column), 0)
+    for (const column of growing)
+      fitted.set(column.id, width(column) + Math.floor((extra * weight(column)) / weights))
+    // What rounding down left over goes to the flexible column, else the first one.
+    const rest =
+      available - used - growing.reduce((sum, c) => sum + (fitted.get(c.id) ?? 0) - width(c), 0)
+    const last = flex ?? growing[0]
+    if (last) fitted.set(last.id, (fitted.get(last.id) ?? 0) + rest)
+    for (const column of growing) {
+      const { min, max } = bounds(column)
+      fitted.set(column.id, clamp(fitted.get(column.id) ?? 0, min, max))
+    }
+  }
+  return { ...sizes, ...Object.fromEntries(fitted) }
 }
 
 /**
@@ -789,7 +847,7 @@ function ColumnResizer({
       // Inside its own header: centred on the border, the next sticky header would cover its half.
       className="group/resizer absolute inset-y-0 right-0 z-10 flex w-3 cursor-col-resize touch-none justify-end outline-none select-none"
     >
-      <span className="my-2.5 w-0.5 rounded-full bg-border group-hover/resizer:bg-ring group-focus-visible/resizer:bg-ring group-data-resizing/resizer:bg-ring" />
+      <span className="my-2.5 border-r border-dashed border-border group-hover/resizer:border-solid group-hover/resizer:border-foreground group-focus-visible/resizer:border-solid group-focus-visible/resizer:border-foreground group-data-resizing/resizer:border-solid group-data-resizing/resizer:border-foreground" />
     </button>
   )
 }

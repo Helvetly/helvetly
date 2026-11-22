@@ -199,7 +199,7 @@ const inTurn = <T,>(items: readonly T[], step: (item: T) => Promise<void>) =>
   items.reduce<Promise<void>>((done, item) => done.then(() => step(item)), Promise.resolve())
 
 const STORAGE = 'helvetly.table.clients.'
-const WIDTHS_KEY = `${STORAGE}columns`
+const WIDTHS_KEY = `${STORAGE}columns.v2`
 
 const widthOf = (element: Element) => Math.round(element.getBoundingClientRect().width)
 const whole = (badge: HTMLElement) => badge.scrollWidth <= badge.clientWidth
@@ -265,6 +265,8 @@ export const ResizeColumns: Story = {
 
     const stored: unknown = JSON.parse(localStorage.getItem(WIDTHS_KEY) ?? 'null')
     await expect(stored).toMatchObject({ type: least, name: widthOf(name) })
+    // Back to the start: the drags scrolled the list sideways, wherever the last handle sat.
+    scroller.scrollLeft = 0
   },
 }
 export const ResizeColumnsDark = dark(ResizeColumns)

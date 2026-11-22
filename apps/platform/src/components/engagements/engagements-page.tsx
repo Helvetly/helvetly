@@ -232,8 +232,8 @@ function engagementColumns(
     {
       id: 'billing',
       header: translate('billing'),
-      size: 112,
-      minSize: 88,
+      size: 180,
+      minSize: 120,
       cell: (engagement) => (
         <BillingLabel engagement={{ ...engagement, billing: billingOf(engagement) }} />
       ),
