@@ -84,11 +84,13 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if err != nil {
 		return err
 	}
-	m := mail.Message{Workspace: sess.Workspace.ID, To: to, Cc: cc, Bcc: bcc, Subject: subject, Text: message,
+	m := mail.Message{Workspace: sess.Workspace.ID, Language: inv.Language, To: to, Cc: cc, Bcc: bcc, Subject: subject, Text: message,
 		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: fileName(inv), ContentType: "application/pdf", Data: pdf}}}
 	if inv.Seller != nil && inv.Seller.Email != nil {
 		m.ReplyTo = *inv.Seller.Email
+	} else { // without a company email, the member who sends gets the answer
+		m.ReplyTo = sess.User.Email
 	}
 	if clientErr == nil && client.EInvoiceFormat != "none" && s.einvoice != nil {
 		// a client that asked for XML gets it or nothing: a PDF alone would not be the invoice it can process

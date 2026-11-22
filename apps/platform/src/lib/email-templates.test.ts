@@ -40,6 +40,7 @@ test('lists 16 templates and builds the invoice draft from the default', async (
     subject: 'Invoice 2026-001 from Muster GmbH',
     message:
       "Hello\n\nPlease find attached our invoice 2026-001 for CHF 1'234.50, payable by 31.12.2026.\n\nKind regards\nMuster GmbH",
+    reply_to: 'billing@muster.ch',
   })
 })
 

@@ -19,7 +19,12 @@ afterAll(() => server.close())
 
 const invoice = listItem(sampleInvoice({ status: 'open', number: '2026-001' }))
 const quote = sampleQuote({ id: 'quo_sent' })
-const fakeDraft = { to: ['billing@acme.ch'], subject: 'Fake subject', message: 'Fake\n\nmessage' }
+const fakeDraft = {
+  to: ['billing@acme.ch'],
+  subject: 'Fake subject',
+  message: 'Fake\n\nmessage',
+  reply_to: 'office@acme.ch',
+}
 
 /** The fake draft by default, the real mock of the email API with SUPERLITE_REAL=1. */
 const draftHandlers = () =>
@@ -78,6 +83,7 @@ test.each([
     expect(field(/^Message/)).toHaveValue(draft.message)
     expect(field(/^Message/)).not.toHaveAttribute('placeholder')
     expect(field(/^To/)).toHaveValue(draft.to.join(', '))
+    expect(screen.getByText(`Replies go to ${draft.reply_to}`)).toBeInTheDocument()
     expect(field(/^Subject/)).toBeEnabled()
     await userEvent.click(screen.getByRole('button', { name: 'Send' }))
     await waitFor(() => expect(posted.body).not.toBeNull())

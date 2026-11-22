@@ -567,6 +567,7 @@ export function SendDialog({
         value={shownMessage}
         disabled={draft.isPending}
         onChange={setMessage}
+        replyTo={draft.data?.reply_to}
         context={{
           document: documentName(invoice),
           client: invoice.client.name,

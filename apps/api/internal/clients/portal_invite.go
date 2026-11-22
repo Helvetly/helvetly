@@ -98,7 +98,7 @@ func (s *Service) sendPortalInvite(ctx context.Context, sess store.Session, c st
 	body := fmt.Sprintf(`<p>Hello %s,</p><p><strong>%s</strong> now gives you access to their client portal, where you can see your invoices, engagements and shared documents:</p>
 <p><a href="%s">%s</a></p><p>Enter this email address and we send you a code to sign in: there is no password.</p>`,
 		html.EscapeString(c.Name), html.EscapeString(sess.Workspace.Name), html.EscapeString(link), html.EscapeString(link))
-	if err := s.mail.Send(ctx, mailer.Message{Workspace: sess.Workspace.ID, To: []string{to}, Subject: sess.Workspace.Name + " invited you to their client portal", Text: text, HTML: body}); err != nil {
+	if err := s.mail.Send(ctx, mailer.Message{Workspace: sess.Workspace.ID, Language: "en", To: []string{to}, Subject: sess.Workspace.Name + " invited you to their client portal", Text: text, HTML: body}); err != nil {
 		return fmt.Errorf("send portal invitation: %w", err)
 	}
 	if err := s.db.Q.MarkPortalInvited(ctx, c.ID, s.now()); err != nil {

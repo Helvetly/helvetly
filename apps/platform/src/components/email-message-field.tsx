@@ -21,6 +21,7 @@ export function EmailMessageField({
   disabled,
   placeholder,
   context,
+  replyTo,
 }: {
   id: string
   value: string
@@ -31,9 +32,17 @@ export function EmailMessageField({
   placeholder?: string
   /** What the email is about (document, number, client, amount, due date, subject…) for Write with AI. */
   context: Record<string, string | undefined>
+  /** Where the client's answer lands (the email's Reply-To), shown under the box. */
+  replyTo?: string
 }) {
   return (
-    <FormField id={id} label={translate('message')} required={required} error={error}>
+    <FormField
+      id={id}
+      label={translate('message')}
+      required={required}
+      error={error}
+      status={replyTo ? translate('repliesGoTo', { email: replyTo }) : undefined}
+    >
       <TextareaBox
         {...describedBy(id, error)}
         resizable={false}

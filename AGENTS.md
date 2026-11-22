@@ -138,7 +138,10 @@ are the reference.
   storage answers, released only after a confirmed delete, reconciled by a job. Downloads are not counted: they go
   through `storage.Serve` (a `MEDIA_URL` link, a presigned URL or, with `S3_PROXY_DOWNLOADS`, the API). Business
   email carries its `Workspace` and counts its recipients through `mail.Metered` (one message's attachments are
-  capped by `max_email_attachment_bytes`); sign-in, security and invitation email never does.
+  capped by `max_email_attachment_bytes`) and goes out as the business through `mail.Branded`: the company name as
+  From's display name (the address stays `MAIL_FROM`'s), Reply-To the workspace's reply-to email (`workspaces.reply_to_email`,
+  Settings → Workspace), else the company email, else the member who sends, else the owner, never no-reply; its logo and
+  seller details frame the card. Sign-in, security and invitation email never does either and stays Helvetly's.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
   and a monthly token budget per pool: Heidi's chat (`ai_tokens_per_month`) and the automation pool of AI import

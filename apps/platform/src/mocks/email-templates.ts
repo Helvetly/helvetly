@@ -105,6 +105,7 @@ const draftOf = (kind: EmailKind, { to, ...facts }: Facts): EmailDraft => {
       .replace(/\s+/g, ' ')
       .trim(),
     message: fill(template?.body ?? ''),
+    reply_to: 'billing@muster.ch',
   }
 }
 
