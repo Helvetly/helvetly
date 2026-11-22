@@ -71,7 +71,7 @@ export type ItemsProps = {
   from: string | null
   sort: SortField
   desc: boolean
-  onSort: (field: SortField) => void
+  onSort: (field: SortField, desc: boolean) => void
   onClick: (key: ItemKey, event: MouseEvent) => void
   /** A checkbox adds the item to the selection or takes it out, as ⌘-click does. */
   onToggle: (key: ItemKey) => void
@@ -566,9 +566,9 @@ function List(props: ItemsProps) {
       sorting={{
         column: Object.keys(SORTS).find((column) => SORTS[column] === props.sort),
         desc: props.desc,
-        onSort: (column) => {
+        onSort: (column, desc) => {
           const field = SORTS[column]
-          if (field) props.onSort(field)
+          if (field) props.onSort(field, desc)
         },
       }}
       rowProps={(row) => ({
@@ -701,6 +701,7 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
       size: 120,
       minSize: 96,
       sortable: true,
+      sortDescFirst: true,
       showFrom: 970,
       className: 'text-muted-foreground',
       cell: (row) => formatDate('folder' in row ? row.folder.created_at : row.file.created_at),
@@ -711,6 +712,7 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
       size: 120,
       minSize: 96,
       sortable: true,
+      sortDescFirst: true,
       className: 'text-muted-foreground',
       cell: (row) => formatDate('folder' in row ? row.folder.updated_at : row.file.updated_at),
     },

@@ -197,7 +197,7 @@ test('lists invoices from the API; sorting goes to the URL', async () => {
   expect(within(table).getAllByText('Overdue').length).toBeGreaterThan(0)
   expect(within(table).getByText('CN-2026-001')).toBeInTheDocument()
 
-  await userEvent.click(within(table).getByRole('button', { name: /Amount/ }))
+  await userEvent.click(within(table).getByRole('button', { name: 'Amount' }))
   expect(lastUrl()).toBe('/invoices?sort=-total')
 })
 

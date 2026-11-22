@@ -3,9 +3,15 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
+import {
+  ColumnsCustomize,
+  DataTable,
+  listTable,
+  type DataColumn,
+} from '@helvetly/ui/components/data-table'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { formatDate } from '@helvetly/ui/lib/format'
+import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   Archive,
@@ -152,7 +158,8 @@ function bulkMessage(result: BulkResult, verb: string) {
 export function ProductsPage() {
   const pathname = usePathname()
   const query = useSearchParams()
-  const params = parseListParams(query)
+  const [pageSize, setPageSize] = usePageSize('products')
+  const params = { ...parseListParams(query), pageSize }
   const openId = query.get('id')
   const canWrite = useCan('write:products')
   const role = useSession().data?.role
@@ -286,11 +293,6 @@ export function ProductsPage() {
       )
   }
 
-  const sortBy = (field: SortField) =>
-    update({
-      sort: field,
-      desc: params.sort === field ? !params.desc : field === 'updated_at' || field === 'unit_price',
-    })
   const archivedView = params.status === 'archived'
   const exportLock = useFeatureLock('data_export')
   const aiLock = useFeatureLock('ai_import')
@@ -380,24 +382,24 @@ export function ProductsPage() {
                   <span className="max-sm:sr-only">{translate('customize')}</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 gap-1 p-2">
+              <PopoverContent
+                align="end"
+                aria-label={translate('customize')}
+                className="w-64 gap-1 p-2"
+              >
                 <p className="px-2 pt-1 pb-1.5 text-xs text-muted-foreground">
                   {translate('columns')}
                 </p>
-                {allColumns
-                  .filter((column) => column.id !== 'name' && column.id !== 'actions')
-                  .map((column) => (
-                    <label
-                      key={column.id}
-                      className="flex h-8 cursor-pointer items-center gap-2.5 rounded-md px-2 text-sm hover:bg-muted"
-                    >
-                      <Checkbox
-                        checked={!hiddenColumns.hidden.includes(column.id)}
-                        onCheckedChange={() => hiddenColumns.toggle(column.id)}
-                      />
-                      {column.header}
-                    </label>
-                  ))}
+                <ColumnsCustomize
+                  table="products"
+                  columns={allColumns.map((column) => ({
+                    id: column.id,
+                    label: column.header,
+                    required: column.id === 'name',
+                  }))}
+                  hidden={hiddenColumns.hidden}
+                  onToggle={hiddenColumns.toggle}
+                />
               </PopoverContent>
             </Popover>
           </ListToolbar>
@@ -486,9 +488,9 @@ export function ProductsPage() {
                 sorting={{
                   column: Object.keys(SORTS).find((column) => SORTS[column] === params.sort),
                   desc: params.desc,
-                  onSort: (column) => {
+                  onSort: (column, desc) => {
                     const field = SORTS[column]
-                    if (field) sortBy(field)
+                    if (field) update({ sort: field, desc })
                   },
                 }}
                 selection={{
@@ -507,22 +509,32 @@ export function ProductsPage() {
                     {tr}
                   </RowContextMenu>
                 )}
+                pagination={
+                  meta && {
+                    page: meta.page,
+                    pageSize,
+                    total: meta.total,
+                    onChange: (page, size) => {
+                      setPageSize(size)
+                      update({ page })
+                    },
+                  }
+                }
+                footer={
+                  <ul className={cn(listTable.list, '@4xl:hidden')}>
+                    {rows.map((product) => (
+                      <ProductItem
+                        key={product.id}
+                        product={product}
+                        selected={selected.has(product.id)}
+                        bulk={selected.has(product.id) ? selection : undefined}
+                        access={access}
+                        act={act}
+                      />
+                    ))}
+                  </ul>
+                }
               />
-
-              <ul className={cn(listTable.list, '@4xl:hidden')}>
-                {rows.map((product) => (
-                  <ProductItem
-                    key={product.id}
-                    product={product}
-                    selected={selected.has(product.id)}
-                    bulk={selected.has(product.id) ? selection : undefined}
-                    access={access}
-                    act={act}
-                  />
-                ))}
-              </ul>
-
-              {meta && <Pager meta={meta} onPage={(page) => update({ page })} />}
             </div>
           )}
 
@@ -823,6 +835,7 @@ function productColumns(access: RowProps['access'], act: RowActions): DataColumn
       size: 168,
       minSize: 120,
       sortable: true,
+      sortDescFirst: true,
       align: 'right',
       cell: (product) => <PriceCell product={product} />,
     },
@@ -840,6 +853,7 @@ function productColumns(access: RowProps['access'], act: RowActions): DataColumn
       size: 124,
       minSize: 100,
       sortable: true,
+      sortDescFirst: true,
       showFrom: 1100,
       cell: (product) => (
         <span className="text-muted-foreground">{formatDate(product.updated_at)}</span>

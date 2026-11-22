@@ -1,12 +1,13 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
-import { DataTable, type DataColumn } from '@helvetly/ui/components/data-table'
+import { ColumnsCustomize, DataTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
-import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fireEvent, screen, userEvent, waitFor, within } from 'storybook/test'
 
 const TABLE = 'story'
 const KEY = `helvetly.table.${TABLE}.columns`
+const ORDER_KEY = `helvetly.table.${TABLE}.order`
 
 type Row = { id: string; number: string; client: string; due: string; total: string }
 const ROWS: Row[] = [
@@ -45,7 +46,15 @@ const COLUMNS: DataColumn<Row>[] = [
     cell: (row) => row.client,
   },
   { id: 'due', header: 'Due', size: 128, minSize: 96, cell: (row) => row.due },
-  { id: 'total', header: 'Amount', size: 140, align: 'right', cell: (row) => row.total },
+  {
+    id: 'total',
+    header: 'Amount',
+    size: 140,
+    align: 'right',
+    sortable: true,
+    sortDescFirst: true,
+    cell: (row) => row.total,
+  },
   { id: 'status', header: 'Status', size: 112, resizable: false, cell: () => 'Paid' },
 ]
 
@@ -63,8 +72,7 @@ function Table() {
         sorting={{
           column: sort.column,
           desc: sort.desc,
-          onSort: (column) =>
-            setSort({ column, desc: sort.column === column ? !sort.desc : false }),
+          onSort: (column, desc) => setSort({ column, desc }),
         }}
         selection={{
           selected,
@@ -76,11 +84,12 @@ function Table() {
       />
       <p>Opened: {opened}</p>
       <p>Selected: {selected.size}</p>
+      <p>Sorted: {sort.column ? `${sort.column} ${sort.desc ? 'desc' : 'asc'}` : 'none'}</p>
     </>
   )
 }
 
-/** A remount, as after a reload: the widths come back from storage. */
+/** A remount, as after a reload: the widths and the order come back from storage. */
 function Page() {
   const [mount, setMount] = useState(0)
   return (
@@ -88,14 +97,23 @@ function Page() {
       <div className="rounded-xl border bg-card">
         <Table key={mount} />
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="justify-self-start"
-        onClick={() => setMount(mount + 1)}
-      >
-        Reload
-      </Button>
+      <div className="flex items-start gap-4">
+        <Button variant="outline" size="sm" onClick={() => setMount(mount + 1)}>
+          Reload
+        </Button>
+        <div className="grid w-64 gap-1 rounded-xl border bg-card p-2" aria-label="Customize">
+          <ColumnsCustomize
+            table={TABLE}
+            columns={COLUMNS.map((column) => ({
+              id: column.id,
+              label: column.header,
+              required: column.id === 'client',
+            }))}
+            hidden={[]}
+            onToggle={() => {}}
+          />
+        </div>
+      </div>
     </div>
   )
 }
@@ -105,123 +123,194 @@ const meta = {
   parameters: { layout: 'padded' },
   render: () => <Page />,
   beforeEach: () => {
-    localStorage.removeItem(KEY)
+    for (const key of Object.keys(localStorage))
+      if (key.startsWith('helvetly.table.story')) localStorage.removeItem(key)
   },
 } satisfies Meta
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-const header = (canvas: ReturnType<typeof within>, name: string) => {
+type Canvas = ReturnType<typeof within>
+
+const header = (canvas: Canvas, name: string) => {
   const head = canvas.getByRole('columnheader', { name })
   return { head, width: () => Math.round(head.getBoundingClientRect().width) }
 }
+
+/** Every column's width by its header's name (the empty room right of them is not a column). */
+const widths = (canvas: Canvas) =>
+  Object.fromEntries(
+    canvas
+      .getAllByRole('columnheader')
+      .map((head: HTMLElement) => [
+        head.getAttribute('aria-label') ?? (head.textContent?.trim() || 'select'),
+        Math.round(head.getBoundingClientRect().width),
+      ]),
+  )
+const sum = (sizes: Record<string, number>) =>
+  Object.values(sizes).reduce((total, width) => total + width, 0)
+const order = (canvas: Canvas) =>
+  canvas
+    .getAllByRole('columnheader')
+    .map((head: HTMLElement) => head.textContent?.trim() || 'select')
+
+/** Runs `step` for each item in turn, each after the one before has finished. */
+const inTurn = <T,>(items: readonly T[], step: (item: T) => Promise<void>) =>
+  items.reduce<Promise<void>>((done, item) => done.then(() => step(item)), Promise.resolve())
 
 const point = (handle: HTMLElement) => {
   const box = handle.getBoundingClientRect()
   return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
 }
 
-/** Drags the handle by `dx` pixels with a mouse, as TanStack's resize handler listens for it. */
+/**
+ * Drags the handle by `dx` pixels as a mouse does: down on the handle, then moves and up on the
+ * document, off the handle, as TanStack's resize handler listens for them. A frame between moves,
+ * since TanStack applies at most one move per frame.
+ */
 async function drag(handle: HTMLElement, dx: number) {
+  handle.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   const { x, y } = point(handle)
   // A pointer lands on whatever is on top there: the handle must not sit under the next header.
   await expect(document.elementFromPoint(x, y)).toBe(handle)
   fireEvent.mouseDown(handle, { button: 0, clientX: x, clientY: y })
-  fireEvent.mouseMove(document, { clientX: x + dx / 2, clientY: y })
-  fireEvent.mouseMove(document, { clientX: x + dx, clientY: y })
-  fireEvent.mouseUp(document, { clientX: x + dx, clientY: y })
+  await inTurn([dx / 4, dx / 2, dx], async (step) => {
+    fireEvent.mouseMove(document, { clientX: x + step, clientY: y + 30 })
+    await new Promise(requestAnimationFrame)
+  })
+  fireEvent.mouseUp(document, { clientX: x + dx, clientY: y + 30 })
 }
 
 /** The same with a finger. */
 async function swipe(handle: HTMLElement, dx: number) {
+  handle.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   const { x, y } = point(handle)
   const touch = (clientX: number) => [
     new Touch({ identifier: 1, target: handle, clientX, clientY: y }),
   ]
   fireEvent.touchStart(handle, { touches: touch(x) })
   fireEvent.touchMove(document, { touches: touch(x + dx) })
+  await new Promise(requestAnimationFrame)
   fireEvent.touchEnd(document, { touches: [], changedTouches: touch(x + dx) })
 }
 
+const resizer = (canvas: Canvas, name: string) =>
+  canvas.getByRole('button', { name: `Resize ${name}` })
+
 /**
- * Dragging an edge resizes only its column, 1:1 with the pointer; the client column, which fills
- * the rest of the box, gives the room; a reload keeps the width.
+ * Asserts that dragging `name`'s edge by `dx` changes that column, and the table, by exactly `dx`
+ * and leaves every other column as it was.
+ */
+async function expectDragChangesOnly(
+  canvas: Canvas,
+  name: string,
+  dx: number,
+  move: (handle: HTMLElement, dx: number) => Promise<void> = drag,
+) {
+  const before = widths(canvas)
+  await move(resizer(canvas, name), dx)
+  await waitFor(() => expect(widths(canvas)[name]).toBe((before[name] ?? 0) + dx))
+  await expect(widths(canvas)).toEqual({ ...before, [name]: (before[name] ?? 0) + dx })
+  await expect(sum(widths(canvas))).toBe(sum(before) + dx)
+}
+
+/** The box the table sits in: 900 px less its 1 px border on each side. */
+const BOX = 898
+
+/**
+ * Every resizable column, the client one too, follows the pointer 1:1: +80 then -40 changes only
+ * that column, and the table's width by the same; nothing sorts, no text is selected; a reload
+ * keeps the widths.
  */
 export const DragResizes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const number = header(canvas, 'Number')
-    const client = header(canvas, 'Client')
-    const due = header(canvas, 'Due')
-    const table = canvasElement.querySelector('table')
-    const box = table?.parentElement
-    await waitFor(() => expect(number.width()).toBe(128))
-    const before = client.width()
-    // The table fills its box exactly: no gap, no sideways scroll.
-    await expect(table?.getBoundingClientRect().width).toBe(box?.clientWidth)
-    await drag(canvas.getByLabelText('Resize Number'), 72)
-    await waitFor(() => expect(number.width()).toBe(200))
-    await expect(client.width()).toBe(before - 72)
-    await expect(due.width()).toBe(128)
-    await expect(table?.getBoundingClientRect().width).toBe(box?.clientWidth)
-    // The drag neither sorted nor left a text selection.
-    await expect(number.head).not.toHaveAttribute('aria-sort')
+    // Before any resize the client column takes what the others leave of the box.
+    await waitFor(() =>
+      expect(header(canvas, 'Client').width()).toBe(BOX - 52 - 128 - 128 - 140 - 112),
+    )
+    await expect(sum(widths(canvas))).toBe(BOX)
+    await inTurn(['Number', 'Client', 'Due', 'Amount'], async (name) => {
+      await expectDragChangesOnly(canvas, name, 80)
+      await expectDragChangesOnly(canvas, name, -40)
+    })
+    await expect(canvas.getByText('Sorted: none')).toBeVisible()
     await expect(window.getSelection()?.toString()).toBe('')
-    await expect(JSON.parse(localStorage.getItem(KEY) ?? '{}')).toEqual({ number: 200 })
+    const box = canvasElement.querySelector('table')?.parentElement
+    if (!box) throw new Error('The table has no box')
+    // Wider than its box now: the table is as wide as its columns and the box scrolls sideways.
+    await expect(box.scrollWidth).toBe(BOX + 4 * 40)
+    await expect(getComputedStyle(box).overflowX).toBe('auto')
+    const stored = widths(canvas)
+    const kept: unknown = JSON.parse(localStorage.getItem(KEY) ?? 'null')
+    await expect(kept).toMatchObject({ number: 168, client: stored.Client, due: 168, total: 180 })
     await userEvent.click(canvas.getByRole('button', { name: 'Reload' }))
-    await waitFor(() => expect(header(canvas, 'Number').width()).toBe(200))
+    await waitFor(() => expect(widths(canvas)).toEqual(stored))
   },
 }
 
-/** A finger drags the edge too. */
+/** A finger drags every edge the same way. */
 export const TouchResizes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const due = header(canvas, 'Due')
-    await waitFor(() => expect(due.width()).toBe(128))
-    await swipe(canvas.getByLabelText('Resize Due'), 40)
-    await waitFor(() => expect(due.width()).toBe(168))
+    await waitFor(() => expect(sum(widths(canvas))).toBe(BOX))
+    await inTurn(['Number', 'Client', 'Due', 'Amount'], async (name) => {
+      await expectDragChangesOnly(canvas, name, 80, swipe)
+      await expectDragChangesOnly(canvas, name, -40, swipe)
+    })
   },
 }
 
 /**
- * A column stops at its max and its min. Once the columns need more than the box, the client
- * column keeps its min and the box scrolls sideways instead of squeezing the others.
+ * Narrower than its box, the table leaves the room right of its columns empty, as in TanStack's
+ * example, but its header and rows still reach the box's edge.
  */
+export const LeavesRoomWhenNarrower: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await waitFor(() => expect(sum(widths(canvas))).toBe(BOX))
+    await expectDragChangesOnly(canvas, 'Client', -60)
+    await expect(sum(widths(canvas))).toBe(BOX - 60)
+    const row = canvas.getByText('Muster AG').closest('tr')
+    await expect(Math.round(row?.getBoundingClientRect().width ?? 0)).toBe(BOX)
+    // Growing again changes only the column, the room right of it shrinks.
+    await expectDragChangesOnly(canvas, 'Number', 20)
+  },
+}
+
+/** A column stops at its max and its min, and keeps following the pointer back from there. */
 export const StopsAtItsRange: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const number = header(canvas, 'Number')
     const due = header(canvas, 'Due')
-    const client = header(canvas, 'Client')
-    const total = header(canvas, 'Amount')
-    await drag(canvas.getByLabelText('Resize Number'), 400)
+    await drag(resizer(canvas, 'Number'), 400)
     await waitFor(() => expect(number.width()).toBe(260))
-    await drag(canvas.getByLabelText('Resize Number'), -400)
+    await drag(resizer(canvas, 'Number'), -400)
     await waitFor(() => expect(number.width()).toBe(80))
-    await drag(canvas.getByLabelText('Resize Due'), 900)
+    await drag(resizer(canvas, 'Due'), 900)
     await waitFor(() => expect(due.width()).toBe(640))
-    await expect(client.width()).toBe(200)
-    await expect(total.width()).toBe(140)
-    const box = canvasElement.querySelector('table')?.parentElement
-    if (!box) throw new Error('The table has no box')
-    await expect(box.scrollWidth).toBeGreaterThan(box.clientWidth)
-    await expect(getComputedStyle(box).overflowX).toBe('auto')
+    await expect(header(canvas, 'Client').width()).toBe(BOX - 52 - 128 - 128 - 140 - 112)
   },
 }
 
-/** A double-click on the edge gives the column its default width again. */
+/** A double-click on the edge gives the column its default width again, the client one too. */
 export const DoubleClickResets: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const number = header(canvas, 'Number')
-    const handle = canvas.getByLabelText('Resize Number')
-    await drag(handle, 40)
-    await waitFor(() => expect(number.width()).toBe(168))
-    await userEvent.dblClick(handle)
+    const client = header(canvas, 'Client')
     await waitFor(() => expect(number.width()).toBe(128))
-    await expect(localStorage.getItem(KEY)).toBeNull()
+    const fill = client.width()
+    await drag(resizer(canvas, 'Number'), 40)
+    await waitFor(() => expect(number.width()).toBe(168))
+    await userEvent.dblClick(resizer(canvas, 'Number'))
+    await waitFor(() => expect(number.width()).toBe(128))
+    await drag(resizer(canvas, 'Client'), 50)
+    await waitFor(() => expect(client.width()).toBe(fill + 50))
+    await userEvent.dblClick(resizer(canvas, 'Client'))
+    await waitFor(() => expect(client.width()).toBe(fill))
   },
 }
 
@@ -230,11 +319,9 @@ export const KeyboardResizes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const due = header(canvas, 'Due')
-    const handle = canvas.getByRole('slider', { name: 'Resize Due' })
-    handle.focus()
+    resizer(canvas, 'Due').focus()
     await userEvent.keyboard('{ArrowRight}{ArrowRight}')
     await waitFor(() => expect(due.width()).toBe(160))
-    await expect(handle).toHaveValue('160')
     await userEvent.keyboard('{ArrowLeft}')
     await waitFor(() => expect(due.width()).toBe(144))
     await userEvent.keyboard('{Enter}')
@@ -242,16 +329,142 @@ export const KeyboardResizes: Story = {
   },
 }
 
-/** Only resizable columns get a handle: not the select, flexible client or status column. */
+/**
+ * Every column but the checkbox, row menu and fixed ones has a handle: a thin visible bar at its
+ * right edge, in a 12 px strip that takes the pointer.
+ */
 export const HandlesOnlyOnResizable: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByLabelText('Resize Client')).toBeNull()
-    await expect(canvas.queryByLabelText('Resize Status')).toBeNull()
-    await expect(canvas.getAllByRole('slider')).toHaveLength(3)
-    const handle = canvas.getByLabelText('Resize Number')
+    await expect(canvas.queryByRole('button', { name: 'Resize Status' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Resize Select all' })).toBeNull()
+    await expect(canvas.getAllByRole('button', { name: /^Resize / })).toHaveLength(4)
+    const handle = resizer(canvas, 'Client')
     await expect(getComputedStyle(handle).cursor).toBe('col-resize')
-    await expect(handle.getBoundingClientRect().width).toBeGreaterThanOrEqual(12)
+    await expect(getComputedStyle(handle).touchAction).toBe('none')
+    await expect(handle.getBoundingClientRect().width).toBe(12)
+    const bar = handle.firstElementChild
+    if (!bar) throw new Error('The handle has no bar')
+    await expect(bar.getBoundingClientRect().width).toBe(2)
+    await expect(getComputedStyle(bar).backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+    await expect(getComputedStyle(bar).transitionDuration).toBe('0s')
+  },
+}
+
+/** Moves the `from` header onto `to` with the browser's drag and drop. */
+function dragHeader(canvas: Canvas, from: string, to: string) {
+  const source = canvas.getByRole('columnheader', { name: from }).querySelector('[draggable=true]')
+  const target = canvas.getByRole('columnheader', { name: to })
+  if (!source) throw new Error(`${from} cannot be dragged`)
+  const dataTransfer = new DataTransfer()
+  fireEvent.dragStart(source, { dataTransfer })
+  fireEvent.dragEnter(target, { dataTransfer })
+  fireEvent.dragOver(target, { dataTransfer })
+  fireEvent.drop(target, { dataTransfer })
+  fireEvent.dragEnd(source, { dataTransfer })
+}
+
+/**
+ * A header dragged onto another takes its place; the checkbox column stays first and cannot be
+ * a target; nothing sorts; the order comes back after a reload.
+ */
+export const ReordersByDrag: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const initial = ['select', 'Number', 'Client', 'Due', 'Amount', 'Status']
+    await expect(order(canvas)).toEqual(initial)
+    dragHeader(canvas, 'Due', 'Number')
+    await waitFor(() =>
+      expect(order(canvas)).toEqual(['select', 'Due', 'Number', 'Client', 'Amount', 'Status']),
+    )
+    dragHeader(canvas, 'Number', 'Status')
+    await waitFor(() =>
+      expect(order(canvas)).toEqual(['select', 'Due', 'Client', 'Amount', 'Status', 'Number']),
+    )
+    // The checkbox column is no target: dropping on it changes nothing.
+    const select = canvas.getAllByRole('columnheader')[0]
+    const source = canvas.getByRole('columnheader', { name: 'Client' }).querySelector('[draggable]')
+    if (!select || !source) throw new Error('No header to drag')
+    fireEvent.dragStart(source, { dataTransfer: new DataTransfer() })
+    fireEvent.drop(select)
+    fireEvent.dragEnd(source)
+    await expect(order(canvas)[0]).toBe('select')
+    await expect(canvas.getByText('Sorted: none')).toBeVisible()
+    await expect(JSON.parse(localStorage.getItem(ORDER_KEY) ?? '[]')).toEqual([
+      'due',
+      'client',
+      'total',
+      'status',
+      'number',
+    ])
+    await userEvent.click(canvas.getByRole('button', { name: 'Reload' }))
+    await waitFor(() =>
+      expect(order(canvas)).toEqual(['select', 'Due', 'Client', 'Amount', 'Status', 'Number']),
+    )
+    // Widths follow their columns, and resizing still changes only the dragged one.
+    await expectDragChangesOnly(canvas, 'Number', 80)
+    // A press on a handle never drags the header, even once the widened column brings its
+    // label under the point the press began at.
+    const handle = resizer(canvas, 'Due')
+    const { x, y } = point(handle)
+    fireEvent.mouseDown(handle, { button: 0, clientX: x, clientY: y })
+    fireEvent.mouseMove(document, { clientX: x + 40, clientY: y })
+    await new Promise(requestAnimationFrame)
+    const label = canvas.getByRole('columnheader', { name: 'Due' }).querySelector('[draggable]')
+    if (!label) throw new Error('Due has no label')
+    await expect(label).toHaveAttribute('draggable', 'false')
+    await expect(fireEvent.dragStart(label, { dataTransfer: new DataTransfer() })).toBe(false)
+    fireEvent.mouseUp(document, { clientX: x + 40, clientY: y })
+    await expect(order(canvas)).toEqual(['select', 'Due', 'Client', 'Amount', 'Status', 'Number'])
+  },
+}
+
+/** The Customize list moves columns up and down in step with the table; Reset restores it. */
+export const ReordersInCustomize: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const customize = within(canvas.getByLabelText('Customize'))
+    const reset = customize.getByRole('button', { name: 'Reset to default' })
+    await expect(reset).toBeDisabled()
+    await expect(customize.getByRole('button', { name: 'Move Number up' })).toBeDisabled()
+    await expect(customize.getByRole('button', { name: 'Move Status down' })).toBeDisabled()
+    await userEvent.click(customize.getByRole('button', { name: 'Move Amount up' }))
+    await waitFor(() =>
+      expect(order(canvas)).toEqual(['select', 'Number', 'Client', 'Amount', 'Due', 'Status']),
+    )
+    await userEvent.click(customize.getByRole('button', { name: 'Move Number down' }))
+    await waitFor(() =>
+      expect(order(canvas)).toEqual(['select', 'Client', 'Number', 'Amount', 'Due', 'Status']),
+    )
+    await expect(customize.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Client',
+      'Number',
+      'Amount',
+      'Due',
+      'Status',
+    ])
+    // The client column always shows.
+    await expect(customize.getByRole('checkbox', { name: 'Client' })).toBeDisabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Reload' }))
+    await waitFor(() =>
+      expect(order(canvas)).toEqual(['select', 'Client', 'Number', 'Amount', 'Due', 'Status']),
+    )
+    await userEvent.click(reset)
+    await waitFor(() =>
+      expect(order(canvas)).toEqual(['select', 'Number', 'Client', 'Due', 'Amount', 'Status']),
+    )
+    await expect(localStorage.getItem(ORDER_KEY)).toBeNull()
+  },
+}
+
+/** A stored order naming a removed column and missing a new one still shows every column. */
+export const StoredOrderMerges: Story = {
+  beforeEach: () => {
+    localStorage.setItem(ORDER_KEY, JSON.stringify(['status', 'gone', 'due', 'number']))
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(order(canvas)).toEqual(['select', 'Status', 'Due', 'Amount', 'Number', 'Client'])
   },
 }
 
@@ -311,19 +524,39 @@ export const OwnSelectColumnUnclipped: Story = {
   },
 }
 
-/** A sortable header sorts, then reverses; a row click opens it, a checkbox only selects. */
+/** The carets of a sortable header: [up, down], each solid (`on`) or faint. */
+const carets = (canvas: Canvas, name: string) =>
+  [...canvas.getByRole('columnheader', { name }).querySelectorAll('svg path')].map((path) =>
+    path.classList.contains('fill-foreground') ? 'on' : 'faint',
+  )
+
+/**
+ * TanStack's sorting: a header sorts ascending (Amount, `sortDescFirst`, descending), a second
+ * click reverses and never removes it; the carets show the direction at once. A row click opens
+ * it, a checkbox only selects.
+ */
 export const SortsAndSelects: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    const client = () => canvas.getByRole('columnheader', { name: 'Client' })
+    await expect(carets(canvas, 'Client')).toEqual(['faint', 'faint'])
+    await expect(canvas.queryByRole('button', { name: 'Due' })).toBeNull()
     await userEvent.click(canvas.getByRole('button', { name: 'Client' }))
-    await expect(canvas.getByRole('columnheader', { name: 'Client' })).toHaveAttribute(
-      'aria-sort',
-      'ascending',
-    )
+    await expect(client()).toHaveAttribute('aria-sort', 'ascending')
+    await expect(carets(canvas, 'Client')).toEqual(['on', 'faint'])
     await userEvent.click(canvas.getByRole('button', { name: 'Client' }))
-    await expect(canvas.getByRole('columnheader', { name: 'Client' })).toHaveAttribute(
-      'aria-sort',
-      'descending',
+    await expect(client()).toHaveAttribute('aria-sort', 'descending')
+    await expect(carets(canvas, 'Client')).toEqual(['faint', 'on'])
+    await userEvent.click(canvas.getByRole('button', { name: 'Client' }))
+    await expect(canvas.getByText('Sorted: client asc')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Amount' }))
+    await expect(canvas.getByText('Sorted: total desc')).toBeVisible()
+    await expect(client()).not.toHaveAttribute('aria-sort')
+    await expect(carets(canvas, 'Amount')).toEqual(['faint', 'on'])
+    const svg = client().querySelector('svg')
+    await expect(svg?.getBoundingClientRect().width).toBe(8)
+    await expect(getComputedStyle(svg?.querySelector('path') ?? client()).transitionDuration).toBe(
+      '0s',
     )
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Select 2026/INV/001' }))
     await expect(canvas.getByText('Selected: 1')).toBeVisible()
@@ -367,5 +600,117 @@ export const RowMenuFits: Story = {
       .parentElement
     if (!cell) throw new Error('The row menu has no cell')
     await expect(cell.scrollWidth).toBe(cell.clientWidth)
+  },
+}
+
+const MANY: Row[] = Array.from({ length: 1000 }, (_, index) => ({
+  id: String(index + 1),
+  number: `2026/INV/${String(index + 1).padStart(4, '0')}`,
+  client: `Client ${index + 1}`,
+  due: '18 Dec 2026',
+  total: `CHF ${index + 1}.00`,
+}))
+
+/** A server-paged list: the story answers each page from 312 rows, as the API would. */
+function Paged() {
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+  const rows = MANY.slice(0, 312).slice((page - 1) * pageSize, page * pageSize)
+  return (
+    <div className="w-[900px] rounded-xl border bg-card">
+      <DataTable
+        id={`${TABLE}-paged`}
+        columns={COLUMNS}
+        data={rows}
+        getRowId={(row) => row.id}
+        pagination={{
+          page,
+          pageSize,
+          total: 312,
+          onChange: (next, size) => {
+            setPage(next)
+            setPageSize(size)
+          },
+        }}
+      />
+    </div>
+  )
+}
+
+/**
+ * TanStack's pagination drives the pager: first, previous, next and last, a page to jump to,
+ * rows per page, and the range shown.
+ */
+export const Paginates: Story = {
+  render: () => <Paged />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const pages = within(canvas.getByRole('navigation', { name: 'Pages' }))
+    const field = () => pages.getByRole('spinbutton', { name: 'Go to page' })
+    await expect(pages.getByText('1–25 of 312')).toBeVisible()
+    await expect(pages.getByText('of 13')).toBeVisible()
+    await expect(pages.getByRole('button', { name: 'First page' })).toBeDisabled()
+    await expect(pages.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+    await userEvent.click(pages.getByRole('button', { name: 'Next page' }))
+    await expect(pages.getByText('26–50 of 312')).toBeVisible()
+    await expect(canvas.getByText('2026/INV/0026')).toBeVisible()
+    await expect(field()).toHaveValue(2)
+    await userEvent.click(pages.getByRole('button', { name: 'Last page' }))
+    await expect(pages.getByText('301–312 of 312')).toBeVisible()
+    await expect(pages.getByRole('button', { name: 'Next page' })).toBeDisabled()
+    await expect(pages.getByRole('button', { name: 'Last page' })).toBeDisabled()
+    await userEvent.click(pages.getByRole('button', { name: 'Previous page' }))
+    await expect(pages.getByText('276–300 of 312')).toBeVisible()
+    await userEvent.click(pages.getByRole('button', { name: 'First page' }))
+    await expect(pages.getByText('1–25 of 312')).toBeVisible()
+    await userEvent.clear(field())
+    await userEvent.type(field(), '5{Enter}')
+    await expect(pages.getByText('101–125 of 312')).toBeVisible()
+    // Past the last page goes to the last one.
+    await userEvent.clear(field())
+    await userEvent.type(field(), '99{Enter}')
+    await expect(pages.getByText('301–312 of 312')).toBeVisible()
+    await userEvent.click(pages.getByRole('button', { name: 'First page' }))
+    await userEvent.click(pages.getByRole('button', { name: '25 per page' }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: '100' }))
+    await expect(pages.getByText('1–100 of 312')).toBeVisible()
+    await expect(pages.getByText('of 4')).toBeVisible()
+    await expect(canvas.getAllByRole('row')).toHaveLength(101)
+  },
+}
+
+/**
+ * A thousand rows render only those in view (and a few around them); scrolling brings the rest,
+ * and the table keeps its columns, header and row count for assistive technology.
+ */
+export const VirtualizesLongLists: Story = {
+  render: () => (
+    <div
+      className="h-[600px] w-[900px] overflow-y-auto rounded-xl border bg-card"
+      data-testid="scroller"
+    >
+      <DataTable id={`${TABLE}-many`} columns={COLUMNS} data={MANY} getRowId={(row) => row.id} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const scroller = canvas.getByTestId('scroller')
+    const table = canvas.getByRole('table')
+    await expect(table).toHaveAttribute('aria-rowcount', '1001')
+    await waitFor(() => expect(canvas.getByText('2026/INV/0001')).toBeVisible())
+    const rendered = () => table.querySelectorAll('tbody tr[aria-rowindex]').length
+    await expect(rendered()).toBeLessThan(40)
+    // The body is as tall as all thousand rows, so the scrollbar is right.
+    await expect(scroller.scrollHeight).toBeGreaterThan(1000 * 58)
+    scroller.scrollTop = scroller.scrollHeight
+    await waitFor(() => expect(canvas.getByText('2026/INV/1000')).toBeVisible())
+    await expect(canvas.queryByText('2026/INV/0001')).toBeNull()
+    await expect(rendered()).toBeLessThan(40)
+    scroller.scrollTop = 500 * 58
+    await waitFor(() => expect(canvas.getByText('2026/INV/0505')).toBeVisible())
+    // Widths still apply: the header and the rows line up.
+    const number = canvas.getByRole('columnheader', { name: 'Number' }).getBoundingClientRect()
+    const cell = canvas.getByText('2026/INV/0505').getBoundingClientRect()
+    await expect(Math.round(cell.width)).toBe(Math.round(number.width))
   },
 }

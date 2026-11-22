@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { readColumnSizes, writeColumnSizes } from './column-sizing'
+import { mergeOrder, readColumnSizes, writeColumnSizes } from './table-storage'
 
 describe('stored sizes', () => {
   afterEach(() => {
@@ -28,5 +28,14 @@ describe('stored sizes', () => {
       throw new Error('quota')
     })
     expect(() => writeColumnSizes('t', { number: 1 })).not.toThrow()
+  })
+})
+
+describe('column order', () => {
+  it('keeps the stored order, drops unknown ids and puts new ones in their default place', () => {
+    expect(mergeOrder([], ['a', 'b', 'c'])).toEqual(['a', 'b', 'c'])
+    expect(mergeOrder(['c', 'a', 'b'], ['a', 'b', 'c'])).toEqual(['c', 'a', 'b'])
+    expect(mergeOrder(['c', 'gone', 'a', 'c'], ['a', 'b', 'c'])).toEqual(['c', 'a', 'b'])
+    expect(mergeOrder(['b', 'a'], ['new', 'a', 'b'])).toEqual(['new', 'b', 'a'])
   })
 })

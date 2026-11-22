@@ -36,6 +36,10 @@
   "ignorePatterns": ["**/.next/**", "**/out/**", "**/dist/**", "**/next-env.d.ts"],
   "overrides": [
     {
+      "files": ["packages/ui/src/components/data-table.tsx"],
+      "rules": { "no-underscore-dangle": ["error", { "allow": ["_didMount", "_willUpdate"] }] }
+    },
+    {
       "files": ["**/scripts/**", "**/*.test.ts", "**/*.test.tsx"],
       "rules": {
         "no-await-in-loop": "off"

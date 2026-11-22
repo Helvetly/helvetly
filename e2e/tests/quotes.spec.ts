@@ -245,11 +245,11 @@ test('the quotes list sorts by its headers and changes picked quotes in one go',
 
   // Total: the larger first, then the other way after a second click; a reload keeps it.
   const total = page.getByRole('columnheader', { name: /Total/ })
-  await total.getByRole('button', { name: 'Total' }).click()
+  await total.getByRole('button', { name: 'Total', exact: true }).click()
   await expect(page).toHaveURL(/sort=-total/)
   await expect(total).toHaveAttribute('aria-sort', 'descending')
   await expect(rows.first()).toContainText(number)
-  await total.getByRole('button', { name: 'Total' }).click()
+  await total.getByRole('button', { name: 'Total', exact: true }).click()
   await expect(page).toHaveURL(/sort=total/)
   await expect(rows.first()).toContainText('Draft')
   await page.reload()

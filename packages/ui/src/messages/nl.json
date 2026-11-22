@@ -94,5 +94,14 @@
   "tableNextPage": "Volgende pagina",
   "tableRange": "{from}–{to} van {total}",
   "tablePageOf": "Pagina {page} van {pages}",
-  "tableResizeColumn": "Breedte van {column} aanpassen"
+  "tableResizeColumn": "Breedte van {column} aanpassen",
+  "tableFirstPage": "Eerste pagina",
+  "tableLastPage": "Laatste pagina",
+  "tablePage": "Pagina",
+  "tableOfPages": "van {pages}",
+  "tableGoToPage": "Ga naar pagina",
+  "tableRowsPerPage": "{count} per pagina",
+  "tableMoveColumnUp": "{column} omhoog",
+  "tableMoveColumnDown": "{column} omlaag",
+  "tableResetColumns": "Standaard herstellen"
 }
