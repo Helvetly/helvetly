@@ -6677,6 +6677,88 @@
         }
       }
     },
+    "/api/v1/quotes/{id}/revisions": {
+      "get": {
+        "operationId": "list_quote_revisions",
+        "tags": ["Quotes"],
+        "summary": "List a quote's sent revisions",
+        "description": "Every sent revision of the quote, newest first, each as it was sent: when and to whom, the answer it got (accepted, declined or expired, with the client's reason), the quote's content at the send (snapshot) and whether its PDF is stored. snapshot is null for revisions sent before revisions were kept. A draft that was never sent has none.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The record's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteRevisionList"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/quotes/{id}/revisions/{revision}/pdf": {
+      "get": {
+        "operationId": "get_quote_revision_pdf",
+        "tags": ["Quotes"],
+        "summary": "Download the PDF of a sent revision",
+        "description": "The PDF one revision of the quote was sent with, as stored: a redirect to a short-lived download link, or the bytes. 404 when the revision was not sent or its PDF is no longer stored (has_pdf false).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The record's id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "path",
+            "required": true,
+            "description": "The revision number, from 1.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The PDF.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Redirect to a short-lived download link."
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/quotes/{id}/duplicate": {
       "post": {
         "operationId": "duplicate_quote",
@@ -12896,6 +12978,85 @@
           }
         },
         "required": ["data", "meta"]
+      },
+      "QuoteRevision": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer"
+          },
+          "sent_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Its first send; null when not known (sent before revisions were kept, PDF gone)."
+          },
+          "sent_to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The addresses of its first send; empty when it was marked as sent without an email."
+          },
+          "outcome": {
+            "type": ["string", "null"],
+            "enum": ["accepted", "declined", "expired", null],
+            "description": "The answer it got; null while it waits for one or when it was revised unanswered."
+          },
+          "outcome_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "outcome_by": {
+            "type": ["string", "null"],
+            "enum": ["staff", "client", null]
+          },
+          "reason": {
+            "type": ["string", "null"],
+            "description": "The note given with the answer."
+          },
+          "current": {
+            "type": "boolean",
+            "description": "The revision the quote is at now; false for every one while a new revision is a draft."
+          },
+          "has_pdf": {
+            "type": "boolean"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Quote"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The quote as it was sent; null for revisions sent before revisions were kept."
+          }
+        },
+        "required": [
+          "revision",
+          "sent_at",
+          "sent_to",
+          "outcome",
+          "outcome_at",
+          "outcome_by",
+          "reason",
+          "current",
+          "has_pdf",
+          "snapshot"
+        ]
+      },
+      "QuoteRevisionList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteRevision"
+            }
+          }
+        },
+        "required": ["data"]
       },
       "PlanInput": {
         "type": "object",

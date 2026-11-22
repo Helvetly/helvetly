@@ -93,7 +93,7 @@ are the reference.
   system_folder`); people still file into them and make plain folders inside. Typed ones are stored by their English
   name and answered in the asker's language (`?lang`, `Accept-Language`; the platform translates by `system_kind`).
   Issuing an invoice and sending a quote file their PDF there as a document sharing the record's object (kept while
-  `pdf_key` points at it), client uploads go to the client's `Documents/<year>`, receipts to `Expenses/<year>/<category>`;
+  `pdf_key` or a sent revision in `quote_revisions` points at it), client uploads go to the client's `Documents/<year>`, receipts to `Expenses/<year>/<category>`;
   `BackfillSystemFolders` (once per start, idempotent) files what came before and turns the earlier
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
   move along; the emptied old folders are deleted). AI filing and organizing put a known

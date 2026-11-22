@@ -33,7 +33,7 @@ var WorkspaceExportTables = []ExportTable{
 	child("invoice_refunds", "invoices", "invoice_id"), child("invoice_prepayments", "invoices", "invoice_id"),
 	child("invoice_instalments", "invoices", "invoice_id"), child("invoice_deliveries", "invoices", "invoice_id"),
 	child("invoice_xml_exports", "invoices", "invoice_id"), own("invoice_settings"), own("invoice_counters"), own("email_templates"),
-	own("quotes"), own("quote_counters"),
+	own("quotes"), own("quote_revisions"), own("quote_counters"),
 	own("instalment_plans"), child("instalment_plan_items", "instalment_plans", "plan_id"), own("reminder_log"),
 	own("expenses"), child("expense_lines", "expenses", "expense_id"), own("expense_categories"), own("expense_receipts"),
 	own("engagements"), own("engagement_settings"), child("engagement_periods", "engagements", "engagement_id"),
@@ -112,6 +112,8 @@ const exportFiles = `SELECT 'documents/' || id || '-' || name, object_key FROM d
 	UNION ALL SELECT 'e-invoices/' || x.invoice_id || '-' || x.filename, x.object_key FROM invoice_xml_exports x
 		JOIN invoices i ON i.id = x.invoice_id WHERE i.workspace_id = $1
 	UNION ALL SELECT 'quotes/' || coalesce(number, id) || '.pdf', pdf_key FROM quotes WHERE workspace_id = $1 AND pdf_key IS NOT NULL
+	UNION ALL SELECT 'quotes/' || coalesce(t.number, t.id) || '-r' || r.revision || '.pdf', r.pdf_key FROM quote_revisions r
+		JOIN quotes t ON t.id = r.quote_id WHERE r.workspace_id = $1 AND r.pdf_key IS NOT NULL
 	UNION ALL SELECT 'signatures/' || id || '-original.pdf', original_key FROM signature_requests WHERE workspace_id = $1
 	UNION ALL SELECT 'invoice-settings/logo', 'workspaces/' || workspace_id || '/invoice-settings/' || (settings->>'logo_file_id')
 		FROM invoice_settings WHERE workspace_id = $1 AND settings->>'logo_file_id' IS NOT NULL

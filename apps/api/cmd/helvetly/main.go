@@ -172,6 +172,7 @@ func run() error {
 	authSvc.CompleteOnboarding = invoicesSvc.CompleteOnboarding
 	quotesSvc := quotes.New(db, authSvc, invoicesSvc, files, quoteMailer, slog.Default())
 	quotesSvc.SetApprovals(approvalsSvc)
+	bg.Go(ctx, "quote revisions backfill", quotesSvc.BackfillRevisions) // once per start, then returns
 	membersSvc := members.New(db, authSvc, slog.Default())
 	invitationsSvc := invitations.New(db, authSvc, inviteMailer, cfg.PublicURL, slog.Default())
 	productsSvc := products.New(db, authSvc, slog.Default())

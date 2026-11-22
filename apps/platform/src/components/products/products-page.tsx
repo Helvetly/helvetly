@@ -777,6 +777,7 @@ const QUERY_FIELDS: QueryField<ListParams>[] = [
     label: translate('updated3'),
     type: 'enum',
     values: sinceOptions(),
+    kind: 'date',
     placeholder: translate('updatedAnyTime'),
     ...oneValue(
       (params) => params.updated,

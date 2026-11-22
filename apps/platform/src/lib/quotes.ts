@@ -67,6 +67,24 @@ export type Quote = Totals & {
   updated_at: string
 }
 
+/** One sent revision of a quote, as it was sent (`GET /quotes/{id}/revisions`), newest first. */
+export type QuoteRevision = {
+  revision: number
+  /** Null for a revision sent before the history was kept whose PDF is gone. */
+  sent_at: string | null
+  /** Empty when it was marked as sent without an email. */
+  sent_to: string[]
+  outcome: 'accepted' | 'declined' | 'expired' | null
+  outcome_at: string | null
+  outcome_by: 'staff' | 'client' | null
+  reason: string | null
+  /** The revision the quote is at now; none is while the next revision is a draft. */
+  current: boolean
+  has_pdf: boolean
+  /** The quote as it was sent; null for revisions sent before the history was kept. */
+  snapshot: Quote | null
+}
+
 export type QuoteInput = Pick<
   Quote,
   | 'client_id'
@@ -255,11 +273,16 @@ export const quotesApi = {
   revise: (id: string) => request<One<Quote>>(`${path(id)}/revise`, post()),
   invoice: (id: string) => request<One<Quote>>(`${path(id)}/invoice`, post()),
   duplicate: (id: string) => request<One<Quote>>(`${path(id)}/duplicate`, post()),
+  revisions: (id: string) => request<{ data: QuoteRevision[] }>(`${path(id)}/revisions`),
 }
 
 /** A plain link, so the browser sends the session cookie and saves or shows the file. */
 export const quotePdfUrl = (id: string, download = false) =>
   `/api/v1${path(id)}/pdf${download ? '?download=1' : ''}`
+
+/** The PDF one revision was sent with (the API redirects to the stored file, saved as an attachment). */
+export const quoteRevisionPdfUrl = (id: string, revision: number) =>
+  `/api/v1${path(id)}/revisions/${revision}/pdf`
 
 export const quoteKeys = {
   all: ['quotes'] as const,
@@ -285,6 +308,14 @@ export const quoteQuery = (id: string) => ({
 
 export function useQuote(id: string | null) {
   return useQuery({ ...quoteQuery(id ?? ''), enabled: id !== null })
+}
+
+/** The quote's sent revisions; read again whenever the quote changes (a send, an answer, a revision). */
+export function useQuoteRevisions(quote: Pick<Quote, 'id' | 'updated_at'>) {
+  return useQuery({
+    queryKey: [...quoteKeys.detail(quote.id), 'revisions', quote.updated_at],
+    queryFn: async () => (await quotesApi.revisions(quote.id)).data,
+  })
 }
 
 function refresh(queryClient: QueryClient, quote?: Quote) {

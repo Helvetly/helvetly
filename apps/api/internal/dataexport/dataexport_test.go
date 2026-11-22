@@ -105,6 +105,10 @@ func newEnv(t *testing.T, files fakeFiles) *env {
 			0, 0, 0, '[]', 'k/quo_a', now(), now())`); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := raw.Exec(ctx, `INSERT INTO quote_revisions (workspace_id, quote_id, revision, pdf_key, created_at)
+		VALUES ('ws_a', 'quo_a', 1, 'k/quo_a_r1', now())`); err != nil {
+		t.Fatal(err)
+	}
 	api, err := auth.New(config.Config{PublicURL: "http://localhost:8000", DevSignIn: true}, st, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +126,7 @@ func (e *env) get(path string) *httptest.ResponseRecorder {
 }
 
 func TestWorkspaceExport(t *testing.T) {
-	e := newEnv(t, fakeFiles{"k/doc_a": "%PDF", "k/doc_b": "%PDF other", "k/quo_a": "%PDF quote"})
+	e := newEnv(t, fakeFiles{"k/doc_a": "%PDF", "k/doc_b": "%PDF other", "k/quo_a": "%PDF quote", "k/quo_a_r1": "%PDF revision 1"})
 	w := e.get("/api/v1/workspace/export")
 	if w.Code != http.StatusOK || w.Header().Get("Content-Type") != "application/zip" {
 		t.Fatalf("export: %d %s", w.Code, w.Header())
@@ -163,6 +167,9 @@ func TestWorkspaceExport(t *testing.T) {
 	}
 	if entries["files/quotes/Q-2026-1.pdf"] != "%PDF quote" {
 		t.Fatalf("a sent quote's PDF: %v", keys(entries))
+	}
+	if entries["files/quotes/Q-2026-1-r1.pdf"] != "%PDF revision 1" || !strings.Contains(entries["data/quote_revisions.json"], `"quo_a"`) {
+		t.Fatalf("a quote's sent revisions: %v", keys(entries))
 	}
 	if !strings.Contains(entries["README.txt"], "documents/doc_gone-gone.pdf") {
 		t.Fatalf("a missing object is listed: %s", entries["README.txt"])
