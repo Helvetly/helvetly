@@ -471,7 +471,8 @@ function ResizeHandle({
   return (
     <span
       data-column-resizer=""
-      className="group/resizer absolute inset-y-0 right-0 z-10 w-2 translate-x-1/2"
+      // Inside its own header: centred on the border, the next sticky header would cover its half.
+      className="group/resizer absolute inset-y-0 right-0 z-10 w-2"
     >
       {/* A range input: focusable, announced with the width as its value, arrow keys native. */}
       <input
@@ -488,7 +489,7 @@ function ResizeHandle({
         onClick={(event) => event.stopPropagation()}
         className="peer absolute inset-0 m-0 h-full w-full cursor-col-resize touch-none appearance-none opacity-0"
       />
-      <span className="pointer-events-none absolute inset-y-3 left-1/2 w-px -translate-x-1/2 bg-border opacity-0 transition-opacity group-hover/th:opacity-100 peer-focus-visible:bg-ring peer-focus-visible:opacity-100 peer-active:bg-ring peer-active:opacity-100" />
+      <span className="pointer-events-none absolute inset-y-3 right-0 w-px bg-border opacity-0 transition-opacity group-hover/th:opacity-100 peer-focus-visible:bg-ring peer-focus-visible:opacity-100 peer-active:bg-ring peer-active:opacity-100" />
     </span>
   )
 }

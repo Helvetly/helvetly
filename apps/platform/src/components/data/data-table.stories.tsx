@@ -121,6 +121,8 @@ async function drag(handle: HTMLElement, dx: number) {
   const box = handle.getBoundingClientRect()
   const x = box.left + box.width / 2
   const y = box.top + box.height / 2
+  // A pointer lands on whatever is on top there: the handle must not sit under the next header.
+  await expect(document.elementFromPoint(x, y)).toBe(handle)
   fireEvent.pointerDown(handle, { button: 0, clientX: x, clientY: y, pointerId: 1 })
   fireEvent.pointerMove(window, { clientX: x + dx / 2, clientY: y, pointerId: 1 })
   fireEvent.pointerMove(window, { clientX: x + dx, clientY: y, pointerId: 1 })
