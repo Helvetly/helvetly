@@ -2,26 +2,32 @@
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
+import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation } from '@tanstack/react-query'
-import { ArrowUp, RotateCcw } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowUp, Info, RotateCcw, X } from 'lucide-react'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
 import { inputClass } from '@/components/clients/fields'
 import { aiWrite, aiWriteError, type AIWriteAction, type AIWriteField } from '@/lib/ai-write'
 import { translate } from '@/lib/i18n'
 
-const QUICK: { action: Exclude<AIWriteAction, 'draft' | 'custom'>; label: () => string }[] = [
+const PRESETS: { action: Exclude<AIWriteAction, 'draft' | 'custom'>; label: () => string }[] = [
   { action: 'improve', label: () => translate('aiWriteImprove') },
   { action: 'shorten', label: () => translate('aiWriteShorten') },
   { action: 'formal', label: () => translate('aiWriteFormal') },
 ]
 
+type Request = { action: AIWriteAction; text: string; instruction?: string }
+
 /**
- * Write with AI inside a description (TextareaBox): Heidi drafts one from the rest of the form when the field is empty, or
- * improves, shortens or rewrites what is there. The text is shown first; nothing changes until Replace or Insert.
+ * Write with AI inside a description or message (TextareaBox): one panel anchored to the field. Heidi drafts from the
+ * rest of the form when the field is empty, or changes what is there; the proposal grows into the same panel with the
+ * prompt kept below to refine it. Nothing changes until Use this, and a toast offers Undo after it.
  */
 export function AIWrite({
   field,
@@ -43,15 +49,15 @@ export function AIWrite({
   const { ensure } = useAIApproval()
   const [open, setOpen] = useState(false)
   const [instruction, setInstruction] = useState('')
-  const [last, setLast] = useState<{ action: AIWriteAction; instruction?: string } | null>(null)
+  const [proposal, setProposal] = useState<string | null>(null)
+  const [last, setLast] = useState<Request | null>(null)
+  const prompt = useRef<HTMLInputElement>(null)
   const empty = text.trim() === ''
   const write = useMutation({
-    mutationFn: (request: { action: AIWriteAction; instruction?: string }) =>
+    mutationFn: (request: Request) =>
       aiWrite({
         field,
-        action: request.action,
-        text,
-        instruction: request.instruction,
+        ...request,
         max_length: maxLength,
         context: Object.fromEntries(
           Object.entries(context).filter((entry): entry is [string, string] =>
@@ -60,26 +66,42 @@ export function AIWrite({
         ),
       }),
   })
-  const run = async (action: AIWriteAction, extra?: string) => {
-    if (!(await ensure())) return
-    const request = { action, ...(extra ? { instruction: extra } : {}) }
+  const run = async (request: Request) => {
+    if (write.isPending || !(await ensure())) return
     setLast(request)
-    write.mutate(request)
+    prompt.current?.focus() // a suggestion or Try again turns inactive while Heidi writes; the prompt keeps focus
+    // Per-call callbacks: a late answer after the panel closed (write.reset) is dropped.
+    write.mutate(request, {
+      onSuccess: (answer) => {
+        setProposal(answer)
+        setInstruction('')
+      },
+    })
   }
   const ask = () => {
     const said = instruction.trim()
     if (!said) return
-    void run(empty ? 'draft' : 'custom', said)
+    // With a proposal on screen the words refine it; otherwise they change (or draft) the field's text.
+    const base = proposal ?? text
+    void run({ action: base.trim() ? 'custom' : 'draft', text: base, instruction: said })
   }
   const close = () => {
     setOpen(false)
     write.reset()
     setInstruction('')
+    setProposal(null)
+    setLast(null)
   }
-  const apply = (next: string) => {
+  const use = (next: string) => {
+    const before = text
     onApply(next.slice(0, maxLength))
     close()
+    toast(translate('aiWriteUsed'), {
+      action: { label: translate('undo'), onClick: () => onApply(before) },
+    })
   }
+  const grown = proposal !== null || write.isPending
+  const failure = write.error ? aiWriteError(write.error) : null
 
   return (
     <Popover open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
@@ -91,133 +113,189 @@ export function AIWrite({
       </PopoverTrigger>
       <PopoverContent
         align="start"
+        collisionPadding={16}
         aria-label={translate('aiWriteButton')}
-        className="grid w-[min(400px,calc(100vw-2rem))] gap-3 p-3"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          prompt.current?.focus()
+        }}
+        className={cn(
+          'block p-0 transition-[width] duration-200 ease-out motion-reduce:transition-none',
+          grown ? 'w-[min(460px,calc(100vw-2rem))]' : 'w-[min(380px,calc(100vw-2rem))]',
+        )}
       >
-        {write.data !== undefined ? (
-          <>
-            <p className="text-caption font-medium text-muted-foreground">
-              {translate('aiWriteSuggestion')}
-            </p>
-            <p className="max-h-60 overflow-y-auto rounded-lg bg-heidi-soft/50 p-3 text-body-sm whitespace-pre-wrap">
-              {write.data}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" onClick={() => apply(write.data)}>
-                {empty ? translate('aiWriteUse') : translate('aiWriteReplace')}
-              </Button>
-              {!empty && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => apply(`${text.trimEnd()}\n${write.data}`)}
-                >
-                  {translate('aiWriteInsert')}
-                </Button>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="ml-auto"
-                disabled={write.isPending || !last}
-                onClick={() => last && void run(last.action, last.instruction)}
-              >
-                <RotateCcw />
-                {translate('aiWriteAgain')}
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="flex items-center gap-1.5 text-body-sm font-medium">
+        <Grow>
+          <div className="grid gap-3 p-3">
+            <div className="flex items-center gap-1.5">
               <HeidiSparkle animated={write.isPending} />
-              {write.isPending
-                ? translate('aiWriteWriting')
-                : empty
-                  ? translate('aiWriteDraftTitle')
-                  : translate('aiWriteEditTitle')}
-            </p>
-            {empty ? (
-              <Button
-                type="button"
-                size="sm"
-                className="justify-self-start"
-                disabled={write.isPending}
-                onClick={() => void run('draft')}
-              >
-                {translate('aiWriteDraft')}
-              </Button>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {QUICK.map((quick) => (
-                  <Button
-                    key={quick.action}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={write.isPending}
-                    onClick={() => void run(quick.action)}
-                  >
-                    {quick.label()}
-                  </Button>
-                ))}
-              </div>
-            )}
-            <form
-              className="relative"
-              onSubmit={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                ask()
-              }}
-            >
-              <input
-                aria-label={translate('aiWriteInstruction')}
-                value={instruction}
-                maxLength={300}
-                disabled={write.isPending}
-                onChange={(event) => setInstruction(event.target.value)}
-                placeholder={empty ? translate('aiWriteDraftHint') : translate('aiWriteEditHint')}
-                className={cn(inputClass, 'h-9 pr-10 text-body-sm')}
+              <p className="text-body-sm font-medium">{translate('aiWriteButton')}</p>
+              <Hint label={translate('aiWriteNote')}>
+                <Info />
+              </Hint>
+              <Hint label={translate('close')} onClick={close} className="ml-auto">
+                <X />
+              </Hint>
+            </div>
+
+            {write.isPending ? (
+              <Loader
+                label={translate('aiWriteWriting')}
+                className="min-h-20 rounded-xl bg-heidi-soft/50 dark:bg-heidi/10"
               />
-              <Button
-                type="submit"
-                size="icon-xs"
-                aria-label={translate('aiWriteSend')}
-                disabled={write.isPending || !instruction.trim()}
-                className="absolute top-1/2 right-1.5 -translate-y-1/2"
-              >
-                <ArrowUp />
-              </Button>
-            </form>
-            {write.error && (
+            ) : (
+              proposal !== null && (
+                <div className="grid gap-2">
+                  <p
+                    aria-label={translate('aiWriteSuggestion')}
+                    className="max-h-64 overflow-y-auto rounded-xl bg-heidi-soft/50 p-3 text-body-sm leading-relaxed whitespace-pre-wrap dark:bg-heidi/10"
+                  >
+                    {proposal}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button type="button" size="sm" onClick={() => use(proposal)}>
+                      {translate('aiWriteUse')}
+                    </Button>
+                    {last && (
+                      <Hint label={translate('aiWriteAgain')} onClick={() => void run(last)}>
+                        <RotateCcw />
+                      </Hint>
+                    )}
+                  </div>
+                </div>
+              )
+            )}
+
+            {failure && (
               <Callout
                 role="alert"
                 tone="danger"
                 className="text-body-sm"
                 actions={
-                  aiWriteError(write.error).retry &&
+                  failure.retry &&
                   last && (
                     <Button
                       type="button"
                       size="xs"
                       variant="outline"
-                      onClick={() => void run(last.action, last.instruction)}
+                      onClick={() => void run(last)}
                     >
                       {translate('tryAgain')}
                     </Button>
                   )
                 }
               >
-                {aiWriteError(write.error).message}
+                {failure.message}
               </Callout>
             )}
-            <p className="text-caption text-muted-foreground">{translate('aiWriteNote')}</p>
-          </>
-        )}
+
+            <form
+              className="grid gap-2"
+              onSubmit={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                ask()
+              }}
+            >
+              <div className="relative">
+                <input
+                  ref={prompt}
+                  aria-label={translate('aiWriteInstruction')}
+                  value={instruction}
+                  maxLength={300}
+                  // Read-only, not disabled, while Heidi writes: focus stays here for the next refinement.
+                  readOnly={write.isPending}
+                  onChange={(event) => setInstruction(event.target.value)}
+                  placeholder={
+                    proposal !== null
+                      ? translate('aiWriteRefineHint')
+                      : empty
+                        ? translate('aiWriteDraftHint')
+                        : translate('aiWriteEditHint')
+                  }
+                  className={cn(inputClass, 'h-9 pr-10 text-body-sm')}
+                />
+                <Button
+                  type="submit"
+                  size="icon-xs"
+                  aria-label={translate('aiWriteSend')}
+                  disabled={write.isPending || !instruction.trim()}
+                  className="absolute top-1/2 right-1.5 -translate-y-1/2"
+                >
+                  <ArrowUp />
+                </Button>
+              </div>
+              {proposal === null && (
+                <div className="flex flex-wrap gap-1">
+                  {(empty
+                    ? [{ action: 'draft' as const, label: () => translate('aiWriteDraft') }]
+                    : PRESETS
+                  ).map((preset) => (
+                    <button
+                      key={preset.action}
+                      type="button"
+                      disabled={write.isPending}
+                      onClick={() => void run({ action: preset.action, text })}
+                      className="rounded-full bg-muted px-2.5 py-0.5 text-caption text-muted-foreground transition-colors outline-none hover:bg-heidi-soft hover:text-heidi-ink focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:hover:bg-heidi/15 dark:hover:text-foreground"
+                    >
+                      {preset.label()}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </form>
+          </div>
+        </Grow>
       </PopoverContent>
     </Popover>
+  )
+}
+
+/** Animates its height to its content's, so the panel grows (and shrinks) smoothly as the proposal comes and goes. */
+function Grow({ children }: { children: ReactNode }) {
+  const [height, setHeight] = useState<number>()
+  const measure = useCallback((element: HTMLDivElement | null) => {
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => setHeight(element.offsetHeight))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+  return (
+    <div
+      style={{ height }}
+      className="overflow-hidden transition-[height] duration-200 ease-out motion-reduce:transition-none"
+    >
+      <div ref={measure}>{children}</div>
+    </div>
+  )
+}
+
+/** A small icon button whose name is its tooltip. */
+function Hint({
+  label,
+  onClick,
+  className,
+  children,
+}: {
+  label: string
+  onClick?: () => void
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={label}
+          onClick={onClick}
+          className={cn('text-muted-foreground', className)}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
