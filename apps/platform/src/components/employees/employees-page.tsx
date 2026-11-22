@@ -6,12 +6,24 @@ import { DropdownMenuItem } from '@helvetly/ui/components/dropdown-menu'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Download, IdCard, ScrollText, SearchX, Settings, UserPlus } from 'lucide-react'
+import {
+  Archive,
+  CalendarClock,
+  Download,
+  IdCard,
+  ScrollText,
+  SearchX,
+  Settings,
+  UserCheck,
+  UserMinus,
+  UserPlus,
+  Users,
+} from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { NativeSelect } from '@/components/clients/fields'
+import { ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { LoadingRows, State } from '@/components/data/table-page'
@@ -32,7 +44,7 @@ import {
   type SortField,
 } from '@/lib/employees'
 import { translate } from '@/lib/i18n'
-import { shownElsewhere, type QueryField } from '@/lib/list-query'
+import { oneValue, shownElsewhere, type QueryField } from '@/lib/list-query'
 import { setUrlQuery } from '@/lib/url-query'
 
 import { EmployeeDetail } from './employee-detail'
@@ -41,10 +53,13 @@ import { EmployeeStatusBadge } from './employee-status'
 import { HrLockNotice, HrUpsell, useHrAccess, useHrTabs } from './hr-access'
 import { RetentionReview } from './retention-review'
 
-/** Employees: the company's staff, apart from the members who use Helvetly. */
+/** The status tabs: every status the model has, then everyone. */
+const STATUS_TABS = STATUSES
+const TAB_ICONS = [UserCheck, CalendarClock, UserMinus, Archive, Users]
+
 /**
- * The search's field terms `status:` and `department:`. Their selects beside the search show
- * them, so they need no chips.
+ * The search's field terms. `status:` switches the tab; the department and the start range are
+ * the Filters popover's controls and show as chips.
  */
 const queryFields = (departments: string[]): QueryField<ListParams>[] => [
   {
@@ -62,16 +77,43 @@ const queryFields = (departments: string[]): QueryField<ListParams>[] => [
     label: translate('employeeDepartment'),
     type: 'enum',
     values: departments.map((department) => ({ value: department, label: department })),
-    ...shownElsewhere((department) => ({ department })),
+    placeholder: translate('anyDepartment'),
+    ...oneValue(
+      (params: ListParams) => params.department,
+      (department) => ({ department }),
+    ),
+  },
+  {
+    id: 'from',
+    label: translate('from'),
+    type: 'date',
+    placeholder: translate('anyDate'),
+    until: 'to',
+    ...oneValue(
+      (params: ListParams) => params.startFrom || null,
+      (from) => ({ startFrom: from ?? '' }),
+    ),
+  },
+  {
+    id: 'to',
+    label: translate('to3'),
+    type: 'date',
+    ...oneValue(
+      (params: ListParams) => params.startTo || null,
+      (to) => ({ startTo: to ?? '' }),
+    ),
   },
 ]
 
+/** Employees: the company's staff, apart from the members who use Helvetly. */
 export function EmployeesPage() {
   const pathname = usePathname()
   const query = useSearchParams()
   const params = parseListParams(query)
   const hr = useHrAccess()
-  const tabs = useHrTabs('employees')
+  const hrTabs = useHrTabs('employees')
+  // The status tabs come first; Payroll (when readable) is the last tab and opens its own page.
+  const payroll = hrTabs.tabs.length > 1 ? hrTabs : null
   const list = useEmployeeList(params, !hr.blocked)
   // Payroll alone lists employees by name but cannot open their records.
   const canOpen = hr.readEmployees
@@ -100,7 +142,11 @@ export function EmployeesPage() {
 
   const rows = list.data?.data ?? []
   const departments = list.data?.departments ?? []
-  const filtered = params.search !== '' || params.status !== 'active' || params.department !== null
+  const filtered =
+    params.search !== '' ||
+    params.department !== null ||
+    params.startFrom !== '' ||
+    params.startTo !== ''
   // An empty list has one first action, in the empty state; the header's comes back with the first employee.
   const empty = list.data !== undefined && rows.length === 0 && !filtered
   const create = () => go({ new: '1' }, true)
@@ -108,7 +154,18 @@ export function EmployeesPage() {
   return (
     <>
       <PageHeader
-        {...tabs}
+        tabs={[
+          ...STATUS_TABS.map((entry) => entry.label),
+          ...(payroll ? [payroll.tabs[1] ?? ''] : []),
+        ]}
+        tabIcons={[...TAB_ICONS, ...(payroll ? [payroll.tabIcons[1] ?? Users] : [])]}
+        savedViews={false}
+        active={STATUS_TABS.findIndex((entry) => entry.value === params.status)}
+        onSelect={(index) =>
+          index < STATUS_TABS.length
+            ? setParams({ status: STATUS_TABS[index]?.value ?? 'active' })
+            : payroll?.onSelect(1)
+        }
         primary={hr.writeEmployees && !empty ? translate('employeeNew') : undefined}
         onPrimary={create}
         menu={
@@ -145,8 +202,8 @@ export function EmployeesPage() {
         <HrUpsell hr={hr} />
       ) : (
         <div className="flex flex-1 flex-col">
-          {/* On a phone the search has its own row and the two filters share the next. */}
           <ListToolbar className="flex-wrap gap-2 px-3 py-2 md:px-5">
+            <ListFilters fields={queryFields(departments)} params={params} onChange={setParams} />
             <ListSearch
               className="min-w-40 max-sm:basis-full"
               label={translate('employeeSearchLabel')}
@@ -155,36 +212,6 @@ export function EmployeesPage() {
               onChange={setSearch}
               query={{ fields: queryFields(departments), params, onChange: setParams }}
             />
-            <NativeSelect
-              aria-label={translate('employeeStatusLabel')}
-              wrapperClassName="w-36 max-sm:w-auto max-sm:flex-1"
-              value={params.status}
-              onChange={(event) =>
-                setParams({
-                  status:
-                    STATUSES.find((status) => status.value === event.target.value)?.value ??
-                    'active',
-                })
-              }
-            >
-              {STATUSES.map((status) => (
-                <option key={status.value} value={status.value}>
-                  {status.label}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect
-              aria-label={translate('employeeDepartment')}
-              wrapperClassName="w-44 max-sm:w-auto max-sm:flex-1"
-              disabled={departments.length === 0}
-              value={params.department ?? ''}
-              onChange={(event) => setParams({ department: event.target.value || null })}
-            >
-              <option value="">{translate('employeeAllDepartments')}</option>
-              {departments.map((department) => (
-                <option key={department}>{department}</option>
-              ))}
-            </NativeSelect>
             <HelpTip label={translate('employeeAndMembersLabel')}>
               {translate('employeeAndMembersTip')}
             </HelpTip>
@@ -210,7 +237,7 @@ export function EmployeesPage() {
                     size="sm"
                     onClick={() => {
                       setSearch('')
-                      setParams({ search: '', status: 'active', department: null })
+                      setParams({ search: '', department: null, startFrom: '', startTo: '' })
                     }}
                   >
                     {translate('employeeClearFilters')}

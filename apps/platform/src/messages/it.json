@@ -3939,7 +3939,6 @@
   "employeeSearchLabel": "Cerca dipendenti",
   "employeeSearchPlaceholder": "Cerca per nome, numero o email",
   "employeeStatusLabel": "Stato",
-  "employeeAllDepartments": "Tutti i reparti",
   "employeeAndMembersLabel": "Dipendenti e soci",
   "employeeAndMembersTip": "I dipendenti sono il personale della tua azienda. I membri sono le persone che hanno accesso a Helvetly. L’aggiunta di un dipendente non dà accesso, non invia inviti e non aggiunge posti a pagamento. Un dipendente può essere collegato a un membro, il che non concede nulla.",
   "employeeTheEmployees": "I dipendenti",

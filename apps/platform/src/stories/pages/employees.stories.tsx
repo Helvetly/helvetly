@@ -7,6 +7,7 @@ import { EmployeesPage } from '@/components/employees/employees-page'
 
 import { sessionHandler, unavailable } from '../screen-fixtures'
 import { hr } from './api'
+import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, expectCompactStacked, Frame, phone, shows } from './frame'
 import { billingOn, hrPage } from './hr'
 
@@ -33,8 +34,34 @@ export const List: Story = {
     await shows('Lara Brunner', 'Noah Weber')?.(context)
     // The explanation of employees and members sits behind its (?).
     await expect(body().getByRole('button', { name: 'About Employees and members' })).toBeVisible()
-    await expect(body().getByRole('combobox', { name: 'Department' })).toBeEnabled()
+    // The status is a page tab; the department sits in the Filters popover, not beside the search.
+    await expect(body().getByRole('button', { name: /^Active/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    await expect(body().queryByRole('combobox', { name: 'Department' })).toBeNull()
   },
+}
+
+/** A status tab and the search's `status:` term are one control: each sets the URL's status. */
+export const StatusTabs: Story = {
+  play: async (context) => {
+    await shows('Lara Brunner')?.(context)
+    await userEvent.click(body().getByRole('button', { name: /^Archived/ }))
+    await waitFor(() => expect(window.location.search).toContain('status=archived'))
+    await userEvent.type(body().getByRole('searchbox'), 'status:ended{Enter}')
+    await waitFor(() => expect(window.location.search).toContain('status=ended'))
+  },
+}
+
+/** The Filters popover and the search's chips show the URL's department and start range. */
+export const Filters: Story = {
+  parameters: hrPage('/employees', { department: 'Studio', from: '2024-01-01' }),
+  play: filtersPlay({
+    chips: ['Department: Studio', 'From: 2024-01-01'],
+    pick: { control: /^Department/, option: 'Operations', key: 'department', value: 'Operations' },
+    cleared: ['department', 'from', 'to'],
+  }),
 }
 const positionHeader = () =>
   body().getAllByRole('columnheader', { name: /position/i })[0] as HTMLElement
@@ -66,8 +93,6 @@ export const Empty: Story = {
   parameters: hrPage('/employees', {}, [emptyList]),
   play: async (context) => {
     await shows('No employees yet')?.(context)
-    // No departments yet: the filter is off instead of offering nothing.
-    await expect(body().getByRole('combobox', { name: 'Department' })).toBeDisabled()
     // One first action: the empty state's button, not a second one in the header.
     await expect(body().getAllByRole('button', { name: /New employee/ })).toHaveLength(1)
   },
