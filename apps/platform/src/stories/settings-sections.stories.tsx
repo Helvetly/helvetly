@@ -53,7 +53,9 @@ const meta = {
   parameters: { layout: 'fullscreen', msw: { handlers: handlers(saving) } },
   render: () => (
     <SidebarProvider>
-      <InvoiceSettingsPage />
+      <div className="min-w-0 flex-1">
+        <InvoiceSettingsPage />
+      </div>
       <Toaster />
     </SidebarProvider>
   ),
@@ -207,15 +209,19 @@ export const CustomNumberFormat: Story = {
   },
 }
 
-/** The next-number rows never overlap one another or leave the grey box. */
-async function expectRowsApart(canvasElement: HTMLElement) {
+/** The next-number rows never overlap one another or leave the list: two columns of four on a wide screen, one on a phone. */
+async function expectRowsApart(canvasElement: HTMLElement, columns: number) {
   const numbering = await region(canvasElement, 'Numbering')
   const preview = await numbering.findByRole('status', { name: 'Next numbers' })
   await waitFor(() => expect(preview).toHaveTextContent('042'))
-  const box = preview.getBoundingClientRect()
   const rows = [...preview.querySelectorAll('[data-slot="settings-preview-row"]')]
   await expect(rows).toHaveLength(8)
+  const lefts = () => new Set(rows.map((row) => Math.round(row.getBoundingClientRect().left)))
+  await waitFor(() => expect(lefts().size).toBe(columns)) // the story's viewport applies after the first paint
+  const box = preview.getBoundingClientRect()
   const rects = rows.map((row) => row.getBoundingClientRect())
+  const format = numbering.getByRole('button', { name: /Number format/ }).getBoundingClientRect()
+  expect(format.bottom).toBeLessThanOrEqual(box.top) // the list sits below the select
   for (const [i, a] of rects.entries()) {
     expect(a.left).toBeGreaterThanOrEqual(box.left)
     expect(a.right).toBeLessThanOrEqual(box.right + 0.5)
@@ -234,7 +240,13 @@ async function expectRowsApart(canvasElement: HTMLElement) {
 }
 
 export const NextNumbersRows: Story = {
-  play: async ({ canvasElement }) => expectRowsApart(canvasElement),
+  parameters: {
+    viewport: {
+      options: { desktop: { name: 'Desktop', styles: { width: '1440px', height: '900px' } } },
+    },
+  },
+  globals: { viewport: { value: 'desktop' } },
+  play: async ({ canvasElement }) => expectRowsApart(canvasElement, 2),
 }
 
 export const NextNumbersRowsPhone: Story = {
@@ -244,7 +256,7 @@ export const NextNumbersRowsPhone: Story = {
     },
   },
   globals: { viewport: { value: 'phone' } },
-  play: async ({ canvasElement }) => expectRowsApart(canvasElement),
+  play: async ({ canvasElement }) => expectRowsApart(canvasElement, 1),
 }
 
 /** Discard puts the section back as saved. */

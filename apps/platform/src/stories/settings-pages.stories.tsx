@@ -389,7 +389,7 @@ export const Invoices: Story = {
     await headerRuled(canvasElement)
     await expect(canvas.queryByRole('region', { name: 'Company' })).toBeNull()
     await expect(canvas.queryByRole('region', { name: 'Bank account' })).toBeNull()
-    // Number format is a select with the next numbers beside it, not a wall of cards.
+    // Number format is a select with the next numbers below it, not a wall of cards.
     const numbering = within(canvas.getByRole('region', { name: 'Numbering' }))
     await expect(numbering.queryAllByRole('radio')).toHaveLength(0)
     await expect(numbering.getByRole('status', { name: 'Next numbers' })).toHaveTextContent(
