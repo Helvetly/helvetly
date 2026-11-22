@@ -3336,7 +3336,16 @@
             "description": "Only events of one group: payments (payments and refunds), invoices (invoices, credit notes, instalment plans), expenses, approvals, books (closed periods), portal, employees (HR and payroll) or settings (anything else).",
             "schema": {
               "type": "string",
-              "enum": ["payments", "invoices", "expenses", "approvals", "books", "portal", "employees", "settings"]
+              "enum": [
+                "payments",
+                "invoices",
+                "expenses",
+                "approvals",
+                "books",
+                "portal",
+                "employees",
+                "settings"
+              ]
             }
           },
           {
@@ -11090,7 +11099,16 @@
           },
           "category": {
             "type": "string",
-            "enum": ["payments", "invoices", "expenses", "approvals", "books", "portal", "employees", "settings"],
+            "enum": [
+              "payments",
+              "invoices",
+              "expenses",
+              "approvals",
+              "books",
+              "portal",
+              "employees",
+              "settings"
+            ],
             "description": "The group the kind belongs to, as the category filter uses it."
           },
           "subject_type": {

@@ -25,7 +25,8 @@ export type Sentence = { parts: SentencePart[]; amount: string | null }
 const MARK = '⁣'
 const RECORD = `${MARK}record${MARK}`
 
-const text = (value: unknown) => (typeof value === 'string' || typeof value === 'number' ? String(value) : '')
+const text = (value: unknown) =>
+  typeof value === 'string' || typeof value === 'number' ? String(value) : ''
 
 const RECORD_KINDS: Record<string, RecordRef['kind']> = {
   invoice: 'invoice',
@@ -66,7 +67,9 @@ const month = (value: string) =>
     : value
 
 const docType = (event: FinancialEvent) =>
-  event.subject_type === 'quote' || event.subject_type === 'expense' ? event.subject_type : 'invoice'
+  event.subject_type === 'quote' || event.subject_type === 'expense'
+    ? event.subject_type
+    : 'invoice'
 
 /** The words of one event (no actor: the row shows who), with the record left as a mark. */
 function words(event: FinancialEvent): { line: string; amount: string | null } {
@@ -108,7 +111,11 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
     case 'refund.added':
     case 'refund.deleted':
       return {
-        line: translate('auditSentenceRefund', { action, amount: money(event, 'amount'), record: RECORD }),
+        line: translate('auditSentenceRefund', {
+          action,
+          amount: money(event, 'amount'),
+          record: RECORD,
+        }),
         amount: null,
       }
     case 'credit.issued':
@@ -161,7 +168,10 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
       }
   }
   if (area === 'approval')
-    return { line: translate('auditSentenceApproval', { action, doc, record: RECORD }), amount: null }
+    return {
+      line: translate('auditSentenceApproval', { action, doc, record: RECORD }),
+      amount: null,
+    }
   if (area === 'workspace')
     return {
       line: translate('auditSentencePortal', {
@@ -173,7 +183,8 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
     }
   if (area === 'employee')
     return { line: translate('auditSentenceEmployee', { action }), amount: null }
-  if (area === 'payroll') return { line: translate('auditSentencePayroll', { action }), amount: null }
+  if (area === 'payroll')
+    return { line: translate('auditSentencePayroll', { action }), amount: null }
   return { line: translate('auditSentenceOther'), amount: null }
 }
 
@@ -228,7 +239,11 @@ export function rowSentence(row: AuditRow): Sentence & { times: number } {
   const times = row.events.length
   const kinds = new Set(row.events.map((event) => event.kind))
   if (first && times > 1 && kinds.size > 1 && first.kind.startsWith('workspace.portal_turned'))
-    return { parts: [translate('auditSentencePortalToggled', { count: times })], amount: null, times: 1 }
+    return {
+      parts: [translate('auditSentencePortalToggled', { count: times })],
+      amount: null,
+      times: 1,
+    }
   // Newest first or oldest first, the row reads as its most recent change.
   const latest = row.events.reduce((a, b) => (Date.parse(b.at) > Date.parse(a.at) ? b : a))
   return { ...eventSentence(latest), times }

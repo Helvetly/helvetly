@@ -333,16 +333,16 @@ export const AuditLog: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('Chain verified · 19 entries intact')).toBeVisible()
-    const today = await canvas.findByRole('region', { name: 'Today' })
-    await expect(within(today).getByText('3 entries')).toBeVisible()
+    const todays = await canvas.findByRole('region', { name: 'Today' })
+    await expect(within(todays).getByText('3 entries')).toBeVisible()
     await expect(canvas.getByRole('region', { name: 'Yesterday' })).toBeVisible()
     await expect(
-      within(today).getByRole('button', { name: 'Details of: Invoice 2026-036 voided' }),
+      within(todays).getByRole('button', { name: 'Details of: Invoice 2026-036 voided' }),
     ).toBeVisible()
     // The record's number links to its drawer; no internal id or chain number is shown.
-    await expect(within(today).getAllByRole('link', { name: '2026-031' })[0]).toHaveAttribute(
+    await expect(within(todays).getAllByRole('link', { name: '2026-031' })[0]).toHaveAttribute(
       'href',
-      expect.stringContaining('/invoices?id=inv_mock_1'),
+      expect.stringMatching(/\/invoices\/?\?id=inv_mock_1$/),
     )
     await expect(canvas.queryByText(/wsp_|#\d/)).toBeNull()
     const folded = canvas.getByRole('button', {
@@ -385,7 +385,9 @@ export const AuditLogFilters: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Type' }))
     await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Payments' }))
     await expect(await canvas.findByText('2 entries shown')).toBeVisible()
-    await expect(canvas.getByRole('button', { name: /Details of: Refund of CHF 50.00/ })).toBeVisible()
+    await expect(
+      canvas.getByRole('button', { name: /Details of: Refund of CHF 50.00/ }),
+    ).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: 'Payments' }))
     await userEvent.click(await screen.findByRole('menuitemradio', { name: 'All types' }))
@@ -433,7 +435,9 @@ export const AuditLogLoading: Story = {
   ]),
   render: AuditLog.render,
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByLabelText('Loading…')).toBeVisible()
+    await expect(
+      await within(canvasElement).findByRole('status', { name: 'Loading' }),
+    ).toBeInTheDocument()
   },
 }
 

@@ -449,7 +449,6 @@
   "certifiedInvoicingSoftwareATCUDQRCodeSAFT": "certified invoicing software (ATCUD, QR code, SAF-T)",
   "ch9300762011623852957": "CH93 0076 2011 6238 5295 7",
   "chainBrokenAtEntry": "Chain broken at entry #{broken_at}",
-  "chainVerified": "Chain verified",
   "change": "Change",
   "changeAccess": " Change access…",
   "changeNothing": "Change nothing.",
@@ -1152,7 +1151,6 @@
   "every": "Every",
   "every2": "{label}: every {name}",
   "everyDraftIsBookedNewExpensesWaitHereUntil": "Every draft is booked. New expenses wait here until they are complete.",
-  "everyEntryIsIntactAndInItsOriginalOrder": "Every entry is intact and in its original order.",
   "everyFinancialEventInOrderEntriesCanNeverBe": "Every financial event in order. Entries can never be changed or removed.",
   "everyMonthThatHasEndedIsClosed": "Every month that has ended is closed.",
   "everyoneAtOnce": "Everyone at once",
@@ -1933,7 +1931,6 @@
   "nextTheme": " Next theme",
   "no": "No.",
   "no2": "No ",
-  "no3": "No. {number}",
   "no4": "No",
   "noAccess": "No access",
   "noAgreementYetASelfBilledInvoiceForThis": "No agreement yet. A self-billed invoice for this client needs one covering its issue date.",
@@ -5044,7 +5041,6 @@
   "auditTimes": "{count, plural, one {# time} other {# times}}",
   "auditShowEach": "Show each",
   "auditHideEach": "Hide each",
-  "auditEntryDetails": "Entry details",
   "auditOpenEntry": "Details of: {sentence}",
   "auditWho": "Who",
   "auditWhen": "When",
@@ -5061,6 +5057,5 @@
   "auditPreviousHash": "Previous hash",
   "auditFirstEntry": "None (first entry)",
   "auditCopy": "Copy {label}",
-  "auditFact": "{key, select, number {Number} amount {Amount} paid_on {Paid on} method {Method} reason {Reason} issue_date {Issue date} currency {Currency} payable_total {Total} total {Total} base_total {Total in base currency} base_currency {Base currency} deductible_vat {Deductible VAT} document_date {Receipt date} month {Month} count {Instalments} interval {Interval} name {Name} comment {Comment} hostname {Domain} kind {Document type} origin {Origin} doc_type {Document type} enabled {On} min_total {Minimum total} rules {Rules} previous_status {Previous status} credit_note_number {Credit note} replaced_by_number {Replaced by} reimbursed_on {Reimbursed on} status {Status} other {Detail}}",
-  "auditByOnDate": "{name} · {date}"
+  "auditFact": "{key, select, number {Number} amount {Amount} paid_on {Paid on} method {Method} reason {Reason} issue_date {Issue date} currency {Currency} payable_total {Total} total {Total} base_total {Total in base currency} base_currency {Base currency} deductible_vat {Deductible VAT} document_date {Receipt date} month {Month} count {Instalments} interval {Interval} name {Name} comment {Comment} hostname {Domain} kind {Document type} origin {Origin} doc_type {Document type} enabled {On} min_total {Minimum total} rules {Rules} previous_status {Previous status} credit_note_number {Credit note} replaced_by_number {Replaced by} reimbursed_on {Reimbursed on} status {Status} other {Detail}}"
 }

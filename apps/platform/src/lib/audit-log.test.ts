@@ -31,7 +31,11 @@ const text = (e: FinancialEvent) => sentenceText(eventSentence(e))
 
 describe('eventSentence', () => {
   it.each<[string, Partial<FinancialEvent>, string]>([
-    ['an issued invoice', { payload: { payable_total: '99.00' } }, 'Invoice 2026/INV/001 issued to Acme AG'],
+    [
+      'an issued invoice',
+      { payload: { payable_total: '99.00' } },
+      'Invoice 2026/INV/001 issued to Acme AG',
+    ],
     [
       'an issued credit note',
       { payload: { kind: 'credit_note' } },
@@ -49,7 +53,12 @@ describe('eventSentence', () => {
     ],
     [
       'the portal turned off',
-      { kind: 'workspace.portal_turned_off', category: 'portal', subject_type: 'workspace', subject: null },
+      {
+        kind: 'workspace.portal_turned_off',
+        category: 'portal',
+        subject_type: 'workspace',
+        subject: null,
+      },
       'Client portal turned off',
     ],
     [
@@ -94,7 +103,14 @@ describe('eventSentence', () => {
     ],
     [
       'a closed month',
-      { kind: 'period.closed', category: 'books', subject_type: 'period', subject_id: '2026-10', subject: null, payload: { month: '2026-10' } },
+      {
+        kind: 'period.closed',
+        category: 'books',
+        subject_type: 'period',
+        subject_id: '2026-10',
+        subject: null,
+        payload: { month: '2026-10' },
+      },
       'October 2026 closed',
     ],
     [
@@ -102,8 +118,16 @@ describe('eventSentence', () => {
       { kind: 'plan.created', subject_type: 'plan', subject: null, payload: { count: 6 } },
       'Instalment plan of 6 instalments created',
     ],
-    ['an HR event', { kind: 'employee.archived', category: 'employees', subject_type: 'employee', subject: null }, 'Employee archived'],
-    ['an unknown kind', { kind: 'something.new', category: 'settings', subject: null }, 'Entry recorded'],
+    [
+      'an HR event',
+      { kind: 'employee.archived', category: 'employees', subject_type: 'employee', subject: null },
+      'Employee archived',
+    ],
+    [
+      'an unknown kind',
+      { kind: 'something.new', category: 'settings', subject: null },
+      'Entry recorded',
+    ],
   ])('reads %s', (_, over, want) => {
     expect(text(event(over))).toBe(want)
   })
@@ -120,19 +144,19 @@ describe('eventSentence', () => {
   })
 })
 
-describe('foldEvents', () => {
-  const toggle = (seq: number, minute: number, on: boolean, actor = peter) =>
-    event({
-      seq,
-      kind: on ? 'workspace.portal_turned_on' : 'workspace.portal_turned_off',
-      category: 'portal',
-      subject_type: 'workspace',
-      subject_id: 'wsp_1',
-      subject: null,
-      actor,
-      at: `2026-11-20T09:${String(minute).padStart(2, '0')}:00Z`,
-    })
+const toggle = (seq: number, minute: number, on: boolean, actor = peter) =>
+  event({
+    seq,
+    kind: on ? 'workspace.portal_turned_on' : 'workspace.portal_turned_off',
+    category: 'portal',
+    subject_type: 'workspace',
+    subject_id: 'wsp_1',
+    subject: null,
+    actor,
+    at: `2026-11-20T09:${String(minute).padStart(2, '0')}:00Z`,
+  })
 
+describe('foldEvents', () => {
   it('folds a switch turned off and on by one person into one row', () => {
     const rows = foldEvents([1, 2, 3, 4, 5, 6].map((n) => toggle(n, n * 4, n % 2 === 0)))
     expect(rows).toHaveLength(1)
@@ -148,7 +172,10 @@ describe('foldEvents', () => {
       event({ seq: 5, kind: 'payment.added', payload: { amount: '1.00', payment_id: 'b' } }),
     ])
     expect(rows.map((row) => row.events.length)).toEqual([1, 1, 1, 1, 1])
-    const late = foldEvents([toggle(1, 0, false), { ...toggle(2, 0, true), at: '2026-11-20T10:31:00Z' }])
+    const late = foldEvents([
+      toggle(1, 0, false),
+      { ...toggle(2, 0, true), at: '2026-11-20T10:31:00Z' },
+    ])
     expect(late).toHaveLength(2)
   })
 

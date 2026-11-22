@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { inputClass } from '@helvetly/ui/components/input'
+import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import {
   Sheet,
@@ -225,7 +226,7 @@ export function AuditLog() {
         {events.error ? (
           <p className="p-6 text-body text-muted-foreground">{errorMessage(events.error)}</p>
         ) : !events.data ? (
-          <LoadingDays />
+          <Loader className="min-h-64" />
         ) : rows.length === 0 ? (
           <div className="grid justify-items-center gap-3 px-6 py-14 text-center">
             <SearchX className="size-6 stroke-[1.5] text-muted-foreground" aria-hidden />
@@ -283,12 +284,12 @@ function Days({
         const rows = foldEvents(dayEvents)
         return (
           <section key={key} aria-label={label} className="border-t first:border-t-0">
-            <h3 className="sticky top-[52px] z-10 flex items-baseline justify-between gap-3 border-b bg-card/95 px-4 py-2 text-caption font-medium text-muted-foreground backdrop-blur-sm md:top-[66px]">
+            <h2 className="sticky top-[52px] z-10 flex items-baseline justify-between gap-3 border-b bg-card/95 px-4 py-2 text-caption font-medium text-muted-foreground backdrop-blur-sm md:top-[66px]">
               <span>{label}</span>
               <span className="tabular-nums">
                 {translate('auditEntries', { count: dayEvents.length })}
               </span>
-            </h3>
+            </h2>
             <ol className="grid gap-px p-1.5">
               {rows.map((row, index) => (
                 <EntryRow
@@ -309,19 +310,19 @@ function Days({
 function SentenceText({ sentence }: { sentence: Sentence }) {
   return (
     <>
-      {sentence.parts.map((part, index) =>
+      {sentence.parts.map((part) =>
         typeof part === 'string' ? (
           part
         ) : part.href ? (
           <RecordLink
-            key={index}
+            key={part.label}
             href={part.href}
-            className="relative z-[1] font-mono text-[0.95em] underline decoration-border underline-offset-2 hover:decoration-foreground"
+            className="relative z-[1] font-mono underline decoration-border underline-offset-2 hover:decoration-foreground"
           >
             {part.label}
           </RecordLink>
         ) : (
-          <span key={index} className="font-mono text-[0.95em]">
+          <span key={part.label} className="font-mono">
             {part.label}
           </span>
         ),
@@ -335,7 +336,7 @@ function Actor({ event }: { event: FinancialEvent }) {
   return (
     <span className="flex min-w-0 items-center gap-1.5 text-body-sm text-muted-foreground">
       {event.actor ? (
-        <UserAvatar name={name} className="size-5 text-[10px]" />
+        <UserAvatar name={name} className="size-5" />
       ) : (
         <UserRound className="size-4 shrink-0" aria-hidden />
       )}
@@ -363,9 +364,7 @@ function EntryRow({
   const { Icon, tone } = eventLook(first)
   const folded = row.events.length > 1
   const label = sentenceText(sentence)
-  const times = [first.at, last.at]
-    .toSorted()
-    .map((at) => time.format(new Date(at)))
+  const times = [first.at, last.at].toSorted().map((at) => time.format(new Date(at)))
   return (
     <li>
       <div
@@ -530,7 +529,7 @@ function PersonFilter({
           <DropdownMenuSeparator />
           {people.map((person) => (
             <DropdownMenuRadioItem key={person.id} value={person.id}>
-              <UserAvatar name={person.name} className="size-5 text-[10px]" />
+              <UserAvatar name={person.name} className="size-5" />
               <span className="truncate">{person.name}</span>
             </DropdownMenuRadioItem>
           ))}
@@ -599,23 +598,6 @@ function DateFilter({
         )}
       </PopoverContent>
     </Popover>
-  )
-}
-
-function LoadingDays() {
-  return (
-    <div role="status" aria-busy className="grid gap-2 p-4" aria-label={translate('loading')}>
-      {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} className="flex items-center gap-3 py-1.5">
-          <span className="size-7 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
-          <span
-            className="h-3.5 animate-pulse rounded bg-muted motion-reduce:animate-none"
-            style={{ width: `${40 + ((index * 17) % 35)}%` }}
-          />
-          <span className="ml-auto h-3 w-10 animate-pulse rounded bg-muted motion-reduce:animate-none" />
-        </div>
-      ))}
-    </div>
   )
 }
 
@@ -713,9 +695,7 @@ function EntryDrawer({ event, onClose }: { event: FinancialEvent; onClose: () =>
                 )}
               </Fact>
             )}
-            {typeof before === 'string' && (
-              <Fact label={translate('auditBefore')}>{before}</Fact>
-            )}
+            {typeof before === 'string' && <Fact label={translate('auditBefore')}>{before}</Fact>}
             {typeof after === 'string' && <Fact label={translate('auditAfter')}>{after}</Fact>}
           </dl>
           {facts.length > 0 && (

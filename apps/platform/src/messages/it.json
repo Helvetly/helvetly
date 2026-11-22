@@ -449,7 +449,6 @@
   "certifiedInvoicingSoftwareATCUDQRCodeSAFT": "software di fatturazione certificato (ATCUD, QR code, SAF-T)",
   "ch9300762011623852957": "CH93 0076 2011 6238 5295 7",
   "chainBrokenAtEntry": "Catena interrotta all’ingresso #{broken_at}",
-  "chainVerified": "Catena verificata",
   "change": "Cambia",
   "changeAccess": " Modifica accesso…",
   "changeNothing": "Non cambiare nulla.",
@@ -1152,7 +1151,6 @@
   "every": "Ogni",
   "every2": "{label}: ogni {name}",
   "everyDraftIsBookedNewExpensesWaitHereUntil": "Ogni tratta è prenotata. Le nuove spese aspettano qui finché non saranno completate.",
-  "everyEntryIsIntactAndInItsOriginalOrder": "Ogni voce è intatta e nel suo ordine originale.",
   "everyFinancialEventInOrderEntriesCanNeverBe": "Tutti gli eventi finanziari in ordine. Le voci non possono mai essere modificate o rimosse.",
   "everyMonthThatHasEndedIsClosed": "Ogni mese trascorso è chiuso.",
   "everyoneAtOnce": "Tutti insieme",
@@ -1933,7 +1931,6 @@
   "nextTheme": " Tema successivo",
   "no": "No.",
   "no2": "No ",
-  "no3": "N. {number}",
   "no4": "No",
   "noAccess": "Nessun accesso",
   "noAgreementYetASelfBilledInvoiceForThis": "Ancora nessun accordo. Una fattura autofatturata per questo cliente necessita di una fattura che copra la data di emissione.",
@@ -5044,7 +5041,6 @@
   "auditTimes": "{count, plural, one {# volta} other {# volte}}",
   "auditShowEach": "Mostra tutte",
   "auditHideEach": "Nascondi",
-  "auditEntryDetails": "Dettagli della voce",
   "auditOpenEntry": "Dettagli: {sentence}",
   "auditWho": "Chi",
   "auditWhen": "Quando",
@@ -5061,6 +5057,5 @@
   "auditPreviousHash": "Hash precedente",
   "auditFirstEntry": "Nessuno (prima voce)",
   "auditCopy": "Copia {label}",
-  "auditFact": "{key, select, number {Numero} amount {Importo} paid_on {Pagato il} method {Metodo} reason {Motivo} issue_date {Data fattura} currency {Valuta} payable_total {Totale} total {Totale} base_total {Totale in valuta di base} base_currency {Valuta di base} deductible_vat {IVA deducibile} document_date {Data del giustificativo} month {Mese} count {Rate} interval {Intervallo} name {Nome} comment {Commento} hostname {Dominio} kind {Tipo di documento} origin {Origine} doc_type {Tipo di documento} enabled {Attivo} min_total {Totale minimo} rules {Regole} previous_status {Stato precedente} credit_note_number {Nota di credito} replaced_by_number {Sostituita da} reimbursed_on {Rimborsato il} status {Stato} other {Dettaglio}}",
-  "auditByOnDate": "{name} · {date}"
+  "auditFact": "{key, select, number {Numero} amount {Importo} paid_on {Pagato il} method {Metodo} reason {Motivo} issue_date {Data fattura} currency {Valuta} payable_total {Totale} total {Totale} base_total {Totale in valuta di base} base_currency {Valuta di base} deductible_vat {IVA deducibile} document_date {Data del giustificativo} month {Mese} count {Rate} interval {Intervallo} name {Nome} comment {Commento} hostname {Dominio} kind {Tipo di documento} origin {Origine} doc_type {Tipo di documento} enabled {Attivo} min_total {Totale minimo} rules {Regole} previous_status {Stato precedente} credit_note_number {Nota di credito} replaced_by_number {Sostituita da} reimbursed_on {Rimborsato il} status {Stato} other {Dettaglio}}"
 }
