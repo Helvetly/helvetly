@@ -47,7 +47,7 @@ export const DetailInlineFocus: Story = {
   },
 }
 
-/** The status quick view sits in the toolbar; other filters show as removable chips under it. */
+/** The status view is a page tab; other filters show as removable chips under it. */
 export const Filtered: Story = {
   parameters: pageParameters('/clients', { status: 'active', type: 'company' }),
   play: async ({ canvasElement }) => {
@@ -55,10 +55,13 @@ export const Filtered: Story = {
     await expect(
       await body.findByRole('button', { name: 'Remove filter Companies' }, { timeout: 8000 }),
     ).toBeVisible()
-    await expect(body.getByRole('radio', { name: /Active/ })).toBeChecked()
+    const views = body.getByRole('navigation', { name: 'Views' })
+    await expect(within(views).getByRole('button', { name: /^Active/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
     await expect(body.queryByRole('button', { name: 'Remove filter Active' })).toBeNull()
     await expect(body.queryByRole('button', { name: 'Clear all' })).toBeNull()
-    await expect(body.queryByRole('navigation', { name: 'Views' })).toBeNull()
   },
 }
 
@@ -66,11 +69,14 @@ export const Filtered: Story = {
 export const StatusViews: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    const views = await body.findByRole('group', { name: 'Status' }, { timeout: 8000 })
-    await waitFor(() => expect(views).toHaveTextContent('All4Active4Drafts1Inactive0'))
-    await expect(within(views).getByRole('radio', { name: /All/ })).toBeChecked()
+    const views = await body.findByRole('navigation', { name: 'Views' }, { timeout: 8000 })
+    await waitFor(() => expect(views).toHaveTextContent('All clientsActive4Drafts1Inactive'))
+    await expect(within(views).getByRole('button', { name: /^All clients/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
 
-    await userEvent.click(within(views).getByRole('radio', { name: /Drafts/ }))
+    await userEvent.click(within(views).getByRole('button', { name: /^Drafts/ }))
     const url = new URL(canvasElement.ownerDocument.location.href)
     await expect(url.searchParams.getAll('status')).toEqual(['draft'])
   },
@@ -81,14 +87,16 @@ export const DraftsView: Story = {
   parameters: pageParameters('/clients', { status: 'draft' }),
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    const views = await body.findByRole('group', { name: 'Status' }, { timeout: 8000 })
-    await expect(within(views).getByRole('radio', { name: /Drafts/ })).toBeChecked()
+    const views = await body.findByRole('navigation', { name: 'Views' }, { timeout: 8000 })
+    await expect(within(views).getByRole('button', { name: /^Drafts/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
     await waitFor(() => expect(body.getAllByText('Frei Logistik GmbH')[0]).toBeVisible())
     await expect(body.queryAllByText('Keller Holzbau AG')).toHaveLength(0)
-    await waitFor(() => expect(views).toHaveTextContent('All4Active4Drafts1Inactive0'))
+    await waitFor(() => expect(views).toHaveTextContent('All clientsActive4Drafts1Inactive'))
   },
 }
-export const StatusViewsPhone = phone(StatusViews)
 
 /** A status combination no quick view stands for (from a link) shows as chips, none chosen. */
 export const StatusOutsideViews: Story = {
@@ -102,7 +110,8 @@ export const StatusOutsideViews: Story = {
         { timeout: 8000 },
       ),
     ).toBeVisible()
-    await expect(body.queryAllByRole('radio', { checked: true })).toEqual([])
+    const views = body.getByRole('navigation', { name: 'Views' })
+    await expect(within(views).queryAllByRole('button', { current: 'page' })).toEqual([])
   },
 }
 

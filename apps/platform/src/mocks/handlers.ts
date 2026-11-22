@@ -1,7 +1,7 @@
 // The fake API of the Vitest suites (msw/node). Go serves every route; `next dev` never loads these.
 import { delay, http, HttpResponse } from 'msw'
 
-import type { AgreementInput, Period, SelfBillingAgreement } from '@/lib/books'
+import type { AgreementInput, FinancialEvent, Period, SelfBillingAgreement } from '@/lib/books'
 import type { Dunning, DunningAction } from '@/lib/dunning'
 import type { Plan, PlanItem } from '@/lib/instalments'
 import type { EinvoiceFormat, Interval, PlanInput } from '@/lib/invoices'
@@ -199,6 +199,30 @@ const agreementsOf = (clientId: string) => {
 const csvCell = (value: string) =>
   /^[=+\-@]|[",\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value
 
+/** The API's filters (category, actor, since, before, q) over the sample log. */
+export function filterAudit(events: FinancialEvent[], query: URLSearchParams) {
+  const category = query.get('category')
+  const actor = query.get('actor')
+  const since = query.get('since')
+  const before = query.get('before')
+  const text = query.get('q')?.toLowerCase()
+  return events.filter(
+    (event) =>
+      (!category || event.category === category) &&
+      (!actor || event.actor?.id === actor) &&
+      (!since || event.at >= since) &&
+      (!before || event.at < before) &&
+      (!text ||
+        [
+          event.kind,
+          event.actor?.name,
+          event.subject?.number,
+          event.subject?.party,
+          JSON.stringify(event.payload),
+        ].some((value) => value?.toLowerCase().includes(text))),
+  )
+}
+
 function auditCsv() {
   const header = 'seq,at,kind,subject_type,subject_id,actor,payload,prev_hash,hash'
   const rows = auditEvents.map((event) =>
@@ -353,11 +377,25 @@ const goServedFakes = [
       limit > 200
     )
       return fail(400, 'invalid_request', 'Bad cursor or limit.')
-    const data = auditEvents.filter((event) => event.seq > cursor).slice(0, limit)
+    const newest = query.get('order') === 'newest'
+    const matching = filterAudit(auditEvents, query)
+    const ordered = newest ? matching.toReversed() : matching
+    const data = ordered
+      .filter((event) => !cursor || (newest ? event.seq < cursor : event.seq > cursor))
+      .slice(0, limit)
     const last = data.at(-1)
-    const more = last !== undefined && last.seq < (auditEvents.at(-1)?.seq ?? 0)
+    const more = last !== undefined && last !== ordered.at(-1)
     return HttpResponse.json({ data, meta: { next_cursor: more ? String(last.seq) : null } })
   }),
+  http.get('/api/v1/audit-log/people', () =>
+    HttpResponse.json({
+      data: [
+        ...new Map(
+          auditEvents.flatMap((event) => (event.actor ? [[event.actor.id, event.actor]] : [])),
+        ).values(),
+      ].toSorted((a, b) => a.name.localeCompare(b.name)),
+    }),
+  ),
   http.get('/api/v1/audit-log/export', () => {
     const date = new Date().toISOString().slice(0, 10)
     return new HttpResponse(auditCsv(), {
@@ -368,7 +406,7 @@ const goServedFakes = [
     })
   }),
   http.get('/api/v1/audit-log/verify', () =>
-    HttpResponse.json({ data: { ok: true, broken_at: null } }),
+    HttpResponse.json({ data: { ok: true, broken_at: null, entries: auditEvents.length } }),
   ),
   http.get<{ id: string }>('/api/v1/clients/:id/self-billing-agreements', ({ params }) =>
     HttpResponse.json({
