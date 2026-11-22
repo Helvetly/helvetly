@@ -26,12 +26,12 @@ export const STATUS_TONES = {
     credited: 'neutral',
   },
   approval: { pending: 'amber', approved: 'green', rejected: 'red' },
-  // Answered "no" or run out: over, like a void invoice.
+  // Declined is a refusal (red); expired is just over, like a void invoice.
   quote: {
     draft: 'neutral',
     sent: 'blue',
     accepted: 'green',
-    declined: 'neutral',
+    declined: 'red',
     expired: 'neutral',
   },
   expense: {
@@ -77,7 +77,7 @@ export const STATUS_TONES = {
     invited: 'blue',
     open: 'blue',
     overdue: 'red',
-    rejected: 'neutral',
+    rejected: 'red',
     draft: 'neutral',
     inactive: 'neutral',
   },
