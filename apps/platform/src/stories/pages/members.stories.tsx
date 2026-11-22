@@ -35,6 +35,7 @@ export const Search: Story = {
   play: async (context) => {
     await shows('Luca Rossi')?.(context)
     const body = page(context.canvasElement)
+    await userEvent.click(body.getByRole('button', { name: 'Search members' }))
     await userEvent.type(body.getByRole('searchbox', { name: 'Search members' }), 'luca@')
     await waitFor(() => expect(window.location.search).toContain('q=luca%40'), wait)
   },
@@ -82,7 +83,8 @@ export const NoMatches: Story = {
     await shows('Nothing matches “nobody”')?.(context)
     const body = page(context.canvasElement)
     await userEvent.click(body.getByRole('button', { name: 'Clear search and filters' }))
-    await expect(body.getByRole('searchbox', { name: 'Search members' })).toHaveValue('')
+    // Emptied and not focused, the search folds back into its button.
+    await expect(body.getByRole('button', { name: 'Search members' })).toBeVisible()
     await expect(window.location.search).not.toMatch(/q=|role=/)
   },
 }

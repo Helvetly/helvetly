@@ -275,6 +275,7 @@ test('right-clicking the page outside the rows offers the page’s actions', asy
   )
 
   // The search box keeps the browser's menu.
+  await userEvent.click(screen.getByRole('button', { name: 'Search invoices' }))
   const searchBox = screen.getByRole('searchbox', { name: 'Search invoices' })
   expect(fireEvent.contextMenu(searchBox)).toBe(true)
 })

@@ -31,9 +31,12 @@ export const ListPhone = phone(List)
 export const ToolbarCentred: Story = {
   play: async (context) => {
     await shows('Workshop day')?.(context)
-    const search = within(context.canvasElement).getByRole('searchbox')
+    const canvas = within(context.canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Search products and services' }))
+    const search = canvas.getByRole('searchbox')
     const field = search.closest('label')
-    const bar = field?.parentElement
+    // label → its animated box → its slot in the toolbar → the toolbar
+    const bar = field?.parentElement?.parentElement?.parentElement
     if (!field || !bar) throw new Error('The search field is not in a toolbar.')
     const top = bar.getBoundingClientRect().top + bar.clientTop
     const middle = (control: Element) => {

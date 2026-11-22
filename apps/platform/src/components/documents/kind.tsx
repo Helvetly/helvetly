@@ -14,10 +14,10 @@ import {
 import type { Kind } from '@/lib/documents'
 
 // The four common kinds get a pastel tile in their usual colour (images amber: violet is Heidi's);
-// the rest stay neutral. Chart shares are steps of one grey.
+// the rest stay neutral. Chart shares each get a muted hue of a theme tone, so they tell apart.
 const NEUTRAL = 'bg-muted text-muted-foreground'
 
-/** Each kind's icon, its tile and the grey step of its share in charts. */
+/** Each kind's icon, its tile and the colour of its share in charts. */
 export const KIND_STYLE: Record<
   Kind,
   { icon: LucideIcon; tint: string; bar: string; ext: string }
@@ -25,49 +25,49 @@ export const KIND_STYLE: Record<
   pdf: {
     icon: FileText,
     tint: 'bg-destructive-surface text-destructive',
-    bar: 'bg-foreground/70',
+    bar: 'bg-destructive/45 dark:bg-destructive/55',
     ext: 'PDF',
   },
   image: {
     icon: FileImage,
     tint: 'bg-warning-surface text-warning',
-    bar: 'bg-foreground/58',
+    bar: 'bg-warning-solid/50',
     ext: 'IMG',
   },
   spreadsheet: {
     icon: FileSpreadsheet,
     tint: 'bg-success-surface text-success',
-    bar: 'bg-foreground/46',
+    bar: 'bg-success-solid/45',
     ext: 'XLS',
   },
   document: {
     icon: FileText,
     tint: 'bg-info-surface text-info',
-    bar: 'bg-foreground/36',
+    bar: 'bg-info-solid/45',
     ext: 'DOC',
   },
   presentation: {
     icon: Presentation,
     tint: NEUTRAL,
-    bar: 'bg-foreground/28',
+    bar: 'bg-violet-solid/45',
     ext: 'PPT',
   },
   text: {
     icon: FileCode,
     tint: NEUTRAL,
-    bar: 'bg-foreground/21',
+    bar: 'bg-chart-4/50',
     ext: 'TXT',
   },
   archive: {
     icon: FileArchive,
     tint: NEUTRAL,
-    bar: 'bg-foreground/15',
+    bar: 'bg-chart-3/40',
     ext: 'ZIP',
   },
   other: {
     icon: File,
     tint: NEUTRAL,
-    bar: 'bg-foreground/10',
+    bar: 'bg-chart-2/50',
     ext: 'FILE',
   },
 }

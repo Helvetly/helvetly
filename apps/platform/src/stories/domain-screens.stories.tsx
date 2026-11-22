@@ -103,10 +103,12 @@ export const EngagementsEmpty: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await waitFor(() => expect(canvas.getByText('No engagements yet')).toBeVisible())
+    await userEvent.click(canvas.getByRole('button', { name: 'Search engagements' }))
     await userEvent.type(canvas.getByRole('searchbox', { name: 'Search engagements' }), 'missing')
     await waitFor(() => expect(canvas.getByText('Nothing matches “missing”')).toBeVisible())
     await userEvent.click(canvas.getByRole('button', { name: 'Show all engagements' }))
-    await expect(canvas.getByRole('searchbox')).toHaveValue('')
+    // Emptied and not focused, the search folds back into its button.
+    await expect(canvas.getByRole('button', { name: 'Search engagements' })).toBeVisible()
   },
 }
 export const EngagementsUnavailable: Story = {
