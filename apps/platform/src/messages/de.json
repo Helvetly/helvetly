@@ -4999,5 +4999,7 @@
   "itemCount": "{count, plural, one {# Position} other {# Positionen}}",
   "nameTheItemToBook": "Benennen Sie die Position, um zu buchen.",
   "enterWhatItWasForToBook": "Geben Sie an, wofür es war, um zu buchen.",
-  "itemNames": "Positionsnamen"
+  "itemNames": "Positionsnamen",
+  "employeesPageDescription": "Ihre Personalakten: Verträge, Kontakte und Arbeitszeiten.",
+  "payrollPageDescription": "Das Lohn- und Gehaltsregister, mit CSV-Export."
 }

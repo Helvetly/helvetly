@@ -4999,5 +4999,7 @@
   "itemCount": "{count, plural, one {# item} other {# items}}",
   "nameTheItemToBook": "Name the item to book.",
   "enterWhatItWasForToBook": "Say what it was for to book.",
-  "itemNames": "Item names"
+  "itemNames": "Item names",
+  "employeesPageDescription": "Your staff records: contracts, contacts and working hours.",
+  "payrollPageDescription": "The salary and payroll register, with a CSV export."
 }

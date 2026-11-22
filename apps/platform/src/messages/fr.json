@@ -4999,5 +4999,7 @@
   "itemCount": "{count, plural, one {# article} other {# articles}}",
   "nameTheItemToBook": "Nommez l'article pour comptabiliser.",
   "enterWhatItWasForToBook": "Indiquez à quoi cela correspond pour comptabiliser.",
-  "itemNames": "Noms des articles"
+  "itemNames": "Noms des articles",
+  "employeesPageDescription": "Vos dossiers du personnel : contrats, coordonnées et temps de travail.",
+  "payrollPageDescription": "Le registre des salaires et de la paie, avec export CSV."
 }

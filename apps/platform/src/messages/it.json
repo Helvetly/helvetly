@@ -4999,5 +4999,7 @@
   "itemCount": "{count, plural, one {# voce} other {# voci}}",
   "nameTheItemToBook": "Assegna un nome alla voce per registrare.",
   "enterWhatItWasForToBook": "Indica a cosa si riferisce per registrare.",
-  "itemNames": "Nomi delle voci"
+  "itemNames": "Nomi delle voci",
+  "employeesPageDescription": "Le schede del personale: contratti, contatti e orari di lavoro.",
+  "payrollPageDescription": "Il registro di stipendi e paghe, con esportazione CSV."
 }
