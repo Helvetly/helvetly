@@ -3,8 +3,10 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { Callout } from '@helvetly/ui/components/callout'
 import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { PlanFeatureText } from '@helvetly/ui/components/plan-feature-text'
+import { segmentLabels } from '@helvetly/ui/components/segmented'
 import { planFootnote } from '@helvetly/ui/lib/plan-features'
 import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
+import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { Ban, Check, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
 import { useState } from 'react'
 
@@ -40,18 +42,10 @@ export function PricingCards() {
 
   return (
     <div className="flex flex-col items-center">
-      <fieldset className="border-site-line bg-site-tint inline-flex rounded-full border p-1 text-body-sm font-medium">
+      <fieldset className={cn(segmentTrack, 'inline-flex h-10')}>
         <legend className="sr-only">{translate('billingInterval')}</legend>
         {(['month', 'year'] as const).map((value) => (
-          <label
-            key={value}
-            className={cn(
-              'relative inline-flex items-center rounded-full px-4 py-1.5 transition-colors has-checked:bg-card has-checked:shadow-elevation-1 has-focus-visible:ring-3 has-focus-visible:ring-ring/50 dark:has-checked:bg-white/15',
-              interval === value
-                ? 'text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
+          <label key={value} className={cn(segmentItem, 'gap-0 px-4')}>
             <input
               type="radio"
               name="interval"
@@ -60,7 +54,7 @@ export function PricingCards() {
               onChange={() => setInterval(value)}
               className="absolute inset-0 cursor-pointer appearance-none opacity-0"
             />
-            {value === 'month' ? translate('monthly') : translate('yearly')}
+            {segmentLabels(value === 'month' ? translate('monthly') : translate('yearly'))}
             {/* The space is for the spoken name: "Yearly −20%". */}
             {value === 'year' && ' '}
             {value === 'year' && (

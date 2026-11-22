@@ -73,7 +73,7 @@ export function McpConnect({ origin, token }: { origin: string; token?: string }
           className="h-auto max-w-full flex-wrap justify-start"
         >
           {configs.clients.map((client) => (
-            <TabsTrigger key={client.id} value={client.id} className="flex-none px-2.5">
+            <TabsTrigger key={client.id} value={client.id} className="flex-none">
               {client.label}
             </TabsTrigger>
           ))}

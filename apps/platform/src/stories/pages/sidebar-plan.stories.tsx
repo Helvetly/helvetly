@@ -215,12 +215,13 @@ export const LongName: Story = {
     await expect(button).toHaveTextContent(longName.email)
     await userEvent.click(button)
     const menu = await screen.findByRole('menu')
+    const email = within(menu).getByTitle(longName.email)
     // The menu fades in.
-    await waitFor(() => expect(within(menu).getByText('Owner')).toBeVisible())
-    // The workspace is not repeated here; the role badge sits to the right, inside the menu.
+    await waitFor(() => expect(email).toBeVisible())
+    // Neither the workspace nor a role badge is repeated here; the email truncates inside the menu.
     await expect(within(menu).queryByText('Muster AG')).toBeNull()
-    const badge = within(menu).getByText('Owner')
-    await expect(badge.getBoundingClientRect().right).toBeLessThanOrEqual(
+    await expect(within(menu).queryByText('Owner')).toBeNull()
+    await expect(email.getBoundingClientRect().right).toBeLessThanOrEqual(
       menu.getBoundingClientRect().right,
     )
     const name = within(menu).getByTitle(longName.name)

@@ -86,16 +86,17 @@ are the reference.
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
 - **Documents system folders** (`store/queries_system_folders.go`, `documents/system.go`): every workspace has the
   top-level `Clients` and `Expenses` folders, and below them `Clients/<client>/<Invoices|Quotes|Engagements|Signatures|Documents>/<year>`
-  and `Expenses/<category>/<year>` (`document_folders.system_kind`, `system_ref` = the client or the expense category;
+  and `Expenses/<year>/<category>` (`document_folders.system_kind`, `system_ref` = the client or the expense category;
   none for `Uncategorised`). The app makes them on demand (`ClientRecordFolder`, `ExpenseYearFolder`, missing roots on
-  the folder list), adopts a plain folder of the same name, renames a client's or category's folder with it, moves a
+  the folder list), adopts a plain folder of the same name, renames a client's folder or a category's folders (one per year) with it, moves a
   draft's files that still sit in its folder when its category or year changes, and refuses to rename, move or trash any of them (`409
   system_folder`); people still file into them and make plain folders inside. Typed ones are stored by their English
   name and answered in the asker's language (`?lang`, `Accept-Language`; the platform translates by `system_kind`).
   Issuing an invoice and sending a quote file their PDF there as a document sharing the record's object (kept while
-  `pdf_key` points at it), client uploads go to the client's `Documents/<year>`, receipts to `Expenses/<category>/<year>`;
-  `BackfillSystemFolders` (once per start, idempotent) files what came before, including expense files in the earlier
-  `Expenses/<year>[/<category>]` folders, which then become plain (trashed when empty). AI filing and organizing put a known
+  `pdf_key` points at it), client uploads go to the client's `Documents/<year>`, receipts to `Expenses/<year>/<category>`;
+  `BackfillSystemFolders` (once per start, idempotent) files what came before and turns the earlier
+  `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
+  move along; the emptied old folders are deleted). AI filing and organizing put a known
   client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
 - **Approvals** (`internal/approvals`, Business feature `document_approvals`): an optional approval before a draft is
   issued, sent or booked, per document type (`invoice` for every invoice kind without its own, `credit_note`,

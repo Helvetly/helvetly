@@ -57,7 +57,7 @@ export function pathLabel(path: string, t: Translate = translate) {
   shown[0] = t(root)
   const record = root === 'clients' ? RECORD_KEYS[parts[2] ?? ''] : undefined
   if (record) shown[2] = t(record)
-  if (root === 'expenses' && parts[1] === UNCATEGORISED) shown[1] = t('uncategorisedFolder')
+  if (root === 'expenses' && parts[2] === UNCATEGORISED) shown[2] = t('uncategorisedFolder')
   return shown.join('/')
 }
 

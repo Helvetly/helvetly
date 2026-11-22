@@ -606,26 +606,29 @@ function PaymentCard({ expense }: { expense: Expense }) {
   )
 }
 
-/** Expenses/<category>/<year> as far as it exists, from the folder list; null while unknown or not readable. */
+/** Expenses/<year>/<category> as far as it exists, from the folder list; null while unknown or not readable. */
 function useExpenseFolder(expense: Expense): Folder[] | null {
   const all = useFolders().data
   const root = all?.find((folder) => folder.system_kind === 'expenses' && !folder.parent_id)
   if (!all || !root) return null
   const name = expense.category?.name ?? UNCATEGORISED_FOLDER
-  const category = all.find(
-    (folder) =>
-      folder.parent_id === root.id &&
-      folder.system_kind === 'expense_category' &&
-      folder.name === name,
-  )
   const year =
-    category &&
     expense.document_date &&
     all.find(
       (folder) =>
-        folder.parent_id === category.id && folder.name === expense.document_date?.slice(0, 4),
+        folder.parent_id === root.id &&
+        folder.system_kind === 'year' &&
+        folder.name === expense.document_date?.slice(0, 4),
     )
-  return [root, category, year].filter((folder): folder is Folder => Boolean(folder))
+  const category =
+    year &&
+    all.find(
+      (folder) =>
+        folder.parent_id === year.id &&
+        folder.system_kind === 'expense_category' &&
+        folder.name === name,
+    )
+  return [root, year, category].filter((folder): folder is Folder => Boolean(folder))
 }
 
 /** The account it books to, the entries (a preview while a draft) and the folder its receipts are filed in. */

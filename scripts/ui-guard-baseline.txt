@@ -3,7 +3,6 @@
 1 field packages/ui/src/components/button.tsx
 2 field packages/ui/src/components/checkbox.tsx
 1 field packages/ui/src/components/command.tsx
-1 field packages/ui/src/components/tabs.tsx
 1 field packages/ui/src/lib/field-surface.ts
 4 hex apps/platform/src/components/auth/sign-in.tsx
 8 hex apps/platform/src/components/documents/folder-art.tsx
@@ -74,7 +73,7 @@
 1 radius packages/ui/src/components/logo.tsx
 1 radius packages/ui/src/components/tooltip.tsx
 1 shadow apps/platform/src/components/data/table-page.tsx
-2 shadow apps/platform/src/components/documents/documents-page.tsx
+1 shadow apps/platform/src/components/documents/documents-page.tsx
 1 shadow apps/platform/src/components/documents/preview.tsx
 1 shadow apps/platform/src/components/documents/storage-overview.tsx
 1 shadow apps/platform/src/components/expenses/expenses-page.tsx
@@ -135,7 +134,7 @@
 1 text-px apps/platform/src/components/initials.tsx
 15 text-px apps/platform/src/components/invoices/client-invoices.tsx
 1 text-px apps/platform/src/components/invoices/client-search.tsx
-5 text-px apps/platform/src/components/invoices/date-fields.tsx
+4 text-px apps/platform/src/components/invoices/date-fields.tsx
 3 text-px apps/platform/src/components/invoices/dunning-card.tsx
 3 text-px apps/platform/src/components/invoices/instalment-schedule.tsx
 7 text-px apps/platform/src/components/invoices/instalments-section.tsx
@@ -165,16 +164,16 @@
 8 text-px apps/platform/src/components/shell/app-sidebar.tsx
 3 text-px apps/platform/src/components/shell/mobile-tab-bar.tsx
 9 text-px apps/platform/src/components/shell/plan-gate.tsx
-5 text-px apps/platform/src/components/signatures/adopt-dialog.tsx
-13 text-px apps/platform/src/components/signatures/create-drawer.tsx
+4 text-px apps/platform/src/components/signatures/adopt-dialog.tsx
+11 text-px apps/platform/src/components/signatures/create-drawer.tsx
 2 text-px apps/platform/src/components/signatures/parts.tsx
 7 text-px apps/platform/src/components/signatures/pdf-parts.tsx
 15 text-px apps/platform/src/components/signatures/placement.tsx
 16 text-px apps/platform/src/components/signatures/request-drawer.tsx
 6 text-px apps/platform/src/components/signatures/signatures-view.tsx
 12 text-px apps/platform/src/components/signatures/signing-page.tsx
-15 text-px apps/platform/src/components/templates/fill-drawer.tsx
-5 text-px apps/platform/src/components/templates/template-editor.tsx
+14 text-px apps/platform/src/components/templates/fill-drawer.tsx
+3 text-px apps/platform/src/components/templates/template-editor.tsx
 3 text-px apps/platform/src/components/templates/templates-view.tsx
 5 text-px apps/platform/src/components/wizard-sheet.tsx
 1 text-px packages/ui/src/components/calendar.tsx

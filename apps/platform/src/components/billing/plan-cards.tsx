@@ -9,7 +9,7 @@ import { formatDate } from '@helvetly/ui/lib/format'
 import { planFeatureLines, planFootnote } from '@helvetly/ui/lib/plan-features'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, Lock, Sparkles, X } from 'lucide-react'
+import { CalendarClock, Check, Lock, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -18,7 +18,6 @@ import {
   ANY_PEOPLE,
   billingKeys,
   formatLimit,
-  describeDiscount,
   discounted,
   formatPrice,
   isUpgrade,
@@ -43,7 +42,7 @@ import {
 } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
-import { PromoCodePopover } from './promo-code-popover'
+import { PromoCodeEntry } from './promo-code-popover'
 
 const TAGLINES: Record<Plan['id'], string> = {
   basic: translate('startInvoicingForFreelancersWithASmallClient'),
@@ -74,8 +73,6 @@ const fail = (error: unknown) => {
       : undefined,
   })
 }
-
-const textLink = 'underline underline-offset-2 hover:no-underline'
 
 const scopeOf = (key: string) => (WORKSPACE_LIMITS.has(key) ? 'workspace' : 'person')
 
@@ -242,35 +239,7 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
           onChange={setPeriod}
         />
         {billing.can_manage && billing.enabled && (
-          // One line high with or without a code, so the cards below never move.
-          <div className="flex min-h-6 items-center gap-2 text-body-sm text-muted-foreground">
-            {promo ? (
-              <>
-                <Badge tone="blue" size="sm">
-                  <span className="font-code">{promo.code}</span> · {describeDiscount(promo)}
-                </Badge>
-                <PromoCodePopover initial={promo.code} onApplied={setPromo}>
-                  <button type="button" className={textLink}>
-                    {translate('change')}
-                  </button>
-                </PromoCodePopover>
-                <button
-                  type="button"
-                  className={cn(textLink, 'inline-flex items-center gap-1 text-destructive')}
-                  onClick={() => setPromo(null)}
-                >
-                  <X className="size-3.5" aria-hidden />
-                  {translate('remove')}
-                </button>
-              </>
-            ) : (
-              <PromoCodePopover initial="" onApplied={setPromo}>
-                <button type="button" className={textLink}>
-                  {translate('haveAPromotionCode')}
-                </button>
-              </PromoCodePopover>
-            )}
-          </div>
+          <PromoCodeEntry promo={promo} onChange={setPromo} />
         )}
       </div>
 

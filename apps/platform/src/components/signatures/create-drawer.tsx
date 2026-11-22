@@ -5,6 +5,8 @@ import { Input } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { formatDate } from '@helvetly/ui/lib/format'
+import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
+import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowDown,
@@ -486,7 +488,7 @@ function SignersStep({
 
       <fieldset className="grid gap-2">
         <legend className="mb-2 text-[13px] font-medium">{translate('signingOrder')}</legend>
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1">
+        <div className={cn(segmentTrack, 'grid grid-cols-2')}>
           {(
             [
               ['parallel', 'Everyone at once', 'All signers get their link now.'],
@@ -502,10 +504,13 @@ function SignersStep({
               type="button"
               aria-pressed={order === value}
               onClick={() => onOrder(value)}
-              className="grid cursor-pointer gap-0.5 rounded-lg px-3 py-2 text-left transition-colors aria-pressed:bg-card aria-pressed:shadow-elevation-1"
+              className={cn(
+                segmentItem,
+                'grid justify-items-start gap-0.5 px-3 py-2 text-left whitespace-normal',
+              )}
             >
-              <span className="text-[13.5px] font-medium">{label}</span>
-              <span className="text-[12px] text-muted-foreground">{text}</span>
+              <span>{label}</span>
+              <span className="text-xs font-normal text-muted-foreground">{text}</span>
             </button>
           ))}
         </div>

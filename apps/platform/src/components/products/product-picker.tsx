@@ -175,7 +175,7 @@ function AddToCatalogue({ name, onAdd }: { name: string; onAdd: (name: string) =
   const role = useSession().data?.role
   if (!canWrite || !canManageProducts(role)) return null
   return (
-    <CommandCreateItem className="justify-start" onSelect={() => onAdd(name)}>
+    <CommandCreateItem onSelect={() => onAdd(name)}>
       <Plus />
       {name ? translate('addNameToCatalogue', { name }) : translate('addToCatalogue')}
     </CommandCreateItem>

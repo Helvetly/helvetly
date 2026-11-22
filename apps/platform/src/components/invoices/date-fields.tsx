@@ -3,7 +3,8 @@ import { Button } from '@helvetly/ui/components/button'
 import { Calendar } from '@helvetly/ui/components/calendar'
 import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
-import { Segmented } from '@helvetly/ui/components/segmented'
+import { Segmented, segmentLabels } from '@helvetly/ui/components/segmented'
+import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useState } from 'react'
 
@@ -137,17 +138,16 @@ export function DueDateField({
       </PopoverTrigger>
       <PopoverContent align="start" className={popover}>
         {/* Terms as a segmented track: the chosen one is a raised white chip. */}
-        <div className="grid grid-cols-4 gap-0.5 rounded-lg bg-muted p-0.5">
+        <div className={cn(segmentTrack, 'grid grid-cols-4')}>
           {TERMS.map((term) => (
             <button
               key={term}
               type="button"
               aria-pressed={days === term}
               onClick={() => choose(addDays(issueDate, term))}
-              className="h-7 rounded-md text-[12.5px] text-muted-foreground tabular-nums transition-colors hover:text-foreground aria-pressed:bg-card aria-pressed:text-foreground aria-pressed:shadow-elevation-1"
+              className={cn(segmentItem, 'h-7 px-1 tabular-nums')}
             >
-              {term}
-              {translate('days4')}
+              {segmentLabels(`${term}${translate('days4')}`)}
             </button>
           ))}
         </div>

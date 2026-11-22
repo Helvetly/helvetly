@@ -3,6 +3,7 @@ package documents
 import (
 	"context"
 	"slices"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -47,61 +48,94 @@ func (e *env) path(b *browser, id string) string {
 	return folderPath(folders, folders[slices.IndexFunc(folders, func(f store.Folder) bool { return f.ID == *d.FolderID })])
 }
 
-// legacyYear: a year folder straight in Expenses, as before Expenses/<category>/<year>.
-func (e *env) legacyYear(b *browser, year string) store.Folder {
+// systemize makes a plain folder a system folder of kind (ref "" for none), as the earlier layout had it.
+func (e *env) systemize(f store.Folder, kind, ref string) store.Folder {
 	e.t.Helper()
-	expenses := folderByKind(e.t, e.allFolders(b), "expenses", "")
-	f := e.folder(b, year, &expenses.ID)
-	if _, err := e.raw.Exec(context.Background(), `UPDATE document_folders SET system_kind = 'year' WHERE id = $1`, f.ID); err != nil {
+	if _, err := e.raw.Exec(context.Background(), `UPDATE document_folders SET system_kind = $2, system_ref = nullif($3, '')
+		WHERE id = $1`, f.ID, kind, ref); err != nil {
 		e.t.Fatal(err)
 	}
 	return f
 }
 
-func TestBackfillMovesExpenseFilesIntoCategoryFolders(t *testing.T) {
+// oldLayout: Expenses/<category>/<year> as before year first, for the category ("" for Uncategorised).
+func (e *env) oldLayout(b *browser, category, name string, years ...string) (store.Folder, []store.Folder) {
+	e.t.Helper()
+	expenses := folderByKind(e.t, e.allFolders(b), "expenses", "")
+	c := e.systemize(e.folder(b, name, &expenses.ID), "expense_category", category)
+	var out []store.Folder
+	for _, y := range years {
+		out = append(out, e.systemize(e.folder(b, y, &c.ID), "year", ""))
+	}
+	return c, out
+}
+
+func TestBackfillTurnsExpenseFoldersYearFirst(t *testing.T) {
 	e := newEnv(t)
 	b, other := e.workspace(), e.workspace()
-	travel := e.category(b, "Travel")
-	withCategory, without := e.expense(b, travel, "2025-03-01"), e.expense(b, "", "")
-	// the earlier layout: Expenses/2025 and Expenses/2025/Travel, with linked files, a loose file and an empty year
-	y2025, y2023 := e.legacyYear(b, "2025"), e.legacyYear(b, "2023")
-	inCategory := e.folder(b, "Travel", &y2025.ID)
-	train := e.uploaded(b, "train.pdf", pdf, "folder_id", inCategory.ID)
-	taxi := e.uploaded(b, "taxi.pdf", pdf+"t", "folder_id", y2025.ID)
-	notes := e.uploaded(b, "notes.pdf", pdf+"n", "folder_id", y2025.ID)      // linked to nothing: stays
-	elsewhere := e.uploaded(b, "hotel.pdf", pdf+"h")                         // the person put it at the top: stays
-	theirYear := e.legacyYear(other, "2025")                                 // another workspace's: untouched files there
-	theirs := e.uploaded(other, "x.pdf", pdf+"x", "folder_id", theirYear.ID) // nothing linked
-	for doc, exp := range map[string]string{train.ID: withCategory, taxi.ID: without, elsewhere.ID: withCategory} {
-		e.do(b, "POST", "/api/v1/documents/"+doc+"/links", map[string]any{"type": "expense", "id": exp}, 201, nil)
+	travel, theirTravel := e.category(b, "Travel"), e.category(other, "Travel")
+	now := strconv.Itoa(time.Now().Year())
+	oldTravel, travelYears := e.oldLayout(b, travel, "Travel", "2025", "2024")
+	oldNone, noneYears := e.oldLayout(b, "", store.UncategorisedFolder, "2024")
+	train := e.uploaded(b, "train.pdf", pdf, "folder_id", travelYears[0].ID)
+	scans := e.folder(b, "Scans", &travelYears[0].ID) // a person's folder inside: moves with its files
+	scan := e.uploaded(b, "scan.pdf", pdf+"s", "folder_id", scans.ID)
+	gone := e.uploaded(b, "gone.pdf", pdf+"g", "folder_id", travelYears[0].ID) // trashed: moves along, still trashed
+	e.bulk(b, map[string]any{"action": "trash", "document_ids": []string{gone.ID}})
+	taxi := e.uploaded(b, "taxi.pdf", pdf+"t", "folder_id", noneYears[0].ID)
+	loose := e.uploaded(b, "loose.pdf", pdf+"l", "folder_id", oldTravel.ID) // straight in the category: the year it was made
+	// made on demand in the new layout before the backfill ran: the two merge, a taken name gets a free one
+	var already string
+	if err := e.st.Tx(context.Background(), func(q store.Q) (err error) {
+		already, err = q.ExpenseYearFolder(context.Background(), b.workspace, &travel, 2025, b.user, time.Now())
+		return err
+	}); err != nil {
+		t.Fatal(err)
 	}
+	newer := e.uploaded(b, "train.pdf", pdf+"n", "folder_id", already)
+	_, theirYears := e.oldLayout(other, theirTravel, "Travel", "2025")
+	theirs := e.uploaded(other, "x.pdf", pdf+"x", "folder_id", theirYears[0].ID)
 
 	for range 2 { // twice: nothing more the second time
 		if err := e.svc.BackfillSystemFolders(context.Background()); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for id, want := range map[string]string{train.ID: "Expenses/Travel/2025", taxi.ID: "Expenses/Uncategorised/2024",
-		notes.ID: "Expenses/2025", elsewhere.ID: ""} {
-		if got := e.path(b, id); got != want {
-			t.Errorf("%s in %q, want %q", e.get(b, id).Name, got, want)
+	for _, tc := range []struct {
+		b    *browser
+		doc  store.Document
+		want string
+	}{
+		{b, train, "Expenses/2025/Travel"},
+		{b, newer, "Expenses/2025/Travel"},
+		{b, scan, "Expenses/2025/Travel/Scans"},
+		{b, taxi, "Expenses/2024/Uncategorised"},
+		{b, loose, "Expenses/" + now + "/Travel"},
+		{other, theirs, "Expenses/2025/Travel"},
+	} {
+		if got := e.path(tc.b, tc.doc.ID); got != tc.want {
+			t.Errorf("%s in %q, want %q", tc.doc.Name, got, tc.want)
 		}
 	}
-	if got := e.path(other, theirs.ID); got != "Expenses/2025" {
-		t.Errorf("other workspace's file in %q", got)
+	if a, b := e.get(b, train.ID).Name, e.get(b, newer.ID).Name; a == b {
+		t.Errorf("two files called %q in one folder", a)
 	}
-	folders := e.allFolders(b)
-	folderByKind(t, folders, "expense_category", "Travel")
-	folderByKind(t, folders, "expense_category", store.UncategorisedFolder)
+	var folder *string
+	var trashed bool
+	if err := e.raw.QueryRow(context.Background(), `SELECT folder_id, deleted_at IS NOT NULL FROM documents WHERE id = $1`,
+		gone.ID).Scan(&folder, &trashed); err != nil || folder == nil || *folder != already || !trashed {
+		t.Errorf("trashed file: folder %v trashed %v, %v", folder, trashed, err)
+	}
+	var left int
+	if err := e.raw.QueryRow(context.Background(), `SELECT count(*) FROM document_folders WHERE id = ANY($1)`,
+		[]string{oldTravel.ID, oldNone.ID, travelYears[0].ID, travelYears[1].ID, noneYears[0].ID}).Scan(&left); err != nil || left != 0 {
+		t.Errorf("%d old folders left, %v", left, err)
+	}
+	folders := e.allFolders(b) // the empty old 2024 Travel folder made no new one
 	for _, f := range folders {
-		switch f.ID {
-		case y2025.ID: // kept for the file left in it, as a plain folder people may rename or delete
-			if f.SystemKind != nil {
-				t.Errorf("old year folder still a system folder: %+v", f)
-			}
-			e.do(b, "PATCH", "/api/v1/documents/folders/"+f.ID, map[string]any{"name": "Old 2025"}, 200, nil)
-		case y2023.ID, inCategory.ID:
-			t.Errorf("empty old folder left: %+v", f)
+		if f.SystemKind != nil && *f.SystemKind == "expense_category" && f.Name == "Travel" &&
+			folderPath(folders, f) != "Expenses/2025/Travel" && folderPath(folders, f) != "Expenses/"+now+"/Travel" {
+			t.Errorf("category folder at %q", folderPath(folders, f))
 		}
 	}
 }

@@ -277,7 +277,7 @@ func TestAIFilingUsesTheSystemFolders(t *testing.T) {
 	if got := path(e.get(b, invoice.ID).FolderID); got != "Clients/Acme AG/Invoices/2024" {
 		t.Fatalf("invoice filed in %q", got)
 	}
-	if got := path(e.get(b, receipt.ID).FolderID); got != "Expenses/Uncategorised/2023" {
+	if got := path(e.get(b, receipt.ID).FolderID); got != "Expenses/2023/Uncategorised" {
 		t.Fatalf("receipt filed in %q", got)
 	}
 	if got := e.get(b, unknown.ID); got.FolderID != nil && strings.HasPrefix(path(got.FolderID), "Clients") {
@@ -315,10 +315,10 @@ func TestRecordPath(t *testing.T) {
 		{"Clients/Acme AG/Invoices/25", true, nil},
 		{"Clients/Nobody/Invoices/2025", true, nil},
 		{"Clients/Twin/Invoices/2025", true, nil}, // two clients by that name
-		{"Expenses/travel/2024", true, &recordPlace{kind: "expenses", year: 2024, categoryID: &travel}},
-		{"Expenses/Uncategorised/2024", true, &recordPlace{kind: "expenses", year: 2024}},
-		{"Expenses/2024/Travel", true, nil},
-		{"Expenses/Made Up/2024", true, nil},
+		{"Expenses/2024/travel", true, &recordPlace{kind: "expenses", year: 2024, categoryID: &travel}},
+		{"Expenses/2024/Uncategorised", true, &recordPlace{kind: "expenses", year: 2024}},
+		{"Expenses/Travel/2024", true, nil}, // the earlier layout
+		{"Expenses/2024/Made Up", true, nil},
 		{"Expenses/2024", true, nil},
 		{"Expenses/Travel", true, nil},
 		{"Expenses", true, nil},
@@ -363,7 +363,7 @@ func TestOrganizeApplyFilesIntoTheSystemFolders(t *testing.T) {
 	var out applyAnswer
 	e.do(b, "POST", "/api/v1/documents/organize/apply", map[string]any{"items": []map[string]any{
 		{"document_id": a.ID, "folder": "Clients/acme ag/invoices/2024", "tags": []string{}},
-		{"document_id": r.ID, "folder": "Expenses/travel/2023", "tags": []string{}},
+		{"document_id": r.ID, "folder": "Expenses/2023/travel", "tags": []string{}},
 		{"document_id": x.ID, "folder": "Clients/Made Up", "tags": []string{}}, // not their structure: stays
 	}}, 200, &out)
 	folders := e.allFolders(b)
@@ -377,7 +377,7 @@ func TestOrganizeApplyFilesIntoTheSystemFolders(t *testing.T) {
 	if got := path(e.get(b, a.ID)); got != "Clients/Acme AG/Invoices/2024" {
 		t.Fatalf("a in %q", got)
 	}
-	if got := path(e.get(b, r.ID)); got != "Expenses/Travel/2023" {
+	if got := path(e.get(b, r.ID)); got != "Expenses/2023/Travel" {
 		t.Fatalf("r in %q", got)
 	}
 	if got := e.get(b, x.ID); got.FolderID != nil {

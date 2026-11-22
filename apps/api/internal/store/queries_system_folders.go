@@ -12,7 +12,7 @@ import (
 	"unicode/utf8"
 )
 
-// System folders (migrations 00040, 00044): Clients/<client>/<record type>/<year> and Expenses/<category>/<year>. The
+// System folders (migrations 00040, 00044): Clients/<client>/<record type>/<year> and Expenses/<year>/<category>. The
 // app makes them on demand and nobody renames, moves or deletes them; the stored name of a typed one is English, shown
 // translated.
 
@@ -133,17 +133,41 @@ func (q Q) RenameCategoryFolder(ctx context.Context, workspaceID, categoryID, na
 	return q.renameRecordFolder(ctx, workspaceID, "expense_category", categoryID, recordFolderName(name, "Category"), now)
 }
 
-// renameRecordFolder: the system folder of kind and ref takes name, or a free one among its siblings.
+// renameRecordFolder: each system folder of kind and ref (a client has one, a category one per year) takes name, or a
+// free one among its siblings.
 func (q Q) renameRecordFolder(ctx context.Context, workspaceID, kind, ref, name string, now time.Time) error {
-	var id string
-	var parent *string
-	err := q.db.QueryRow(ctx, `SELECT id, parent_id FROM document_folders WHERE workspace_id = $1 AND system_kind = $2
-		AND system_ref = $3 AND deleted_at IS NULL ORDER BY created_at, id LIMIT 1`, workspaceID, kind, ref).Scan(&id, &parent)
-	if errors.Is(err, ErrNotFound) {
-		return nil
-	} else if err != nil {
+	rows, err := q.db.Query(ctx, `SELECT id, parent_id FROM document_folders WHERE workspace_id = $1 AND system_kind = $2
+		AND system_ref = $3 AND deleted_at IS NULL ORDER BY created_at, id`, workspaceID, kind, ref)
+	if err != nil {
 		return err
 	}
+	type folder struct {
+		id     string
+		parent *string
+	}
+	var found []folder
+	for rows.Next() {
+		var f folder
+		if err := rows.Scan(&f.id, &f.parent); err != nil {
+			rows.Close()
+			return err
+		}
+		found = append(found, f)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, f := range found {
+		if err := q.renameFolder(ctx, workspaceID, f.id, f.parent, name, now); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// renameFolder: the folder takes name, or a free one among its siblings.
+func (q Q) renameFolder(ctx context.Context, workspaceID, id string, parent *string, name string, now time.Time) error {
 	if err := q.LockContainer(ctx, workspaceID, parent); err != nil {
 		return err
 	}
@@ -191,7 +215,7 @@ func (q Q) FileClientRecord(ctx context.Context, workspaceID, clientID, kind str
 	return q.AddDocumentLink(ctx, workspaceID, d.ID, targetType, targetID, userID, d.CreatedAt)
 }
 
-// ExpenseYearFolder: Expenses/<category>/<year>, made where missing; categoryID nil for Uncategorised. Run it in a
+// ExpenseYearFolder: Expenses/<year>/<category>, made where missing; categoryID nil for Uncategorised. Run it in a
 // transaction.
 func (q Q) ExpenseYearFolder(ctx context.Context, workspaceID string, categoryID *string, year int, userID string, now time.Time) (string, error) {
 	ref, name := "", UncategorisedFolder
@@ -202,26 +226,31 @@ func (q Q) ExpenseYearFolder(ctx context.Context, workspaceID string, categoryID
 		}
 		ref, name = *categoryID, recordFolderName(name, "Category")
 	}
+	return q.expenseFolder(ctx, workspaceID, ref, name, year, userID, now)
+}
+
+// expenseFolder: Expenses/<year>/<name>, the folder of category ref ("" for Uncategorised), made where missing.
+func (q Q) expenseFolder(ctx context.Context, workspaceID, ref, name string, year int, userID string, now time.Time) (string, error) {
 	root, err := q.systemFolder(ctx, workspaceID, nil, "expenses", "", SystemRoots["expenses"], userID, now)
 	if err != nil {
 		return "", err
 	}
-	category, err := q.systemFolder(ctx, workspaceID, &root, "expense_category", ref, name, userID, now)
+	yearFolder, err := q.systemFolder(ctx, workspaceID, &root, "year", "", strconv.Itoa(year), userID, now)
 	if err != nil {
 		return "", err
 	}
-	return q.systemFolder(ctx, workspaceID, &category, "year", "", strconv.Itoa(year), userID, now)
+	return q.systemFolder(ctx, workspaceID, &yearFolder, "expense_category", ref, name, userID, now)
 }
 
 // ExistingExpenseYearFolder: like ExpenseYearFolder but makes nothing; "" when it is missing.
 func (q Q) ExistingExpenseYearFolder(ctx context.Context, workspaceID string, categoryID *string, year int) (string, error) {
 	var id string
-	err := q.db.QueryRow(ctx, `SELECT y.id FROM document_folders y
-		JOIN document_folders c ON c.id = y.parent_id AND c.system_kind = 'expense_category' AND c.deleted_at IS NULL
-			AND c.system_ref IS NOT DISTINCT FROM $2
-		JOIN document_folders r ON r.id = c.parent_id AND r.system_kind = 'expenses' AND r.parent_id IS NULL AND r.deleted_at IS NULL
-		WHERE y.workspace_id = $1 AND y.system_kind = 'year' AND y.name = $3 AND y.deleted_at IS NULL
-		ORDER BY y.created_at, y.id LIMIT 1`, workspaceID, categoryID, strconv.Itoa(year)).Scan(&id)
+	err := q.db.QueryRow(ctx, `SELECT c.id FROM document_folders c
+		JOIN document_folders y ON y.id = c.parent_id AND y.system_kind = 'year' AND y.name = $3 AND y.deleted_at IS NULL
+		JOIN document_folders r ON r.id = y.parent_id AND r.system_kind = 'expenses' AND r.parent_id IS NULL AND r.deleted_at IS NULL
+		WHERE c.workspace_id = $1 AND c.system_kind = 'expense_category' AND c.system_ref IS NOT DISTINCT FROM $2
+			AND c.deleted_at IS NULL
+		ORDER BY c.created_at, c.id LIMIT 1`, workspaceID, categoryID, strconv.Itoa(year)).Scan(&id)
 	if errors.Is(err, ErrNotFound) {
 		return "", nil
 	}
@@ -238,38 +267,22 @@ func ExpenseYear(documentDate *string, today string) int {
 	return y
 }
 
-// legacyExpenseFoldersSQL: the year folders straight in Expenses (before 00044), as CTE "legacy".
-const legacyExpenseFoldersSQL = `WITH legacy AS (SELECT y.id FROM document_folders y
-		JOIN document_folders r ON r.id = y.parent_id AND r.system_kind = 'expenses' AND r.parent_id IS NULL
-		WHERE y.system_kind = 'year' AND y.deleted_at IS NULL) `
+// OldExpenseFolder: a category folder of the earlier layout Expenses/<category>/<year>.
+type OldExpenseFolder struct{ WorkspaceID, ID string }
 
-// LegacyExpenseFile: an expense's file in the earlier Expenses/<year>[/<category>] folders, with the expense's place.
-type LegacyExpenseFile struct {
-	WorkspaceID, DocumentID, Name string
-	CategoryID                    *string
-	Year                          int
-}
-
-// LegacyExpenseFiles: up to limit live files linked to a live expense that sit in a legacy year folder or in a folder
-// straight in one; the place is the first such expense's.
-func (q Q) LegacyExpenseFiles(ctx context.Context, limit int) ([]LegacyExpenseFile, error) {
-	rows, err := q.db.Query(ctx, legacyExpenseFoldersSQL+`SELECT DISTINCT ON (d.workspace_id, d.id) d.workspace_id, d.id, d.name,
-			e.category_id, coalesce(extract(year FROM e.document_date)::int,
-				extract(year FROM e.created_at AT TIME ZONE (SELECT w.timezone FROM workspaces w WHERE w.id = d.workspace_id))::int)
-		FROM documents d JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
-		JOIN document_links l ON l.document_id = d.id AND l.target_type = 'expense'
-		JOIN expenses e ON e.id = l.target_id AND e.workspace_id = d.workspace_id AND e.deleted_at IS NULL
-		WHERE d.deleted_at IS NULL AND NOT d.hr_private
-			AND (f.id IN (SELECT id FROM legacy) OR f.parent_id IN (SELECT id FROM legacy))
-		ORDER BY d.workspace_id, d.id, e.id LIMIT $1`, limit)
+// OldExpenseFolders: up to limit live category folders straight in Expenses (the layout before year first).
+func (q Q) OldExpenseFolders(ctx context.Context, limit int) ([]OldExpenseFolder, error) {
+	rows, err := q.db.Query(ctx, `SELECT c.workspace_id, c.id FROM document_folders c
+		JOIN document_folders r ON r.id = c.parent_id AND r.system_kind = 'expenses' AND r.parent_id IS NULL
+		WHERE c.system_kind = 'expense_category' AND c.deleted_at IS NULL ORDER BY c.workspace_id, c.id LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []LegacyExpenseFile
+	var out []OldExpenseFolder
 	for rows.Next() {
-		var f LegacyExpenseFile
-		if err := rows.Scan(&f.WorkspaceID, &f.DocumentID, &f.Name, &f.CategoryID, &f.Year); err != nil {
+		var f OldExpenseFolder
+		if err := rows.Scan(&f.WorkspaceID, &f.ID); err != nil {
 			return nil, err
 		}
 		out = append(out, f)
@@ -277,63 +290,163 @@ func (q Q) LegacyExpenseFiles(ctx context.Context, limit int) ([]LegacyExpenseFi
 	return out, rows.Err()
 }
 
-// InLegacyExpenseFolder: the live document still sits in a legacy year folder or in a folder straight in one.
-func (q Q) InLegacyExpenseFolder(ctx context.Context, workspaceID, documentID string) (bool, error) {
-	var in bool
-	err := q.db.QueryRow(ctx, legacyExpenseFoldersSQL+`SELECT EXISTS (SELECT 1 FROM documents d
-		JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
-		WHERE d.workspace_id = $1 AND d.id = $2 AND d.deleted_at IS NULL
-			AND (f.id IN (SELECT id FROM legacy) OR f.parent_id IN (SELECT id FROM legacy)))`, workspaceID, documentID).Scan(&in)
-	return in, err
-}
-
-// RetireLegacyExpenseFolders ends up to limit legacy year folders: each becomes a plain folder, and it and each folder
-// straight in it (the earlier category level) go to the Trash when no file (live or trashed) is left below them.
-// Returns how many it took.
-func (q Q) RetireLegacyExpenseFolders(ctx context.Context, limit int, now time.Time) (int, error) {
-	rows, err := q.db.Query(ctx, legacyExpenseFoldersSQL+`SELECT f.workspace_id, f.id FROM document_folders f
-		WHERE f.id IN (SELECT id FROM legacy) ORDER BY f.workspace_id, f.id LIMIT $1`, limit)
-	if err != nil {
-		return 0, err
+// ConvertOldExpenseFolder moves what an old Expenses/<category> folder holds into Expenses/<year>/<category>: each
+// year folder's files and folders (live and trashed) into that year's, anything else straight in it into the year it
+// was made in (the workspace's time zone); then the emptied old folders are deleted. Nothing when the folder is no
+// longer an old one. Run it in a transaction.
+func (q Q) ConvertOldExpenseFolder(ctx context.Context, workspaceID, folderID string, now time.Time) error {
+	var ref, name string
+	err := q.db.QueryRow(ctx, `SELECT coalesce(c.system_ref, ''), c.name FROM document_folders c
+		JOIN document_folders r ON r.id = c.parent_id AND r.system_kind = 'expenses' AND r.parent_id IS NULL
+		WHERE c.workspace_id = $1 AND c.id = $2 AND c.system_kind = 'expense_category' AND c.deleted_at IS NULL`,
+		workspaceID, folderID).Scan(&ref, &name)
+	if errors.Is(err, ErrNotFound) {
+		return nil
+	} else if err != nil {
+		return err
 	}
-	type folder struct{ workspace, id string }
-	var found []folder
+	if err := q.LockContainer(ctx, workspaceID, &folderID); err != nil {
+		return err
+	}
+	rows, err := q.db.Query(ctx, `SELECT id, name FROM document_folders WHERE workspace_id = $1 AND parent_id = $2
+		AND system_kind = 'year' AND deleted_at IS NULL ORDER BY name, id`, workspaceID, folderID)
+	if err != nil {
+		return err
+	}
+	type yearFolder struct{ id, name string }
+	var years []yearFolder
 	for rows.Next() {
-		var f folder
-		if err := rows.Scan(&f.workspace, &f.id); err != nil {
+		var y yearFolder
+		if err := rows.Scan(&y.id, &y.name); err != nil {
 			rows.Close()
-			return 0, err
+			return err
 		}
-		found = append(found, f)
+		years = append(years, y)
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return 0, err
+		return err
 	}
-	for _, f := range found {
-		if _, err := q.db.Exec(ctx, `UPDATE document_folders SET system_kind = NULL, updated_at = $3
-			WHERE workspace_id = $1 AND id = $2`, f.workspace, f.id, now); err != nil {
-			return 0, err
-		}
-		rows, err := q.db.Query(ctx, `SELECT id FROM document_folders WHERE workspace_id = $1 AND parent_id = $2
-			AND deleted_at IS NULL`, f.workspace, f.id)
+	name = recordFolderName(name, "Category")
+	if ref == "" {
+		name = UncategorisedFolder
+	}
+	for _, y := range years {
+		year, err := strconv.Atoi(y.name)
 		if err != nil {
-			return 0, err
+			continue // not a year after all: it stays with the folder's other contents below
 		}
-		inside, err := collect(rows)
+		var empty bool
+		if err := q.db.QueryRow(ctx, `SELECT NOT EXISTS (SELECT 1 FROM documents WHERE workspace_id = $1 AND folder_id = $2)
+			AND NOT EXISTS (SELECT 1 FROM document_folders WHERE workspace_id = $1 AND parent_id = $2)`, workspaceID, y.id).
+			Scan(&empty); err != nil {
+			return err
+		}
+		if !empty { // an empty year makes no new folder
+			to, err := q.expenseFolder(ctx, workspaceID, ref, name, year, "", now)
+			if err != nil {
+				return err
+			}
+			if err := q.moveContents(ctx, workspaceID, y.id, "", to, now); err != nil {
+				return err
+			}
+		}
+		if _, err := q.db.Exec(ctx, `DELETE FROM document_folders WHERE workspace_id = $1 AND id = $2`, workspaceID, y.id); err != nil {
+			return err
+		}
+	}
+	rows, err = q.db.Query(ctx, `SELECT DISTINCT extract(year FROM created_at AT TIME ZONE
+			(SELECT w.timezone FROM workspaces w WHERE w.id = $1))::int AS year FROM (
+		SELECT created_at FROM document_folders WHERE workspace_id = $1 AND parent_id = $2
+		UNION ALL SELECT created_at FROM documents WHERE workspace_id = $1 AND folder_id = $2) x ORDER BY year`,
+		workspaceID, folderID)
+	if err != nil {
+		return err
+	}
+	var loose []int
+	for rows.Next() {
+		var year int
+		if err := rows.Scan(&year); err != nil {
+			rows.Close()
+			return err
+		}
+		loose = append(loose, year)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, year := range loose {
+		to, err := q.expenseFolder(ctx, workspaceID, ref, name, year, "", now)
 		if err != nil {
-			return 0, err
+			return err
 		}
-		for _, id := range append(inside, f.id) {
-			if _, err := q.db.Exec(ctx, subtreeSQL+`UPDATE document_folders SET deleted_at = $3,
-					trashed_with = CASE WHEN id = $2 THEN NULL ELSE $2 END
-				WHERE id IN (SELECT id FROM t) AND NOT EXISTS (SELECT 1 FROM documents d WHERE d.folder_id IN (SELECT id FROM t))`,
-				f.workspace, id, now); err != nil {
-				return 0, err
+		if err := q.moveContents(ctx, workspaceID, folderID, strconv.Itoa(year), to, now); err != nil {
+			return err
+		}
+	}
+	_, err = q.db.Exec(ctx, `DELETE FROM document_folders WHERE workspace_id = $1 AND id = $2`, workspaceID, folderID)
+	return err
+}
+
+// moveContents moves the files and folders straight in from (live and trashed; only those made in year, in the
+// workspace's time zone, unless year is "") into to, the live ones under free names, and points the signature
+// requests that file into from at to.
+func (q Q) moveContents(ctx context.Context, workspaceID, from, year, to string, now time.Time) error {
+	for _, id := range []string{from, to} {
+		if err := q.LockContainer(ctx, workspaceID, &id); err != nil {
+			return err
+		}
+	}
+	const made = ` AND ($3 = '' OR extract(year FROM created_at AT TIME ZONE
+		(SELECT w.timezone FROM workspaces w WHERE w.id = $1))::text = $3)`
+	for _, table := range []string{"documents", "document_folders"} {
+		parent := "folder_id"
+		if table == "document_folders" {
+			parent = "parent_id"
+		}
+		rows, err := q.db.Query(ctx, `SELECT id, name, deleted_at IS NOT NULL FROM `+table+` WHERE workspace_id = $1
+			AND `+parent+` = $2`+made+` ORDER BY created_at, id`, workspaceID, from, year)
+		if err != nil {
+			return err
+		}
+		type item struct {
+			id, name string
+			trashed  bool
+		}
+		var items []item
+		for rows.Next() {
+			var it item
+			if err := rows.Scan(&it.id, &it.name, &it.trashed); err != nil {
+				rows.Close()
+				return err
+			}
+			items = append(items, it)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		for _, it := range items {
+			if !it.trashed {
+				if table == "documents" {
+					it.name, err = q.FreeFileName(ctx, workspaceID, &to, it.name)
+				} else {
+					it.name, err = q.FreeFolderName(ctx, workspaceID, &to, it.name)
+				}
+				if err != nil {
+					return err
+				}
+			}
+			if _, err := q.db.Exec(ctx, `UPDATE `+table+` SET `+parent+` = $3, name = $4, updated_at = $5
+				WHERE workspace_id = $1 AND id = $2`, workspaceID, it.id, to, it.name, now); err != nil {
+				return err
 			}
 		}
 	}
-	return len(found), nil
+	_, err := q.db.Exec(ctx, `UPDATE signature_requests SET folder_id = $3 WHERE workspace_id = $1 AND folder_id = $2`,
+		workspaceID, from, to)
+	return err
 }
 
 // PendingRecordFile: a generated PDF of a client's record that has no Documents file yet (backfill).
