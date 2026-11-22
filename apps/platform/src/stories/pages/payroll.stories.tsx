@@ -61,7 +61,7 @@ export const SortByHeader: Story = {
       'aria-sort',
       'descending',
     )
-    await userEvent.click(within(grossHeader()).getByRole('button', { name: /gross/i }))
+    await userEvent.click(within(grossHeader()).getByRole('button', { name: /^gross$/i }))
     await waitFor(() => expect(window.location.search).toContain('sort=-gross'))
   },
 }
