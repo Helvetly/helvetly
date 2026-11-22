@@ -4400,6 +4400,7 @@
   "organizeTopLevel": "Oberste Ebene",
   "organizeFolderFor": "Ordner für {name}",
   "organizeNewFolder": "Neuer Ordner",
+  "organizeSystemOnly": "Helvetly verwaltet die Kunden- und Ausgabenordner. Wählen Sie einen bestehenden oder einen Ordner ausserhalb von Kunden und Ausgaben.",
   "organizeRemoveTag": "Tag {tag} entfernen",
   "organizeSelected": "{count, plural, =0 {Nichts ausgewählt} one {# Änderung ausgewählt} other {# Änderungen ausgewählt}}",
   "organizeApply": "{count, plural, =0 {Anwenden} one {# Änderung anwenden} other {# Änderungen anwenden}}",

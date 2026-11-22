@@ -8,7 +8,7 @@ import { Switch } from '@helvetly/ui/components/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, CircleCheck, X } from 'lucide-react'
+import { ArrowRight, CircleCheck, LoaderCircle, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -240,7 +240,11 @@ export function OrganizeDrawer({
                 </p>
               </div>
               <Button onClick={() => void start()} disabled={analyse.isPending}>
-                <HeidiSparkle />
+                {analyse.isPending ? (
+                  <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <HeidiSparkle />
+                )}
                 {analyse.isPending ? translate('organizeLookingShort') : translate('organizeStart')}
               </Button>
             </div>
@@ -314,12 +318,15 @@ export function OrganizeDrawer({
                               />
                             </td>
                             <td className="max-w-72 px-2 py-2.5">
-                              <span className="flex min-w-0 items-center gap-2 font-medium">
-                                <FileIcon name={row.name} />
-                                <span className="truncate">{row.name}</span>
-                              </span>
-                              <span className="block truncate pl-6 text-caption text-muted-foreground">
-                                {shownPath(row.from_folder)}
+                              {/* The icon spans the name and the path, two lines tall. */}
+                              <span className="flex min-w-0 items-center gap-2.5">
+                                <FileIcon name={row.name} className="size-8 stroke-[1.5]" />
+                                <span className="grid min-w-0">
+                                  <span className="truncate font-medium">{row.name}</span>
+                                  <span className="truncate text-caption text-muted-foreground">
+                                    {shownPath(row.from_folder)}
+                                  </span>
+                                </span>
                               </span>
                             </td>
                             <td className="px-0 py-2.5 text-muted-foreground">
