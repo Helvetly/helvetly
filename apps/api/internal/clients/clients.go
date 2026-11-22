@@ -374,6 +374,11 @@ func parseFilter(q url.Values) (store.ClientFilter, error) {
 		}
 		f.Countries = append(f.Countries, c)
 	}
+	if f.CreatedFrom = q.Get("created_from"); f.CreatedFrom != "" {
+		if _, err := time.Parse(time.DateOnly, f.CreatedFrom); err != nil {
+			return f, badQuery("created_from must be a date as YYYY-MM-DD.")
+		}
+	}
 	if f.Sort == "" {
 		f.Sort = "-created_at"
 	}

@@ -443,6 +443,15 @@ func parseFilter(q url.Values) (store.InvoiceFilter, error) {
 			return f, badRequest("issued_from and issued_to must be dates as YYYY-MM-DD.")
 		}
 	}
+	for key, dst := range map[string]**int64{"total_min": &f.TotalMin, "total_max": &f.TotalMax} {
+		if v := q.Get(key); v != "" {
+			n, ok := invoicecalc.ParseMoney(v)
+			if !ok {
+				return f, badRequest(key + " must be an amount such as 100 or 99.50.")
+			}
+			*dst = new(int64(n))
+		}
+	}
 	if _, ok := store.InvoiceSorts[strings.TrimPrefix(f.Sort, "-")]; f.Sort != "" && !ok {
 		return f, badRequest("sort must be one of number, issue_date, due_date, total, client, created_at, optionally prefixed with -.")
 	}

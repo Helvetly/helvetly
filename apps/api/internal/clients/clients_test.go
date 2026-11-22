@@ -393,6 +393,8 @@ func TestList(t *testing.T) {
 		{"city=BA", []int64{5}},    // Basel; not "Aarau"'s other letters
 		{"city=a&type=company", []int64{7}},
 		{"name=12&search=bistro", []int64{7}}, // with the free search
+		{"created_from=2000-01-01&type=company", []int64{7, 2}},
+		{"created_from=2999-01-01", []int64{}},
 	} {
 		t.Run(tc.query, func(t *testing.T) {
 			if got := numbers(e.list(b, tc.query).Data); !slices.Equal(got, tc.want) {
@@ -410,7 +412,7 @@ func TestList(t *testing.T) {
 	}
 
 	for _, q := range []string{"sort=deleted_at", "sort=name%27--", "sort=lower(name)", "status=archived", "type=robot", "page=0",
-		"page_size=201", "page=x", "country=XX", "name=" + strings.Repeat("a", 201), "city=" + strings.Repeat("b", 201)} {
+		"page_size=201", "page=x", "country=XX", "created_from=2026-02-30", "created_from=yesterday", "name=" + strings.Repeat("a", 201), "city=" + strings.Repeat("b", 201)} {
 		e.fails(b, "GET", "/api/v1/clients?"+q, nil, 400, "invalid_request")
 	}
 }

@@ -170,6 +170,16 @@
             }
           },
           {
+            "name": "created_from",
+            "in": "query",
+            "required": false,
+            "description": "Created on or after (YYYY-MM-DD).",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
             "name": "sort",
             "in": "query",
             "required": false,
@@ -436,6 +446,24 @@
             "schema": {
               "type": "string",
               "format": "date"
+            }
+          },
+          {
+            "name": "total_min",
+            "in": "query",
+            "required": false,
+            "description": "Total at least this amount, such as 100 or 99.50.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "total_max",
+            "in": "query",
+            "required": false,
+            "description": "Total at most this amount.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -808,6 +836,33 @@
             "schema": {
               "type": "string",
               "format": "date"
+            }
+          },
+          {
+            "name": "total_min",
+            "in": "query",
+            "required": false,
+            "description": "Total, in the expense's own currency, at least this amount, such as 100 or 99.50.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "total_max",
+            "in": "query",
+            "required": false,
+            "description": "Total, in the expense's own currency, at most this amount.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "receipt",
+            "in": "query",
+            "required": false,
+            "description": "attached: expenses with a receipt file; missing: expenses without one.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -1516,6 +1571,61 @@
             }
           },
           {
+            "name": "unit",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated units: hour, day, piece, month, km, flat.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vat_rate",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated VAT rates in percent, such as 8.1.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "price_min",
+            "in": "query",
+            "required": false,
+            "description": "Unit price at least this amount, such as 100 or 99.50.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "price_max",
+            "in": "query",
+            "required": false,
+            "description": "Unit price at most this amount.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sku",
+            "in": "query",
+            "required": false,
+            "description": "with: items that have a SKU; without: items that have none.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "updated_from",
+            "in": "query",
+            "required": false,
+            "description": "Last changed on or after (YYYY-MM-DD).",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
             "name": "sort",
             "in": "query",
             "required": false,
@@ -1655,6 +1765,16 @@
             "description": "Comma-separated ISO alpha-2 codes.",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "created_from",
+            "in": "query",
+            "required": false,
+            "description": "Created on or after (YYYY-MM-DD).",
+            "schema": {
+              "type": "string",
+              "format": "date"
             }
           },
           {
@@ -2121,6 +2241,61 @@
             }
           },
           {
+            "name": "unit",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated units: hour, day, piece, month, km, flat.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vat_rate",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated VAT rates in percent, such as 8.1.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "price_min",
+            "in": "query",
+            "required": false,
+            "description": "Unit price at least this amount, such as 100 or 99.50.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "price_max",
+            "in": "query",
+            "required": false,
+            "description": "Unit price at most this amount.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sku",
+            "in": "query",
+            "required": false,
+            "description": "with: items that have a SKU; without: items that have none.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "updated_from",
+            "in": "query",
+            "required": false,
+            "description": "Last changed on or after (YYYY-MM-DD).",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
             "name": "ids",
             "in": "query",
             "required": false,
@@ -2446,6 +2621,24 @@
             "schema": {
               "type": "string",
               "format": "date"
+            }
+          },
+          {
+            "name": "total_min",
+            "in": "query",
+            "required": false,
+            "description": "Total at least this amount, such as 100 or 99.50.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "total_max",
+            "in": "query",
+            "required": false,
+            "description": "Total at most this amount.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -5410,6 +5603,33 @@
             "schema": {
               "type": "string",
               "format": "date"
+            }
+          },
+          {
+            "name": "total_min",
+            "in": "query",
+            "required": false,
+            "description": "Total, in the expense's own currency, at least this amount, such as 100 or 99.50.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "total_max",
+            "in": "query",
+            "required": false,
+            "description": "Total, in the expense's own currency, at most this amount.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "receipt",
+            "in": "query",
+            "required": false,
+            "description": "attached: expenses with a receipt file; missing: expenses without one.",
+            "schema": {
+              "type": "string"
             }
           },
           {

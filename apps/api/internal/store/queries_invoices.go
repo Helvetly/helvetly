@@ -805,6 +805,8 @@ type InvoiceFilter struct {
 	Credited   string // credit notes of this invoice
 	IssuedFrom string
 	IssuedTo   string
+	TotalMin   *int64 // in cents, inclusive, of the total shown (with rounding)
+	TotalMax   *int64
 	IDs        []string
 	Unlinked   bool   // not linked to any engagement
 	Sort       string // a key of InvoiceSorts, "-" prefixed for descending; "" for the default
@@ -850,6 +852,12 @@ func (f InvoiceFilter) where(workspaceID, today string) (string, []any) {
 	}
 	if f.IssuedTo != "" {
 		conds = append(conds, "i.issue_date <= "+arg(f.IssuedTo)+"::date")
+	}
+	if f.TotalMin != nil {
+		conds = append(conds, InvoiceSorts["total"]+" >= "+arg(*f.TotalMin))
+	}
+	if f.TotalMax != nil {
+		conds = append(conds, InvoiceSorts["total"]+" <= "+arg(*f.TotalMax))
 	}
 	if f.Unlinked {
 		conds = append(conds, "NOT EXISTS (SELECT 1 FROM engagement_invoices ei WHERE ei.invoice_id = i.id)")

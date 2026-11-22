@@ -234,17 +234,18 @@ func (q Q) BulkClients(ctx context.Context, workspaceID string, ids []string, ac
 
 // ClientFilter narrows the list and the export; a nil pointer does not narrow.
 type ClientFilter struct {
-	Search    string
-	Name      string // contained in the name or preferred name, ignoring case
-	Email     string // contained in the email, ignoring case
-	City      string // contained in the city, ignoring case
-	Active    *bool
-	Draft     *bool
-	Company   *bool
-	Tags      []string // lowercase; a client must have all of them
-	Countries []string
-	IDs       []string
-	Sort      string // a key of ClientSorts, "-" prefixed for descending
+	Search      string
+	Name        string // contained in the name or preferred name, ignoring case
+	Email       string // contained in the email, ignoring case
+	City        string // contained in the city, ignoring case
+	Active      *bool
+	Draft       *bool
+	Company     *bool
+	Tags        []string // lowercase; a client must have all of them
+	Countries   []string
+	CreatedFrom string // YYYY-MM-DD, inclusive, UTC
+	IDs         []string
+	Sort        string // a key of ClientSorts, "-" prefixed for descending
 }
 
 var clientNumber = regexp.MustCompile(`^#?(\d{1,18})$`)
@@ -302,6 +303,9 @@ func (f ClientFilter) where(workspaceID string) (string, []any) {
 	}
 	if len(f.Countries) > 0 {
 		conds = append(conds, "c.country = ANY("+arg(f.Countries)+")")
+	}
+	if f.CreatedFrom != "" {
+		conds = append(conds, "c.created_at >= "+arg(f.CreatedFrom)+"::date")
 	}
 	if len(f.IDs) > 0 {
 		conds = append(conds, "c.id = ANY("+arg(f.IDs)+")")
