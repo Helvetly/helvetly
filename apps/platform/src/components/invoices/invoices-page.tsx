@@ -272,7 +272,7 @@ function invoiceColumns(access: boolean, act: RowActions): DataColumn<InvoiceLis
     {
       id: 'status',
       header: translate('status'),
-      size: 112,
+      size: 132,
       resizable: false,
       cell: (invoice) => (
         <span className="flex flex-wrap items-center gap-1.5">

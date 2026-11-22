@@ -6,7 +6,8 @@ import { useCallback, useMemo, useSyncExternalStore } from 'react'
 /** Widths a person dragged, by column id. */
 export type ColumnSizes = Readonly<Record<string, number>>
 
-const key = (table: string, what: 'columns' | 'order' | 'pageSize') =>
+// Widths are `columns.v2`: the default widths changed, so widths kept from before are dropped.
+const key = (table: string, what: 'columns.v2' | 'order' | 'pageSize') =>
   `helvetly.table.${table}.${what}`
 
 const read = (name: string) => {
@@ -37,7 +38,7 @@ function write(name: string, value: string | null) {
 /** The widths stored for `table`, only numbers for the given columns (anything else is dropped). */
 export function readColumnSizes(table: string, columns: readonly string[]): ColumnSizes {
   try {
-    const stored: unknown = JSON.parse(read(key(table, 'columns')) ?? 'null')
+    const stored: unknown = JSON.parse(read(key(table, 'columns.v2')) ?? 'null')
     if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) return {}
     return Object.fromEntries(
       Object.entries(stored).filter(
@@ -55,7 +56,7 @@ export function readColumnSizes(table: string, columns: readonly string[]): Colu
 
 export function writeColumnSizes(table: string, sizes: ColumnSizes) {
   write(
-    key(table, 'columns'),
+    key(table, 'columns.v2'),
     Object.keys(sizes).length === 0
       ? null
       : JSON.stringify(
