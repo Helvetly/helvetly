@@ -27,6 +27,7 @@ import { portalAddressHandlers } from './portal-address'
 import { portalDomainHandlers } from './portal-domain'
 import { quoteHandlers } from './quotes'
 import { replyToHandlers } from './reply-to'
+import { emptyState, schedulingHandlers } from './scheduling'
 import { templateHandlers } from './templates'
 
 const fail = (status: number, code: string, message: string, details?: unknown) =>
@@ -468,4 +469,5 @@ export const handlers = [
   ...(process.env.VITEST ? replyToHandlers : []),
   ...(process.env.VITEST ? portalDomainHandlers : []),
   ...(process.env.VITEST ? approvalHandlers : []),
+  ...(process.env.VITEST ? schedulingHandlers(emptyState(), new Date()) : []),
 ]

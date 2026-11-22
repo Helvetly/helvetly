@@ -41,6 +41,7 @@ export type FeatureKey =
   | 'document_approvals'
   | 'einvoice_xml'
   | 'employees'
+  | 'scheduling'
 
 /**
  * One meter of the usage panel. `limit` is the API's key (any limit, not only `LimitKey`); `max` null is unlimited
@@ -353,6 +354,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   document_approvals: translate('documentApprovals'),
   einvoice_xml: translate('eInvoiceXML2'),
   employees: translate('planEmployees'),
+  scheduling: translate('schedFeatureName'),
 }
 
 /**

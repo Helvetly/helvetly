@@ -167,10 +167,21 @@ export function AppSidebar({ session }: { session: Session }) {
             )}
             <SidebarMenu className="gap-px">
               {group.items.map(
-                ({ label, icon: Icon, href, isNew, heidi: opensHeidi, bell, feature }) => {
+                ({
+                  label,
+                  icon: Icon,
+                  href,
+                  isNew,
+                  heidi: opensHeidi,
+                  bell,
+                  feature,
+                  badge: Count,
+                }) => {
                   const lock = feature ? featureLock(billing, feature) : null
                   const tag = lock ? (
                     <PlanTag lock={lock} className="group-data-[collapsible=icon]:hidden" />
+                  ) : Count ? (
+                    <Count className="ml-auto group-data-[collapsible=icon]:hidden" />
                   ) : (
                     isNew && <NewTag />
                   )

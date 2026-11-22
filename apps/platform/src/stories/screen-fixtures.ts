@@ -10,6 +10,7 @@ import { NOT_REQUIRED } from '@/mocks/approvals'
 import { portalAddressHandlers } from '@/mocks/portal-address'
 import { portalDomainHandlers } from '@/mocks/portal-domain'
 import { replyToHandlers } from '@/mocks/reply-to'
+import { emptyState, schedulingHandlers } from '@/mocks/scheduling'
 import { legalFormsHandler, nextNumbersHandler, sampleSettings } from '@/test/invoice-api'
 
 export const storySession: Session = {
@@ -122,6 +123,8 @@ const nothing = <T>(data: T) => HttpResponse.json({ data })
  */
 export const storyDefaults = [
   ...screenHandlers,
+  // No sessions and no requests: the menu's badge, the dashboard's Today card and the Sessions panels stay quiet.
+  ...schedulingHandlers(emptyState(), new Date()),
   http.get('/api/v1/auth/config', () =>
     HttpResponse.json({ google: false, email: true, passkey: true, dev_codes: false }),
   ),

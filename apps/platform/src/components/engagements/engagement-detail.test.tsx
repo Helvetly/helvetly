@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import type { Engagement, Entry, Period } from '@/lib/engagements'
 import { sendReport } from '@/lib/engagements'
 import { setWorkspaceTimezone } from '@/lib/timezone'
+import { emptyState, schedulingHandlers } from '@/mocks/scheduling'
 
 import { EngagementDetail } from './engagement-detail'
 vi.mock('@/lib/engagements', async (original) => ({
@@ -139,6 +140,9 @@ const server = setupServer(
     HttpResponse.json({ user: { id: 'u', name: 'A' }, role: 'owner', csrf_token: 't' }),
   ),
   http.get('/api/v1/members', () => HttpResponse.json({ data: [] })),
+  // The Sessions panel: no sessions yet; billing has not answered, so nothing is locked.
+  ...schedulingHandlers(emptyState()),
+  http.get('/api/v1/billing', () => new HttpResponse(null, { status: 404 })),
   http.get('/api/v1/engagements/eng_1', () => HttpResponse.json({ data: current })),
   http.get('/api/v1/engagements/eng_1/periods', () => HttpResponse.json({ data: periods })),
   http.get('/api/v1/engagements/eng_1/entries', () => HttpResponse.json({ data: entries })),

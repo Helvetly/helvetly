@@ -35,6 +35,11 @@ export const RESOURCES = [
     description: translate('retainersLoggedHoursAndReports'),
   },
   {
+    id: 'scheduling',
+    label: translate('schedScheduling'),
+    description: translate('schedResourceDescription'),
+  },
+  {
     id: 'members',
     label: translate('members'),
     description: translate('theTeamAndInvitations'),
@@ -170,6 +175,7 @@ export function levelsOf(scopes: readonly string[]): Levels {
     products: 'none',
     documents: 'none',
     engagements: 'none',
+    scheduling: 'none',
     members: 'none',
     'invoice-settings': 'none',
     'vat-return': 'none',
@@ -277,6 +283,7 @@ const ROUTES: [string, Resource][] = [
   ['/products', 'products'],
   ['/expenses', 'expenses'],
   ['/engagements', 'engagements'],
+  ['/scheduling', 'scheduling'],
   ['/documents', 'documents'],
   // The books' tabs before the closing tab, whose address is their parent.
   ['/books/vat-return', 'vat-return'],
