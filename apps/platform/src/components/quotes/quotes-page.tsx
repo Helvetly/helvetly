@@ -26,6 +26,7 @@ import { toast } from 'sonner'
 
 import { ApprovalInbox } from '@/components/approvals/approval-inbox'
 import { useFeatureLock } from '@/components/billing/feature-lock'
+import { activeFilters, ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
   dropdownKit,
@@ -46,7 +47,7 @@ import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { formatDay } from '@/lib/invoices'
-import { among, shownElsewhere, oneValue, type QueryField } from '@/lib/list-query'
+import { among, amountParam, oneValue, shownElsewhere, type QueryField } from '@/lib/list-query'
 import { parseSort, sortParam } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { usePrefetch } from '@/lib/queries'
@@ -62,6 +63,8 @@ import {
   quoteQuery,
   quotesApi,
   searchQuotes,
+  filterQuotes,
+  type QuoteFilters,
   sortQuotes,
   useQuotes,
   type Quote,
@@ -179,7 +182,7 @@ export function bulkActions(
   ]
 }
 
-type QueryParams = { status: QuoteStatus | null; clientName: string }
+type QueryParams = QuoteFilters & { status: QuoteStatus | null; clientName: string }
 
 /** The search's field terms: `status:` picks the view tab, `client:` narrows by the client's name. */
 const QUERY_FIELDS: QueryField<QueryParams>[] = [
@@ -199,7 +202,48 @@ const QUERY_FIELDS: QueryField<QueryParams>[] = [
       (clientName) => ({ clientName: clientName ?? '' }),
     ),
   },
+  {
+    id: 'from',
+    label: translate('from'),
+    type: 'date',
+    placeholder: translate('anyDate'),
+    until: 'to',
+    ...oneValue(
+      (params) => params.from,
+      (from) => ({ from: from ?? '' }),
+    ),
+  },
+  {
+    id: 'to',
+    label: translate('to3'),
+    type: 'date',
+    ...oneValue(
+      (params) => params.to,
+      (to) => ({ to: to ?? '' }),
+    ),
+  },
+  {
+    id: 'min',
+    label: translate('minAmount'),
+    type: 'number',
+    placeholder: translate('minAmount'),
+    until: 'max',
+    ...oneValue(
+      (params) => params.min,
+      (min) => ({ min }),
+    ),
+  },
+  {
+    id: 'max',
+    label: translate('maxAmount'),
+    type: 'number',
+    ...oneValue(
+      (params) => params.max,
+      (max) => ({ max }),
+    ),
+  },
 ]
+const isDay = (value: string | null) => (value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '')
 const STATUS_VALUES = QUOTE_STATUSES.map((entry) => entry.value)
 
 /** The quotes list; the status view, the search (?q=), the sort (?sort=), the open quote (?id=) and a new one (?new=1) live in the URL. */
@@ -215,6 +259,12 @@ export function QuotesPage() {
   const creating = query.get('new') === '1' && canWrite
   const term = query.get('q') ?? ''
   const clientName = query.get('client_name') ?? ''
+  const filters: QuoteFilters = {
+    from: isDay(query.get('from')),
+    to: isDay(query.get('to')),
+    min: amountParam(query.get('min')),
+    max: amountParam(query.get('max')),
+  }
   const sort = parseSort(query.get('sort'), QUOTE_SORT_FIELDS, DEFAULT_QUOTE_SORT)
   const [search, setSearch] = useState(term)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
@@ -225,7 +275,7 @@ export function QuotesPage() {
   const prefetch = usePrefetch(quoteQuery)
   // shortcut: the API returns every quote unpaged, so search and sort happen here; move them to the API with paging.
   const rows = sortQuotes(
-    searchQuotes(list.data ?? [], term).filter((quote) =>
+    filterQuotes(searchQuotes(list.data ?? [], term), filters).filter((quote) =>
       quote.client.name.toLowerCase().includes(clientName.toLowerCase()),
     ),
     sort,
@@ -251,11 +301,15 @@ export function QuotesPage() {
       else next.set(key, value)
     setUrlQuery(pathname, next)
   }
-  const queryParams: QueryParams = { status, clientName }
+  const queryParams: QueryParams = { status, clientName, ...filters }
   const onQuery = (change: Partial<QueryParams>) =>
     navigate({
       ...(change.status !== undefined && { status: change.status }),
       ...(change.clientName !== undefined && { client_name: change.clientName || null }),
+      ...(change.from !== undefined && { from: change.from || null }),
+      ...(change.to !== undefined && { to: change.to || null }),
+      ...(change.min !== undefined && { min: change.min }),
+      ...(change.max !== undefined && { max: change.max }),
     })
   const openQuote = (id: string | null) => navigate({ id })
   const newQuote = () => navigate({ new: '1', client: null })
@@ -383,6 +437,7 @@ export function QuotesPage() {
         <div className="relative flex flex-1 flex-col">
           <ApprovalInbox doc="quotes" onOpen={open} />
           <ListToolbar>
+            <ListFilters fields={QUERY_FIELDS} params={queryParams} onChange={onQuery} />
             <ListSearch
               label={translate('searchQuotes')}
               placeholder={translate('searchNumberClientOrReference')}
@@ -405,10 +460,14 @@ export function QuotesPage() {
           ) : !list.data ? (
             <LoadingRows />
           ) : rows.length === 0 ? (
-            term || clientName ? (
+            term || clientName || activeFilters(QUERY_FIELDS, queryParams) > 0 ? (
               <State
                 icon={<SearchX />}
-                title={translate('nothingMatches', { search: term || clientName })}
+                title={
+                  term || clientName
+                    ? translate('nothingMatches', { search: term || clientName })
+                    : translate('nothingMatches4')
+                }
                 text={translate('tryAnotherSearchOrClearTheFilters')}
                 action={
                   <Button
@@ -416,7 +475,15 @@ export function QuotesPage() {
                     size="sm"
                     onClick={() => {
                       setSearch('')
-                      navigate({ q: null, status: null, client_name: null })
+                      navigate({
+                        q: null,
+                        status: null,
+                        client_name: null,
+                        from: null,
+                        to: null,
+                        min: null,
+                        max: null,
+                      })
                     }}
                   >
                     {translate('clearSearchAndFilters')}

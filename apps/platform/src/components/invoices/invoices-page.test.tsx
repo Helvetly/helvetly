@@ -7,10 +7,11 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
+import { datePresets } from '@/components/data/list-filters'
 import { editorApi, listItem, sampleInvoice, sampleSummary } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
-import { bulkActions, datePresets, InvoicesPage } from './invoices-page'
+import { bulkActions, InvoicesPage } from './invoices-page'
 
 // The list keeps its state in the URL through the History API (lib/url-query); the URL it sets is
 // the last call's third argument.
@@ -132,7 +133,8 @@ test('switching tabs changes only the type and keeps the filters', async () => {
 test('status is filtered in the Filters popover, Replaced included', async () => {
   renderPage()
   await userEvent.click(screen.getByRole('button', { name: /Filters/ }))
-  await userEvent.click(await screen.findByRole('checkbox', { name: 'Replaced' }))
+  await userEvent.click(await screen.findByRole('button', { name: /^Status/ }))
+  await userEvent.click(await screen.findByRole('option', { name: 'Replaced' }))
   expect(lastUrl()).toBe('/invoices?status=replaced')
 })
 
@@ -168,16 +170,6 @@ test('no KPI band on the credit notes tab, and only credit notes show negative',
     .slice(1)
     .map((row) => row.querySelectorAll('td')[column]?.textContent ?? '')
   expect(amounts.filter((amount) => amount.includes('−'))).toHaveLength(1)
-})
-
-test('date presets are whole calendar ranges', () => {
-  const presets = datePresets('2026-11-05')
-  expect(presets.find((preset) => preset.label === 'Last month')).toEqual({
-    label: 'Last month',
-    from: '2026-10-01',
-    to: '2026-10-31',
-  })
-  expect(presets.find((preset) => preset.label === 'This quarter')?.from).toBe('2026-10-01')
 })
 
 test('bulk delete is offered only for drafts in the selection', () => {

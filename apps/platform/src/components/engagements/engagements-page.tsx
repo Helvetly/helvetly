@@ -34,6 +34,8 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
+import { ClientFilter } from '@/components/data/client-filter'
+import { ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
@@ -51,6 +53,7 @@ import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/imp
 import { Kpi, KpiBand, TickGauge } from '@/components/kpi-band'
 import { PageHeader } from '@/components/shell/page-header'
 import { ApiError, errorMessage } from '@/lib/api'
+import { useClient } from '@/lib/clients'
 import {
   cancelEngagement,
   deleteEngagement,
@@ -70,7 +73,7 @@ import {
   type EngagementQuery,
 } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
-import { shownElsewhere, type QueryField } from '@/lib/list-query'
+import { oneValue, shownElsewhere, type QueryField } from '@/lib/list-query'
 import { parseSort, sortParam, type Sort } from '@/lib/list-sort'
 import { useCan } from '@/lib/permissions'
 import { queryKeys, usePrefetch, useSession } from '@/lib/queries'
@@ -121,19 +124,36 @@ const VIEWS: {
 // What `status:` takes for each view, in the views' order.
 const VIEW_KEYS = ['all', 'active', 'ending_soon', 'behind_pace', 'to_invoice', 'ended']
 
-/** The search's field term `status:` picks the view tab, which shows it, so it needs no chip. */
-const QUERY_FIELDS: QueryField<{ view: number }>[] = [
-  {
-    id: 'status',
-    label: translate('status'),
-    type: 'enum',
-    values: VIEWS.map((view, index) => ({ value: VIEW_KEYS[index] ?? '', label: view.label })),
-    ...shownElsewhere<{ view: number }>((value) => {
-      const view = VIEW_KEYS.indexOf(value)
-      return view < 0 ? {} : { view }
-    }),
-  },
-]
+type QueryParams = { view: number; client: string | null }
+
+/** The search's field terms: `status:` picks the view tab (no chip), `client:` the Filters popover's client. */
+function useQueryFields(client: string | null): QueryField<QueryParams>[] {
+  const name = useClient(client).data?.name
+  return [
+    {
+      id: 'status',
+      label: translate('status'),
+      type: 'enum',
+      values: VIEWS.map((view, index) => ({ value: VIEW_KEYS[index] ?? '', label: view.label })),
+      ...shownElsewhere<QueryParams>((value) => {
+        const view = VIEW_KEYS.indexOf(value)
+        return view < 0 ? {} : { view }
+      }),
+    },
+    {
+      id: 'client',
+      label: translate('client'),
+      type: 'enum',
+      // shortcut: only the chosen client resolves by name; the Filters popover picks others.
+      values: client ? [{ value: client, label: name ?? '…' }] : [],
+      placeholder: translate('anyClient'),
+      ...oneValue(
+        (params) => params.client,
+        (value) => ({ client: value }),
+      ),
+    },
+  ]
+}
 
 const dash = <span className="text-muted-foreground">—</span>
 const DAY = 86_400_000
@@ -485,6 +505,7 @@ export function EngagementsPage() {
   const openId = url.get('id')
   const sort = parseSort(url.get('sort'), SORTS, DEFAULT_SORT)
   const [view, setView] = useState(0)
+  const [client, setClient] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = usePageSize('engagements')
   const [search, setSearch] = useState('')
@@ -522,7 +543,12 @@ export function EngagementsPage() {
 
   const sortValue: EngagementQuery['sort'] =
     sort.field === 'title' ? (sort.desc ? '-title' : 'title') : sort.desc ? '-ends' : undefined
-  const filters: EngagementQuery = { ...VIEWS[view]?.query, q: term || undefined, sort: sortValue }
+  const filters: EngagementQuery = {
+    ...VIEWS[view]?.query,
+    q: term || undefined,
+    client_id: client ?? undefined,
+    sort: sortValue,
+  }
   const params: EngagementQuery = { ...filters, page, page_size: pageSize }
   const { items, digestToggle } = useMenu(filters)
   const list = useQuery({ ...engagementListQuery(params), placeholderData: keepPreviousData })
@@ -536,6 +562,15 @@ export function EngagementsPage() {
     setView(index)
     setPage(1)
     setSelected(new Set())
+  }
+  const queryFields = useQueryFields(client)
+  const onQuery = (change: Partial<QueryParams>) => {
+    if (change.view !== undefined) select(change.view)
+    if (change.client !== undefined) {
+      setClient(change.client)
+      setPage(1)
+      setSelected(new Set())
+    }
   }
   const turnPage = (next: number) => {
     setPage(next)
@@ -689,16 +724,22 @@ export function EngagementsPage() {
       >
         <div className="relative flex flex-1 flex-col">
           <ListToolbar>
+            <ListFilters
+              fields={queryFields}
+              params={{ view, client }}
+              onChange={onQuery}
+              custom={{
+                client: (
+                  <ClientFilter value={client} onChange={(next) => onQuery({ client: next })} />
+                ),
+              }}
+            />
             <ListSearch
               label={translate('searchEngagements')}
               placeholder={translate('searchTitleClientOrReference')}
               value={search}
               onChange={setSearch}
-              query={{
-                fields: QUERY_FIELDS,
-                params: { view },
-                onChange: (change) => change.view !== undefined && select(change.view),
-              }}
+              query={{ fields: queryFields, params: { view, client }, onChange: onQuery }}
             />
           </ListToolbar>
 
@@ -711,7 +752,7 @@ export function EngagementsPage() {
           ) : !list.data ? (
             <LoadingRows />
           ) : rows.length === 0 ? (
-            term || view > 0 ? (
+            term || view > 0 || client ? (
               <State
                 icon={<SearchX />}
                 title={
@@ -727,6 +768,7 @@ export function EngagementsPage() {
                     onClick={() => {
                       setSearch('')
                       select(0)
+                      setClient(null)
                     }}
                   >
                     {translate('showAllEngagements')}

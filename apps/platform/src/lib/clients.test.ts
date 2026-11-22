@@ -27,10 +27,11 @@ test('reads the list state from the URL and ignores what it does not know', () =
     name: '',
     email: '',
     city: '',
+    created: null,
     sort: 'number',
     desc: true,
   })
-  expect(parseListParams(new URLSearchParams('page=-2&sort=nanoid&type=robot'))).toEqual(
+  expect(parseListParams(new URLSearchParams('page=-2&sort=nanoid&type=robot&created=1d'))).toEqual(
     DEFAULT_PARAMS,
   )
 })
@@ -66,6 +67,11 @@ test('searches from two characters, or at once for a number', () => {
     'page=2&page_size=50&sort=-created_at',
   )
   expect(apiQuery(DEFAULT_PARAMS, false).has('page')).toBe(false)
+  vi.useFakeTimers({ now: new Date(2026, 10, 22) })
+  expect(apiQuery({ ...DEFAULT_PARAMS, created: 'year' }).get('created_from')).toBe('2026-01-01')
+  vi.useRealTimers()
+  const created = { ...DEFAULT_PARAMS, created: '30d' as const }
+  expect(parseListParams(listParamsToQuery(created))).toEqual(created)
 })
 
 test('only owners and admins delete clients', () => {

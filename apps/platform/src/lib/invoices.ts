@@ -19,6 +19,7 @@ import type { ApprovalState } from '@/lib/approvals'
 import type { ElectronicAddress, Page } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import type { Plan } from '@/lib/instalments'
+import { amountParam } from '@/lib/list-query'
 import { queryKeys } from '@/lib/queries'
 import { todayIn } from '@/lib/timezone'
 
@@ -1295,6 +1296,8 @@ export type ListParams = {
   credited: string | null
   from: string | null
   to: string | null
+  totalMin: string | null
+  totalMax: string | null
   sort: SortField
   desc: boolean
 }
@@ -1309,6 +1312,8 @@ export const DEFAULT_PARAMS: ListParams = {
   credited: null,
   from: null,
   to: null,
+  totalMin: null,
+  totalMax: null,
   sort: 'issue_date',
   desc: true,
 }
@@ -1337,12 +1342,26 @@ export function parseListParams(query: URLSearchParams): ListParams {
     credited: query.get('credited')?.trim() || null,
     from: isDate(from) ? from : null,
     to: isDate(to) ? to : null,
+    totalMin: amountParam(query.get('min')),
+    totalMax: amountParam(query.get('max')),
     sort: isSortField(field) ? field : DEFAULT_PARAMS.sort,
     desc: isSortField(field) ? sort.startsWith('-') : DEFAULT_PARAMS.desc,
   }
 }
 
-const LIST_KEYS = ['page', 'q', 'status', 'kind', 'client', 'credited', 'from', 'to', 'sort']
+const LIST_KEYS = [
+  'page',
+  'q',
+  'status',
+  'kind',
+  'client',
+  'credited',
+  'from',
+  'to',
+  'min',
+  'max',
+  'sort',
+]
 
 /** The list's state as URL query, leaving out defaults so links stay short. Keeps other keys. */
 export function listParamsToQuery(params: ListParams, base = new URLSearchParams()) {
@@ -1356,6 +1375,8 @@ export function listParamsToQuery(params: ListParams, base = new URLSearchParams
   if (params.credited) query.set('credited', params.credited)
   if (params.from) query.set('from', params.from)
   if (params.to) query.set('to', params.to)
+  if (params.totalMin) query.set('min', params.totalMin)
+  if (params.totalMax) query.set('max', params.totalMax)
   if (params.sort !== DEFAULT_PARAMS.sort || params.desc !== DEFAULT_PARAMS.desc)
     query.set('sort', `${params.desc ? '-' : ''}${params.sort}`)
   return query
@@ -1376,6 +1397,8 @@ export function apiQuery(params: ListParams, paging = true) {
   if (params.credited) query.set('credited_invoice_id', params.credited)
   if (params.from) query.set('issued_from', params.from)
   if (params.to) query.set('issued_to', params.to)
+  if (params.totalMin) query.set('total_min', params.totalMin)
+  if (params.totalMax) query.set('total_max', params.totalMax)
   query.set('sort', `${params.desc ? '-' : ''}${params.sort}`)
   return query
 }
