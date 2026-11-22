@@ -233,7 +233,7 @@ export function SettingsPreview({
 }: {
   label: string
   items?: { label: string; value: string }[]
-  /** A long list: one row per item, label left and value right; two columns only when the box is wide. */
+  /** A long list: one row per item, label left and value right; two columns when the field column is wide. */
   columns?: boolean
   children?: ReactNode
 }) {
@@ -242,17 +242,19 @@ export function SettingsPreview({
       aria-label={label}
       data-slot="settings-preview"
       className={cn(
-        'min-h-9 rounded-lg bg-muted/60 px-3 py-2 text-body-sm text-muted-foreground',
-        columns ? 'block pt-0.5 pb-0' : 'flex flex-wrap items-center gap-x-5 gap-y-1',
+        'text-body-sm text-muted-foreground',
+        columns
+          ? 'block'
+          : 'flex min-h-9 flex-wrap items-center gap-x-5 gap-y-1 rounded-lg bg-muted/60 px-3 py-2',
       )}
     >
       {columns ? (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17rem),1fr))] gap-x-8">
+        <ul className="grid gap-x-10 @lg:grid-flow-col @lg:grid-cols-2 @lg:grid-rows-4">
           {items?.map((item) => (
             <li
               key={item.label}
               data-slot="settings-preview-row"
-              className="flex items-baseline justify-between gap-4 border-b py-1.5"
+              className="flex items-baseline justify-between gap-4 border-b py-2"
             >
               <span className="shrink-0 whitespace-nowrap">{item.label}</span>
               <span className="font-code min-w-0 truncate text-right text-foreground">

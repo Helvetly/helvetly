@@ -1347,7 +1347,6 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                   id={inputId('number_format')}
                   label={translate('numberFormat')}
                   error={shown.number_format}
-                  width="md"
                 >
                   <NumberFormatField
                     id={inputId('number_format')}
@@ -1357,12 +1356,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     onChange={(format) => set('number_format', format)}
                   />
                 </FormField>
-                <FormField
-                  id={inputId('number_preview')}
-                  label={translate('nextNumbers')}
-                  width="md"
-                  group
-                >
+                <FormField id={inputId('number_preview')} label={translate('nextNumbers')} group>
                   <SettingsPreview
                     label={translate('nextNumbers')}
                     columns

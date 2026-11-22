@@ -65,9 +65,15 @@ export function NumberFormatField({
           { value: CUSTOM, label: translate('customNumberFormat') },
         ]}
         renderValue={(option) => (
-          <span className="block truncate">
-            <span className={cn(option.value !== CUSTOM && 'font-code')}>{option.label}</span>
-            {option.hint && <span className="ml-2 text-muted-foreground">{option.hint}</span>}
+          <span className="flex min-w-0 items-baseline gap-2">
+            <span className={cn('shrink-0', option.value !== CUSTOM && 'font-code')}>
+              {option.label}
+            </span>
+            {option.hint && (
+              <span className="min-w-0 truncate text-body-sm text-muted-foreground">
+                {option.hint}
+              </span>
+            )}
           </span>
         )}
         placeholder={translate('chooseAFormat')}
