@@ -27,6 +27,7 @@ import {
   FixList,
   type Fix,
 } from '@/components/fix-list'
+import { RecipientFields } from '@/components/recipient-fields'
 import { RecordLink } from '@/components/record-link'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
@@ -428,17 +429,20 @@ export const emails = (text: string) =>
     .map((entry) => entry.trim())
     .filter(Boolean)
 
-/** What is wrong with the To and Cc fields of a send dialog, by field. */
-export function recipientErrors(to: string, cc: string): Record<string, string> {
-  const list = emails(to)
-  const bad = [...list, ...emails(cc)].find(
-    (address) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address),
-  )
+/** What is wrong with the To, Cc and Bcc fields of a send dialog, by field. */
+export function recipientErrors(to: string, cc: string, bcc = ''): Record<string, string> {
   const found: Record<string, string> = {}
-  if (list.length === 0) found.to = translate('addAtLeastOneEmailAddress')
-  else if (list.length > 10) found.to = translate('atMost10Recipients')
-  else if (bad) found.to = translate('isnTAnEmailAddress', { bad: bad })
-  if (emails(cc).length > 10) found.cc = translate('atMost10AddressesInCc')
+  const fields = [
+    { key: 'to', list: emails(to), tooMany: translate('atMost10Recipients') },
+    { key: 'cc', list: emails(cc), tooMany: translate('atMost10AddressesInCc') },
+    { key: 'bcc', list: emails(bcc), tooMany: translate('atMost10AddressesInBcc') },
+  ]
+  for (const { key, list, tooMany } of fields) {
+    const bad = list.find((address) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address))
+    if (list.length > 10) found[key] = tooMany
+    else if (bad) found[key] = translate('isnTAnEmailAddress', { bad: bad })
+  }
+  if (emails(to).length === 0) found.to = translate('addAtLeastOneEmailAddress')
   return found
 }
 
@@ -456,6 +460,7 @@ export function SendDialog({
   // null = untouched: the draft shows through, and what the user typed is never replaced by it.
   const [to, setTo] = useState<string | null>(null)
   const [cc, setCc] = useState('')
+  const [bcc, setBcc] = useState('')
   const [subject, setSubject] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -486,7 +491,7 @@ export function SendDialog({
   const submit = () => {
     const list = emails(recipients)
     const found: Record<string, string> = {
-      ...recipientErrors(recipients, cc),
+      ...recipientErrors(recipients, cc, bcc),
       ...(shownSubject.trim() ? {} : { subject: translate('emailSubjectRequired') }),
       ...(shownMessage.trim() ? {} : { message: translate('emailMessageRequired') }),
     }
@@ -496,6 +501,7 @@ export function SendDialog({
       {
         to: list,
         ...(emails(cc).length ? { cc: emails(cc) } : {}),
+        ...(emails(bcc).length ? { bcc: emails(bcc) } : {}),
         // Left empty (draft failed), the server writes both in the invoice's language.
         ...(shownSubject.trim() ? { subject: shownSubject.trim() } : {}),
         ...(shownMessage.trim() ? { message: shownMessage.trim() } : {}),
@@ -531,36 +537,19 @@ export function SendDialog({
         </Callout>
       )}
       <NoClientEmail client={client} />
-      <FormField
-        id="send-to"
-        label={translate('to3')}
-        required
-        error={errors.to}
-        tip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient')}
-      >
-        <input
-          {...describedBy('send-to', errors.to)}
-          type="email"
-          multiple
-          value={recipients}
-          // Read-only, not disabled, while the draft loads: the dialog's first focus lands here.
-          readOnly={draft.isPending}
-          onChange={(event) => setTo(event.target.value)}
-          placeholder={translate('accountsClientCh')}
-          className={fieldClass}
-        />
-      </FormField>
-      <FormField id="send-cc" label={translate('cc')} error={errors.cc}>
-        <input
-          {...describedBy('send-cc', errors.cc)}
-          type="email"
-          multiple
-          value={cc}
-          onChange={(event) => setCc(event.target.value)}
-          placeholder={translate('optional')}
-          className={fieldClass}
-        />
-      </FormField>
+      <RecipientFields
+        id="send"
+        to={recipients}
+        onToChange={setTo}
+        toTip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient')}
+        toPlaceholder={translate('accountsClientCh')}
+        toReadOnly={draft.isPending}
+        cc={cc}
+        onCcChange={setCc}
+        bcc={bcc}
+        onBccChange={setBcc}
+        errors={errors}
+      />
       <FormField id="send-subject" label={translate('subject')} required error={errors.subject}>
         <input
           {...describedBy('send-subject', errors.subject)}

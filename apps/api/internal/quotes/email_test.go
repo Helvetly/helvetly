@@ -2,7 +2,9 @@ package quotes
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -117,6 +119,37 @@ func TestQuoteSendMessageLimit(t *testing.T) {
 				e.quote(b, "POST", "/api/v1/quotes/"+q.ID+"/send", body, http.StatusOK)
 			} else {
 				e.fails(b, "POST", "/api/v1/quotes/"+q.ID+"/send", body, http.StatusUnprocessableEntity, "validation_failed", "message")
+			}
+		})
+	}
+}
+
+// Bcc is validated like Cc and loses the addresses already in To or Cc.
+func TestQuoteSendBcc(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	q := e.draft(b, e.client(b))
+	path := "/api/v1/quotes/" + q.ID + "/send"
+	for _, tc := range []struct {
+		name    string
+		body    map[string]any
+		wantBcc []string
+		field   string
+	}{
+		{name: "invalid address", body: map[string]any{"bcc": []string{"nope"}}, field: "bcc"},
+		{name: "too many", body: map[string]any{"bcc": strings.Split(strings.Repeat("x@y.ch,", 11), ",")[:11]}, field: "bcc"},
+		{name: "hidden copies, repeats dropped", body: map[string]any{"cc": []string{"boss@kunde.ch"},
+			"bcc": []string{"AP@kunde.ch", "boss@kunde.ch", "audit@muster.ch"}}, wantBcc: []string{"audit@muster.ch"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.field != "" {
+				e.fails(b, "POST", path, tc.body, http.StatusUnprocessableEntity, "validation_failed", tc.field)
+				return
+			}
+			e.quote(b, "POST", path, tc.body, http.StatusOK)
+			m := e.mail.sent[len(e.mail.sent)-1]
+			if fmt.Sprint(m.To, m.Cc) != "[ap@kunde.ch] [boss@kunde.ch]" || !slices.Equal(m.Bcc, tc.wantBcc) {
+				t.Fatalf("to %v cc %v bcc %v", m.To, m.Cc, m.Bcc)
 			}
 		})
 	}

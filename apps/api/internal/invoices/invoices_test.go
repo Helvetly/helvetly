@@ -710,3 +710,52 @@ func TestSendRecordedAfterClientDisconnects(t *testing.T) {
 		}
 	}
 }
+
+// Bcc is validated like Cc, loses the addresses already in To or Cc, goes to the mailer as hidden copies and is
+// kept with the delivery.
+func TestSendBcc(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	inv := e.issued(b, clientID, nil)
+	path := "/api/v1/invoices/" + inv.ID + "/send"
+	eleven := make([]string, 11)
+	for i := range eleven {
+		eleven[i] = fmt.Sprintf("x%d@kunde.ch", i)
+	}
+	for _, tc := range []struct {
+		name    string
+		body    map[string]any
+		wantCc  []string
+		wantBcc []string
+		field   string
+	}{
+		{name: "hidden copies, repeats dropped", body: map[string]any{"cc": []string{"boss@kunde.ch"},
+			"bcc": []string{"AP@kunde.ch", "Boss@Kunde.ch", "Audit@Muster.ch", "audit@muster.ch"}},
+			wantCc: []string{"boss@kunde.ch"}, wantBcc: []string{"audit@muster.ch"}},
+		{name: "cc repeating to dropped", body: map[string]any{"cc": []string{"ap@kunde.ch"}, "bcc": []string{"audit@muster.ch"}},
+			wantCc: []string{}, wantBcc: []string{"audit@muster.ch"}},
+		{name: "invalid address", body: map[string]any{"bcc": []string{"nope"}}, field: "bcc"},
+		{name: "too many", body: map[string]any{"bcc": eleven}, field: "bcc"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sent := len(e.mail.sent)
+			if tc.field != "" {
+				e.fails(b, "POST", path, tc.body, http.StatusUnprocessableEntity, "validation_failed", tc.field)
+				if len(e.mail.sent) != sent {
+					t.Fatal("a refused send went out")
+				}
+				return
+			}
+			e.do(b, "POST", path, tc.body, http.StatusOK, nil)
+			m := e.mail.sent[len(e.mail.sent)-1]
+			if !slices.Equal(m.To, []string{"ap@kunde.ch"}) || !slices.Equal(m.Cc, tc.wantCc) || !slices.Equal(m.Bcc, tc.wantBcc) {
+				t.Fatalf("mail to %v cc %v bcc %v", m.To, m.Cc, m.Bcc)
+			}
+			var dl struct{ Data []store.Delivery }
+			e.do(b, "GET", "/api/v1/invoices/"+inv.ID+"/deliveries", nil, http.StatusOK, &dl)
+			if d := dl.Data[0]; !slices.Equal(d.Cc, tc.wantCc) || !slices.Equal(d.Bcc, tc.wantBcc) {
+				t.Fatalf("delivery: %+v", d)
+			}
+		})
+	}
+}

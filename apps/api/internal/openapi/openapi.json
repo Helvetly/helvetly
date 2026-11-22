@@ -9583,6 +9583,12 @@
               "type": "string"
             }
           },
+          "bcc": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "sent_at": {
             "type": "string",
             "format": "date-time"
@@ -9598,7 +9604,7 @@
             ]
           }
         },
-        "required": ["id", "to", "cc", "sent_at", "sent_by"]
+        "required": ["id", "to", "cc", "bcc", "sent_at", "sent_by"]
       },
       "InvoiceRefundInput": {
         "type": "object",
@@ -9709,6 +9715,15 @@
               "format": "email"
             },
             "maxItems": 10
+          },
+          "bcc": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
+            "maxItems": 10,
+            "description": "Hidden copies: delivered, but in no header the other recipients see. An address already in to or cc is dropped."
           },
           "subject": {
             "type": ["string", "null"],
@@ -11255,6 +11270,15 @@
               "format": "email"
             },
             "maxItems": 10
+          },
+          "bcc": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
+            "maxItems": 10,
+            "description": "Hidden copies: delivered, but in no header the other recipients see. An address already in to or cc is dropped."
           },
           "subject": {
             "type": ["string", "null"],
@@ -12933,6 +12957,15 @@
               "format": "email"
             },
             "maxItems": 10
+          },
+          "bcc": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
+            "maxItems": 10,
+            "description": "Hidden copies: delivered, but in no header the other recipients see. An address already in to or cc is dropped."
           },
           "subject": {
             "type": "string",
