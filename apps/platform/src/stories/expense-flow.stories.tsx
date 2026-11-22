@@ -247,7 +247,7 @@ export const NoConsent: Story = {
     const body = within(document.body)
     await userEvent.click(await body.findByRole('button', { name: 'Not now' }))
     await expect(await body.findByText(/AI use isn’t approved in this workspace/)).toBeVisible()
-    await expect(body.getByRole('textbox', { name: /Supplier$/ })).toHaveValue('')
+    await expect(await body.findByRole('textbox', { name: /Supplier$/ })).toHaveValue('')
     await expect(previews).not.toHaveBeenCalled()
   },
 }
