@@ -6,15 +6,17 @@ import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
-import { Segmented } from '@helvetly/ui/components/segmented'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { displayPhone } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
+  CircleCheck,
   CloudOff,
   Download,
+  FilePen,
   ListFilter,
   PanelRightOpen,
+  PauseCircle,
   Pencil,
   Power,
   PowerOff,
@@ -24,6 +26,7 @@ import {
   UserPlus,
   X,
   Users,
+  type LucideIcon,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { memo, useEffect, useMemo, useState, type ComponentProps } from 'react'
@@ -55,6 +58,7 @@ import {
   parseListParams,
   STATUS_VIEWS,
   statusView,
+  type StatusView,
   useBulkClients,
   useClientList,
   useClientStatusCounts,
@@ -78,6 +82,13 @@ import { ClientDetail, type ClientCommand } from './client-detail'
 import { ClientForm } from './client-form'
 import { countryName } from './client-form-model'
 import { Combobox, COUNTRY_OPTIONS } from './fields'
+
+const VIEW_ICONS: Record<StatusView, LucideIcon> = {
+  all: Users,
+  active: CircleCheck,
+  draft: FilePen,
+  inactive: PauseCircle,
+}
 
 /** Which list sort each sortable column asks for. */
 const SORTS: Partial<Record<string, SortField>> = {
@@ -137,6 +148,7 @@ export function ClientsPage() {
   const navigate = (next: URLSearchParams) => {
     setUrlQuery(pathname, next)
   }
+  const statusCounts = useClientStatusCounts(params)
   const update = (change: Partial<ListParams>) =>
     navigate(listParamsToQuery({ ...params, page: 1, ...change }, query))
   const openClient = (id: string | null) => {
@@ -285,9 +297,16 @@ export function ClientsPage() {
   return (
     <>
       <PageHeader
-        tabs={[translate('clients')]}
-        tabIcons={[Users]}
+        tabs={STATUS_VIEWS.map((view) =>
+          view.value === 'all' ? translate('allClients') : view.label,
+        )}
+        tabIcons={STATUS_VIEWS.map((view) => VIEW_ICONS[view.value])}
+        tabCounts={STATUS_VIEWS.map((view) =>
+          view.value === 'all' ? undefined : statusCounts.data?.get(view.value),
+        )}
         savedViews={false}
+        active={STATUS_VIEWS.findIndex((view) => view.value === statusView(params.status))}
+        onSelect={(index) => update({ status: [...(STATUS_VIEWS[index]?.status ?? [])] })}
         primary={translate('newClient')}
         onPrimary={() => setForm({})}
         menu={pageItems(dropdownKit)}
@@ -307,7 +326,6 @@ export function ClientsPage() {
       >
         <div className="relative flex flex-1 flex-col">
           <ListToolbar className="flex-wrap gap-y-2 py-2">
-            <StatusViews params={params} onChange={update} />
             <Filters params={params} onChange={update} />
             <ListSearch
               label={translate('searchClients')}
@@ -674,36 +692,6 @@ function ActiveFilters({
           {translate('clearAll')}
         </Button>
       )}
-    </div>
-  )
-}
-
-/** All, Active, Drafts, Inactive: the status quick views, each with how many clients it holds. */
-function StatusViews({
-  params,
-  onChange,
-}: {
-  params: ListParams
-  onChange: (change: Partial<ListParams>) => void
-}) {
-  const counts = useClientStatusCounts(params).data
-  return (
-    <div className="max-sm:order-last max-sm:w-full">
-      <Segmented
-        size="sm"
-        label={translate('status')}
-        value={statusView(params.status)}
-        options={STATUS_VIEWS.map((view) => ({
-          value: view.value,
-          label: view.label,
-          count: counts?.get(view.value),
-        }))}
-        onChange={(value) =>
-          onChange({
-            status: [...(STATUS_VIEWS.find((view) => view.value === value)?.status ?? [])],
-          })
-        }
-      />
     </div>
   )
 }
