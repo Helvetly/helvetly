@@ -3,13 +3,12 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { DataTable, listTable, Pager, type DataColumn } from '@helvetly/ui/components/data-table'
 import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowDown,
-  ArrowUp,
   Ban,
   BookCheck,
   CircleCheck,
@@ -43,7 +42,6 @@ import {
   useFeatureLock,
 } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { listTable, Pager } from '@/components/data/list-table'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
@@ -54,11 +52,6 @@ import {
   type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
-import {
-  ColumnResizer,
-  ResizableTable,
-  useResizableColumns,
-} from '@/components/data/resizable-columns'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ExpenseCategoriesSheet } from '@/components/expenses/expense-categories-sheet'
 import { handOffImport } from '@/components/import/hand-off'
@@ -111,23 +104,13 @@ const VIEWS: { label: string; icon: LucideIcon; view: View }[] = [
   { label: translate('void2'), icon: Ban, view: 'void' },
 ]
 
-const COLUMNS: {
-  id: string
-  label: string
-  /** Leave it off the main text column: that one takes the spare width (see `listTable`). */
-  width?: string
-  sort?: SortField
-  align?: 'right'
-  wide?: boolean
-}[] = [
-  { id: 'number', label: translate('no'), width: 'w-[72px]', sort: 'number' },
-  { id: 'supplier', label: translate('supplier'), sort: 'supplier' },
-  { id: 'category', label: translate('category'), width: 'w-[20%]', wide: true },
-  { id: 'date', label: translate('date'), width: 'w-[124px]', sort: 'document_date' },
-  { id: 'total', label: translate('amount'), width: 'w-[150px]', sort: 'total', align: 'right' },
-  { id: 'status', label: translate('status'), width: 'w-[132px]' },
-  { id: 'receipt', label: translate('receipt'), width: 'w-[76px]' },
-]
+/** Which list sort each sortable column asks for. */
+const SORTS: Partial<Record<string, SortField>> = {
+  number: 'number',
+  supplier: 'supplier',
+  date: 'document_date',
+  total: 'total',
+}
 
 const toggleIn = <T,>(list: T[], value: T) =>
   list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value]
@@ -140,12 +123,8 @@ const BULK_DONE: Record<BulkAction, string> = {
   delete: 'deleted',
 }
 
-/** Status and receipt keep their widths: short badges and an icon. */
-const RESIZABLE = ['number', 'supplier', 'category', 'date', 'total']
-
 /** The expenses list: server-side search, filters, sort and paging, all kept in the URL. */
 export function ExpensesPage() {
-  const widths = useResizableColumns('expenses', RESIZABLE, { flex: 'supplier' })
   const pathname = usePathname()
   const query = useSearchParams()
   const params = parseListParams(query)
@@ -364,6 +343,7 @@ export function ExpensesPage() {
     () => ({ open, toggle, prefetch, command: run }),
     [open, toggle, prefetch, run],
   )
+  const columns = useMemo(() => expenseColumns(access, act), [access, act])
 
   return (
     <>
@@ -501,83 +481,37 @@ export function ExpensesPage() {
                 list.isPlaceholderData && 'opacity-60',
               )}
             >
-              <ResizableTable columns={widths} className={cn(listTable.table, 'hidden @4xl:table')}>
-                <thead>
-                  <tr className={listTable.head}>
-                    <th className={listTable.select}>
-                      <Checkbox
-                        aria-label={translate('selectAllExpensesOnThisPage')}
-                        className="cursor-pointer bg-card"
-                        checked={allSelected}
-                        onCheckedChange={(checked) =>
-                          setSelected(new Set(checked ? rows.map((row) => row.id) : []))
-                        }
-                      />
-                    </th>
-                    {COLUMNS.map((column) => {
-                      const sorted = column.sort === params.sort
-                      return (
-                        <th
-                          key={column.id}
-                          {...widths.head(column.id)}
-                          aria-sort={
-                            sorted ? (params.desc ? 'descending' : 'ascending') : undefined
-                          }
-                          className={cn(
-                            listTable.th,
-                            column.width,
-                            column.align === 'right' && 'text-right',
-                            column.wide && 'hidden @6xl:table-cell',
-                          )}
-                        >
-                          {column.sort ? (
-                            <button
-                              type="button"
-                              onClick={() => column.sort && sortBy(column.sort)}
-                              className={cn(
-                                'inline-flex cursor-pointer items-center gap-1 uppercase hover:text-foreground',
-                                sorted && 'text-foreground',
-                              )}
-                            >
-                              {column.label}
-                              {sorted &&
-                                (params.desc ? (
-                                  <ArrowDown className="size-3.5" />
-                                ) : (
-                                  <ArrowUp className="size-3.5" />
-                                ))}
-                            </button>
-                          ) : (
-                            column.label
-                          )}
-                          {RESIZABLE.includes(column.id) && (
-                            <ColumnResizer
-                              columns={widths}
-                              column={column.id}
-                              label={column.label}
-                            />
-                          )}
-                        </th>
-                      )
-                    })}
-                    <th className={listTable.menu}>
-                      <span className="sr-only">{translate('actions')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((expense) => (
-                    <ExpenseRow
-                      key={expense.id}
-                      expense={expense}
-                      selected={selected.has(expense.id)}
-                      bulk={selected.has(expense.id) ? selection : undefined}
-                      access={access}
-                      act={act}
-                    />
-                  ))}
-                </tbody>
-              </ResizableTable>
+              <DataTable
+                id="expenses"
+                className="hidden @4xl:table"
+                columns={columns}
+                data={rows}
+                getRowId={(expense) => expense.id}
+                sorting={{
+                  column: Object.keys(SORTS).find((column) => SORTS[column] === params.sort),
+                  desc: params.desc,
+                  onSort: (column) => {
+                    const field = SORTS[column]
+                    if (field) sortBy(field)
+                  },
+                }}
+                selection={{
+                  selected,
+                  onChange: setSelected,
+                  allLabel: translate('selectAllExpensesOnThisPage'),
+                  rowLabel: (expense) => translate('selectExpense', { number: expense.number }),
+                }}
+                onRowClick={(expense) => act.open(expense.id)}
+                rowProps={(expense) => ({ onPointerEnter: () => act.prefetch(expense.id) })}
+                renderRow={(expense, tr) => (
+                  <RowContextMenu
+                    menu={expenseMenu(expense, access, () => act.open(expense.id), act.command)}
+                    bulk={selected.has(expense.id) ? selection : undefined}
+                  >
+                    {tr}
+                  </RowContextMenu>
+                )}
+              />
 
               <ul className={cn(listTable.list, '@4xl:hidden')}>
                 {rows.map((expense) => (
@@ -881,107 +815,130 @@ type RowActions = {
   command: (name: ExpenseCommand, expense: Expense) => void
 }
 
-const ExpenseRow = memo(function ExpenseRow({ expense, selected, bulk, access, act }: RowProps) {
-  const menu = expenseMenu(expense, access, () => act.open(expense.id), act.command)
-  return (
-    <RowContextMenu menu={menu} bulk={bulk}>
-      <tr
-        data-selected={selected || undefined}
-        onPointerEnter={() => act.prefetch(expense.id)}
-        onClick={(event) => {
-          const target = event.target
-          if (
-            !(target instanceof Element) ||
-            !event.currentTarget.contains(target) ||
-            target.closest('button, a, [role=checkbox], input')
-          )
-            return
-          act.open(expense.id)
-        }}
-        className={cn(listTable.row, 'cursor-pointer')}
-      >
-        <td className={listTable.select}>
-          <Checkbox
-            aria-label={translate('selectExpense', { number: expense.number })}
-            className="cursor-pointer bg-card"
-            checked={selected}
-            onCheckedChange={() => act.toggle(expense.id)}
-          />
-        </td>
-        <td className={cn(listTable.td, 'font-code text-muted-foreground')}>#{expense.number}</td>
-        <td className="px-3">
-          <span className="grid min-w-0 leading-tight">
-            <span className="truncate" title={expense.supplier_name ?? undefined}>
-              {expense.supplier_name ?? (
-                <span className="text-muted-foreground">{translate('noSupplier')}</span>
-              )}
-            </span>
-            {expense.description && (
-              <span
-                className="truncate text-caption text-muted-foreground"
-                title={expense.description}
-              >
-                {expense.description}
-              </span>
+function expenseColumns(access: RowProps['access'], act: RowActions): DataColumn<Expense>[] {
+  return [
+    {
+      id: 'number',
+      header: translate('no'),
+      size: 72,
+      minSize: 56,
+      sortable: true,
+      className: 'font-code text-muted-foreground',
+      cell: (expense) => `#${expense.number}`,
+    },
+    {
+      id: 'supplier',
+      header: translate('supplier'),
+      flex: true,
+      sortable: true,
+      cell: (expense) => (
+        <span className="grid min-w-0 leading-tight">
+          <span className="truncate" title={expense.supplier_name ?? undefined}>
+            {expense.supplier_name ?? (
+              <span className="text-muted-foreground">{translate('noSupplier')}</span>
             )}
           </span>
-        </td>
-        <td className="hidden px-3 @6xl:table-cell">
-          {expense.category ? (
-            <span className="grid leading-tight">
-              <span>{categoryLabel(expense.category)}</span>
-              <span className="text-caption text-muted-foreground tabular-nums">
-                {expense.category.account_code}
-              </span>
-            </span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          )}
-        </td>
-        <td className="px-3 whitespace-nowrap text-muted-foreground tabular-nums">
-          {expense.document_date ? formatDay(expense.document_date) : '—'}
-        </td>
-        <td className="px-3 text-right whitespace-nowrap tabular-nums">
-          {formatMoney(expense.total, expense.currency)}
-        </td>
-        <td className="px-3">
-          <ExpenseBadge expense={expense} />
-        </td>
-        <td className="px-3">
-          {expense.receipts_count > 0 ? (
+          {expense.description && (
             <span
-              className="inline-flex items-center gap-1 text-caption text-muted-foreground tabular-nums"
-              title={translate('receiptsAttached2')}
+              className="truncate text-caption text-muted-foreground"
+              title={expense.description}
             >
-              <Paperclip className="size-3.5" /> {expense.receipts_count}
-            </span>
-          ) : expense.receipt_missing_reason ? (
-            <span
-              className="text-caption text-muted-foreground"
-              title={expense.receipt_missing_reason}
-            >
-              {translate('substitute')}
-            </span>
-          ) : (
-            <span
-              className="inline-flex items-center gap-1 text-caption text-[#a05c5c] dark:text-rose-300"
-              title={translate('noReceiptYet')}
-            >
-              <CircleDashed className="size-3.5" />
-              {translate('none3')}
+              {expense.description}
             </span>
           )}
-        </td>
-        <td className={listTable.menu}>
-          <RowMenuButton
-            label={translate('actionsForExpense', { number: expense.number })}
-            menu={menu}
-          />
-        </td>
-      </tr>
-    </RowContextMenu>
-  )
-})
+        </span>
+      ),
+    },
+    {
+      id: 'category',
+      header: translate('category'),
+      size: 200,
+      minSize: 112,
+      showFrom: 1100,
+      cell: (expense) =>
+        expense.category ? (
+          <span className="grid min-w-0 leading-tight">
+            <span className="truncate" title={categoryLabel(expense.category)}>
+              {categoryLabel(expense.category)}
+            </span>
+            <span className="text-caption text-muted-foreground tabular-nums">
+              {expense.category.account_code}
+            </span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: 'date',
+      header: translate('date'),
+      size: 124,
+      minSize: 100,
+      sortable: true,
+      className: 'text-muted-foreground tabular-nums',
+      cell: (expense) => (expense.document_date ? formatDay(expense.document_date) : '—'),
+    },
+    {
+      id: 'total',
+      header: translate('amount'),
+      size: 150,
+      minSize: 100,
+      sortable: true,
+      align: 'right',
+      cell: (expense) => formatMoney(expense.total, expense.currency),
+    },
+    {
+      id: 'status',
+      header: translate('status'),
+      size: 132,
+      resizable: false,
+      cell: (expense) => <ExpenseBadge expense={expense} />,
+    },
+    {
+      id: 'receipt',
+      header: translate('receipt'),
+      size: 76,
+      resizable: false,
+      cell: (expense) =>
+        expense.receipts_count > 0 ? (
+          <span
+            className="inline-flex items-center gap-1 text-caption text-muted-foreground tabular-nums"
+            title={translate('receiptsAttached2')}
+          >
+            <Paperclip className="size-3.5" /> {expense.receipts_count}
+          </span>
+        ) : expense.receipt_missing_reason ? (
+          <span
+            className="text-caption text-muted-foreground"
+            title={expense.receipt_missing_reason}
+          >
+            {translate('substitute')}
+          </span>
+        ) : (
+          <span
+            className="inline-flex items-center gap-1 text-caption text-[#a05c5c] dark:text-rose-300"
+            title={translate('noReceiptYet')}
+          >
+            <CircleDashed className="size-3.5" />
+            {translate('none3')}
+          </span>
+        ),
+    },
+    {
+      id: 'actions',
+      header: translate('actions'),
+      headerContent: <span className="sr-only">{translate('actions')}</span>,
+      size: 48,
+      resizable: false,
+      cell: (expense) => (
+        <RowMenuButton
+          label={translate('actionsForExpense', { number: expense.number })}
+          menu={expenseMenu(expense, access, () => act.open(expense.id), act.command)}
+        />
+      ),
+    },
+  ]
+}
 
 const ExpenseItem = memo(function ExpenseItem({ expense, selected, bulk, access, act }: RowProps) {
   const menu = expenseMenu(expense, access, () => act.open(expense.id), act.command)

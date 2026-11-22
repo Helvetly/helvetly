@@ -148,7 +148,7 @@ export function DataTable<T extends RowData>({
   selection,
   onRowClick,
   rowProps,
-  wrapRow,
+  renderRow,
   className,
   pending,
   footer,
@@ -165,7 +165,7 @@ export function DataTable<T extends RowData>({
   /** Extra attributes for a row, e.g. `data-open`, `onPointerEnter`. */
   rowProps?: (row: T) => HTMLAttributes<HTMLTableRowElement> & Record<`data-${string}`, unknown>
   /** Wraps a row, e.g. in its context menu. */
-  wrapRow?: (row: T, tr: ReactElement) => ReactNode
+  renderRow?: (row: T, tr: ReactElement) => ReactNode
   /** Classes for the `<table>`, e.g. `hidden @4xl:table`. */
   className?: string
   /** Shows the rows dimmed while the next ones load. */
@@ -320,6 +320,8 @@ export function DataTable<T extends RowData>({
                   <th
                     key={header.id}
                     aria-sort={sorted ? (sorting.desc ? 'descending' : 'ascending') : undefined}
+                    // The resize handle inside would add its width to the header's name.
+                    aria-label={header.column.getCanResize() ? column.header : undefined}
                     className={cn(
                       listTable.th,
                       'group/th relative',
@@ -423,7 +425,7 @@ export function DataTable<T extends RowData>({
                 })}
               </tr>
             )
-            return wrapRow ? <WrappedRow key={row.id}>{wrapRow(original, tr)}</WrappedRow> : tr
+            return renderRow ? <WrappedRow key={row.id}>{renderRow(original, tr)}</WrappedRow> : tr
           })}
         </tbody>
       </table>
