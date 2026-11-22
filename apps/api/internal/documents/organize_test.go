@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -55,7 +56,7 @@ func TestReadOrganize(t *testing.T) {
 		{name: "not JSON", text: "sorry", unreadble: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := readOrganize(tc.text, docs, folders, recordNames{})
+			got, err := readOrganize(tc.text, docs, folders, recordNames{}, nil)
 			if tc.unreadble {
 				if _, code, _, _ := auth.Describe(err); code != "ai_unreadable" {
 					t.Fatalf("err = %v, want ai_unreadable", err)
@@ -66,7 +67,7 @@ func TestReadOrganize(t *testing.T) {
 				t.Fatal(err)
 			}
 			for i := range got {
-				if got[i].Reason != "Looks like it." {
+				if !strings.HasPrefix(got[i].Reason, "Looks like it.") {
 					t.Fatalf("reason = %q", got[i].Reason)
 				}
 				got[i].Name, got[i].Reason = "", ""
@@ -300,4 +301,105 @@ func folderByID(folders []store.Folder, id string) store.Folder {
 		return store.Folder{}
 	}
 	return folders[i]
+}
+
+// invoice inserts an open invoice of the client (kind, number, issue year); imported from the source document when
+// source is set.
+func (e *env) invoice(b *browser, client, kind, number string, year int, source string) {
+	e.t.Helper()
+	origin := "helvetly"
+	if source != "" {
+		origin = "imported"
+	}
+	if _, err := e.raw.Exec(context.Background(), `INSERT INTO invoices (id, workspace_id, kind, status, origin, number, client_id,
+			issue_date, due_date, currency, language, vat_mode, discount_percent, subtotal, discount_amount, net_total, vat_total,
+			total, rounding_amount, vat_breakdown, source_document_id, created_at, updated_at)
+		VALUES ($1, $2, $3, 'open', $4, $5, $6, make_date($7, 1, 15), make_date($7, 2, 15), 'CHF', 'de', 'none', 0, 0, 0, 0,
+			0, 0, 0, '[]', nullif($8, ''), now(), now())`, auth.NewID("inv"), b.workspace, kind, origin, number, client, year, source); err != nil {
+		e.t.Fatal(err)
+	}
+}
+
+// The screenshot's case: files named by invoice numbers go to their clients' folders without asking the model, also
+// from a plain Invoices folder; an ambiguous number and a file without client go to the model, whose plain Invoices
+// path stays only when no client can be found.
+func TestOrganizeClientRecords(t *testing.T) {
+	e := newEnv(t)
+	b, other := e.workspace(), e.workspace()
+	m := e.filer(nil)
+	e.approveAI(b)
+	acme, baker := e.client(b, "Acme AG"), e.client(b, "Baker GmbH")
+	plain := e.folder(b, "Invoices", nil)
+	year := e.folder(b, "2026", &plain.ID)
+	d5 := e.uploaded(b, "2026-IN-005.pdf", pdf)
+	d6 := e.uploaded(b, "2026-IN-006.pdf", pdf+"6")
+	e.invoice(b, acme, "invoice", "2026/IN/005", 2026, "")
+	e.invoice(b, acme, "invoice", "2026/IN/006", 2026, d6.ID) // imported as issued elsewhere, from this file
+	e.invoice(b, baker, "credit_note", "2026/IN/011", 2026, "")
+	e.invoice(b, acme, "invoice", "2026/IN/007", 2026, "")
+	e.invoice(b, baker, "credit_note", "2026/IN/007", 2026, "")
+	e.invoice(other, e.client(other, "Zeta AG"), "invoice", "2026/IN/012", 2026, "") // another workspace's
+	d11 := e.uploaded(b, "2026_IN_011.pdf", pdf+"11", "folder_id", year.ID)
+	twice := e.uploaded(b, "2026-IN-007.pdf", pdf+"7")
+	theirs := e.uploaded(b, "2026-IN-012.pdf", pdf+"12")
+	named := e.uploaded(b, "invoice-march.txt", "Invoice to Baker GmbH for March")
+	nobody := e.uploaded(b, "invoice-misc.txt", "Invoice for something")
+
+	var out organizeAnswer
+	e.do(b, "POST", "/api/v1/documents/organize", map[string]any{}, 200, &out)
+	if out.Data.Considered != 7 || len(out.Data.Proposals) != 5 { // the fake model skips names without a word
+		t.Fatalf("got %+v", out.Data)
+	}
+	got := map[string]proposal{}
+	for _, p := range out.Data.Proposals {
+		got[p.DocumentID] = p
+	}
+	for _, w := range []struct {
+		doc            store.Document
+		folder, reason string
+		tag            string
+	}{
+		{d5, "Clients/Acme AG/Invoices/2026", "Matches invoice 2026/IN/005 for Acme AG.", "invoice"},
+		{d6, "Clients/Acme AG/Invoices/2026", "Matches invoice 2026/IN/006 for Acme AG.", "invoice"},
+		{d11, "Clients/Baker GmbH/Invoices/2026", "Matches credit note 2026/IN/011 for Baker GmbH.", "credit-note"},
+		{named, "Clients/Baker GmbH/Invoices/" + strconv.Itoa(time.Now().Year()), "An invoice for Baker GmbH, so it goes in the client's folder.", "invoice"},
+		{nobody, "Invoices", "No known client could be found in it", "invoice"},
+	} {
+		p := got[w.doc.ID]
+		if p.Folder != w.folder || !p.Change || !strings.Contains(p.Reason, w.reason) || !slices.Contains(p.Tags, w.tag) {
+			t.Errorf("%s = %+v, want %q (%q)", w.doc.Name, p, w.folder, w.reason)
+		}
+	}
+	if p := got[d11.ID]; p.FromFolder == nil || *p.FromFolder != "Invoices/2026" {
+		t.Errorf("credit note from = %v", p.FromFolder)
+	}
+	for _, d := range []store.Document{twice, theirs} { // the model's (fake) Clients-less guess, no client known
+		if p := got[d.ID]; strings.HasPrefix(p.Folder, "Clients/") {
+			t.Errorf("%s guessed a client: %+v", d.Name, p)
+		}
+	}
+	asked := m.asked()
+	if len(asked) != 1 {
+		t.Fatalf("model asked %d times", len(asked))
+	}
+	for _, d := range []store.Document{d5, d6, d11} { // decided without the model
+		if strings.Contains(asked[0].Message, d.ID) {
+			t.Errorf("the model was asked about %s", d.Name)
+		}
+	}
+	for _, d := range []store.Document{twice, theirs, named, nobody} {
+		if !strings.Contains(asked[0].Message, d.ID) {
+			t.Errorf("the model was not asked about %s", d.Name)
+		}
+	}
+
+	// applying a matched proposal files it in the client's system folder
+	p := got[d5.ID]
+	e.do(b, "POST", "/api/v1/documents/organize/apply", map[string]any{"items": []map[string]any{
+		{"document_id": d5.ID, "folder": p.Folder, "tags": p.Tags}}}, 200, nil)
+	inv := folderByKind(t, e.allFolders(b), "invoices", "")
+	if moved := e.get(b, d5.ID); moved.FolderID == nil || folderByID(e.allFolders(b), *moved.FolderID).ParentID == nil ||
+		*folderByID(e.allFolders(b), *moved.FolderID).ParentID != inv.ID {
+		t.Fatalf("applied = %+v", moved)
+	}
 }
