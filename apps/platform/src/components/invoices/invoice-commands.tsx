@@ -19,13 +19,13 @@ import {
   Undo2,
   Wallet,
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import type { MenuKit } from '@/components/data/menus'
+import { useOpenHref } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
@@ -151,7 +151,8 @@ const NOTHING: InvoiceCommand[] = []
 
 /** Runs invoice commands from anywhere: confirmations, dialogs and toasts included. */
 export function useInvoiceCommands(onOpen: (id: string) => void) {
-  const router = useRouter()
+  // In a stacked drawer the editor takes the invoice's place, as the invoices page does.
+  const openHref = useOpenHref(true)
   const queryClient = useQueryClient()
   const [pending, setPending] = useState<{
     command: InvoiceCommand
@@ -180,13 +181,13 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
 
   const run = (command: InvoiceCommand, invoice: InvoiceListItem) => {
     if (command === 'open') return onOpen(invoice.id)
-    if (command === 'edit') return router.push(editHref(invoice.id))
+    if (command === 'edit') return openHref(editHref(invoice.id))
     if (command === 'duplicate')
       return once((settled) =>
         duplicate.mutate(invoice.id, {
           onSuccess: (copy) => {
             toast.success(translate('copiedIntoANewDraftFor', { name: copy.client.name }))
-            router.push(editHref(copy.id))
+            openHref(editHref(copy.id))
           },
           onError: toastError,
           onSettled: settled,
@@ -217,7 +218,7 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
         creditNote.mutate(invoice.id, {
           onSuccess: (note) => {
             toast.success(translate('draftCreditNoteCreatedAdjustTheLinesThenIssue'))
-            router.push(editHref(note.id))
+            openHref(editHref(note.id))
           },
           onError: fail,
           onSettled: settled,
@@ -230,7 +231,7 @@ export function useInvoiceCommands(onOpen: (id: string) => void) {
           {
             onSuccess: (made) => {
               toast.success(DERIVE[command].done)
-              router.push(editHref(made.id))
+              openHref(editHref(made.id))
             },
             onError: fail,
             onSettled: settled,

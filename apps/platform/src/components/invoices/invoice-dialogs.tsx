@@ -13,7 +13,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ArrowRight, MailCheck, MailX } from 'lucide-react'
-import Link from 'next/link'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -28,6 +27,7 @@ import {
   FixList,
   type Fix,
 } from '@/components/fix-list'
+import { RecordLink } from '@/components/record-link'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
 import { useInvoiceEmailDraft } from '@/lib/email-templates'
@@ -703,7 +703,9 @@ export function IssueBlockersDialog({
             {translate('close')}
           </Button>
           <Button asChild>
-            <Link href={editHref}>{translate('openInEditor')}</Link>
+            <RecordLink href={editHref} onClick={onClose}>
+              {translate('openInEditor')}
+            </RecordLink>
           </Button>
         </>
       }

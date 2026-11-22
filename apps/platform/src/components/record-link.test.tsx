@@ -3,12 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  drawerKey,
   nextStack,
+  parseDrawerKey,
   parseRecordHref,
   recordPageHref,
   RecordDrawersContext,
   RecordLink,
-  type RecordRef,
+  type DrawerRef,
 } from './record-link'
 
 describe('parseRecordHref', () => {
@@ -26,6 +28,17 @@ describe('parseRecordHref', () => {
     ['/documents?folder=f_1', null],
     ['/members', null],
     ['/notifications', null],
+    ['/invoices/new', { kind: 'invoice', mode: 'new' }],
+    ['/invoices/new?client=cli_1', { kind: 'invoice', mode: 'new', client: 'cli_1' }],
+    ['/invoices/new?kind=partial', null],
+    ['/invoices?compose=new&cclient=cli_1', { kind: 'invoice', mode: 'new', client: 'cli_1' }],
+    ['/invoices?compose=new&ckind=proforma', null],
+    ['/invoices?compose=inv_1', { kind: 'invoice', mode: 'edit', id: 'inv_1' }],
+    ['/invoices/edit?id=inv_1', { kind: 'invoice', mode: 'edit', id: 'inv_1' }],
+    ['/clients?new=1', { kind: 'client', mode: 'new' }],
+    ['/quotes?new=1&client=cli_1', { kind: 'quote', mode: 'new', client: 'cli_1' }],
+    ['/products?new=1', { kind: 'product', mode: 'new' }],
+    ['/expenses?new=1&import=1', null],
   ])('%s', (href, record) => {
     expect(parseRecordHref(href)).toEqual(record)
   })
@@ -39,6 +52,21 @@ describe('recordPageHref', () => {
   ] as const)('%j → %s', (record, href) => {
     expect(recordPageHref(record)).toBe(href)
     expect(parseRecordHref(href)).toEqual(record)
+  })
+})
+
+describe('drawerKey', () => {
+  it.each([
+    [{ kind: 'invoice', id: 'inv_1' }, 'invoice:inv_1'],
+    [{ kind: 'invoice', mode: 'new' }, 'invoice:new'],
+    [{ kind: 'quote', mode: 'new', client: 'cli_1' }, 'quote:new:cli_1'],
+    [{ kind: 'invoice', mode: 'edit', id: 'inv_1' }, 'invoice:edit:inv_1'],
+  ] as const)('%j ↔ %s', (record, key) => {
+    expect(drawerKey(record)).toBe(key)
+    expect(parseDrawerKey(key)).toEqual(record)
+  })
+  it.each(['nope:x', 'quote:edit:q_1', 'invoice:', 'invoice:a:b'])('ignores %s', (key) => {
+    expect(parseDrawerKey(key)).toBeNull()
   })
 })
 
@@ -62,7 +90,7 @@ describe('nextStack', () => {
 
 describe('RecordLink', () => {
   it('opens a record in place, and leaves other links and new-tab clicks alone', async () => {
-    const open = vi.fn<(record: RecordRef) => void>()
+    const open = vi.fn<(record: DrawerRef) => void>()
     render(
       <RecordDrawersContext.Provider value={open}>
         <RecordLink href="/invoices?id=inv_1">Invoice</RecordLink>

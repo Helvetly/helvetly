@@ -67,7 +67,7 @@ import { Initials } from '@/components/initials'
 import {
   RecordDrawersContext,
   RecordReplaceContext,
-  type RecordRef,
+  type DrawerRef,
 } from '@/components/record-link'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
@@ -322,8 +322,8 @@ export function InvoicesPage() {
   const commands = useInvoiceCommands(openInvoice)
   const openStacked = useContext(RecordDrawersContext)
   // A record linked from the page's drawer (a plan's partial) takes its place; Back returns to the one before.
-  const showInPlace = useStableCallback((record: RecordRef) => {
-    if (record.kind !== 'invoice') return openStacked?.(record)
+  const showInPlace = useStableCallback((record: DrawerRef) => {
+    if (record.kind !== 'invoice' || 'mode' in record) return openStacked?.(record)
     const next = composeQuery(query, null)
     next.set('id', record.id)
     setUrlQuery(listPath, next, true)

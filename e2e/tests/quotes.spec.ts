@@ -96,14 +96,14 @@ test('a quote is sent, accepted by the client in the portal and becomes one invo
   const bell = object(await (await api.request.get('/api/v1/notifications')).json())
   expect(JSON.stringify(bell.data)).toContain(`accepted quote ${number}`)
 
-  // Staff converts it in the platform: the invoice draft opens and names the quote.
+  // Staff converts it in the platform: the invoice draft opens in a drawer over the quotes page.
   await page.goto(`/quotes?id=${text(quote.id)}`)
   await page.getByRole('button', { name: 'Create invoice' }).click()
   await page
     .getByRole('dialog', { name: /Create an invoice from/ })
     .getByRole('button', { name: 'Create invoice' })
     .click()
-  await expect(page).toHaveURL(/\/invoices\/?.*id=inv_/)
+  await expect(page).toHaveURL(/\/quotes\/?\?.*drawer=invoice%3Ainv_/)
   const converted = await api.read(`/quotes/${text(quote.id)}`)
   const invoiceId = text(object(converted.invoice).id)
   const invoice = await api.read(`/invoices/${invoiceId}`)

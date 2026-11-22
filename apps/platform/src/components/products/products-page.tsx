@@ -84,6 +84,7 @@ import { useStableCallback } from '@/lib/use-stable-callback'
 import { ProductTypeBadge, unitLabel, unitShort, vatLabel } from './product-bits'
 import { ProductDetail, type ProductCommand } from './product-detail'
 import { ProductForm } from './product-form'
+import { productDefaults } from './product-form-model'
 
 const ALL: Pick<ListParams, 'type' | 'status'> = { type: null, status: 'active' }
 const VIEWS: { label: string; icon: LucideIcon; change: Pick<ListParams, 'type' | 'status'> }[] = [
@@ -240,12 +241,7 @@ export function ProductsPage() {
   const canManage = canWrite && canManageProducts(role)
   const importDrawer = useImportDrawer()
   const settingsQuery = useInvoiceSettings()
-  const settings = settingsQuery.data
-  const defaults = {
-    currency: settings?.currency ?? 'CHF',
-    vat_registered: settings?.vat_registered ?? true,
-    default_vat_rate: settings?.default_vat_rate ?? '8.1',
-  }
+  const defaults = productDefaults(settingsQuery.data)
 
   const [search, setSearch] = useState(params.search)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())

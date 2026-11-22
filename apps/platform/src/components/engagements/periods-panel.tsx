@@ -12,11 +12,10 @@ import { formatMoney } from '@helvetly/ui/lib/format'
 import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { useMutation } from '@tanstack/react-query'
 import { Download, Ellipsis, FilePlus2, Mail, TriangleAlert } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { RecordLink } from '@/components/record-link'
+import { RecordLink, useOpenHref } from '@/components/record-link'
 import { useClient } from '@/lib/clients'
 import {
   invoicePeriod,
@@ -52,7 +51,7 @@ export function PeriodsPanel({
   engagement: Engagement
   periods: Period[]
 }) {
-  const router = useRouter()
+  const openHref = useOpenHref()
   const refresh = useRefreshEngagement()
   const unit = engagement.unit
   const short = unitShort(unit)
@@ -79,7 +78,7 @@ export function PeriodsPanel({
     }) => invoicePeriod(engagement.id, period.id, { kind, detail }),
     onSuccess: ({ data }) => {
       refresh()
-      router.push(`/invoices/edit?id=${encodeURIComponent(data.invoice_id)}`)
+      openHref(`/invoices/edit?id=${encodeURIComponent(data.invoice_id)}`)
     },
     onError: (error: unknown) => toast.error(friendlyError(error)),
   })
