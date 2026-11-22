@@ -107,6 +107,19 @@ export const expectFooterAtTheBottom = async (paper: HTMLElement) => {
   await expect(gap).toBeLessThanOrEqual(parseFloat(getComputedStyle(paper).paddingBottom) + 1)
 }
 
+/** Nothing sits between the paper and the bottom panel (internal note), so no empty band separates them. */
+export const expectPaperMeetsBottomPanel = async (paper: HTMLElement) => {
+  const panel = within(document.body)
+    .getByRole('textbox', { name: /Internal note/ })
+    .closest('div.shrink-0')
+  paper.scrollIntoView({ block: 'end' }) // a tall paper scrolls; measure at the end
+  // Settles after the editor's data arrives and the paper grows to the panel.
+  await waitFor(() => {
+    const gap = (panel?.getBoundingClientRect().top ?? NaN) - paper.getBoundingClientRect().bottom
+    expect(Math.abs(gap)).toBeLessThanOrEqual(1)
+  })
+}
+
 /** The upsell card is compact, not the page's full width, and its benefits are stacked one under another. */
 export async function expectCompactStacked(firstBenefit: HTMLElement) {
   const card = firstBenefit.closest<HTMLElement>('[data-slot="upsell-card"]')
