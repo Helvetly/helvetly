@@ -19,6 +19,7 @@ import { heidiHandlers } from '@/mocks/heidi'
 import { notificationHandlers } from '@/mocks/notifications'
 import {
   legalFormsHandler,
+  nextNumbersHandler,
   listItem,
   sampleInvoice,
   sampleSettings,
@@ -627,6 +628,7 @@ export const shellHandlers = [
   }),
   http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
   legalFormsHandler,
+  nextNumbersHandler,
   http.get('/api/v1/invoices/summary', () => HttpResponse.json({ data: sampleSummary })),
   // The draft's lines add up to the canned 2'900.00 net, so the server's totals match them.
   http.post('/api/v1/invoices/preview', () => HttpResponse.json({ data: draftInvoice })),

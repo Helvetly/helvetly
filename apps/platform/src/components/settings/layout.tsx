@@ -202,20 +202,31 @@ export function FieldGrid({ children }: { children: ReactNode }) {
 export function SettingsPreview({
   label,
   items,
+  columns,
   children,
 }: {
   label: string
   items?: { label: string; value: string }[]
+  /** A long list: rows in two columns on a wide screen, one on a phone. */
+  columns?: boolean
   children?: ReactNode
 }) {
   return (
     <output
       aria-label={label}
       data-slot="settings-preview"
-      className="flex min-h-9 flex-wrap items-center gap-x-5 gap-y-1 rounded-lg bg-muted/60 px-3 py-2 text-body-sm text-muted-foreground"
+      className={cn(
+        'min-h-9 rounded-lg bg-muted/60 px-3 py-2 text-body-sm text-muted-foreground',
+        columns
+          ? 'grid gap-x-8 gap-y-1 sm:grid-cols-2'
+          : 'flex flex-wrap items-center gap-x-5 gap-y-1',
+      )}
     >
       {items?.map((item) => (
-        <span key={item.label} className="flex items-baseline gap-2">
+        <span
+          key={item.label}
+          className={cn('flex items-baseline gap-2', columns && 'justify-between')}
+        >
           {item.label}
           <span className="font-code text-foreground">{item.value}</span>
         </span>

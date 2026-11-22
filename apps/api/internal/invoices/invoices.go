@@ -91,6 +91,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("PUT /api/v1/invoice-settings", s.putSettings)
 	handle("GET /api/v1/invoice-settings/number-suggestion", s.getNumberSuggestion)
 	handle("POST /api/v1/invoice-settings/number-suggestion", s.applyNumberSuggestion)
+	handle("GET /api/v1/invoice-settings/next-numbers", s.getNextNumbers)
 	handle("GET /api/v1/invoice-settings/legal-forms", s.getLegalForms)
 	handle("GET /api/v1/invoice-settings/logo", s.getLogo)
 	handle("PUT /api/v1/invoice-settings/logo", s.putLogo)
