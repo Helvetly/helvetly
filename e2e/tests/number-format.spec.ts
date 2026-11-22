@@ -20,9 +20,12 @@ test('a custom number format is refused without a running number, saved from the
 
   await field.fill('E2E/{TYPE}/{MM}/{YYYY}/{NN}')
   const [year, month] = today().split('-')
-  await expect(numbering.getByRole('status', { name: 'Next numbers' })).toContainText(
+  // the next numbers sit in a portalled popover behind the (i) beside the format
+  await numbering.getByRole('button', { name: 'Next numbers' }).click()
+  await expect(page.getByRole('dialog', { name: 'Next numbers' })).toContainText(
     `E2E/INV/${month}/${year}/01`,
   )
+  await page.keyboard.press('Escape')
   await numbering.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(numbering.getByText('Saved', { exact: true })).toBeVisible()
   await page.reload()
