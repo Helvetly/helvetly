@@ -295,11 +295,7 @@ export function DataTable<T extends RowData>({
       ref={box}
       className={cn('overflow-x-clip transition-opacity duration-150', pending && 'opacity-60')}
     >
-      <table
-        aria-label={label}
-        className={cn(listTable.table, className)}
-        style={{ width: total }}
-      >
+      <table aria-label={label} className={cn(listTable.table, className)} style={{ width: total }}>
         <colgroup>
           {sized.map((column) => (
             <col key={column.id} style={{ width: widths[column.id] }} />
