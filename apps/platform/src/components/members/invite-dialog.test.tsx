@@ -133,6 +133,7 @@ test('Custom sends one scope per row of the matrix', async () => {
         'read:workspace',
         'read:billing',
         'read:api',
+        'read:scheduling',
       ],
     }),
   )
@@ -157,6 +158,7 @@ test('no area left blocks sending', async () => {
     'Workspace',
     'Billing',
     'API & MCP',
+    'Scheduling',
   ])
     await userEvent.click(screen.getByRole('radio', { name: `${area}: No access` }))
   expect(screen.getByRole('button', { name: 'Send invitation' })).toBeDisabled()
