@@ -231,8 +231,9 @@ export function PageHeader({
       // header: a corner-shaped mask in the canvas colour (the shadow paints only outside the radius).
       className={cn(
         'sticky top-0 z-20 flex h-[52px] shrink-0 items-center gap-2 bg-background px-3 [--tab:var(--card)] after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:hidden after:h-[14px] after:rounded-t-[14px] after:shadow-[0_0_0_14px_var(--background)] after:[clip-path:inset(0)] md:px-5 md:pb-2 md:after:block',
-        // Own controls on both sides wrap to a second row on phones.
-        start && 'max-sm:h-auto max-sm:flex-wrap max-sm:py-2',
+        // A narrow panel (a phone, or a desktop window beside devtools or Heidi) wraps the page's own
+        // controls to a second row rather than pushing them out of sight. On phones the panel is the window.
+        '@max-[40rem]:h-auto @max-[40rem]:flex-wrap @max-[40rem]:py-2',
       )}
     >
       {/* Collapses the sidebar to an icon rail (also ⌘B / Ctrl+B). Hidden where it can't act: phones
@@ -449,14 +450,23 @@ function PrimaryButton({
   menu?: ReactNode
 }) {
   useShortcut('newRecord', onClick)
+  // In a narrow panel only the "+" is left; its name stays for screen readers and in the tooltip.
   const button = (
-    <Button
-      aria-keyshortcuts="N"
-      className={cn('cursor-pointer', menu && 'rounded-r-none')}
-      onClick={onClick}
-    >
-      <Plus className="stroke-[1.75]" /> {label}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          aria-keyshortcuts="N"
+          className={cn('cursor-pointer @max-2xl:px-2.5', menu && 'rounded-r-none')}
+          onClick={onClick}
+        >
+          <Plus className="stroke-[1.75]" />
+          <span className="@max-2xl:sr-only">{label}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">
+        <WithShortcut label={label} id="newRecord" />
+      </TooltipContent>
+    </Tooltip>
   )
   if (!menu) return button
   return (
