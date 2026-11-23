@@ -2,7 +2,15 @@ import de from '../messages/de.json'
 import en from '../messages/en.json'
 import fr from '../messages/fr.json'
 import it from '../messages/it.json'
-import { categoryGroup, categoryLabel, PRESET_LABELS, treatmentRate } from './expense-categories'
+import {
+  categoryGroup,
+  categoryLabel,
+  CHART_ACCOUNTS,
+  isAccountNumber,
+  PRESET_LABELS,
+  treatmentRate,
+  vatBadge,
+} from './expense-categories'
 
 const keyOf = (preset: string) =>
   `expenseCategory${preset
@@ -60,4 +68,28 @@ test.each([
 test('a category without a treatment suggests nothing', () => {
   expect(treatmentRate(null, '2026-11-03')).toBeNull()
   expect(treatmentRate(undefined, '')).toBeNull()
+})
+
+test.each([
+  ['standard', '8.1', 'Standard 8.1%'],
+  ['reduced', '2.6', 'Reduced 2.6%'],
+  ['lodging', '3.8', 'Accommodation 3.8%'],
+  ['exempt', '0', 'Exempt'],
+  ['none', '0', 'No VAT'],
+] as const)('the %s badge reads %s', (treatment, _, label) => {
+  expect(vatBadge(treatment, '2026-11-03')).toBe(label)
+})
+
+test.each([
+  ['6640', true],
+  ['664', false],
+  ['66400', false],
+  ['66a0', false],
+  [' 6640', false],
+])('%s is a free account number: %s', (value, ok) => {
+  expect(isAccountNumber(value)).toBe(ok)
+})
+
+test('every chart account is a valid number', () => {
+  expect(Object.keys(CHART_ACCOUNTS).every(isAccountNumber)).toBe(true)
 })

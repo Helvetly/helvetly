@@ -46,7 +46,7 @@ func TestQuoteDraftUsesTemplate(t *testing.T) {
 
 	// the send without subject/message uses the template too
 	e.quote(b, "POST", "/api/v1/quotes/"+q.ID+"/send", map[string]any{}, http.StatusOK)
-	if m := e.mail.sent[0]; m.Subject != "Q-2026-001 für Kunde AG" || m.Text != "Hallo Kunde AG: CHF 216.20, 16.12.2026 <{x}> Muster GmbH" {
+	if m := e.mail.sent[0]; m.Subject != "Q-2026-001 für Kunde AG" || !strings.HasPrefix(m.Text, "Hallo Kunde AG: CHF 216.20, 16.12.2026 <{x}> Muster GmbH\n") {
 		t.Fatalf("sent: %q %q", m.Subject, m.Text)
 	}
 }
@@ -65,7 +65,7 @@ func TestQuoteSendDefaultsToDraft(t *testing.T) {
 		q := e.quote(b, "POST", "/api/v1/quotes", map[string]any{"client_id": e.client(b), "language": lang, "lines": []any{line("2", "100.00")}}, http.StatusCreated)
 		e.quote(b, "POST", "/api/v1/quotes/"+q.ID+"/send", map[string]any{}, http.StatusOK)
 		m := e.mail.sent[len(e.mail.sent)-1]
-		if m.Subject != want[0] || m.Text != want[1] {
+		if m.Subject != want[0] || !strings.HasPrefix(m.Text, want[1]+"\n") {
 			t.Fatalf("%s: %q %q", lang, m.Subject, m.Text)
 		}
 	}
@@ -96,7 +96,7 @@ func TestQuoteSendAcceptsTheRenderedDraftOverTheLimit(t *testing.T) {
 	e.fails(b, "POST", path+"/send", map[string]any{"subject": strings.Repeat("s", 201)}, http.StatusUnprocessableEntity, "validation_failed", "subject")
 	e.fails(b, "POST", path+"/send", map[string]any{"message": d.Data.Message + "!"}, http.StatusUnprocessableEntity, "validation_failed", "message")
 	e.quote(b, "POST", path+"/send", map[string]any{"subject": d.Data.Subject, "message": d.Data.Message}, http.StatusOK)
-	if m := e.mail.sent[0]; m.Subject != d.Data.Subject || m.Text != d.Data.Message {
+	if m := e.mail.sent[0]; m.Subject != d.Data.Subject || !strings.HasPrefix(m.Text, strings.TrimSpace(d.Data.Message)+"\n") {
 		t.Fatalf("mail %q / %q, want the draft", m.Subject, m.Text)
 	}
 }

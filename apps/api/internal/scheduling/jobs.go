@@ -80,7 +80,7 @@ func (e *Emails) remind(ctx context.Context, d store.DueReminder) error {
 		return err
 	}
 	title := sessionTitle(m.event, o)
-	l := letter{sessions: []store.SchedOccurrence{o}, note: deref(m.event.ClientNote)}
+	l := letter{title: title, sessions: []store.SchedOccurrence{o}, note: deref(m.event.ClientNote)}
 	l.where, l.join = place(m.event, o)
 	if d.Audience == "host" {
 		members, err := q.SchedMembers(ctx, d.WorkspaceID)
@@ -92,7 +92,7 @@ func (e *Emails) remind(ctx context.Context, d store.DueReminder) error {
 			return err
 		}
 		// the host's own email, in the business's language and zone, unbranded, without the client's portal link
-		m.to, m.portal, m.zone, m.lang, m.members = nil, "", m.ws.Location(), language(m.brand.Language), true
+		m.to, m.portal, m.zone, m.lang, m.members, m.greet = nil, "", m.ws.Location(), language(m.brand.Language), true, ""
 		if a := deref(members[*o.HostUserID].Email); a != "" {
 			m.to = []string{a}
 		}

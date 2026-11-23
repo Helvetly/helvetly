@@ -96,6 +96,8 @@ export type DocFile = {
   ai_filing: AIFiling | null
   previewable: boolean
   links: DocLink[]
+  /** The clients that see it in their portal, newest first (absent from an older API). */
+  shared_with?: DocumentShare[]
   retained_until: string | null
   uploaded_by: Person | null
   created_at: string
@@ -839,6 +841,10 @@ export function useShareMutation(id: string, fn: (clientId: string) => Promise<v
   const queryClient = useQueryClient()
   return useMutation<void, ApiError, string>({
     mutationFn: fn,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: shareKeys(id) }),
+    // The file's `shared_with` (cards, preview) changes with it.
+    onSuccess: () => {
+      refreshDocuments(queryClient)
+      return queryClient.invalidateQueries({ queryKey: shareKeys(id) })
+    },
   })
 }

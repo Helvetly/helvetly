@@ -3,45 +3,46 @@ package instalments
 import (
 	"context"
 	"fmt"
-	"html"
 	"net/url"
 	"slices"
 	"strings"
 	"time"
 
 	"helvetly.com/api/internal/engagements"
+	"helvetly.com/api/internal/invoicepdf"
 	"helvetly.com/api/internal/invoices"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/store"
 )
 
-// reminderText is one language's reminder: the subject, greeting, the sentence before and after the due date (what,
-// due date), what is reminded of (invoice number; or instalment, count and invoice number), the open amount
-// (currency, amount), the payment reference and the sign-off.
-type reminderText struct{ subject, greeting, before, after, invoice, instalment, open, reference, signOff string }
+// reminderText is one language's reminder: the subject, the sentence before and after the due date (what, due date),
+// what is reminded of (invoice number; or instalment, count and invoice number), the labels of the open amount and
+// the payment reference, and the sign-off.
+type reminderText struct{ subject, before, after, invoice, instalment, open, reference, signOff string }
 
 var reminderTexts = map[string]reminderText{
-	"de": {"Zahlungserinnerung", "Guten Tag", "Wir erinnern Sie an die Zahlung für %s, fällig am %s.",
+	"de": {"Zahlungserinnerung", "Wir erinnern Sie an die Zahlung für %s, fällig am %s.",
 		"Die Zahlung für %s, fällig am %s, ist bei uns noch nicht eingegangen.", "Rechnung %s", "Rate %d von %d der Rechnung %s",
-		"Offener Betrag: %s %s", "Zahlungsreferenz: %s", "Freundliche Grüsse"},
-	"fr": {"Rappel de paiement", "Bonjour", "Nous vous rappelons le paiement de : %s, échéance le %s.",
+		"Offener Betrag", "Zahlungsreferenz", "Freundliche Grüsse"},
+	"fr": {"Rappel de paiement", "Nous vous rappelons le paiement de : %s, échéance le %s.",
 		"Sauf erreur de notre part, le paiement de : %s, échu le %s, ne nous est pas encore parvenu.", "facture %s",
-		"versement %d sur %d de la facture %s", "Montant ouvert : %s %s", "Référence de paiement : %s", "Meilleures salutations"},
-	"it": {"Promemoria di pagamento", "Buongiorno", "Le ricordiamo il pagamento di: %s, in scadenza il %s.",
+		"versement %d sur %d de la facture %s", "Montant ouvert", "Référence de paiement", "Meilleures salutations"},
+	"it": {"Promemoria di pagamento", "Le ricordiamo il pagamento di: %s, in scadenza il %s.",
 		"Salvo errore, il pagamento di: %s, scaduto il %s, non ci è ancora pervenuto.", "fattura %s", "rata %d di %d della fattura %s",
-		"Importo aperto: %s %s", "Riferimento di pagamento: %s", "Cordiali saluti"},
-	"en": {"Payment reminder", "Hello", "This is a reminder of the payment for %s, due on %s.",
+		"Importo aperto", "Riferimento di pagamento", "Cordiali saluti"},
+	"en": {"Payment reminder", "This is a reminder of the payment for %s, due on %s.",
 		"According to our records, the payment for %s, due on %s, has not reached us yet.", "invoice %s",
-		"instalment %d of %d of invoice %s", "Open amount: %s %s", "Payment reference: %s", "Kind regards"},
+		"instalment %d of %d of invoice %s", "Open amount", "Payment reference", "Kind regards"},
 }
 
 // reminderMessage is the reminder of t for inv, in the invoice's language, to the client's primary contact, the
 // invoice PDF attached and replies going to the seller.
 func reminderMessage(inv store.Invoice, t store.ReminderTarget, pdf []byte) mail.Message {
-	text, ok := reminderTexts[t.Language]
-	if !ok {
-		text = reminderTexts["en"]
+	lang := t.Language
+	if _, ok := reminderTexts[lang]; !ok {
+		lang = "en"
 	}
+	text := reminderTexts[lang]
 	what := fmt.Sprintf(text.invoice, t.Number)
 	if t.Count > 1 {
 		what = fmt.Sprintf(text.instalment, t.Seq, t.Count, t.Number)
@@ -50,18 +51,21 @@ func reminderMessage(inv store.Invoice, t store.ReminderTarget, pdf []byte) mail
 	if t.Kind == "after" {
 		sentence = text.after
 	}
-	body := text.greeting + "\n\n" + fmt.Sprintf(sentence, what, swissDate(t.DueDate)) + "\n\n" +
-		fmt.Sprintf(text.open, inv.Currency, t.Open.Swiss("'"))
-	if ref := reference(inv, t.Seq); ref != "" {
-		body += "\n" + fmt.Sprintf(text.reference, ref)
+	buyer, seller := "", ""
+	if inv.Buyer != nil {
+		buyer = inv.Buyer.Name
 	}
-	body += "\n\n" + text.signOff
 	if inv.Seller != nil {
-		body += "\n" + inv.Seller.Name
+		seller = inv.Seller.Name
 	}
-	m := mail.Message{Workspace: t.WorkspaceID, Language: inv.Language, To: []string{t.ClientEmail}, Subject: text.subject + ": " + what, Text: body,
-		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(body), "\n", "<br>\n") + "</p>",
-		Attachments: []mail.Attachment{{Name: pdfName(inv), ContentType: "application/pdf", Data: pdf}}}
+	l := mail.NewLetter(lang).Greeting(buyer).Lead(fmt.Sprintf(sentence, what, swissDate(t.DueDate))).Summary(
+		mail.Row{Label: invoicepdf.Title(lang, inv.Kind), Value: t.Number},
+		mail.Row{Label: text.open, Value: inv.Currency + " " + t.Open.Swiss("'")},
+		mail.Row{Label: invoicepdf.EmailWordsFor(lang).DueDate, Value: swissDate(t.DueDate)},
+		mail.Row{Label: text.reference, Value: reference(inv, t.Seq)},
+	).Lead(strings.TrimSpace(text.signOff + "\n" + seller)).Attached(pdfName(inv))
+	m := mail.Message{Workspace: t.WorkspaceID, Language: inv.Language, To: []string{t.ClientEmail}, Subject: text.subject + ": " + what,
+		Text: l.Text(), HTML: l.HTML(), Attachments: []mail.Attachment{{Name: pdfName(inv), ContentType: "application/pdf", Data: pdf}}}
 	if inv.Seller != nil && inv.Seller.Email != nil {
 		m.ReplyTo = *inv.Seller.Email
 	}

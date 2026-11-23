@@ -3,9 +3,7 @@ package signatures
 import (
 	"context"
 	"fmt"
-	"html"
 	"net/http"
-	"slices"
 	"strings"
 
 	"helvetly.com/api/internal/auth"
@@ -15,28 +13,6 @@ import (
 )
 
 const sesNote = "This is a simple electronic signature (SES) under the Swiss ZertES and the EU eIDAS Regulation."
-
-func paragraphs(lines ...string) string {
-	var b strings.Builder
-	for _, l := range lines {
-		if l != "" {
-			fmt.Fprintf(&b, "<p>%s</p>\n", strings.ReplaceAll(html.EscapeString(l), "\n", "<br>"))
-		}
-	}
-	return b.String()
-}
-
-// fine is the small print: hashes and the legal note, muted so the message itself leads.
-func fine(lines ...string) string {
-	return strings.ReplaceAll(paragraphs(lines...), "<p>", `<p style="font-size:13px;color:#78716c">`)
-}
-
-func quoted(message *string) string {
-	if message == nil {
-		return ""
-	}
-	return "“" + *message + "”"
-}
 
 // signWords are the fixed parts of a signing email in its language: the button, the summary's labels, the personal
 // link and the SES note.
@@ -96,26 +72,28 @@ func inviteMessage(req store.SignatureRequest, to store.Signer, link string, rem
 	if !ok {
 		w = signWords["en"]
 	}
+	l := mail.NewLetter(language)
 	var subject string
-	var lead []string
 	if req.Language != nil {
 		r := emailtemplate.Render(text, map[string]string{"document": req.Title, "sender": short(senderOf(req).Name), "company": company})
-		subject, lead = r.Subject, strings.Split(r.Body, "\n\n")
+		subject = r.Subject
 		if !reminder && req.Message != nil {
-			lead = strings.Split(*req.Message, "\n\n")
+			l.Message(*req.Message)
+		} else {
+			l.Message(r.Body)
 		}
 	} else {
 		subject = fmt.Sprintf("%s asks you to sign “%s”", company, req.Title)
 		if reminder {
 			subject = "Reminder: " + subject
 		}
-		lead = []string{"Hello " + short(to.Name) + ",", fmt.Sprintf("%s asks you to review and sign “%s”.", company, req.Title), quoted(req.Message)}
+		l.Greeting(short(to.Name)).Lead(fmt.Sprintf("%s asks you to review and sign “%s”.", company, req.Title)).Note(deref(req.Message))
 	}
-	rows := [][2]string{{w.document, req.Title}, {w.sentBy, sentBy(req)}, {w.signBy, req.ExpiresAt.In(zone(req)).Format(w.date)}}
+	l.Summary(mail.Row{Label: w.document, Value: req.Title}, mail.Row{Label: w.sentBy, Value: sentBy(req)},
+		mail.Row{Label: w.signBy, Value: req.ExpiresAt.In(zone(req)).Format(w.date)}).
+		Action(w.button, link).FinePrint(w.personal, w.ses)
 	return mail.Message{Workspace: req.WorkspaceID, Language: language, To: []string{to.Email}, Subject: subject, ReplyTo: req.SenderEmail,
-		Text: strings.Join(slices.DeleteFunc(lead, func(l string) bool { return l == "" }), "\n\n") + "\n\n" + mail.DetailsText(rows...) +
-			fmt.Sprintf("\n%s\n%s\n\n%s\n%s\n", w.button, link, w.personal, w.ses),
-		HTML: paragraphs(lead...) + mail.Details(rows...) + mail.Button(w.button, link) + fine(w.personal, w.ses)}
+		Text: l.Text(), HTML: l.HTML()}
 }
 
 // previewBody is POST /signatures/email-preview: the request as the send drawer has it so far.
@@ -159,23 +137,30 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request, sess store.Ses
 	return nil
 }
 func declinedMessage(req store.SignatureRequest, who store.Signer) mail.Message {
-	lead := fmt.Sprintf("%s declined to sign “%s”, so the request has stopped.", short(who.Name), req.Title)
-	rows := [][2]string{{"Document", req.Title}, {"Declined by", short(who.Name) + " (" + who.Email + ")"}, {"Reason", deref(who.DeclineReason)}}
+	l := mail.NewLetter("en").Greeting("").Lead(fmt.Sprintf("%s declined to sign “%s”, so the request has stopped.", short(who.Name), req.Title)).
+		Summary(mail.Row{Label: "Document", Value: req.Title}, mail.Row{Label: "Declined by", Value: short(who.Name) + " (" + who.Email + ")"},
+			mail.Row{Label: "Reason", Value: deref(who.DeclineReason)})
 	return mail.Message{Workspace: req.WorkspaceID, Members: true, To: []string{req.SenderEmail}, ReplyTo: who.Email,
-		Subject: fmt.Sprintf("%s declined to sign “%s”", short(who.Name), req.Title),
-		Text:    fmt.Sprintf("Hello,\n\n%s\n\n%s", lead, mail.DetailsText(rows...)), HTML: paragraphs("Hello,", lead) + mail.Details(rows...)}
+		Subject: fmt.Sprintf("%s declined to sign “%s”", short(who.Name), req.Title), Text: l.Text(), HTML: l.HTML()}
 }
 
 func completedMessage(done completed, to string) mail.Message {
 	req := done.req
-	lead := fmt.Sprintf("Everyone has signed “%s”. The signed PDF is attached, with a certificate of completion on its last page.", req.Title)
-	rows := [][2]string{{"Document", req.Title}, {"Sent by", sentBy(req)}, {"Signed copy", done.name + " (attached)"}}
-	hashes := fmt.Sprintf("SHA-256 of the signed PDF: %s\nSHA-256 of the original: %s", done.sum, req.OriginalSHA256)
+	l := mail.NewLetter("en").Greeting("").
+		Lead(fmt.Sprintf("Everyone has signed “%s”. The signed PDF is attached, with a certificate of completion on its last page.", req.Title)).
+		Summary(mail.Row{Label: "Document", Value: req.Title}, mail.Row{Label: "Sent by", Value: sentBy(req)},
+			mail.Row{Label: "Signed copy", Value: done.name + " (attached)"}).
+		FinePrint("SHA-256 of the signed PDF: "+groups(done.sum), "SHA-256 of the original: "+groups(req.OriginalSHA256), sesNote)
 	return mail.Message{Workspace: req.WorkspaceID, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail,
-		Subject: fmt.Sprintf("Signed: “%s”", req.Title),
-		Text:    fmt.Sprintf("Hello,\n\n%s\n\n%s\n%s\n\n%s\n", lead, mail.DetailsText(rows...), hashes, sesNote),
-		HTML: paragraphs("Hello,", lead) + mail.Details(rows...) +
-			`<p style="font-size:12px;color:#78716c;font-family:ui-monospace,Menlo,Consolas,monospace">` +
-			strings.ReplaceAll(html.EscapeString(hashes), "\n", "<br>") + "</p>" + fine(sesNote),
+		Subject: fmt.Sprintf("Signed: “%s”", req.Title), Text: l.Text(), HTML: l.HTML(),
 		Attachments: []mail.Attachment{{Name: done.name, ContentType: "application/pdf", Data: done.pdf}}}
+}
+
+// groups splits a hash into blocks of 16 so it wraps on a phone; the certificate in the PDF has it whole.
+func groups(hash string) string {
+	var parts []string
+	for len(hash) > 16 {
+		parts, hash = append(parts, hash[:16]), hash[16:]
+	}
+	return strings.Join(append(parts, hash), " ")
 }

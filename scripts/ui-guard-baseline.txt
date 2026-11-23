@@ -20,7 +20,7 @@
 3 hex apps/platform/src/components/products/product-detail.tsx
 8 hex apps/platform/src/components/shell/app-sidebar.tsx
 1 hex apps/platform/src/components/signatures/ink.ts
-3 hex apps/platform/src/components/signatures/request-drawer.tsx
+2 hex apps/platform/src/components/signatures/request-drawer.tsx
 3 hex apps/platform/src/components/signatures/signing-page.tsx
 11 hex apps/platform/src/lib/signatures.ts
 1 hex packages/ui/src/components/button.tsx
