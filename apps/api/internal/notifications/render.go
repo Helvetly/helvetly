@@ -233,7 +233,7 @@ func words(event string, d data) message {
 	case "documents.zip_ready":
 		href := "/documents?" + url.Values{"zip": {d.s("export_id")}}.Encode()
 		if d.s("failed") == "true" {
-			return message{title: "Your ZIP could not be prepared", body: "Download it again from Documents.", href: "/documents",
+			return message{title: "Your ZIP could not be prepared", body: or(d.s("reason"), "Download it again from Documents."), href: "/documents",
 				action: "Open Documents"}
 		}
 		return message{title: "Your ZIP is ready", body: or(d.s("name"), "documents.zip") + ", " + plural(d.s("files"), "file") +

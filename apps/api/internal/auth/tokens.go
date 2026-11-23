@@ -24,7 +24,7 @@ var (
 	errTokenMember = Error(http.StatusForbidden, "forbidden", "Your access to this workspace no longer includes the API.",
 		map[string]any{"scope": "read:api"})
 	errTokenRate = &apiError{status: http.StatusTooManyRequests, code: "rate_limited",
-		message: "Too many requests with this API token: slow down.", retryAfter: "60"}
+		message: "Too many API requests in this workspace: slow down.", retryAfter: "60"}
 )
 
 type bearerKey struct{}
@@ -36,6 +36,9 @@ func (s *Service) bearerSession(r *http.Request, header string) (store.Session, 
 	if !ok {
 		var err error
 		if ts, err = s.lookupToken(r, header); err != nil {
+			return store.Session{}, r, err
+		}
+		if err := s.allowTokenRequest(r, ts.Workspace.ID); err != nil {
 			return store.Session{}, r, err
 		}
 		r = r.WithContext(context.WithValue(r.Context(), bearerKey{}, ts))
@@ -56,6 +59,37 @@ func (s *Service) bearerSession(r *http.Request, header string) (store.Session, 
 	return ts.Session, r, nil
 }
 
+// allowTokenRequest counts an API token request against its workspace's plan: reads (the catalogue's GET operations
+// and every MCP message) and writes apart, per rolling minute, in the database so every instance shares the count.
+func (s *Service) allowTokenRequest(r *http.Request, workspaceID string) error {
+	if s.APIRate == nil {
+		return nil
+	}
+	write := false
+	if s.BearerRoutes != nil {
+		_, _, write = s.BearerRoutes(r)
+	}
+	limit, err := s.APIRate(r.Context(), workspaceID, write)
+	if err != nil || limit < 0 { // negative: unlimited
+		return err
+	}
+	pool := "read"
+	if write {
+		pool = "write"
+	}
+	now := s.now()
+	current, previous, err := s.db.CountAPIRequest(r.Context(), workspaceID, pool, now)
+	if err != nil {
+		return err
+	}
+	// the minute before weighs by the part of it still inside the rolling minute
+	left := time.Minute - now.Sub(now.Truncate(time.Minute))
+	if current+previous*int64(left)/int64(time.Minute) > limit {
+		return errTokenRate
+	}
+	return nil
+}
+
 func (s *Service) lookupToken(r *http.Request, header string) (store.TokenSession, error) {
 	secret, ok := strings.CutPrefix(header, "Bearer ")
 	if !ok || !strings.HasPrefix(secret, tokenPrefix) {
@@ -68,9 +102,6 @@ func (s *Service) lookupToken(r *http.Request, header string) (store.TokenSessio
 	}
 	if err != nil {
 		return ts, err
-	}
-	if !s.tokenLimit.allow(ts.ID) {
-		return ts, errTokenRate
 	}
 	if ts.LastUsedAt == nil || now.Sub(*ts.LastUsedAt) >= time.Minute {
 		if err := s.db.TouchAPIToken(r.Context(), ts.ID, now); err != nil {

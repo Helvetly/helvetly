@@ -58,6 +58,19 @@ func (s *Service) zipExports(w http.ResponseWriter, r *http.Request, sess store.
 	return nil
 }
 
+// zipExport: one of the member's own exports, by id, while its row lasts (the bell's link outlives the list's ten).
+func (s *Service) zipExport(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	e, err := s.db.ZipExport(r.Context(), sess.Workspace.ID, sess.User.ID, r.PathValue("id"))
+	if err != nil {
+		return err
+	}
+	if e.Status == "ready" && (e.ExpiresAt == nil || !s.now().Before(*e.ExpiresAt)) {
+		e.Status = "expired" // past its time, before the cleanup deletes it
+	}
+	auth.WriteJSON(w, http.StatusOK, data(e))
+	return nil
+}
+
 // downloadZip serves a ready export to the member who asked for it, while it lasts.
 func (s *Service) downloadZip(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	e, err := s.db.ZipExport(r.Context(), sess.Workspace.ID, sess.User.ID, r.PathValue("id"))
@@ -109,6 +122,7 @@ func (s *Service) ZipExportsTick(ctx context.Context) {
 
 func (s *Service) buildZipExport(ctx context.Context, e store.ZipExport) {
 	key, files, size, err := s.storeZip(ctx, e)
+	reason := ""
 	if err != nil {
 		if ctx.Err() != nil {
 			return // shutting down: the claim lapses and the next start builds it
@@ -117,6 +131,9 @@ func (s *Service) buildZipExport(ctx context.Context, e store.ZipExport) {
 		var p *problem
 		if !errors.As(err, &p) && e.Attempts < zipTries {
 			return // the claim lapses and it is tried again
+		}
+		if p != nil {
+			reason = p.reason
 		}
 		key = ""
 	}
@@ -129,7 +146,7 @@ func (s *Service) buildZipExport(ctx context.Context, e store.ZipExport) {
 		}
 		d := map[string]any{"export_id": e.ID, "name": e.Name, "files": files}
 		if key == "" {
-			d = map[string]any{"export_id": e.ID, "failed": true}
+			d = map[string]any{"export_id": e.ID, "failed": true, "reason": reason}
 		} else if err := s.logExport(ctx, q, e.WorkspaceID, e.UserID, map[string]any{"export": e.ID, "query": e.Query,
 			"files": files, "bytes": size}); err != nil {
 			return err

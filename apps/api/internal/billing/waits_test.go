@@ -87,3 +87,29 @@ func TestARefusedAutomationWaitsWhileItStillWouldNotFit(t *testing.T) {
 
 // midMonthOf is the middle of at's UTC month.
 func midMonthOf(at time.Time) time.Time { return store.UsagePeriodStart(at).AddDate(0, 0, 14) }
+
+// TestAPIRateIsTheCatalogues: the API requests a minute auth enforces are the plan catalogue's values, reads and
+// writes apart, on every plan, and follow a workspace's own value (audit A04).
+func TestAPIRateIsTheCatalogues(t *testing.T) {
+	for _, price := range []string{"price_bm", "price_pm", "price_xm"} {
+		t.Run(price, func(t *testing.T) {
+			e, ws := planned(t, price)
+			for _, key := range []Limit{APIReads, APIWrites} {
+				var catalogue int64
+				if err := e.raw.QueryRow(context.Background(), `SELECT lp.value FROM limit_plans lp
+					JOIN workspace_billing wb ON wb.offer_id = lp.offer_id AND wb.workspace_id = $1
+					WHERE lp.plan_id = wb.plan AND lp.limit_key = $2`, ws, string(key)).Scan(&catalogue); err != nil {
+					t.Fatal(err)
+				}
+				got, err := e.svc.APIRate(context.Background(), ws, key == APIWrites)
+				if err != nil || got != catalogue || got <= 0 {
+					t.Fatalf("%s: enforced %d (%v), catalogue %d", key, got, err, catalogue)
+				}
+			}
+			e.override(ws, APIWrites, StateLimited, n64(7), nil)
+			if got, err := e.svc.APIRate(context.Background(), ws, true); err != nil || got != 7 {
+				t.Fatalf("with the workspace's own value: %d %v", got, err)
+			}
+		})
+	}
+}
