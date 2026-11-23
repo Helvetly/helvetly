@@ -224,7 +224,7 @@ func (s *Service) refitHolidays(ctx context.Context, q store.Q, actor, workspace
 		if err != nil {
 			return all, err
 		}
-		ed, err := s.reconcile(ctx, q, actor, e, e, rows, now, map[string]bool{"skip_holidays": true})
+		ed, err := s.reconcile(ctx, q, actor, e, e, rows, now, map[string]bool{"skip_holidays": true}, 0)
 		if err != nil {
 			return all, err
 		}

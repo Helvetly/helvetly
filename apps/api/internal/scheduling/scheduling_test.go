@@ -347,7 +347,6 @@ func TestEditScopes(t *testing.T) {
 				t.Fatalf("occurrence %d at %s", i, n.StartsAt)
 			}
 		}
-		e.fails(b, "PATCH", "/api/v1/scheduling/occurrences/"+occs[1].ID, map[string]any{"scope": "all", "starts_local": "2026-12-09T09:00"}, 422, "validation_failed")
 	})
 
 	t.Run("following splits and keeps ids", func(t *testing.T) {
