@@ -16,7 +16,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ArrowRight,
@@ -42,8 +42,8 @@ import { HelpTip } from '@/components/settings/help-tip'
 import { NumberFormatField } from '@/components/settings/number-format-field'
 import { WorkspaceLogoControl } from '@/components/settings/workspace-logo'
 import { useUpdateProfile } from '@/lib/account'
+import { useAI } from '@/lib/ai'
 import { api, ApiError, errorMessage, type Session } from '@/lib/api'
-import { heidiApi, usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import {
   exampleNumber,
@@ -67,7 +67,7 @@ import {
   type LegalForms,
 } from '@/lib/legal-forms'
 import { useCan } from '@/lib/permissions'
-import { queryKeys, useSession } from '@/lib/queries'
+import { queryKeys, useAuthConfig, useSession } from '@/lib/queries'
 import { safeNextPath } from '@/lib/safe'
 import { useUpdateWorkspace } from '@/lib/workspaces'
 
@@ -125,9 +125,11 @@ export function WelcomePage({ session }: { session: Session }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const heidi = useHeidi()
-  // The import step needs the server's AI model (GET /heidi/usage) and write access to documents.
-  const usage = useQuery({ queryKey: usageKey, queryFn: heidiApi.usage })
-  const canImport = useCan('write:documents') && usage.data?.provider_available === true
+  // The import step needs the installation's AI model (its config, loaded here too: the welcome may open before the
+  // shell has it) and write access to documents.
+  useAuthConfig()
+  const ai = useAI()
+  const canImport = useCan('write:documents') && ai.available
   const steps = stepsFor(canImport)
   const [imported, setImported] = useState<string | null>(null)
   const [step, setStep] = useState<StepId>('welcome')
@@ -405,7 +407,8 @@ export function WelcomePage({ session }: { session: Session }) {
                   settings={settings.data}
                   busy={busy}
                   onOpen={(href) => void leave(href)}
-                  onAskHeidi={() => void leave(undefined, () => heidi?.ask())}
+                  canImport={canImport}
+                  onAskHeidi={heidi ? () => void leave(undefined, () => heidi.ask()) : undefined}
                   onClose={() => void leave()}
                 />
               )}
@@ -1197,6 +1200,7 @@ function DoneStep({
   name,
   settings,
   busy,
+  canImport,
   onOpen,
   onAskHeidi,
   onClose,
@@ -1207,7 +1211,9 @@ function DoneStep({
   settings: InvoiceSettings | undefined
   busy: boolean
   onOpen: (href: string) => void
-  onAskHeidi: () => void
+  canImport: boolean
+  /** Missing without AI on the installation: no Heidi. */
+  onAskHeidi?: () => void
   onClose: () => void
 }) {
   const missing = settings?.missing_fields ?? []
@@ -1233,7 +1239,9 @@ function DoneStep({
           heading={heading}
           title={name ? translate('youReAllSetNamed', { name }) : translate('youReAllSet')}
         >
-          {translate('hereIsWhereMostPeopleStartHeidiIsOne')}
+          {onAskHeidi
+            ? translate('hereIsWhereMostPeopleStartHeidiIsOne')
+            : translate('hereIsWhereMostPeopleStart')}
         </StepHeader>
       </div>
       {missing.length > 0 && (
@@ -1285,30 +1293,34 @@ function DoneStep({
           disabled={busy}
           onClick={() => onOpen('/invoices/new')}
         />
-        <NextStep
-          icon={<FileUp />}
-          title={imported ? translate('importMoreDocuments') : translate('importYourClients')}
-          description={
-            imported
-              ? translate('importMoreDocumentsHint')
-              : translate('fromASpreadsheetPDFOrYourOldToolYou')
-          }
-          disabled={busy}
-          onClick={() => onOpen(imported ? '/documents?import=1' : '/clients?import=1')}
-        />
-        <NextStep
-          icon={<HeidiSparkle />}
-          title={
-            <>
-              {translate('askHeidi2')}
-              <Kbd className="ml-1">{translate('j')}</Kbd>
-            </>
-          }
-          description={translate('askAboutAnythingInYourWorkspace')}
-          heidi
-          disabled={busy}
-          onClick={onAskHeidi}
-        />
+        {canImport && (
+          <NextStep
+            icon={<FileUp />}
+            title={imported ? translate('importMoreDocuments') : translate('importYourClients')}
+            description={
+              imported
+                ? translate('importMoreDocumentsHint')
+                : translate('fromASpreadsheetPDFOrYourOldToolYou')
+            }
+            disabled={busy}
+            onClick={() => onOpen(imported ? '/documents?import=1' : '/clients?import=1')}
+          />
+        )}
+        {onAskHeidi && (
+          <NextStep
+            icon={<HeidiSparkle />}
+            title={
+              <>
+                {translate('askHeidi2')}
+                <Kbd className="ml-1">{translate('j')}</Kbd>
+              </>
+            }
+            description={translate('askAboutAnythingInYourWorkspace')}
+            heidi
+            disabled={busy}
+            onClick={onAskHeidi}
+          />
+        )}
       </div>
       <Actions>
         <Button size="xl" type="button" className={bigButton} disabled={busy} onClick={onClose}>

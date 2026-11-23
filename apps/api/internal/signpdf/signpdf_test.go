@@ -204,3 +204,30 @@ func TestDrawLinesPrints(t *testing.T) {
 		t.Fatalf("a long value at %v pt is %v wide in a 200 pt box", size, txt.Width(long))
 	}
 }
+
+func TestAppendSignaturePage(t *testing.T) {
+	out, page, err := AppendSignaturePage(samplePDF(t, 2), "Contract", "Signatures", "Date", []string{"Ana Muster", "Müller AG"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, err := PageCount(out); err != nil || n != 3 || page != 3 {
+		t.Fatalf("pages = %d (%v), signature page = %d; want 3, 3", n, err, page)
+	}
+}
+
+func TestSignatureBlockFitsThePage(t *testing.T) {
+	fields := SignatureBlock(10)
+	if len(fields) != 20 {
+		t.Fatalf("fields = %d, want 20", len(fields))
+	}
+	for _, f := range fields {
+		if f.X < 0 || f.Y < 0 || f.X+f.W > 1 || f.Y+f.H > 1 || f.W <= 0 || f.H <= 0 {
+			t.Errorf("field off the page: %+v", f)
+		}
+	}
+	// two signers side by side never overlap
+	a, b := fields[0], fields[2]
+	if a.Y != b.Y || a.X+a.W >= b.X {
+		t.Errorf("overlap: %+v %+v", a, b)
+	}
+}

@@ -25,6 +25,7 @@ const replace = vi.fn<(href: string) => void>()
 vi.mock('next/navigation', () => ({
   usePathname: () => pathname,
   useRouter: () => ({ replace }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 const session: Session = {

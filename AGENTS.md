@@ -212,7 +212,8 @@ are the reference.
   and document filing (`ai_automation_tokens_per_month`), never one for the other; each call reserves its tokens
   and rate-card cost first, one call in flight per workspace and pool, see `ai_calls`; a call whose usage is never
   reported (timeout, lost answer, a process that died) is charged its whole reservation and may be asked once more,
-  never blocking the month).
+  never blocking the month). Without a model `ai_available` of `GET /api/v1/auth/config` is false and the platform hides
+  every AI option (`useAI` in `lib/ai.ts`); AI endpoints refuse with 503 `ai_unavailable`.
 - **Swiss UID register** (`internal/uidregister`): the client form's company lookup and the "UID verified" mark
   (`clients.verified_uid`, `uid_verified_at`, set when a client is saved) call the federal public SOAP service
   (`UID_REGISTER_URL`, the production endpoint by default, `off` = none) through the API only, at most 15 calls a

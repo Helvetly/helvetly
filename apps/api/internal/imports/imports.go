@@ -33,7 +33,7 @@ type Storage interface {
 }
 
 type Options struct {
-	// Provider is the AI model; nil when none is configured (uploads answer 409 ai_not_configured).
+	// Provider is the AI model; nil when none is configured (uploads answer 503 ai_unavailable).
 	Provider aimodel.Provider
 	// Allowance is the automation pool's monthly token allowance (billing's AIAutomationTokens), never Heidi's; nil
 	// is unlimited.
@@ -146,7 +146,7 @@ func (s *Service) uploaderGate(ctx context.Context, q store.Q, workspaceID, user
 // approved in this workspace (the same approval as Heidi's). userID is whoever started the import.
 func (s *Service) gate(ctx context.Context, q store.Q, workspaceID, userID string) error {
 	if s.provider == nil {
-		return auth.Error(http.StatusConflict, "ai_not_configured", "This server has no AI model configured, so files can't be read automatically.", nil)
+		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "This server has no AI model configured, so files can't be read automatically.", nil)
 	}
 	if err := q.RequireFeature(ctx, workspaceID, store.FeatureAIImport); err != nil {
 		return err

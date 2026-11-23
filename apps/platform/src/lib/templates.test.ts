@@ -1,5 +1,6 @@
 import type { Client } from './clients'
 import {
+  blockSigners,
   buildTemplateBody,
   contractLanguage,
   dataValue,
@@ -8,6 +9,7 @@ import {
   initialValues,
   sectionsProblem,
   templateProblem,
+  templatesApi,
   toDraftFields,
   valuesByField,
   type Template,
@@ -189,4 +191,43 @@ test('the review needs a title and complete sections', () => {
   expect(sectionsProblem({ ...ok, clauses: [{ heading: 'A', body: ' ' }] })).toBe(
     'Every section needs a heading and text.',
   )
+})
+
+describe('contract responses', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('reads an empty list answered as null as an empty list', async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValueOnce(
+      Response.json({
+        data: { title: 'T', language: 'en', intro: '', clauses: null, warnings: null },
+      }),
+    )
+    const written = await templatesApi.contractWrite('quo_1', {
+      mode: 'ai',
+      language: 'en',
+      instructions: '',
+    })
+    expect(written.data).toMatchObject({ clauses: [], warnings: [] })
+    fetchMock.mockResolvedValueOnce(Response.json({ data: { pdf: '', pages: 1, warnings: null } }))
+    const preview = await templatesApi.contractPreview('quo_1', {
+      title: 'T',
+      language: 'en',
+      intro: '',
+      clauses: [],
+    })
+    expect(preview.data.warnings).toEqual([])
+  })
+})
+
+describe('blockSigners', () => {
+  it('has the client sign first, then you', () => {
+    const you = { name: 'Anna Owner', email: 'anna@example.com' }
+    const signers = blockSigners(client, you)
+    expect(signers).toHaveLength(2)
+    expect(signers[1]).toEqual(you)
+    expect(signers[0]?.email).toBeTruthy()
+    expect(blockSigners(client, null)).toHaveLength(1)
+  })
 })

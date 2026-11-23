@@ -72,7 +72,7 @@ func TestImportFromDocumentsRefuses(t *testing.T) {
 	}
 	e.as(e.sess)
 	e.s.provider = nil
-	if w := e.do("POST", "/api/v1/imports/documents", map[string]any{"document_ids": []string{mine}}); w.Code != 409 || code(w) != "ai_not_configured" {
+	if w := e.do("POST", "/api/v1/imports/documents", map[string]any{"document_ids": []string{mine}}); w.Code != 503 || code(w) != "ai_unavailable" {
 		t.Fatalf("no model: %d %s", w.Code, w.Body)
 	}
 	var batches int

@@ -404,3 +404,25 @@ func utf16be(s string) []byte {
 	}
 	return []byte(strings.NewReplacer(`\`, `\\`, "(", `\(`, ")", `\)`).Replace(string(out)))
 }
+
+// A clean draft answers its warnings as [] (never null): the platform reads them as a list.
+func TestContractWriteEncodesEmptyWarningsAsList(t *testing.T) {
+	t.Parallel()
+	for _, body := range []obj{
+		{"mode": "ai", "language": "en"},
+		{"mode": "improve", "language": "en", "clause": obj{"heading": "Honorar", "body": "Zahlen."}},
+	} {
+		t.Run(body["mode"].(string), func(t *testing.T) {
+			e := newEnv(t, false)
+			b := e.workspace()
+			e.consent(b, true)
+			e.withWriter(nil, answer("Vertrag", "", [2]string{"Gegenstand", "Website."}))
+			quoteID, _ := e.quote(b)
+			var out struct{ Data map[string]json.RawMessage }
+			e.do(b, "POST", "/api/v1/quotes/"+quoteID+"/contract-drafts", body, http.StatusOK, &out)
+			if got := string(out.Data["warnings"]); got != "[]" {
+				t.Fatalf("warnings = %s, want []", got)
+			}
+		})
+	}
+}

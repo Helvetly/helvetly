@@ -37,6 +37,7 @@ import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { PercentInput } from '@/components/shared/percent-input'
 import { SwissScopeNotice } from '@/components/swiss-scope-notice'
 import { TextareaBox } from '@/components/textarea-box'
+import { useAI } from '@/lib/ai'
 import { ApiError, errorMessage } from '@/lib/api'
 import { treatmentRate } from '@/lib/expense-categories'
 import {
@@ -191,6 +192,7 @@ function ExpenseFormBody({
     start && !expense ? 'start' : 'form',
   )
   const aiBlock = useReceiptAIBlock()
+  const aiOn = useAI().available
   // Receipt reading: the staged files as one receipt's pages, one request at a time; `touched` is every field the
   // person ever edited.
   const touched = useRef(new Set<string>())
@@ -622,27 +624,29 @@ function ExpenseFormBody({
                       }}
                     />
                     <div className="grid gap-2">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <Button
-                          type="button"
-                          variant="ai"
-                          size="sm"
-                          disabled={!readable.length || reading !== null || aiBlock !== null}
-                          title={aiBlock ?? undefined}
-                          className="cursor-pointer"
-                          onClick={() => void recognize(readable)}
-                        >
-                          <HeidiSparkle />
-                          {reading
-                            ? translate('readingTheReceipt')
-                            : recognized
-                              ? translate('readAgainWithAI')
-                              : translate('readWithAI')}
-                        </Button>
-                        <span className="text-xs text-muted-foreground">
-                          {aiBlock ?? translate('recognizeReceiptNotice')}
-                        </span>
-                      </div>
+                      {aiOn && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <Button
+                            type="button"
+                            variant="ai"
+                            size="sm"
+                            disabled={!readable.length || reading !== null || aiBlock !== null}
+                            title={aiBlock ?? undefined}
+                            className="cursor-pointer"
+                            onClick={() => void recognize(readable)}
+                          >
+                            <HeidiSparkle />
+                            {reading
+                              ? translate('readingTheReceipt')
+                              : recognized
+                                ? translate('readAgainWithAI')
+                                : translate('readWithAI')}
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            {aiBlock ?? translate('recognizeReceiptNotice')}
+                          </span>
+                        </div>
+                      )}
                       {staged.some(isHeic) && (
                         <p className="text-xs text-muted-foreground">
                           {translate('heicCantBeRead')}

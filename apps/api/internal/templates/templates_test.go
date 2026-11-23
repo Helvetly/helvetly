@@ -579,9 +579,9 @@ func TestGenerateValidation(t *testing.T) {
 		{"unknown value", plain, change(plain, func(b obj) { b["values"].(map[string]string)["tfd_nope"] = "x" }), "values"},
 		{"unknown delivery", plain, change(plain, func(b obj) { b["delivery"] = obj{"type": "fax"} }), "delivery.type"},
 		{"email without an address", plain, change(plain, func(b obj) { b["delivery"] = obj{"type": "email", "to": "nope"} }), "delivery.to"},
-		{"signature without roles", plain, change(plain, func(b obj) {
-			b["delivery"] = obj{"type": "signature", "signers": signers(1), "signing_order": "parallel", "expires_in_days": 30}
-		}), "delivery.type"},
+		{"more signers than the signature page has places", plain, change(plain, func(b obj) {
+			b["delivery"] = obj{"type": "signature", "signers": signers(11), "signing_order": "parallel", "expires_in_days": 30}
+		}), "delivery.signers"},
 		{"one signer for two roles", signed, change(signed, func(b obj) {
 			b["delivery"] = obj{"type": "signature", "signers": signers(1), "signing_order": "parallel", "expires_in_days": 30}
 		}), "delivery.signers"},
@@ -738,6 +738,37 @@ func TestGenerateSignature(t *testing.T) {
 	// Sequential: only the first signer has a link so far.
 	if len(e.mail.sent) != 1 || e.mail.sent[0].To[0] != "ana@example.com" {
 		t.Fatalf("invitations: %d", len(e.mail.sent))
+	}
+}
+
+// A template without signing fields is signed on a page added at the end: each signer's signature and date there.
+func TestGenerateSignatureWithoutFields(t *testing.T) {
+	e := newEnv(t, true)
+	b := e.workspace()
+	tpl := e.create(b, templateInput(e.document(b, samplePDF(t, 2), "application/pdf")))
+	client := e.client(b)
+
+	out := e.generate(b, tpl, generate(client, tpl, obj{"type": "signature", "signing_order": "parallel", "expires_in_days": 30,
+		"language": "de", "signers": []obj{{"name": "Ana Client", "email": "ana@example.com"}, {"name": "Bo Owner", "email": "bo@example.com"}}}))
+	if out.SignatureRequestID == nil {
+		t.Fatalf("generated: %+v", out)
+	}
+	req, err := e.st.SignatureRequest(context.Background(), b.workspace, *out.SignatureRequestID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.PageCount != 3 || len(req.Fields) != 4 {
+		t.Fatalf("signature request: %d pages, %d fields", req.PageCount, len(req.Fields))
+	}
+	kinds := map[string]int{}
+	for _, f := range req.Fields {
+		if f.Page != 3 {
+			t.Fatalf("field off the signature page: %+v", f)
+		}
+		kinds[f.Kind]++
+	}
+	if kinds["signature"] != 2 || kinds["date"] != 2 {
+		t.Fatalf("fields: %v", kinds)
 	}
 }
 

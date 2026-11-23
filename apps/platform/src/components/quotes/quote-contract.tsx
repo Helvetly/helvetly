@@ -9,11 +9,11 @@ import { toast } from 'sonner'
 
 import { ContractWriter } from '@/components/quotes/contract-writer'
 import { useOpenHref } from '@/components/record-link'
-import { CreateSignatureDrawer } from '@/components/signatures/create-drawer'
+import { ContractSignDrawer } from '@/components/signatures/create-drawer'
 import { RequestBadge } from '@/components/signatures/parts'
 import { FillTemplateDrawer } from '@/components/templates/fill-drawer'
+import { useAI } from '@/lib/ai'
 import { useClient } from '@/lib/clients'
-import { useDoc } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import type { Quote } from '@/lib/quotes'
 import { useQuoteContracts, type Generated } from '@/lib/templates'
@@ -37,6 +37,8 @@ export function ContractFlow({
 }) {
   const openHref = useOpenHref()
   const client = useClient(quote.client.id).data ?? null
+  // Without AI on the installation "Create contract" fills a template.
+  const ai = useAI()
   const [fromTemplate, setFromTemplate] = useState(false)
 
   const made = (data: Generated) => {
@@ -56,7 +58,7 @@ export function ContractFlow({
   }
 
   if (!client) return null
-  if (!fromTemplate)
+  if (!fromTemplate && ai.available)
     return (
       <ContractWriter
         quote={quote}
@@ -72,30 +74,6 @@ export function ContractFlow({
       client={client}
       contract={{ quoteId: quote.id, quoteNumber: quote.number, onMade: made }}
       onClose={onClose}
-    />
-  )
-}
-
-/** Sends a contract for signature with the signatures' own drawer, once its file is loaded. */
-export function ContractSignDrawer({
-  documentId,
-  onClose,
-}: {
-  documentId: string
-  onClose: () => void
-}) {
-  const openHref = useOpenHref()
-  const doc = useDoc(documentId).data
-  if (!doc) return null
-  return (
-    <CreateSignatureDrawer
-      initial={doc}
-      folderId={null}
-      onClose={onClose}
-      onSent={(id) => {
-        onClose()
-        openHref(`/documents?${new URLSearchParams({ view: 'signatures', request: id })}`)
-      }}
     />
   )
 }

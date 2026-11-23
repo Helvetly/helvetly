@@ -20,6 +20,7 @@ import {
   SettingsSection,
 } from '@/components/settings/layout'
 import { SettingsHeader } from '@/components/settings/settings-tabs'
+import { useAI } from '@/lib/ai'
 import { errorMessage } from '@/lib/api'
 import {
   formatPrice,
@@ -41,6 +42,7 @@ import { UsageOverview } from './usage-overview'
  */
 export function BillingSettings() {
   const billing = useBilling()
+  const ai = useAI().available
   const portal = usePortal()
   const openingPortal = useRef(false)
   useCheckoutReturn()
@@ -92,7 +94,7 @@ export function BillingSettings() {
             {/* Without a plan there are no limits to measure against ("0 of unlimited" misleads). */}
             {data.plan !== '' && data.usage.length > 0 && <UsageOverview billing={data} />}
             {/* Only while packs bought earlier still count this month. */}
-            <AITokenPacks billing={data} />
+            {ai && <AITokenPacks billing={data} />}
             {payments && <Invoices />}
           </>
         )}

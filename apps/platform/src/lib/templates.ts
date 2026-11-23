@@ -309,6 +309,15 @@ export function defaultSigners(template: Template, client: Client): DraftSigner[
   )
 }
 
+/** Who signs a document whose template has no signing fields, on the page added at its end: the client, then you. */
+export function blockSigners(client: Client, you: DraftSigner | null): DraftSigner[] {
+  const contact = primaryContact(client)
+  const theirs = contact?.email
+    ? { name: contact.name, email: contact.email }
+    : { name: client.name, email: client.email ?? '' }
+  return you ? [theirs, you] : [theirs]
+}
+
 export type DeliveryType = Delivery['type']
 
 /** What the fill step needs before it lets you on (or sends), or null. */
@@ -358,6 +367,11 @@ export function generateProblem(
 
 // ---- the API ----
 
+/** A response's lists as the wire may carry them: an empty one from an older API is null. */
+type Unchecked<T> = {
+  [K in keyof T]: T[K] extends readonly unknown[] ? T[K] | null : T[K]
+}
+
 const path = (id: string) => `/templates/${encodeURIComponent(id)}`
 
 export const templatesApi = {
@@ -376,15 +390,17 @@ export const templatesApi = {
       json: body,
     }),
   contractWrite: (quoteId: string, body: ContractWriteRequest) =>
-    request<{ data: WrittenContract }>(`/quotes/${encodeURIComponent(quoteId)}/contract-drafts`, {
-      method: 'POST',
-      json: body,
-    }),
+    request<{ data: Unchecked<WrittenContract> }>(
+      `/quotes/${encodeURIComponent(quoteId)}/contract-drafts`,
+      { method: 'POST', json: body },
+    ).then(({ data }) => ({
+      data: { ...data, clauses: data.clauses ?? [], warnings: data.warnings ?? [] },
+    })),
   contractPreview: (quoteId: string, body: ContractSections) =>
-    request<{ data: ContractPreview }>(`/quotes/${encodeURIComponent(quoteId)}/contract-preview`, {
-      method: 'POST',
-      json: body,
-    }),
+    request<{ data: Unchecked<ContractPreview> }>(
+      `/quotes/${encodeURIComponent(quoteId)}/contract-preview`,
+      { method: 'POST', json: body },
+    ).then(({ data }) => ({ data: { ...data, warnings: data.warnings ?? [] } })),
   createContract: (quoteId: string, body: ContractSections & { delivery: Delivery }) =>
     request<{ data: Generated }>(`/quotes/${encodeURIComponent(quoteId)}/contracts`, {
       method: 'POST',

@@ -5,7 +5,6 @@ import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
-import { useQuery } from '@tanstack/react-query'
 import {
   FileDown,
   FileSignature,
@@ -21,16 +20,16 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
+import { AIBudgetUsedUp } from '@/components/ai/ai-budget'
 import { LANGUAGE_OPTIONS } from '@/components/clients/client-form-model'
 import { NativeSelect } from '@/components/clients/fields'
 import { PdfView } from '@/components/invoices/pdf-view'
-import { serverProblem } from '@/components/signatures/create-drawer'
 import { SesLine } from '@/components/signatures/parts'
 import { DocPreview, PdfPicker } from '@/components/signatures/pdf-parts'
 import { Choice } from '@/components/templates/fill-drawer'
-import { Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
+import { failed, Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
+import { useAI } from '@/lib/ai'
 import { type Client, type Language } from '@/lib/clients'
-import { heidiApi, usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 import type { Quote } from '@/lib/quotes'
@@ -117,12 +116,13 @@ export function ContractWriter({
   onClose: () => void
 }) {
   const { ensure } = useAIApproval()
-  const usage = useQuery({ queryKey: usageKey, queryFn: heidiApi.usage })
-  const aiOff = usage.data?.provider_available === false
+  // The host shows this only with AI on the installation; an empty pool leaves only the template.
+  const ai = useAI()
   const session = useSession().data
   const [step, setStep] = useState(0)
   const [chosen, setChosen] = useState<ContractMode>('ai')
-  const mode: ContractMode = aiOff ? 'template' : chosen
+  const mode: ContractMode = ai.available ? chosen : 'template'
+  const aiBlocked = mode !== 'template' && ai.usedUp
   const [language, setLanguage] = useState<Language>(() =>
     contractLanguage(client.language, quote.language),
   )
@@ -143,7 +143,6 @@ export function ContractWriter({
   ])
   const [message, setMessage] = useState('')
   const [tried, setTried] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
   const create = useTemplateMutation((body: ContractSections & { delivery: Delivery }) =>
     templatesApi.createContract(quote.id, body),
   )
@@ -156,7 +155,7 @@ export function ContractWriter({
     const timer = setTimeout(() => {
       templatesApi.contractPreview(quote.id, toSections(sections)).then(
         ({ data }) => current && setPreview({ pdf: data.pdf, warnings: data.warnings }),
-        (error: unknown) => current && setServerError(serverProblem(error)),
+        (error: unknown) => current && failed(translate('couldNotPreviewTheContract'), error),
       )
     }, 600)
     return () => {
@@ -167,15 +166,16 @@ export function ContractWriter({
 
   const problem =
     step === 0
-      ? mode === 'example' && !example
-        ? translate('chooseAnExampleContract')
-        : null
+      ? aiBlocked
+        ? translate('aiBudgetUsedUp')
+        : mode === 'example' && !example
+          ? translate('chooseAnExampleContract')
+          : null
       : step === 1
         ? sections && sectionsProblem(sections)
         : sendProblem(delivery, emailTo, signers)
 
   const write = async () => {
-    setServerError(null)
     if (!(await ensure())) return false
     setWriting(true)
     try {
@@ -194,7 +194,7 @@ export function ContractWriter({
       setRemoved(data.warnings.filter((warning) => warning.kind === 'personal_data'))
       return true
     } catch (error) {
-      setServerError(serverProblem(error))
+      failed(translate('couldNotWriteTheContract'), error)
       return false
     } finally {
       setWriting(false)
@@ -203,7 +203,6 @@ export function ContractWriter({
 
   const improve = async (index: number) => {
     if (!sections) return
-    setServerError(null)
     if (!(await ensure())) return
     setImproving(index)
     try {
@@ -217,7 +216,7 @@ export function ContractWriter({
       const old = sections.clauses[index]
       if (better && old) setClause(index, { ...better, key: old.key })
     } catch (error) {
-      setServerError(serverProblem(error))
+      failed(translate('couldNotImproveTheSection'), error)
     } finally {
       setImproving(null)
     }
@@ -246,7 +245,6 @@ export function ContractWriter({
   const send = () => {
     setTried(true)
     if (problem || !sections) return
-    setServerError(null)
     const body: Delivery =
       delivery === 'email'
         ? { type: 'email', to: emailTo.trim().toLowerCase(), message: message.trim() || null }
@@ -269,7 +267,7 @@ export function ContractWriter({
           onMade(data)
           onClose()
         },
-        onError: (error) => setServerError(serverProblem(error)),
+        onError: (error) => failed(translate('couldNotCreateTheContract'), error),
       },
     )
   }
@@ -320,10 +318,14 @@ export function ContractWriter({
       discardTitle={translate('discardThisDocument')}
       onClose={onClose}
       status={[quote.number ?? translate('draft'), client.name].join(' · ')}
-      error={serverError ?? (tried ? problem : null)}
+      error={tried ? problem : null}
       action={
         step < STEPS.length - 1 ? (
-          <Button className="cursor-pointer gap-1.5" disabled={writing} onClick={() => void next()}>
+          <Button
+            className="cursor-pointer gap-1.5"
+            disabled={writing || (step === 0 && aiBlocked)}
+            onClick={() => void next()}
+          >
             {writing && <Loader2 className="size-4 animate-spin" />}
             {writing ? translate('writingTheContract') : translate('next2')}
           </Button>
@@ -347,18 +349,16 @@ export function ContractWriter({
             <Choice
               icon={Sparkles}
               label={translate('writeItWithAI')}
-              text={aiOff ? translate('contractAINotAvailable') : translate('writeItWithAIText')}
+              text={translate('writeItWithAIText')}
               badge={translate('recommended')}
               selected={mode === 'ai'}
-              disabled={aiOff}
               onPick={() => setChosen('ai')}
             />
             <Choice
               icon={FileText}
               label={translate('basedOnAnExampleDocument')}
-              text={aiOff ? translate('contractAINotAvailable') : translate('basedOnAnExampleText')}
+              text={translate('basedOnAnExampleText')}
               selected={mode === 'example'}
-              disabled={aiOff}
               onPick={() => setChosen('example')}
             />
             <Choice
@@ -369,7 +369,12 @@ export function ContractWriter({
               onPick={() => setChosen('template')}
             />
           </div>
-          {mode === 'example' && (
+          {aiBlocked && (
+            <Callout tone="warning" title={translate('aiBudgetUsedUpTitle')}>
+              <AIBudgetUsedUp />
+            </Callout>
+          )}
+          {mode === 'example' && !aiBlocked && (
             <PdfPicker
               document={example}
               folderId={null}
@@ -379,7 +384,7 @@ export function ContractWriter({
               }}
             />
           )}
-          {mode !== 'template' && (
+          {mode !== 'template' && !aiBlocked && (
             <>
               <FormField
                 id="contract-language"

@@ -69,6 +69,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
+import { AIBudgetTip } from '@/components/ai/ai-budget'
 import {
   PlanTag,
   toastLocked,
@@ -91,6 +92,7 @@ import { SignaturesView } from '@/components/signatures/signatures-view'
 import { FillTemplateDrawer } from '@/components/templates/fill-drawer'
 import { TemplateEditor } from '@/components/templates/template-editor'
 import { TemplatesView } from '@/components/templates/templates-view'
+import { useAI } from '@/lib/ai'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   ACCEPT,
@@ -252,6 +254,7 @@ export function DocumentsPage() {
   // Only to tell whether "Document from template…" has anything to offer.
   const templates = useTemplates(!templateLock)
   const aiLock = useFeatureLock('ai_import')
+  const ai = useAI()
   const [organizing, setOrganizing] = useState(false)
   // Documents being read by "Extract with AI": the import drawer is open on them.
   const [extracting, setExtracting] = useState<string[] | null>(null)
@@ -480,6 +483,7 @@ export function DocumentsPage() {
   // Why "Extract with AI" cannot read these items (the plan's reason first), or null when it can.
   const extractReason = (split: { files: string[]; folders: string[] }) =>
     aiLock?.hint ??
+    (ai.usedUp ? translate('aiBudgetUsedUp') : null) ??
     extractBlock(
       [...files, ...recentFiles].filter((file) => split.files.includes(file.id)),
       split.folders.length,
@@ -809,7 +813,7 @@ export function DocumentsPage() {
             </ContextMenuItem>
           </>
         )}
-        {canWrite && (
+        {canWrite && ai.available && (
           <ExtractItem
             reason={extractReason(split)}
             onSelect={() => setExtracting(split.files)}
@@ -1072,14 +1076,19 @@ export function DocumentsPage() {
           (sectionLock && <PlanTag lock={sectionLock} className="self-center" />) ||
           (canWrite && listing && (
             <>
-              <Button
-                variant="ai"
-                onClick={() => (aiLock ? toastLocked(aiLock) : setOrganizing(true))}
-              >
-                <HeidiSparkle />
-                {translate('organizeButton')}
-                {aiLock && <PlanTag lock={aiLock} />}
-              </Button>
+              {ai.available && (
+                <AIBudgetTip usedUp={ai.usedUp}>
+                  <Button
+                    variant="ai"
+                    disabled={ai.usedUp}
+                    onClick={() => (aiLock ? toastLocked(aiLock) : setOrganizing(true))}
+                  >
+                    <HeidiSparkle />
+                    {translate('organizeButton')}
+                    {aiLock && <PlanTag lock={aiLock} />}
+                  </Button>
+                </AIBudgetTip>
+              )}
               <CreateMenu
                 templateLock={templateLock}
                 signLock={signLock}
@@ -1422,13 +1431,17 @@ export function DocumentsPage() {
                           : undefined,
                         write: true,
                       },
-                      {
-                        label: translate('extractWithAI'),
-                        icon: <Sparkles />,
-                        onClick: () => setExtracting(selectedSplit.files),
-                        disabled: extractReason(selectedSplit) ?? undefined,
-                        write: true,
-                      },
+                      ...(ai.available
+                        ? [
+                            {
+                              label: translate('extractWithAI'),
+                              icon: <Sparkles />,
+                              onClick: () => setExtracting(selectedSplit.files),
+                              disabled: extractReason(selectedSplit) ?? undefined,
+                              write: true,
+                            },
+                          ]
+                        : []),
                       ...(selectedSplit.files.length > 0 && selectedSplit.folders.length === 0
                         ? [
                             {

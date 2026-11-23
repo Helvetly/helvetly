@@ -609,6 +609,15 @@ const one =
 
 /** What every signed-in screen asks for, then each area's records; the first match wins. */
 export const shellHandlers = [
+  http.get('/api/v1/auth/config', () =>
+    HttpResponse.json({
+      google: true,
+      email: true,
+      passkey: true,
+      dev_codes: false,
+      ai_available: true,
+    }),
+  ),
   http.get('/api/v1/public/offers/current', () => HttpResponse.json({ data: publicOffer })),
   http.get('/api/v1/billing', () =>
     HttpResponse.json({

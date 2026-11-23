@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { handOffImport } from '@/components/import/hand-off'
 import { useImportDrawer } from '@/components/import/import-button'
 import { addFiles } from '@/components/import/import-files'
+import { useAI } from '@/lib/ai'
 import { isHeic } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
 import type { ImportKind } from '@/lib/imports'
@@ -123,7 +124,8 @@ export function useImportDrop(kind: ImportKind, enabled: boolean) {
     handOffImport(kind, files)
     drawer.open()
   }
-  return useFileDrop(enabled && !drawer.isOpen, start)
+  const ai = useAI()
+  return useFileDrop(ai.available && enabled && !drawer.isOpen, start)
 }
 
 /** Covers the page while files are dragged over it, saying what a drop does. */
@@ -160,7 +162,8 @@ export function EmptyImportActions({
   hint: string
   onImport: (() => void) | undefined
 }) {
-  if (!onImport) return children
+  const ai = useAI()
+  if (!onImport || !ai.available) return children
   return (
     <>
       <div className="flex flex-wrap justify-center gap-2">

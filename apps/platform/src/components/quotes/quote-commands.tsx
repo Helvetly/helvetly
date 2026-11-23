@@ -10,6 +10,7 @@ import {
   Pencil,
   ReceiptText,
   Send,
+  ScrollText,
   Sparkles,
   Trash2,
   X,
@@ -20,6 +21,8 @@ import { toast } from 'sonner'
 
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import type { MenuKit } from '@/components/data/menus'
+import { ContractSignDrawer } from '@/components/signatures/create-drawer'
+import { useAI } from '@/lib/ai'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import {
@@ -33,7 +36,7 @@ import {
   type QuoteCommand,
 } from '@/lib/quotes'
 
-import { ContractFlow, ContractSignDrawer } from './quote-contract'
+import { ContractFlow } from './quote-contract'
 import { failQuote, QuoteDecisionDialog, QuoteSendDialog } from './quote-dialogs'
 
 type Action = { label: string; icon: LucideIcon }
@@ -200,8 +203,10 @@ export function useContractEntry(start: (quote: Quote) => void) {
   const readsQuotes = useCan('read:invoices')
   const writesDocuments = useCan('write:documents')
   const allowed = readsQuotes && writesDocuments
+  // Without AI on the installation it is "Create contract", from a template only.
+  const ai = useAI().available
   // stable while nothing changes, so list rows need not render again
-  return useMemo(() => (allowed ? { lock, start } : null), [allowed, lock, start])
+  return useMemo(() => (allowed ? { lock, start, ai } : null), [allowed, lock, start, ai])
 }
 
 export type ContractEntry = ReturnType<typeof useContractEntry>
@@ -273,8 +278,8 @@ export function QuoteMenuItems({
             disabled={Boolean(contract.lock)}
             onSelect={() => contract.start(quote)}
           >
-            <Sparkles className="text-brand" />
-            {translate('createContractWithAI')}
+            {contract.ai ? <Sparkles className="text-brand" /> : <ScrollText />}
+            {contract.ai ? translate('createContractWithAI') : translate('createContract')}
             {contract.lock && <PlanTag lock={contract.lock} />}
           </Item>
         ),

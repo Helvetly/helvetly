@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import type { MenuKit } from '@/components/data/menus'
+import { useAI } from '@/lib/ai'
 import { setUrlQuery } from '@/lib/url-query'
 
 /** The drawer is open while the URL has `?import=1`, so Heidi and the "…" menu can open it too. */
@@ -32,6 +33,9 @@ export function ImportItem({
   children: ReactNode
 }) {
   const lock = useFeatureLock('ai_import')
+  const ai = useAI()
+  // AI import needs the installation's model: without one there is no item.
+  if (!ai.available) return null
   return (
     <Item disabled={Boolean(lock)} onSelect={onSelect}>
       <FileUp />

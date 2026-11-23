@@ -27,6 +27,8 @@ export type AuthConfig = {
   google_analytics_id?: string
   /** Where tokens and agents call the API (PUBLIC_API_URL, else the platform's origin; missing from an older API). */
   api_url?: string
+  /** The installation has an AI model (OPENAI_API_KEY); false hides every AI option (missing from an older API). */
+  ai_available?: boolean
 }
 export type User = { id: string; email: string; name: string; avatar_url: string | null }
 export type Session = {

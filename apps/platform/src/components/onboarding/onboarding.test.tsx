@@ -12,6 +12,7 @@ import type { Session } from '@/lib/api'
 import type { Billing } from '@/lib/billing'
 import type { HeidiUsage } from '@/lib/heidi'
 import type { SettingsInput } from '@/lib/invoices'
+import { queryKeys } from '@/lib/queries'
 import { aiConsent, aiNotice } from '@/mocks/ai-notice'
 import { legalFormsHandler, sampleSettings } from '@/test/invoice-api'
 
@@ -137,16 +138,24 @@ beforeEach(() => {
 })
 afterAll(() => server.close())
 
-const wrap = (children: ReactNode) =>
-  render(
-    <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-    >
+const wrap = (children: ReactNode) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // The installation's config as the app loads it at start: AI as the usage says.
+  client.setQueryData(queryKeys.authConfig, {
+    google: false,
+    email: true,
+    passkey: false,
+    dev_codes: false,
+    ai_available: usage.provider_available === true,
+  })
+  return render(
+    <QueryClientProvider client={client}>
       <TooltipProvider>
         <AIApprovalProvider>{children}</AIApprovalProvider>
       </TooltipProvider>
     </QueryClientProvider>,
   )
+}
 
 type User = ReturnType<typeof userEvent.setup>
 /** The company step's required fields (the country starts on Switzerland). */

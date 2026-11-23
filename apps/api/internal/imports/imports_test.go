@@ -258,7 +258,7 @@ func TestUploadGateAndPermissions(t *testing.T) {
 		t.Fatalf("member without documents: %d %s", w.Code, w.Body)
 	}
 	e.s.provider = nil
-	if w := e.as(e.sess).upload("clients", csv); w.Code != 409 || code(w) != "ai_not_configured" {
+	if w := e.as(e.sess).upload("clients", csv); w.Code != 503 || code(w) != "ai_unavailable" {
 		t.Fatalf("no model: %d %s", w.Code, w.Body)
 	}
 }

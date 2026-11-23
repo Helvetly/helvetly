@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse, type RequestHandler } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { ClientsPage } from '@/components/clients/clients-page'
 import { QuotesPage } from '@/components/quotes/quotes-page'
 import { aiConsent } from '@/mocks/ai-notice'
@@ -1265,36 +1266,6 @@ export const ContractFromExample: Story = {
   },
 }
 
-/** Without an AI model on the server, the two AI ways are off with the reason, and a template is chosen. */
-export const ContractWithoutAI: Story = {
-  parameters: quotes({}, [
-    http.get('/api/v1/heidi/usage', () =>
-      HttpResponse.json({
-        period: '2026-11',
-        tokens_used: 0,
-        tokens_included: null,
-        tokens_purchased: 0,
-        tokens_remaining: null,
-        provider_available: false,
-      }),
-    ),
-    ...contractHandlers,
-  ]),
-  play: async (context) => {
-    const drawer = await openWriter(context)
-    const ai = within(drawer).getByRole('button', { name: /Write it with AI/ })
-    await waitFor(() => expect(ai).toBeDisabled())
-    await expect(ai).toHaveTextContent("AI isn't available on this server")
-    await expect(
-      within(drawer).getByRole('button', { name: /Based on an example document/ }),
-    ).toBeDisabled()
-    await expect(within(drawer).getByRole('button', { name: /Fill a template/ })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-  },
-}
-
 /** The quote's details list its contracts: number, signature status, Open. */
 export const ContractSection: Story = {
   parameters: quotes({ id: 'quo_sent' }, contractHandlers),
@@ -1307,3 +1278,138 @@ export const ContractSection: Story = {
   },
 }
 export const ContractSectionDark = dark(ContractSection)
+
+const noAI = http.get('/api/v1/auth/config', () =>
+  HttpResponse.json({
+    google: true,
+    email: true,
+    passkey: true,
+    dev_codes: false,
+    ai_available: false,
+  }),
+)
+
+/** An installation without AI: the row offers "Create contract", which fills a template straight away. */
+export const ContractWithoutAI: Story = {
+  parameters: quotes({}, [noAI, ...contractHandlers]),
+  play: async (context) => {
+    await shows('Keller Holzbau AG')?.(context)
+    const body = page(context.canvasElement)
+    await userEvent.click(
+      body.getByRole('button', { name: 'Actions for Q-2026-004 · Keller Holzbau AG' }),
+    )
+    await expect(await body.findByRole('menuitem', { name: 'Create contract' })).toBeVisible()
+    await expect(body.queryByRole('menuitem', { name: 'Create contract with AI' })).toBeNull()
+    await userEvent.click(body.getByRole('menuitem', { name: 'Create contract' }))
+    const drawer = await body.findByRole('dialog', { name: /Create contract/ }, wait)
+    await expect(await within(drawer).findByLabelText('Templates', {}, wait)).toBeVisible()
+    await expect(within(drawer).queryByRole('button', { name: /Write it with AI/ })).toBeNull()
+  },
+}
+
+/** The automation pool is used up: the AI ways say so with the way to more, and Next waits for a template. */
+export const ContractAIBudgetUsedUp: Story = {
+  parameters: quotes({}, [
+    http.get('/api/v1/billing', () =>
+      HttpResponse.json({
+        data: billingFixture({
+          plan: 'pro',
+          status: 'active',
+          locked: false,
+          usage: [{ limit: 'ai_automation_tokens_per_month', used: 5_000_000, max: 5_000_000 }],
+        }),
+      }),
+    ),
+    ...contractHandlers,
+  ]),
+  play: async (context) => {
+    const drawer = await openWriter(context)
+    await expect(await within(drawer).findByText('No AI budget left', {}, wait)).toBeVisible()
+    const more = within(drawer).getByRole('link', { name: 'Buy more' })
+    await expect(more.getAttribute('href')).toMatch(
+      /^\/settings\/billing\/plans\/?\?plan=business$/,
+    )
+    await expect(within(drawer).getByRole('button', { name: 'Next' })).toBeDisabled()
+    await userEvent.click(within(drawer).getByRole('button', { name: /Fill a template/ }))
+    await expect(within(drawer).getByRole('button', { name: 'Next' })).toBeEnabled()
+  },
+}
+
+/** A failed write is a toast naming the action with the server's words; the drawer stays on its step. */
+export const ContractWriteFails: Story = {
+  parameters: quotes({}, [
+    http.post('/api/v1/quotes/quo_sent/contract-drafts', () =>
+      HttpResponse.json(
+        { error: { code: 'ai_unavailable', message: 'AI is paused for a moment.' } },
+        { status: 503 },
+      ),
+    ),
+    ...contractHandlers,
+  ]),
+  play: async (context) => {
+    const drawer = await openWriter(context)
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await toasted(context.canvasElement, 'Couldn’t write the contract')
+    await toasted(context.canvasElement, 'AI is paused for a moment.')
+    await expect(within(drawer).getByRole('button', { name: /Write it with AI/ })).toBeVisible()
+  },
+}
+
+/**
+ * A template without signing fields can still be sent for signature: the client and you sign on a page added at
+ * the end, or "Place fields myself" files it and opens the signatures' drawer.
+ */
+export const ContractTemplateSignatures: Story = {
+  parameters: quotes({}, [
+    http.post('/api/v1/templates/tpl_service/documents', async ({ request }) => {
+      const sent = (await request.json()) as {
+        delivery: { type: string; signers?: { name: string; email: string }[] }
+      }
+      if (sent.delivery.type !== 'signature' || sent.delivery.signers?.length !== 2)
+        return HttpResponse.json(
+          { error: { code: 'bad', message: 'Wrong body.' } },
+          { status: 400 },
+        )
+      return HttpResponse.json(
+        {
+          data: {
+            contract_number: '2026/C/003',
+            document: { id: 'doc_contract3', name: '2026-C-003.pdf' },
+            signature_request_id: 'sig_3',
+            emailed_to: null,
+          },
+        },
+        { status: 201 },
+      )
+    }),
+    ...contractHandlers,
+  ]),
+  play: async (context) => {
+    const writer = await openWriter(context)
+    await userEvent.click(within(writer).getByRole('button', { name: /Fill a template/ }))
+    await userEvent.click(within(writer).getByRole('button', { name: 'Next' }))
+    const drawer = await page(context.canvasElement).findByRole(
+      'dialog',
+      { name: /Create contract with AI/ },
+      wait,
+    )
+    const list = await within(drawer).findByLabelText('Templates', {}, wait)
+    await userEvent.click((await within(list).findAllByRole('button'))[0] as HTMLElement)
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await within(drawer).findByRole('textbox', { name: /Start of work/ }, wait)
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+
+    const sign = await within(drawer).findByRole('button', { name: /Send for signature/ }, wait)
+    await expect(sign).toBeEnabled()
+    await expect(sign).toHaveTextContent('Everyone signs online on a page added at the end.')
+    await userEvent.click(sign)
+    await expect(within(drawer).getByText('Signer 1')).toBeVisible()
+    await expect(within(drawer).getByText('Signer 2')).toBeVisible()
+    await expect(within(drawer).getByRole('switch', { name: /Place fields myself/ })).toBeVisible()
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await userEvent.click(
+      await within(drawer).findByRole('button', { name: 'Send for signature' }, wait),
+    )
+    await toasted(context.canvasElement, /2026\/C\/003/)
+  },
+}

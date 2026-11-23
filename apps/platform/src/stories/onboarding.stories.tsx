@@ -37,6 +37,15 @@ const meta = {
     msw: {
       handlers: [
         http.get('/api/v1/session', () => HttpResponse.json(session)),
+        http.get('/api/v1/auth/config', () =>
+          HttpResponse.json({
+            google: true,
+            email: true,
+            passkey: true,
+            dev_codes: false,
+            ai_available: false,
+          }),
+        ),
         http.get('/api/v1/heidi/usage', () => HttpResponse.json(usage(false))),
         http.patch('/api/v1/account', async ({ request }) => {
           const input = (await request.json()) as { name: string }
@@ -308,16 +317,19 @@ export const AllSteps: Story = {
     )
     await expect(done.getByText('Your company is ready to issue invoices')).toBeVisible()
     await Promise.all(
-      [/Add your first client/, /Create an invoice/, /Import your clients/, /Ask Heidi/].map(
-        (name) => waitFor(() => expect(done.getByRole('button', { name })).toBeEnabled()),
+      [/Add your first client/, /Create an invoice/].map((name) =>
+        waitFor(() => expect(done.getByRole('button', { name })).toBeEnabled()),
       ),
     )
+    // No AI on this server: neither the import nor Heidi is offered.
+    await expect(done.queryByRole('button', { name: /Import your clients/ })).toBeNull()
+    await expect(done.queryByRole('button', { name: /Ask Heidi/ })).toBeNull()
   },
 }
 
 export const AllStepsDark: Story = { ...AllSteps, parameters: { dark: true } }
 
-/** An IBAN still missing: a warning with its way out, and four neutral tiles (none looks selected). */
+/** An IBAN still missing: a warning with its way out, and neutral tiles (none looks selected). */
 const withoutIban = sampleSettings({ iban: null, is_complete: false, missing_fields: ['iban'] })
 export const MissingIban: Story = {
   parameters: {
@@ -339,17 +351,13 @@ export const MissingIban: Story = {
     await expect(warning.getByText('Still needed to issue invoices')).toBeVisible()
     await expect(warning.getByText('IBAN')).toBeVisible()
     await expect(warning.getByRole('button', { name: 'Finish in Settings' })).toBeVisible()
-    // At rest the four tiles look the same: the first one is not picked out.
-    const tiles = [
-      /Add your first client/,
-      /Create an invoice/,
-      /Import your clients/,
-      /Ask Heidi/,
-    ].map((name) => done.getByRole('button', { name }))
+    // At rest the tiles look the same: the first one is not picked out.
+    const tiles = [/Add your first client/, /Create an invoice/].map((name) =>
+      done.getByRole('button', { name }),
+    )
     await waitFor(() => expect(tiles[0]).toBeEnabled())
     const borders = tiles.map((tile) => getComputedStyle(tile).borderTopColor)
     await expect(new Set(borders).size).toBe(1)
-    await expect(done.getByText('⌘J')).toBeVisible()
   },
 }
 
@@ -569,6 +577,15 @@ export const SaveErrorDark: Story = {
 
 /** With an AI model on the server, "Bring your data" sits before the last step and reuses the import drawer. */
 const aiHandlers = (granted: boolean, extra: ReturnType<typeof http.get>[] = []) => [
+  http.get('/api/v1/auth/config', () =>
+    HttpResponse.json({
+      google: true,
+      email: true,
+      passkey: true,
+      dev_codes: false,
+      ai_available: true,
+    }),
+  ),
   http.get('/api/v1/heidi/usage', () => HttpResponse.json(usage(true, granted))),
   http.get('/api/v1/heidi/consent', () =>
     HttpResponse.json({ data: aiConsent(granted), notice: aiNotice }),
