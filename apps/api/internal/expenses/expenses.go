@@ -935,7 +935,9 @@ func (s *Service) categories(w http.ResponseWriter, r *http.Request, sess store.
 type categoryInput struct {
 	Name        *string `json:"name"`
 	AccountCode *string `json:"account_code"`
-	IsArchived  *bool   `json:"is_archived"`
+	// VATTreatment only suggests a line's rate, so booked categories may change it.
+	VATTreatment *string `json:"vat_treatment"`
+	IsArchived   *bool   `json:"is_archived"`
 }
 
 func (c *categoryInput) validate(create bool) error {
@@ -951,6 +953,9 @@ func (c *categoryInput) validate(create bool) error {
 	}
 	if (create && c.AccountCode == nil) || (c.AccountCode != nil && !accountCode(*c.AccountCode)) {
 		invalid["account_code"] = "Enter the account number: 3 to 10 digits, such as 6640."
+	}
+	if c.VATTreatment != nil && !slices.Contains([]string{"standard", "reduced", "lodging", "exempt", "none"}, *c.VATTreatment) {
+		invalid["vat_treatment"] = "Choose standard, reduced, accommodation, no VAT or exempt."
 	}
 	if len(invalid) > 0 {
 		return validationFailed(invalid)
@@ -984,7 +989,7 @@ func (s *Service) createCategory(w http.ResponseWriter, r *http.Request, sess st
 		return err
 	}
 	id := auth.NewID("exc")
-	if err := s.db.CreateExpenseCategory(r.Context(), sess.Workspace.ID, id, *in.Name, *in.AccountCode, s.now()); err != nil {
+	if err := s.db.CreateExpenseCategory(r.Context(), sess.Workspace.ID, id, *in.Name, *in.AccountCode, in.VATTreatment, s.now()); err != nil {
 		if errors.Is(err, store.ErrCategoryTaken) {
 			return errCategoryTaken
 		}
@@ -1013,7 +1018,7 @@ func (s *Service) updateCategory(w http.ResponseWriter, r *http.Request, sess st
 	var found bool
 	err := s.db.Tx(r.Context(), func(q store.Q) error {
 		var err error
-		found, err = q.UpdateExpenseCategory(r.Context(), sess.Workspace.ID, r.PathValue("id"), in.Name, in.AccountCode, in.IsArchived, s.now())
+		found, err = q.UpdateExpenseCategory(r.Context(), sess.Workspace.ID, r.PathValue("id"), in.Name, in.AccountCode, in.VATTreatment, in.IsArchived, s.now())
 		if err != nil || !found || in.Name == nil {
 			return err
 		}
