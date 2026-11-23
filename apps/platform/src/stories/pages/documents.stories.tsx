@@ -1,6 +1,6 @@
 import { createTranslators } from '@helvetly/i18n'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { expect, fireEvent, spyOn, userEvent, waitFor, within } from 'storybook/test'
 
 import { DocumentsPage } from '@/components/documents/documents-page'
@@ -1272,5 +1272,42 @@ export const FileMenu: Story = {
         ].join(', '),
       ),
     )
+  },
+}
+
+/**
+ * A file's "Linked to" opens the signature request's drawer on top of the preview, sliding in, without
+ * leaving the page; closing it uncovers the preview again.
+ */
+export const LinkedRecordStacks: Story = {
+  parameters: pageParameters('/documents', { file: 'doc_1' }, [
+    http.get('/api/v1/documents/doc_1', () =>
+      HttpResponse.json({
+        data: {
+          ...sampleFiles[0],
+          links: [{ type: 'signature', id: 'sig_1', label: 'Signed · Mandate', retains: false }],
+        },
+      }),
+    ),
+    http.get('/api/v1/signatures/sig_1', async () => {
+      await delay('infinite')
+    }),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const link = await body.findByRole('link', { name: 'Signed · Mandate' }, { timeout: 8000 })
+    const path = window.location.pathname
+    await userEvent.click(link)
+    const request = await body.findByRole('dialog', { name: 'Loading…' })
+    await expect(request).toHaveAttribute('data-state', 'open')
+    await expect(request.className).toContain('slide-in-from-right')
+    await expect(window.location.pathname).toBe(path)
+    await expect(new URLSearchParams(window.location.search).getAll('drawer')).toEqual([
+      'signature:sig_1',
+    ])
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('dialog', { name: 'Loading…' })).toBeNull())
+    await expect(body.getByRole('link', { name: 'Signed · Mandate' })).toBeVisible()
   },
 }

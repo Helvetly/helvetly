@@ -1,3 +1,4 @@
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -99,6 +100,18 @@ vi.mock('@/components/signatures/request-drawer', () => ({
   ),
 }))
 vi.mock('@/components/documents/preview', () => ({ Preview: () => null }))
+// The real Sheet: Escape and the slide-in come from it, as in every stacked drawer.
+vi.mock('@/components/scheduling/session-drawer', () => ({
+  SessionDrawer: ({ target, onClose }: { target: { id: string }; onClose: () => void }) => (
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent>
+        <SheetTitle>{`Session ${target.id}`}</SheetTitle>
+        <SheetDescription>Session</SheetDescription>
+      </SheetContent>
+    </Sheet>
+  ),
+}))
+vi.mock('@/lib/timezone', () => ({ getWorkspaceTimezone: () => 'Europe/Zurich' }))
 vi.mock('@/components/expenses/expense-detail', () => ({ ExpenseDetail: () => null }))
 vi.mock('@/lib/expenses', () => ({
   canManageExpenses: () => true,
@@ -263,5 +276,39 @@ describe('RecordDrawers', () => {
     page.addEventListener('click', (event) => event.preventDefault())
     await userEvent.click(page)
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('opens a ?open= deep link on load', () => {
+    pathname.current = '/'
+    window.history.replaceState(null, '', '/?open=signature:sig_1')
+    render(
+      <TooltipProvider>
+        <RecordDrawers>page</RecordDrawers>
+      </TooltipProvider>,
+    )
+    expect(shown()).toEqual(['Signature sig_1'])
+  })
+
+  it('slides a drawer in on top and Escape closes only the top one', async () => {
+    pathname.current = '/'
+    render(
+      <RecordDrawers>
+        <RecordLink href="/invoices?id=inv_1">Invoice</RecordLink>
+        <RecordLink href="/scheduling?session=occ_1">Session</RecordLink>
+      </RecordDrawers>,
+    )
+    await userEvent.click(screen.getByText('Invoice'))
+    await userEvent.click(screen.getByText('Session'))
+    const session = screen.getByRole('dialog', { name: 'Session occ_1' })
+    expect(session).toHaveAttribute('data-state', 'open')
+    expect(session.className).toContain('slide-in-from-right')
+    expect(new URLSearchParams(window.location.search).getAll('drawer')).toEqual([
+      'invoice:inv_1',
+      'session:occ_1',
+    ])
+
+    await userEvent.keyboard('{Escape}')
+    expect(shown()).toEqual(['Invoice inv_1'])
+    expect(push).not.toHaveBeenCalled()
   })
 })
