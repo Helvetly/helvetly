@@ -260,27 +260,35 @@ func (r *renderer) header() float64 {
 	return y + 9
 }
 
-// parties: "between" the seller (contractor) "and" the client, side by side.
+// parties: two equal columns, "between" the seller (contractor) "and" the client. The connective, name and role sit
+// on shared baselines, so differing address lines only change where each column ends.
 func (r *renderer) parties(y float64) float64 {
-	r.set("", 9)
-	r.cell(left, y, contentW, lineH, r.l.Between, "L")
-	y += lineH + 1
 	half := contentW/2 - 4
-	block := func(x float64, p store.Party, role string) float64 {
-		yy := y
-		for i, s := range partyLines(p) {
-			r.set(map[bool]string{true: "B", false: ""}[i == 0], 9.5)
+	column := func(x float64, connective string, p store.Party, role string) float64 {
+		lines := partyLines(p)
+		name, rest := "", lines
+		if len(lines) > 0 {
+			name, rest = lines[0], lines[1:]
+		}
+		r.set("", 8.5)
+		r.pdf.SetTextColor(90, 90, 90)
+		r.cell(x, y, half, lineH, connective, "L")
+		r.pdf.SetTextColor(0, 0, 0)
+		r.set("B", 9.5)
+		r.cell(x, y+lineH+1, half, lineH, name, "L")
+		r.set("", 8.5)
+		r.pdf.SetTextColor(90, 90, 90)
+		r.cell(x, y+2*lineH+1, half, lineH, role, "L")
+		r.pdf.SetTextColor(0, 0, 0)
+		yy := y + 3*lineH + 2
+		r.set("", 9.5)
+		for _, s := range rest {
 			r.cell(x, yy, half, lineH, s, "L")
 			yy += lineH
 		}
-		r.set("", 8.5)
-		r.cell(x, yy, half, lineH, "("+role+")", "L")
-		return yy + lineH
+		return yy
 	}
-	end := max(block(left, r.d.Seller, r.l.Seller), block(left+contentW/2+4, r.d.Client, r.l.Client))
-	r.set("", 9)
-	r.cell(left+contentW/2-4, y, 8, lineH, r.l.And, "C")
-	return end + 2
+	return max(column(left, r.l.Between, r.d.Seller, r.l.Seller), column(left+contentW/2+4, r.l.And, r.d.Client, r.l.Client)) + 2
 }
 
 const descW, qtyW, priceW, amountW = 92.0, 20.0, 29.0, 29.0
@@ -333,11 +341,11 @@ func (r *renderer) services(y float64) float64 {
 	totals := [][2]string{{r.l.Subtotal, d.Subtotal}, {r.l.Discount, d.Discount}, {r.l.VAT, d.VAT}, {r.l.Total, d.Total}}
 	totals = slices.DeleteFunc(totals, func(t [2]string) bool { return t[1] == "" })
 	y = r.room(y+1, float64(len(totals))*5+2)
-	r.pdf.Line(right-80, y, right, y)
+	r.pdf.Line(left+descW, y, right, y) // the totals start under the Qty column
 	y += 1.5
 	for i, t := range totals {
 		r.set(map[bool]string{true: "B", false: ""}[i == len(totals)-1], 9.5)
-		r.cell(right-80, y, 45, 5, t[0], "L")
+		r.cell(left+descW, y, right-35-left-descW, 5, t[0], "L")
 		r.cell(right-35, y, 35, 5, t[1], "R")
 		y += 5
 	}
