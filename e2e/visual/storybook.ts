@@ -14,13 +14,26 @@ const affected: unknown = existsSync(affectedFile)
   ? JSON.parse(readFileSync(affectedFile, 'utf8'))
   : undefined
 
-/** The light stories of `app` this run audits. */
+// CI's shard of the suite, `<current>/<total>` (the whole suite without it). Playwright's own --shard cuts the
+// test list into contiguous runs, so a stretch of slow stories (one page's many states) lands in one shard;
+// dealing the cases round-robin spreads them over every shard.
+const shardSpec = process.env.HELVETLY_VISUAL_SHARD || '1/1'
+const [shardIndex = 0, shardCount = 0] = shardSpec.split('/').map(Number)
+if (!(shardCount >= 1 && shardIndex >= 1 && shardIndex <= shardCount))
+  throw new Error(`HELVETLY_VISUAL_SHARD must be <current>/<total>, not ${shardSpec}`)
+
+/** This shard's share of `cases`: every `shardCount`-th, starting at `shardIndex`. */
+export function shard<T>(cases: T[]) {
+  return cases.filter((_, index) => index % shardCount === shardIndex - 1)
+}
+
+/** The light stories of `app` this run audits (this shard's share). */
 export function stories(app: App) {
   const only = typeof affected === 'object' && affected ? Reflect.get(affected, app) : undefined
   const file = resolve(import.meta.dirname, `../../apps/${app}/storybook-static/index.json`)
   const index: unknown = JSON.parse(readFileSync(file, 'utf8'))
   const entries = typeof index === 'object' && index ? Reflect.get(index, 'entries') : undefined
-  return Object.values(typeof entries === 'object' && entries ? entries : {}).flatMap(
+  const ids = Object.values(typeof entries === 'object' && entries ? entries : {}).flatMap(
     (entry: unknown) => {
       const id = typeof entry === 'object' && entry ? Reflect.get(entry, 'id') : undefined
       const type = typeof entry === 'object' && entry ? Reflect.get(entry, 'type') : undefined
@@ -33,6 +46,7 @@ export function stories(app: App) {
         : []
     },
   )
+  return shard(ids)
 }
 
 // The sample data is relative to "now"; a fixed clock keeps dates, ages and greetings stable.

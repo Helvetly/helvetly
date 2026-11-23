@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { open, sizes, type App } from './storybook'
+import { open, shard, sizes, type App } from './storybook'
 
 // Whole screens: desktop and phone, light and dark. Design-system stories: the story root, light and dark.
 const screens: [App, string][] = [
@@ -43,7 +43,7 @@ const components: [App, string][] = [
 ]
 const themes = ['light', 'dark'] as const
 
-for (const [app, id] of screens) {
+for (const [app, id] of shard(screens)) {
   for (const [size, viewport] of Object.entries(sizes)) {
     for (const theme of themes) {
       test(`${id} ${size} ${theme}`, async ({ page }) => {
@@ -55,7 +55,7 @@ for (const [app, id] of screens) {
   }
 }
 
-for (const [app, id] of components) {
+for (const [app, id] of shard(components)) {
   for (const theme of themes) {
     test(`${id} ${theme}`, async ({ page }) => {
       await page.setViewportSize(sizes.desktop)

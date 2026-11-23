@@ -9,6 +9,6 @@ image="mcr.microsoft.com/playwright:v$(node -p "require('$root/e2e/node_modules/
 tty=-i
 [[ -t 1 ]] && tty=-it
 exec docker run --rm "$tty" --platform linux/amd64 --ipc=host \
-  --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI="${CI:-}" \
+  --user "$(id -u):$(id -g)" -e HOME=/tmp -e CI="${CI:-}" -e HELVETLY_VISUAL_SHARD="${HELVETLY_VISUAL_SHARD:-}" \
   -v "$root:$root" -w "$root/e2e/visual" "$image" \
   node "$root/e2e/node_modules/@playwright/test/cli.js" test "$@"

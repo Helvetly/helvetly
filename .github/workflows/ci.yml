@@ -340,7 +340,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ['1/8', '2/8', '3/8', '4/8', '5/8', '6/8', '7/8', '8/8'] # screenshots and the focus audit of every story
+        shard: ['1/10', '2/10', '3/10', '4/10', '5/10', '6/10', '7/10', '8/10', '9/10', '10/10'] # screenshots and the focus audit of every story
     steps:
       - *checkout
       - *pnpm
@@ -348,9 +348,10 @@ jobs:
       - *install
       - run: gh run download '${{ github.run_id }}' --name 'storybook-${{ github.sha }}' # gh: see the coverage job
         env: *gh-download-env
-      - run: pnpm test:visual --shard=${{ matrix.shard }} # Playwright inside the pinned mcr.microsoft.com/playwright image
+      - run: pnpm test:visual # Playwright inside the pinned mcr.microsoft.com/playwright image
         env:
           CI: 'true'
+          HELVETLY_VISUAL_SHARD: ${{ matrix.shard }} # stories dealt round-robin (e2e/visual/storybook.ts), not Playwright's contiguous --shard
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
