@@ -10,6 +10,7 @@ import {
 } from '@helvetly/ui/components/context-menu'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
+  Check,
   Clock,
   FileSignature,
   LayoutTemplate,
@@ -49,8 +50,8 @@ export type TreeActions = {
   trash: (folder: Folder) => void
   /** Creates a top-level folder by name (the one-click suggestions). */
   create: (name: string) => void
-  /** Shows only files of one kind; the same kind again clears it. */
-  kind: (kind: Kind) => void
+  /** Shows only files of these kinds (any of them); none shows every kind. */
+  kinds: (kinds: Kind[]) => void
   star: (folder: Folder) => void
 }
 
@@ -66,7 +67,7 @@ export function FolderTree({
   current,
   section,
   trashCount,
-  kind,
+  kinds,
   pinned,
   actions,
 }: {
@@ -74,8 +75,8 @@ export function FolderTree({
   current: string | null
   section: Section
   trashCount: number
-  /** The kind filter when exactly one kind is on. */
-  kind: Kind | null
+  /** The kind filter: the types toggled on (the Filters popover's Kind and its chip). */
+  kinds: readonly Kind[]
   pinned: Pinned
   actions: TreeActions
 }) {
@@ -114,7 +115,8 @@ export function FolderTree({
       </TreeNode>
     ))
 
-  const rootOpen = section === 'files' && current === null && kind === null
+  const rootOpen = section === 'files' && current === null && kinds.length === 0
+  const picked = section === 'files' ? kinds : []
   return (
     <div className="flex min-h-full flex-col gap-5 p-3">
       <nav aria-label={translate('folders')} className="grid content-start gap-0.5">
@@ -230,23 +232,55 @@ export function FolderTree({
       </nav>
 
       <nav aria-label={translate('fileTypes')} className="grid content-start gap-0.5">
-        <Label>{translate('types')}</Label>
-        {TYPES.map((type) => (
-          <Pinnable key={type} pinned={pinned} tab={{ type: 'kind', kind: type }}>
-            <button
-              type="button"
-              aria-current={section === 'files' && kind === type ? 'page' : undefined}
-              onClick={() => actions.kind(type)}
-              className={cn(row, 'pl-1.5')}
-            >
-              <KindIcon kind={type} className="size-6 rounded-md" />
-              <span className="flex-1 truncate">
-                {KIND_LABELS[type]}
-                {translate('s')}
-              </span>
-            </button>
-          </Pinnable>
-        ))}
+        <Label
+          action={
+            picked.length > 0 && (
+              <button
+                type="button"
+                onClick={() => actions.kinds([])}
+                className="cursor-pointer rounded-sm text-caption text-muted-foreground underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                {translate('clear')}
+              </button>
+            )
+          }
+        >
+          {translate('types')}
+        </Label>
+        {TYPES.map((type) => {
+          const on = picked.includes(type)
+          return (
+            <Pinnable key={type} pinned={pinned} tab={{ type: 'kind', kind: type }}>
+              {/* A toggle: several types combine (any of them), the same state as the Kind filter. */}
+              <button
+                type="button"
+                aria-pressed={on}
+                data-current={on || undefined}
+                onClick={() =>
+                  actions.kinds(on ? picked.filter((kind) => kind !== type) : [...picked, type])
+                }
+                className={cn(row, 'pl-1.5')}
+              >
+                <KindIcon kind={type} className="size-6 rounded-md" />
+                <span className="flex-1 truncate">
+                  {KIND_LABELS[type]}
+                  {translate('s')}
+                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    'flex size-4 shrink-0 items-center justify-center rounded-sm border transition-colors',
+                    on
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-foreground/20 opacity-0 group-hover/row:opacity-100 group-focus-visible/row:opacity-100',
+                  )}
+                >
+                  {on && <Check className="size-3 stroke-[2.5]" />}
+                </span>
+              </button>
+            </Pinnable>
+          )
+        })}
       </nav>
 
       <div className="mt-auto grid gap-0.5">
