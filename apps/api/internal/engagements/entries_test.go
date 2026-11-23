@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/invoicecalc"
 	"helvetly.com/api/internal/invoices"
 	"helvetly.com/api/internal/store"
@@ -302,5 +303,33 @@ func TestLinePriceByVATMode(t *testing.T) {
 		if got := linePrice(c.e, 10000, c.mode); got != c.want {
 			t.Errorf("%s/%s: %d, want %d", c.e.PriceBasis, c.mode, got, c.want)
 		}
+	}
+}
+
+// TestAddEntryForScheduling: a counted session's entry lands in its period; a date outside every open period is
+// refused (engagement_period); removing an entry already gone is fine.
+func TestAddEntryForScheduling(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	var created one
+	e.do(b, "POST", "/api/v1/engagements", input(e.client(b), nil), http.StatusCreated, &created)
+	ws := store.Workspace{ID: b.workspace, Timezone: "Europe/Zurich"}
+	ctx := context.Background()
+	add := func(date string) error {
+		return e.st.Tx(ctx, func(q store.Q) error {
+			return AddEntry(ctx, q, ws, created.Data.ID, store.EngagementEntry{ID: auth.NewID("ent"), Date: date, Quantity: 1500}, fixedNow)
+		})
+	}
+	if err := add("2026-11-16"); err != nil {
+		t.Fatal(err)
+	}
+	for _, date := range []string{"2026-10-31", "2027-01-05"} {
+		if err := add(date); err == nil || !strings.Contains(err.Error(), "engagement_period") {
+			t.Fatalf("%s: %v", date, err)
+		}
+	}
+	err := e.st.Tx(ctx, func(q store.Q) error { return RemoveEntry(ctx, q, created.Data.ID, "ent_gone") })
+	if err != nil {
+		t.Fatal(err)
 	}
 }

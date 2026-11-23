@@ -3,7 +3,7 @@
   "info": {
     "title": "Helvetly API",
     "version": "1.0.0",
-    "description": "The public part of Helvetly's API: clients, invoices, quotes, instalment plans, payments, expenses, documents, engagements, products, the books (periods, audit log, VAT return, ledger) and the key figures (reports) of one workspace. Authenticate with a personal API token (Settings → API & MCP): `Authorization: Bearer hvt_…`. A token's scopes name what it may do per resource, the operation's tag in lower case: `read:invoices` calls the GET operations tagged Invoices, `write:invoices` also the others; `read:*` and `write:*` cover every resource, and write implies read. Anything else answers 403 token_scope. The token acts as its person with their live role and permissions, in the token's workspace, and works only while that person's access includes API & MCP (else 403 forbidden). Amounts are exact decimal strings. Errors are `{\"error\": {\"code\", \"message\", \"details\"}}`. 600 requests a minute per token. The same operations are tools on the MCP server at /api/mcp.",
+    "description": "The public part of Helvetly's API: clients, invoices, quotes, instalment plans, payments, expenses, documents, engagements, scheduled sessions, products, the books (periods, audit log, VAT return, ledger) and the key figures (reports) of one workspace. Authenticate with a personal API token (Settings → API & MCP): `Authorization: Bearer hvt_…`. A token's scopes name what it may do per resource, the operation's tag in lower case: `read:invoices` calls the GET operations tagged Invoices, `write:invoices` also the others; `read:*` and `write:*` cover every resource, and write implies read. Anything else answers 403 token_scope. The token acts as its person with their live role and permissions, in the token's workspace, and works only while that person's access includes API & MCP (else 403 forbidden). Amounts are exact decimal strings. Errors are `{\"error\": {\"code\", \"message\", \"details\"}}`. 600 requests a minute per token. The same operations are tools on the MCP server at /api/mcp.",
     "contact": {
       "name": "Helvetly",
       "url": "https://www.helvetly.com"
@@ -48,6 +48,10 @@
     {
       "name": "Engagements",
       "description": "Committed work per client: one-off or recurring periods, a delivery log, and invoice drafts per period."
+    },
+    {
+      "name": "Scheduling",
+      "description": "Sessions with clients: one-off and recurring, attendance and the requests clients send from the portal."
     },
     {
       "name": "Products",
@@ -4554,6 +4558,428 @@
           }
         },
         "x-helvetly-write": true
+      }
+    },
+    "/api/v1/scheduling/busy": {
+      "get": {
+        "operationId": "list_busy_times",
+        "tags": ["Scheduling"],
+        "summary": "List hosts' busy times",
+        "description": "Busy times imported from the hosts' own calendars, without titles, in [from, to) (at most 100 days).",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Start (RFC 3339).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "End, exclusive.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "host",
+            "in": "query",
+            "required": false,
+            "description": "me, all (default) or member ids separated by commas.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulingBusyList"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/scheduling/event-types": {
+      "get": {
+        "operationId": "list_session_types",
+        "tags": ["Scheduling"],
+        "summary": "List event types",
+        "description": "The kinds of session clients may book, by name; archived=true adds the archived ones.",
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "required": false,
+            "description": "true: archived ones too.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulingEventTypeList"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/scheduling/events": {
+      "post": {
+        "operationId": "create_session",
+        "tags": ["Scheduling"],
+        "summary": "Schedule a session or a series",
+        "description": "Creates a one-off session or a series (weekly or monthly) and its sessions up to 400 days ahead. Counts once in the plan's monthly scheduled sessions (402 limit_reached). Answers the event, its first 20 sessions and conflicts as warnings. Not idempotent.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulingEventInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulingEventCreated"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
+    "/api/v1/scheduling/occurrences": {
+      "get": {
+        "operationId": "list_sessions",
+        "tags": ["Scheduling"],
+        "summary": "List scheduled sessions",
+        "description": "Sessions whose start is in [from, to) (at most 100 days; default today and the next 31 days), by start. Filter by host, client, engagement or status; to_mark=true lists past sessions still open (not marked attended or missed).",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Start of the range (RFC 3339).",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "description": "End of the range, exclusive.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "host",
+            "in": "query",
+            "required": false,
+            "description": "me, all (default) or member ids separated by commas.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": false,
+            "description": "Only this client's.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "engagement_id",
+            "in": "query",
+            "required": false,
+            "description": "Only this engagement's.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Statuses separated by commas.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to_mark",
+            "in": "query",
+            "required": false,
+            "description": "true: past open sessions to mark.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulingOccurrenceList"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/scheduling/occurrences/{id}": {
+      "get": {
+        "operationId": "get_session",
+        "tags": ["Scheduling"],
+        "summary": "Read a session",
+        "description": "One session with its open request, engagement entries, invoice and the conflicts of its time.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The session's id (soc_…).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulingOccurrenceResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "update_session",
+        "tags": ["Scheduling"],
+        "summary": "Change a session or its series",
+        "description": "Partial change. For a series, scope says how far it reaches: this session (it becomes an exception; a new time makes it rescheduled), this and the following (the series is split into a new event; the sessions keep their ids), or all upcoming sessions (changed ones keep their own time; details.kept counts them; a rule change cancels slots that no longer exist). Closed sessions refuse: 409 occurrence_closed. Conflicts come back as warnings.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The session's id (soc_…).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulingOccurrencePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulingOccurrencePatched"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
+    "/api/v1/scheduling/occurrences/{id}/attendance": {
+      "post": {
+        "operationId": "set_session_attendance",
+        "tags": ["Scheduling"],
+        "summary": "Mark attendance",
+        "description": "attended or no_show (from the start on; 409 not_started before), or scheduled to undo. A session that counts logs an engagement entry, which needs write:engagements; an entry already invoiced cannot be removed (409 entry_invoiced). waive is for owners and admins.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The session's id (soc_…).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulingAttendanceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulingOccurrenceResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
+    "/api/v1/scheduling/occurrences/{id}/cancel": {
+      "post": {
+        "operationId": "cancel_session",
+        "tags": ["Scheduling"],
+        "summary": "Cancel a session",
+        "description": "Cancels the session on time or late (default from the cancellation policy: after the deadline it is late). A late cancellation counts on its engagement when the settings say so. scope following or all also cancels the series' later sessions (on time) and ends the series.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The session's id (soc_…).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchedulingCancelInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulingOccurrenceResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
+    "/api/v1/scheduling/requests": {
+      "get": {
+        "operationId": "list_session_requests",
+        "tags": ["Scheduling"],
+        "summary": "List clients' requests",
+        "description": "Clients' cancel, reschedule and booking requests, oldest first, with their session. Deciding on them is done in the app.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Statuses separated by commas (default pending,proposed).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "host",
+            "in": "query",
+            "required": false,
+            "description": "me, all (default) or member ids separated by commas.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulingRequestList"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/api/v1/ledger": {
@@ -13451,6 +13877,1204 @@
           }
         },
         "required": ["status", "folder", "created_folder", "tags"]
+      },
+      "SchedulingRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"],
+        "description": "A record a session points at, by id and name."
+      },
+      "SchedulingEngagementRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "unit": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["id", "number", "title", "unit"],
+        "description": "The engagement (package) a session counts on."
+      },
+      "SchedulingMeeting": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["manual", "google_meet", "teams"]
+          },
+          "url": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["provider", "url"],
+        "description": "An online session's meeting: a link typed in, or one made through the host's Google or Microsoft calendar."
+      },
+      "SchedulingSetPos": {
+        "type": "object",
+        "properties": {
+          "pos": {
+            "type": "integer",
+            "enum": [1, 2, 3, 4, -1]
+          },
+          "day": {
+            "type": "string",
+            "enum": ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+          }
+        },
+        "required": ["pos", "day"],
+        "description": "The Nth weekday of the month (-1: the last)."
+      },
+      "SchedulingRecurrence": {
+        "type": "object",
+        "properties": {
+          "freq": {
+            "type": "string",
+            "enum": ["weekly", "monthly"]
+          },
+          "interval": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12,
+            "description": "Every N weeks or months."
+          },
+          "by_day": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+            },
+            "description": "Weekly: the weekdays (default the first start's)."
+          },
+          "by_month_day": {
+            "type": "integer",
+            "description": "Monthly: 1–31 or -1 (the last day); months without that day are skipped."
+          },
+          "by_set_pos": {
+            "$ref": "#/components/schemas/SchedulingSetPos"
+          },
+          "until": {
+            "type": "string",
+            "format": "date",
+            "description": "The last date (inclusive) in the series' zone; not with count."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 520,
+            "description": "How many sessions; holidays skipped do not count."
+          },
+          "rrule": {
+            "type": "string",
+            "readOnly": true,
+            "description": "The RFC 5545 RRULE it stands for (read-only)."
+          }
+        },
+        "required": ["freq", "interval", "rrule"],
+        "description": "A series' rule; neither until nor count = no end."
+      },
+      "SchedulingEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "client": {
+            "$ref": "#/components/schemas/SchedulingRef"
+          },
+          "engagement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingEngagementRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_type_id": {
+            "type": ["string", "null"]
+          },
+          "host": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Internal, never shown to the client."
+          },
+          "client_note": {
+            "type": ["string", "null"]
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["online", "live"]
+          },
+          "meeting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingMeeting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "type": ["string", "null"]
+          },
+          "time_zone": {
+            "type": "string"
+          },
+          "starts_local": {
+            "type": "string",
+            "description": "The first start, wall clock in time_zone (\"2026-12-01T09:00\")."
+          },
+          "duration_minutes": {
+            "type": "integer"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingRecurrence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skip_holidays": {
+            "type": "boolean"
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "units_per_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Quantity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "type": ["string", "null"]
+          },
+          "sequence": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "client",
+          "engagement",
+          "event_type_id",
+          "host",
+          "title",
+          "description",
+          "client_note",
+          "mode",
+          "meeting",
+          "location",
+          "time_zone",
+          "starts_local",
+          "duration_minutes",
+          "recurrence",
+          "skip_holidays",
+          "attendees",
+          "units_per_session",
+          "unit_price",
+          "currency",
+          "sequence",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "A one-off session or a series. Its sessions (occurrences) are stored rows, each with its own status. host is null when the host left the workspace."
+      },
+      "SchedulingWaived": {
+        "type": "object",
+        "properties": {
+          "by": {
+            "$ref": "#/components/schemas/SchedulingRef"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["by", "at", "reason"],
+        "description": "Who waived a no-show or late cancellation, so it does not count."
+      },
+      "SchedulingInvoiceRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "number", "status"],
+        "description": "The invoice of a session billed without an engagement."
+      },
+      "SchedulingConflict": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["event", "busy", "outside_hours", "holiday"]
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "occurrence_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["kind", "starts_at", "ends_at"],
+        "description": "A warning about a session's time. Staff writes never fail on one. A busy time has no title."
+      },
+      "SchedulingRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "occurrence_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["cancel", "reschedule", "booking"]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "proposed",
+              "approved",
+              "declined",
+              "accepted",
+              "withdrawn",
+              "expired"
+            ]
+          },
+          "late": {
+            "type": "boolean",
+            "description": "Fixed when the client asked, from the policy then."
+          },
+          "proposed_times": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "staff_proposal": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "note": {
+            "type": ["string", "null"]
+          },
+          "reason": {
+            "type": ["string", "null"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decided_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "occurrence_id",
+          "kind",
+          "status",
+          "late",
+          "proposed_times",
+          "staff_proposal",
+          "note",
+          "reason",
+          "created_at",
+          "decided_at"
+        ],
+        "description": "A client's request about a session."
+      },
+      "SchedulingOccurrence": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "original_start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The slot in the rule (RECURRENCE-ID); never changes."
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "scheduled",
+              "rescheduled",
+              "attended",
+              "no_show",
+              "cancelled_on_time",
+              "cancelled_late",
+              "declined"
+            ],
+            "description": "requested, scheduled and rescheduled are open: they hold the slot, get reminders and count for conflicts."
+          },
+          "late": {
+            "type": "boolean"
+          },
+          "counts": {
+            "type": "boolean",
+            "description": "Uses a session: attended, or a no-show or late cancellation that counts and is not waived."
+          },
+          "waived": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingWaived"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "location": {
+            "type": ["string", "null"]
+          },
+          "meeting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingMeeting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "host": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "client": {
+            "$ref": "#/components/schemas/SchedulingRef"
+          },
+          "engagement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingEngagementRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_exception": {
+            "type": "boolean"
+          },
+          "sequence": {
+            "type": "integer"
+          },
+          "request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entry_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The engagement entries it added."
+          },
+          "invoice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingInvoiceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchedulingConflict"
+            },
+            "description": "Only on the single read and on writes."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "event_id",
+          "original_start",
+          "starts_at",
+          "ends_at",
+          "status",
+          "late",
+          "counts",
+          "waived",
+          "title",
+          "location",
+          "meeting",
+          "host",
+          "client",
+          "engagement",
+          "is_exception",
+          "sequence",
+          "request",
+          "entry_ids",
+          "invoice",
+          "updated_at"
+        ],
+        "description": "One session, with the event's values where it has none of its own."
+      },
+      "SchedulingOccurrenceSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "scheduled",
+              "rescheduled",
+              "attended",
+              "no_show",
+              "cancelled_on_time",
+              "cancelled_late",
+              "declined"
+            ],
+            "description": "requested, scheduled and rescheduled are open: they hold the slot, get reminders and count for conflicts."
+          },
+          "client": {
+            "$ref": "#/components/schemas/SchedulingRef"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["id", "title", "starts_at", "ends_at", "status", "client", "host"],
+        "description": "The session a request is about."
+      },
+      "SchedulingRequestItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "occurrence_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["cancel", "reschedule", "booking"]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "proposed",
+              "approved",
+              "declined",
+              "accepted",
+              "withdrawn",
+              "expired"
+            ]
+          },
+          "late": {
+            "type": "boolean",
+            "description": "Fixed when the client asked, from the policy then."
+          },
+          "proposed_times": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "staff_proposal": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "note": {
+            "type": ["string", "null"]
+          },
+          "reason": {
+            "type": ["string", "null"]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decided_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "occurrence": {
+            "$ref": "#/components/schemas/SchedulingOccurrenceSummary"
+          }
+        },
+        "required": [
+          "id",
+          "occurrence_id",
+          "kind",
+          "status",
+          "late",
+          "proposed_times",
+          "staff_proposal",
+          "note",
+          "reason",
+          "created_at",
+          "decided_at",
+          "occurrence"
+        ],
+        "description": "A request with its session."
+      },
+      "SchedulingBusyBlock": {
+        "type": "object",
+        "properties": {
+          "host_id": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["host_id", "starts_at", "ends_at"],
+        "description": "A host's busy time from their own calendar, without a title."
+      },
+      "SchedulingEventType": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "duration_minutes": {
+            "type": "integer"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["online", "live"]
+          },
+          "meeting_provider": {
+            "type": ["string", "null"],
+            "enum": ["manual", "google_meet", "teams", null]
+          },
+          "location": {
+            "type": ["string", "null"]
+          },
+          "product_id": {
+            "type": ["string", "null"]
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "type": ["string", "null"]
+          },
+          "host_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Empty: every host with availability."
+          },
+          "buffer_before": {
+            "type": "integer"
+          },
+          "buffer_after": {
+            "type": "integer"
+          },
+          "min_notice_minutes": {
+            "type": "integer"
+          },
+          "max_horizon_days": {
+            "type": "integer"
+          },
+          "slot_step_minutes": {
+            "type": ["integer", "null"]
+          },
+          "bookable": {
+            "type": "boolean"
+          },
+          "color": {
+            "type": ["string", "null"]
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "duration_minutes",
+          "mode",
+          "meeting_provider",
+          "location",
+          "product_id",
+          "unit_price",
+          "currency",
+          "host_ids",
+          "buffer_before",
+          "buffer_after",
+          "min_notice_minutes",
+          "max_horizon_days",
+          "slot_step_minutes",
+          "bookable",
+          "color",
+          "archived_at",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "A kind of session clients may book."
+      },
+      "SchedulingEventInput": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "description": "Required on create: a live client."
+          },
+          "engagement_id": {
+            "type": ["string", "null"],
+            "description": "An active or scheduled engagement of that client."
+          },
+          "event_type_id": {
+            "type": ["string", "null"],
+            "description": "Fills title, duration, mode, meeting, location and price."
+          },
+          "host_id": {
+            "type": "string",
+            "description": "A member; default the caller."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Default the event type's or engagement's title."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "maxLength": 4000
+          },
+          "client_note": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["online", "live"]
+          },
+          "meeting": {
+            "type": ["object", "null"],
+            "properties": {
+              "provider": {
+                "type": "string",
+                "enum": ["manual", "google_meet", "teams"]
+              },
+              "url": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["provider"],
+            "description": "Online only. google_meet and teams need the host's calendar connection (422 meeting_provider)."
+          },
+          "location": {
+            "type": ["string", "null"],
+            "maxLength": 500
+          },
+          "time_zone": {
+            "type": "string",
+            "description": "IANA zone; default the workspace's."
+          },
+          "starts_local": {
+            "type": "string",
+            "description": "Wall clock in time_zone, \"2026-12-01T09:00\". Required on create."
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 720
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingRecurrence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skip_holidays": {
+            "type": "boolean"
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10
+          },
+          "units_per_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Quantity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "type": ["string", "null"]
+          },
+          "notify": {
+            "type": "boolean",
+            "description": "Email the client (default true)."
+          }
+        },
+        "required": ["client_id", "starts_local"],
+        "additionalProperties": false,
+        "description": "A one-off session or a series."
+      },
+      "SchedulingOccurrencePatch": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "description": "Required on create: a live client."
+          },
+          "engagement_id": {
+            "type": ["string", "null"],
+            "description": "An active or scheduled engagement of that client."
+          },
+          "event_type_id": {
+            "type": ["string", "null"],
+            "description": "Fills title, duration, mode, meeting, location and price."
+          },
+          "host_id": {
+            "type": "string",
+            "description": "A member; default the caller."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Default the event type's or engagement's title."
+          },
+          "description": {
+            "type": ["string", "null"],
+            "maxLength": 4000
+          },
+          "client_note": {
+            "type": ["string", "null"],
+            "maxLength": 2000
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["online", "live"]
+          },
+          "meeting": {
+            "type": ["object", "null"],
+            "properties": {
+              "provider": {
+                "type": "string",
+                "enum": ["manual", "google_meet", "teams"]
+              },
+              "url": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["provider"],
+            "description": "Online only. google_meet and teams need the host's calendar connection (422 meeting_provider)."
+          },
+          "location": {
+            "type": ["string", "null"],
+            "maxLength": 500
+          },
+          "time_zone": {
+            "type": "string",
+            "description": "IANA zone; default the workspace's."
+          },
+          "starts_local": {
+            "type": "string",
+            "description": "Wall clock in time_zone, \"2026-12-01T09:00\". Required on create."
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 720
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SchedulingRecurrence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skip_holidays": {
+            "type": "boolean"
+          },
+          "attendees": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10
+          },
+          "units_per_session": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Quantity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "type": ["string", "null"]
+          },
+          "notify": {
+            "type": "boolean",
+            "description": "Email the client (default true)."
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["this", "following", "all"],
+            "description": "For a series: this session, this and the following (the series is split, ids kept), or all upcoming ones. A one-off ignores it. Default this."
+          }
+        },
+        "additionalProperties": false,
+        "description": "Partial EventInput with a scope."
+      },
+      "SchedulingCancelInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Cancel a session.",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": ["this", "following", "all"],
+            "description": "For a series: this session, this and the following (the series is split, ids kept), or all upcoming ones. A one-off ignores it. Default this."
+          },
+          "as": {
+            "type": "string",
+            "enum": ["on_time", "late"],
+            "description": "Default from the cancellation policy."
+          },
+          "reason": {
+            "type": ["string", "null"],
+            "maxLength": 500
+          },
+          "notify": {
+            "type": "boolean",
+            "description": "Email the client (default true)."
+          }
+        }
+      },
+      "SchedulingAttendanceInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Mark attendance, or waive (owners and admins).",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["attended", "no_show", "scheduled"],
+            "description": "scheduled undoes a mark."
+          },
+          "waive": {
+            "type": "boolean",
+            "description": "On a no-show or late cancellation: it stops counting."
+          },
+          "reason": {
+            "type": ["string", "null"],
+            "maxLength": 500
+          }
+        }
+      },
+      "SchedulingOccurrenceList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchedulingOccurrence"
+            }
+          }
+        },
+        "required": ["data"]
+      },
+      "SchedulingOccurrenceResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SchedulingOccurrence"
+          }
+        },
+        "required": ["data"]
+      },
+      "SchedulingEventResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SchedulingEvent"
+          }
+        },
+        "required": ["data"]
+      },
+      "SchedulingBusyList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchedulingBusyBlock"
+            }
+          }
+        },
+        "required": ["data"]
+      },
+      "SchedulingRequestList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchedulingRequestItem"
+            }
+          }
+        },
+        "required": ["data"]
+      },
+      "SchedulingEventTypeList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SchedulingEventType"
+            }
+          }
+        },
+        "required": ["data"]
+      },
+      "SchedulingEventCreated": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["event", "occurrences", "conflicts"],
+            "properties": {
+              "event": {
+                "$ref": "#/components/schemas/SchedulingEvent"
+              },
+              "occurrences": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SchedulingOccurrence"
+                },
+                "description": "The first 20."
+              },
+              "conflicts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SchedulingConflict"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SchedulingOccurrencePatched": {
+        "type": "object",
+        "required": ["data", "details"],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SchedulingOccurrence"
+          },
+          "details": {
+            "type": "object",
+            "properties": {
+              "kept": {
+                "type": "integer",
+                "description": "Scope all: changed sessions that kept their own time."
+              }
+            }
+          }
+        }
       }
     }
   }
