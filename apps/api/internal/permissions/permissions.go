@@ -138,6 +138,7 @@ var prefixes = []struct{ path, resource string }{
 	{"/api/v1/employment", "employees"},
 	{"/api/v1/payroll", "payroll"},
 	{"/api/v1/scheduling", "scheduling"},
+	{"/api/v1/addresses", "scheduling"}, // the session and event-type location suggestions
 }
 
 // also: routes that create in a second resource, as path.Match patterns per method.

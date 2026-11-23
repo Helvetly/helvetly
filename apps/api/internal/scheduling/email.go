@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -342,6 +343,11 @@ func place(e store.SchedEvent, o store.SchedOccurrence) (where, join string) {
 	return cmp.Or(deref(o.Location), deref(e.Location)), ""
 }
 
+// mapsLink opens an address in Google Maps, which most clients use; a plain search link, no API.
+func mapsLink(address string) string {
+	return "https://maps.google.com/?q=" + url.QueryEscape(address)
+}
+
 func sessionTitle(e store.SchedEvent, o store.SchedOccurrence) string {
 	return cmp.Or(deref(o.Title), e.Title)
 }
@@ -418,7 +424,7 @@ func (e *Emails) compose(m mailCtx, l letter) (text, body string) {
 			escaped[i] = esc(line)
 		}
 		if link != "" {
-			escaped = []string{`<a href="` + esc(link) + `">` + esc(link) + "</a>"}
+			escaped = []string{`<a href="` + esc(link) + `">` + esc(lines[0]) + "</a>"}
 		}
 		h.WriteString("<p><strong>" + esc(label) + "</strong><br>" + strings.Join(escaped, "<br>") + "</p>\n")
 	}
@@ -436,7 +442,7 @@ func (e *Emails) compose(m mailCtx, l letter) (text, body string) {
 		section(w.newTime, []string{formatWhen(m.lang, *l.proposal, l.proposal.Add(duration(m.event)), m.zone, m.ws.Location())}, "")
 	}
 	if l.where != "" {
-		section(w.where, []string{l.where}, "")
+		section(w.where, []string{l.where}, mapsLink(l.where))
 	}
 	if l.join != "" {
 		section(w.join, []string{l.join}, l.join)

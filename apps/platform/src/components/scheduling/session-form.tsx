@@ -56,6 +56,7 @@ import {
   type Weekday,
 } from '@/lib/scheduling'
 
+import { AddressInput } from './address-input'
 import { Choices } from './bits'
 import {
   asksDuration,
@@ -867,10 +868,10 @@ function Where({ values, errors, set, describe, me }: Part & { me: string | unde
       </fieldset>
       {place === 'live' ? (
         <Field id={fieldId('location')} label={translate('location')} error={errors.location}>
-          <input
+          <AddressInput
             {...describe('location')}
             value={values.location}
-            onChange={(event) => set({ location: event.target.value })}
+            onChange={(location) => set({ location })}
             placeholder={translate('schedLocationPlaceholder')}
             className={inputClass}
           />
