@@ -66,20 +66,13 @@ describe('portal scheduling client', () => {
     await requestCancel('soc_1', '   ')
     await requestCancel('soc_1', ' Sick ')
     await requestReschedule('soc_1', ['2026-12-01T09:00:00.000Z'], '')
-    expect(bodies).toEqual([
-      {},
-      { note: 'Sick' },
-      { proposed_times: ['2026-12-01T09:00:00.000Z'] },
-    ])
+    expect(bodies).toEqual([{}, { note: 'Sick' }, { proposed_times: ['2026-12-01T09:00:00.000Z'] }])
   })
 
   it('names a taken slot', async () => {
     server.use(
       http.post(`${S}/booking`, () =>
-        HttpResponse.json(
-          { error: { code: 'slot_taken', message: 'Taken.' } },
-          { status: 409 },
-        ),
+        HttpResponse.json({ error: { code: 'slot_taken', message: 'Taken.' } }, { status: 409 }),
       ),
     )
     const failure = await book({ event_type_id: 'set_trial', starts_at: 'x' }).catch(

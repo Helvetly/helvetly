@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { portalDocuments, portalHandlers, portalSession } from '@/mocks/portal'
+import { schedulingHandlers } from '@/mocks/scheduling'
 
 import { PortalDocuments } from './portal-documents'
 import { PortalEngagements } from './portal-engagements'
@@ -391,4 +392,25 @@ export const ScrolledHeader: Story = {
 export const ScrolledHeaderDark: Story = {
   ...ScrolledHeader,
   parameters: { ...Desktop.parameters, dark: true },
+}
+
+/** A workspace with Scheduling: the Sessions tab joins the bar, six across on a phone without pushing sideways. */
+export const WithSessions: Story = {
+  render: page(<PortalOverview />),
+  parameters: {
+    msw: { handlers: [...schedulingHandlers, ...meta.parameters.msw.handlers] },
+  },
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvasElement }) => {
+    const nav = await within(canvasElement).findByRole('navigation', { name: 'Portal' })
+    const tab = await within(nav).findByRole('link', { name: 'Sessions' })
+    await expect(tab).toHaveAttribute('href', '/sessions/')
+    await expect(within(nav).getAllByRole('link')).toHaveLength(6)
+    await expect(
+      await within(canvasElement).findByRole('region', { name: 'Next session' }),
+    ).toBeVisible()
+    await waitFor(() =>
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
+    )
+  },
 }

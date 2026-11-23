@@ -64,7 +64,6 @@ function TypeCard({ type, onPick }: { type: BookableType; onPick: () => void }) 
       <button
         type="button"
         onClick={onPick}
-        aria-label={translate('bookChoose', { name: type.name })}
         className={cn(
           cardClass,
           'grid w-full gap-1.5 p-4 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-5',
