@@ -88,6 +88,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/clients/{id}/files/{file_id}", s.downloadFile)
 	handle("DELETE /api/v1/clients/{id}/files/{file_id}", s.deleteFile)
 	handle("POST /api/v1/clients/{id}/portal-invitation", s.resendPortalInvite)
+	handle("POST /api/v1/clients/{id}/portal-preview", s.startPortalPreview)
 	s.registerRequests(handle)
 }
 

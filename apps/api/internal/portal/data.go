@@ -231,6 +231,9 @@ func (s *Service) downloadDocument(w http.ResponseWriter, r *http.Request, sess 
 		return err
 	}
 	err = s.db.Tx(r.Context(), func(q store.Q) error {
+		if sess.PreviewBy != "" {
+			return nil // a member's preview tells nobody the client opened it
+		}
 		sharer, err := q.DocumentSharer(r.Context(), d.ID, sess.ClientID)
 		if err != nil {
 			return err

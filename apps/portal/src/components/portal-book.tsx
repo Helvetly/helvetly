@@ -51,6 +51,7 @@ import {
 import { scoped } from '@/lib/scope'
 
 import { cardClass, EmptyState, PageHeader, RetryAlert } from './portal-bits'
+import { PreviewLock } from './portal-shell'
 
 /** Where the flow books: the signed-in client's portal, or a public booking link (name and email asked). */
 export type BookingTarget = { kind: 'client' } | { kind: 'link'; token: string }
@@ -313,14 +314,16 @@ function Confirm({
           <ArrowLeft aria-hidden />
           {translate('bookBack')}
         </Button>
-        <Button type="submit" disabled={send.isPending}>
-          {send.isPending ? (
-            <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
-          ) : (
-            <CalendarCheck aria-hidden />
-          )}
-          {send.isPending ? translate('bookBooking') : translate('bookConfirm')}
-        </Button>
+        <PreviewLock>
+          <Button type="submit" disabled={send.isPending}>
+            {send.isPending ? (
+              <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
+            ) : (
+              <CalendarCheck aria-hidden />
+            )}
+            {send.isPending ? translate('bookBooking') : translate('bookConfirm')}
+          </Button>
+        </PreviewLock>
       </div>
     </form>
   )

@@ -11,6 +11,8 @@ export type PortalSession = {
   workspace: { name: string }
   csrf_token: string
   clients: { id: string; name: string; workspace_name: string }[]
+  /** A member's read-only preview of the client's portal: who started it; null for the client's own session. */
+  preview?: { started_by: string } | null
 }
 
 export type PortalInvoice = {

@@ -21,6 +21,8 @@ type PortalSession struct {
 	ClientID, ClientName string
 	LastActiveAt         time.Time
 	Workspace            Workspace
+	// PreviewBy is the member viewing the portal as the client (read-only), "" for the client's own session.
+	PreviewBy, PreviewByName string
 }
 
 // portalLogin is a client's portal address: its email, else its billing email.
@@ -63,15 +65,56 @@ func (q Q) CreatePortalSession(ctx context.Context, id, tokenHash, csrf, email, 
 // workspace) or changing the client's portal address ends the session at once.
 func (q Q) PortalSessionByToken(ctx context.Context, tokenHash string, now time.Time) (PortalSession, error) {
 	var s PortalSession
-	err := q.db.QueryRow(ctx, `SELECT s.id, s.csrf_token, s.email, c.id, c.name, w.id, w.name, w.timezone, w.onboarded_at IS NOT NULL, s.last_active_at, s.scoped
+	err := q.db.QueryRow(ctx, `SELECT s.id, s.csrf_token, s.email, c.id, c.name, w.id, w.name, w.timezone, w.onboarded_at IS NOT NULL, s.last_active_at, s.scoped,
+			coalesce(s.preview_by, ''), coalesce(nullif(u.name, ''), u.email, '')
 		FROM portal_sessions s
 		JOIN clients c ON c.id = s.client_id
 		JOIN workspaces w ON w.id = s.workspace_id
+		LEFT JOIN users u ON u.id = s.preview_by
 		WHERE s.token_hash = $1 AND s.expires_at > $2 AND c.portal_enabled AND NOT w.portal_off AND `+portalLogin+` = s.email
 			AND c.deleted_at IS NULL AND w.deleted_at IS NULL`, tokenHash, now).
 		Scan(&s.ID, &s.CSRFToken, &s.Email, &s.ClientID, &s.ClientName,
-			&s.Workspace.ID, &s.Workspace.Name, &s.Workspace.Timezone, &s.Workspace.Onboarded, &s.LastActiveAt, &s.Scoped)
+			&s.Workspace.ID, &s.Workspace.Name, &s.Workspace.Timezone, &s.Workspace.Onboarded, &s.LastActiveAt, &s.Scoped,
+			&s.PreviewBy, &s.PreviewByName)
 	return s, err
+}
+
+// CreatePortalPreviewLink stores a one-use preview link of the member for the client (expired ones are cleared).
+func (q Q) CreatePortalPreviewLink(ctx context.Context, tokenHash, workspaceID, clientID, userID string, now, expires time.Time) error {
+	if _, err := q.db.Exec(ctx, `DELETE FROM portal_preview_links WHERE expires_at < $1`, now); err != nil {
+		return err
+	}
+	_, err := q.db.Exec(ctx, `INSERT INTO portal_preview_links (token_hash, workspace_id, client_id, user_id, created_at, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6)`, tokenHash, workspaceID, clientID, userID, now, expires)
+	return err
+}
+
+// PortalPreview is what a taken preview link opens: the client, its portal address and the member.
+type PortalPreview struct {
+	ClientID, ClientName, Email string
+	UserID                      string
+}
+
+// TakePortalPreviewLink uses the link up, whatever comes of it, and answers what it opens: ErrNotFound unless it is
+// the workspace's, unexpired, its member still in the workspace, and the client still open in the portal.
+func (q Q) TakePortalPreviewLink(ctx context.Context, tokenHash, workspaceID string, now time.Time) (PortalPreview, error) {
+	var p PortalPreview
+	err := q.db.QueryRow(ctx, `WITH taken AS (DELETE FROM portal_preview_links WHERE token_hash = $1 RETURNING *)
+		SELECT c.id, c.name, `+portalLogin+`, t.user_id FROM taken t
+		JOIN clients c ON c.id = t.client_id
+		JOIN workspaces w ON w.id = t.workspace_id
+		JOIN workspace_members m ON m.workspace_id = t.workspace_id AND m.user_id = t.user_id
+		WHERE t.workspace_id = $2 AND t.expires_at > $3 AND c.portal_enabled AND NOT w.portal_off
+			AND `+portalLogin+` <> '' AND c.deleted_at IS NULL AND w.deleted_at IS NULL`, tokenHash, workspaceID, now).
+		Scan(&p.ClientID, &p.ClientName, &p.Email, &p.UserID)
+	return p, err
+}
+
+// CreatePortalPreviewSession opens the member's read-only session as the client, under the workspace's scope.
+func (q Q) CreatePortalPreviewSession(ctx context.Context, id, tokenHash, csrf, workspaceID string, p PortalPreview, now, expires time.Time) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO portal_sessions (id, token_hash, csrf_token, email, client_id, workspace_id, created_at, expires_at, last_active_at, scoped, preview_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $7, true, $9)`, id, tokenHash, csrf, p.Email, p.ClientID, workspaceID, now, expires, p.UserID)
+	return err
 }
 
 // PortalPaymentsByCurrency totals recorded payments in the current year, according to the workspace's calendar.

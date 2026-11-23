@@ -44,6 +44,7 @@ import {
   RetryAlert,
   rowClass,
 } from './portal-bits'
+import { PreviewLock } from './portal-shell'
 
 const STATUS: Record<PortalQuote['status'], string> = {
   sent: translate('awaitingYourAnswer'),
@@ -229,21 +230,25 @@ function QuoteRow({ quote, onAsk }: { quote: PortalQuote; onAsk: (asking: Asking
       )}
       {isAwaiting(quote) && (
         <div className="flex gap-2 px-4 sm:pr-6 sm:pl-20">
-          <Button
-            aria-label={translate('acceptQuote', { value1: quoteName(quote) })}
-            onClick={() => onAsk({ quote, decision: 'accept' })}
-          >
-            <Check aria-hidden />
-            {translate('accept')}
-          </Button>
-          <Button
-            variant="outline"
-            aria-label={translate('declineQuote', { value1: quoteName(quote) })}
-            onClick={() => onAsk({ quote, decision: 'decline' })}
-          >
-            <X aria-hidden />
-            {translate('decline')}
-          </Button>
+          <PreviewLock>
+            <Button
+              aria-label={translate('acceptQuote', { value1: quoteName(quote) })}
+              onClick={() => onAsk({ quote, decision: 'accept' })}
+            >
+              <Check aria-hidden />
+              {translate('accept')}
+            </Button>
+          </PreviewLock>
+          <PreviewLock>
+            <Button
+              variant="outline"
+              aria-label={translate('declineQuote', { value1: quoteName(quote) })}
+              onClick={() => onAsk({ quote, decision: 'decline' })}
+            >
+              <X aria-hidden />
+              {translate('decline')}
+            </Button>
+          </PreviewLock>
         </div>
       )}
     </li>

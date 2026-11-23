@@ -62,7 +62,8 @@ are the reference.
   (`portal_sessions.scoped`, its own cookie per workspace) is valid only there and switches only among that workspace's clients. The shared portal (`PORTAL_URL` itself)
   signs nobody in: unscoped start and verify answer `portal_link_required`, unscoped sessions are not read, and its
   page only emails an address the links of its suppliers' open portals (`POST /api/v1/public/portal/auth/links`:
-  the same 202 for every address, limited per client address and per recipient). Links in email come from `CanonicalURL`.
+  the same 202 for every address, limited per client address and per recipient). Links in email come from `CanonicalURL`, and the platform shows, copies and opens it (`canonical_url` of `GET /api/v1/workspace/portal`). A member who can read a client
+  opens its portal as a read-only preview (`POST /api/v1/clients/{id}/portal-preview`, session-only: a hashed one-use link for 5 minutes, then a session of at most 30 with `portal_sessions.preview_by` and its own cookie beside the client's), where every write but ending it answers 403 `preview_read_only`, nothing is recorded on the client or notified, and start and end are audited (`portal.preview_*`).
 - **Custom portal domains** (`internal/customdomains`, Business feature `custom_portal_domain`, off without
   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID` and `CUSTOM_DOMAIN_TARGET`): a workspace's portal on its own host
   through Cloudflare for SaaS custom hostnames (`workspace_domains`: one per workspace and hostname among rows not

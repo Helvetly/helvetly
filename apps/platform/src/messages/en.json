@@ -5685,5 +5685,10 @@
   "zipNothingHere": "There are no files in this view to download.",
   "zipGone": "This ZIP is no longer available. Download it again from Documents.",
   "notifyZipReady": "Your ZIP is ready",
-  "zipsYouAsked": "ZIPs you asked for"
+  "zipsYouAsked": "ZIPs you asked for",
+  "viewAsClient": "View as client",
+  "viewAsClientHint": "Open this client's portal read-only to check what they see",
+  "auditPortalPreviewStarted": "Portal preview started",
+  "auditPortalPreviewEnded": "Portal preview ended",
+  "auditSentencePortalPreview": "{action, select, preview_started {Viewed the portal as {client}, read-only} other {Ended the portal preview as {client}}}"
 }

@@ -5,6 +5,10 @@ import (
 	"net/url"
 	"sync"
 	"testing"
+	"time"
+
+	"helvetly.com/api/internal/portalscope"
+	"helvetly.com/api/internal/store"
 )
 
 func TestPortalAddress(t *testing.T) {
@@ -150,5 +154,41 @@ func TestPortalAvailabilityGuarded(t *testing.T) {
 	}
 	if status, out := e.do(owner, "GET", "/api/v1/workspace/portal/availability?slug=acme", nil); status != 429 {
 		t.Fatalf("over the limit: %d %v", status, out)
+	}
+}
+
+// The answer names where clients sign in: the active custom domain when there is one, else the slug's address.
+func TestPortalCanonicalURL(t *testing.T) {
+	e := newEnv(t)
+	owner, ws := e.person("Firma AG", "owner")
+	r := portalscope.New("https://portal.example.com", e.st.Q)
+	r.EnableDomains("https://app.example.com")
+	e.svc.SetPortal(r)
+	canonical := func() string {
+		t.Helper()
+		status, out := e.do(owner, "GET", "/api/v1/workspace/portal", nil)
+		if status != 200 {
+			t.Fatalf("get: %d %v", status, out)
+		}
+		return out["data"].(map[string]any)["canonical_url"].(string)
+	}
+	if got := canonical(); got != "https://portal.example.com/w/firma-ag/" {
+		t.Fatalf("without a domain: %q", got)
+	}
+	ctx := context.Background()
+	now := time.Now().UTC()
+	if err := e.st.CreateWorkspaceDomain(ctx, store.WorkspaceDomain{ID: "wdm_1", WorkspaceID: ws, Hostname: "portal.firma.ch",
+		CreatedBy: owner.userID, CreatedAt: now, NextCheckAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	if got := canonical(); got != "https://portal.example.com/w/firma-ag/" {
+		t.Fatalf("pending domain: %q", got)
+	}
+	if _, err := e.raw.Exec(ctx, `UPDATE workspace_domains SET status = 'active' WHERE id = 'wdm_1'`); err != nil {
+		t.Fatal(err)
+	}
+	r.Forget()
+	if got := canonical(); got != "https://portal.firma.ch/" {
+		t.Fatalf("active domain: %q", got)
 	}
 }

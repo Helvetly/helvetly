@@ -5685,5 +5685,10 @@
   "zipNothingHere": "In dieser Ansicht gibt es keine Dateien zum Herunterladen.",
   "zipGone": "Dieses ZIP ist nicht mehr verfügbar. Laden Sie es in Dokumente erneut herunter.",
   "notifyZipReady": "Ihr ZIP ist bereit",
-  "zipsYouAsked": "ZIPs, die Sie angefordert haben"
+  "zipsYouAsked": "ZIPs, die Sie angefordert haben",
+  "viewAsClient": "Als Kunde ansehen",
+  "viewAsClientHint": "Das Portal dieses Kunden schreibgeschützt öffnen, um zu prüfen, was er sieht",
+  "auditPortalPreviewStarted": "Portal-Vorschau gestartet",
+  "auditPortalPreviewEnded": "Portal-Vorschau beendet",
+  "auditSentencePortalPreview": "{action, select, preview_started {Portal als {client} angesehen, schreibgeschützt} other {Portal-Vorschau als {client} beendet}}"
 }

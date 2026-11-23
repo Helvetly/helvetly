@@ -340,5 +340,9 @@
   "bookToSessions": "Vedi le sue sessioni",
   "bookManualHint": "{supplier} conferma ogni prenotazione.",
   "bookLinkGone": "Questo link di prenotazione non è più valido",
-  "bookLinkGoneText": "Chieda un nuovo link."
+  "bookLinkGoneText": "Chieda un nuovo link.",
+  "previewBanner": "Anteprima come {client} · sola lettura · avviata da {member}",
+  "endPreview": "Termina anteprima",
+  "readOnlyPreview": "Anteprima in sola lettura",
+  "previewLinkExpired": "Questo link di anteprima è scaduto o è già stato usato. Avvia una nuova anteprima da Helvetly."
 }

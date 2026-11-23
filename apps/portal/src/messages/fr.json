@@ -340,5 +340,9 @@
   "bookToSessions": "Voir vos séances",
   "bookManualHint": "{supplier} confirme chaque réservation.",
   "bookLinkGone": "Ce lien de réservation n’est plus valable",
-  "bookLinkGoneText": "Demandez un nouveau lien."
+  "bookLinkGoneText": "Demandez un nouveau lien.",
+  "previewBanner": "Aperçu en tant que {client} · lecture seule · ouvert par {member}",
+  "endPreview": "Terminer l’aperçu",
+  "readOnlyPreview": "Aperçu en lecture seule",
+  "previewLinkExpired": "Ce lien d’aperçu a expiré ou a déjà été utilisé. Ouvrez un nouvel aperçu depuis Helvetly."
 }
