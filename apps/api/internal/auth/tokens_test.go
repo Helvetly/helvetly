@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -171,19 +172,73 @@ func TestAPITokenFollowsMembershipAndExpiry(t *testing.T) {
 	}
 }
 
+// TestAPITokenRateLimitAndCap: the plan's API requests a minute (APIRate) hold for the workspace, reads and writes
+// apart, shared by its tokens and by every instance; a refused write never reaches its handler (audit A04).
 func TestAPITokenRateLimitAndCap(t *testing.T) {
 	e, srv := tokenEnv(t)
-	e.svc.tokenLimit = newRateLimiter(2, time.Minute)
+	e.clock.mu.Lock()
+	e.clock.t = e.clock.t.Truncate(time.Minute).Add(time.Second) // the minute before weighs nothing yet
+	e.clock.mu.Unlock()
+	rate := func(_ context.Context, _ string, write bool) (int64, error) {
+		if write {
+			return 1, nil
+		}
+		return 2, nil
+	}
+	e.svc.APIRate = rate
 	b := e.emailSignIn("busy@example.com")
 	e.session(b)
-	var tok tokenOut
-	e.do(b, "POST", "/api/v1/account/tokens", map[string]any{"name": "a", "scopes": []string{"read:*"}}, 201, &tok)
-	for i, want := range []int{200, 200, 429} {
-		if status, _ := bearer(t, srv, tok.Data.Token, "GET", "/api/v1/things"); status != want {
-			t.Fatalf("request %d: %d, want %d", i, status, want)
+	var tok, other tokenOut
+	e.do(b, "POST", "/api/v1/account/tokens", map[string]any{"name": "a", "scopes": []string{"write:*"}}, 201, &tok)
+	e.do(b, "POST", "/api/v1/account/tokens", map[string]any{"name": "b", "scopes": []string{"write:*"}}, 201, &other)
+
+	// a second instance on the same database counts in the same rows
+	second, err := New(e.svc.cfg, e.svc.db, e.svc.log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second.now, second.APIRate, second.BearerRoutes = e.clock.now, rate, e.svc.BearerRoutes
+	written := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/things", second.SignedIn(func(w http.ResponseWriter, _ *http.Request, _ store.Session) {
+		WriteJSON(w, http.StatusOK, nil)
+	}))
+	mux.HandleFunc("POST /api/v1/things", second.SignedIn(func(w http.ResponseWriter, _ *http.Request, _ store.Session) {
+		written++
+		WriteJSON(w, http.StatusOK, nil)
+	}))
+	srv2 := httptest.NewServer(mux)
+	t.Cleanup(srv2.Close)
+
+	for i, c := range []struct {
+		srv    *httptest.Server
+		token  string
+		method string
+		want   int
+	}{
+		{srv, tok.Data.Token, "GET", 200},
+		{srv2, other.Data.Token, "GET", 200},
+		{srv, tok.Data.Token, "GET", 429},     // the workspace's two reads are used, by either token and instance
+		{srv2, other.Data.Token, "POST", 200}, // writes count apart
+		{srv, tok.Data.Token, "POST", 429},
+		{srv2, tok.Data.Token, "POST", 429},
+	} {
+		if status, _ := bearer(t, c.srv, c.token, c.method, "/api/v1/things"); status != c.want {
+			t.Fatalf("request %d: %d, want %d", i, status, c.want)
 		}
 	}
-	for range store.MaxAPITokens - 1 {
+	if written != 1 {
+		t.Fatalf("writes handled: %d", written)
+	}
+	e.clock.add(time.Minute) // the minute before still weighs 59/60 of its requests
+	if status, _ := bearer(t, srv, tok.Data.Token, "GET", "/api/v1/things"); status != 429 {
+		t.Fatalf("a minute later: %d", status)
+	}
+	e.clock.add(time.Minute)
+	if status, _ := bearer(t, srv, tok.Data.Token, "GET", "/api/v1/things"); status != 200 {
+		t.Fatalf("two minutes later: %d", status)
+	}
+	for range store.MaxAPITokens - 2 {
 		e.do(b, "POST", "/api/v1/account/tokens", map[string]any{"name": "more", "scopes": []string{"read:*"}}, 201, nil)
 	}
 	var out apiErr

@@ -38,11 +38,12 @@ func scanZipExport(row pgx.Row) (ZipExport, error) {
 	return e, err
 }
 
-// QueueZipExport adds a pending export, unless the member already has one pending in the workspace (false).
+// QueueZipExport adds a pending export, unless the member already has one pending in the workspace (false); the
+// unique index document_zip_exports_one_pending decides between two submits at once.
 func (q Q) QueueZipExport(ctx context.Context, e ZipExport) (bool, error) {
 	tag, err := q.db.Exec(ctx, `INSERT INTO document_zip_exports (id, workspace_id, user_id, query, zone, name, files, bytes, created_at)
-		SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
-		WHERE NOT EXISTS (SELECT 1 FROM document_zip_exports WHERE workspace_id = $2 AND user_id = $3 AND status = 'pending')`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		ON CONFLICT (workspace_id, user_id) WHERE status = 'pending' DO NOTHING`,
 		e.ID, e.WorkspaceID, e.UserID, e.Query, e.Zone, e.Name, e.Files, e.Bytes, e.CreatedAt)
 	return tag.RowsAffected() == 1, err
 }

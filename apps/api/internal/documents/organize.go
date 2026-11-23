@@ -35,8 +35,8 @@ const (
 const organizeInstructions = "You organize a small business's document manager. For each listed document (a JSON " +
 	"line with its id, name, file type, current folder path, tags and the start of its text), propose the folder path it " +
 	"belongs in and its tags. Keep a calm, conventional structure, such as by kind and then year: Contracts/2025, " +
-	"Insurance, Bank Statements/2024. Prefer the existing folders; a new folder path has at most 3 levels separated by /, each a " +
-	"short Title Case name, plural where natural. " + recordRules + " folder is the whole path, or an empty string for the " +
+	"Insurance, Bank Statements/2024. Prefer the existing folders, whatever their language; a new folder path has at most 3 levels separated by /, each a " +
+	"short Title Case name, plural where natural, in the language the message names for folders. " + recordRules + " folder is the whole path, or an empty string for the " +
 	"top level. Give 1 " +
 	"to 3 short lower-case tags, the first saying what kind of document it is (such as invoice, contract, receipt, " +
 	"insurance or payslip), preferring tags already in use. Set change to false when the document already sits well " +
@@ -140,7 +140,11 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 		}
 		rest = append(rest, d)
 	}
-	considered, err := s.organizeRest(ctx, sess, rest, snippets, folders, names, clients, used, byID)
+	lang, err := s.folderLanguage(ctx, ws.ID, requestLanguage(r))
+	if err != nil {
+		return err
+	}
+	considered, err := s.organizeRest(ctx, sess, lang, rest, snippets, folders, names, clients, used, byID)
 	if err != nil {
 		return err
 	}
@@ -154,9 +158,9 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 	return nil
 }
 
-// organizeRest asks the model about the files no record decides and adds its checked proposals to byID; the number of
-// files it considered.
-func (s *Service) organizeRest(ctx context.Context, sess store.Session, docs []store.Document, snippets map[string]string,
+// organizeRest asks the model about the files no record decides and adds its checked proposals to byID, new folders
+// named in lang; the number of files it considered.
+func (s *Service) organizeRest(ctx context.Context, sess store.Session, lang string, docs []store.Document, snippets map[string]string,
 	folders []store.Folder, names recordNames, clients map[string]store.ClientName, used []string, byID map[string]proposal) (int, error) {
 	if len(docs) == 0 {
 		return 0, nil
@@ -168,16 +172,16 @@ func (s *Service) organizeRest(ctx context.Context, sess store.Session, docs []s
 	}
 	call := aimodel.Call{Kind: "organize", Operation: auth.NewID("org"), Step: "organize", MaxOutput: organizeMaxOutput,
 		Caps: aimodel.OrganizeCaps}
-	reply, err := budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, used), call)
+	reply, err := budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, used, lang), call)
 	if errors.Is(err, aimodel.ErrCap) || errors.Is(err, aimodel.ErrTooLarge) {
 		// too large: fewer documents, by name only
 		docs, snippets, call.Step = docs[:min(len(docs), organizeShort)], nil, "short"
-		reply, err = budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, used), call)
+		reply, err = budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, used, lang), call)
 	}
 	if err != nil {
 		return 0, organizeError(err)
 	}
-	proposals, err := readOrganize(reply.Text, docs, folders, names, clients)
+	proposals, err := readOrganize(reply.Text, docs, folders, names, clients, lang)
 	if err != nil {
 		return 0, err
 	}
@@ -268,8 +272,8 @@ func currentPath(folders []store.Folder, id *string) string {
 	return folderPath(folders, folders[i])
 }
 
-// organizeRequest: the folder tree, the tags in use and one JSON line per document.
-func organizeRequest(docs []store.Document, snippets map[string]string, folders []store.Folder, names recordNames, tags []string) aimodel.Request {
+// organizeRequest: the folder tree, the language of new folders, the tags in use and one JSON line per document.
+func organizeRequest(docs []store.Document, snippets map[string]string, folders []store.Folder, names recordNames, tags []string, lang string) aimodel.Request {
 	var msg strings.Builder
 	msg.WriteString("Folders:\n")
 	paths := make([]string, 0, len(folders))
@@ -283,7 +287,7 @@ func organizeRequest(docs []store.Document, snippets map[string]string, folders 
 	if len(paths) == 0 {
 		msg.WriteString("(none yet)\n")
 	}
-	msg.WriteString("\n" + recordList(names))
+	msg.WriteString(folderLanguageRule(lang) + "\n" + recordList(names))
 	if len(tags) > 0 {
 		fmt.Fprintf(&msg, "\nTags in use: %s\n", strings.Join(tags, ", "))
 	}
@@ -318,8 +322,9 @@ func organizeError(err error) error {
 
 // readOrganize checks the model's answer: only listed documents, each once, a usable path and tags.
 // An invoice or quote outside the system folders goes to its client's record folder when the file names one known
-// client (clients, by document); else its reason says no client was found.
-func readOrganize(text string, docs []store.Document, folders []store.Folder, names recordNames, clients map[string]store.ClientName) ([]proposal, error) {
+// client (clients, by document), a contract to its Contracts folder; else its reason says no client was found. A new
+// plain folder is named in lang, and an existing one of the same kind in another language is proposed instead.
+func readOrganize(text string, docs []store.Document, folders []store.Folder, names recordNames, clients map[string]store.ClientName, lang string) ([]proposal, error) {
 	var out struct {
 		Proposals []struct {
 			DocumentID string   `json:"document_id"`
@@ -356,7 +361,11 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder, na
 		}
 		if path, ok := splitPath(a.Folder, organizeApplyDepth); ok && a.Change {
 			// a place in the system folders only by their structure; any other path as before
-			if place, system := recordPath(path, names); system && place != nil ||
+			place, system := recordPath(path, names)
+			if !system {
+				path = localPath(path, folders, lang)
+			}
+			if system && place != nil ||
 				!system && (existing[strings.Join(path, "/")] || len(path) <= organizeDepth) {
 				p.Folder = strings.Join(path, "/")
 				if place != nil && place.contracts {
@@ -377,14 +386,26 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder, na
 		change := a.Change
 		path, _ := splitPath(p.Folder, organizeApplyDepth)
 		if _, system := recordPath(path, names); !system {
-			if kind := recordKind(path, p.Tags); kind != "" {
+			kind, contract := recordKind(path, p.Tags), false
+			if kind == "" && isContract(path, p.Tags) {
+				kind, contract = "documents", true
+			}
+			if kind != "" {
 				c, named := clients[d.ID]
 				folder, ok := clientRecordPath(names, recordPlace{clientID: c.ID, kind: kind, year: recordYear(path, d)})
 				switch {
+				case named && ok && contract:
+					p.Folder, change = folder, true
+					p.Reason = fmt.Sprintf("A contract with %s, so it goes in the client's folder.", strings.Join(strings.Fields(c.Name), " "))
+					if done, why := completedContract(d.Name, "", true, ""); done {
+						p.Folder += "/" + store.ContractsFolderName
+					} else {
+						p.Reason = why // a template, sample or draft: the client's Documents/<year>
+					}
 				case named && ok:
 					p.Folder, change = folder, true
 					p.Reason = fmt.Sprintf("%s for %s, so it goes in the client's folder.", map[string]string{"invoices": "An invoice", "quotes": "A quote"}[kind], strings.Join(strings.Fields(c.Name), " "))
-				case len(path) > 0:
+				case len(path) > 0 && !contract: // a contract of nobody listed is any other file
 					p.Reason = strings.TrimSpace(p.Reason + " No known client could be found in it, so it stays outside Clients.")
 				}
 			}
@@ -453,6 +474,9 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 			return validationFailed(map[string]string{"items": "Use folder names of at most 60 characters, without control characters."})
 		}
 		typed, problem := cleanTags(it.Tags)
+		if problem == "" && len(typed) > maxTags {
+			problem = tooManyTags
+		}
 		if problem != "" {
 			return validationFailed(map[string]string{"items": problem})
 		}

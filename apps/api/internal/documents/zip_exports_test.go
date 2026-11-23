@@ -3,6 +3,7 @@ package documents
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -247,5 +248,151 @@ func TestGroupedViewsAnyOrderAndCombinedFilters(t *testing.T) {
 		if got := names(g.e.list(g.b, tc.query+"&sort=name").Data); !slices.Equal(got, tc.want) {
 			t.Errorf("%s = %v, want %v", tc.query, got, tc.want)
 		}
+	}
+}
+
+func (g grouped) queueZipExport(ctx context.Context, q store.Q, id string) (bool, error) {
+	return q.QueueZipExport(ctx, store.ZipExport{ID: id, WorkspaceID: g.b.workspace, UserID: g.b.user,
+		Query: "type=invoices", Zone: "Europe/Zurich", Name: "documents.zip", CreatedAt: time.Now()})
+}
+
+// Two submits in flight at once admit one pending export: the second waits for the first and is refused (audit A01).
+func TestZipExportAdmitsOnePendingAcrossTransactions(t *testing.T) {
+	g := newGrouped(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	queued, release, first := make(chan error, 1), make(chan struct{}), make(chan error, 1)
+	go func() {
+		first <- g.e.st.Tx(ctx, func(q store.Q) error {
+			ok, err := g.queueZipExport(ctx, q, "zip_first")
+			if err == nil && !ok {
+				err = errors.New("first export refused")
+			}
+			queued <- err
+			if err != nil {
+				return err
+			}
+			select { // hold the uncommitted row while the second submit runs
+			case <-release:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		})
+	}()
+	if err := <-queued; err != nil {
+		t.Fatal(err)
+	}
+	type result struct {
+		ok  bool
+		err error
+	}
+	second := make(chan result, 1)
+	go func() {
+		ok, err := g.queueZipExport(ctx, g.e.st.Q, "zip_second")
+		second <- result{ok, err}
+	}()
+	time.Sleep(200 * time.Millisecond) // the second insert reaches the database while the first is uncommitted
+	close(release)
+	if err := <-first; err != nil {
+		t.Fatal(err)
+	}
+	if got := <-second; got.err != nil || got.ok {
+		t.Fatalf("second submit: admitted=%v err=%v", got.ok, got.err)
+	}
+	if n := g.count(`SELECT count(*) FROM document_zip_exports WHERE workspace_id = $1 AND user_id = $2 AND status = 'pending'`,
+		g.b.workspace, g.b.user); n != 1 {
+		t.Fatalf("pending exports: %d", n)
+	}
+}
+
+// An export never turns ready without every file: a file missing from storage fails it with the reason, an
+// unreadable storage is tried again (audit A02).
+func TestZipExportIsCompleteOrFails(t *testing.T) {
+	t.Run("a missing file fails it", func(t *testing.T) {
+		g := newGrouped(t)
+		g.e.svc.zipStream = 10
+		var out struct{ Data store.ZipExport }
+		g.e.do(g.b, "POST", "/api/v1/documents/groups/zip?type=invoices", nil, 202, &out)
+		g.e.files.mu.Lock()
+		g.e.files.openErr = fmt.Errorf("open: %w", store.ErrNotFound) // as storage.Open answers a missing key
+		g.e.files.mu.Unlock()
+		g.e.svc.ZipExportsTick(context.Background())
+		if list := g.exports(g.b); len(list) != 1 || list[0].Status != "failed" {
+			t.Fatalf("exports = %+v", list)
+		}
+		g.e.files.mu.Lock()
+		_, stored := g.e.files.objects["workspaces/"+g.b.workspace+"/exports/documents-"+out.Data.ID+".zip"]
+		g.e.files.mu.Unlock()
+		if stored {
+			t.Fatal("an incomplete ZIP was stored")
+		}
+		if n := g.count(`SELECT count(*) FROM notifications WHERE user_id = $1 AND event = 'documents.zip_ready'
+			AND data->>'failed' = 'true' AND data->>'reason' LIKE '%.pdf is missing from storage%'`, g.b.user); n != 1 {
+			t.Fatalf("failure notifications = %d", n)
+		}
+		g.e.fails(g.b, "GET", "/api/v1/documents/exports/"+out.Data.ID+"/download", nil, 410, "zip_expired")
+	})
+	t.Run("unreadable storage is tried again", func(t *testing.T) {
+		g := newGrouped(t)
+		g.e.svc.zipStream = 10
+		now := time.Now()
+		g.e.svc.now = func() time.Time { return now }
+		var out struct{ Data store.ZipExport }
+		g.e.do(g.b, "POST", "/api/v1/documents/groups/zip?type=invoices", nil, 202, &out)
+		g.e.files.mu.Lock()
+		g.e.files.openErr = errors.New("connection reset")
+		g.e.files.mu.Unlock()
+		g.e.svc.ZipExportsTick(context.Background())
+		if list := g.exports(g.b); len(list) != 1 || list[0].Status != "pending" {
+			t.Fatalf("after a failed read = %+v", list)
+		}
+		g.e.files.mu.Lock()
+		g.e.files.openErr = nil
+		g.e.files.mu.Unlock()
+		now = now.Add(zipLease + time.Second)
+		g.e.svc.ZipExportsTick(context.Background())
+		if list := g.exports(g.b); len(list) != 1 || list[0].Status != "ready" || list[0].Files != 2 {
+			t.Fatalf("after the retry = %+v", list)
+		}
+		g.e.files.mu.Lock()
+		raw := g.e.files.objects["workspaces/"+g.b.workspace+"/exports/documents-"+out.Data.ID+".zip"]
+		g.e.files.mu.Unlock()
+		if n := len(readZip(t, raw)); n != 2 {
+			t.Fatalf("zip entries = %d", n)
+		}
+	})
+}
+
+// The bell's link names one export: it is found by id for as long as it is kept, beyond the list's latest ten, and
+// says expired once its time is up (audit A07).
+func TestZipExportByIDOutlivesTheList(t *testing.T) {
+	g := newGrouped(t)
+	g.e.svc.zipStream = 10
+	now := time.Now()
+	g.e.svc.now = func() time.Time { return now }
+	var first string
+	for i := range 11 {
+		var out struct{ Data store.ZipExport }
+		g.e.do(g.b, "POST", "/api/v1/documents/groups/zip?type=invoices", nil, 202, &out)
+		if i == 0 {
+			first = out.Data.ID
+		}
+		g.e.svc.ZipExportsTick(context.Background())
+		now = now.Add(time.Minute)
+	}
+	if slices.ContainsFunc(g.exports(g.b), func(e store.ZipExport) bool { return e.ID == first }) {
+		t.Fatal("the first export is still in the list of ten")
+	}
+	var one struct{ Data store.ZipExport }
+	g.e.do(g.b, "GET", "/api/v1/documents/exports/"+first+"/status", nil, 200, &one)
+	if one.Data.ID != first || one.Data.Status != "ready" {
+		t.Fatalf("export = %+v", one.Data)
+	}
+	g.e.fails(g.e.join(g.b.workspace, "admin"), "GET", "/api/v1/documents/exports/"+first+"/status", nil, 404, "not_found")
+	now = now.Add(zipKeep)
+	g.e.do(g.b, "GET", "/api/v1/documents/exports/"+first+"/status", nil, 200, &one)
+	if one.Data.Status != "expired" {
+		t.Fatalf("after its time = %+v", one.Data)
 	}
 }

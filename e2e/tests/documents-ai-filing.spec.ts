@@ -26,10 +26,10 @@ test('AI files an upload into a new folder, says so, and Undo puts it back', asy
     })
   const id = text(object(object(await (await uploaded).json()).data).id)
 
-  // the development model files by the name: a new top-level "Contract" folder, tagged "contract"
-  await expect(page.getByText('Filed 1 file into Contract.')).toBeVisible({ timeout: 30_000 })
+  // the development model files by the name: a new top-level "Contracts" folder (a common kind, named in the asker's language), tagged "contract"
+  await expect(page.getByText('Filed 1 file into Contracts.')).toBeVisible({ timeout: 30_000 })
   const filed = await documentOf(api, id)
-  expect(object(filed.folder).name).toBe('Contract')
+  expect(object(filed.folder).name).toBe('Contracts')
   expect(filed.tags).toContain('contract')
   expect(object(filed.ai_filing).status).toBe('filed')
 
@@ -39,7 +39,7 @@ test('AI files an upload into a new folder, says so, and Undo puts it back', asy
   expect(back.folder_id).toBeNull()
   expect(back.tags).toEqual([])
   const folders = object(await (await api.request.get('/api/v1/documents/folders')).json()).data
-  expect(JSON.stringify(folders)).not.toContain('"Contract"')
+  expect(JSON.stringify(folders)).not.toContain('"Contracts"')
 })
 
 test('without the uploader’s AI approval an upload is never filed', async ({ api }) => {

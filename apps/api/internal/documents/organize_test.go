@@ -56,7 +56,7 @@ func TestReadOrganize(t *testing.T) {
 		{name: "not JSON", text: "sorry", unreadble: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := readOrganize(tc.text, docs, folders, recordNames{}, nil)
+			got, err := readOrganize(tc.text, docs, folders, recordNames{}, nil, "en")
 			if tc.unreadble {
 				if _, code, _, _ := auth.Describe(err); code != "ai_unreadable" {
 					t.Fatalf("err = %v, want ai_unreadable", err)

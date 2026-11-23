@@ -45,7 +45,7 @@ const filingInstructions = "You file documents in a small business's document ma
 	"what it is, such as invoice, contract, receipt, insurance or payslip; prefer tags already in use when they fit. " +
 	"Set folder_id to the id of the listed folder the file belongs in, or, when none fits, folder_id to null and " +
 	"new_folder to a short, general top-level folder name (one or two words, Title Case, plural where natural, such as " +
-	"Contracts or Insurance) that more files like it would fit. " + recordRules + " For those, set folder_id to null and " +
+	"Contracts or Insurance, in the language the message names for folders) that more files like it would fit. " + recordRules + " For those, set folder_id to null and " +
 	"new_folder to that path. When the message says the file stays in its folder, set both to null. Set " +
 	"is_completed_contract to true only for an actual completed contract or agreement (its parties named, dates and key " +
 	"terms filled in, no empty lines, blanks or [Name]-style placeholders, not marked as a template, sample or draft), " +
@@ -96,8 +96,9 @@ func (s *Service) filingGate(ctx context.Context, q store.Q, workspaceID, userID
 }
 
 // queueFiling queues a new upload for filing when its uploader's gate allows it now; the job checks again before
-// each call. Its own transaction after the upload's, so it can never fail the upload.
-func (s *Service) queueFiling(ctx context.Context, sess store.Session, id string, mayMove bool) {
+// each call. Its own transaction after the upload's, so it can never fail the upload. lang is the uploader's, "" for
+// none, so the folders filing makes are named in it.
+func (s *Service) queueFiling(ctx context.Context, sess store.Session, id string, mayMove bool, lang string) {
 	if s.filer == nil {
 		return
 	}
@@ -108,16 +109,17 @@ func (s *Service) queueFiling(ctx context.Context, sess store.Session, id string
 			}
 			return err
 		}
-		return q.QueueFiling(ctx, sess.Workspace.ID, id, sess.User.ID, mayMove, s.now())
+		return q.QueueFiling(ctx, sess.Workspace.ID, id, sess.User.ID, mayMove, lang, s.now())
 	})
 	if err != nil {
 		s.log.ErrorContext(ctx, "queue AI filing", "document", id, "error", err)
 	}
 }
 
-// QueueFiling queues a file stored by another entry point (an import) for filing, as an upload to the top level.
+// QueueFiling queues a file stored by another entry point (an import) for filing, as an upload to the top level; its
+// folders are named in the workspace's document language.
 func (s *Service) QueueFiling(ctx context.Context, sess store.Session, id string) {
-	s.queueFiling(ctx, sess, id, true)
+	s.queueFiling(ctx, sess, id, true, "")
 }
 
 // RunFiling files queued uploads every few seconds until ctx ends; the person who uploaded is waiting for it.
@@ -244,7 +246,11 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	}
 	folders := map[string]bool{}
 	var listed []store.Folder
+	lang := ""
 	if mayMove {
+		if lang, err = s.folderLanguage(ctx, ws.ID, j.Language); err != nil {
+			return err
+		}
 		all, err := s.db.DocumentFolders(ctx, ws.ID, j.UserID)
 		if err != nil {
 			return err
@@ -260,7 +266,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if err != nil {
 		return err
 	}
-	req := filingRequest(doc, data, text, mayMove, listed, names, used)
+	req := filingRequest(doc, data, text, mayMove, lang, listed, names, used)
 	budget := s.budget
 	budget.Gate = func(ctx context.Context, q store.Q, workspaceID string) error {
 		return s.filingGate(ctx, q, workspaceID, j.UserID)
@@ -283,6 +289,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	}
 	if mayMove && decided.record == nil {
 		decided = toClient(decided, doc, listed, index.client(doc, text))
+		decided.newFolder = localName(decided.newFolder, lang) // the model may still have named it in the document's language
 	}
 	if decided.record != nil && decided.record.contracts {
 		ok, reason := completedContract(doc.Name, text, decided.completedContract, decided.contractReason)
@@ -291,8 +298,8 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	return s.applyFiling(ctx, j, ws, decided)
 }
 
-// toClient: an invoice or quote the model filed outside the system folders goes to its client's record folder when
-// the file names one known client.
+// toClient: an invoice, quote or contract the model filed outside the system folders goes to its client's record
+// folder (a contract to its Contracts folder, checked after) when the file names one known client.
 func toClient(f filing, doc store.Document, listed []store.Folder, client *store.ClientName) filing {
 	if client == nil {
 		return f
@@ -306,12 +313,16 @@ func toClient(f filing, doc store.Document, listed []store.Folder, client *store
 	if kind := recordKind(path, f.tags); kind != "" {
 		return filing{tags: f.tags, record: &recordPlace{clientID: client.ID, kind: kind, year: recordYear(path, doc)}}
 	}
+	if isContract(path, f.tags) {
+		f.record = &recordPlace{clientID: client.ID, kind: "documents", year: recordYear(path, doc), contracts: true}
+		f.folderID, f.newFolder = "", ""
+	}
 	return f
 }
 
 // filingRequest is what the model sees: the file's name and type, its text or the file itself when small, the
-// folders it may choose from and the tags in use.
-func filingRequest(doc store.Document, data []byte, text string, mayMove bool, folders []store.Folder, names recordNames, tags []string) aimodel.Request {
+// folders it may choose from, the language of new folders and the tags in use.
+func filingRequest(doc store.Document, data []byte, text string, mayMove bool, lang string, folders []store.Folder, names recordNames, tags []string) aimodel.Request {
 	var msg strings.Builder
 	fmt.Fprintf(&msg, "File name: %s\nFile type: %s\n\n", doc.Name, doc.ContentType)
 	if mayMove {
@@ -322,7 +333,7 @@ func filingRequest(doc store.Document, data []byte, text string, mayMove bool, f
 		if len(folders) == 0 {
 			msg.WriteString("(none yet)\n")
 		}
-		msg.WriteString("\n" + recordList(names) + "\n")
+		msg.WriteString(folderLanguageRule(lang) + "\n" + recordList(names) + "\n")
 	} else {
 		msg.WriteString("The file stays in its folder.\n\n")
 	}
@@ -420,11 +431,10 @@ func cleanTags(raw []string) ([]string, string) {
 			out = append(out, t)
 		}
 	}
-	if len(out) > maxTags {
-		return nil, "Use at most 10 tags."
-	}
 	return out, ""
 }
+
+const tooManyTags = "Use at most 10 tags."
 
 // restoredTags: the tags an undo puts back as they were, also ones from before the tags' shape (never new input).
 func restoredTags(raw []string) ([]string, string) {
@@ -447,7 +457,8 @@ func restoredTags(raw []string) ([]string, string) {
 }
 
 // applyFiling adds the tags and, when the file is still at the top level it was uploaded to, moves it into the
-// chosen folder (made at the top level when new, or the one already there by that name), recording what changed.
+// chosen folder (made at the top level when new, or the one already there by that name or kind), recording what
+// changed.
 func (s *Service) applyFiling(ctx context.Context, j store.FilingJob, ws store.Workspace, f filing) error {
 	sess := store.Session{Workspace: ws, User: store.User{ID: j.UserID}}
 	var rec store.FilingRecord
@@ -524,6 +535,23 @@ func (s *Service) filingFolder(ctx context.Context, q store.Q, workspaceID, user
 	}
 	if err := q.LockContainer(ctx, workspaceID, nil); err != nil {
 		return "", false, err
+	}
+	all, err := q.DocumentFolders(ctx, workspaceID, userID)
+	if err != nil {
+		return "", false, err
+	}
+	var top []store.Folder
+	for _, f := range all {
+		if f.ParentID == nil && f.SystemKind == nil {
+			top = append(top, f)
+		}
+	}
+	names := make([]string, len(top))
+	for i, f := range top {
+		names[i] = f.Name
+	}
+	if have := sameFolder(f.newFolder, names); have != "" { // "Verträge" when "Contracts" is asked: never a sibling
+		return top[slices.Index(names, have)].ID, false, nil
 	}
 	existing, err := q.FolderNameTaken(ctx, workspaceID, nil, f.newFolder, "")
 	if err != nil || existing != "" {

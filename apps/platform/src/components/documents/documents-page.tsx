@@ -399,12 +399,19 @@ export function DocumentsPage() {
   // The bell's "Your ZIP is ready" opens Documents with ?zip=<id>: the download starts, or it says it is gone.
   const zipLink = query.get('zip')
   const openZipLink = useEffectEvent((id: string) => {
-    docsApi.zipExports().then(({ data }) => {
-      const zip = data.find((entry) => entry.id === id)
-      if (zip?.status === 'ready') saveFile(zipExportUrl(id))
-      else toast.error(translate('zipGone'))
-      navigate({})
-    }, docError)
+    docsApi.zipExport(id).then(
+      ({ data }) => {
+        if (data.status === 'ready') saveFile(zipExportUrl(id))
+        else toast.error(translate('zipGone'))
+        navigate({})
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.status === 404) {
+          toast.error(translate('zipGone'))
+          navigate({})
+        } else docError(error)
+      },
+    )
   })
   useEffect(() => {
     if (zipLink) openZipLink(zipLink)

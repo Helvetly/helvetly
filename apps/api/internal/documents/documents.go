@@ -86,6 +86,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/documents/groups/zip", s.groupZip)
 	handle("POST /api/v1/documents/groups/zip", s.queueZip)
 	handle("GET /api/v1/documents/exports", s.zipExports)
+	handle("GET /api/v1/documents/exports/{id}/status", s.zipExport)
 	handle("GET /api/v1/documents/exports/{id}/download", s.downloadZip)
 	handle("GET /api/v1/documents/trash", s.trash)
 	handle("POST /api/v1/documents/trash/empty", s.emptyTrash)
@@ -101,11 +102,14 @@ func (s *Service) Register(mux *http.ServeMux) {
 	s.registerOrganize(handle)
 }
 
-// Run files what came before the system folders once, then purges the Trash of what is older than 30 days, hourly,
+// Run files what came before the system folders and tags the files from before automatic tags once, then purges the Trash of what is older than 30 days, hourly,
 // until ctx ends.
 func (s *Service) Run(ctx context.Context) {
 	if err := s.BackfillSystemFolders(ctx); err != nil {
 		s.log.ErrorContext(ctx, "file records into system folders", "error", err)
+	}
+	if err := s.BackfillAutoTags(ctx); err != nil {
+		s.log.ErrorContext(ctx, "tag files automatically", "error", err)
 	}
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
@@ -577,6 +581,15 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if d.DeletedAt != nil {
 			return errTrashed
 		}
+		if tags != nil {
+			// automatic tags take no room of the person's own; tags before the move, which may tag the file anew
+			if len(slices.DeleteFunc(slices.Clone(tags), func(t string) bool { return slices.Contains(d.AutoTags, t) })) > maxTags {
+				return validationFailed(map[string]string{"tags": tooManyTags})
+			}
+			if err := q.SetOwnDocumentTags(r.Context(), sess.Workspace.ID, d.ID, tags, s.now()); err != nil {
+				return err
+			}
+		}
 		name, folder := d.Name, d.FolderID
 		if raw, ok := body["name"]; ok {
 			var typed string
@@ -595,11 +608,6 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		if name, err = s.placeFile(q, r.Context(), sess, d.ID, name, folder, mode); err != nil {
 			return err
-		}
-		if tags != nil {
-			if err := q.SetDocumentTags(r.Context(), sess.Workspace.ID, d.ID, tags, s.now()); err != nil {
-				return err
-			}
 		}
 		return q.UpdateDocument(r.Context(), sess.Workspace.ID, d.ID, name, folder, s.now())
 	})

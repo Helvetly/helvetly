@@ -186,10 +186,15 @@ func (st state) notice(on, email string, at time.Time) store.DunningNotice {
 
 var errChanged = auth.Error(http.StatusConflict, "invalid_state", "The invoice changed while the reminder was prepared: try again.", nil)
 
+var errUncertain = auth.Error(http.StatusBadGateway, "delivery_uncertain",
+	"The mail server may have taken the reminder although the connection dropped, so it is not sent again. Check with the client.", nil)
+
 var errNoMail = auth.Error(http.StatusServiceUnavailable, "mail_unavailable", "Email is not set up on this server.", nil)
 
-// send sends the next notice of invoice id: the notice row goes in first, in a transaction that rolls back when the
-// email fails, so a failed send leaves no row and a concurrent run waits on the row's key, then sends nothing.
+// send sends the next notice of invoice id. The notice row (unconfirmed) is committed before the email goes, so a
+// concurrent run waits on the row's key, then sends nothing; once the mail server took the email it is confirmed
+// and announced. A refused email removes the row (the next run sends it again); one with an unknown outcome (the
+// connection dropped after the message) or a process that stopped keeps it unconfirmed: never sent twice.
 // by is who pressed "Send now" (the next step goes whether or not it is due, paused or opted out), nil for the
 // hourly job. It reports whether a notice went out.
 func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *store.User) (bool, error) {
@@ -244,17 +249,17 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 		}
 		return false, err
 	}
-	sent := false
+	var sentBy *string
+	data := map[string]any{"invoice_id": st.inv.ID, "number": deref(st.inv.Number), "client": st.inv.Client.Name,
+		"level": n.Level, "title": *n.StoredTitle, "amount": n.Total.String(), "currency": st.inv.Currency}
+	to := store.NotifyTo{Roles: notifications.Managers}
+	if by != nil {
+		sentBy, to.Except, data["actor"] = &by.ID, by.ID, notifications.Actor(*by)
+	}
+	recorded := false
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		if err := q.LockInvoiceSettings(ctx, ws.ID); err != nil {
 			return err
-		}
-		var sentBy *string
-		data := map[string]any{"invoice_id": st.inv.ID, "number": deref(st.inv.Number), "client": st.inv.Client.Name,
-			"level": n.Level, "title": *n.StoredTitle, "amount": n.Total.String(), "currency": st.inv.Currency}
-		to := store.NotifyTo{Roles: notifications.Managers}
-		if by != nil {
-			sentBy, to.Except, data["actor"] = &by.ID, by.ID, notifications.Actor(*by)
 		}
 		// The notice was computed outside this transaction: under the invoice's lock (a payment, credit or void takes
 		// it too) it goes out only if the invoice is still what it was computed from.
@@ -286,24 +291,10 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 			return errChanged
 		}
 		won, err := q.LogDunningNotice(ctx, ws.ID, n, sentBy)
-		if err != nil || !won {
-			return err
-		}
-		if err := q.SettleAutomation(ctx, ws.ID, action, now); err != nil {
-			return err
-		}
-		if err := notifications.Notify(ctx, q, ws.ID, "dunning.sent", data, to, now); err != nil {
-			return err
-		}
-		m := st.message(n, letter, invoicePDF)
-		m.Workspace = ws.ID
-		if err := s.mailer.Send(ctx, m); err != nil {
-			return fmt.Errorf("send: %w", err)
-		}
-		sent = true
-		return nil
+		recorded = won
+		return err
 	})
-	if err == nil && !sent || errors.Is(err, errChanged) { // nothing went: what is due is computed again next time
+	if err == nil && !recorded || errors.Is(err, errChanged) { // nothing went: what is due is computed again next time
 		if rerr := s.db.ReleaseAutomation(context.WithoutCancel(ctx), ws.ID, action); rerr != nil {
 			return false, errors.Join(err, rerr)
 		}
@@ -311,7 +302,36 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 	if errors.Is(err, errChanged) && by == nil {
 		return false, nil // the next run computes it again
 	}
-	return sent, err
+	if err != nil || !recorded {
+		return false, err
+	}
+
+	m := st.message(n, letter, invoicePDF)
+	m.Workspace = ws.ID
+	sendErr := s.mailer.Send(ctx, m)
+	done := context.WithoutCancel(ctx) // the outcome is recorded even when the request ends meanwhile
+	if sendErr != nil && !errors.Is(sendErr, mail.ErrUncertain) {
+		// refused: the next run sends it again, under the reservation kept for it
+		err := s.db.DropUnsentDunningNotice(done, ws.ID, id, n.Level)
+		return false, errors.Join(fmt.Errorf("send: %w", sendErr), err)
+	}
+	err = s.db.Tx(done, func(q store.Q) error {
+		if err := q.SettleAutomation(done, ws.ID, action, now); err != nil || sendErr != nil {
+			return err // an unknown outcome stays unconfirmed: it may have gone
+		}
+		if err := q.ConfirmDunningNotice(done, ws.ID, id, n.Level); err != nil {
+			return err
+		}
+		return notifications.Notify(done, q, ws.ID, "dunning.sent", data, to, now)
+	})
+	if sendErr != nil {
+		s.log.WarnContext(ctx, "dunning notice may have been sent", "invoice", id, "level", n.Level, "error", sendErr)
+		return false, errors.Join(errUncertain, err)
+	}
+	if err != nil {
+		s.log.ErrorContext(ctx, "confirm dunning notice", "invoice", id, "level", n.Level, "error", err)
+	}
+	return true, nil // it went: a confirmation that failed leaves it unconfirmed, never sent twice
 }
 
 // text: the own text of step (1-based), nil for the standard sentence.

@@ -98,7 +98,7 @@ are the reference.
   `BackfillSystemFolders` (once per start, idempotent) files what came before and turns the earlier
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
   move along; the emptied old folders are deleted). AI filing and organizing put a known
-  client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
+  client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there. Plain folders they make are named in the asker's language (the uploader's, kept on the filing; else the workspace's document language, else English), never the document's: a common kind named otherwise is translated, and an existing folder of that kind in any language is used instead of a new sibling (`documents/folder_language.go`); people's folders are never renamed.
   Before the model is asked, a file that is one of the workspace's invoices or quotes (by the PDF it shares, the
   imported invoice it is the original of, or a record number in its name or text, separators ignored) goes straight to
   its client's folder (`documents/record_match.go`); several records found leave it to the model. A client's contract
@@ -106,6 +106,15 @@ are the reference.
   neither its name nor its text looks like a template, sample, draft or blanks (`completedContract`); else to the
   client's `Documents/<year>`; the reason is kept (`document_filings.contract_reason`). Imported contracts keep their name. An invoice or quote
   the model files outside Clients goes to the client's folder when the file names one client (whole name or UID).
+- **Automatic tags** (`tags.Auto`, `store/queries_document_autotags.go`): a file's tags say what it is, from its record
+  first, then its system folder: the kind (`invoice`, `credit-note`, `debit-note`, `quote`, `contract`, `receipt`,
+  `engagement`), `signed` once its signature request completed, `year-<yyyy>`, `client-<name>`, the record's number
+  (`2026-q-001`), `expense-<category>` and `from-quote-<number>`. `store.AutoTag` runs inside the writes that file
+  (`CreateDocument`, `UpdateDocument`, `AddDocumentLink`, `AddQuoteContract`, `AddQuoteRevision`,
+  `CompleteSignatureRequest`) and once per start over files never tagged (`BackfillAutoTags`, by `auto_tagged_at`).
+  `documents.auto_tags` names them (outlined chips); one no longer computed leaves, one a person removes
+  (`SetOwnDocumentTags`) goes to `removed_auto_tags` and never comes back; the app's own tag writes
+  (`SetDocumentTags`) keep them, and they take no room of a person's 10.
 - **Documents grouped views** (`store/queries_document_groups.go`, `documents/groups.go`): Group by type, year or
   client is computed from each file, never stored, and moves nothing. Type: the record it belongs to (an invoice's or
   quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder, its tags, its
