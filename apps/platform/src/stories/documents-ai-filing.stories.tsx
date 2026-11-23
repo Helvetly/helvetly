@@ -151,6 +151,39 @@ export const TagsReadOnly: Story = {
   },
 }
 
+/** Automatic tags (what the file is) are outlined, the person's own soft; each automatic one says it in a tooltip. */
+export const AutomaticTagsMuted: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/documents/doc_a', () =>
+          HttpResponse.json({
+            data: file('doc_a', {
+              tags: ['urgent', 'invoice', 'year-2026', 'client-acme-ag', '2026-in-005'],
+              auto_tags: ['invoice', 'year-2026', 'client-acme-ag', '2026-in-005'],
+            }),
+          }),
+        ),
+        ...screenHandlers,
+      ],
+    },
+  },
+  render: () => (
+    <Preview id="doc_a" siblings={[]} commands={commands} onNavigate={fn()} onClose={fn()} />
+  ),
+  play: async () => {
+    const body = within(document.body)
+    const auto = await body.findByText('year-2026')
+    await expect(auto).toHaveAttribute('data-auto-tag')
+    await expect(auto).toHaveAttribute('data-variant', 'outline')
+    await expect(body.getByText('urgent')).not.toHaveAttribute('data-auto-tag')
+    auto.focus()
+    await expect(
+      await body.findByRole('tooltip', { name: /Added automatically/ }),
+    ).toBeInTheDocument()
+  },
+}
+
 const undone: string[] = []
 
 /** Two uploads AI filing will sort; the hook polls them and announces the batch once. */

@@ -33,7 +33,8 @@ import (
 type fakeStorage struct {
 	mu      sync.Mutex
 	objects map[string][]byte
-	proxy   bool // S3_PROXY_DOWNLOADS
+	proxy   bool  // S3_PROXY_DOWNLOADS
+	openErr error // every Open fails with it while set
 }
 
 func (f *fakeStorage) Put(_ context.Context, key string, body io.Reader, size int64, _, _ string) error {
@@ -60,6 +61,9 @@ func (object) Close() error { return nil }
 func (f *fakeStorage) Open(_ context.Context, key string) (io.ReadSeekCloser, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.openErr != nil {
+		return nil, f.openErr
+	}
 	b, ok := f.objects[key]
 	if !ok {
 		return nil, fmt.Errorf("open %s: missing", key)

@@ -1,6 +1,6 @@
 import { createTranslators } from '@helvetly/i18n'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { expect, fireEvent, spyOn, userEvent, waitFor, within } from 'storybook/test'
 
 import { DocumentsPage } from '@/components/documents/documents-page'
@@ -1061,22 +1061,24 @@ export const ZipEmptyView: Story = {
   },
 }
 
-/** The bell's link (?zip=) downloads a ready ZIP, through the member's own download route. */
+/**
+ * The bell's link (?zip=) downloads a ready ZIP, through the member's own download route: found by its id, also
+ * when ten newer ones push it out of the list.
+ */
 export const ZipFromNotification: Story = {
   parameters: pageParameters('/documents', { zip: 'zip_1' }, [
-    http.get('/api/v1/documents/exports', () =>
+    http.get('/api/v1/documents/exports', () => HttpResponse.json({ data: [] })),
+    http.get('/api/v1/documents/exports/zip_1/status', () =>
       HttpResponse.json({
-        data: [
-          {
-            id: 'zip_1',
-            name: 'documents-invoices.zip',
-            status: 'ready',
-            files: 12,
-            bytes: 9_000_000,
-            created_at: '2026-11-23T10:00:00Z',
-            expires_at: '2026-11-30T10:00:00Z',
-          },
-        ],
+        data: {
+          id: 'zip_1',
+          name: 'documents-invoices.zip',
+          status: 'ready',
+          files: 12,
+          bytes: 9_000_000,
+          created_at: '2026-11-23T10:00:00Z',
+          expires_at: '2026-11-30T10:00:00Z',
+        },
       }),
     ),
   ]),
@@ -1087,6 +1089,29 @@ export const ZipFromNotification: Story = {
     await expect(link instanceof HTMLAnchorElement ? link.getAttribute('href') : '').toBe(
       '/api/v1/documents/exports/zip_1/download',
     )
+    clicks.mockRestore()
+    await waitFor(() => expect(url(canvasElement).has('zip')).toBe(false))
+  },
+}
+
+/** A link to a ZIP that is no longer kept says so, and downloads nothing. */
+export const ZipFromNotificationGone: Story = {
+  parameters: pageParameters('/documents', { zip: 'zip_old' }, [
+    http.get('/api/v1/documents/exports/zip_old/status', () =>
+      HttpResponse.json({ error: { code: 'not_found', message: 'Not found.' } }, { status: 404 }),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const clicks = catchDownloads()
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(
+      await body.findByText(
+        'This ZIP is no longer available. Download it again from Documents.',
+        {},
+        { timeout: 8000 },
+      ),
+    ).toBeInTheDocument()
+    await expect(clicks).not.toHaveBeenCalled()
     clicks.mockRestore()
     await waitFor(() => expect(url(canvasElement).has('zip')).toBe(false))
   },
@@ -1247,5 +1272,42 @@ export const FileMenu: Story = {
         ].join(', '),
       ),
     )
+  },
+}
+
+/**
+ * A file's "Linked to" opens the signature request's drawer on top of the preview, sliding in, without
+ * leaving the page; closing it uncovers the preview again.
+ */
+export const LinkedRecordStacks: Story = {
+  parameters: pageParameters('/documents', { file: 'doc_1' }, [
+    http.get('/api/v1/documents/doc_1', () =>
+      HttpResponse.json({
+        data: {
+          ...sampleFiles[0],
+          links: [{ type: 'signature', id: 'sig_1', label: 'Signed · Mandate', retains: false }],
+        },
+      }),
+    ),
+    http.get('/api/v1/signatures/sig_1', async () => {
+      await delay('infinite')
+    }),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const link = await body.findByRole('link', { name: 'Signed · Mandate' }, { timeout: 8000 })
+    const path = window.location.pathname
+    await userEvent.click(link)
+    const request = await body.findByRole('dialog', { name: 'Loading…' })
+    await expect(request).toHaveAttribute('data-state', 'open')
+    await expect(request.className).toContain('slide-in-from-right')
+    await expect(window.location.pathname).toBe(path)
+    await expect(new URLSearchParams(window.location.search).getAll('drawer')).toEqual([
+      'signature:sig_1',
+    ])
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('dialog', { name: 'Loading…' })).toBeNull())
+    await expect(body.getByRole('link', { name: 'Signed · Mandate' })).toBeVisible()
   },
 }

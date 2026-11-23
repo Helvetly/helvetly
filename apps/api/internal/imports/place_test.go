@@ -100,7 +100,7 @@ func TestExpenseCreatePlacesTheDocument(t *testing.T) {
 		if _, err := createFrom(ctx, st, sess, data, Source{DocumentID: &id, Name: "a.pdf"}); err != nil {
 			t.Fatal(err)
 		}
-		if d := inFolder(t, st, sess, id, "Expenses", "2025", list[0].Name); !slices.Equal(d.Tags, []string{"expense", tags.Slug(list[0].Name)}) {
+		if d := inFolder(t, st, sess, id, "Expenses", "2025", list[0].Name); !slices.Equal(d.Tags, []string{"receipt", "year-2025", tags.Slug("expense-" + list[0].Name)}) {
 			t.Fatalf("tags %v", d.Tags)
 		}
 	})
@@ -113,7 +113,7 @@ func TestExpenseCreatePlacesTheDocument(t *testing.T) {
 		if _, err := createFrom(ctx, st, sess, data, Source{DocumentID: &id, Name: "b.pdf"}); err != nil {
 			t.Fatal(err)
 		}
-		if d := inFolder(t, st, sess, id, "Mine"); len(d.Tags) != 0 {
+		if d := inFolder(t, st, sess, id, "Mine"); !slices.Equal(d.Tags, []string{"receipt", "year-2025", tags.Slug("expense-" + list[0].Name)}) {
 			t.Fatalf("tags %v", d.Tags)
 		}
 	})

@@ -30,7 +30,10 @@ func (q Q) AddQuoteRevision(ctx context.Context, workspaceID string, t Quote, se
 	_, err := q.db.Exec(ctx, `INSERT INTO quote_revisions (workspace_id, quote_id, revision, sent_at, sent_to, snapshot, pdf_key, created_at)
 		SELECT $1, id, $3, $4, $5, $6, $7, $8 FROM quotes WHERE workspace_id = $1 AND id = $2
 		ON CONFLICT (quote_id, revision) DO NOTHING`, workspaceID, t.ID, t.Revision, sentAt, sentTo, t, t.PDFKey, now)
-	return err
+	if err != nil || t.PDFKey == nil {
+		return err
+	}
+	return q.autoTagObject(ctx, workspaceID, *t.PDFKey, now)
 }
 
 // SetQuoteRevisionOutcome records the answer to a sent revision once; a revision kept without one gets none.

@@ -426,3 +426,41 @@ func TestContractWriteEncodesEmptyWarningsAsList(t *testing.T) {
 		})
 	}
 }
+
+// A send that fails after the contract is filed answers its document; the retry naming it delivers that contract
+// under its number instead of taking another (audit A03).
+func TestContractEmailRetryReusesTheFiledContract(t *testing.T) {
+	e := newEnv(t, true)
+	b := e.workspace()
+	quoteID, _ := e.quote(b)
+	path := "/api/v1/quotes/" + quoteID + "/contracts"
+	body := reviewed(obj{"type": "email", "to": "recipient@example.test"})
+	e.mail.fail = true
+	got := e.fail(b, "POST", path, body, http.StatusServiceUnavailable)
+	if got.Code != "mail_failed" || got.Details.DocumentID == "" {
+		t.Fatalf("email failure: %+v", got)
+	}
+	e.mail.fail = false
+	body["document_id"] = got.Details.DocumentID
+	var out struct{ Data generatedOut }
+	e.do(b, "POST", path, body, http.StatusCreated, &out)
+	want := fmt.Sprintf("C-%d-001", time.Now().UTC().Year())
+	if out.Data.Document.ID != got.Details.DocumentID || out.Data.ContractNumber == nil || *out.Data.ContractNumber != want {
+		t.Fatalf("retry: %+v", out.Data)
+	}
+	if n := e.count("SELECT count(*) FROM quote_contracts WHERE quote_id = $1", quoteID); n != 1 {
+		t.Fatalf("contracts: %d", n)
+	}
+	if n := e.count("SELECT seq FROM contract_counters WHERE workspace_id = $1", b.workspace); n != 1 {
+		t.Fatalf("numbers taken: %d", n)
+	}
+	if len(e.mail.sent) != 1 || len(e.mail.sent[0].Attachments) != 1 ||
+		!bytes.Equal(e.mail.sent[0].Attachments[0].Data, e.files.objects[e.mustDoc(b, out.Data.Document.ID).ObjectKey]) {
+		t.Fatalf("sent: %d", len(e.mail.sent))
+	}
+	// a document that is not one of the quote's contracts is refused
+	body["document_id"] = "doc_unknown"
+	if got := e.fail(b, "POST", path, body, http.StatusUnprocessableEntity); got.Details.Fields["document_id"] == "" {
+		t.Fatalf("unknown document: %+v", got)
+	}
+}
