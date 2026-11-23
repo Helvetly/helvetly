@@ -1,10 +1,12 @@
 import type { Client } from './clients'
 import {
   buildTemplateBody,
+  contractLanguage,
   dataValue,
   defaultSigners,
   generateProblem,
   initialValues,
+  sectionsProblem,
   templateProblem,
   toDraftFields,
   valuesByField,
@@ -164,4 +166,27 @@ test('filling needs the custom answers, and valid signers when sending to sign',
   expect(
     generateProblem(3, { ...state, delivery: 'email', emailTo: 'luc@romande.ch, ana@b.ch' }),
   ).toBeNull()
+})
+
+test.each([
+  ['fr', 'de', 'fr'],
+  [null, 'it', 'it'],
+  ['pl', 'xx', 'de'],
+] as const)('a contract for a %s client of a %s quote is in %s', (ofClient, ofQuote, want) => {
+  expect(contractLanguage(ofClient, ofQuote)).toBe(want)
+})
+
+test('the review needs a title and complete sections', () => {
+  const ok = {
+    title: 'T',
+    language: 'de' as const,
+    intro: '',
+    clauses: [{ heading: 'A', body: 'B' }],
+  }
+  expect(sectionsProblem(ok)).toBeNull()
+  expect(sectionsProblem({ ...ok, title: ' ' })).toBe('Give the contract a title.')
+  expect(sectionsProblem({ ...ok, clauses: [] })).toBe('Add at least one section.')
+  expect(sectionsProblem({ ...ok, clauses: [{ heading: 'A', body: ' ' }] })).toBe(
+    'Every section needs a heading and text.',
+  )
 })

@@ -88,8 +88,6 @@ function caption(field: TemplateDraftField) {
 export type ContractSource = {
   quoteId: string
   quoteNumber: string | null
-  /** "Use a file from Documents": make a template of a file first. */
-  onFromDocument: () => void
   /** Made: the host shows the toast with its actions. */
   onMade: (made: Generated) => void
 }
@@ -358,11 +356,7 @@ export function FillTemplateDrawer({
               text={translate('theClientSNameAddressAndContactFillThe')}
             />
           )}
-          <TemplatePicker
-            selected={template}
-            onPick={setTemplate}
-            onFromDocument={contract?.onFromDocument}
-          />
+          <TemplatePicker selected={template} onPick={setTemplate} />
           {contract ? null : changingClient || !client ? (
             <ClientPicker selected={client} onPick={setClient} />
           ) : (
@@ -513,25 +507,16 @@ const pickRow =
 function TemplatePicker({
   selected,
   onPick,
-  onFromDocument,
 }: {
   selected: Template | null
   onPick: (template: Template) => void
-  onFromDocument?: () => void
 }) {
   const list = useTemplates()
   const [term, setTerm] = useState('')
   const templates = pickableTemplates(list.data ?? [], term)
   return (
     <section className="grid gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[13px] font-medium">{translate('template2')}</h3>
-        {onFromDocument && (
-          <Button variant="link" size="sm" className="h-auto p-0" onClick={onFromDocument}>
-            {translate('useAFileFromDocuments')}
-          </Button>
-        )}
-      </div>
+      <h3 className="text-[13px] font-medium">{translate('template2')}</h3>
       {(list.data?.length ?? 0) > 5 && (
         <label
           data-field-surface
@@ -793,10 +778,11 @@ function ValueFields({
   )
 }
 
-function Choice({
+export function Choice({
   icon: Icon,
   label,
   text,
+  badge,
   selected,
   disabled,
   onPick,
@@ -804,6 +790,8 @@ function Choice({
   icon: LucideIcon
   label: string
   text: string
+  /** A short mark beside the label, e.g. "Recommended". */
+  badge?: string
   selected: boolean
   disabled?: boolean
   onPick: () => void
@@ -820,7 +808,14 @@ function Choice({
     >
       <Icon className="mt-0.5 size-4 shrink-0 stroke-[1.75] text-muted-foreground" />
       <span className="grid min-w-0 flex-1 gap-0.5">
-        <span className="text-[14px] font-medium">{label}</span>
+        <span className="flex items-center gap-2 text-[14px] font-medium">
+          {label}
+          {badge && (
+            <span className="rounded-full bg-brand-solid/10 px-2 py-px text-caption font-medium text-brand">
+              {badge}
+            </span>
+          )}
+        </span>
         <span className="text-[12.5px] text-muted-foreground">{text}</span>
       </span>
       {selected && <Check className="mt-0.5 size-4 text-brand" />}

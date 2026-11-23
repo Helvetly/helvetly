@@ -5,10 +5,11 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { ClientsPage } from '@/components/clients/clients-page'
 import { QuotesPage } from '@/components/quotes/quotes-page'
+import { aiConsent } from '@/mocks/ai-notice'
 import { emailTemplateHandlers } from '@/mocks/email-templates'
 import { listQuotes, quoteHandlers, quotePreviewHandler, resetQuotesMock } from '@/mocks/quotes'
 
-import { sessionHandler, unavailable } from '../screen-fixtures'
+import { emptyPage, sessionHandler, storySession, unavailable } from '../screen-fixtures'
 import { filtersPlay } from './filters'
 import {
   closeHeidi,
@@ -972,6 +973,39 @@ const otherTemplate = {
   used_count: 0,
   last_used_at: null,
 }
+const exampleDoc = {
+  id: 'doc_example',
+  name: 'Vertrag Vorlage Deutsch V1.0.pdf',
+  folder_id: null,
+  folder: null,
+  size: 48_000,
+  content_type: 'application/pdf',
+  kind: 'pdf',
+  sha256: '0'.repeat(64),
+  tags: [],
+  ai_filing: null,
+  previewable: false,
+  links: [],
+  retained_until: null,
+  uploaded_by: storySession.user,
+  created_at: '2026-11-01T00:00:00Z',
+  updated_at: '2026-11-01T00:00:00Z',
+  deleted_at: null,
+  deleted_by: null,
+  purge_at: null,
+}
+const written = {
+  title: 'Werkvertrag',
+  language: 'de',
+  intro: 'Gestützt auf das Angebot Q-2026-004.',
+  clauses: [
+    { heading: 'Gegenstand', body: 'Holzbauarbeiten gemäss Angebot.' },
+    { heading: 'Vergütung', body: 'Gemäss Zahlungsplan.' },
+  ],
+  warnings: [],
+}
+/** The modes the AI was asked in, e.g. "ai" or "example:doc_example". */
+let writes: string[] = []
 const contractHandlers: RequestHandler[] = [
   http.get('/api/v1/templates', () =>
     HttpResponse.json({ data: [otherTemplate, contractTemplate] }),
@@ -995,6 +1029,58 @@ const contractHandlers: RequestHandler[] = [
         data: {
           contract_number: '2026/C/001',
           document: { id: 'doc_contract', name: '2026-C-001.pdf' },
+          signature_request_id: null,
+          emailed_to: null,
+        },
+      },
+      { status: 201 },
+    )
+  }),
+  http.get('/api/v1/heidi/usage', () =>
+    HttpResponse.json({
+      period: '2026-11',
+      tokens_used: 0,
+      tokens_included: 500_000,
+      tokens_purchased: 0,
+      tokens_remaining: 500_000,
+      provider_available: true,
+      consent: aiConsent(true),
+    }),
+  ),
+  http.get('/api/v1/documents', () =>
+    HttpResponse.json({
+      ...emptyPage,
+      data: [exampleDoc],
+      meta: { ...emptyPage.meta, total: 1, total_pages: 1 },
+    }),
+  ),
+  http.post('/api/v1/quotes/quo_sent/contract-drafts', async ({ request }) => {
+    const sent = (await request.json()) as { mode: string; example_document_id?: string }
+    writes.push(sent.mode + (sent.example_document_id ? `:${sent.example_document_id}` : ''))
+    if (sent.mode === 'improve')
+      return HttpResponse.json({
+        data: { ...written, clauses: [{ heading: 'Fees', body: 'Improved fees.' }] },
+      })
+    return HttpResponse.json({ data: written })
+  }),
+  http.post('/api/v1/quotes/quo_sent/contract-preview', () =>
+    HttpResponse.json({
+      data: {
+        pdf: btoa('%PDF-1.7\n%%EOF\n'),
+        pages: 1,
+        warnings: [{ clause: 1, kind: 'amount', text: 'CHF 9’999.00' }],
+      },
+    }),
+  ),
+  http.post('/api/v1/quotes/quo_sent/contracts', async ({ request }) => {
+    const sent = (await request.json()) as { title: string; clauses: { heading: string }[] }
+    if (sent.title !== 'Werkvertrag Holzbau' || sent.clauses.length !== 2)
+      return HttpResponse.json({ error: { code: 'bad', message: 'Wrong body.' } }, { status: 400 })
+    return HttpResponse.json(
+      {
+        data: {
+          contract_number: '2026/C/002',
+          document: { id: 'doc_contract2', name: '2026-C-002.pdf' },
           signature_request_id: null,
           emailed_to: null,
         },
@@ -1033,6 +1119,9 @@ export const ContractFromQuote: Story = {
       body.getByRole('button', { name: 'Actions for Q-2026-004 · Keller Holzbau AG' }),
     )
     await userEvent.click(await body.findByRole('menuitem', { name: 'Create contract with AI' }))
+    const writer = await body.findByRole('dialog', { name: /Create contract with AI/ }, wait)
+    await userEvent.click(within(writer).getByRole('button', { name: /Fill a template/ }))
+    await userEvent.click(within(writer).getByRole('button', { name: 'Next' }))
     const drawer = await body.findByRole('dialog', { name: /Create contract with AI/ }, wait)
     const list = await within(drawer).findByLabelText('Templates', {}, wait)
     const rows = await within(list).findAllByRole('button')
@@ -1055,6 +1144,155 @@ export const ContractFromQuote: Story = {
       expect(body.getByRole('button', { name: 'Send for signature' })).toBeVisible(),
     )
     await expect(body.getByRole('button', { name: 'Open' })).toBeInTheDocument()
+  },
+}
+
+const openWriter = async (context: Parameters<NonNullable<Story['play']>>[0]) => {
+  await shows('Keller Holzbau AG')?.(context)
+  const body = page(context.canvasElement)
+  await userEvent.click(
+    body.getByRole('button', { name: 'Actions for Q-2026-004 · Keller Holzbau AG' }),
+  )
+  await userEvent.click(await body.findByRole('menuitem', { name: 'Create contract with AI' }))
+  return body.findByRole('dialog', { name: /Create contract with AI/ }, wait)
+}
+
+/**
+ * Three ways to start: written with AI (the default), after an example document, or a template. With AI it
+ * writes the sections, which are edited, improved and regenerated beside the preview, then saved as a numbered
+ * contract.
+ */
+export const ContractWrittenWithAI: Story = {
+  parameters: quotes({}, contractHandlers),
+  beforeEach: () => {
+    writes = []
+  },
+  play: async (context) => {
+    const { canvasElement } = context
+    const drawer = await openWriter(context)
+    const ai = within(drawer).getByRole('button', { name: /Write it with AI/ })
+    await expect(ai).toHaveAttribute('aria-pressed', 'true')
+    await expect(ai).toHaveTextContent('Recommended')
+    await expect(
+      within(drawer).getByRole('button', { name: /Based on an example document/ }),
+    ).toBeEnabled()
+    await expect(within(drawer).getByRole('button', { name: /Fill a template/ })).toBeEnabled()
+    await userEvent.type(
+      within(drawer).getByRole('textbox', { name: 'Instructions for the AI' }),
+      '6-month course',
+    )
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+
+    const title = await within(drawer).findByRole('textbox', { name: 'Title' }, wait)
+    await expect(title).toHaveValue('Werkvertrag')
+    await expect(writes).toEqual(['ai'])
+    await userEvent.type(title, ' Holzbau')
+    await expect(within(drawer).getByRole('textbox', { name: 'Heading of section 1' })).toHaveValue(
+      'Gegenstand',
+    )
+    // the preview's check flags an amount the quote lacks
+    await expect(
+      await within(drawer).findByText(/CHF 9’999.00 is not an amount/, {}, wait),
+    ).toBeVisible()
+
+    // one section improved, a third added and removed again
+    await userEvent.click(
+      within(drawer).getAllByRole('button', { name: 'Improve with AI' })[1] as HTMLElement,
+    )
+    await waitFor(() =>
+      expect(within(drawer).getByRole('textbox', { name: 'Text of section 2' })).toHaveValue(
+        'Improved fees.',
+      ),
+    )
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Add section' }))
+    await expect(
+      within(drawer).getByRole('textbox', { name: 'Heading of section 3' }),
+    ).toBeVisible()
+    await userEvent.click(
+      within(drawer).getAllByRole('button', { name: 'Remove section' })[2] as HTMLElement,
+    )
+    await expect(within(drawer).queryByRole('textbox', { name: 'Heading of section 3' })).toBeNull()
+    await expect(writes).toEqual(['ai', 'improve'])
+
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await userEvent.click(await within(drawer).findByRole('button', { name: 'Save to Documents' }))
+    await toasted(canvasElement, 'Contract 2026/C/002 created')
+  },
+}
+
+/** Regenerate writes the whole text again, replacing the edits. */
+export const ContractRegenerate: Story = {
+  parameters: quotes({}, contractHandlers),
+  beforeEach: () => {
+    writes = []
+  },
+  play: async (context) => {
+    const drawer = await openWriter(context)
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    const title = await within(drawer).findByRole('textbox', { name: 'Title' }, wait)
+    await userEvent.clear(title)
+    await userEvent.type(title, 'Changed')
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Regenerate' }))
+    await waitFor(() => expect(title).toHaveValue('Werkvertrag'))
+    await expect(writes).toEqual(['ai', 'ai'])
+  },
+}
+
+/** An example document from Documents shapes the AI's contract: no template builder, straight to review. */
+export const ContractFromExample: Story = {
+  parameters: quotes({}, contractHandlers),
+  beforeEach: () => {
+    writes = []
+  },
+  play: async (context) => {
+    const { canvasElement } = context
+    const drawer = await openWriter(context)
+    await userEvent.click(
+      within(drawer).getByRole('button', { name: /Based on an example document/ }),
+    )
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await expect(await within(drawer).findByText('Choose an example contract.')).toBeVisible()
+    await userEvent.click(
+      await within(drawer).findByText('Vertrag Vorlage Deutsch V1.0.pdf', {}, wait),
+    )
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await expect(await within(drawer).findByRole('textbox', { name: 'Title' }, wait)).toHaveValue(
+      'Werkvertrag',
+    )
+    await expect(writes).toEqual(['example:doc_example'])
+    const body = page(canvasElement)
+    await expect(body.queryByText('What is the template built on?')).toBeNull()
+    await expect(body.queryByRole('button', { name: /Place fields/ })).toBeNull()
+  },
+}
+
+/** Without an AI model on the server, the two AI ways are off with the reason, and a template is chosen. */
+export const ContractWithoutAI: Story = {
+  parameters: quotes({}, [
+    http.get('/api/v1/heidi/usage', () =>
+      HttpResponse.json({
+        period: '2026-11',
+        tokens_used: 0,
+        tokens_included: null,
+        tokens_purchased: 0,
+        tokens_remaining: null,
+        provider_available: false,
+      }),
+    ),
+    ...contractHandlers,
+  ]),
+  play: async (context) => {
+    const drawer = await openWriter(context)
+    const ai = within(drawer).getByRole('button', { name: /Write it with AI/ })
+    await waitFor(() => expect(ai).toBeDisabled())
+    await expect(ai).toHaveTextContent("AI isn't available on this server")
+    await expect(
+      within(drawer).getByRole('button', { name: /Based on an example document/ }),
+    ).toBeDisabled()
+    await expect(within(drawer).getByRole('button', { name: /Fill a template/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   },
 }
 
