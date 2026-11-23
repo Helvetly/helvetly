@@ -102,9 +102,19 @@ func TestCompletedAndDeclinedMessages(t *testing.T) {
 		!strings.Contains(declined.Text, "Reason: Wrong start date") {
 		t.Errorf("declined %+v", declined)
 	}
-	done := completedMessage(completed{req: req, name: "Services Agreement (signed).pdf", sum: "abc"}, "beat@example.com")
+	sum := strings.Repeat("ab", 32)
+	done := completedMessage(completed{req: req, name: "Services Agreement (signed).pdf", sum: sum}, "beat@example.com", false)
 	if !strings.Contains(done.HTML, "Signed copy") || !strings.Contains(done.Text, "Signed copy: Services Agreement (signed).pdf (attached)") ||
-		!strings.Contains(done.Text, "Sent by: Anna Owner") {
+		!strings.Contains(done.Text, "Sent by: Anna Owner") || done.Members || !strings.Contains(done.Text, "SHA-256 of the signed PDF: "+sum) {
 		t.Errorf("completed %+v", done)
+	}
+	// The sender's copy: Helvetly's, the hashes short in the details and in full on a fine line.
+	own := completedMessage(completed{req: req, name: "Services Agreement (signed).pdf", sum: sum}, "anna@example.com", true)
+	if !own.Members || !strings.Contains(own.HTML, "abababab…abababab") || !strings.Contains(own.Text, "Full SHA-256: signed "+sum) ||
+		strings.Contains(own.HTML, "ui-monospace") {
+		t.Errorf("sender's completed %+v", own)
+	}
+	if shortHash("abc") != "abc" {
+		t.Error("a short value stays whole")
 	}
 }

@@ -1052,7 +1052,7 @@ export function DocumentsPage() {
     : view.section === 'templates'
       ? translate('newTemplate')
       : view.section === 'signatures' && canWrite
-        ? translate('pdfForSignature3')
+        ? translate('sendForSignature2')
         : undefined
 
   return (
@@ -1133,7 +1133,7 @@ export function DocumentsPage() {
         />
       )}
       <div className="relative flex flex-1">
-        <aside className="hidden w-[248px] shrink-0 border-r md:block">
+        <aside className="hidden w-[276px] shrink-0 border-r md:block">
           <div className="sticky top-[52px] h-[calc(100svh-68px)] overflow-y-auto">
             {folders.data ? (
               <FolderTree

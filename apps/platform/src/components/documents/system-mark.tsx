@@ -1,4 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { TruncatedText } from '@helvetly/ui/components/truncated-text'
 import { Lock } from 'lucide-react'
 
 import type { Folder, FolderRef } from '@/lib/documents'
@@ -28,7 +29,7 @@ export function FolderName({
 }) {
   return (
     <span className="flex min-w-0 items-center gap-1.5">
-      <span className="truncate">{folderLabel(folder, t)}</span>
+      <TruncatedText>{folderLabel(folder, t)}</TruncatedText>
       {isSystemFolder(folder) && <SystemMark />}
     </span>
   )

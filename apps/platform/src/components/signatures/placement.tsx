@@ -1,8 +1,12 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Combobox } from '@helvetly/ui/components/combobox'
+import { Input } from '@helvetly/ui/components/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Trash2, X, type LucideIcon } from 'lucide-react'
 import {
+  createElement,
   useEffect,
   useRef,
   useState,
@@ -10,8 +14,8 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react'
+import { toast } from 'sonner'
 
-import { inputClass, NativeSelect } from '@/components/clients/fields'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { translate } from '@/lib/i18n'
 import {
@@ -20,13 +24,17 @@ import {
   deleteField,
   moveField,
   signerColor,
+  snapBox,
   updateField,
   type DraftField,
+  type Guides,
 } from '@/lib/signatures'
 
 import { FieldBox } from './parts'
 
 const DRAG_TYPE = 'application/x-helvetly-field'
+/** How close (in screen pixels) an edge comes to a guide before Shift snaps it there. */
+const SNAP_PX = 6
 
 type Gesture<K extends string> = {
   key: string
@@ -79,46 +87,19 @@ export function Placement<K extends string>({
   const { lanes, kinds, label, icon, prompt } = palette
   const [selected, setSelected] = useState<string | null>(null)
   const [armed, setArmed] = useState<K | null>(null)
+  const [guides, setGuides] = useState<(Guides & { page: number }) | null>(null)
   const gesture = useRef<Gesture<K> | null>(null)
   const pane = useRef<HTMLDivElement>(null)
   const current = fields.find((field) => field.key === selected)
+  // The latest list and setter, for an undo that runs after later edits.
+  const latest = useRef({ fields, onFields })
+  useEffect(() => {
+    latest.current = { fields, onFields }
+  })
   const laneName = (index: number) =>
     lanes[index]?.name || translate('signer', { value1: index + 1 })
   const caption = (field: DraftField<K>) =>
     prompt?.(field.kind) && field.label ? field.label : label(field.kind)
-
-  // Backspace deletes the selected field, arrows nudge it (Shift: further), Escape lets go.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target
-      if (target instanceof HTMLElement && target.closest('input, textarea, [contenteditable]'))
-        return
-      if (event.key === 'Escape') {
-        setArmed(null)
-        setSelected(null)
-      }
-      if (!selected) return
-      if (event.key === 'Backspace' || event.key === 'Delete') {
-        event.preventDefault()
-        onFields(deleteField(fields, selected))
-        setSelected(null)
-        return
-      }
-      const step = event.shiftKey ? 0.02 : 0.004
-      const delta = {
-        ArrowLeft: [-step, 0],
-        ArrowRight: [step, 0],
-        ArrowUp: [0, -step],
-        ArrowDown: [0, step],
-      }[event.key]
-      if (delta) {
-        event.preventDefault()
-        onFields(moveField(fields, selected, delta[0] ?? 0, delta[1] ?? 0))
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [fields, selected, onFields])
 
   const place = (kind: K, page: number, rect: DOMRect, clientX: number, clientY: number) => {
     const next = addField(
@@ -155,14 +136,26 @@ export function Placement<K extends string>({
     if (!g) return
     const dx = (event.clientX - g.x) / g.rect.width
     const dy = (event.clientY - g.y) / g.rect.height
-    const box =
+    let box =
       g.mode === 'move'
         ? clampBox({ ...g.start, x: g.start.x + dx, y: g.start.y + dy })
         : clampBox({ ...g.start, w: g.start.w + dx, h: g.start.h + dy })
+    // Shift lines the box up with the other fields on its page and the page's centre.
+    if (event.shiftKey) {
+      const snap = snapBox(
+        box,
+        fields.filter((field) => field.key !== g.key),
+        g.mode,
+        { x: SNAP_PX / g.rect.width, y: SNAP_PX / g.rect.height },
+      )
+      box = clampBox(snap.box)
+      setGuides({ page: box.page, ...snap.guides })
+    } else setGuides(null)
     onFields(updateField(fields, g.key, { x: box.x, y: box.y, w: box.w, h: box.h }))
   }
   const endGesture = () => {
     gesture.current = null
+    setGuides(null)
   }
 
   const overlay = (page: number) => (
@@ -233,6 +226,22 @@ export function Placement<K extends string>({
             </FieldBox>
           )
         })}
+      {guides?.page === page && guides.x !== null && (
+        <span
+          data-snap-guide="x"
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 w-px bg-primary/70"
+          style={{ left: `${guides.x * 100}%` }}
+        />
+      )}
+      {guides?.page === page && guides.y !== null && (
+        <span
+          data-snap-guide="y"
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 h-px bg-primary/70"
+          style={{ top: `${guides.y * 100}%` }}
+        />
+      )}
     </div>
   )
 
@@ -246,10 +255,58 @@ export function Placement<K extends string>({
       pane.current?.querySelector(`[data-pdf-page="${field.page}"]`)
     target?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
   }
+  // Removed at once, with an Undo that puts the field back.
   const remove = (key: string) => {
+    const removed = fields.find((field) => field.key === key)
+    if (!removed) return
     onFields(deleteField(fields, key))
     if (selected === key) setSelected(null)
+    toast(translate('fieldRemoved'), {
+      action: {
+        label: translate('undo'),
+        onClick: () => latest.current.onFields([...latest.current.fields, removed]),
+      },
+    })
   }
+  // Backspace deletes the selected field, arrows nudge it (Shift: further), Escape lets go.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target
+      if (target instanceof HTMLElement && target.closest('input, textarea, [contenteditable]'))
+        return
+      if (event.key === 'Escape') {
+        setArmed(null)
+        setSelected(null)
+      }
+      if (!selected) return
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault()
+        remove(selected)
+        return
+      }
+      // 1 px a press, 10 with Shift, measured on the page as shown.
+      const page = pane.current
+        ?.querySelector(`[data-field-key="${selected}"]`)
+        ?.closest('[data-page-overlay]')
+        ?.getBoundingClientRect()
+      const px = event.shiftKey ? 10 : 1
+      const stepX = page ? px / page.width : px * 0.002
+      const stepY = page ? px / page.height : px * 0.002
+      const delta = {
+        ArrowLeft: [-stepX, 0],
+        ArrowRight: [stepX, 0],
+        ArrowUp: [0, -stepY],
+        ArrowDown: [0, stepY],
+      }[event.key]
+      if (delta) {
+        event.preventDefault()
+        onFields(moveField(fields, selected, delta[0] ?? 0, delta[1] ?? 0))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   const used = lanes
     .map((lane, index) => ({
       index,
@@ -259,6 +316,14 @@ export function Placement<K extends string>({
     .filter((group) => group.items.length > 0)
 
   const question = current && prompt?.(current.kind)
+  // The selected field's mark: the same icon as in the lists, in its signer's colour.
+  const currentMark =
+    current &&
+    createElement(icon(current.kind), {
+      'aria-hidden': true,
+      className: 'size-4 shrink-0 stroke-[1.75]',
+      style: { color: signerColor(current.signer) },
+    })
   // A field can move only to a lane that offers its kind (client data stays client data).
   const movableTo = current
     ? lanes.map((_, index) => index).filter((index) => kinds(index).includes(current.kind))
@@ -268,7 +333,7 @@ export function Placement<K extends string>({
     <div className="flex min-h-0 flex-1">
       <aside
         aria-label={translate('fieldPalette')}
-        className="flex w-[280px] shrink-0 flex-col gap-5 overflow-y-auto border-r p-4"
+        className="flex w-[300px] shrink-0 flex-col gap-5 overflow-y-auto border-r p-4"
       >
         <section className="grid gap-1.5">
           <h3 className="text-[13px] font-medium">{translate('fieldsFor')}</h3>
@@ -289,7 +354,9 @@ export function Placement<K extends string>({
                   className="size-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: signerColor(index) }}
                 />
-                <span className="min-w-0 flex-1 truncate">{lane.name || laneName(index)}</span>
+                <span title={lane.name || laneName(index)} className="min-w-0 flex-1 truncate">
+                  {lane.name || laneName(index)}
+                </span>
                 <span className="text-[12px] text-muted-foreground tabular-nums">{count}</span>
               </button>
             )
@@ -342,7 +409,7 @@ export function Placement<K extends string>({
       {/* What is placed and the selected field sit on the right, so the left rail stays the palette. */}
       <aside
         aria-label={translate('placedFields')}
-        className="flex w-[260px] shrink-0 flex-col gap-5 overflow-y-auto border-l p-4"
+        className="flex w-[340px] shrink-0 flex-col gap-5 overflow-y-auto border-l p-4"
       >
         <section aria-labelledby="placed-heading" className="grid gap-1.5">
           <div className="flex items-center">
@@ -363,7 +430,9 @@ export function Placement<K extends string>({
                   className="size-2 shrink-0 rounded-full"
                   style={{ backgroundColor: signerColor(group.index) }}
                 />
-                <span className="min-w-0 flex-1 truncate">{group.name}</span>
+                <span title={group.name} className="min-w-0 flex-1 truncate">
+                  {group.name}
+                </span>
                 <span className="tabular-nums">{group.items.length}</span>
               </p>
               <ul aria-label={group.name} className="grid gap-0.5">
@@ -374,7 +443,7 @@ export function Placement<K extends string>({
                       <button
                         type="button"
                         aria-current={field.key === selected ? 'true' : undefined}
-                        title={label(field.kind)}
+                        title={caption(field)}
                         onClick={() => reveal(field)}
                         className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg pr-9 pl-2.5 text-left text-[13px] transition-colors hover:bg-foreground/[0.045] aria-[current=true]:bg-foreground/[0.06] aria-[current=true]:font-medium"
                       >
@@ -409,67 +478,83 @@ export function Placement<K extends string>({
         </section>
 
         {current && (
-          <section className="grid gap-2 rounded-xl border p-3">
-            <div className="flex items-center gap-2">
-              <span
-                className="size-2.5 rounded-full"
-                style={{ backgroundColor: signerColor(current.signer) }}
-              />
-              <p className="flex-1 text-[13.5px] font-medium">{label(current.kind)}</p>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={translate('deselect')}
-                className="cursor-pointer"
-                onClick={() => setSelected(null)}
+          <section
+            aria-label={translate('fieldSettings')}
+            className="grid gap-3 rounded-xl border bg-card p-3"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              {currentMark}
+              <p
+                title={caption(current)}
+                className="min-w-0 flex-1 truncate text-body-sm font-medium"
               >
-                <X />
-              </Button>
+                {caption(current)}
+              </p>
+              <span className="shrink-0 rounded-md bg-muted px-1.5 py-px text-caption text-muted-foreground tabular-nums">
+                {translate('p2')}
+                {current.page}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={translate('deselect')}
+                    className="cursor-pointer text-muted-foreground"
+                    onClick={() => setSelected(null)}
+                  >
+                    <X />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{translate('deselect')}</TooltipContent>
+              </Tooltip>
             </div>
             {question && (
-              <label className="grid gap-1 text-[12.5px] text-muted-foreground">
-                {question}
-                <input
+              <div className="grid gap-1">
+                <label htmlFor="field-question" className="text-caption text-muted-foreground">
+                  {question}
+                </label>
+                <Input
+                  id="field-question"
                   value={current.label ?? ''}
                   maxLength={100}
                   placeholder={translate('eGJobTitle')}
                   onChange={(event) =>
                     onFields(updateField(fields, current.key, { label: event.target.value }))
                   }
-                  className={cn(inputClass, 'text-foreground')}
                 />
-              </label>
+              </div>
             )}
             {movableTo.length > 1 && (
-              <label className="grid gap-1 text-[12.5px] text-muted-foreground">
-                {translate('signer2')}
-                <NativeSelect
-                  value={current.signer}
-                  onChange={(event) => {
-                    onFields(
-                      updateField(fields, current.key, { signer: Number(event.target.value) }),
-                    )
-                    onActive(Number(event.target.value))
+              <div className="grid gap-1">
+                <span className="text-caption text-muted-foreground">{translate('signer2')}</span>
+                <Combobox
+                  label={translate('signer2')}
+                  value={String(current.signer)}
+                  options={movableTo.map((index) => ({
+                    value: String(index),
+                    label: laneName(index),
+                  }))}
+                  placeholder={translate('signer2')}
+                  onChange={(value) => {
+                    onFields(updateField(fields, current.key, { signer: Number(value) }))
+                    onActive(Number(value))
                   }}
-                  className="text-foreground"
-                >
-                  {movableTo.map((index) => (
-                    <option key={index} value={index}>
-                      {laneName(index)}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </label>
+                />
+              </div>
             )}
             {renderSettings?.(current.key)}
-            <Button
-              variant="destructive-ghost"
-              className="cursor-pointer justify-start gap-1.5 px-2"
-              onClick={() => remove(current.key)}
-            >
-              <Trash2 className="size-4" />
-              {translate('removeField')}
-            </Button>
+            <div className="border-t pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full cursor-pointer justify-start gap-1.5 px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => remove(current.key)}
+              >
+                <Trash2 className="size-4" />
+                {translate('removeField').trim()}
+              </Button>
+            </div>
           </section>
         )}
       </aside>

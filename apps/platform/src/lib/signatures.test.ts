@@ -11,6 +11,7 @@ import {
   moveField,
   resizeField,
   signersWithoutSignature,
+  snapBox,
   swapSigners,
   titleFromName,
   type DraftField,
@@ -137,5 +138,50 @@ describe('the create body', () => {
     // Only the extension goes: the rest of the name is never guessed away.
     expect(titleFromName('Vertrag Vorlage Deutsch V1.0.docx')).toBe('Vertrag Vorlage Deutsch V1.0')
     expect(titleFromName('.pdf')).toBe('.pdf')
+  })
+})
+
+describe('snapBox', () => {
+  const reach = { x: 0.01, y: 0.01 }
+  const other = { page: 1, x: 0.2, y: 0.5, w: 0.2, h: 0.05 }
+
+  it('lines a moved box up with the nearest edge of another on its page', () => {
+    const { box, guides } = snapBox(
+      { page: 1, x: 0.205, y: 0.1, w: 0.12, h: 0.05 },
+      [other],
+      'move',
+      reach,
+    )
+    expect(box.x).toBeCloseTo(0.2)
+    expect(guides.x).toBeCloseTo(0.2)
+  })
+
+  it('snaps centres and the page centre', () => {
+    const centred = snapBox({ page: 1, x: 0.246, y: 0.1, w: 0.1, h: 0.05 }, [other], 'move', reach)
+    expect(centred.box.x).toBeCloseTo(0.25)
+    expect(centred.guides.x).toBeCloseTo(0.3)
+    const middle = snapBox({ page: 1, x: 0.7, y: 0.47, w: 0.1, h: 0.05 }, [], 'move', reach)
+    expect(middle.box.y).toBeCloseTo(0.475)
+    expect(middle.guides).toEqual({ x: null, y: 0.5 })
+  })
+
+  it('leaves a box far from every line, and boxes on other pages, alone', () => {
+    const start = { page: 1, x: 0.6, y: 0.1, w: 0.1, h: 0.05 }
+    expect(snapBox(start, [{ ...other, page: 2, x: 0.605 }], 'move', reach)).toEqual({
+      box: start,
+      guides: { x: null, y: null },
+    })
+  })
+
+  it('resizes only the right and bottom edges onto the lines', () => {
+    const { box, guides } = snapBox(
+      { page: 1, x: 0.1, y: 0.1, w: 0.295, h: 0.05 },
+      [other],
+      'resize',
+      reach,
+    )
+    expect(box.x).toBe(0.1)
+    expect(box.w).toBeCloseTo(0.3)
+    expect(guides.x).toBeCloseTo(0.4)
   })
 })

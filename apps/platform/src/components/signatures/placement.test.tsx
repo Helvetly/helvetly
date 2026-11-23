@@ -1,3 +1,4 @@
+import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Hash, User } from 'lucide-react'
@@ -6,6 +7,8 @@ import { useState } from 'react'
 import type { DraftField } from '@/lib/signatures'
 
 import { Placement, type Palette } from './placement'
+
+const wrapper = TooltipProvider
 
 vi.mock('@/components/invoices/pdf-view', () => ({
   PdfView: ({ overlay }: { overlay: (page: number) => React.ReactNode }) => (
@@ -55,7 +58,7 @@ function Harness({ initial }: { initial: DraftField<Kind>[] }) {
 const list = () => screen.getByRole('region', { name: 'In this document' })
 
 test('lists placed fields by lane with page numbers and counts', () => {
-  render(<Harness initial={start} />)
+  render(<Harness initial={start} />, { wrapper })
 
   const client = within(list()).getByRole('list', { name: 'Client data' })
   const items = within(client).getAllByRole('listitem')
@@ -65,7 +68,7 @@ test('lists placed fields by lane with page numbers and counts', () => {
 })
 
 test('clicking an item selects that field', async () => {
-  render(<Harness initial={start} />)
+  render(<Harness initial={start} />, { wrapper })
 
   const item = within(list()).getByRole('button', { name: /^Job title/ })
   expect(item.getAttribute('aria-current')).toBeNull()
@@ -75,7 +78,7 @@ test('clicking an item selects that field', async () => {
 })
 
 test('the remove button takes that placement out', async () => {
-  render(<Harness initial={start} />)
+  render(<Harness initial={start} />, { wrapper })
 
   await userEvent.click(within(list()).getByRole('button', { name: 'Remove Client name, page 2' }))
 
@@ -84,7 +87,7 @@ test('the remove button takes that placement out', async () => {
 })
 
 test('says what to do while nothing is placed', () => {
-  render(<Harness initial={[]} />)
+  render(<Harness initial={[]} />, { wrapper })
 
   expect(within(list()).getByText(/Drag fields onto the page/)).toBeTruthy()
 })

@@ -166,16 +166,34 @@ func declinedMessage(req store.SignatureRequest, who store.Signer) mail.Message 
 		Text:    fmt.Sprintf("Hello,\n\n%s\n\n%s", lead, mail.DetailsText(rows...)), HTML: paragraphs("Hello,", lead) + mail.Details(rows...)}
 }
 
-func completedMessage(done completed, to string) mail.Message {
+// completedMessage: the signed PDF for one recipient. The member who sent it gets the Helvetly copy (Members), with
+// the hashes shortened in its details and the full values in a fine line; signers get them in full.
+func completedMessage(done completed, to string, member bool) mail.Message {
 	req := done.req
 	lead := fmt.Sprintf("Everyone has signed “%s”. The signed PDF is attached, with a certificate of completion on its last page.", req.Title)
 	rows := [][2]string{{"Document", req.Title}, {"Sent by", sentBy(req)}, {"Signed copy", done.name + " (attached)"}}
 	hashes := fmt.Sprintf("SHA-256 of the signed PDF: %s\nSHA-256 of the original: %s", done.sum, req.OriginalSHA256)
-	return mail.Message{Workspace: req.WorkspaceID, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail,
-		Subject: fmt.Sprintf("Signed: “%s”", req.Title),
-		Text:    fmt.Sprintf("Hello,\n\n%s\n\n%s\n%s\n\n%s\n", lead, mail.DetailsText(rows...), hashes, sesNote),
-		HTML: paragraphs("Hello,", lead) + mail.Details(rows...) +
-			`<p style="font-size:12px;color:#78716c;font-family:ui-monospace,Menlo,Consolas,monospace">` +
-			strings.ReplaceAll(html.EscapeString(hashes), "\n", "<br>") + "</p>" + fine(sesNote),
+	msg := mail.Message{Workspace: req.WorkspaceID, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail, Members: member,
+		Subject:     fmt.Sprintf("Signed: “%s”", req.Title),
 		Attachments: []mail.Attachment{{Name: done.name, ContentType: "application/pdf", Data: done.pdf}}}
+	if member {
+		rows = append(rows, [2]string{"Signed SHA-256", shortHash(done.sum)}, [2]string{"Original SHA-256", shortHash(req.OriginalSHA256)})
+		full := fmt.Sprintf("Full SHA-256: signed %s, original %s", done.sum, req.OriginalSHA256)
+		msg.Text = fmt.Sprintf("Hello,\n\n%s\n\n%s\n\n%s\n%s\n", lead, mail.DetailsText(rows...), full, sesNote)
+		msg.HTML = paragraphs("Hello,", lead) + mail.Details(rows...) + fine(full) + fine(sesNote)
+		return msg
+	}
+	msg.Text = fmt.Sprintf("Hello,\n\n%s\n\n%s\n%s\n\n%s\n", lead, mail.DetailsText(rows...), hashes, sesNote)
+	msg.HTML = paragraphs("Hello,", lead) + mail.Details(rows...) +
+		`<p style="font-size:12px;color:#78716c;font-family:ui-monospace,Menlo,Consolas,monospace">` +
+		strings.ReplaceAll(html.EscapeString(hashes), "\n", "<br>") + "</p>" + fine(sesNote)
+	return msg
+}
+
+// shortHash: the first and last 8 characters of a hash, enough to recognise it.
+func shortHash(sum string) string {
+	if len(sum) <= 20 {
+		return sum
+	}
+	return sum[:8] + "…" + sum[len(sum)-8:]
 }

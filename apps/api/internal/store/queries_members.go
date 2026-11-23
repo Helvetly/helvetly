@@ -52,6 +52,14 @@ func (q Q) ListMembers(ctx context.Context, workspaceID string) ([]Member, error
 	return out, rows.Err()
 }
 
+// IsMemberEmail says whether an address (any case) belongs to one of the workspace's members.
+func (q Q) IsMemberEmail(ctx context.Context, workspaceID, email string) (bool, error) {
+	var member bool
+	err := q.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM workspace_members m JOIN users u ON u.id = m.user_id
+		WHERE m.workspace_id = $1 AND lower(u.email) = lower($2))`, workspaceID, email).Scan(&member)
+	return member, err
+}
+
 // MemberRole: ErrNotFound when the person is not a member.
 func (q Q) MemberRole(ctx context.Context, workspaceID, userID string) (string, error) {
 	var role string

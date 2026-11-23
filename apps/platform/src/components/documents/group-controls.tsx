@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { CountBadge } from '@helvetly/ui/components/count-badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -26,8 +27,6 @@ import {
   type ViewParams,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
-
-import { Count } from './count'
 
 const DIM_NAMES: Record<GroupDim, string> = {
   type: translate('type'),
@@ -171,7 +170,7 @@ function ViewRow({
         <span className="truncate text-sm text-foreground">{title}</span>
         <span className="truncate text-xs text-muted-foreground">{detail}</span>
       </span>
-      {!!count && <Count label={countLabel}>{count}</Count>}
+      {!!count && <CountBadge label={countLabel}>{count}</CountBadge>}
     </button>
   )
 }
