@@ -77,13 +77,28 @@ func TestMailBrandAndReplyTo(t *testing.T) {
 
 func TestEmailLogo(t *testing.T) {
 	e := newEnv(t)
+	ctx := context.Background()
 	b := e.workspace()
 	if resp, body := e.upload(b, "logo.png", pngOf(200, 100)); resp.StatusCode != http.StatusOK {
 		t.Fatalf("upload: %d %s", resp.StatusCode, body)
 	}
-	brand, err := e.svc.MailBrand(context.Background(), b.workspace)
-	if err != nil || !strings.HasPrefix(brand.LogoPath, emailLogoPath+b.workspace+"/lgo_") {
-		t.Fatalf("logo path %q, %v", brand.LogoPath, err)
+	set, err := loadSettings(ctx, e.st.Q, b.workspace)
+	if err != nil || set.LogoFileID == nil {
+		t.Fatalf("document logo %v, %v", set.LogoFileID, err)
+	}
+	brand, err := e.svc.MailBrand(ctx, b.workspace)
+	if err != nil || brand.LogoPath != "" {
+		t.Fatalf("only a document logo: logo path %q, %v; want none, the name alone heads the email", brand.LogoPath, err)
+	}
+
+	workspaceLogo := "wlg_1"
+	e.files.objects[store.WorkspaceLogoKey(b.workspace, workspaceLogo)] = pngOf(128, 128)
+	if err := e.st.SetWorkspaceLogoID(ctx, b.workspace, &workspaceLogo); err != nil {
+		t.Fatal(err)
+	}
+	brand, err = e.svc.MailBrand(ctx, b.workspace)
+	if err != nil || brand.LogoPath != emailLogoPath+b.workspace+"/"+workspaceLogo {
+		t.Fatalf("logo path %q, %v; want the workspace logo", brand.LogoPath, err)
 	}
 	noRedirect := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	for _, c := range []struct {
@@ -91,8 +106,9 @@ func TestEmailLogo(t *testing.T) {
 		want int
 	}{
 		{brand.LogoPath, http.StatusOK}, // no session: mail clients carry none
-		{emailLogoPath + b.workspace + "/lgo_other", http.StatusNotFound},
-		{emailLogoPath + "wsp_nope/" + strings.TrimPrefix(brand.LogoPath, emailLogoPath+b.workspace+"/"), http.StatusNotFound},
+		{emailLogoPath + b.workspace + "/" + *set.LogoFileID, http.StatusNotFound},
+		{emailLogoPath + b.workspace + "/wlg_other", http.StatusNotFound},
+		{emailLogoPath + "wsp_nope/" + workspaceLogo, http.StatusNotFound},
 	} {
 		resp, err := noRedirect.Get(e.srv.URL + c.path)
 		if err != nil {
@@ -103,8 +119,8 @@ func TestEmailLogo(t *testing.T) {
 		}
 		if c.want == http.StatusOK {
 			cfg, err := png.DecodeConfig(resp.Body)
-			if err != nil || cfg.Width != 72 || cfg.Height != 36 {
-				t.Errorf("email logo %dx%d, %v; want 72x36", cfg.Width, cfg.Height, err)
+			if err != nil || cfg.Width != 36 || cfg.Height != 36 {
+				t.Errorf("email logo %dx%d, %v; want 36x36", cfg.Width, cfg.Height, err)
 			}
 		}
 		resp.Body.Close()
