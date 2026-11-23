@@ -112,6 +112,97 @@ export const HolidaySuggestion: Story = {
   },
 }
 
+const holidaysOf = async (canvasElement: HTMLElement) =>
+  within(await within(canvasElement).findByRole('region', { name: 'Holidays and days off' }))
+
+/** No days off: one quiet line inside the card, the canton select and suggestion above it. */
+export const HolidaysEmpty: Story = {
+  parameters: page('owner'),
+  render: () => (
+    <Shell>
+      <SchedulingSettingsPage />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const holidays = await holidaysOf(canvasElement)
+    await expect(await holidays.findByText(/^No days off yet\./)).toBeVisible()
+    await expect(holidays.getByRole('button', { name: /Public holidays/ })).toBeVisible()
+    await expect(holidays.getByRole('button', { name: /^Suggest \d{4} holidays$/ })).toBeVisible()
+  },
+}
+
+/** Saved days grouped by year; suggested ones carry a "Public holiday" badge. */
+export const HolidaysWithDays: Story = {
+  parameters: page('owner'),
+  beforeEach: () =>
+    resetSchedulingSettings({
+      holidays: [
+        { date: '2025-12-31', name: 'Year-end closing' },
+        { date: '2026-12-24', name: 'Company outing' },
+      ],
+    }),
+  render: () => (
+    <Shell>
+      <SchedulingSettingsPage />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const holidays = await holidaysOf(canvasElement)
+    await expect(await holidays.findByText('Company outing')).toBeVisible()
+    await expect(holidays.getByRole('region', { name: '2025' })).toBeVisible()
+    await expect(holidays.queryByText('Public holiday')).toBeNull()
+    await userEvent.click(holidays.getByRole('button', { name: /^Suggest \d{4} holidays$/ }))
+    await expect(await holidays.findByText('Swiss National Day')).toBeVisible()
+    await expect(holidays.getAllByText('Public holiday')).toHaveLength(3)
+  },
+}
+
+/** "Add day off" opens an inline row: Escape cancels, Enter adds, Save stores the list. */
+export const HolidayAdd: Story = {
+  parameters: page('owner'),
+  render: () => (
+    <Shell>
+      <SchedulingSettingsPage />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const holidays = await holidaysOf(canvasElement)
+    await userEvent.click(await holidays.findByRole('button', { name: 'Add day off' }))
+    await userEvent.keyboard('{Escape}')
+    await expect(holidays.queryByRole('textbox', { name: 'Name' })).toBeNull()
+    await userEvent.click(holidays.getByRole('button', { name: 'Add day off' }))
+    const name = holidays.getByRole('textbox', { name: 'Name' })
+    await userEvent.type(name, 'Company outing{Enter}')
+    await expect(await holidays.findByRole('alert')).toHaveTextContent('Pick a date.')
+    await userEvent.type(holidays.getByLabelText('Date'), '2027-06-18')
+    await userEvent.click(name)
+    await userEvent.keyboard('{Enter}')
+    await expect(await holidays.findByText('Company outing')).toBeVisible()
+    await expect(holidays.queryByRole('textbox', { name: 'Name' })).toBeNull()
+    await userEvent.click(holidays.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(schedulingCalls()).toContain('PUT /scheduling/holidays'))
+  },
+}
+
+/** Each day's remove button takes it off the list until the section is saved. */
+export const HolidayRemove: Story = {
+  parameters: page('owner'),
+  beforeEach: () =>
+    resetSchedulingSettings({ holidays: [{ date: '2026-12-24', name: 'Company outing' }] }),
+  render: () => (
+    <Shell>
+      <SchedulingSettingsPage />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const holidays = await holidaysOf(canvasElement)
+    await userEvent.click(await holidays.findByRole('button', { name: 'Remove Company outing' }))
+    await expect(await holidays.findByText(/^No days off yet\./)).toBeVisible()
+    await userEvent.click(holidays.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(schedulingCalls()).toContain('PUT /scheduling/holidays'))
+  },
+}
+
 /** An event type is made in a drawer and listed afterwards. */
 export const EventTypeDrawer: Story = {
   parameters: page('owner'),
