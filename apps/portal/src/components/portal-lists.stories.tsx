@@ -221,9 +221,9 @@ const openActivity = async (canvasElement: HTMLElement) => {
 }
 
 /**
- * Details opens the activity below the row. The row already shows this period's numbers, so its days follow at once
- * under "This period", each day once with its total and its entries as compact rows: a note, a note with "For you",
- * only "For you", or neither ("Work logged"). Earlier periods are folded lines with their totals.
+ * Details opens the activity inside the row's card. Its panel is headed "<name> · this period", each day once with its
+ * total on the right and its entries as compact rows: a note, a note with "For you", only "For you", or neither
+ * ("Work logged"). The arrows step to earlier periods and back.
  */
 export const EngagementActivity: Story = {
   parameters: withHistory(() => HttpResponse.json({ data: portalEngagementHistory })),
@@ -243,8 +243,10 @@ export const EngagementActivity: Story = {
     const region = await canvas.findByRole('region', { name: 'Support retainer' })
     await expect(details).toHaveAttribute('aria-controls', region.id)
 
-    // This period: no second bar or sum, the row above has them.
-    const current = await within(region).findByRole('region', { name: 'This period' })
+    // This period: no second bar, the row above has it.
+    const current = await within(region).findByRole('region', {
+      name: 'Support retainer · this period',
+    })
     await expect(within(current).queryByRole('progressbar')).toBeNull()
     const days = within(current).getAllByRole('time')
     await expect(days.map((day) => day.textContent)).toEqual([
@@ -272,23 +274,22 @@ export const EngagementActivity: Story = {
     await expect(neither).toHaveTextContent('Work logged')
     await expect(neither).toHaveTextContent('0.5 h')
 
-    // Earlier periods: folded, with their totals; one opens on its own.
-    const earlier = within(region).getByRole('region', { name: 'Earlier periods' })
-    const october = within(earlier).getByRole('button', { name: /1\s–\s31 Oct 2026/ })
-    await expect(october).toHaveTextContent('3 / 10 h · 1 entry')
-    await expect(october).toHaveAttribute('aria-expanded', 'false')
-    await expect(within(earlier).getByRole('button', { name: /Sept/ })).toHaveTextContent(
-      '0 / 10 h · 0 entries',
-    )
-    await userEvent.click(october)
-    const octoberDays = await within(earlier).findByRole('region', {
-      name: /1\s–\s31 Oct 2026/,
+    // Earlier periods, one step at a time, each headed with its dates and total.
+    const later = within(region).getByRole('button', { name: 'Later period' })
+    await expect(later).toBeDisabled()
+    await userEvent.click(within(region).getByRole('button', { name: 'Earlier period' }))
+    const october = await within(region).findByRole('region', {
+      name: /^Support retainer · 1\s–\s31 Oct 2026$/,
     })
-    await expect(octoberDays).toHaveTextContent('Onboarding of two new staff')
-    await expect(octoberDays).toHaveTextContent('For you: Well prepared')
-    await userEvent.click(october)
-    await expect(within(earlier).queryByRole('region')).toBeNull()
-    october.blur()
+    await expect(october).toHaveTextContent('3 / 10 h')
+    await expect(october).toHaveTextContent('Onboarding of two new staff')
+    await expect(october).toHaveTextContent('For you: Well prepared')
+    await userEvent.click(within(region).getByRole('button', { name: 'Earlier period' }))
+    await expect(await within(region).findByText('Nothing logged in this period.')).toBeVisible()
+    await expect(within(region).getByRole('button', { name: 'Earlier period' })).toBeDisabled()
+    await userEvent.click(within(region).getByRole('button', { name: 'Later period' }))
+    await userEvent.click(within(region).getByRole('button', { name: 'Later period' }))
+    await within(region).findByRole('region', { name: 'Support retainer · this period' })
 
     await userEvent.click(details)
     await expect(details).toHaveAttribute('aria-expanded', 'false')
@@ -334,7 +335,48 @@ export const EngagementDaySeveralEntries: Story = {
       Math.round(row.lastElementChild?.getBoundingClientRect().right ?? 0),
     )
     await expect(new Set(rights).size).toBe(1)
-    await expect(canvas.queryByText('Earlier periods')).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Earlier period' })).toBeNull()
+  },
+}
+
+/**
+ * A click anywhere on the row (its text, its bar) opens the details inside the same card, marked open, and closes them
+ * again; the keyboard opens them with Enter or Space on Details.
+ */
+export const EngagementRowToggle: Story = {
+  parameters: withHistory(() => HttpResponse.json({ data: portalEngagementHistory })),
+  render: () => <PortalEngagements />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const details = await canvas.findByRole('button', { name: 'Details' })
+    const card = canvasElement.querySelector<HTMLElement>(`li[id="${novemberRetainer?.id}"]`)!
+    await expect(card).not.toHaveAttribute('data-open')
+    // The bar is drawn above the row: a click on it still reaches the toggle.
+    const bar = card.querySelector('[data-slot="meter"]')!.getBoundingClientRect()
+    await expect(document.elementFromPoint(bar.left + bar.width / 2, bar.top + 1)).toBe(details)
+    // What a pointer on the row's text hits: the toggle, not the text under it.
+    const onText = () => {
+      const text = canvas.getByText(/10 hours per month/).getBoundingClientRect()
+      return document.elementFromPoint(text.left + 4, text.top + text.height / 2)!
+    }
+    await userEvent.click(onText())
+    await expect(details).toHaveAttribute('aria-expanded', 'true')
+    await expect(card).toHaveAttribute('data-open', 'true')
+    const panel = await canvas.findByRole('region', { name: 'Support retainer' })
+    await expect(panel).toHaveAttribute('data-engagement-details', novemberRetainer?.id)
+    await expect(card.contains(panel)).toBe(true)
+    await userEvent.click(onText())
+    await expect(details).toHaveAttribute('aria-expanded', 'false')
+    await expect(canvas.queryByRole('region', { name: 'Support retainer' })).toBeNull()
+
+    details.focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(details).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.keyboard(' ')
+    await expect(details).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.keyboard(' ')
+    await expect(await canvas.findByRole('region', { name: 'Support retainer' })).toBeVisible()
+    details.blur()
   },
 }
 

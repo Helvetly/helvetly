@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
+  ArrowRight,
   Download,
   File,
   FileImage,
@@ -17,10 +18,12 @@ import {
   RotateCw,
   type LucideIcon,
 } from 'lucide-react'
+import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { translate } from '@/lib/i18n'
 import { portalInvoicePdfUrl, type PortalInvoice } from '@/lib/portal'
+import { scoped } from '@/lib/scope'
 
 /** Every portal card: the soft shadow the Overview's amount-due hero introduced, so all pages match. */
 export const cardClass = 'rounded-xl bg-card shadow-elevation-soft'
@@ -116,6 +119,19 @@ export function SectionTitle({
       </h2>
       {action}
     </div>
+  )
+}
+
+/** A card's "All invoices →" link to the page with everything. */
+export function ViewAll({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={scoped(href)}
+      className="inline-flex shrink-0 items-center gap-1 text-body-sm text-link underline underline-offset-2 hover:no-underline"
+    >
+      {label}
+      <ArrowRight aria-hidden className="size-3.5" />
+    </Link>
   )
 }
 
