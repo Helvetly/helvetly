@@ -1,4 +1,4 @@
-import { progressText, recordsText } from './records'
+import { progressText, recordHref, recordsText } from './records'
 
 test('progress reads as used of available, with the unit', () => {
   expect(progressText({ used: '3.500', available: '10.000', unit: 'hour' })).toBe(
@@ -27,4 +27,9 @@ test('records become plain lines for a copied answer', () => {
       },
     ]),
   ).toBe('- John · Client 1\n- 2026-043 · CHF 3’134.90\n- Retainer · 1 of 4 d used')
+})
+
+test('a session opens in the Scheduling page’s drawer, the others in their own', () => {
+  expect(recordHref({ kind: 'session', id: 'soc 1' })).toBe('/scheduling?session=soc%201')
+  expect(recordHref({ kind: 'invoice', id: 'inv_1' })).toBe('/invoices?id=inv_1')
 })

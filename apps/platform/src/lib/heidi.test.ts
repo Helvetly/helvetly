@@ -151,3 +151,26 @@ describe('heidi errors', () => {
   it('shows the server words for an unknown code', () =>
     expect(heidiErrorText('quota_exceeded', 'Allowance used.')).toBe('Allowance used.'))
 })
+
+test('reads session records and the open_session action', () => {
+  const records = [
+    {
+      kind: 'session',
+      id: 'soc_1',
+      title: 'Coaching',
+      detail: 'Tue 1 Dec 2026, 09:00 · Müller AG',
+      status: 'cancelled_late',
+    },
+    { kind: 'session', id: 'soc_2', title: 'Unknown status', status: 'gone' },
+  ]
+  const actions = [
+    { id: 'open_session', occurrence_id: 'soc_1', label: 'Open session' },
+    { id: 'open_session', label: 'No id' },
+  ]
+  const [recordsEvent, actionsEvent] = parseAll([
+    `data: ${JSON.stringify({ type: 'records', records })}\n\n`,
+    `data: ${JSON.stringify({ type: 'actions', actions })}\n\n`,
+  ])
+  expect(recordsEvent).toEqual({ type: 'records', records: [records[0]] })
+  expect(actionsEvent).toEqual({ type: 'actions', actions: [actions[0]] })
+})

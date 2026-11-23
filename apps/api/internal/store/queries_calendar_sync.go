@@ -24,6 +24,16 @@ func (q Q) CalendarLinksOfConnection(ctx context.Context, connectionID string) (
 	return pgx.CollectRows(rows, scanLink)
 }
 
+// WorkspaceCalendarConnections lists every member's calendar connections in the workspace.
+func (q Q) WorkspaceCalendarConnections(ctx context.Context, workspaceID string) ([]CalendarConnection, error) {
+	rows, err := q.db.Query(ctx, `SELECT `+connectionColumns+` FROM calendar_connections c WHERE c.workspace_id = $1
+		ORDER BY c.user_id, c.provider`, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (CalendarConnection, error) { return scanConnection(r) })
+}
+
 // UnwatchedCalendarSources lists up to limit busy calendars of active connections in live workspaces that have no
 // watch yet.
 func (q Q) UnwatchedCalendarSources(ctx context.Context, limit int) ([]CalendarSource, error) {

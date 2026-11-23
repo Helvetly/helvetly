@@ -52,6 +52,7 @@ type Service struct {
 	auth          Auth
 	files         Storage
 	engagements   Engagements
+	sessions      Sessions // nil: no Scheduling answers
 	provider      Provider
 	allowance     aimodel.Allowance
 	costAllowance aimodel.Allowance
@@ -292,6 +293,7 @@ type Action struct {
 	ClientID     string `json:"client_id,omitempty"`
 	InvoiceID    string `json:"invoice_id,omitempty"`
 	EngagementID string `json:"engagement_id,omitempty"`
+	OccurrenceID string `json:"occurrence_id,omitempty"`
 }
 type Form struct {
 	ID       string  `json:"id"`

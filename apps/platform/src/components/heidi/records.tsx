@@ -4,11 +4,19 @@ import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { Meter } from '@helvetly/ui/components/meter'
 import { formatMoney } from '@helvetly/ui/lib/format'
 import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
-import { Briefcase, ChevronRight, FileText, UserRound, type LucideIcon } from 'lucide-react'
+import {
+  Briefcase,
+  CalendarDays,
+  ChevronRight,
+  FileText,
+  UserRound,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { ClientStatusBadge } from '@/components/clients/client-bits'
 import { plain } from '@/components/engagements/engagement-bits'
 import { useOpenHref } from '@/components/record-link'
+import { StatusBadge } from '@/components/scheduling/bits'
 import type { HeidiRecord } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 import { STATUS_LABELS, UNITS } from '@/lib/invoices'
@@ -17,13 +25,14 @@ const ICONS: Record<HeidiRecord['kind'], LucideIcon> = {
   client: UserRound,
   invoice: FileText,
   engagement: Briefcase,
+  session: CalendarDays,
 }
 
-const PAGES: Record<HeidiRecord['kind'], string> = {
-  client: '/clients',
-  invoice: '/invoices',
-  engagement: '/engagements',
-}
+/** Where each kind opens: a session in the Scheduling page's drawer, the others in their own. */
+export const recordHref = ({ kind, id }: Pick<HeidiRecord, 'kind' | 'id'>) =>
+  kind === 'session'
+    ? `/scheduling?session=${encodeURIComponent(id)}`
+    : `${{ client: '/clients', invoice: '/invoices', engagement: '/engagements' }[kind]}?id=${encodeURIComponent(id)}`
 
 const short = (unit: string) => UNITS.find((entry) => entry.value === unit)?.short ?? ''
 
@@ -76,6 +85,8 @@ function Trailing({ record }: { record: HeidiRecord }) {
       )
     case 'engagement':
       return null
+    case 'session':
+      return <StatusBadge status={record.status} />
   }
 }
 
@@ -94,7 +105,7 @@ export function Records({ records }: { records: HeidiRecord[] }) {
           >
             <button
               type="button"
-              onClick={() => openHref(`${PAGES[record.kind]}?id=${encodeURIComponent(record.id)}`)}
+              onClick={() => openHref(recordHref(record))}
               className="group/record flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
             >
               <IconTile icon={ICONS[record.kind]} variant="row" size="sm" />

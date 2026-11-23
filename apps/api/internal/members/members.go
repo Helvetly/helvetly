@@ -28,11 +28,20 @@ type Seats interface {
 }
 
 type Service struct {
-	db    *store.Store
-	auth  Auth
-	log   *slog.Logger
-	seats Seats
+	db        *store.Store
+	auth      Auth
+	log       *slog.Logger
+	seats     Seats
+	calendars Calendars
 }
+
+// Calendars is calendar sync: a member's connections end when they leave (internal/calsync).
+type Calendars interface {
+	Leaving(ctx context.Context, workspaceID, userID string) (func(), error)
+}
+
+// SetCalendars is startup wiring (calendar sync).
+func (s *Service) SetCalendars(c Calendars) { s.calendars = c }
 
 func New(db *store.Store, a Auth, log *slog.Logger) *Service {
 	return &Service{db: db, auth: a, log: log}
@@ -226,6 +235,13 @@ func (s *Service) one(w http.ResponseWriter, r *http.Request, sess store.Session
 
 func (s *Service) remove(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	self := r.PathValue("user_id") == sess.User.ID
+	revoke := func() {}
+	if s.calendars != nil {
+		var err error
+		if revoke, err = s.calendars.Leaving(r.Context(), sess.Workspace.ID, r.PathValue("user_id")); err != nil {
+			return err
+		}
+	}
 	err := s.change(r, sess, func(q store.Q, actor, from string, lastOwner bool) error {
 		// Anyone may leave; removing someone else is the same power as demoting them to member.
 		if !self && !CanAssign(actor, from, "member") {
@@ -248,6 +264,7 @@ func (s *Service) remove(w http.ResponseWriter, r *http.Request, sess store.Sess
 	if err != nil {
 		return err
 	}
+	revoke() // their calendar connections went with the membership: grants revoked, pushed events removed
 	if s.seats != nil {
 		s.seats.SyncSeats(r.Context(), sess.Workspace.ID)
 	}

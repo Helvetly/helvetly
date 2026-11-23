@@ -319,6 +319,9 @@ func (f *Fake) control(provider string) http.HandlerFunc {
 			ok = f.Remove(provider, in.Calendar, in.ID)
 		case "busy":
 			in.ID = f.AddEvent(provider, in.Calendar, in.Start, in.End, false)
+		case "events": // the calendar's events, so an end-to-end test finds the one a session was pushed as
+			fakeJSON(w, http.StatusOK, map[string]any{"events": f.Events(provider, in.Calendar), "calendar": in.Calendar})
+			return
 		default:
 			ok = false
 		}

@@ -27,6 +27,7 @@ type env struct {
 	st    *store.Store
 	srv   *httptest.Server
 	seats *seatSyncs
+	cals  *calendarCalls
 }
 
 // seatSyncs records the workspaces billing was asked to bill for their members.
@@ -56,10 +57,12 @@ func newEnv(t *testing.T) *env {
 	seats := &seatSyncs{}
 	svc := New(st, a, discard)
 	svc.SetSeats(seats)
+	cals := &calendarCalls{}
+	svc.SetCalendars(cals)
 	svc.Register(mux)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &env{t: t, st: st, srv: srv, seats: seats}
+	return &env{t: t, st: st, srv: srv, seats: seats, cals: cals}
 }
 
 type browser struct{ token, csrf, workspace string }

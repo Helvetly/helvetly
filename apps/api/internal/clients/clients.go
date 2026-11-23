@@ -265,7 +265,7 @@ func (s *Service) bulk(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	return nil
 }
 
-// bulkClients applies the action; a deleted client's portal sessions end with it.
+// bulkClients applies the action; a deleted client's portal sessions and future scheduled sessions end with it.
 func (s *Service) bulkClients(ctx context.Context, workspaceID string, ids []string, action string) (n int64, err error) {
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		if n, err = q.BulkClients(ctx, workspaceID, ids, action, s.now()); err != nil || action != "delete" {
@@ -276,7 +276,12 @@ func (s *Service) bulkClients(ctx context.Context, workspaceID string, ids []str
 				return err
 			}
 		}
-		return nil
+		// Their sessions ahead end quietly (no email to a client being removed) and leave the hosts' calendars.
+		cancelled, err := q.CancelClientSessions(ctx, workspaceID, ids, s.now())
+		if err != nil {
+			return err
+		}
+		return q.EnqueueCalendarPush(ctx, workspaceID, cancelled, s.now())
 	})
 	return n, err
 }

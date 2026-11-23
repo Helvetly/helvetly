@@ -142,6 +142,30 @@ are the reference.
   lists, shares or signed links; nothing HR is a public operation, an MCP tool or a Heidi answer; the owner's workspace
   export carries it in `employees/`; the audit log gets HR events with empty payloads. Jurisdiction rules are data
   (`employment/rules.json`), never a calculation.
+- **Scheduling** (`internal/scheduling`, `internal/calsync`, pure `internal/recur`, `internal/schedpolicy`,
+  `internal/ical`; Pro and Business feature `scheduling`, monthly limit `scheduled_events_per_month`): sessions with
+  clients, one-off or a series (an event with its RRULE, our own subset) whose occurrences are stored rows up to 400
+  days ahead (at most 520), extended by a daily job and expanded in the series' zone from its wall-clock start. Edits
+  take a scope (`this` = an exception row, `following` = a split that keeps the rows' ids, `all`). Hosts are members,
+  never employees. A counting status (attended; a late cancellation or no-show per the settings, unless waived) adds
+  an engagement entry through `engagements.AddEntry` in the same transaction; without an engagement, `unit_price`
+  makes it invoiceable once. Lateness is fixed when the client asks. Every client email (invitation, update,
+  cancellation, reminder, request answer) is ours, Metered and Branded, with an `.ics` whose UID is stable
+  (`<event>@<PUBLIC_URL host>` + `RECURRENCE-ID`, a one-off `<occurrence>@…`) and whose SEQUENCE goes up; providers
+  get no attendees. Reminders are claimed once per (occurrence, offset, audience) in `scheduling_reminders`. Client
+  bookings re-check the slot under a per-host advisory lock (409 `slot_taken`); staff may double-book (conflicts are
+  a warning). Booking links for new clients exist only once a member makes one (expiry or none, revocable); a booking
+  through one creates the client. Calendar sync (Google, Microsoft; each pair of settings both or neither) is per
+  workspace and member: tokens sealed (HKDF of `SECRET_KEY`, AAD workspace + connection + field), each occurrence
+  pushed as its own event through `calendar_push_queue`, busy times imported without titles, a move outside applied as
+  the host's `this` reschedule (`MoveFromCalendar`), a delete outside only detaches. Webhooks on `PUBLIC_URL` (https
+  only; else polling every 15 min). Each member has a private iCal feed (token hashed, rotatable). A deleted client's
+  future open sessions are cancelled quietly and leave the calendars; a member leaving or a deleted workspace revokes
+  the calendar grants (`calsync.Leaving`). The export carries every `scheduling_*` table, never a `calendar_*` one.
+  Heidi answers four read questions (today's schedule, the next session with a client, late cancellations this month,
+  sessions left in a package) with `session` records and `open_session`; creating or changing sessions through Heidi
+  is not built. Settings, holidays, event-type writes, host hours, calendars, the feed, request decisions and
+  invoicing sessions are session-only.
 - **Plan usage**: a monthly limit counts through `store.ConsumeUsage` in the write's transaction, or
   `ReserveUsage` before an external effect and `SettleUsage` after it (`usage_events`: one row per operation id, its
   UTC month fixed at admission); state limits count what exists. Both are admitted by `billing.AllowResource`.
@@ -292,7 +316,7 @@ artifact. A step added to `check` goes into a CI job too. Rules:
   `PUBLIC_URL` (platform origin: Google redirect, passkey RP ID), `PORTAL_URL` (the portal's origin, another host), `DOCS_URL` (the docs' origin, whose API playground gets CORS on the public catalogue, bearer only; default `http://localhost:8003` next to a local `PUBLIC_URL`, else off), `MEDIA_URL` (optional origin on another host than both; when set, downloads redirect to signed `/api/media/{token}` links there, ahead of presigning and `S3_PROXY_DOWNLOADS`; https unless local), `SECRET_KEY` (base64, 32 bytes;
   empty only with `AUTH_DEV_SIGNIN`), `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (both or neither),
   `SMTP_*` and `MAIL_FROM` (email sign-in needs `SMTP_HOST` or `AUTH_DEV_SIGNIN`), `SESSION_TTL`,
-  `COOKIE_SECURE`, `TRUSTED_PROXY_CIDRS` (CIDRs of reverse proxies whose `X-Forwarded-For` is believed; empty = the TCP peer; `cloudflare` adds Cloudflare's edge ranges, and `CF-IPCountry` is believed only from them, for the billing currency), `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`/`S3_SECRET_KEY` (required), `S3_ADDRESSING` (path or virtual), `S3_OBJECT_LOCK_DAYS`/`S3_OBJECT_LOCK_MODE` (0 = protection off; > 0 requires a bucket with Object Lock or the API refuses to start), `S3_PROXY_DOWNLOADS` (default false: downloads redirect to presigned S3 URLs; true streams them through the API, for a bucket the browser cannot reach, such as localhost behind `pnpm dev:tunnel`, which sets it), `KSEF_API_URL` (https, optional; empty = no KSeF API). `OPENAI_MODEL` (a model with a rate card in `aimodel.Cards`) and `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ZONE_ID`/`CUSTOM_DOMAIN_TARGET` (custom portal domains through Cloudflare for SaaS: all three or none; the target is the zone's proxied fallback origin, normally `PORTAL_URL`'s host; `CLOUDFLARE_API_URL` and `HELVETLY_E2E_FAKE_DOMAINS` only for tests). `OPENAI_FALLBACK_MODEL` (optional, empty = none; another model with a rate card, asked once when `OPENAI_MODEL` stays overloaded or rate limited after its retries, reserved and priced at its own card). With `STRIPE_SECRET_KEY`: `STRIPE_WEBHOOK_SECRET` (one `whsec_…`, or the new and old separated by commas only while rotating the secret; the endpoint's API version does not matter, since handlers read objects again). `AUTH_DEV_SIGNIN` is never set in production. On a public (non-localhost) host the API refuses a plain-http
+  `COOKIE_SECURE`, `TRUSTED_PROXY_CIDRS` (CIDRs of reverse proxies whose `X-Forwarded-For` is believed; empty = the TCP peer; `cloudflare` adds Cloudflare's edge ranges, and `CF-IPCountry` is believed only from them, for the billing currency), `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`/`S3_SECRET_KEY` (required), `S3_ADDRESSING` (path or virtual), `S3_OBJECT_LOCK_DAYS`/`S3_OBJECT_LOCK_MODE` (0 = protection off; > 0 requires a bucket with Object Lock or the API refuses to start), `S3_PROXY_DOWNLOADS` (default false: downloads redirect to presigned S3 URLs; true streams them through the API, for a bucket the browser cannot reach, such as localhost behind `pnpm dev:tunnel`, which sets it), `KSEF_API_URL` (https, optional; empty = no KSeF API). `OPENAI_MODEL` (a model with a rate card in `aimodel.Cards`) and `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ZONE_ID`/`CUSTOM_DOMAIN_TARGET` (custom portal domains through Cloudflare for SaaS: all three or none; the target is the zone's proxied fallback origin, normally `PORTAL_URL`'s host; `CLOUDFLARE_API_URL` and `HELVETLY_E2E_FAKE_DOMAINS` only for tests). `GOOGLE_CALENDAR_CLIENT_ID`/`GOOGLE_CALENDAR_CLIENT_SECRET` and `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET` (calendar sync, each pair both or neither, a provider without its pair is not offered; `MICROSOFT_TENANT` defaults to `common`; `GOOGLE_CALENDAR_API_URL`, `MICROSOFT_GRAPH_URL` and `HELVETLY_E2E_FAKE_CALENDARS` only for tests, the last needing `AUTH_DEV_SIGNIN` on a local origin). `OPENAI_FALLBACK_MODEL` (optional, empty = none; another model with a rate card, asked once when `OPENAI_MODEL` stays overloaded or rate limited after its retries, reserved and priced at its own card). With `STRIPE_SECRET_KEY`: `STRIPE_WEBHOOK_SECRET` (one `whsec_…`, or the new and old separated by commas only while rotating the secret; the endpoint's API version does not matter, since handlers read objects again). `AUTH_DEV_SIGNIN` is never set in production. On a public (non-localhost) host the API refuses a plain-http
   `PUBLIC_URL`/`PORTAL_URL` and `COOKIE_SECURE=false`; database dials time out after 10 s unless the URL sets
   `connect_timeout`.
 

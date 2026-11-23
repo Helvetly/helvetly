@@ -42,6 +42,8 @@ function Actions({ actions }: { actions: HeidiAction[] }) {
         return openHref(`/engagements?id=${encodeURIComponent(action.engagement_id)}`)
       case 'open_invoice':
         return openHref(`/invoices?id=${encodeURIComponent(action.invoice_id)}`)
+      case 'open_session':
+        return openHref(`/scheduling?session=${encodeURIComponent(action.occurrence_id)}`)
       case 'list_overdue_invoices':
         return router.push('/invoices?status=overdue&kind=invoice')
       case 'create_invoice':

@@ -356,3 +356,12 @@ func (s *Service) occurrenceView(ctx context.Context, q store.Q, workspaceID, id
 	}
 	return list[0], nil
 }
+
+// Sessions lists occurrences as the API answers them, in the caller's transaction (Heidi's read answers).
+func (s *Service) Sessions(ctx context.Context, q store.Q, workspaceID string, f store.SchedOccurrenceFilter) ([]Occurrence, error) {
+	occs, err := q.SchedOccurrences(ctx, workspaceID, f)
+	if err != nil {
+		return nil, err
+	}
+	return s.occurrenceViews(ctx, q, workspaceID, occs)
+}
