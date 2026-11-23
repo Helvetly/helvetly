@@ -19,6 +19,7 @@ type FilingJob struct {
 	DocumentID, WorkspaceID, UserID string
 	MayMove                         bool
 	Attempts                        int
+	Language                        string // the uploader's (en, de, fr, it), "" when the upload named none
 }
 
 // FilingRecord is a finished filing's undo record.
@@ -31,10 +32,10 @@ type FilingRecord struct {
 	ContractReason *string
 }
 
-// QueueFiling queues AI filing of a new file (once).
-func (q Q) QueueFiling(ctx context.Context, workspaceID, documentID, userID string, mayMove bool, now time.Time) error {
-	_, err := q.db.Exec(ctx, `INSERT INTO document_filings (document_id, workspace_id, user_id, may_move, status, due_at, created_at)
-		VALUES ($1, $2, $3, $4, 'queued', $5, $5) ON CONFLICT DO NOTHING`, documentID, workspaceID, userID, mayMove, now)
+// QueueFiling queues AI filing of a new file (once); language is the uploader's, "" for none.
+func (q Q) QueueFiling(ctx context.Context, workspaceID, documentID, userID string, mayMove bool, language string, now time.Time) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO document_filings (document_id, workspace_id, user_id, may_move, status, due_at, created_at, language)
+		VALUES ($1, $2, $3, $4, 'queued', $5, $5, NULLIF($6, '')) ON CONFLICT DO NOTHING`, documentID, workspaceID, userID, mayMove, now, language)
 	return err
 }
 
@@ -47,7 +48,7 @@ func (q Q) ClaimFilings(ctx context.Context, now time.Time, lease time.Duration,
 			AND NOT EXISTS (SELECT 1 FROM import_files f WHERE f.workspace_id = d.workspace_id
 				AND f.status IN ('queued', 'extracting'))
 			ORDER BY d.due_at LIMIT $3 FOR UPDATE OF d SKIP LOCKED)
-		RETURNING document_id, workspace_id, user_id, may_move, attempts`, now, now.Add(lease), n)
+		RETURNING document_id, workspace_id, user_id, may_move, attempts, COALESCE(language, '')`, now, now.Add(lease), n)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +56,7 @@ func (q Q) ClaimFilings(ctx context.Context, now time.Time, lease time.Duration,
 	var out []FilingJob
 	for rows.Next() {
 		var j FilingJob
-		if err := rows.Scan(&j.DocumentID, &j.WorkspaceID, &j.UserID, &j.MayMove, &j.Attempts); err != nil {
+		if err := rows.Scan(&j.DocumentID, &j.WorkspaceID, &j.UserID, &j.MayMove, &j.Attempts, &j.Language); err != nil {
 			return nil, err
 		}
 		out = append(out, j)

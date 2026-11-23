@@ -124,7 +124,7 @@ func TestExpenseCreatePlacesTheDocument(t *testing.T) {
 		}
 		id := categoryDoc(t, st, sess, "c.pdf", &fid)
 		now := time.Now()
-		if err := st.QueueFiling(ctx, sess.Workspace.ID, id, sess.User.ID, true, now); err != nil {
+		if err := st.QueueFiling(ctx, sess.Workspace.ID, id, sess.User.ID, true, "", now); err != nil {
 			t.Fatal(err)
 		}
 		if err := st.FinishFiling(ctx, id, store.FilingRecord{Status: "filed", FolderID: &fid}, now); err != nil {

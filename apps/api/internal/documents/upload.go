@@ -156,7 +156,7 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		s.removeObjects(r.Context(), key)
 		return s.writeReused(w, r, sess, reused)
 	}
-	s.queueFiling(r.Context(), sess, id, folder == nil)
+	s.queueFiling(r.Context(), sess, id, folder == nil, requestLanguage(r))
 	return s.writeDocument(w, r, sess, http.StatusCreated, id)
 }
 
