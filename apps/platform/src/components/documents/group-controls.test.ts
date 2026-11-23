@@ -2,13 +2,30 @@ import { describe, expect, it } from 'vitest'
 
 import { DEFAULT_VIEW } from '@/lib/documents'
 
-import { groupingLabel, inPreset, moveLevel, VIEW_PRESETS } from './group-controls'
+import {
+  groupingLabel,
+  groupingSentence,
+  inPreset,
+  moveLevel,
+  VIEW_PRESETS,
+} from './group-controls'
 
 describe('group by', () => {
   it('names any grouping by its levels in order', () => {
     expect(groupingLabel([])).toBe('Folders')
-    expect(groupingLabel(['client', 'year'])).toBe('Client → Year')
-    expect(groupingLabel(['year', 'type', 'client'])).toBe('Year → Type → Client')
+    expect(groupingLabel(['client', 'year'])).toBe('Client › Year')
+    expect(groupingLabel(['year', 'type', 'client'])).toBe('Year › Type › Client')
+  })
+
+  it('says a grouping in plain words', () => {
+    expect(groupingSentence([])).toBe('No grouping: files are shown in folders.')
+    expect(groupingSentence(['type'])).toBe('Files grouped by type.')
+    expect(groupingSentence(['client', 'year'])).toBe(
+      'Files grouped by client, then by year inside each client.',
+    )
+    expect(groupingSentence(['year', 'type', 'client'])).toBe(
+      'Files grouped by year, then by type, then by client.',
+    )
   })
 
   it('moves a level up or down, never out of the list', () => {
