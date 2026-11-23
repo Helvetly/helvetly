@@ -299,8 +299,9 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
           </>
         }
       />
-      {/* The calendar runs to the panel's left, right and bottom edges; notices keep the page padding. */}
-      <div className="flex min-h-0 flex-1 flex-col">
+      {/* The calendar runs to the panel's left, right and bottom edges; notices keep the page padding.
+          The card clips to its rounded corners and keeps the grid's sticky headings below the page header. */}
+      <div data-sched-card className="isolate flex min-h-0 flex-1 flex-col overflow-hidden">
         {(lock || waiting > 0 || toMarkCount > 0) && (
           <div className="grid gap-3 px-4 py-3 sm:px-6">
             <FeatureLockNotice lock={lock} kept={translate('schedLockedKept')} />
@@ -343,7 +344,9 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
             zone={zone}
             occurrences={list}
             daysOff={toMark ? undefined : daysOffShown}
+            now={now}
             onOpen={(entry) => openSession(entry.id)}
+            onNew={canWrite && !toMark ? () => newAt(date) : undefined}
             empty={toMark ? translate('schedNothingToMark') : translate('schedNoSessionsInRange')}
           />
         ) : view === 'month' ? (

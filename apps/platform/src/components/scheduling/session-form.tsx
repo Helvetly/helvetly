@@ -5,9 +5,15 @@ import { Combobox } from '@helvetly/ui/components/combobox'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { FieldError } from '@helvetly/ui/components/inline-error'
 import { inputClass } from '@helvetly/ui/components/input'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from '@helvetly/ui/components/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Segmented } from '@helvetly/ui/components/segmented'
-import { SwitchRow } from '@helvetly/ui/components/switch-row'
+import { Switch } from '@helvetly/ui/components/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -52,8 +58,10 @@ import {
 
 import { Choices } from './bits'
 import {
+  asksDuration,
   autoTitle,
   dateChange,
+  eventTypeValues,
   presetOf,
   presetValues,
   recurrenceOf,
@@ -68,6 +76,8 @@ import {
 
 const DURATIONS = ['30', '45', '60', '90', '120']
 const fieldId = (name: keyof Values) => `session-${name}`
+/** The duration picks' box, focused when "Change" reveals them. */
+const DURATION_CHOICES = 'session-duration-choices'
 /** Focuses a field a click has just revealed, once it is rendered. */
 const focusSoon = (id: string) => requestAnimationFrame(() => document.getElementById(id)?.focus())
 /** Where a person connects their own calendar; a new tab, so the form in the drawer stays as it is. */
@@ -99,6 +109,8 @@ export function SessionFields({
     slot && values.host_id ? { host_id: values.host_id, ...slot, exclude: excludeId } : null,
   )
   const [clientOpen, setClientOpen] = useState(false)
+  /** The event type sets the length; "Change" asks for it anyway. */
+  const [override, setOverride] = useState(false)
   const [notes, setNotes] = useState({
     client: values.client_note !== '',
     internal: values.description !== '',
@@ -119,9 +131,12 @@ export function SessionFields({
       label: member.name || member.email,
     })) ?? []
 
+  const chosenType = types.find((entry) => entry.id === values.event_type_id)
+  const durationAsked = asksDuration(values, chosenType, override)
+
   return (
     <div className="grid gap-4">
-      <div className="grid gap-1">
+      <Line>
         <input
           {...describe('title')}
           aria-label={translate('title')}
@@ -129,39 +144,11 @@ export function SessionFields({
           maxLength={200}
           onChange={(event) => set(typedTitle(event.target.value))}
           placeholder={translate('schedAddTitle')}
-          // The drawer is its box, as the invoice paper is (`field-quiet`): a heading one types into.
-          className="field-quiet -mx-2 h-11 rounded-md bg-transparent px-2 text-xl leading-7 font-semibold transition-colors outline-none placeholder:font-normal placeholder:text-placeholder hover:bg-muted/60 focus-visible:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
+          // The drawer is its box, as the invoice paper is (`field-quiet`): a heading one types into, underlined on hover and focus.
+          className="field-quiet h-10 w-full border-b border-transparent bg-transparent text-xl leading-7 font-semibold transition-colors outline-none placeholder:font-normal placeholder:text-placeholder hover:border-border focus-visible:border-ring aria-invalid:border-destructive"
         />
         {errors.title && <FieldError id={`${fieldId('title')}-error`}>{errors.title}</FieldError>}
-      </div>
-
-      {(types.length > 0 || values.event_type_id) && (
-        <Line icon={LayoutTemplate}>
-          <Field id={fieldId('event_type_id')} error={errors.event_type_id}>
-            <Combobox
-              id={fieldId('event_type_id')}
-              label={translate('schedEventType')}
-              value={values.event_type_id}
-              options={types.map((entry) => ({ value: entry.id, label: entry.name }))}
-              onChange={(id) => {
-                const type = types.find((entry) => entry.id === id)
-                if (!type) return
-                set({
-                  event_type_id: id,
-                  duration: String(type.duration_minutes),
-                  mode: type.mode,
-                  provider: type.meeting_provider ?? values.provider,
-                  location: type.location ?? values.location,
-                  ...autoTitle(values, type.name),
-                })
-              }}
-              onClear={() => set({ event_type_id: '' })}
-              clearLabel={translate('schedClearEventType')}
-              placeholder={translate('schedPickEventType')}
-            />
-          </Field>
-        </Line>
-      )}
+      </Line>
 
       <Line icon={Building2}>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -228,6 +215,28 @@ export function SessionFields({
         </div>
       </Line>
 
+      {(types.length > 0 || values.event_type_id) && (
+        <Line icon={LayoutTemplate}>
+          <Field id={fieldId('event_type_id')} error={errors.event_type_id}>
+            <Combobox
+              id={fieldId('event_type_id')}
+              label={translate('schedEventType')}
+              value={values.event_type_id}
+              options={types.map((entry) => ({ value: entry.id, label: entry.name }))}
+              onChange={(id) => {
+                const type = types.find((entry) => entry.id === id)
+                if (!type) return
+                setOverride(false)
+                set(eventTypeValues(values, type))
+              }}
+              onClear={() => set({ event_type_id: '' })}
+              clearLabel={translate('schedClearEventType')}
+              placeholder={translate('schedPickEventType')}
+            />
+          </Field>
+        </Line>
+      )}
+
       {/* One member hosts everything: nothing to choose. */}
       {hosts.length > 1 && (
         <Line icon={UserRound}>
@@ -248,14 +257,44 @@ export function SessionFields({
       )}
 
       <Line icon={Clock}>
-        <When values={values} errors={errors} set={set} describe={describe} />
+        <When
+          values={values}
+          errors={errors}
+          set={set}
+          describe={describe}
+          durationAsked={durationAsked}
+        />
         <div className="mt-1.5 flex h-5 min-w-0 items-center gap-2 text-body-sm">
-          {slot && (
-            <span className="shrink-0 text-muted-foreground" aria-live="polite">
-              {dayLabel(values.date)} · {timeLabel(slot.starts_at, zone)} –{' '}
-              {timeLabel(slot.ends_at, zone)} ({zoneName(zone)})
-            </span>
-          )}
+          <span
+            className="flex shrink-0 items-center gap-1 text-muted-foreground"
+            aria-live="polite"
+          >
+            {slot && (
+              <span>
+                {dayLabel(values.date)} · {timeLabel(slot.starts_at, zone)} –{' '}
+                {timeLabel(slot.ends_at, zone)} ({zoneName(zone)})
+              </span>
+            )}
+            {!durationAsked && (
+              <>
+                <span>
+                  {slot && '· '}
+                  {shortDuration(Number(values.duration))}
+                </span>
+                <button
+                  type="button"
+                  aria-label={translate('schedChangeDuration')}
+                  onClick={() => {
+                    setOverride(true)
+                    focusSoon(DURATION_CHOICES)
+                  }}
+                  className="rounded-sm text-link underline underline-offset-2 outline-none hover:no-underline focus-visible:ring-2 focus-visible:ring-ring/50"
+                >
+                  {translate('change')}
+                </button>
+              </>
+            )}
+          </span>
           {/* On the summary's line, so a warning appearing never moves the fields below. */}
           <ConflictLine
             conflicts={slot && values.host_id ? (conflicts.data ?? []) : []}
@@ -272,86 +311,103 @@ export function SessionFields({
         <Where values={values} errors={errors} set={set} describe={describe} me={me} />
       </Line>
 
-      <Line icon={AlignLeft}>
-        {!(notes.client && notes.internal) && (
-          <div className="-ml-2 flex flex-wrap gap-1">
-            {!notes.client && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                onClick={() => {
-                  setNotes((open) => ({ ...open, client: true }))
-                  focusSoon(fieldId('client_note'))
-                }}
-              >
-                <Plus />
-                {translate('schedAddClientNote')}
-              </Button>
-            )}
-            {!notes.internal && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                onClick={() => {
-                  setNotes((open) => ({ ...open, internal: true }))
-                  focusSoon(fieldId('description'))
-                }}
-              >
-                <Plus />
-                {translate('schedAddInternalNote')}
-              </Button>
-            )}
-          </div>
-        )}
-        {(notes.client || notes.internal) && (
-          <div className={cn('grid gap-3', !(notes.client && notes.internal) && 'mt-2')}>
-            {notes.client && (
-              <FormField
-                id={fieldId('client_note')}
-                label={translate('schedClientNote')}
-                error={errors.client_note}
-                tip={translate('schedClientNoteTip')}
-              >
-                <TextareaBox
-                  {...describe('client_note')}
-                  rows={2}
-                  max={2000}
-                  value={values.client_note}
-                  onChange={(event) => set({ client_note: event.target.value })}
-                />
-              </FormField>
-            )}
-            {notes.internal && (
-              <FormField
-                id={fieldId('description')}
-                label={translate('schedInternalNotes')}
-                error={errors.description}
-                tip={translate('schedInternalNotesTip')}
-              >
-                <TextareaBox
-                  {...describe('description')}
-                  rows={2}
-                  max={4000}
-                  value={values.description}
-                  onChange={(event) => set({ description: event.target.value })}
-                />
-              </FormField>
-            )}
-          </div>
-        )}
+      {/* The first line is a note's label once one is open, else the buttons that open them. */}
+      <Line icon={AlignLeft} lead={notes.client || notes.internal ? 'label' : 'button'}>
+        <div className="grid gap-2">
+          {(notes.client || notes.internal) && (
+            <div className="grid gap-4">
+              {notes.client && (
+                <FormField
+                  id={fieldId('client_note')}
+                  label={translate('schedClientNote')}
+                  error={errors.client_note}
+                  tip={translate('schedClientNoteTip')}
+                >
+                  <TextareaBox
+                    {...describe('client_note')}
+                    rows={2}
+                    max={2000}
+                    value={values.client_note}
+                    onChange={(event) => set({ client_note: event.target.value })}
+                  />
+                </FormField>
+              )}
+              {notes.internal && (
+                <FormField
+                  id={fieldId('description')}
+                  label={translate('schedInternalNotes')}
+                  error={errors.description}
+                  tip={translate('schedInternalNotesTip')}
+                >
+                  <TextareaBox
+                    {...describe('description')}
+                    rows={2}
+                    max={4000}
+                    value={values.description}
+                    onChange={(event) => set({ description: event.target.value })}
+                  />
+                </FormField>
+              )}
+            </div>
+          )}
+          {!(notes.client && notes.internal) && (
+            <div className="-ml-2 flex flex-wrap gap-1">
+              {!notes.client && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => {
+                    setNotes((open) => ({ ...open, client: true }))
+                    focusSoon(fieldId('client_note'))
+                  }}
+                >
+                  <Plus />
+                  {translate('schedAddClientNote')}
+                </Button>
+              )}
+              {!notes.internal && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => {
+                    setNotes((open) => ({ ...open, internal: true }))
+                    focusSoon(fieldId('description'))
+                  }}
+                >
+                  <Plus />
+                  {translate('schedAddInternalNote')}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </Line>
 
-      <SwitchRow
-        icon={Mail}
-        label={translate('schedEmailClient')}
-        description={translate('schedEmailClientText')}
-        checked={values.notify}
-        onCheckedChange={(notify) => set({ notify })}
-      />
+      <Line icon={Mail} lead="label">
+        <div className="flex items-center justify-between gap-3">
+          <div className="grid gap-0.5">
+            <label
+              htmlFor="session-notify"
+              className="w-fit cursor-pointer text-body-sm font-medium"
+            >
+              {translate('schedEmailClient')}
+            </label>
+            <p id="session-notify-description" className="text-body-sm text-muted-foreground">
+              {translate('schedEmailClientText')}
+            </p>
+          </div>
+          <Switch
+            id="session-notify"
+            aria-describedby="session-notify-description"
+            checked={values.notify}
+            onCheckedChange={(notify) => set({ notify })}
+          />
+        </div>
+      </Line>
     </div>
   )
 }
@@ -368,12 +424,27 @@ type Part = {
   describe: Describe
 }
 
-/** A row of the form: its icon on the left (as a calendar's event editor), the fields on the right. */
-function Line({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+/** The height of a row's first line, which its icon is centred on: a field, a small button or a label. */
+const LEAD = { control: 'h-9', button: 'h-7', label: 'h-[18px]' } as const
+
+/**
+ * A row of the form: its icon in a fixed gutter (as a calendar's event editor), the fields beside it. The icon's box
+ * is as high as the row's first line, so the icon sits on it whatever comes below.
+ */
+function Line({
+  icon: Icon,
+  lead = 'control',
+  children,
+}: {
+  icon?: LucideIcon
+  lead?: keyof typeof LEAD
+  children: ReactNode
+}) {
   return (
-    <div className="grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-3">
-      {/* Centred on the first field's 36 px row. */}
-      <Icon aria-hidden className="mt-2.5 size-4 stroke-[1.75] text-muted-foreground" />
+    <div data-row className="grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-3">
+      <span data-row-icon className={cn('flex items-center', LEAD[lead])}>
+        {Icon && <Icon aria-hidden className="size-4 stroke-[1.75] text-muted-foreground" />}
+      </span>
       <div className="min-w-0">{children}</div>
     </div>
   )
@@ -407,9 +478,11 @@ function Field({
   )
 }
 
-/** Date, start and duration on one row (wrapping on a phone); the duration as quick picks or minutes. */
-function When({ values, errors, set, describe }: Part) {
-  const [custom, setCustom] = useState(!DURATIONS.includes(values.duration))
+/**
+ * Date, start and duration on one row (wrapping on a phone); the duration as quick picks or minutes, left out while
+ * the event type's length holds (the summary below names it).
+ */
+function When({ values, errors, set, describe, durationAsked }: Part & { durationAsked: boolean }) {
   return (
     <div className="grid gap-1">
       <div className="flex flex-wrap items-start gap-2">
@@ -421,7 +494,7 @@ function When({ values, errors, set, describe }: Part) {
           type="date"
           value={values.date}
           onChange={(event) => set(dateChange(values, event.target.value))}
-          className={cn(inputClass, 'w-40')}
+          className={cn(inputClass, 'w-auto')}
         />
         <label htmlFor={fieldId('time')} className="sr-only">
           {translate('schedStart')}
@@ -432,8 +505,30 @@ function When({ values, errors, set, describe }: Part) {
           step={300}
           value={values.time}
           onChange={(event) => set({ time: event.target.value })}
-          className={cn(inputClass, 'w-28')}
+          className={cn(inputClass, 'w-auto')}
         />
+        {durationAsked && (
+          <Duration values={values} errors={errors} set={set} describe={describe} />
+        )}
+      </div>
+      {(['date', 'time', 'duration'] as const).map(
+        (name) =>
+          errors[name] && (
+            <FieldError key={name} id={`${fieldId(name)}-error`}>
+              {errors[name]}
+            </FieldError>
+          ),
+      )}
+    </div>
+  )
+}
+
+/** The duration as quick picks or minutes; mounted when shown, so it starts from the length the form has then. */
+function Duration({ values, set, describe }: Part) {
+  const [custom, setCustom] = useState(!DURATIONS.includes(values.duration))
+  return (
+    <>
+      <div id={DURATION_CHOICES} tabIndex={-1} className="outline-none">
         <Choices
           label={translate('schedDuration')}
           value={custom ? 'custom' : values.duration}
@@ -450,29 +545,22 @@ function When({ values, errors, set, describe }: Part) {
             else set({ duration: choice })
           }}
         />
-        {custom && (
-          <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
-            <input
-              {...describe('duration')}
-              aria-label={translate('schedDurationMinutes')}
-              inputMode="numeric"
-              value={values.duration}
-              onChange={(event) => set({ duration: event.target.value })}
-              className={cn(inputClass, 'w-20')}
-            />
-            {translate('schedMinutesUnit')}
-          </span>
-        )}
       </div>
-      {(['date', 'time', 'duration'] as const).map(
-        (name) =>
-          errors[name] && (
-            <FieldError key={name} id={`${fieldId(name)}-error`}>
-              {errors[name]}
-            </FieldError>
-          ),
+      {custom && (
+        <InputGroup className="w-24">
+          <InputGroupInput
+            {...describe('duration')}
+            aria-label={translate('schedDurationMinutes')}
+            inputMode="numeric"
+            value={values.duration}
+            onChange={(event) => set({ duration: event.target.value })}
+          />
+          <InputGroupAddon align="inline-end">
+            <InputGroupText>{translate('schedMinutesUnit')}</InputGroupText>
+          </InputGroupAddon>
+        </InputGroup>
       )}
-    </div>
+    </>
   )
 }
 

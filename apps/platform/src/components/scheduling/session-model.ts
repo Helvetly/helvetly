@@ -1,4 +1,3 @@
-// The session drawer's form: its values, checks and the API's EventInput they become.
 import { translate } from '@/lib/i18n'
 import {
   addDays,
@@ -16,6 +15,8 @@ import {
   type SchedEvent,
   type Weekday,
 } from '@/lib/scheduling'
+// The session drawer's form: its values, checks and the API's EventInput they become.
+import type { EventType } from '@/lib/scheduling-settings'
 
 export type Values = {
   client: Person | null
@@ -164,6 +165,29 @@ export function dateChange(values: Values, date: string): Partial<Values> {
 /** Picking an engagement or event type names the session after it, until a title is typed. */
 export const autoTitle = (values: Values, name: string): Partial<Values> =>
   values.title_auto && name ? { title: name } : {}
+
+/** Picking an event type: its length and place, and its name until a title is typed. */
+export const eventTypeValues = (
+  values: Values,
+  type: Pick<
+    EventType,
+    'id' | 'name' | 'duration_minutes' | 'mode' | 'meeting_provider' | 'location'
+  >,
+): Partial<Values> => ({
+  event_type_id: type.id,
+  duration: String(type.duration_minutes),
+  mode: type.mode,
+  provider: type.meeting_provider ?? values.provider,
+  location: type.location ?? values.location,
+  ...autoTitle(values, type.name),
+})
+
+/** The duration is asked for unless it is the chosen event type's own length (then the summary names it). */
+export const asksDuration = (
+  values: Values,
+  type: Pick<EventType, 'duration_minutes'> | undefined,
+  overriding: boolean,
+) => overriding || !type || values.duration !== String(type.duration_minutes)
 
 /** A typed title stays; clearing it lets the next pick name the session again. */
 export const typedTitle = (title: string): Partial<Values> => ({
