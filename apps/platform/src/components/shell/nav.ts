@@ -3,6 +3,7 @@ import {
   Bell,
   BookOpen,
   Building2,
+  CalendarDays,
   ClipboardCheck,
   FileText,
   FileUp,
@@ -18,6 +19,7 @@ import {
 import type { ComponentType } from 'react'
 
 import { featureLock } from '@/components/billing/feature-lock'
+import { RequestsBadge } from '@/components/scheduling/requests-badge'
 import type { Billing, FeatureKey } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { can, canReadPath, type Need } from '@/lib/permissions'
@@ -35,6 +37,8 @@ export type NavItem = {
   feature?: FeatureKey
   /** An area of tabbed pages: the item links to the first one the person may read (`href` is the area's first). */
   pages?: string[]
+  /** A count after the label (what waits there); shown only while the plan has the feature. */
+  badge?: ComponentType<{ className?: string }>
 }
 
 // Items without a page yet have no href: they look the same and say "coming soon".
@@ -42,6 +46,13 @@ export const NAV: { label?: string; items: NavItem[]; bottom?: boolean }[] = [
   {
     items: [
       { label: translate('dashboard'), icon: LayoutGrid, href: '/' },
+      {
+        label: translate('schedScheduling'),
+        icon: CalendarDays,
+        href: '/scheduling',
+        feature: 'scheduling',
+        badge: RequestsBadge,
+      },
       { label: translate('documents'), icon: FileText, href: '/documents' },
     ],
   },

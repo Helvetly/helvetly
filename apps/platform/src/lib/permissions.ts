@@ -35,6 +35,11 @@ export const RESOURCES = [
     description: translate('retainersLoggedHoursAndReports'),
   },
   {
+    id: 'scheduling',
+    label: translate('schedScheduling'),
+    description: translate('schedResourceDescription'),
+  },
+  {
     id: 'members',
     label: translate('members'),
     description: translate('theTeamAndInvitations'),
@@ -83,11 +88,6 @@ export const RESOURCES = [
     label: translate('apiMCP'),
     description: translate('personalApiTokensNeverBeyondTheirOwnAccess'),
     viewOnly: translate('viewLetsThemCreateAndUseTokens'),
-  },
-  {
-    id: 'scheduling',
-    label: translate('schedulingSettingsTitle'),
-    description: translate('schedulingSettingsAccessDescription'),
   },
   // HR: a "*" resource never reaches these; owners hold both, admins ADMIN_HR until the owner sets their own list.
   {
@@ -175,6 +175,7 @@ export function levelsOf(scopes: readonly string[]): Levels {
     products: 'none',
     documents: 'none',
     engagements: 'none',
+    scheduling: 'none',
     members: 'none',
     'invoice-settings': 'none',
     'vat-return': 'none',
@@ -186,7 +187,6 @@ export function levelsOf(scopes: readonly string[]): Levels {
     api: 'none',
     employees: 'none',
     payroll: 'none',
-    scheduling: 'none',
   }
   for (const resource of RESOURCES) {
     if (can(scopes, `write:${resource.id}`))
@@ -283,6 +283,7 @@ const ROUTES: [string, Resource][] = [
   ['/products', 'products'],
   ['/expenses', 'expenses'],
   ['/engagements', 'engagements'],
+  ['/scheduling', 'scheduling'],
   ['/documents', 'documents'],
   // The books' tabs before the closing tab, whose address is their parent.
   ['/books/vat-return', 'vat-return'],

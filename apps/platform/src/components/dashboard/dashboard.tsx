@@ -47,6 +47,7 @@ import { EngagementsCard } from '@/components/engagements/engagements-card'
 import { Initials } from '@/components/initials'
 import { Money, RowStatus } from '@/components/invoices/invoice-bits'
 import { RecordLink, useDrawers } from '@/components/record-link'
+import { TodayCard } from '@/components/scheduling/today-card'
 import { PageHeader } from '@/components/shell/page-header'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -98,6 +99,7 @@ export function Dashboard() {
   const canReadInvoices = useCan('read:invoices')
   const canReadExpenses = useCan('read:expenses')
   const canReadEngagements = useCan('read:engagements')
+  const canReadScheduling = useCan('read:scheduling')
   const canReadPeriods = useCan('read:periods')
   const canReadVATReturn = useCan('read:vat-return')
   const canReadBooks = canReadPeriods || canReadVATReturn
@@ -151,8 +153,9 @@ export function Dashboard() {
             {showAttention && <NeedsAttention />}
           </div>
         )}
-        {(canReadEngagements || canReadExpenses) && (
+        {(canReadEngagements || canReadExpenses || canReadScheduling) && (
           <div className="flex flex-wrap gap-4 empty:hidden">
+            {canReadScheduling && <TodayCard className="min-w-0 flex-[1_1_360px]" />}
             {canReadEngagements && <EngagementsCard className="min-w-0 flex-[1_1_360px]" />}
             {canReadExpenses && <SpendingCard className="min-w-0 flex-[1_1_360px]" />}
           </div>

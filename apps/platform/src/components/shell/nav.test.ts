@@ -56,3 +56,15 @@ test('Books links to the first of its tabs the person may read, and hides withou
   expect(booksHref(['read:vat-return', 'read:ledger'])).toBe('/books/vat-return')
   expect(booksHref(['read:clients'])).toBeUndefined()
 })
+
+test('Scheduling sits right under the dashboard and needs read:scheduling', () => {
+  const first = visibleNav(['*:*'])[0]?.items.map((item) => item.label)
+  expect(first?.slice(0, 2)).toEqual(['Dashboard', 'Scheduling'])
+  expect(labels(['read:scheduling'])).toContain('Scheduling')
+  expect(labels(['read:clients'])).not.toContain('Scheduling')
+  const item = visibleNav(['*:*'])
+    .flatMap((group) => group.items)
+    .find((entry) => entry.label === 'Scheduling')
+  expect(item).toMatchObject({ href: '/scheduling', feature: 'scheduling' })
+  expect(item?.badge).toBeDefined()
+})

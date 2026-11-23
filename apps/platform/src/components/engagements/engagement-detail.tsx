@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { loadProblemText } from '@/components/data/load-problem'
 import { RecordLink } from '@/components/record-link'
 import { RecordPageButton } from '@/components/record-link'
+import { SessionsPanel } from '@/components/scheduling/sessions-panel'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   cancelEngagement,
@@ -291,6 +292,11 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
           unit={unit}
           writable={writable}
           perEntry={engagement.invoice_detail === 'per_entry'}
+        />
+
+        <SessionsPanel
+          client={{ id: engagement.client.id, name: engagement.client.name }}
+          engagement={{ id: engagement.id, title: engagement.title }}
         />
 
         <Panel title={translate('periods')}>

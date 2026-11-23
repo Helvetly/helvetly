@@ -125,6 +125,7 @@ test('Custom sends one scope per row of the matrix', async () => {
         'read:products',
         'read:documents',
         'read:engagements',
+        'read:scheduling',
         'read:members',
         'read:invoice-settings',
         'read:vat-return',
@@ -133,7 +134,6 @@ test('Custom sends one scope per row of the matrix', async () => {
         'read:workspace',
         'read:billing',
         'read:api',
-        'read:scheduling',
       ],
     }),
   )
@@ -149,6 +149,7 @@ test('no area left blocks sending', async () => {
     'Products & services',
     'Documents',
     'Engagements',
+    'Scheduling',
     'Members',
     'Invoice settings',
     'VAT return',
@@ -158,7 +159,6 @@ test('no area left blocks sending', async () => {
     'Workspace',
     'Billing',
     'API & MCP',
-    'Scheduling',
   ])
     await userEvent.click(screen.getByRole('radio', { name: `${area}: No access` }))
   expect(screen.getByRole('button', { name: 'Send invitation' })).toBeDisabled()

@@ -33,6 +33,7 @@ import { ImportDrawer } from '@/components/import/import-drawer'
 import { EditableValue, InlineAdd, InlineTextEditor } from '@/components/inline-add'
 import { ClientInvoices } from '@/components/invoices/client-invoices'
 import { ClientQuotes } from '@/components/quotes/client-quotes'
+import { SessionsPanel } from '@/components/scheduling/sessions-panel'
 import { tabIcons } from '@/components/tab-icons'
 import { FillTemplateDrawer } from '@/components/templates/fill-drawer'
 import { ApiError, errorMessage } from '@/lib/api'
@@ -650,6 +651,8 @@ function Detail({
         </Panel>
 
         <SelfBillingAgreements clientId={client.id} />
+
+        <SessionsPanel client={{ id: client.id, name: client.name }} hideEmpty />
 
         <p className="px-1 pt-1 text-xs text-muted-foreground">
           {translate('added2')}
