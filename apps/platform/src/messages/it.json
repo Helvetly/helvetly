@@ -2010,6 +2010,7 @@
   "noSupplier": "Nessun fornitore",
   "noSupplierYet": "Ancora nessun fornitore",
   "noTagsYet": "Ancora nessun tag.",
+  "autoTagHint": "Aggiunto automaticamente. Se lo rimuovi, non torna.",
   "notAMoneyAmount": "Non un importo in denaro: \"{value}\"",
   "notBeforeToday": "Non prima di oggi.",
   "notCountedYet": "Non ancora conteggiato",

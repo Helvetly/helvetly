@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 import { useFeatureLock } from '@/components/billing/feature-lock'
 import { DashboardCard, LIST_ROW } from '@/components/dashboard/dashboard-card'
+import { RecordLink } from '@/components/record-link'
 import { translate } from '@/lib/i18n'
 import { addDays, instantOf, timeLabel, useOccurrences, useRequests, zoned } from '@/lib/scheduling'
 import { getWorkspaceTimezone } from '@/lib/timezone'
@@ -58,8 +59,8 @@ export function TodayCard({ className, now: fixedNow }: { className?: string; no
         <ul className="grid px-1.5 pt-1 pb-2">
           {rows.slice(0, 4).map((row) => (
             <li key={row.id}>
-              <Link
-                href={`/scheduling?view=day&session=${encodeURIComponent(row.id)}`}
+              <RecordLink
+                href={`/scheduling?session=${encodeURIComponent(row.id)}`}
                 className={LIST_ROW}
               >
                 <span className="w-12 shrink-0 text-body-sm font-medium tabular-nums">
@@ -77,7 +78,7 @@ export function TodayCard({ className, now: fixedNow }: { className?: string; no
                     <StatusBadge status={row.status} />
                   </span>
                 )}
-              </Link>
+              </RecordLink>
             </li>
           ))}
         </ul>

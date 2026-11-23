@@ -526,7 +526,7 @@ export const Today: Story = {
     await expect(await card.findByRole('heading', { name: 'Today' })).toBeVisible()
     await expect(await card.findByRole('link', { name: '2 requests waiting' })).toBeVisible()
     await expect(card.getByRole('link', { name: /Strategy session/ }).getAttribute('href')).toMatch(
-      /^\/scheduling\/?\?view=day&session=soc_1$/,
+      /^\/scheduling\/?\?session=soc_1$/,
     )
   },
 }

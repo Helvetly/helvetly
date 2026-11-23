@@ -2010,6 +2010,7 @@
   "noSupplier": "Aucun fournisseur",
   "noSupplierYet": "Pas encore de fournisseur",
   "noTagsYet": "Aucune balise pour l’instant.",
+  "autoTagHint": "Ajoutée automatiquement. Si vous la retirez, elle ne revient pas.",
   "notAMoneyAmount": "Pas un montant monétaire : \"{value}\"",
   "notBeforeToday": "Pas avant aujourd’hui.",
   "notCountedYet": "Pas encore comptabilisé",
