@@ -62,7 +62,10 @@ func (q Q) CreateDocument(ctx context.Context, workspaceID, userID string, d Doc
 		if err := q.ReserveObject(ctx, workspaceID, d.ObjectKey, d.Size, true, d.CreatedAt); err != nil {
 			return err
 		}
-		return q.createDocument(ctx, workspaceID, userID, d)
+		if err := q.createDocument(ctx, workspaceID, userID, d); err != nil {
+			return err
+		}
+		return q.AutoTag(ctx, workspaceID, d.ID, d.CreatedAt)
 	})
 }
 

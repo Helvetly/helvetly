@@ -89,8 +89,10 @@ export type DocFile = {
   content_type: string
   kind: Kind
   sha256: string | null
-  /** Lower-case, at most 10. */
+  /** Lower-case: at most 10 of the people's own, then the automatic ones. */
   tags: string[]
+  /** Those of `tags` the app set from what the file is (shown muted); a removed one never comes back. */
+  auto_tags?: string[]
   ai_filing: AIFiling | null
   previewable: boolean
   links: DocLink[]

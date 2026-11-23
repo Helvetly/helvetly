@@ -2012,6 +2012,7 @@
   "noSupplier": "Kein Lieferant",
   "noSupplierYet": "Noch kein Lieferant",
   "noTagsYet": "Noch keine Tags.",
+  "autoTagHint": "Automatisch hinzugefügt. Entfernen Sie es, bleibt es entfernt.",
   "notAMoneyAmount": "Kein Geldbetrag: „{value}“",
   "notBeforeToday": "Nicht vor heute.",
   "notCountedYet": "Noch nicht gezählt",
