@@ -744,7 +744,8 @@ export const SeriesMoveRefused: Story = {
     await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
     await toastShows('This series cannot move by days.')
     await expect(moveSent).toEqual([
-      { starts_local: '2026-12-03T09:00', duration_minutes: 60, scope: 'following' },
+      // Only the preview was asked: it is the one refused.
+      { starts_local: '2026-12-03T09:00', duration_minutes: 60, scope: 'following', dry_run: true },
     ])
     await expect(page.queryByText(/highlighted fields/)).not.toBeInTheDocument()
     await waitFor(async () =>

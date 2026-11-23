@@ -50,9 +50,10 @@ import {
 } from '@/lib/scheduling'
 
 import { MapLink } from './address-input'
-import { hasStarted, HostDot, StatusBadge, TimeLock, useSessionChange } from './bits'
+import { hasStarted, HostDot, StatusBadge, TimeLock } from './bits'
 import { DayOffWarning, useDaysOff } from './day-off'
 import { whenLabel, RequestCard } from './requests'
+import { useSessionChange } from './session-change'
 import { SessionFields } from './session-form'
 import {
   blankValues,
@@ -66,7 +67,9 @@ import {
 import { StatusActions } from './status-actions'
 
 export type NewSession = Parameters<typeof blankValues>[0]
-export type DrawerTarget = { kind: 'view'; id: string } | { kind: 'create'; start: NewSession }
+export type DrawerTarget =
+  | { kind: 'view'; id: string; /** Opens the session's form at once. */ edit?: boolean }
+  | { kind: 'create'; start: NewSession }
 
 /** One drawer for a session: its details and actions, and the same form to create or change it. */
 export function SessionDrawer({
@@ -112,8 +115,9 @@ export function SessionDrawer({
           />
         ) : (
           <ViewSession
-            key={target.id}
+            key={`${target.id}${target.edit ? ':edit' : ''}`}
             id={target.id}
+            edit={target.edit}
             zone={zone}
             now={now}
             onDirty={setDirty}
@@ -325,12 +329,14 @@ function FormShell({
 
 function ViewSession({
   id,
+  edit,
   zone,
   now,
   onDirty,
   onClose,
 }: {
   id: string
+  edit?: boolean
   zone: string
   now: Date
   onDirty: (dirty: boolean) => void
@@ -338,7 +344,7 @@ function ViewSession({
 }) {
   const occurrence = useOccurrence(id)
   const event = useSchedEvent(occurrence.data?.event_id ?? null)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(Boolean(edit))
   if (occurrence.error)
     return (
       <div className="p-5">
@@ -398,7 +404,10 @@ function EditSession({
 }) {
   const [initial] = useState(() => valuesFrom(occurrence, event))
   const form = useForm(initial, onDirty)
-  const { change, dialog, pending } = useSessionChange()
+  // The form is open already: "Change the repeat rule…" goes to its Repeat field.
+  const { change, dialog, pending } = useSessionChange({
+    onEditRule: () => document.getElementById('session-repeat')?.focus(),
+  })
   const submit = () => {
     if (pending || !form.check()) return
     const { body, ruleChanged, empty } = changesOf(initial, form.values, event.time_zone)

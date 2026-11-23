@@ -3,6 +3,7 @@ package scheduling
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"time"
@@ -55,7 +56,11 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 	if !s.auth.Decode(w, r, &body) {
 		return nil
 	}
-	if err := decode(body, append(slices.Clone(eventFields), "notify", "scope", "allow_day_off")...); err != nil {
+	if err := decode(body, append(append(slices.Clone(eventFields), "notify", "scope", "allow_day_off"), choiceFields...)...); err != nil {
+		return err
+	}
+	ch, err := choicesOf(body)
+	if err != nil {
 		return err
 	}
 	allowDayOff := flagOf(body, "allow_day_off")
@@ -71,6 +76,7 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 	ctx := r.Context()
 	var out Occurrence
 	var ed edit
+	var preview MovePreview
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		if err := q.RequireFeature(ctx, sess.Workspace.ID, store.FeatureScheduling); err != nil {
 			return err
@@ -82,18 +88,38 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 		if !isOpen(o.Status) {
 			return errClosed
 		}
+		if ch.dryRun && (e.RRule == nil || scope == "this") {
+			return badRequest("A preview is for a change to this and following, or all sessions of a series.")
+		}
+		var before []store.SchedOccurrence
+		if ch.dryRun {
+			if before, err = q.SchedOccurrences(ctx, e.WorkspaceID, store.SchedOccurrenceFilter{EventID: e.ID}); err != nil {
+				return err
+			}
+		}
+		following := scope == "following" && o.OriginalStart.After(startsLocal(e).In(loadZone(e.TimeZone)))
 		switch {
 		case e.RRule == nil:
 			ed, err = s.editOneOff(ctx, q, sess, e, o, body)
 		case scope == "this":
 			ed, err = s.editThis(ctx, q, sess, e, o, body)
-		case scope == "following" && o.OriginalStart.After(startsLocal(e).In(loadZone(e.TimeZone))):
-			ed, err = s.editFollowing(ctx, q, sess, e, o, body)
+		case following:
+			ed, err = s.editFollowing(ctx, q, sess, e, o, body, ch)
 		default: // "following" from the first session is the whole series
-			ed, err = s.editAll(ctx, q, sess, e, o, body)
+			ed, err = s.editAll(ctx, q, sess, e, o, body, ch)
+		}
+		if ch.dryRun && errors.Is(err, errRuleShift) {
+			preview = rulePreview(o)
+			return errDryRun
 		}
 		if err != nil {
 			return err
+		}
+		if ch.dryRun { // the edit is rolled back: nothing changes until the person confirms
+			if preview, err = s.preview(ctx, q, sess.Workspace, o, before, following); err != nil {
+				return err
+			}
+			return errDryRun
 		}
 		// A started session keeps its time: a one-off or "this" edit that moves it is refused (series edits skip it).
 		if s.timeLocked(o) && (e.RRule == nil || scope == "this") {
@@ -131,6 +157,10 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 		}
 		return err
 	})
+	if errors.Is(err, errDryRun) {
+		auth.WriteJSON(w, http.StatusOK, data(preview))
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -252,11 +282,14 @@ func seriesTime(e *store.SchedEvent, old store.SchedEvent, o store.SchedOccurren
 	return days, nil
 }
 
+// errRuleShift: the series repeats on a day of the month, which cannot move by days.
+var errRuleShift = validationFailed(map[string]string{"starts_local": "This series repeats on a day of the month that cannot move by days: change its repeat rule instead."})
+
 // shiftRule sets r, moved by days, as e's rule.
 func shiftRule(e *store.SchedEvent, r recur.Rule, days int) error {
 	r, ok := r.Shift(days)
 	if !ok {
-		return validationFailed(map[string]string{"starts_local": "This series repeats on a day of the month that cannot move by days: change its repeat rule instead."})
+		return errRuleShift
 	}
 	setRule(e, &r)
 	return nil
@@ -271,7 +304,7 @@ func changesRule(set map[string]bool) bool {
 }
 
 func (s *Service) editAll(ctx context.Context, q store.Q, sess store.Session, e store.SchedEvent, o store.SchedOccurrence,
-	body map[string]json.RawMessage) (edit, error) {
+	body map[string]json.RawMessage, ch moveChoices) (edit, error) {
 	old := e
 	in, err := s.applyEvent(ctx, q, sess, &e, body, false)
 	if err != nil {
@@ -293,18 +326,18 @@ func (s *Service) editAll(ctx context.Context, q store.Q, sess store.Session, e 
 		return edit{}, err
 	}
 	first := slices.IndexFunc(rows, func(x store.SchedOccurrence) bool { return isOpen(x.Status) && !s.timeLocked(x) })
-	ed, err := s.reconcile(ctx, q, sess.User.ID, old, e, rows, now, in.set, days)
+	ed, err := s.reconcile(ctx, q, sess.User.ID, old, e, rows, now, in.set, days, ch)
 	if err != nil {
 		return ed, err
 	}
-	if first >= 0 {
+	if first >= 0 && !ch.dryRun {
 		err = s.makeMeeting(ctx, q, &e, rows[first])
 	}
 	return ed, err
 }
 
 func (s *Service) editFollowing(ctx context.Context, q store.Q, sess store.Session, old store.SchedEvent, o store.SchedOccurrence,
-	body map[string]json.RawMessage) (edit, error) {
+	body map[string]json.RawMessage, ch moveChoices) (edit, error) {
 	oldZone := loadZone(old.TimeZone)
 	from := recur.DateOf(o.OriginalStart.In(oldZone))
 	n := old
@@ -361,8 +394,8 @@ func (s *Service) editFollowing(ctx context.Context, q store.Q, sess store.Sessi
 	if first := startsLocal(n).In(loadZone(n.TimeZone)); first.Before(since) { // moved to an earlier day or time
 		since = first
 	}
-	ed, err := s.reconcile(ctx, q, sess.User.ID, old, n, rows, since, in.set, days)
-	if err != nil {
+	ed, err := s.reconcile(ctx, q, sess.User.ID, old, n, rows, since, in.set, days, ch)
+	if err != nil || ch.dryRun {
 		return ed, err
 	}
 	ed.ended = old.ID
@@ -378,9 +411,10 @@ func (s *Service) editFollowing(ctx context.Context, q store.Q, sess store.Sessi
 // cancelled (the business's change, not counted), closed rows stay as they are, and dates without a row get new
 // occurrences. Rows move to target when it is another event (a "following" split), and to the slot shift days
 // after their date when the series moved by days. Fields set in the change reach
-// every open row, those changed on their own included.
+// every open row, those changed on their own included. ch keeps rows where they are, cancels them, or moves rows
+// changed on their own with the others.
 func (s *Service) reconcile(ctx context.Context, q store.Q, actor string, old, target store.SchedEvent, rows []store.SchedOccurrence,
-	from time.Time, set map[string]bool, shift int) (edit, error) {
+	from time.Time, set map[string]bool, shift int, ch moveChoices) (edit, error) {
 	var ed edit
 	holidays, err := holidaySet(ctx, q, target.WorkspaceID)
 	if err != nil {
@@ -406,8 +440,17 @@ func (s *Service) reconcile(ctx context.Context, q store.Q, actor string, old, t
 		}
 		if changesRule(set) || old.ID != target.ID {
 			t, ok := slots[d]
+			if slices.Contains(ch.include, row.ID) {
+				row.IsException = false
+			}
 			switch {
-			case !ok:
+			case slices.Contains(ch.keep, row.ID): // stays where it is, off the rule
+				if ok {
+					row.OriginalStart = t
+				}
+				row.IsException = true
+				ed.kept++
+			case !ok || slices.Contains(ch.cancel, row.ID):
 				row.Status, row.Late, row.StatusChangedBy, row.StatusChangedAt = store.SchedCancelledOnTime, false, &actor, &now
 				ed.cancelled = append(ed.cancelled, row.ID)
 			case row.IsException:

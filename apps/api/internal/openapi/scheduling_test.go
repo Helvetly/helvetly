@@ -32,6 +32,8 @@ func TestSchemasMatchGoTypesScheduling(t *testing.T) {
 		{"SchedulingInvoiceRef", reflect.TypeFor[scheduling.InvoiceRef]()},
 		{"SchedulingRecurrence", reflect.TypeFor[scheduling.RecurrenceJSON]()},
 		{"SchedulingSetPos", reflect.TypeFor[scheduling.SetPosJSON]()},
+		{"SchedulingMovePreview", reflect.TypeFor[scheduling.MovePreview]()},
+		{"SchedulingMoveItem", reflect.TypeFor[scheduling.MoveItem]()},
 	} {
 		t.Run(c.schema, func(t *testing.T) {
 			for _, d := range openapi.Drift(c.schema, c.typ) {
