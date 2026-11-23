@@ -1058,10 +1058,6 @@ const contractHandlers: RequestHandler[] = [
   http.post('/api/v1/quotes/quo_sent/contract-drafts', async ({ request }) => {
     const sent = (await request.json()) as { mode: string; example_document_id?: string }
     writes.push(sent.mode + (sent.example_document_id ? `:${sent.example_document_id}` : ''))
-    if (sent.mode === 'improve')
-      return HttpResponse.json({
-        data: { ...written, clauses: [{ heading: 'Fees', body: 'Improved fees.' }] },
-      })
     return HttpResponse.json({ data: written })
   }),
   http.post('/api/v1/quotes/quo_sent/contract-preview', () =>
@@ -1160,7 +1156,7 @@ const openWriter = async (context: Parameters<NonNullable<Story['play']>>[0]) =>
 
 /**
  * Three ways to start: written with AI (the default), after an example document, or a template. With AI it
- * writes the sections, which are edited, improved and regenerated beside the preview, then saved as a numbered
+ * writes every section, which are edited, removed and regenerated beside the preview, then saved as a numbered
  * contract.
  */
 export const ContractWrittenWithAI: Story = {
@@ -1196,15 +1192,8 @@ export const ContractWrittenWithAI: Story = {
       await within(drawer).findByText(/CHF 9’999.00 is not an amount/, {}, wait),
     ).toBeVisible()
 
-    // one section improved, a third added and removed again
-    await userEvent.click(
-      within(drawer).getAllByRole('button', { name: 'Improve with AI' })[1] as HTMLElement,
-    )
-    await waitFor(() =>
-      expect(within(drawer).getByRole('textbox', { name: 'Text of section 2' })).toHaveValue(
-        'Improved fees.',
-      ),
-    )
+    // no AI per section: the prompt writes them all, edited by hand; a third added and removed again
+    await expect(within(drawer).queryByRole('button', { name: /Improve/ })).toBeNull()
     await userEvent.click(within(drawer).getByRole('button', { name: 'Add section' }))
     await expect(
       within(drawer).getByRole('textbox', { name: 'Heading of section 3' }),
@@ -1213,7 +1202,7 @@ export const ContractWrittenWithAI: Story = {
       within(drawer).getAllByRole('button', { name: 'Remove section' })[2] as HTMLElement,
     )
     await expect(within(drawer).queryByRole('textbox', { name: 'Heading of section 3' })).toBeNull()
-    await expect(writes).toEqual(['ai', 'improve'])
+    await expect(writes).toEqual(['ai'])
 
     await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
     await userEvent.click(await within(drawer).findByRole('button', { name: 'Save to Documents' }))

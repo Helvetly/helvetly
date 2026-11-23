@@ -123,8 +123,9 @@ are the reference.
   storage, never a document and not in the workspace export. Session-only.
 - **Contracts from quotes** (`templates/contract.go`, `contract_write.go`, feature `document_templates`): "Create
   contract with AI" on a quote offers three ways. Written with AI (the default) or after an example PDF from Documents
-  (attached to the model, never a template): `POST /api/v1/quotes/{id}/contract-drafts` (`mode` ai, example or improve
-  for one section) returns the prose only (title, intro, clauses) in the client's language; parties, the quote's lines
+  (attached to the model, never a template): `POST /api/v1/quotes/{id}/contract-drafts` (`mode` ai or example) returns
+  the prose only (title, intro and every clause, as many and in the order the model decides; no fixed or per-clause
+  text) in the client's language; parties, the quote's lines
   and totals, its instalments and the signature block come from the data and are printed by `internal/contractpdf`.
   Every amount and date in the prose not in the quote is flagged, contact data neither party has is removed; quote
   notes, wishes and examples are fenced data. Automation pool, AI approval, audited (`quote.contract_written`),
