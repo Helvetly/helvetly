@@ -5260,6 +5260,7 @@
   "schedPickEventType": "Tipo di appuntamento (facoltativo)",
   "schedYou": "tu",
   "schedDurationCustom": "Altro",
+  "schedChangeDuration": "Cambia durata",
   "schedDurationMinutes": "Durata in minuti",
   "schedMinutesUnit": "min",
   "schedHoursShort": "{count} h",

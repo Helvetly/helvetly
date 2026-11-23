@@ -5260,6 +5260,7 @@
   "schedPickEventType": "Terminart (optional)",
   "schedYou": "Sie",
   "schedDurationCustom": "Andere",
+  "schedChangeDuration": "Dauer ändern",
   "schedDurationMinutes": "Dauer in Minuten",
   "schedMinutesUnit": "Min.",
   "schedHoursShort": "{count} Std.",
