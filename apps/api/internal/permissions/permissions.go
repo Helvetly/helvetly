@@ -19,7 +19,7 @@ var (
 	actions   = []string{"read", "write", "*"}
 	resources = []string{"clients", "invoices", "expenses", "products", "documents", "engagements", "members",
 		"invoice-settings", "vat-return", "ledger", "periods", "audit-log", "workspace", "billing", "api", "*", "employees",
-		"payroll"}
+		"payroll", "scheduling"}
 	// hr are the HR resources (docs/planning/2026-11-15-employees.md): employees (records and their documents) and
 	// payroll (pay terms, the register, its approval, export and bookings). A "*" resource never reaches them; only an
 	// owner holds them without a grant, and only an owner changes them.
@@ -137,6 +137,7 @@ var prefixes = []struct{ path, resource string }{
 	{"/api/v1/employees", "employees"},
 	{"/api/v1/employment", "employees"},
 	{"/api/v1/payroll", "payroll"},
+	{"/api/v1/scheduling", "scheduling"},
 }
 
 // also: routes that create in a second resource, as path.Match patterns per method.
@@ -145,6 +146,7 @@ var also = []struct{ method, pattern, scope string }{
 	{http.MethodPost, "/api/v1/engagements/*/invoices", "write:invoices"},
 	{http.MethodDelete, "/api/v1/engagements/*/invoices/*", "write:invoices"},
 	{http.MethodGet, "/api/v1/invoices/*/engagement", "read:engagements"},
+	{http.MethodPost, "/api/v1/scheduling/occurrences/invoice", "write:invoices"},
 }
 
 // instead: routes whose scopes replace their prefix's read/write scope, as path.Match patterns, for reads (GET, HEAD)
@@ -174,6 +176,12 @@ var instead = []struct {
 	{true, "/api/v1/quotes/*/approval/reject", []string{"read:invoices"}},
 	{true, "/api/v1/expenses/*/approval/approve", []string{"read:expenses"}},
 	{true, "/api/v1/expenses/*/approval/reject", []string{"read:expenses"}},
+	// a person's own calendar connections, iCal feed and hours are theirs, not the workspace's sessions: seeing the
+	// schedule is enough to manage them (the handler keeps them to their person, owner/admin for anyone's hours)
+	{true, "/api/v1/scheduling/calendars/*", []string{"read:scheduling"}},
+	{true, "/api/v1/scheduling/calendars/*/*", []string{"read:scheduling"}},
+	{true, "/api/v1/scheduling/feed", []string{"read:scheduling"}},
+	{true, "/api/v1/scheduling/hosts/*", []string{"read:scheduling"}},
 }
 
 // tokensPath is a person's own API tokens: the "api" area lets them create, list and revoke them whatever the

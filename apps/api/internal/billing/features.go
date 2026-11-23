@@ -17,7 +17,8 @@ import (
 type Feature string
 
 const (
-	APIAccess Feature = "api_access" // creating personal API tokens (the REST API and MCP)
+	APIAccess  Feature = "api_access"            // creating personal API tokens (the REST API and MCP)
+	Scheduling Feature = store.FeatureScheduling // sessions with clients, calendar sync and portal booking
 )
 
 // featureNames name features in messages; one without a name reads as its key.
@@ -40,6 +41,7 @@ var featureNames = map[Feature]string{
 	store.FeatureEInvoiceXML:          "e-invoice XML",
 	store.FeatureEmployees:            "the Employees module",
 	store.FeatureCustomPortalDomain:   "the client portal on your own domain",
+	Scheduling:                        "scheduling",
 }
 
 func featureName(f Feature) string {

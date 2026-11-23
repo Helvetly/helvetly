@@ -58,6 +58,11 @@ var WorkspaceExportTables = []ExportTable{
 		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`},
 	{"import_records", `SELECT to_jsonb(t) FROM import_records t JOIN import_batches b ON b.id = t.batch_id
 		WHERE t.workspace_id = $1 AND b.kind <> 'payroll'`}, own("heidi_usage"), own("ai_calls"), own("ai_token_packs"), own("billing_disputes"),
+	own("scheduling_settings"), own("scheduling_holidays"), own("scheduling_hosts"), own("scheduling_availability"),
+	own("scheduling_availability_overrides"), own("scheduling_event_types"), own("scheduling_events"), own("scheduling_occurrences"),
+	child("scheduling_occurrence_entries", "scheduling_occurrences", "occurrence_id"), own("scheduling_requests"),
+	child("scheduling_reminders", "scheduling_occurrences", "occurrence_id"),
+	{"scheduling_booking_links", `SELECT to_jsonb(t) - 'token_hash' - 'token_sealed' FROM scheduling_booking_links t WHERE t.workspace_id = $1`},
 }
 
 // HRExportTables: the workspace's employees and payroll (docs/planning/2026-11-15-employees.md), for the owner's
@@ -223,4 +228,11 @@ var ExportExcluded = map[string]string{
 	"billing_checkouts":        "what a plan Checkout was opened for, to settle its subscription; not business data",
 	"trial_claims":             "digests that recognise a customer's one trial, kept across workspaces for 24 months; not business data",
 	"usage_events":             "what the workspace used of its plan's monthly limits, not business data",
+	"calendar_connections":     "a member's sealed calendar tokens and account, not business data",
+	"calendar_sources":         "sync state of a member's own calendars",
+	"calendar_watches":         "push channel secrets of a member's calendars",
+	"calendar_busy":            "third-party busy times of a member's own calendar, purged when past",
+	"calendar_event_links":     "sync state: the external event each session was pushed as",
+	"calendar_push_queue":      "sync job bookkeeping: pushes still to make",
+	"calendar_feeds":           "a member's iCal feed secret (token hash and sealed token)",
 }
