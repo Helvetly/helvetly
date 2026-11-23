@@ -50,7 +50,7 @@
   "arePricesPerPerson": "Sind die Preise pro Person?",
   "arePricesPerUser": "Gibt es Preise pro Benutzer?",
   "aSimpleInvoicingAndBookkeepingAppForTheSwiss": "Eine einfache Rechnungs- und Buchhaltungs-App für Schweizer Selbstständige.",
-  "askHeidi": "Fragen Sie Heidi",
+  "heidiAiAssistant": "Heidi · KI-Assistentin",
   "askHeidiAboutYourRecordsAndLetHerDo": "Fragen Sie Heidi nach Ihren Unterlagen und überlassen Sie ihr die Arbeit.",
   "askInEnglishGermanFrenchItalianOrPolishShe": "Fragen Sie auf Englisch, Deutsch, Französisch, Italienisch oder Polnisch. Heidi bleibt bei Ihren Geschäftsdaten und Helvetly.",
   "askYourBooks": "Fragen Sie Heidi ",
@@ -1003,5 +1003,14 @@
   "bonsaiDataExport": "Datenexporte aufgeführt; Umfang nicht angegeben",
   "bonsaiApps": "Web-App, iOS, Android, macOS und Chrome",
   "featureApprovals": "Freigaben, bevor Rechnungen hinausgehen",
-  "featureCustomPortalDomain": "Eigene Portal-Domain"
+  "featureCustomPortalDomain": "Eigene Portal-Domain",
+  "scheduling": "Termine",
+  "sales": "Verkauf",
+  "team": "Team",
+  "quotes": "Offerten",
+  "productsServices": "Produkte und Dienstleistungen",
+  "books": "Buchhaltung",
+  "members": "Mitglieder",
+  "employees": "Mitarbeitende",
+  "nextSession1400StudioLumen": "Nächster Termin 14:00 · Studio Lumen"
 }

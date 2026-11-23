@@ -50,7 +50,7 @@
   "arePricesPerPerson": "Jsou ceny za osobu?",
   "arePricesPerUser": "Jsou ceny za uživatele?",
   "aSimpleInvoicingAndBookkeepingAppForTheSwiss": "Jednoduchá aplikace pro fakturaci a účetnictví švýcarských OSVČ.",
-  "askHeidi": "Zeptejte se Heidi",
+  "heidiAiAssistant": "Heidi · AI asistentka",
   "askHeidiAboutYourRecordsAndLetHerDo": "Ptejte se Heidi na své záznamy a nechte ji vyřídit rutinní práci.",
   "askInEnglishGermanFrenchItalianOrPolishShe": "Ptejte se anglicky, německy, francouzsky, italsky nebo polsky. Drží se vašeho podnikání a Helvetly.",
   "askYourBooks": "Zeptejte se svého účetnictví ",
@@ -1003,5 +1003,14 @@
   "bonsaiDataExport": "Export dat uveden; rozsah neuveden",
   "bonsaiApps": "Webová aplikace, iOS, Android, macOS a Chrome",
   "featureApprovals": "Schvalování před odesláním faktur",
-  "featureCustomPortalDomain": "Vlastní doména portálu"
+  "featureCustomPortalDomain": "Vlastní doména portálu",
+  "scheduling": "Plánování",
+  "sales": "Prodej",
+  "team": "Tým",
+  "quotes": "Nabídky",
+  "productsServices": "Produkty a služby",
+  "books": "Účetnictví",
+  "members": "Členové",
+  "employees": "Zaměstnanci",
+  "nextSession1400StudioLumen": "Další schůzka 14:00 · Studio Lumen"
 }

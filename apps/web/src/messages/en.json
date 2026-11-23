@@ -50,7 +50,7 @@
   "arePricesPerPerson": "Are prices per person?",
   "arePricesPerUser": "Are prices per user?",
   "aSimpleInvoicingAndBookkeepingAppForTheSwiss": "A simple invoicing and bookkeeping app for the Swiss self-employed.",
-  "askHeidi": "Ask Heidi",
+  "heidiAiAssistant": "Heidi · AI assistant",
   "askHeidiAboutYourRecordsAndLetHerDo": "Ask Heidi about your records and let her do the busywork.",
   "askInEnglishGermanFrenchItalianOrPolishShe": "Ask in English, German, French, Italian or Polish. She stays on your business and Helvetly.",
   "askYourBooks": "Ask your books ",
@@ -1003,5 +1003,14 @@
   "bonsaiDataExport": "Data exports listed; scope not stated",
   "bonsaiApps": "Web app, iOS, Android, macOS and Chrome",
   "featureApprovals": "Approvals before invoices go out",
-  "featureCustomPortalDomain": "Your own portal domain"
+  "featureCustomPortalDomain": "Your own portal domain",
+  "scheduling": "Scheduling",
+  "sales": "Sales",
+  "team": "Team",
+  "quotes": "Quotes",
+  "productsServices": "Products & services",
+  "books": "Books",
+  "members": "Members",
+  "employees": "Employees",
+  "nextSession1400StudioLumen": "Next session 14:00 · Studio Lumen"
 }

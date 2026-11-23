@@ -1,5 +1,5 @@
 import { type Locale, localizedHref } from '@helvetly/i18n'
-import { HeidiMark } from '@helvetly/ui/components/heidi-mark'
+import { HeidiMark, HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { ArrowRight, Check, CircleCheck } from 'lucide-react'
 import Link from 'next/link'
 
@@ -137,14 +137,16 @@ export function Hero({ lang }: { lang: Locale }) {
 
         <div
           style={{ ['--d' as string]: '1350ms' }}
-          className="rise absolute -right-6 bottom-16 z-10 hidden w-72 lg:block"
+          className="rise absolute -right-6 bottom-10 z-10 hidden w-72 lg:block"
         >
           <div
             className="animate-float ring-gradient rounded-2xl bg-card/90 p-3 text-left shadow-[0_24px_60px_-24px_rgb(85_39_201/0.45)] backdrop-blur"
             style={{ animationDelay: '-3s' }}
           >
             <div className="flex items-start gap-2.5">
-              <HeidiMark className="size-7" animated />
+              <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-heidi-soft">
+                <HeidiSparkle className="size-4" animated />
+              </span>
               <div className="text-body-sm">
                 <p className="font-semibold">{translate('heidi')}</p>
                 <p className="mt-0.5 text-muted-foreground">
