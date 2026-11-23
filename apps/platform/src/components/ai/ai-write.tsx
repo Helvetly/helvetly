@@ -13,16 +13,38 @@ import { toast } from 'sonner'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
 import { inputClass } from '@/components/clients/fields'
-import { aiWrite, aiWriteError, type AIWriteAction, type AIWriteField } from '@/lib/ai-write'
+import {
+  aiWrite,
+  aiWriteError,
+  type AIWriteAction,
+  type AIWriteField,
+  type AIWriteLanguage,
+} from '@/lib/ai-write'
 import { translate } from '@/lib/i18n'
 
-const PRESETS: { action: Exclude<AIWriteAction, 'draft' | 'custom'>; label: () => string }[] = [
+const PRESETS: {
+  action: Exclude<AIWriteAction, 'draft' | 'custom' | 'translate'>
+  label: () => string
+}[] = [
   { action: 'improve', label: () => translate('aiWriteImprove') },
   { action: 'shorten', label: () => translate('aiWriteShorten') },
   { action: 'formal', label: () => translate('aiWriteFormal') },
+  { action: 'friendly', label: () => translate('aiWriteFriendly') },
 ]
 
-type Request = { action: AIWriteAction; text: string; instruction?: string }
+const LANGUAGE_NAMES: Record<AIWriteLanguage, () => string> = {
+  de: () => translate('deutsch'),
+  fr: () => translate('franAis'),
+  it: () => translate('italiano'),
+  en: () => translate('english'),
+}
+
+type Request = {
+  action: AIWriteAction
+  text: string
+  instruction?: string
+  language?: AIWriteLanguage
+}
 
 /**
  * Write with AI inside a description or message (TextareaBox): one panel anchored to the field. Heidi drafts from the
@@ -34,6 +56,7 @@ export function AIWrite({
   text,
   maxLength,
   context,
+  language,
   onApply,
   className,
 }: {
@@ -43,6 +66,8 @@ export function AIWrite({
   maxLength: number
   /** Other values of the form the text is about (name, price, client…); empty ones are left out. */
   context: Record<string, string | undefined>
+  /** The reader's language, when it may differ from the text's: offers to translate into it. */
+  language?: AIWriteLanguage
   onApply: (text: string) => void
   className?: string
 }) {
@@ -228,13 +253,29 @@ export function AIWrite({
                 <div className="flex flex-wrap gap-1">
                   {(empty
                     ? [{ action: 'draft' as const, label: () => translate('aiWriteDraft') }]
-                    : PRESETS
+                    : [
+                        ...PRESETS,
+                        ...(language
+                          ? [
+                              {
+                                action: 'translate' as const,
+                                label: () =>
+                                  translate('aiWriteTranslate', {
+                                    language: LANGUAGE_NAMES[language](),
+                                  }),
+                              },
+                            ]
+                          : []),
+                      ]
                   ).map((preset) => (
                     <button
                       key={preset.action}
                       type="button"
                       disabled={write.isPending}
-                      onClick={() => void run({ action: preset.action, text })}
+                      onClick={() =>
+                        // The reader's language for every action: the email is written in it.
+                        void run({ action: preset.action, text, ...(language ? { language } : {}) })
+                      }
                       className="rounded-full bg-muted px-2.5 py-0.5 text-caption text-muted-foreground transition-colors outline-none hover:bg-heidi-soft hover:text-heidi-ink focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 dark:hover:bg-heidi/15 dark:hover:text-foreground"
                     >
                       {preset.label()}

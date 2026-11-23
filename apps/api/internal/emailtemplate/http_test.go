@@ -139,7 +139,7 @@ func TestListDefaultsThenCustomThenReset(t *testing.T) {
 	e := newEnv(t)
 	b := e.owner()
 	l := e.list(b)
-	if len(l) != 16 || l[0].Kind != "invoice" || l[0].Language != "de" || l[15].Kind != "quote" || l[15].Language != "en" {
+	if len(l) != 28 || l[0].Kind != "invoice" || l[0].Language != "de" || l[27].Kind != "signature_reminder" || l[27].Language != "en" {
 		t.Fatalf("list shape: %d items, first %+v", len(l), l[0])
 	}
 	en := l[3]

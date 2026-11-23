@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError } from '@/lib/api'
 import { refreshDocuments } from '@/lib/documents'
+import type { EmailLanguage, EmailPreview } from '@/lib/email-templates'
 import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 
@@ -49,6 +50,8 @@ export type SignatureRequest = {
   id: string
   title: string
   message: string | null
+  /** The language its emails are written in; null for a request from before email templates. */
+  language?: EmailLanguage | null
   status: RequestStatus
   signing_order: SigningOrder
   document: { id: string; name: string } | null
@@ -80,6 +83,7 @@ export type CreateSignatureRequest = {
   document_id: string
   title: string
   message?: string | null
+  language?: EmailLanguage
   signing_order: SigningOrder
   expires_in_days?: number
   signers: { name: string; email: string }[]
@@ -280,6 +284,7 @@ export function buildCreateBody(input: {
   documentId: string
   title: string
   message: string
+  language?: EmailLanguage
   order: SigningOrder
   expiresInDays: number
   signers: DraftSigner[]
@@ -289,6 +294,7 @@ export function buildCreateBody(input: {
     document_id: input.documentId,
     title: input.title.trim(),
     message: input.message.trim() || null,
+    ...(input.language ? { language: input.language } : {}),
     signing_order: input.order,
     expires_in_days: input.expiresInDays,
     signers: input.signers.map((signer) => ({
@@ -308,8 +314,9 @@ export function buildCreateBody(input: {
   }
 }
 
-/** A file name without its .pdf, as a default title. */
-export const titleFromName = (name: string) => name.replace(/\.pdf$/i, '').trim()
+/** A file name without its extension (".pdf", ".docx"…), as a default title; nothing else is guessed away. */
+export const titleFromName = (name: string) =>
+  name.replace(/\.[a-z0-9]{1,5}$/i, '').trim() || name.trim()
 
 /** Signed so far, out of all signers. */
 export const progressOf = ({ signers }: SignatureRequest) => ({
@@ -337,6 +344,14 @@ export const signaturesApi = {
     request<{ data: SignatureRequest }>(`${path(id)}/remind`, { method: 'POST' }),
   revoke: (id: string) =>
     request<{ data: SignatureRequest }>(`${path(id)}/revoke`, { method: 'POST' }),
+  /** The invitation a signer would get, as the real branded email; nothing is sent. */
+  emailPreview: (body: {
+    title: string
+    message: string
+    language: EmailLanguage
+    expires_in_days: number
+  }) =>
+    request<{ data: EmailPreview }>('/signatures/email-preview', { method: 'POST', json: body }),
 
   view: (token: string) => request<{ data: SigningView }>(publicPath(token), { public: true }),
   sign: (token: string, body: Sign) =>

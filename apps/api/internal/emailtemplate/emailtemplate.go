@@ -1,4 +1,5 @@
-// Package emailtemplate holds the subject and message of the emails sent with invoices and quotes: the built-in
+// Package emailtemplate holds the subject and message of the emails sent with invoices and quotes and of the emails
+// asking someone to sign (and reminding them): the built-in
 // defaults per language, the {variable} substitution and the validation of a workspace's own texts. It is pure.
 package emailtemplate
 
@@ -23,7 +24,7 @@ const MaxMessage = 2500
 const maxSubject = 200
 
 var (
-	Kinds     = []string{"invoice", "credit_note", "proforma", "quote"}
+	Kinds     = []string{"invoice", "credit_note", "proforma", "quote", "document", "signature_request", "signature_reminder"}
 	Languages = []string{"de", "fr", "it", "en"}
 )
 
@@ -38,6 +39,10 @@ func Variables(kind string) []string {
 		return append(slices.Clone(common), "valid_until")
 	case "credit_note", "proforma":
 		return slices.Clone(common)
+	case "document":
+		return []string{"document", "client", "sender", "company"}
+	case "signature_request", "signature_reminder":
+		return []string{"document", "sender", "company"}
 	}
 	return nil
 }
@@ -71,8 +76,49 @@ var languages = map[string]words{
 		"quote":       "Please find attached our quote {number} for {amount}, valid until {valid_until}."}},
 }
 
+// signing is the built-in text of the emails that send a document and of the signature emails, per kind and language. Its English subjects are the ones
+// these emails had before they had templates.
+var signing = map[string]map[string]Template{
+	"document": {
+		"de": {"{document} von {company}",
+			"Guten Tag\n\nIm Anhang finden Sie «{document}». Bei Fragen antworten Sie einfach auf diese E-Mail.\n\nFreundliche Grüsse\n{sender}\n{company}"},
+		"fr": {"{document} de {company}",
+			"Bonjour\n\nVous trouverez « {document} » en pièce jointe. Pour toute question, répondez simplement à cet e-mail.\n\nMeilleures salutations\n{sender}\n{company}"},
+		"it": {"{document} da {company}",
+			"Buongiorno\n\nIn allegato trova «{document}». Per qualsiasi domanda, risponda semplicemente a questa e-mail.\n\nCordiali saluti\n{sender}\n{company}"},
+		"en": {"{document} from {company}",
+			"Hello\n\nPlease find “{document}” attached. If you have any questions, simply reply to this email.\n\nKind regards\n{sender}\n{company}"},
+	},
+	"signature_request": {
+		"de": {"{sender} hat Ihnen «{document}» zur Unterschrift gesendet",
+			"Guten Tag\n\nBitte prüfen und unterschreiben Sie «{document}» über den Link unten. Bei Fragen antworten Sie einfach auf diese E-Mail.\n\nFreundliche Grüsse\n{sender}\n{company}"},
+		"fr": {"{sender} vous a envoyé « {document} » à signer",
+			"Bonjour\n\nVeuillez vérifier et signer « {document} » à l'aide du lien ci-dessous. Pour toute question, répondez simplement à cet e-mail.\n\nMeilleures salutations\n{sender}\n{company}"},
+		"it": {"{sender} le ha inviato «{document}» da firmare",
+			"Buongiorno\n\nLa preghiamo di verificare e firmare «{document}» tramite il link qui sotto. Per qualsiasi domanda, risponda semplicemente a questa e-mail.\n\nCordiali saluti\n{sender}\n{company}"},
+		"en": {"{sender} sent you “{document}” to sign",
+			"Hello\n\nPlease review and sign “{document}” using the link below. If you have any questions, simply reply to this email.\n\nKind regards\n{sender}\n{company}"},
+	},
+	"signature_reminder": {
+		"de": {"Erinnerung: {sender} hat Ihnen «{document}» zur Unterschrift gesendet",
+			"Guten Tag\n\nWir erinnern Sie freundlich daran, dass «{document}» noch auf Ihre Unterschrift wartet. Über den Link unten gelangen Sie direkt dorthin.\n\nFreundliche Grüsse\n{sender}\n{company}"},
+		"fr": {"Rappel : {sender} vous a envoyé « {document} » à signer",
+			"Bonjour\n\nNous vous rappelons que « {document} » attend toujours votre signature. Le lien ci-dessous vous y mène directement.\n\nMeilleures salutations\n{sender}\n{company}"},
+		"it": {"Promemoria: {sender} le ha inviato «{document}» da firmare",
+			"Buongiorno\n\nLe ricordiamo che «{document}» è ancora in attesa della sua firma. Il link qui sotto la porta direttamente al documento.\n\nCordiali saluti\n{sender}\n{company}"},
+		"en": {"Reminder: {sender} sent you “{document}” to sign",
+			"Hello\n\nThis is a friendly reminder that “{document}” is still waiting for your signature. The link below takes you straight to it.\n\nKind regards\n{sender}\n{company}"},
+	},
+}
+
 // Default is the built-in text of a kind in a language (English for any other); empty for an unknown kind.
 func Default(kind, language string) Template {
+	if texts, ok := signing[kind]; ok {
+		if t, ok := texts[language]; ok {
+			return t
+		}
+		return texts["en"]
+	}
 	w, ok := languages[language]
 	if !ok {
 		w = languages["en"]

@@ -149,16 +149,24 @@ func TestFitSize(t *testing.T) {
 	}
 }
 
-// TestDrawLinesPrints: black text at the box's left edge, vertically centred, its size from the box.
+// TestDrawLinesPrints: black text, vertically centred, at the field's size (10 pt by default, whatever the box),
+// shrunk to the box only with AutoFit and never grown, aligned as the field says.
 func TestDrawLinesPrints(t *testing.T) {
+	long := "A rather long client name that is much wider than its box"
 	cases := []struct {
 		name  string
-		value string
+		text  Text
 		h     float64
 		size  string
+		start string
 	}{
-		{"short value fills the height", "Müller AG", 20, "15.00 Tf"},
-		{"a taller box, larger text", "Müller AG", 40, "30.00 Tf"},
+		{"no size: the default, whatever the box", Text{Value: "Müller AG"}, 40, "10.00 Tf", "BT 100.00 "},
+		{"a small box keeps the default", Text{Value: "Müller AG"}, 8, "10.00 Tf", "BT 100.00 "},
+		{"the field's own size", Text{Value: "Müller AG", Size: 14}, 40, "14.00 Tf", "BT 100.00 "},
+		{"auto-fit never grows", Text{Value: "Müller AG", Size: 12, AutoFit: true}, 40, "12.00 Tf", "BT 100.00 "},
+		{"auto-fit shrinks to the height", Text{Value: "Müller AG", Size: 24, AutoFit: true}, 20, "15.00 Tf", "BT 100.00 "},
+		{"centred", Text{Value: "Müller AG", Align: "center"}, 20, "10.00 Tf", "BT 2"},
+		{"a long value without auto-fit keeps its size", Text{Value: long}, 20, "10.00 Tf", "BT 100.00 "},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -167,7 +175,7 @@ func TestDrawLinesPrints(t *testing.T) {
 			pdf.SetCellMargin(0)
 			txt := pdffont.New(pdf)
 			pdf.AddPage()
-			drawLines(pdf, txt, c.value, 100, 200, 300, c.h)
+			drawLines(pdf, txt, c.text, 100, 200, 300, c.h)
 			var b bytes.Buffer
 			if err := pdf.Output(&b); err != nil {
 				t.Fatal(err)
@@ -179,14 +187,16 @@ func TestDrawLinesPrints(t *testing.T) {
 			if !strings.Contains(out, "0.000 g") {
 				t.Fatal("text is not black")
 			}
-			if !strings.Contains(out, "BT 100.00 ") {
-				t.Fatal("text does not start at the box's left edge")
+			if !strings.Contains(out, c.start) {
+				t.Fatalf("text does not start at %q", c.start)
+			}
+			if c.text.Align == "center" && strings.Contains(out, "BT 100.00 ") {
+				t.Fatal("centred text starts at the box's left edge")
 			}
 		})
 	}
 	pdf := fpdf.New("P", "pt", "A4", "")
 	txt := pdffont.New(pdf)
-	long := "A rather long client name that is much wider than its box"
 	txt.Font("", 1)
 	size := fitSize(200, 20, 1, txt.Width(long))
 	txt.Font("", size)

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { request, type ApiError } from '@/lib/api'
 import { streetLine, type Client } from '@/lib/clients'
 import { refreshDocuments } from '@/lib/documents'
+import type { EmailLanguage } from '@/lib/email-templates'
 import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 import {
@@ -68,7 +69,16 @@ export type TemplateField = Box & {
   signer: number | null
   /** Text and custom fields: what to enter. */
   label: string | null
+} & PrintSettings
+
+/** How a client data field's value is printed: its size in points (none: 10), shrunk to fit with auto-fit. */
+export type PrintSettings = {
+  font_size?: number | null
+  auto_fit?: boolean
+  align?: TextAlign
 }
+export type TextAlign = 'left' | 'center' | 'right'
+export const FONT_SIZES = { min: 8, max: 24, default: 10 } as const
 
 export type Template = {
   id: string
@@ -88,16 +98,30 @@ export type TemplateInput = {
   description: string | null
   document_id: string
   signers: SignerRole[]
-  fields: (Box & { kind: TemplateKind; signer: number | null; label: string | null })[]
+  fields: (Box & {
+    kind: TemplateKind
+    signer: number | null
+    label: string | null
+  } & PrintSettings)[]
 }
 
 export type Delivery =
   | { type: 'save' }
-  | { type: 'email'; to: string; message: string | null }
+  | {
+      type: 'email'
+      /** One address or several, separated by commas. */
+      to: string
+      cc?: string[]
+      bcc?: string[]
+      subject?: string | null
+      message: string | null
+      language?: EmailLanguage
+    }
   | {
       type: 'signature'
       signers: { name: string; email: string }[]
       message: string | null
+      language?: EmailLanguage
       signing_order: SigningOrder
       expires_in_days: number
     }
@@ -122,7 +146,7 @@ export type Generated = {
 
 // ---- the editor: lane 0 is the client's data, lane 1 custom fields, lane n + ROLE_LANE signing role n ----
 
-export type TemplateDraftField = DraftField<TemplateKind>
+export type TemplateDraftField = DraftField<TemplateKind> & PrintSettings
 
 /** Fields that do not come from the client: the date, or a value asked for when filling. */
 export const CUSTOM_KINDS: readonly DataKind[] = ['today', 'custom']
@@ -164,16 +188,22 @@ export function buildTemplateBody(input: {
     description: input.description.trim() || null,
     document_id: input.documentId,
     signers: input.signers.map((role) => ({ ...role, label: role.label.trim() })),
-    fields: input.fields.map(({ kind, signer, page, x, y, w, h, label }) => ({
-      kind,
-      signer: signer < ROLE_LANE ? null : signer - ROLE_LANE,
-      page,
-      x,
-      y,
-      w,
-      h,
-      label: asks(kind) ? label?.trim() || null : null,
-    })),
+    fields: input.fields.map(
+      ({ kind, signer, page, x, y, w, h, label, font_size, auto_fit, align }) => ({
+        kind,
+        signer: signer < ROLE_LANE ? null : signer - ROLE_LANE,
+        page,
+        x,
+        y,
+        w,
+        h,
+        label: asks(kind) ? label?.trim() || null : null,
+        // Only client data is printed by the template; signers fill the rest.
+        ...(isDataKind(kind)
+          ? { font_size: font_size ?? null, auto_fit: !!auto_fit, align: align ?? 'left' }
+          : {}),
+      }),
+    ),
   }
 }
 
@@ -306,14 +336,23 @@ export function generateProblem(
     if (missing)
       return translate('fillIn2', { value1: missing.label ?? translate('theCustomField') })
   }
-  if (step === 2) {
-    if (state.delivery === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.emailTo.trim()))
-      return translate('enterTheEmailAddressToSendItTo')
-    if (state.delivery === 'signature') {
-      const check = checkSigners(state.signers)
-      if (!check.ok) return check.list || translate('checkTheSignersNamesAndEmailAddresses')
-    }
+  if (step === 2 && state.delivery === 'signature') {
+    const check = checkSigners(state.signers)
+    if (!check.ok) return check.list || translate('checkTheSignersNamesAndEmailAddresses')
   }
+  // The message step: every address in To well formed, at least one.
+  if (
+    step === 3 &&
+    state.delivery === 'email' &&
+    !(
+      state.emailTo.trim() &&
+      state.emailTo
+        .split(/[,;\s]+/)
+        .filter(Boolean)
+        .every((address) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address))
+    )
+  )
+    return translate('enterTheEmailAddressToSendItTo')
   return null
 }
 
@@ -408,3 +447,13 @@ export function useTemplateMutation<Input, Output>(fn: (input: Input) => Promise
     onSuccess: () => refreshDocuments(queryClient),
   })
 }
+
+/** A saved template as the body that saves it again (renamed, or as a copy); null once its PDF is gone. */
+export const templateInput = (template: Template, name = template.name): TemplateInput | null =>
+  template.document && {
+    name,
+    description: template.description,
+    document_id: template.document.id,
+    signers: template.signers,
+    fields: template.fields.map(({ id: _id, ...field }) => field),
+  }

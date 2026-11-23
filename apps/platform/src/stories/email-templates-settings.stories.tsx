@@ -47,7 +47,7 @@ const field = (box: ReturnType<typeof within>, name: string) =>
 export const Default: Story = {
   play: async () => {
     const list = await body().findByRole('list', { name: 'Email templates' }, { timeout: 8000 })
-    await expect(within(list).getAllByRole('listitem')).toHaveLength(4)
+    await expect(within(list).getAllByRole('listitem')).toHaveLength(7)
     const box = await openTemplate()
     await expect(box.getAllByRole('radio')).toHaveLength(4)
     const text = field(box, 'Message')

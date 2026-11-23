@@ -134,5 +134,8 @@ describe('the create body', () => {
 
   it('titles from the file name', () => {
     expect(titleFromName('Service agreement.PDF')).toBe('Service agreement')
+    // Only the extension goes: the rest of the name is never guessed away.
+    expect(titleFromName('Vertrag Vorlage Deutsch V1.0.docx')).toBe('Vertrag Vorlage Deutsch V1.0')
+    expect(titleFromName('.pdf')).toBe('.pdf')
   })
 })

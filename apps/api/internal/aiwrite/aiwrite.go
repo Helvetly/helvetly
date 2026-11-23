@@ -55,15 +55,18 @@ var purposes = map[string]string{
 	"invoice_intro":          "the friendly opening text of an invoice, shown above its lines",
 	"quote_intro":            "the friendly opening text of a quote, shown above its lines",
 	"invoice_footer":         "the closing text of an invoice, shown below its lines: a short thank-you and payment note",
-	"email_message":          "the message of an email that sends a document (invoice, quote or service report) to the client, with the document attached as a PDF: a greeting, one or two short sentences about the document and a sign-off, on separate lines",
+	"email_message":          "the message of an email that sends a document (invoice, quote, service report or contract) to the client, with the document attached as a PDF, or asks them to sign it through a link: a greeting, one or two short sentences about the document and a sign-off, on separate lines",
 }
 
 var asks = map[string]string{
-	"draft":   "Write a new text from the context (and the current text, if any).",
-	"improve": "Improve the current text: clearer, correct grammar and spelling, same meaning and facts.",
-	"shorten": "Shorten the current text clearly, keeping its key facts.",
-	"formal":  "Rewrite the current text in a more formal, polite business tone, same meaning and facts.",
-	"custom":  "Rewrite the current text (or write one, if it is empty) following the person's instruction.",
+	"draft":    "Write a new text from the context (and the current text, if any).",
+	"improve":  "Improve the current text: clearer, correct grammar and spelling, same meaning and facts.",
+	"shorten":  "Shorten the current text clearly, keeping its key facts.",
+	"formal":   "Rewrite the current text in a more formal, polite business tone, same meaning and facts.",
+	"friendly": "Rewrite the current text in a warmer, friendlier tone that stays professional, same meaning and facts.",
+	"translate": "Translate the current text into the requested language, keeping its meaning, facts, tone and line breaks; " +
+		"leave {placeholders} in braces as they are.",
+	"custom": "Rewrite the current text (or write one, if it is empty) following the person's instruction.",
 }
 
 var languages = map[string]string{"de": "German (Swiss usage: ss, never ß)", "fr": "French", "it": "Italian", "en": "English"}
@@ -139,7 +142,7 @@ func (in input) validate() map[string]string {
 		if !text && !slices.ContainsFunc(slices.Collect(maps.Values(in.Context)), func(v string) bool { return strings.TrimSpace(v) != "" }) {
 			bad["context"] = "required"
 		}
-	case "improve", "shorten", "formal":
+	case "improve", "shorten", "formal", "friendly", "translate":
 		if !text {
 			bad["text"] = "required"
 		}

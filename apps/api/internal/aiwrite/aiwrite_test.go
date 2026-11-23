@@ -148,11 +148,13 @@ func TestValidation(t *testing.T) {
 		field string
 	}{
 		{"unknown field", map[string]any{"field": "client_name", "action": "improve", "text": "x"}, "field"},
-		{"unknown action", map[string]any{"field": "invoice_intro", "action": "translate", "text": "x"}, "action"},
+		{"unknown action", map[string]any{"field": "invoice_intro", "action": "summarise", "text": "x"}, "action"},
 		{"draft without text or context", map[string]any{"field": "product_description", "action": "draft", "context": map[string]string{"name": " "}}, "context"},
 		{"improve without text", map[string]any{"field": "product_description", "action": "improve", "text": "  "}, "text"},
 		{"shorten without text", map[string]any{"field": "product_description", "action": "shorten"}, "text"},
 		{"formal without text", map[string]any{"field": "invoice_footer", "action": "formal"}, "text"},
+		{"translate without text", map[string]any{"field": "email_message", "action": "translate", "language": "fr"}, "text"},
+		{"friendly without text", map[string]any{"field": "email_message", "action": "friendly"}, "text"},
 		{"custom without instruction", map[string]any{"field": "quote_intro", "action": "custom", "text": "x"}, "instruction"},
 		{"instruction too long", map[string]any{"field": "quote_intro", "action": "custom", "instruction": strings.Repeat("x", 301)}, "instruction"},
 		{"text too long", map[string]any{"field": "quote_intro", "action": "improve", "text": strings.Repeat("ä", 4001)}, "text"},

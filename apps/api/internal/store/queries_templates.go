@@ -36,6 +36,11 @@ type TemplateField struct {
 	W      float64 `json:"w"`
 	H      float64 `json:"h"`
 	Label  *string `json:"label"`
+	// How a client data field's value is printed: points (nil: 10, so templates saved before print alike),
+	// shrunk to the box with auto-fit, and left, center or right ("" is left).
+	FontSize *float64 `json:"font_size,omitempty"`
+	AutoFit  bool     `json:"auto_fit,omitempty"`
+	Align    string   `json:"align,omitempty"`
 }
 
 const templateSelect = `SELECT t.id, t.name, t.description, d.id, d.name, t.signers, t.fields, t.used_count, t.last_used_at,

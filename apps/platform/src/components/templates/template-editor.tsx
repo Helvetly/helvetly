@@ -1,15 +1,25 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { Textarea } from '@helvetly/ui/components/textarea'
-import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
-import { cn } from '@helvetly/ui/lib/utils'
-import { LayoutTemplate, Loader2, Plus, X } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  LayoutTemplate,
+  Loader2,
+  Plus,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { NativeSelect } from '@/components/clients/fields'
+import { OptionSegments } from '@/components/option-segments'
 import { serverProblem } from '@/components/signatures/create-drawer'
 import { SesLine } from '@/components/signatures/parts'
 import { DocPreview, PdfPicker } from '@/components/signatures/pdf-parts'
@@ -20,6 +30,8 @@ import { translate } from '@/lib/i18n'
 import { dropSigner, signerColor, titleFromName } from '@/lib/signatures'
 import {
   buildTemplateBody,
+  FONT_SIZES,
+  isDataKind,
   templateProblem,
   templatesApi,
   toDraftFields,
@@ -28,6 +40,8 @@ import {
   type Template,
   type TemplateDraftField,
   type TemplateInput,
+  type PrintSettings,
+  type TextAlign,
   ROLE_LANE,
 } from '@/lib/templates'
 
@@ -232,31 +246,26 @@ export function TemplateEditor({
             title={translate('doesItNeedSignatures')}
             text={translate('aDocumentMadeFromTheTemplateCanSimplyBe')}
           />
-          <div className={cn(segmentTrack, 'grid grid-cols-2')}>
-            {(
-              [
-                [false, 'No signatures', 'Fill in, then save or email it.'],
-                [true, 'Ask for signatures', 'Fill in, then send it to sign online.'],
-              ] as const
-            ).map(([value, label, text]) => (
-              <button
-                key={label}
-                type="button"
-                aria-pressed={signing === value}
-                onClick={() => {
-                  setSigning(value)
-                  setActive(0)
-                }}
-                className={cn(
-                  segmentItem,
-                  'grid justify-items-start gap-0.5 px-3 py-2 text-left whitespace-normal',
-                )}
-              >
-                <span>{label}</span>
-                <span className="text-xs font-normal text-muted-foreground">{text}</span>
-              </button>
-            ))}
-          </div>
+          <OptionSegments
+            label={translate('doesItNeedSignatures')}
+            value={signing}
+            onChange={(value) => {
+              setSigning(value)
+              setActive(0)
+            }}
+            options={[
+              {
+                value: false,
+                label: translate('noSignatures'),
+                text: translate('fillInThenSaveOrEmailIt'),
+              },
+              {
+                value: true,
+                label: translate('askForSignatures'),
+                text: translate('fillInThenSendItToSignOnline'),
+              },
+            ]}
+          />
           {signing && (
             <RolesEditor
               roles={roles}
@@ -288,6 +297,19 @@ export function TemplateEditor({
           active={Math.min(active, palette.lanes.length - 1)}
           onActive={setActive}
           onPages={setPages}
+          renderSettings={(key) => {
+            const field = fields.find((entry) => entry.key === key)
+            return field && isDataKind(field.kind) ? (
+              <PrintSettingsFields
+                value={field}
+                onChange={(change) =>
+                  setFields(
+                    fields.map((entry) => (entry.key === key ? { ...entry, ...change } : entry)),
+                  )
+                }
+              />
+            ) : null
+          }}
         />
       )}
     </WizardSheet>
@@ -373,5 +395,77 @@ function RolesEditor({
         {translate('theClientSContactIsFilledFromTheClient')}
       </p>
     </section>
+  )
+}
+
+const ALIGNS: { value: TextAlign; label: () => string; icon: LucideIcon }[] = [
+  { value: 'left', label: () => translate('alignLeft'), icon: AlignLeft },
+  { value: 'center', label: () => translate('alignCenter'), icon: AlignCenter },
+  { value: 'right', label: () => translate('alignRight'), icon: AlignRight },
+]
+
+/** How a client data field's value is printed: its size (one for every value, 10 pt by default), whether it
+ * shrinks to fit its box, and its alignment. */
+export function PrintSettingsFields({
+  value,
+  onChange,
+}: {
+  value: PrintSettings
+  onChange: (change: PrintSettings) => void
+}) {
+  const size = value.font_size ?? FONT_SIZES.default
+  const align = value.align ?? 'left'
+  return (
+    <div className="grid gap-2">
+      <label className="grid gap-1 text-body-sm text-muted-foreground">
+        {translate('fontSize')}
+        <NativeSelect
+          value={size}
+          onChange={(event) => onChange({ font_size: Number(event.target.value) })}
+          className="text-foreground"
+        >
+          {Array.from(
+            { length: FONT_SIZES.max - FONT_SIZES.min + 1 },
+            (_, i) => FONT_SIZES.min + i,
+          ).map((points) => (
+            <option key={points} value={points}>
+              {translate('pointsValue', { points })}
+            </option>
+          ))}
+        </NativeSelect>
+      </label>
+      <div className="flex items-start gap-2 text-body-sm text-muted-foreground">
+        <Checkbox
+          id="print-auto-fit"
+          className="mt-0.5"
+          checked={!!value.auto_fit}
+          onCheckedChange={(checked) => onChange({ auto_fit: checked === true })}
+        />
+        <label htmlFor="print-auto-fit" className="grid">
+          <span className="text-foreground">{translate('autoFit')}</span>
+          <span>{translate('autoFitHint')}</span>
+        </label>
+      </div>
+      <fieldset className="flex gap-1">
+        <legend className="sr-only">{translate('alignment')}</legend>
+        {ALIGNS.map((option) => (
+          <Tooltip key={option.value}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={align === option.value ? 'secondary' : 'ghost'}
+                size="icon-sm"
+                aria-pressed={align === option.value}
+                aria-label={option.label()}
+                onClick={() => onChange({ align: option.value })}
+              >
+                <option.icon />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{option.label()}</TooltipContent>
+          </Tooltip>
+        ))}
+      </fieldset>
+    </div>
   )
 }

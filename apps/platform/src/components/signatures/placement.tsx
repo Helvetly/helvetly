@@ -2,7 +2,14 @@
 import { Button } from '@helvetly/ui/components/button'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Trash2, X, type LucideIcon } from 'lucide-react'
-import { useEffect, useRef, useState, type DragEvent, type PointerEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react'
 
 import { inputClass, NativeSelect } from '@/components/clients/fields'
 import { PdfView } from '@/components/invoices/pdf-view'
@@ -56,6 +63,7 @@ export function Placement<K extends string>({
   active,
   onActive,
   onPages,
+  renderSettings,
 }: {
   src: string
   title: string
@@ -65,6 +73,8 @@ export function Placement<K extends string>({
   active: number
   onActive: (index: number) => void
   onPages: (count: number) => void
+  /** More settings of the selected field, by its key (a template's print size), or nothing. */
+  renderSettings?: (key: string) => ReactNode
 }) {
   const { lanes, kinds, label, icon, prompt } = palette
   const [selected, setSelected] = useState<string | null>(null)
@@ -451,6 +461,7 @@ export function Placement<K extends string>({
                 </NativeSelect>
               </label>
             )}
+            {renderSettings?.(current.key)}
             <Button
               variant="destructive-ghost"
               className="cursor-pointer justify-start gap-1.5 px-2"

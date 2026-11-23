@@ -106,7 +106,7 @@ func TestDefaultsMatchToday(t *testing.T) {
 			"proforma":    {fmt.Sprintf("Rechnung %s %s %s", n, o[4], c), o[0] + "\n\n" + fmt.Sprintf(o[5], n, a) + sign},
 			"quote":       {fmt.Sprintf("Rechnung %s %s %s", n, o[4], c), o[0] + "\n\n" + fmt.Sprintf(o[6], n, a, vars["valid_until"]) + sign},
 		}
-		if len(want) != len(Kinds) {
+		if len(want) != len(Kinds)-3 { // document and the two signature kinds: TestSignatureDefaults
 			t.Fatal("kinds changed")
 		}
 		for kind, w := range want {
@@ -124,5 +124,40 @@ func TestEveryDefaultPassesCheck(t *testing.T) {
 				t.Errorf("%s/%s: %v", kind, lang, got)
 			}
 		}
+	}
+}
+
+func TestSignatureDefaults(t *testing.T) {
+	v := map[string]string{"document": "Vertrag", "client": "Beta AG", "sender": "Ana Muster", "company": "Muster GmbH"}
+	// The English subjects are the ones the signature emails had before templates.
+	if got := Render(Default("signature_request", "en"), v).Subject; got != "Ana Muster sent you “Vertrag” to sign" {
+		t.Errorf("request subject %q", got)
+	}
+	if got := Render(Default("signature_reminder", "en"), v).Subject; got != "Reminder: Ana Muster sent you “Vertrag” to sign" {
+		t.Errorf("reminder subject %q", got)
+	}
+	for _, kind := range []string{"document", "signature_request", "signature_reminder"} {
+		if Default(kind, "pl") != Default(kind, "en") {
+			t.Errorf("%s: pl is not en", kind)
+		}
+		seen := map[Template]bool{}
+		for _, lang := range Languages {
+			d := Default(kind, lang)
+			r := Render(d, v)
+			if seen[d] || strings.Contains(r.Subject+r.Body, "{") || !strings.Contains(r.Subject, "Vertrag") ||
+				!strings.HasSuffix(r.Body, "\nAna Muster\nMuster GmbH") {
+				t.Errorf("%s/%s: %+v", kind, lang, r)
+			}
+			seen[d] = true
+		}
+	}
+	if got := Render(Default("document", "de"), v).Subject; got != "Vertrag von Muster GmbH" {
+		t.Errorf("document subject %q", got)
+	}
+	if bad := Check("document", Template{Subject: "{document} für {client}", Body: "{sender}"}); len(bad) > 0 {
+		t.Errorf("document variables refused: %v", bad)
+	}
+	if got := Check("signature_request", Template{Subject: "{number}", Body: "x"}); got["subject"] != "Unknown variable {number}. Use {document}, {sender}, {company}." {
+		t.Errorf("got %v", got)
 	}
 }

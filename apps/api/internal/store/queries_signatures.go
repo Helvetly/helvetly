@@ -12,7 +12,8 @@ type SignatureRequest struct {
 	ID             string           `json:"id"`
 	Title          string           `json:"title"`
 	Message        *string          `json:"message"`
-	Status         string           `json:"status"` // set to "expired" by internal/signatures when due
+	Language       *string          `json:"language"` // its emails' language; nil: the English email of before templates
+	Status         string           `json:"status"`   // set to "expired" by internal/signatures when due
 	SigningOrder   string           `json:"signing_order"`
 	Document       *FolderRef       `json:"document"`
 	SignedDocument *FolderRef       `json:"signed_document"`
@@ -88,11 +89,11 @@ type SignatureEvent struct {
 }
 
 func (q Q) createSignatureRequest(ctx context.Context, r SignatureRequest, userID string) error {
-	if _, err := q.db.Exec(ctx, `INSERT INTO signature_requests (id, workspace_id, document_id, folder_id, title, message,
+	if _, err := q.db.Exec(ctx, `INSERT INTO signature_requests (id, workspace_id, document_id, folder_id, title, message, language,
 			signing_order, status, original_key, original_sha256, page_count, expires_at, created_by, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12, $13, $13)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $14, $7, 'pending', $8, $9, $10, $11, $12, $13, $13)`,
 		r.ID, r.WorkspaceID, r.Document.ID, r.FolderID, r.Title, r.Message, r.SigningOrder, r.OriginalKey, r.OriginalSHA256,
-		r.PageCount, r.ExpiresAt, userID, r.CreatedAt); err != nil {
+		r.PageCount, r.ExpiresAt, userID, r.CreatedAt, r.Language); err != nil {
 		return err
 	}
 	for _, s := range r.Signers {
@@ -111,7 +112,7 @@ func (q Q) createSignatureRequest(ctx context.Context, r SignatureRequest, userI
 	return nil
 }
 
-const signatureSelect = `SELECT r.id, r.workspace_id, w.name, w.timezone, r.title, r.message, r.status, r.signing_order, r.document_id, d.name,
+const signatureSelect = `SELECT r.id, r.workspace_id, w.name, w.timezone, r.title, r.message, r.language, r.status, r.signing_order, r.document_id, d.name,
 		r.signed_document_id, sd.name, r.folder_id, r.original_key, r.original_sha256, r.final_sha256, r.page_count, r.expires_at,
 		u.id, u.name, ` + avatarColumn + `, coalesce(u.email, ''), r.created_at, r.updated_at, r.completed_at
 	FROM signature_requests r
@@ -123,7 +124,7 @@ const signatureSelect = `SELECT r.id, r.workspace_id, w.name, w.timezone, r.titl
 func scanSignatureRequest(row pgx.Row) (SignatureRequest, error) {
 	var r SignatureRequest
 	var docID, docName, signedID, signedName, userID, userName, userAvatar *string
-	err := row.Scan(&r.ID, &r.WorkspaceID, &r.WorkspaceName, &r.Timezone, &r.Title, &r.Message, &r.Status, &r.SigningOrder, &docID, &docName,
+	err := row.Scan(&r.ID, &r.WorkspaceID, &r.WorkspaceName, &r.Timezone, &r.Title, &r.Message, &r.Language, &r.Status, &r.SigningOrder, &docID, &docName,
 		&signedID, &signedName, &r.FolderID, &r.OriginalKey, &r.OriginalSHA256, &r.FinalSHA256, &r.PageCount, &r.ExpiresAt,
 		&userID, &userName, &userAvatar, &r.SenderEmail, &r.CreatedAt, &r.UpdatedAt, &r.CompletedAt)
 	if docID != nil && docName != nil {

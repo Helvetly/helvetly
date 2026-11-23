@@ -11,9 +11,9 @@ import {
   Building2,
   ChevronDown,
   Ellipsis,
+  FilePen,
   FilePlus2,
   Globe,
-  LayoutTemplate,
   Mail,
   MapPin,
   Pencil,
@@ -187,10 +187,10 @@ export function ClientHeader({
               }}
             />
           </DropdownMenu>
-          <Tip label={translate('newDocumentFromATemplate')}>
+          <Tip label={translate('fillATemplateForThisClientThenSaveEmailOrSign')}>
             <Button variant="outline" onClick={onFillTemplate}>
-              <LayoutTemplate className="size-3.5" />
-              <span className="max-sm:sr-only">{translate('document')}</span>
+              <FilePen className="size-3.5" />
+              <span className="max-sm:sr-only">{translate('prepareDocument')}</span>
             </Button>
           </Tip>
           <div className="flex items-center">

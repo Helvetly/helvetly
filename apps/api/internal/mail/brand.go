@@ -146,3 +146,12 @@ func brandFooter(b Brand, language, publicURL string) string {
 func brandText(b Brand, language, publicURL string) string {
 	return "\n\n-- \n" + strings.Join(b.lines(language, false), "\n") + "\n\n" + wordsFor(language).sentWith + " Helvetly: " + publicURL + "\n"
 }
+
+// Preview is the HTML a workspace's client would get for m, as Branded and Sender build it, without sending.
+func Preview(m Message, brand Brand, publicURL string) string {
+	m.Brand = &brand
+	if m.Language == "" {
+		m.Language = brand.Language
+	}
+	return layout(m, publicURL)
+}

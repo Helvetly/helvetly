@@ -6,15 +6,12 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
-import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
-import { inputClass as fieldClass } from '@/components/clients/fields'
-import { EmailMessageField } from '@/components/email-message-field'
+import { EmailComposer } from '@/components/email-composer'
 import { emails, fieldErrors, recipientErrors } from '@/components/invoices/invoice-dialogs'
-import { RecipientFields } from '@/components/recipient-fields'
 import { errorMessage } from '@/lib/api'
 import { getEngagement, periodLabel, sendReport, type PeriodSummary } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
@@ -99,39 +96,27 @@ export function SendReportDialog({
             </DialogDescription>
           </div>
           <div className="grid gap-4 px-6 pt-5 pb-6">
-            <RecipientFields
+            <EmailComposer
               id="report"
-              to={recipients}
-              onToChange={setTo}
-              toTip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient')}
-              toPlaceholder={translate('accountsClientCh')}
-              cc={cc}
-              onCcChange={setCc}
-              bcc={bcc}
-              onBccChange={setBcc}
+              recipients={{ to: recipients, cc, bcc }}
+              onRecipients={(next) => {
+                if (next.to !== recipients) setTo(next.to)
+                setCc(next.cc)
+                setBcc(next.bcc)
+              }}
+              subject={subject ?? defaultSubject}
+              onSubject={setSubject}
+              subjectRequired={false}
+              message={message}
+              onMessage={setMessage}
+              messagePlaceholder={translate('optionalAShortNoteAboveTheAttachedReport')}
               errors={errors}
-            />
-            <FormField id="report-subject" label={translate('subject')} error={errors.subject}>
-              <input
-                {...describedBy('report-subject', errors.subject)}
-                value={subject ?? defaultSubject}
-                onChange={(event) => setSubject(event.target.value)}
-                className={fieldClass}
-              />
-            </FormField>
-            <EmailMessageField
-              id="report-message"
-              error={errors.message}
-              value={message}
-              onChange={setMessage}
-              placeholder={translate('optionalAShortNoteAboveTheAttachedReport')}
               context={{
                 document: translate('serviceReport', {
                   value1: engagement?.title ?? '',
                   value2: periodLabel(period),
                 }),
                 client: engagement?.client.name,
-                subject: subject ?? defaultSubject,
               }}
             />
           </div>

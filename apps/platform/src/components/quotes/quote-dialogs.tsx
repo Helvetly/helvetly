@@ -9,8 +9,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { NoClientEmail } from '@/components/clients/client-fix'
-import { inputClass as fieldClass } from '@/components/clients/fields'
-import { EmailMessageField } from '@/components/email-message-field'
+import { EmailComposer } from '@/components/email-composer'
 import {
   emails,
   fieldErrors,
@@ -18,7 +17,6 @@ import {
   MarkSentButton,
   recipientErrors,
 } from '@/components/invoices/invoice-dialogs'
-import { RecipientFields } from '@/components/recipient-fields'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
 import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
@@ -129,48 +127,31 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
         </Callout>
       )}
       <NoClientEmail client={client} />
-      <RecipientFields
+      <EmailComposer
         id="quote-send"
-        to={recipients}
-        onToChange={setTo}
+        recipients={{ to: recipients, cc, bcc }}
+        onRecipients={(next) => {
+          if (next.to !== recipients) setTo(next.to)
+          setCc(next.cc)
+          setBcc(next.bcc)
+        }}
         toTip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient2')}
         toPlaceholder={translate('helloClientCh')}
         toReadOnly={draft.isPending}
-        cc={cc}
-        onCcChange={setCc}
-        bcc={bcc}
-        onBccChange={setBcc}
-        errors={errors}
-      />
-      <FormField
-        id="quote-send-subject"
-        label={translate('subject')}
-        required
-        error={errors.subject}
-      >
-        <input
-          {...describedBy('quote-send-subject', errors.subject)}
-          value={shownSubject}
-          maxLength={200}
-          disabled={draft.isPending}
-          onChange={(event) => setSubject(event.target.value)}
-          className={fieldClass}
-        />
-      </FormField>
-      <EmailMessageField
-        id="quote-send-message"
-        required
-        error={errors.message}
-        value={shownMessage}
+        subject={shownSubject}
+        onSubject={setSubject}
+        message={shownMessage}
+        onMessage={setMessage}
+        messageRequired
         disabled={draft.isPending}
-        onChange={setMessage}
+        errors={errors}
         replyTo={draft.data?.reply_to}
+        attachments={[`${name}.pdf`]}
         context={{
           document: name,
           client: quote.client.name,
           amount: formatMoney(quote.total, quote.currency),
           valid_until: formatDate(quote.valid_until),
-          subject: shownSubject,
         }}
       />
     </FormDialog>

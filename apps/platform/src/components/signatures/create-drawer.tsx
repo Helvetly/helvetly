@@ -1,12 +1,10 @@
 'use client'
+import { locale } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
-import { Textarea } from '@helvetly/ui/components/textarea'
 import { formatDate } from '@helvetly/ui/lib/format'
-import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
-import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowDown,
@@ -22,11 +20,20 @@ import {
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { EmailComposer, EmailLanguageField, EmailPreviewPane } from '@/components/email-composer'
+import { OptionSegments } from '@/components/option-segments'
 import { Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClientSearch } from '@/lib/clients'
 import { contentUrl, refreshDocuments, type DocFile } from '@/lib/documents'
+import {
+  emailLanguage,
+  useEmailPreview,
+  useTemplateDraft,
+  type EmailLanguage,
+} from '@/lib/email-templates'
 import { translate } from '@/lib/i18n'
+import { useSession } from '@/lib/queries'
 import {
   buildCreateBody,
   checkSigners,
@@ -54,8 +61,12 @@ const STEPS = [
   translate('document'),
   translate('signers'),
   translate('placeFields'),
+  translate('message'),
   translate('reviewSend'),
 ] as const
+
+/** The step where the title and the email are written. */
+const MESSAGE_STEP = 3
 
 /** A signer row in the wizard: `id` keeps its identity through edits, moves and removals; never sent. */
 type SignerRow = DraftSigner & { id: string }
@@ -82,10 +93,8 @@ export function stepProblem(
   step: number,
   state: { document: DocFile | null; title: string; signers: DraftSigner[]; fields: DraftField[] },
 ): string | null {
-  if (step === 0) {
-    if (!state.document) return translate('chooseAPDFToSend')
-    if (!state.title.trim()) return translate('giveTheRequestATitle')
-  }
+  if (step === 0 && !state.document) return translate('chooseAPDFToSend')
+  if (step === MESSAGE_STEP && !state.title.trim()) return translate('giveTheRequestATitle')
   if (step === 1) {
     const check = checkSigners(state.signers)
     if (!check.ok) return check.list || translate('checkTheSignersNamesAndEmailAddresses')
@@ -122,7 +131,8 @@ export function CreateSignatureDrawer({
   const [step, setStep] = useState(initial ? 1 : 0)
   const [document, setDocument] = useState<DocFile | null>(initial)
   const [title, setTitle] = useState(initial ? titleFromName(initial.name) : '')
-  const [message, setMessage] = useState('')
+  const session = useSession().data
+  const [language, setLanguage] = useState<EmailLanguage>(emailLanguage(locale))
   const [signers, setSigners] = useState(() => [signerRow()])
   const [order, setOrder] = useState<SigningOrder>('parallel')
   const [days, setDays] = useState(30)
@@ -132,10 +142,21 @@ export function CreateSignatureDrawer({
   const [tried, setTried] = useState(false)
   const [sending, setSending] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const draft = useTemplateDraft('signature_request', language, {
+    document: title.trim(),
+    sender: session?.user.name || session?.user.email || '',
+    company: session?.workspace.name ?? '',
+  })
+  const message = draft.message
+  const emailPreview = useEmailPreview(
+    '/signatures/email-preview',
+    { title, message, language, expires_in_days: days },
+    step === MESSAGE_STEP,
+  )
   const dirty =
     document !== initial ||
     title !== (initial ? titleFromName(initial.name) : '') ||
-    !!message.trim() ||
+    draft.touched ||
     signers.some((signer) => signer.name.trim() || signer.email.trim()) ||
     fields.length > 0
 
@@ -171,6 +192,7 @@ export function CreateSignatureDrawer({
           documentId: document.id,
           title,
           message,
+          language,
           order,
           expiresInDays: days,
           signers,
@@ -239,13 +261,6 @@ export function CreateSignatureDrawer({
             text={translate('aPDFFromDocumentsWhatYouSendIsFrozen')}
           />
           <PdfPicker document={document} folderId={folderId} onChoose={choose} />
-          <MessageFields
-            title={title}
-            onTitle={setTitle}
-            message={message}
-            onMessage={setMessage}
-            tried={tried}
-          />
           <SesLine />
         </Split>
       )}
@@ -281,7 +296,33 @@ export function CreateSignatureDrawer({
           onPages={setPages}
         />
       )}
-      {step === 3 && document && (
+      {step === MESSAGE_STEP && (
+        <Split
+          preview={
+            <EmailPreviewPane preview={emailPreview.data} pending={emailPreview.isPending} />
+          }
+        >
+          <StepTitle
+            title={translate('theEmailToTheSigners')}
+            text={translate('eachSignerGetsThisEmailWithTheirOwnLink')}
+          />
+          <EmailLanguageField id="sig-language" value={language} onChange={setLanguage} />
+          <EmailComposer
+            id="sig"
+            subjectLabel={translate('title')}
+            subject={title}
+            onSubject={setTitle}
+            message={message}
+            onMessage={draft.setMessage}
+            disabled={draft.loading}
+            errors={tried && !title.trim() ? { subject: translate('enterATitle2') } : {}}
+            language={language}
+            context={{ document: title, signers: signers.map((s) => s.name).join(', ') }}
+          />
+          <SesLine />
+        </Split>
+      )}
+      {step === STEPS.length - 1 && document && (
         <Split preview={preview}>
           <ReviewStep
             document={document}
@@ -296,53 +337,6 @@ export function CreateSignatureDrawer({
         </Split>
       )}
     </WizardSheet>
-  )
-}
-
-/** The request's title and the message in the email and on the signing page. */
-export function MessageFields({
-  title,
-  onTitle,
-  message,
-  onMessage,
-  tried,
-}: {
-  title: string
-  onTitle: (title: string) => void
-  message: string
-  onMessage: (message: string) => void
-  tried: boolean
-}) {
-  return (
-    <>
-      <FormField
-        id="sig-title"
-        label={translate('title')}
-        required
-        error={tried && !title.trim() ? translate('enterATitle2') : undefined}
-      >
-        <Input
-          id="sig-title"
-          value={title}
-          maxLength={200}
-          onChange={(event) => onTitle(event.target.value)}
-        />
-      </FormField>
-      <FormField
-        id="sig-message"
-        label={translate('message')}
-        tip={translate('shownInTheEmailAndOnTheSigningPage')}
-      >
-        <Textarea
-          id="sig-message"
-          value={message}
-          maxLength={2000}
-          rows={4}
-          placeholder={translate('helloPleaseReviewAndSignTheAttachedAgreement')}
-          onChange={(event) => onMessage(event.target.value)}
-        />
-      </FormField>
-    </>
   )
 }
 
@@ -488,32 +482,23 @@ function SignersStep({
 
       <fieldset className="grid gap-2">
         <legend className="mb-2 text-[13px] font-medium">{translate('signingOrder')}</legend>
-        <div className={cn(segmentTrack, 'grid grid-cols-2')}>
-          {(
-            [
-              ['parallel', 'Everyone at once', 'All signers get their link now.'],
-              [
-                'sequential',
-                'One after another',
-                'Each gets their link when the one before has signed.',
-              ],
-            ] as const
-          ).map(([value, label, text]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={order === value}
-              onClick={() => onOrder(value)}
-              className={cn(
-                segmentItem,
-                'grid justify-items-start gap-0.5 px-3 py-2 text-left whitespace-normal',
-              )}
-            >
-              <span>{label}</span>
-              <span className="text-xs font-normal text-muted-foreground">{text}</span>
-            </button>
-          ))}
-        </div>
+        <OptionSegments
+          label={translate('signingOrder')}
+          value={order}
+          onChange={onOrder}
+          options={[
+            {
+              value: 'parallel',
+              label: translate('everyoneAtOnce'),
+              text: translate('allSignersGetTheirLinkNow'),
+            },
+            {
+              value: 'sequential',
+              label: translate('oneAfterAnother'),
+              text: translate('eachGetsTheirLinkWhenTheOneBeforeHasSigned'),
+            },
+          ]}
+        />
       </fieldset>
 
       <FormField
