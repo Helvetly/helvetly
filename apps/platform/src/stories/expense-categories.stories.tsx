@@ -124,7 +124,7 @@ export const Search: Story = {
   },
 }
 
-/** Archived categories wait behind the toggle, dimmed in their group with a badge. */
+/** Archived categories wait behind the toggle and have a badge in their group. */
 export const ShowArchived: Story = {
   play: async () => {
     await body().findByText('Materials')
@@ -182,8 +182,10 @@ export const RowMenus: Story = {
 /** Edit opens the same form in place; only what changed is sent. */
 export const EditInPlace: Story = {
   play: async () => {
-    await body().findByText('Books')
-    await userEvent.click(within(row('Books')).getByRole('button', { name: 'More actions' }))
+    const actions = await waitFor(() =>
+      within(row('Books')).getByRole('button', { name: 'More actions' }),
+    )
+    await userEvent.click(actions)
     await userEvent.click(await body().findByRole('menuitem', { name: 'Edit' }))
     const form = body().getByRole('form', { name: 'Edit' })
     await expect(within(form).getByRole('textbox', { name: /Category name/ })).toHaveFocus()
