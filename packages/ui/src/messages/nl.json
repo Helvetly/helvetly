@@ -81,7 +81,7 @@
   "planLineCorrections": "Creditnota’s en factuurcorrecties",
   "planLineLedger": "Boekhouding: grootboek, btw-aangiften en boekhoudexports",
   "planLineAPI": "API-toegang",
-  "planLinePortal": "Klantportaal: klanten bekijken en betalen facturen, accepteren offertes en downloaden documenten",
+  "planLinePortal": "Klantportaal: klanten bekijken en betalen facturen en downloaden offertes en documenten",
   "planLineDomain": "Je portaal op je eigen domein (portaal.jouwbedrijf.ch)",
   "planLineApprovals": "Goedkeuring voordat facturen de deur uitgaan",
   "planLineEInvoice": "E-facturen als XML: XRechnung, ZUGFeRD en meer",

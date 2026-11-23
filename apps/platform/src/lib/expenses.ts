@@ -36,7 +36,7 @@ type Person = { id: string; name: string }
 
 /** `preset`: the catalogue entry the category still is (shown in the user's language); null once someone renamed it. */
 export type CategoryRef = { id: string; name: string; account_code: string; preset: string | null }
-export type CategoryInput = { name: string; account_code: string }
+export type CategoryInput = { name: string; account_code: string; vat_treatment?: VatTreatment }
 export type CategoryUpdate = Partial<CategoryInput> & { is_archived?: boolean }
 export type VatTreatment = 'standard' | 'reduced' | 'lodging' | 'exempt' | 'none'
 export type ExpenseCategory = CategoryRef & {

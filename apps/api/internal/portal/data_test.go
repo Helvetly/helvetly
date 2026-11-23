@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -200,6 +201,68 @@ func TestDocumentDownloadNotShared404(t *testing.T) {
 	e.exec(`INSERT INTO document_shares (document_id, client_id, workspace_id, created_at) VALUES ('doc_private','cli_2','wsp_a',now())`)
 	if res, _ := e.get(c, "/documents/doc_private/download"); res.StatusCode != 404 {
 		t.Fatalf("other client's share: %d", res.StatusCode)
+	}
+}
+
+// quote adds a quote of wsp_a; number nil for a draft, pdfKey nil for none.
+func (e *env) quote(id, client, status string, number, pdfKey any) {
+	e.exec(`INSERT INTO quotes (id, workspace_id, client_id, number, status, issue_date, valid_until, currency, language, vat_mode,
+		note, discount_percent, lines, subtotal, discount_amount, net_total, vat_total, total, rounding_amount, vat_breakdown,
+		pdf_key, created_at, updated_at)
+		VALUES ($1,'wsp_a',$2,$3,$4,'2026-01-05','2099-01-05','CHF','de','exclusive','internal only',0,'[]',10000,0,10000,810,10810,0,'[]',
+		$5,now(),now())`, id, client, number, status, pdfKey)
+}
+
+// A sent quote is a document of the client it went to: each sent revision's filed PDF, never a draft's or another
+// client's.
+func TestDocumentsListSentQuotes(t *testing.T) {
+	e := newEnv(t)
+	e.quote("quo_sent", "cli_1", "sent", "Q-2026-001", "quotes/r2.pdf")
+	e.quote("quo_draft", "cli_1", "draft", nil, nil)
+	e.quote("quo_other", "cli_3", "sent", "Q-2026-002", "quotes/other.pdf")
+	e.quote("quo_moved", "cli_3", "draft", "Q-2026-003", nil) // revision 1 went to cli_1, revision 2 is cli_3's draft
+	e.exec(`INSERT INTO quote_revisions (workspace_id, quote_id, revision, sent_at, snapshot, pdf_key, created_at) VALUES
+		('wsp_a','quo_sent',1,now() - interval '3 days',NULL,'quotes/r1.pdf',now()),
+		('wsp_a','quo_sent',2,now() - interval '2 days',NULL,'quotes/r2.pdf',now()),
+		('wsp_a','quo_other',1,now(),NULL,'quotes/other.pdf',now()),
+		('wsp_a','quo_moved',1,now() - interval '1 day','{"client_id":"cli_1"}','quotes/moved.pdf',now())`)
+	for id, key := range map[string]string{"doc_r1": "quotes/r1.pdf", "doc_r2": "quotes/r2.pdf", "doc_other": "quotes/other.pdf",
+		"doc_moved": "quotes/moved.pdf", "doc_draft": "quotes/draft.pdf"} {
+		e.exec(`INSERT INTO documents (id, workspace_id, name, size, content_type, object_key, created_at, updated_at)
+			VALUES ($1,'wsp_a',$1 || '.pdf',12,'application/pdf',$2,now(),now())`, id, key)
+	}
+	// also shared by hand: listed once, as the quote sent two days ago
+	e.exec(`INSERT INTO document_shares (document_id, client_id, workspace_id, created_at) VALUES ('doc_r2','cli_1','wsp_a',now())`)
+
+	listed := func(c *http.Cookie) []string {
+		res, out := e.do("GET", "/documents", nil, c, "")
+		if res.StatusCode != 200 {
+			t.Fatalf("list: %d %v", res.StatusCode, out)
+		}
+		var got []string
+		for _, d := range out["data"].([]any) {
+			doc := d.(map[string]any)
+			got = append(got, fmt.Sprintf("%s %v", doc["id"], doc["quote"]))
+		}
+		return got
+	}
+	c, _ := e.signIn("ana@acme.ch")
+	if got, want := listed(c), []string{"doc_moved map[number:Q-2026-003 revision:1]", "doc_r2 map[number:Q-2026-001 revision:2]",
+		"doc_r1 map[number:Q-2026-001 revision:1]"}; !slices.Equal(got, want) {
+		t.Fatalf("listed %v, want %v", got, want)
+	}
+	if res, _ := e.get(c, "/documents/doc_r1/download"); res.StatusCode != 302 {
+		t.Fatalf("download: %d", res.StatusCode)
+	}
+	for _, id := range []string{"doc_other", "doc_draft"} {
+		if res, _ := e.get(c, "/documents/"+id+"/download"); res.StatusCode != 404 {
+			t.Fatalf("%s: %d", id, res.StatusCode)
+		}
+	}
+
+	other, _ := e.signIn("bob@beta.ch")
+	if got := listed(other); !slices.Equal(got, []string{"doc_other map[number:Q-2026-002 revision:1]"}) {
+		t.Fatalf("other client: %v", got)
 	}
 }
 

@@ -81,7 +81,7 @@
   "planLineCorrections": "Dobropisy a opravy faktur",
   "planLineLedger": "Účetnictví: hlavní kniha, přiznání k DPH a účetní exporty",
   "planLineAPI": "Přístup k API",
-  "planLinePortal": "Klientský portál: klienti vidí a platí faktury, přijímají nabídky a stahují dokumenty",
+  "planLinePortal": "Klientský portál: klienti vidí a platí faktury a stahují nabídky a dokumenty",
   "planLineDomain": "Portál na vaší vlastní doméně (portal.vasefirma.ch)",
   "planLineApprovals": "Schvalování před odesláním faktur",
   "planLineEInvoice": "E-faktury v XML: XRechnung, ZUGFeRD a další",

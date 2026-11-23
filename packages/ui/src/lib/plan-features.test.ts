@@ -75,7 +75,7 @@ describe('planFeatureLines', () => {
   it('shows unlimited as ∞, read out as Unlimited, and features the comparison does not name', () => {
     expect(business?.basis).toBe('Everything in Pro, plus:')
     expect(text(business?.lines ?? [])).toEqual([
-      'Client portal: clients view and pay invoices, accept quotes and download documents',
+      'Client portal: clients view and pay invoices and download quotes and documents',
       'Your portal on your own domain (portal.yourcompany.ch)',
       '∞ team members',
       '∞ clients',

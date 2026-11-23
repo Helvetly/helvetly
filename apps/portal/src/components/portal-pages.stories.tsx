@@ -10,7 +10,6 @@ import { PortalEngagements } from './portal-engagements'
 import { PortalInvoices } from './portal-invoices'
 import { PortalOverview } from './portal-overview'
 import { PortalProfile } from './portal-profile'
-import { PortalQuotes } from './portal-quotes'
 import { PortalShell } from './portal-shell'
 
 // The portal's screens in its real shell, in light, dark and on a 390px phone, for visual review
@@ -62,10 +61,6 @@ export const OverviewPhone = phone(Overview)
 export const Invoices = screen('/invoices', <PortalInvoices />, `${new Date().getFullYear()}-014`)
 export const InvoicesDark = dark(Invoices)
 export const InvoicesPhone = phone(Invoices)
-
-export const Quotes = screen('/quotes', <PortalQuotes />, `Q-${new Date().getFullYear()}-001`)
-export const QuotesDark = dark(Quotes)
-export const QuotesPhone = phone(Quotes)
 
 export const Engagements = screen('/engagements', <PortalEngagements />, 'Support retainer')
 export const EngagementsDark = dark(Engagements)

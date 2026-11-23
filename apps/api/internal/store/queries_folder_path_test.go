@@ -27,7 +27,7 @@ func TestExpenseYearFolder(t *testing.T) {
 		if err := s.CreateWorkspace(ctx, store.Workspace{ID: id, Name: id}, "UTC", t0); err != nil {
 			t.Fatal(err)
 		}
-		if err := s.CreateExpenseCategory(ctx, id, "exc_"+id, "Travel / Trips", "6640", t0); err != nil {
+		if err := s.CreateExpenseCategory(ctx, id, "exc_"+id, "Travel / Trips", "6640", nil, t0); err != nil {
 			t.Fatal(err)
 		}
 	}

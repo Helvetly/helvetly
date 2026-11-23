@@ -81,7 +81,7 @@
   "planLineCorrections": "Credit notes and invoice corrections",
   "planLineLedger": "Books: ledger, VAT returns and accounting exports",
   "planLineAPI": "API access",
-  "planLinePortal": "Client portal: clients view and pay invoices, accept quotes and download documents",
+  "planLinePortal": "Client portal: clients view and pay invoices and download quotes and documents",
   "planLineDomain": "Your portal on your own domain (portal.yourcompany.ch)",
   "planLineApprovals": "Approvals before invoices go out",
   "planLineEInvoice": "E-invoices as XML: XRechnung, ZUGFeRD and more",

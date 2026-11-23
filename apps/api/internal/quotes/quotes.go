@@ -46,7 +46,7 @@ type Invoices interface {
 	QuoteScheduleProblems(inv store.Invoice) error
 }
 
-// Storage keeps the PDF of each send, which the portal serves; earlier revisions' PDFs are downloaded through it.
+// Storage keeps the PDF of each send, which the portal lists as a document; earlier revisions' PDFs are downloaded through it.
 type Storage interface {
 	storage.Source
 	Put(ctx context.Context, key string, body io.Reader, size int64, contentType, filename string) error
@@ -420,7 +420,7 @@ func (s *Service) pdf(w http.ResponseWriter, r *http.Request, sess store.Session
 	return nil
 }
 
-// WritePDF answers with a quote's PDF bytes (also the portal's download).
+// WritePDF answers with a quote's PDF bytes.
 func WritePDF(w http.ResponseWriter, disposition string, t store.Quote, pdf []byte) {
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", disposition+`; filename="`+FileName(t)+`"`)

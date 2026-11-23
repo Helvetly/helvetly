@@ -132,7 +132,6 @@ export function ContractWriter({
   const [sections, setSections] = useState<Draft | null>(null)
   const [removed, setRemoved] = useState<ContractWarning[]>([])
   const [writing, setWriting] = useState(false)
-  const [improving, setImproving] = useState<number | null>(null)
   const [preview, setPreview] = useState<{ pdf: string; warnings: ContractWarning[] } | null>(null)
   const [pages, setPages] = useState(0)
   const [delivery, setDelivery] = useState<DeliveryType>('save')
@@ -202,27 +201,6 @@ export function ContractWriter({
       return false
     } finally {
       setWriting(false)
-    }
-  }
-
-  const improve = async (index: number) => {
-    if (!sections) return
-    if (!(await ensure())) return
-    setImproving(index)
-    try {
-      const { data } = await templatesApi.contractWrite(quote.id, {
-        mode: 'improve',
-        language,
-        instructions: instructions.trim(),
-        clause: toSections(sections).clauses[index],
-      })
-      const better = data.clauses[0]
-      const old = sections.clauses[index]
-      if (better && old) setClause(index, { ...better, key: old.key })
-    } catch (error) {
-      failed(translate('couldNotImproveTheSection'), error)
-    } finally {
-      setImproving(null)
     }
   }
 
@@ -322,7 +300,7 @@ export function ContractWriter({
       step={step}
       onStep={(to) => (to === 0 || sections ? setStep(to) : undefined)}
       dirty={sections !== null}
-      busy={writing || create.isPending || improving !== null}
+      busy={writing || create.isPending}
       discardTitle={translate('discardThisDocument')}
       onClose={onClose}
       status={[quote.number ?? translate('draft'), client.name].join(' · ')}
@@ -508,24 +486,6 @@ export function ContractWriter({
                       setClause(index, { ...clause, heading: event.target.value })
                     }
                   />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={translate('improveWithAI')}
-                        disabled={improving !== null}
-                        onClick={() => void improve(index)}
-                      >
-                        {improving === index ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Sparkles className="size-4" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{translate('improveWithAI')}</TooltipContent>
-                  </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
