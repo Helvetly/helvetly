@@ -253,32 +253,20 @@ test('Export CSV in the menu carries the current filters', async () => {
   expect(link).toHaveAttribute('href', expect.stringContaining('status=scheduled,active,ended'))
 })
 
-test('digest toggle saves; it rolls back when saving fails', async () => {
-  lib.putEngagementSettings.mockRejectedValue(new Error('no'))
+test('the menu has no digest toggle, only the way to its settings; a plain member has neither', async () => {
   renderPage()
   await openMenu()
-  const item = await screen.findByRole('menuitemcheckbox', { name: /Daily e-mail digest/ })
-  await waitFor(() => expect(item).not.toHaveAttribute('data-disabled'))
-  fireEvent.click(item)
-  await waitFor(() =>
-    expect(lib.putEngagementSettings.mock.calls[0]?.[0]).toEqual({ digest: true }),
-  )
-  await openMenu()
-  await waitFor(() =>
-    expect(screen.getByRole('menuitemcheckbox', { name: /Daily e-mail digest/ })).toHaveAttribute(
-      'aria-checked',
-      'false',
-    ),
-  )
+  await screen.findByRole('menuitem', { name: /Email digest settings/ })
+  expect(screen.queryByRole('menuitemcheckbox')).toBeNull()
+  expect(lib.getEngagementSettings).not.toHaveBeenCalled()
 })
 
-test('a plain member has no digest toggle', async () => {
+test('a plain member has no digest entry', async () => {
   session.role = 'member'
   renderPage()
   await openMenu()
   await screen.findByRole('menuitem', { name: /Export CSV/ })
-  expect(screen.queryByText('Daily e-mail digest')).toBeNull()
-  expect(lib.getEngagementSettings).not.toHaveBeenCalled()
+  expect(screen.queryByText('Email digest settings')).toBeNull()
 })
 
 function renderCard() {

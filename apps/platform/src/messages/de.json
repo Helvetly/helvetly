@@ -5891,5 +5891,8 @@
   "kmu6800": "Abschreibungen",
   "kmu6900": "Finanzaufwand",
   "kmu6940": "Bankspesen",
-  "kmu8900": "Direkte Steuern"
+  "kmu8900": "Direkte Steuern",
+  "emailDigestSettings": "Einstellungen der E-Mail-Übersicht",
+  "dailyEMailDigestHelp": "Jeden Morgen nach 07:00 Uhr in der Zeitzone des Arbeitsbereichs eine E-Mail an Sie (nie an Ihre Kunden): was abgerechnet werden muss, was bald endet und die Mahnungen des letzten Tages. Nur wenn es etwas zu melden gibt. Für Inhaber und Admins; erfordert die Automatisierung von Engagements im Tarif.",
+  "dailyEMailDigestKept": "Ausschalten bleibt möglich."
 }

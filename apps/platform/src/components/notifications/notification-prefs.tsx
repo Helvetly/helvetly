@@ -13,6 +13,7 @@ import { Bell, Mail } from 'lucide-react'
 import { Fragment, type ReactNode } from 'react'
 
 import { LoadError } from '@/components/load-error'
+import { DigestPreference } from '@/components/notifications/digest-preference'
 import { SectionFooter, useSectionForm, type SectionState } from '@/components/section-form'
 import { useAI } from '@/lib/ai'
 import { translate } from '@/lib/i18n'
@@ -88,6 +89,7 @@ function PrefsForm({ prefs }: { prefs: NotificationPrefs }) {
             {translate('thisServerCanTSendEmailYetSoOnly')}
           </p>
         )}
+        <DigestPreference />
         <div className="grid min-w-0">
           <ColumnLabels />
           <Accordion

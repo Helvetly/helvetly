@@ -8,6 +8,7 @@ import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 import { useSyncExternalStore } from 'react'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 // The page keeps its filters in the URL: a tiny in-memory URL the router mock updates.
 const url = vi.hoisted(() => {
   let search = ''
@@ -74,6 +75,9 @@ const server = setupServer(
     return undefined
   }),
   ...notificationHandlers,
+  // the daily digest switch in the preferences (owners and admins)
+  http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture({ plan: 'pro' }) })),
+  http.get('/api/v1/engagement-settings', () => HttpResponse.json({ data: { digest: false } })),
   // the page header reads the signed-in person's access
   http.get('/api/v1/session', () =>
     HttpResponse.json({

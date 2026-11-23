@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import {
   Archive,
   Ban,
@@ -16,6 +16,7 @@ import {
   ClipboardPlus,
   Download,
   Layers,
+  Mail,
   PanelRightOpen,
   Pencil,
   ReceiptText,
@@ -46,6 +47,7 @@ import { useImportAction, useImportDrawer } from '@/components/import/import-but
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Kpi, KpiBand, TickGauge } from '@/components/kpi-band'
+import { useOpenNotificationPrefs } from '@/components/notifications/prefs-drawer'
 import { PageHeader } from '@/components/shell/page-header'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
@@ -54,12 +56,10 @@ import {
   deleteEngagement,
   exportIdsUrl,
   exportUrl,
-  getEngagementSettings,
   getEngagementSummary,
   ALL_STATUSES,
   engagementListQuery,
   engagementQuery,
-  putEngagementSettings,
   billingOf,
   periodLabel,
   renewEngagement,
@@ -437,52 +437,23 @@ function EngagementItem({
   )
 }
 
-/** The page's actions (import, export what the filters show) and the "…" menu's owner/admin daily digest. */
+/** The page's actions: import, export what the filters show, and the way to the digest in Settings. */
 function useMenu(filters: EngagementQuery) {
-  const client = useQueryClient()
   const canWrite = useCan('write:engagements')
   const importDrawer = useImportDrawer()
   const role = useSession().data?.role
   const canManage = role === 'owner' || role === 'admin'
-  const key = [...queryKeys.engagements, 'settings']
-  const settings = useQuery({
-    queryKey: key,
-    queryFn: getEngagementSettings,
-    enabled: canManage,
-  })
-  const toggle = useMutation({
-    mutationFn: putEngagementSettings,
-    onMutate: async (body) => {
-      await client.cancelQueries({ queryKey: key })
-      const before = client.getQueryData(key)
-      client.setQueryData(key, body)
-      return { before }
-    },
-    onError: (_error, _body, context) => {
-      client.setQueryData(key, context?.before)
-      toast.error(translate('couldNotChangeTheDailyDigest'))
-    },
-  })
+  const openPrefs = useOpenNotificationPrefs()
   const importAction = useImportAction(translate('import'), importDrawer.open)
   const exportAction = useExportAction(translate('exportCSV'), localizedHref(exportUrl(filters)))
-  const items = [canWrite && importAction, exportAction]
-  const digestToggle: Action | false = canManage && {
-    id: 'digest',
+  const digestSettings: Action | false = canManage && {
+    id: 'digest-settings',
     group: 'edit',
-    icon: null,
-    checked: settings.data?.digest ?? false,
-    disabled: !settings.data,
-    onSelect: () => toggle.mutate({ digest: !(settings.data?.digest ?? false) }),
-    label: (
-      <span className="grid leading-snug">
-        {translate('dailyEMailDigest')}
-        <span className="text-[12px] text-muted-foreground">
-          {translate('eachMorningWhatNeedsInvoicingOrIsEndingSoon')}
-        </span>
-      </span>
-    ),
+    icon: <Mail />,
+    label: translate('emailDigestSettings'),
+    onSelect: openPrefs,
   }
-  return { items, digestToggle }
+  return { items: [canWrite && importAction, exportAction], digestSettings }
 }
 
 /** The work you committed to per client: server-side views, search and paging. */
@@ -539,7 +510,7 @@ export function EngagementsPage() {
     sort: sortValue,
   }
   const params: EngagementQuery = { ...filters, page, page_size: pageSize }
-  const { items, digestToggle } = useMenu(filters)
+  const { items, digestSettings } = useMenu(filters)
   const list = useQuery({ ...engagementListQuery(params), placeholderData: keepPreviousData })
   const prefetch = usePrefetch(engagementQuery)
   const summary = useQuery({
@@ -659,7 +630,7 @@ export function EngagementsPage() {
         savedViews={false}
         primary={translate('newEngagement2')}
         onPrimary={() => setCreating(true)}
-        menu={[...items, digestToggle]}
+        menu={[...items, digestSettings]}
       />
       {importDrawer.isOpen && <ImportDrawer kind="engagements" onClose={importDrawer.close} />}
       {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoEngagements')} />}
