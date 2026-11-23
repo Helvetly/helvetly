@@ -130,12 +130,12 @@ func (q Q) SchedEvent(ctx context.Context, workspaceID, id string, forUpdate boo
 		workspaceID, id))
 }
 
-// ClaimSeriesToMaterialise locks up to limit series of live workspaces whose occurrences end before horizon, oldest
-// first, skipping those another transaction holds. Call it in the transaction that extends them.
+// ClaimSeriesToMaterialise locks up to limit series of live workspaces and clients whose occurrences end before
+// horizon, oldest first, skipping those another transaction holds. Call it in the transaction that extends them.
 func (q Q) ClaimSeriesToMaterialise(ctx context.Context, horizon time.Time, limit int) ([]SchedEvent, error) {
 	rows, err := q.db.Query(ctx, `SELECT `+schedEventColumns+` FROM scheduling_events WHERE id IN (
-		SELECT e.id FROM scheduling_events e JOIN workspaces w ON w.id = e.workspace_id
-		WHERE e.rrule IS NOT NULL AND e.materialised_until < $1 AND w.deleted_at IS NULL
+		SELECT e.id FROM scheduling_events e JOIN workspaces w ON w.id = e.workspace_id JOIN clients c ON c.id = e.client_id
+		WHERE e.rrule IS NOT NULL AND e.materialised_until < $1 AND w.deleted_at IS NULL AND c.deleted_at IS NULL
 		ORDER BY e.materialised_until LIMIT $2 FOR UPDATE OF e SKIP LOCKED) ORDER BY materialised_until, id`, horizon, limit)
 	if err != nil {
 		return nil, err

@@ -20,6 +20,7 @@ import (
 	"helvetly.com/api/internal/avatars"
 	"helvetly.com/api/internal/billing"
 	"helvetly.com/api/internal/books"
+	"helvetly.com/api/internal/calsync"
 	"helvetly.com/api/internal/clients"
 	"helvetly.com/api/internal/config"
 	"helvetly.com/api/internal/customdomains"
@@ -178,7 +179,10 @@ func run() error {
 	productsSvc := products.New(db, authSvc, slog.Default())
 	engagementsSvc := engagements.New(db, authSvc, invoicesSvc, slog.Default())
 	engagementsSvc.SetMailer(mailer, cfg.PublicURL)
-	schedulingSvc := wireScheduling(ctx, bg, db, authSvc, invoicesSvc, mailer, portalScopes, invoicesSvc.MailBrand, cfg)
+	calendarSvc := calsync.New(db, authSvc, cfg, slog.Default())
+	membersSvc.SetCalendars(calendarSvc) // a member leaving: their calendar grants revoked
+	schedulingSvc := wireScheduling(ctx, bg, db, authSvc, invoicesSvc, calendarSvc, mailer, portalScopes, invoicesSvc.MailBrand, cfg)
+	runCalendars(ctx, bg, calendarSvc, schedulingSvc)
 	instalmentsSvc := instalments.New(db, authSvc, invoicesSvc, files, slog.Default())
 	instalmentsSvc.SetMailer(mailer)
 	billingSvc, err := billing.New(ctx, db, authSvc, cfg, slog.Default())
@@ -233,6 +237,7 @@ func run() error {
 	bg.Go(ctx, "notification emails", notificationsSvc.Run) // batched notification emails
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, files, slog.Default())
 	workspacesSvc.SetPortal(portalScopes)
+	workspacesSvc.SetCalendars(calendarSvc)
 	var cloudflare customdomains.Cloudflare // nil: no custom domains (CLOUDFLARE_* unset)
 	var domainDNS customdomains.Checker = customdomains.NewChecker()
 	ownHosts := []string{cfg.PublicURL, cfg.PortalURL, cfg.MediaURL, cfg.APIURL, cfg.DocsURL}
@@ -261,6 +266,7 @@ func run() error {
 		Provider: model, Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, AllowStorage: billingSvc.AllowStorage,
 		File: documentsSvc.QueueFiling,
 	})
+	heidiSvc.SetSessions(schedulingSvc)
 	importModel := model
 	if cfg.AI.FakeImportModel {
 		importModel = aimodel.Fake{}
@@ -284,7 +290,6 @@ func run() error {
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())
 	authSvc.OnPhotoRemoved = avatarsSvc.RemoveObject
-	calendarSvc := wireCalendars(ctx, bg, cfg, db, authSvc)
 	portalSvc := portal.New(db, authSvc, files, portalScopes, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure}, slog.Default())
 	portalSvc.SetMailer(portalLinksMailer)
 	portalSvc.SetScheduling(schedulingSvc)

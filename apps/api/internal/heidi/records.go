@@ -11,11 +11,11 @@ import (
 
 // Record is one workspace record shown as a card under an answer; the platform opens it in place.
 type Record struct {
-	Kind     string    `json:"kind"` // client | invoice | engagement
+	Kind     string    `json:"kind"` // client | invoice | engagement | session
 	ID       string    `json:"id"`
 	Title    string    `json:"title"`
 	Detail   string    `json:"detail,omitempty"`
-	Status   string    `json:"status,omitempty"` // client: active | inactive | draft; invoice: the platform's display status
+	Status   string    `json:"status,omitempty"` // client: active | inactive | draft; invoice: the platform's display status; session: its status
 	Amount   string    `json:"amount,omitempty"` // invoice: what is still due, exact decimal
 	Currency string    `json:"currency,omitempty"`
 	Progress *Progress `json:"progress,omitempty"` // engagement: the current period

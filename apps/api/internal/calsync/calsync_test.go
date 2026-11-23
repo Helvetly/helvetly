@@ -939,4 +939,14 @@ func TestFakeControl(t *testing.T) {
 	if status, _ := post("/google/_test/busy", `not json`); status != 400 {
 		t.Fatalf("bad body: %d", status)
 	}
+	id := f.AddEvent("google", f.PrimaryCalendar("google"), time.Date(2026, 12, 1, 9, 0, 0, 0, time.UTC), time.Date(2026, 12, 1, 10, 0, 0, 0, time.UTC), false)
+	res, err := http.Post(srv.URL+"/google/_test/events", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var listed struct{ Events []FakeEvent }
+	if err := json.NewDecoder(res.Body).Decode(&listed); err != nil || res.StatusCode != 200 || len(listed.Events) != 1 || listed.Events[0].ID != id {
+		t.Fatalf("events: %d %+v %v", res.StatusCode, listed, err)
+	}
 }

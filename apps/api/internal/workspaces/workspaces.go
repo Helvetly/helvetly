@@ -34,6 +34,11 @@ type Billing interface {
 	WriteError(http.ResponseWriter, *http.Request, error)
 }
 
+// Calendars is calendar sync: the members' connections end with the workspace (internal/calsync).
+type Calendars interface {
+	Leaving(ctx context.Context, workspaceID, userID string) (func(), error)
+}
+
 // Storage keeps the workspace logo objects.
 type Storage interface {
 	Put(ctx context.Context, key string, body io.Reader, size int64, contentType, filename string) error
@@ -56,7 +61,12 @@ type Service struct {
 	slugLimit *auth.RateLimiter
 	// portal is the client portal's address (nil: its settings are off).
 	portal PortalAddresses
+	// calendars revokes the members' calendar connections on deletion (nil: none).
+	calendars Calendars
 }
+
+// SetCalendars is startup wiring (calendar sync).
+func (s *Service) SetCalendars(c Calendars) { s.calendars = c }
 
 func New(db *store.Store, a Auth, b Billing, files Storage, log *slog.Logger) *Service {
 	return &Service{db: db, files: files, auth: a, billing: b, log: log, now: func() time.Time { return time.Now().UTC() }, limit: auth.NewRateLimiter(6, time.Minute), slugLimit: auth.NewRateLimiter(slugChecksPerMinute, time.Minute)}
@@ -201,12 +211,21 @@ func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Sess
 		s.billing.WriteError(w, r, err)
 		return
 	}
+	revoke := func() {}
+	if s.calendars != nil {
+		var err error
+		if revoke, err = s.calendars.Leaving(r.Context(), sess.Workspace.ID, ""); err != nil {
+			s.auth.WriteError(w, r, err)
+			return
+		}
+	}
 	if err := s.db.Tx(r.Context(), func(q store.Q) error {
 		return q.DeleteWorkspace(r.Context(), sess.Workspace.ID, auth.NewID("wdl"), sess.User.ID, s.now())
 	}); err != nil {
 		s.auth.WriteError(w, r, err)
 		return
 	}
+	revoke() // the connections went with the members: their grants are revoked at Google and Microsoft at once
 	s.log.InfoContext(r.Context(), "workspace deleted", "workspace", sess.Workspace.ID, "by", sess.User.ID)
 	others, err := s.db.UserWorkspaces(r.Context(), sess.User.ID)
 	if err != nil {

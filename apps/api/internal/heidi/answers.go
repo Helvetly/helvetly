@@ -66,6 +66,9 @@ func (s *Service) answer(ctx context.Context, q store.Q, sess store.Session, con
 	if log, ok := parseLog(message); ok {
 		return s.logAnswer(ctx, q, sess, log)
 	}
+	if kind, query, ok := sessionQuestion(message); ok {
+		return s.sessionAnswer(ctx, q, sess, kind, query)
+	}
 	if strings.Contains(lower, "hours") && strings.Contains(lower, "left") || strings.Contains(lower, "stunden") && strings.Contains(lower, "übrig") || strings.Contains(lower, "needs invoicing") {
 		if err := need(sess, "read:engagements"); err != nil {
 			return turn{}, err
