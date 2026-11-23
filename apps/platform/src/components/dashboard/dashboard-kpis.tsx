@@ -203,9 +203,10 @@ function KpiCard({
           className="ml-auto size-4 shrink-0 stroke-[1.5] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
         />
       </span>
-      {/* A long amount in a narrow card keeps every digit: the chart moves under it instead. */}
+      {/* A long amount in a narrow card keeps every digit: the chart moves under it instead. The note
+          has no width of its own (contain-inline-size), so only the amount can move the chart. */}
       <span className="mt-auto flex flex-wrap items-end justify-between gap-3">
-        <span className="grid min-w-0 gap-1.5">
+        <span className="grid min-w-0 grow gap-1.5">
           <span className="flex items-baseline gap-1.5 text-display leading-none tracking-[-0.02em] tabular-nums">
             {unit && (
               <span className="text-body-sm tracking-normal text-muted-foreground">{unit}</span>
@@ -214,7 +215,9 @@ function KpiCard({
               {value}
             </span>
           </span>
-          <span className="truncate text-body-sm text-muted-foreground">{context}</span>
+          <span className="truncate text-body-sm text-muted-foreground contain-inline-size">
+            {context}
+          </span>
         </span>
         <span className={cn('ml-auto h-9 w-16 shrink-0', TONES[tone].chart)}>{chart}</span>
       </span>
