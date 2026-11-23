@@ -60,7 +60,7 @@ const openAccountMenu = async () => {
 test('shows the nav with the current page marked, and Profile in the account menu', async () => {
   show()
   expect(await screen.findByText('Page')).toBeTruthy()
-  for (const name of ['Overview', 'Invoices', 'Quotes', 'Engagements', 'Documents'])
+  for (const name of ['Overview', 'Invoices', 'Engagements', 'Documents'])
     expect(screen.getByRole('link', { name })).toBeTruthy()
   expect(screen.getByRole('link', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
   expect(screen.getByRole('link', { name: 'Invoices' }).getAttribute('aria-current')).toBeNull()

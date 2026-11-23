@@ -7,7 +7,6 @@ import { portalHandlers, portalSession, scopedPortal } from '@/mocks/portal'
 
 import { PortalLogin } from './portal-login'
 import { PortalProfile } from './portal-profile'
-import { PortalQuotes } from './portal-quotes'
 import { PortalShell } from './portal-shell'
 
 const P = '/api/v1/public/portal'
@@ -31,10 +30,10 @@ type Story = StoryObj<typeof meta>
 const body = () => within(document.body)
 
 /** A member's preview: the banner on every page, every write off with "Read-only preview", and "End preview". */
-export const ReadOnlyQuotes: Story = {
+export const ReadOnly: Story = {
   render: () => (
     <PortalShell>
-      <PortalQuotes />
+      <PortalProfile />
     </PortalShell>
   ),
   play: async () => {
@@ -43,11 +42,10 @@ export const ReadOnlyQuotes: Story = {
     await expect(banner).toHaveTextContent(
       'Preview as Keller AG · read-only · started by Olivia Muster',
     )
-    const accepts = await body().findAllByRole('button', { name: /^Accept quote/ })
-    const declines = body().getAllByRole('button', { name: /^Decline quote/ })
-    await Promise.all([...accepts, ...declines].map((button) => expect(button).toBeDisabled()))
+    const photo = await body().findByRole('button', { name: /^(Upload|Change) photo$/ })
+    await expect(photo).toBeDisabled()
     // The disabled button's wrapper still takes the pointer, so the tooltip says why.
-    await userEvent.hover(accepts[0]!.parentElement!)
+    await userEvent.hover(photo.parentElement!)
     await expect(
       await body().findByRole('tooltip', { name: 'Read-only preview' }),
     ).toBeInTheDocument()
@@ -56,26 +54,14 @@ export const ReadOnlyQuotes: Story = {
   },
 }
 
-/** The profile's change request is off in a preview too. */
-export const ReadOnlyProfile: Story = {
-  render: () => (
-    <PortalShell>
-      <PortalProfile />
-    </PortalShell>
-  ),
-  play: async () => {
-    await expect(await body().findByRole('status')).toHaveTextContent('read-only')
-    await expect(await body().findByRole('button', { name: 'Request change' })).toBeDisabled()
-  },
-}
-
 /** The client's own session: no banner, the writes stay on. */
 export const ClientsOwnSession: Story = {
   parameters: { msw: { handlers: portalHandlers } },
-  render: ReadOnlyQuotes.render,
+  render: ReadOnly.render,
   play: async () => {
-    const accepts = await body().findAllByRole('button', { name: /^Accept quote/ })
-    await expect(accepts[0]).toBeEnabled()
+    await expect(
+      await body().findByRole('button', { name: /^(Upload|Change) photo$/ }),
+    ).toBeEnabled()
     await expect(body().queryByText(/Preview as/)).toBeNull()
   },
 }

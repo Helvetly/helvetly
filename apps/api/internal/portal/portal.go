@@ -86,7 +86,6 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/public/portal/session/client", s.switchClient)
 	handle("DELETE /api/v1/public/portal/session", s.deleteSession)
 	s.registerData(handle)
-	s.registerQuotes(handle)
 	s.registerProfile(handle)
 	s.registerAvatar(handle)
 	s.registerScheduling(mux, handle)
