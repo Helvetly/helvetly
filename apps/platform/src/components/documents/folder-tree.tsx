@@ -2,6 +2,8 @@
 import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
+import { CountBadge } from '@helvetly/ui/components/count-badge'
+import { TruncatedText } from '@helvetly/ui/components/truncated-text'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   Check,
@@ -28,7 +30,6 @@ import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import { folderLabel, isSystemFolder, withoutEmptySystem } from '@/lib/system-folders'
 
-import { Count } from './count'
 import { endDrag, startDrag, useDropTarget } from './drop-target'
 import { FolderMark } from './folder-art'
 import { InlineRename } from './inline-rename'
@@ -54,7 +55,7 @@ const SUGGESTED = [translate('contracts'), translate('bankStatements'), translat
 const TYPES: Kind[] = ['pdf', 'image', 'spreadsheet', 'document']
 
 const row =
-  'group/row relative flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg pr-2 text-left text-[14px] text-foreground/75 transition-colors duration-100 outline-none hover:bg-foreground/[0.045] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 has-focus-visible:ring-2 has-focus-visible:ring-ring/50 aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:font-medium aria-[current=page]:text-foreground data-current:bg-foreground/[0.06] data-current:font-medium data-current:text-foreground data-drop-over:bg-brand-solid/10 data-drop-over:text-foreground data-drop-over:ring-2 data-drop-over:ring-brand-solid/70'
+  'group/row relative flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg pr-2.5 text-left text-[14px] text-foreground/75 transition-colors duration-100 outline-none hover:bg-foreground/[0.045] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 has-focus-visible:ring-2 has-focus-visible:ring-ring/50 aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:font-medium aria-[current=page]:text-foreground data-current:bg-foreground/[0.06] data-current:font-medium data-current:text-foreground data-drop-over:bg-brand-solid/10 data-drop-over:text-foreground data-drop-over:ring-2 data-drop-over:ring-brand-solid/70'
 
 /** The left column: the workspace's folders as a tree, plus the Trash as a drop target. */
 export function FolderTree({
@@ -114,7 +115,7 @@ export function FolderTree({
   const picked = section === 'files' ? kinds : []
   return (
     <div className="flex min-h-full flex-col gap-5 p-3">
-      <nav aria-label={translate('folders')} className="grid content-start gap-0.5">
+      <nav aria-label={translate('folders')} className="grid grid-cols-1 content-start gap-0.5">
         <button
           type="button"
           aria-current={rootOpen ? 'page' : undefined}
@@ -123,7 +124,7 @@ export function FolderTree({
           {...root.props}
         >
           <HardDrive className="size-4 shrink-0 stroke-[1.5]" />
-          <span className="flex-1 truncate">{translate('allDocuments')}</span>
+          <TruncatedText className="flex-1">{translate('allDocuments')}</TruncatedText>
         </button>
         <Pinnable pinned={pinned} tab={{ type: 'recent' }}>
           <button
@@ -133,7 +134,7 @@ export function FolderTree({
             className={cn(row, 'pl-2.5')}
           >
             <Clock className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="flex-1 truncate">{translate('recent')}</span>
+            <TruncatedText className="flex-1">{translate('recent')}</TruncatedText>
           </button>
         </Pinnable>
         <Pinnable pinned={pinned} tab={{ type: 'templates' }}>
@@ -144,7 +145,7 @@ export function FolderTree({
             className={cn(row, 'pl-2.5')}
           >
             <LayoutTemplate className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="flex-1 truncate">{translate('templates')}</span>
+            <TruncatedText className="flex-1">{translate('templates')}</TruncatedText>
           </button>
         </Pinnable>
         <Pinnable pinned={pinned} tab={{ type: 'signatures' }}>
@@ -155,13 +156,13 @@ export function FolderTree({
             className={cn(row, 'pl-2.5')}
           >
             <FileSignature className="size-4 shrink-0 stroke-[1.5]" />
-            <span className="flex-1 truncate">{translate('signatures')}</span>
+            <TruncatedText className="flex-1">{translate('signatures')}</TruncatedText>
           </button>
         </Pinnable>
         {starred.length > 0 && (
           <>
             <Label>{translate('starred')}</Label>
-            <ul aria-label={translate('starredFolders')} className="grid gap-0.5">
+            <ul aria-label={translate('starredFolders')} className="grid grid-cols-1 gap-0.5">
               {starred.map((folder) => (
                 <li key={folder.id}>
                   <StarredRow
@@ -194,7 +195,7 @@ export function FolderTree({
           {translate('folders')}
         </Label>
         {folders.length > 0 ? (
-          <ul aria-label={translate('folderTree')} className="grid">
+          <ul aria-label={translate('folderTree')} className="grid grid-cols-1">
             {branch('', 0)}
           </ul>
         ) : (
@@ -226,7 +227,7 @@ export function FolderTree({
         )}
       </nav>
 
-      <nav aria-label={translate('fileTypes')} className="grid content-start gap-0.5">
+      <nav aria-label={translate('fileTypes')} className="grid grid-cols-1 content-start gap-0.5">
         <Label
           action={
             picked.length > 0 && (
@@ -257,10 +258,7 @@ export function FolderTree({
                 className={cn(row, 'pl-1.5')}
               >
                 <KindIcon kind={type} className="size-6 rounded-md" />
-                <span className="flex-1 truncate">
-                  {KIND_LABELS[type]}
-                  {translate('s')}
-                </span>
+                <TruncatedText className="flex-1">{`${KIND_LABELS[type]}${translate('s')}`}</TruncatedText>
                 <span
                   aria-hidden
                   className={cn(
@@ -288,8 +286,8 @@ export function FolderTree({
             {...trash.props}
           >
             <Trash2 className="size-4 shrink-0 stroke-[1.5] text-destructive" />
-            <span className="min-w-0 truncate">{translate('trash')}</span>
-            {trashCount > 0 && <Count>{trashCount}</Count>}
+            <TruncatedText>{translate('trash')}</TruncatedText>
+            {trashCount > 0 && <CountBadge>{trashCount}</CountBadge>}
           </button>
         </Pinnable>
       </div>
@@ -361,7 +359,7 @@ function StarredRow({
 
 function Label({ children, action }: { children: string; action?: ReactNode }) {
   return (
-    <div className="mt-3 flex h-7 items-center justify-between pr-1 pl-2">
+    <div className="mt-3 flex h-7 items-center justify-between px-2.5">
       <span className="text-[12px] font-medium text-muted-foreground">{children}</span>
       {action}
     </div>
@@ -496,7 +494,7 @@ function TreeNode({
                     </span>
                   )}
                   <FolderName folder={folder} />
-                  {folder.total_files > 0 && <Count>{folder.total_files}</Count>}
+                  {folder.total_files > 0 && <CountBadge>{folder.total_files}</CountBadge>}
                 </button>
               </>
             )}
@@ -535,7 +533,7 @@ function TreeNode({
           }}
         />
       </ContextMenu>
-      {expanded && hasChildren && <ul className="grid">{children}</ul>}
+      {expanded && hasChildren && <ul className="grid grid-cols-1">{children}</ul>}
     </li>
   )
 }

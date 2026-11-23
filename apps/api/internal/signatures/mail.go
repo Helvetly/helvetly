@@ -144,16 +144,31 @@ func declinedMessage(req store.SignatureRequest, who store.Signer) mail.Message 
 		Subject: fmt.Sprintf("%s declined to sign “%s”", short(who.Name), req.Title), Text: l.Text(), HTML: l.HTML()}
 }
 
-func completedMessage(done completed, to string) mail.Message {
+// completedMessage: the signed PDF for one recipient. The member who sent it gets the Helvetly copy (Members), with
+// the hashes shortened in its details and the full values in a fine line; signers get them in full.
+func completedMessage(done completed, to string, member bool) mail.Message {
 	req := done.req
+	rows := []mail.Row{{Label: "Document", Value: req.Title}, {Label: "Sent by", Value: sentBy(req)},
+		{Label: "Signed copy", Value: done.name + " (attached)"}}
+	if member {
+		rows = append(rows, mail.Row{Label: "Signed SHA-256", Value: shortHash(done.sum)},
+			mail.Row{Label: "Original SHA-256", Value: shortHash(req.OriginalSHA256)})
+	}
 	l := mail.NewLetter("en").Greeting("").
 		Lead(fmt.Sprintf("Everyone has signed “%s”. The signed PDF is attached, with a certificate of completion on its last page.", req.Title)).
-		Summary(mail.Row{Label: "Document", Value: req.Title}, mail.Row{Label: "Sent by", Value: sentBy(req)},
-			mail.Row{Label: "Signed copy", Value: done.name + " (attached)"}).
+		Summary(rows...).
 		FinePrint("SHA-256 of the signed PDF: "+groups(done.sum), "SHA-256 of the original: "+groups(req.OriginalSHA256), sesNote)
-	return mail.Message{Workspace: req.WorkspaceID, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail,
+	return mail.Message{Workspace: req.WorkspaceID, Members: member, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail,
 		Subject: fmt.Sprintf("Signed: “%s”", req.Title), Text: l.Text(), HTML: l.HTML(),
 		Attachments: []mail.Attachment{{Name: done.name, ContentType: "application/pdf", Data: done.pdf}}}
+}
+
+// shortHash: the first and last 8 characters of a hash, enough to recognise it.
+func shortHash(sum string) string {
+	if len(sum) <= 20 {
+		return sum
+	}
+	return sum[:8] + "…" + sum[len(sum)-8:]
 }
 
 // groups splits a hash into blocks of 16 so it wraps on a phone; the certificate in the PDF has it whole.

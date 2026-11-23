@@ -228,3 +228,25 @@ func TestInvitationLinkQueries(t *testing.T) {
 		t.Fatalf("count %d", n)
 	}
 }
+
+func TestIsMemberEmail(t *testing.T) {
+	s, _ := seedWorkspace(t, map[string]string{"usr_o": "owner"})
+	ctx := context.Background()
+	if err := s.CreateWorkspace(ctx, store.Workspace{ID: "wsp_b", Name: "Other"}, "UTC", t0); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		workspace, email string
+		want             bool
+	}{
+		{"wsp_a", "usr_o@x.ch", true},
+		{"wsp_a", "USR_O@X.CH", true},
+		{"wsp_a", "client@x.ch", false},
+		{"wsp_b", "usr_o@x.ch", false},
+	} {
+		got, err := s.IsMemberEmail(ctx, c.workspace, c.email)
+		if err != nil || got != c.want {
+			t.Errorf("%s %s: %v %v", c.workspace, c.email, got, err)
+		}
+	}
+}

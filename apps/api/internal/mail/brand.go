@@ -26,14 +26,23 @@ type Brand struct {
 
 // Branded sends a workspace's email to its clients as the business: its name in From (the address stays MAIL_FROM's),
 // Reply-To its own mailbox, its logo and details on the card. Email without a Workspace, or to the workspace's own
-// members, passes through as Helvetly's.
+// members, passes through as Helvetly's: marked Members, or every recipient (To and Cc) one of its members.
 type Branded struct {
 	Sender  Sending
 	NoReply string // MAIL_FROM's address: never a Reply-To
 	Brands  func(ctx context.Context, workspaceID string) (Brand, error)
+	// IsMember says whether an address is one of the workspace's members; nil decides by Members alone.
+	IsMember func(ctx context.Context, workspaceID, email string) (bool, error)
 }
 
 func (b *Branded) Send(ctx context.Context, m Message) error {
+	if m.Workspace != "" && !m.Members && b.IsMember != nil {
+		members, err := b.allMembers(ctx, m)
+		if err != nil {
+			return fmt.Errorf("email recipients: %w", err)
+		}
+		m.Members = members
+	}
 	if m.Workspace == "" || m.Members || b.Brands == nil {
 		return b.Sender.Send(ctx, m)
 	}
@@ -47,6 +56,21 @@ func (b *Branded) Send(ctx context.Context, m Message) error {
 		m.Language = brand.Language
 	}
 	return b.Sender.Send(ctx, m)
+}
+
+// allMembers: every To and Cc address is a member of the workspace (Bcc copies never decide the look).
+func (b *Branded) allMembers(ctx context.Context, m Message) (bool, error) {
+	recipients := append(append([]string{}, m.To...), m.Cc...)
+	if len(recipients) == 0 {
+		return false, nil
+	}
+	for _, to := range recipients {
+		member, err := b.IsMember(ctx, m.Workspace, strings.TrimSpace(to))
+		if err != nil || !member {
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 // replyTo: the workspace's address, else the one the sender gave (the member who sends), else the owner's.

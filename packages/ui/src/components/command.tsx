@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
-import { InputGroup, InputGroupAddon } from '@helvetly/ui/components/input-group'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@helvetly/ui/components/input-group'
 import { translate } from '@helvetly/ui/lib/i18n'
 import { Command as CommandPrimitive } from 'cmdk'
 import { cn } from 'cn'
@@ -75,6 +75,24 @@ function CommandInput({
         </InputGroupAddon>
       </InputGroup>
     </div>
+  )
+}
+
+/**
+ * The list's search as a form field: put inside an InputGroup, for an autocomplete whose list opens below it.
+ * `listOpen` says whether the list is shown: while it is not, the field neither claims it expanded nor points at it.
+ */
+function CommandFieldInput({
+  listOpen,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Input> & { listOpen: boolean }) {
+  return (
+    <CommandPrimitive.Input asChild {...props}>
+      <InputGroupInput
+        aria-expanded={listOpen}
+        {...(!listOpen && { 'aria-controls': undefined, 'aria-activedescendant': undefined })}
+      />
+    </CommandPrimitive.Input>
   )
 }
 
@@ -205,6 +223,7 @@ export {
   Command,
   CommandDialog,
   CommandInput,
+  CommandFieldInput,
   CommandList,
   CommandEmpty,
   CommandGroup,

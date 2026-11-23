@@ -94,7 +94,7 @@ export const Signatures: Story = {
       await body.findByText('Nothing out for signature', {}, { timeout: 8000 }),
     ).toBeVisible()
     // Its one action sits in the page's header; the empty list repeats none.
-    const [action, ...more] = body.getAllByRole('button', { name: 'PDF for signature' })
+    const [action, ...more] = body.getAllByRole('button', { name: 'Send for signature' })
     await expect(more).toHaveLength(0)
     await expect(action?.closest('header')).not.toBeNull()
     for (const name of ['Upload', 'Create', 'Organize with AI'])
@@ -274,13 +274,37 @@ async function selectTile(canvasElement: HTMLElement) {
   await expect(check).toBeChecked()
 }
 
-/** Sidebar counts are quiet figures in the document-number font, never pills. */
+const longName = 'Signed agreements with suppliers and subcontractors 2026'
+const longFolder = http.get('/api/v1/documents/folders', () =>
+  HttpResponse.json({
+    data: [...sampleFolders, { ...invoices, id: 'fld_long', name: longName, total_files: 12 }],
+  }),
+)
+
+/**
+ * Sidebar counts are small round badges, right-aligned; a long folder name is cut with "…" and its
+ * tooltip names it in full, while a name that fits gets no tooltip.
+ */
 export const SidebarCounts: Story = {
+  parameters: pageParameters('/documents', {}, [longFolder]),
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     const nav = await body.findByRole('navigation', { name: 'Folders' }, { timeout: 8000 })
-    await waitFor(() => expect(nav.querySelectorAll('.font-code').length).toBeGreaterThan(0))
-    await expect(nav.querySelector('[data-slot=badge]')).toBeNull()
+    const name = await within(nav).findByText(longName)
+    const row = name.closest('button')
+    const badge = row?.querySelector('[data-slot=count-badge]')
+    await expect(badge?.textContent).toBe('12')
+    await expect(badge).toHaveClass('rounded-full')
+    await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
+
+    await userEvent.hover(name)
+    await expect(await body.findByRole('tooltip')).toHaveTextContent(longName)
+    await userEvent.unhover(name)
+    await waitFor(() => expect(body.queryByRole('tooltip')).toBeNull())
+    // "Recent" fits, so hovering it shows nothing.
+    await userEvent.hover(within(nav).getByText('Recent'))
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    await expect(body.queryByRole('tooltip')).toBeNull()
   },
 }
 
@@ -1174,7 +1198,7 @@ export const ViewsPresets: Story = {
     // A count is small figures in the document-number font; screen readers hear what it counts.
     const byClient = panel.getByRole('button', { name: /By client/ })
     await expect(byClient).toHaveAccessibleName(/2 clients/)
-    await expect(byClient.querySelector('.font-code')).toHaveTextContent('2')
+    await expect(byClient.querySelector('[data-slot=count-badge]')).toHaveTextContent('2')
     await expect(panel.getByRole('button', { name: /Invoices by year/ })).toHaveAccessibleName(
       /Type › Year.*12 files/,
     )
