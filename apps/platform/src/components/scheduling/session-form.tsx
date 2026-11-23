@@ -3,6 +3,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Combobox } from '@helvetly/ui/components/combobox'
 import { FormField } from '@helvetly/ui/components/form-field'
+import { FieldError } from '@helvetly/ui/components/inline-error'
 import { inputClass } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Segmented } from '@helvetly/ui/components/segmented'
@@ -10,8 +11,24 @@ import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ChevronsUpDown, Mail, TriangleAlert } from 'lucide-react'
-import { useState } from 'react'
+import {
+  AlignLeft,
+  Building2,
+  ChevronsUpDown,
+  Clock,
+  LayoutTemplate,
+  Link2,
+  Mail,
+  MapPin,
+  Plus,
+  Repeat,
+  TriangleAlert,
+  UserRound,
+  Users,
+  Video,
+  type LucideIcon,
+} from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 
 import { ClientSearch } from '@/components/invoices/client-search'
 import { TextareaBox } from '@/components/textarea-box'
@@ -20,6 +37,7 @@ import { translate } from '@/lib/i18n'
 import { useMembers } from '@/lib/members'
 import { useSession } from '@/lib/queries'
 import {
+  dayLabel,
   recurrenceSummary,
   timeLabel,
   useCalendars,
@@ -34,16 +52,26 @@ import {
 
 import { Choices } from './bits'
 import {
+  autoTitle,
+  dateChange,
+  presetOf,
+  presetValues,
   recurrenceOf,
   setPosOf,
   slotOf,
+  typedTitle,
   weekdayOfDate,
   type Errors,
+  type RepeatPreset,
   type Values,
 } from './session-model'
 
-const DURATIONS = [15, 30, 45, 60, 75, 90, 120, 180, 240]
+const DURATIONS = ['30', '45', '60', '90', '120']
 const fieldId = (name: keyof Values) => `session-${name}`
+/** Focuses a field a click has just revealed, once it is rendered. */
+const focusSoon = (id: string) => requestAnimationFrame(() => document.getElementById(id)?.focus())
+/** Where a person connects their own calendar; a new tab, so the form in the drawer stays as it is. */
+const CONNECT_CALENDAR = '/account#calendars'
 
 /** The session's fields; `excludeId` keeps the session itself out of its conflicts. */
 export function SessionFields({
@@ -66,12 +94,15 @@ export function SessionFields({
   const members = useMembers()
   const engagements = useClientEngagements(values.client?.id ?? '')
   const eventTypes = useEventTypes()
-  const calendars = useCalendars()
   const slot = slotOf(values, zone)
   const conflicts = useConflicts(
     slot && values.host_id ? { host_id: values.host_id, ...slot, exclude: excludeId } : null,
   )
   const [clientOpen, setClientOpen] = useState(false)
+  const [notes, setNotes] = useState({
+    client: values.client_note !== '',
+    internal: values.description !== '',
+  })
 
   const describe = (name: keyof Values) => ({
     id: fieldId(name),
@@ -87,432 +118,233 @@ export function SessionFields({
       value: member.user_id,
       label: member.name || member.email,
     })) ?? []
-  const connected = new Set(
-    (calendars.data?.data ?? [])
-      .filter((entry) => entry.status === 'active')
-      .map((entry) => entry.provider),
-  )
-  // Only the host's own connections are known here; for another host the API checks (422 meeting_provider).
-  const reason = (provider: 'google' | 'microsoft') =>
-    values.host_id !== me
-      ? undefined
-      : !calendars.data?.providers.includes(provider)
-        ? translate('schedProviderNotSetUp')
-        : connected.has(provider)
-          ? undefined
-          : provider === 'google'
-            ? translate('schedConnectGoogleFirst')
-            : translate('schedConnectMicrosoftFirst')
-  const rule = recurrenceOf(values)
-  const durations = DURATIONS.includes(Number(values.duration))
-    ? DURATIONS
-    : [...DURATIONS, Number(values.duration)].filter(Number.isFinite).toSorted((a, b) => a - b)
 
   return (
-    <div className="grid gap-5">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField
-          id={fieldId('client')}
-          label={translate('client')}
-          error={errors.client}
-          required
-        >
-          <Popover open={clientOpen} onOpenChange={setClientOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                {...describe('client')}
-                type="button"
-                variant="ghost"
-                disabled={editing}
-                className={cn(
-                  inputClass,
-                  'justify-between gap-1.5 bg-clip-border text-left font-normal hover:bg-card aria-expanded:border-ring aria-expanded:bg-card dark:hover:bg-input/30 dark:aria-expanded:bg-input/30',
-                )}
-              >
-                <span
-                  className={cn(
-                    'min-w-0 flex-1 truncate',
-                    !values.client && 'text-muted-foreground',
-                  )}
-                >
-                  {values.client?.name ?? translate('schedChooseClientPlaceholder')}
-                </span>
-                <ChevronsUpDown className="text-muted-foreground" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 p-0">
-              <ClientSearch
-                selectedId={values.client?.id ?? null}
-                onSelect={(client) => {
-                  setClientOpen(false)
-                  set({ client: { id: client.id, name: client.name }, engagement_id: '' })
-                }}
-              />
-            </PopoverContent>
-          </Popover>
-        </FormField>
-        <FormField
-          id={fieldId('engagement_id')}
-          label={translate('schedEngagement')}
-          error={errors.engagement_id}
-          tip={translate('schedEngagementTip')}
-        >
-          <Combobox
-            id={fieldId('engagement_id')}
-            value={values.engagement_id}
-            options={running.map((entry) => ({
-              value: entry.id,
-              label: `#${entry.number} ${entry.title}`,
-              hint: entry.current_period
-                ? translate('schedRemaining', { count: Number(entry.current_period.remaining) })
-                : undefined,
-            }))}
-            onChange={(engagement_id) => set({ engagement_id })}
-            onClear={() => set({ engagement_id: '' })}
-            clearLabel={translate('schedClearEngagement')}
-            placeholder={
-              running.length
-                ? translate('schedNoEngagement')
-                : translate('schedNoRunningEngagement')
-            }
-            disabled={running.length === 0}
-          />
-        </FormField>
-        <FormField
-          id={fieldId('event_type_id')}
-          label={translate('schedEventType')}
-          error={errors.event_type_id}
-        >
-          <Combobox
-            id={fieldId('event_type_id')}
-            value={values.event_type_id}
-            options={types.map((entry) => ({ value: entry.id, label: entry.name }))}
-            onChange={(id) => {
-              const type = types.find((entry) => entry.id === id)
-              if (!type) return
-              set({
-                event_type_id: id,
-                duration: String(type.duration_minutes),
-                mode: type.mode,
-                provider: type.meeting_provider ?? values.provider,
-                location: type.location ?? values.location,
-                title: values.title || type.name,
-              })
-            }}
-            onClear={() => set({ event_type_id: '' })}
-            clearLabel={translate('schedClearEventType')}
-            placeholder={
-              types.length ? translate('schedNoEventType') : translate('schedNoEventTypes')
-            }
-            disabled={types.length === 0}
-          />
-        </FormField>
-        <FormField
-          id={fieldId('host_id')}
-          label={translate('schedHost')}
-          error={errors.host_id}
-          required
-        >
-          <Combobox
-            id={fieldId('host_id')}
-            value={values.host_id}
-            options={hosts}
-            onChange={(host_id) => set({ host_id })}
-            placeholder={translate('schedChooseHost')}
-            disabled={hosts.length === 0}
-          />
-        </FormField>
-      </div>
-
-      <FormField id={fieldId('title')} label={translate('title')} error={errors.title} required>
+    <div className="grid gap-4">
+      <div className="grid gap-1">
         <input
           {...describe('title')}
+          aria-label={translate('title')}
           value={values.title}
           maxLength={200}
-          onChange={(event) => set({ title: event.target.value })}
-          placeholder={translate('schedTitlePlaceholder')}
-          className={inputClass}
+          onChange={(event) => set(typedTitle(event.target.value))}
+          placeholder={translate('schedAddTitle')}
+          // The drawer is its box, as the invoice paper is (`field-quiet`): a heading one types into.
+          className="field-quiet -mx-2 h-11 rounded-md bg-transparent px-2 text-xl leading-7 font-semibold transition-colors outline-none placeholder:font-normal placeholder:text-placeholder hover:bg-muted/60 focus-visible:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/40 aria-invalid:ring-2 aria-invalid:ring-destructive/40"
         />
-      </FormField>
+        {errors.title && <FieldError id={`${fieldId('title')}-error`}>{errors.title}</FieldError>}
+      </div>
 
-      <div className="grid gap-1.5">
-        <div className="grid gap-4 sm:grid-cols-[1fr_8rem_9rem]">
-          <FormField id={fieldId('date')} label={translate('date')} error={errors.date} required>
-            <input
-              {...describe('date')}
-              type="date"
-              value={values.date}
-              onChange={(event) => set({ date: event.target.value })}
-              className={inputClass}
-            />
-          </FormField>
-          <FormField
-            id={fieldId('time')}
-            label={translate('schedStart')}
-            error={errors.time}
-            required
-            tip={translate('schedTimeIn', { zone: zoneName(zone) })}
-          >
-            <input
-              {...describe('time')}
-              type="time"
-              step={300}
-              value={values.time}
-              onChange={(event) => set({ time: event.target.value })}
-              className={inputClass}
-            />
-          </FormField>
-          <FormField
-            id={fieldId('duration')}
-            label={translate('schedDuration')}
-            error={errors.duration}
-            required
-          >
+      {(types.length > 0 || values.event_type_id) && (
+        <Line icon={LayoutTemplate}>
+          <Field id={fieldId('event_type_id')} error={errors.event_type_id}>
             <Combobox
-              id={fieldId('duration')}
-              value={values.duration}
-              options={durations.map((minutes) => ({
-                value: String(minutes),
-                label: durationLabel(minutes),
-              }))}
-              onChange={(duration) => set({ duration })}
-              placeholder={translate('schedDuration')}
-              invalid={Boolean(errors.duration)}
+              id={fieldId('event_type_id')}
+              label={translate('schedEventType')}
+              value={values.event_type_id}
+              options={types.map((entry) => ({ value: entry.id, label: entry.name }))}
+              onChange={(id) => {
+                const type = types.find((entry) => entry.id === id)
+                if (!type) return
+                set({
+                  event_type_id: id,
+                  duration: String(type.duration_minutes),
+                  mode: type.mode,
+                  provider: type.meeting_provider ?? values.provider,
+                  location: type.location ?? values.location,
+                  ...autoTitle(values, type.name),
+                })
+              }}
+              onClear={() => set({ event_type_id: '' })}
+              clearLabel={translate('schedClearEventType')}
+              placeholder={translate('schedPickEventType')}
             />
-          </FormField>
-        </div>
-        {/* One line kept for the conflicts, so a warning appearing never moves the fields below. */}
-        <ConflictLine
-          conflicts={slot && values.host_id ? (conflicts.data ?? []) : []}
-          zone={zone}
-        />
-      </div>
+          </Field>
+        </Line>
+      )}
 
-      <div className="grid gap-3">
-        <span className="text-body-sm font-medium">{translate('schedRepeat')}</span>
-        <Segmented
-          label={translate('schedRepeat')}
-          value={values.repeat}
-          options={[
-            { value: 'none', label: translate('schedRepeatNone') },
-            { value: 'weekly', label: translate('schedRepeatWeekly') },
-            { value: 'monthly', label: translate('schedRepeatMonthly') },
-          ]}
-          onChange={(repeat) => set({ repeat })}
-        />
-        {values.repeat !== 'none' && (
-          <div className="grid gap-4 rounded-lg bg-muted/50 p-3">
-            <div className="flex flex-wrap items-end gap-4">
-              <FormField
-                id={fieldId('interval')}
-                label={translate('schedEvery')}
-                error={errors.interval}
-                width="sm"
-              >
-                <Combobox
-                  id={fieldId('interval')}
-                  value={values.interval}
-                  options={Array.from({ length: 12 }, (_, i) => ({
-                    value: String(i + 1),
-                    label:
-                      values.repeat === 'weekly'
-                        ? translate('schedWeeks', { count: i + 1 })
-                        : translate('schedMonths', { count: i + 1 }),
-                  }))}
-                  onChange={(interval) => set({ interval })}
-                  placeholder={translate('schedEvery')}
+      <Line icon={Building2}>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Field id={fieldId('client')} label={translate('client')} error={errors.client}>
+            <Popover open={clientOpen} onOpenChange={setClientOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  {...describe('client')}
+                  type="button"
+                  variant="ghost"
+                  disabled={editing}
+                  className={cn(
+                    inputClass,
+                    'justify-between gap-1.5 bg-clip-border text-left font-normal hover:bg-card aria-expanded:border-ring aria-expanded:bg-card dark:hover:bg-input/30 dark:aria-expanded:bg-input/30',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'min-w-0 flex-1 truncate',
+                      !values.client && 'text-muted-foreground',
+                    )}
+                  >
+                    {values.client?.name ?? translate('schedChooseClientPlaceholder')}
+                  </span>
+                  <ChevronsUpDown className="text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80 p-0">
+                <ClientSearch
+                  selectedId={values.client?.id ?? null}
+                  onSelect={(client) => {
+                    setClientOpen(false)
+                    set({ client: { id: client.id, name: client.name }, engagement_id: '' })
+                  }}
                 />
-              </FormField>
-              {values.repeat === 'weekly' ? (
-                <FormField
-                  id={fieldId('by_day')}
-                  label={translate('schedOnDays')}
-                  error={errors.by_day}
-                  group
-                >
-                  <DayToggles value={values.by_day} onChange={(by_day) => set({ by_day })} />
-                </FormField>
-              ) : (
-                <FormField id={fieldId('monthly')} label={translate('schedOn')} group>
-                  <Segmented
-                    label={translate('schedOn')}
-                    value={values.monthly}
-                    options={[
-                      {
-                        value: 'day',
-                        label: translate('schedOnDayN', {
-                          day: Number(values.date.slice(8, 10)) || 1,
-                        }),
-                      },
-                      {
-                        value: 'weekday',
-                        label: translate('schedOnNthWeekday', {
-                          ordinal: ordinalLabel(setPosOf(values.date || '2026-01-01')),
-                          day: weekdayName(weekdayOfDate(values.date || '2026-01-01'), 'long'),
-                        }),
-                      },
-                    ]}
-                    onChange={(monthly) => set({ monthly })}
-                  />
-                </FormField>
-              )}
-            </div>
-            <div className="flex flex-wrap items-end gap-4">
-              <FormField id={fieldId('ends')} label={translate('schedEnds')} group>
-                <Segmented
-                  label={translate('schedEnds')}
-                  value={values.ends}
-                  options={[
-                    { value: 'never', label: translate('schedEndsNever') },
-                    { value: 'until', label: translate('schedEndsOn') },
-                    { value: 'count', label: translate('schedEndsAfter') },
-                  ]}
-                  onChange={(ends) => set({ ends })}
-                />
-              </FormField>
-              {values.ends === 'until' && (
-                <FormField
-                  id={fieldId('until')}
-                  label={translate('schedLastDate')}
-                  error={errors.until}
-                  width="sm"
-                >
-                  <input
-                    {...describe('until')}
-                    type="date"
-                    min={values.date}
-                    value={values.until}
-                    onChange={(event) => set({ until: event.target.value })}
-                    className={inputClass}
-                  />
-                </FormField>
-              )}
-              {values.ends === 'count' && (
-                <FormField
-                  id={fieldId('count')}
-                  label={translate('schedSessions')}
-                  error={errors.count}
-                  width="xs"
-                >
-                  <input
-                    {...describe('count')}
-                    inputMode="numeric"
-                    value={values.count}
-                    onChange={(event) => set({ count: event.target.value })}
-                    className={inputClass}
-                  />
-                </FormField>
-              )}
-            </div>
-            <label className="flex items-center gap-2 text-body-sm">
-              <Checkbox
-                checked={values.skip_holidays}
-                onCheckedChange={(checked) => set({ skip_holidays: checked === true })}
+              </PopoverContent>
+            </Popover>
+          </Field>
+          {values.client && (running.length > 0 || values.engagement_id) && (
+            <Field id={fieldId('engagement_id')} error={errors.engagement_id}>
+              <Combobox
+                id={fieldId('engagement_id')}
+                label={translate('schedEngagement')}
+                value={values.engagement_id}
+                options={running.map((entry) => ({
+                  value: entry.id,
+                  label: `#${entry.number} ${entry.title}`,
+                  hint: entry.current_period
+                    ? translate('schedRemaining', {
+                        count: Number(entry.current_period.remaining),
+                      })
+                    : undefined,
+                }))}
+                onChange={(engagement_id) => {
+                  const engagement = running.find((entry) => entry.id === engagement_id)
+                  set({ engagement_id, ...autoTitle(values, engagement?.title ?? '') })
+                }}
+                onClear={() => set({ engagement_id: '' })}
+                clearLabel={translate('schedClearEngagement')}
+                placeholder={translate('schedNoEngagement')}
               />
-              {translate('schedSkipHolidays')}
-            </label>
-            {rule &&
-              Object.keys(errors).every(
-                (key) => !['interval', 'by_day', 'until', 'count', 'date'].includes(key),
-              ) && (
-                <p className="text-body-sm text-muted-foreground" aria-live="polite">
-                  {recurrenceSummary({ ...rule }, values.date)}
-                </p>
-              )}
-          </div>
-        )}
-      </div>
+            </Field>
+          )}
+        </div>
+      </Line>
 
-      <div className="grid gap-3">
-        <span className="text-body-sm font-medium">{translate('schedWhere')}</span>
-        <Segmented
-          label={translate('schedWhere')}
-          value={values.mode}
-          options={[
-            { value: 'live', label: translate('schedLive') },
-            { value: 'online', label: translate('schedOnline') },
-          ]}
-          onChange={(mode) => set({ mode })}
-        />
-        {values.mode === 'online' ? (
-          <div className="grid gap-3">
-            <Choices
-              label={translate('schedMeetingLink')}
-              value={values.provider}
-              onChange={(provider) => set({ provider })}
-              options={[
-                { value: 'manual', label: translate('schedManualLink') },
-                { value: 'google_meet', label: 'Google Meet', disabledReason: reason('google') },
-                { value: 'teams', label: 'Microsoft Teams', disabledReason: reason('microsoft') },
-              ]}
+      {/* One member hosts everything: nothing to choose. */}
+      {hosts.length > 1 && (
+        <Line icon={UserRound}>
+          <Field id={fieldId('host_id')} error={errors.host_id} className="sm:max-w-[50%]">
+            <Combobox
+              id={fieldId('host_id')}
+              label={translate('schedHost')}
+              value={values.host_id}
+              options={hosts.map((host) =>
+                host.value === me ? { ...host, hint: translate('schedYou') } : host,
+              )}
+              onChange={(host_id) => set({ host_id })}
+              placeholder={translate('schedChooseHost')}
+              invalid={Boolean(errors.host_id)}
             />
-            {values.provider === 'manual' ? (
-              <FormField
-                id={fieldId('meeting_url')}
-                label={translate('schedMeetingLink')}
-                error={errors.meeting_url}
+          </Field>
+        </Line>
+      )}
+
+      <Line icon={Clock}>
+        <When values={values} errors={errors} set={set} describe={describe} />
+        <div className="mt-1.5 flex h-5 min-w-0 items-center gap-2 text-body-sm">
+          {slot && (
+            <span className="shrink-0 text-muted-foreground" aria-live="polite">
+              {dayLabel(values.date)} · {timeLabel(slot.starts_at, zone)} –{' '}
+              {timeLabel(slot.ends_at, zone)} ({zoneName(zone)})
+            </span>
+          )}
+          {/* On the summary's line, so a warning appearing never moves the fields below. */}
+          <ConflictLine
+            conflicts={slot && values.host_id ? (conflicts.data ?? []) : []}
+            zone={zone}
+          />
+        </div>
+      </Line>
+
+      <Line icon={Repeat}>
+        <RepeatFields values={values} errors={errors} set={set} describe={describe} />
+      </Line>
+
+      <Line icon={MapPin}>
+        <Where values={values} errors={errors} set={set} describe={describe} me={me} />
+      </Line>
+
+      <Line icon={AlignLeft}>
+        {!(notes.client && notes.internal) && (
+          <div className="-ml-2 flex flex-wrap gap-1">
+            {!notes.client && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => {
+                  setNotes((open) => ({ ...open, client: true }))
+                  focusSoon(fieldId('client_note'))
+                }}
               >
-                <input
-                  {...describe('meeting_url')}
-                  type="url"
-                  value={values.meeting_url}
-                  onChange={(event) => set({ meeting_url: event.target.value })}
-                  placeholder="https://"
-                  className={inputClass}
-                />
-              </FormField>
-            ) : (
-              <p
-                className={cn(
-                  'text-body-sm',
-                  errors.meeting_url ? 'text-destructive' : 'text-muted-foreground',
-                )}
+                <Plus />
+                {translate('schedAddClientNote')}
+              </Button>
+            )}
+            {!notes.internal && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => {
+                  setNotes((open) => ({ ...open, internal: true }))
+                  focusSoon(fieldId('description'))
+                }}
               >
-                {errors.meeting_url ?? translate('schedLinkMadeOnSave')}
-              </p>
+                <Plus />
+                {translate('schedAddInternalNote')}
+              </Button>
             )}
           </div>
-        ) : (
-          <FormField id={fieldId('location')} label={translate('location')} error={errors.location}>
-            <input
-              {...describe('location')}
-              value={values.location}
-              onChange={(event) => set({ location: event.target.value })}
-              placeholder={translate('schedLocationPlaceholder')}
-              className={inputClass}
-            />
-          </FormField>
         )}
-      </div>
+        {(notes.client || notes.internal) && (
+          <div className={cn('grid gap-3', !(notes.client && notes.internal) && 'mt-2')}>
+            {notes.client && (
+              <FormField
+                id={fieldId('client_note')}
+                label={translate('schedClientNote')}
+                error={errors.client_note}
+                tip={translate('schedClientNoteTip')}
+              >
+                <TextareaBox
+                  {...describe('client_note')}
+                  rows={2}
+                  max={2000}
+                  value={values.client_note}
+                  onChange={(event) => set({ client_note: event.target.value })}
+                />
+              </FormField>
+            )}
+            {notes.internal && (
+              <FormField
+                id={fieldId('description')}
+                label={translate('schedInternalNotes')}
+                error={errors.description}
+                tip={translate('schedInternalNotesTip')}
+              >
+                <TextareaBox
+                  {...describe('description')}
+                  rows={2}
+                  max={4000}
+                  value={values.description}
+                  onChange={(event) => set({ description: event.target.value })}
+                />
+              </FormField>
+            )}
+          </div>
+        )}
+      </Line>
 
-      <FormField
-        id={fieldId('client_note')}
-        label={translate('schedClientNote')}
-        error={errors.client_note}
-        tip={translate('schedClientNoteTip')}
-      >
-        <TextareaBox
-          {...describe('client_note')}
-          rows={2}
-          max={2000}
-          value={values.client_note}
-          onChange={(event) => set({ client_note: event.target.value })}
-        />
-      </FormField>
-      <FormField
-        id={fieldId('description')}
-        label={translate('schedInternalNotes')}
-        error={errors.description}
-        tip={translate('schedInternalNotesTip')}
-      >
-        <TextareaBox
-          {...describe('description')}
-          rows={2}
-          max={4000}
-          value={values.description}
-          onChange={(event) => set({ description: event.target.value })}
-        />
-      </FormField>
       <SwitchRow
         icon={Mail}
         label={translate('schedEmailClient')}
@@ -524,12 +356,131 @@ export function SessionFields({
   )
 }
 
-export const durationLabel = (minutes: number) =>
-  minutes < 60 || minutes % 60 !== 0
-    ? minutes > 60
-      ? translate('schedHoursMinutes', { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
-      : translate('schedMinutes', { count: minutes })
-    : translate('schedHours', { count: minutes / 60 })
+type Describe = (name: keyof Values) => {
+  id: string
+  'aria-invalid': boolean | undefined
+  'aria-describedby': string | undefined
+}
+type Part = {
+  values: Values
+  errors: Errors
+  set: (change: Partial<Values>) => void
+  describe: Describe
+}
+
+/** A row of the form: its icon on the left (as a calendar's event editor), the fields on the right. */
+function Line({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-3">
+      {/* Centred on the first field's 36 px row. */}
+      <Icon aria-hidden className="mt-2.5 size-4 stroke-[1.75] text-muted-foreground" />
+      <div className="min-w-0">{children}</div>
+    </div>
+  )
+}
+
+/** One control with its label for screen readers only (the row's icon and placeholder show it) and its error. */
+function Field({
+  id,
+  label,
+  error,
+  className,
+  children,
+}: {
+  id: string
+  /** For a control that has no `label` prop of its own. */
+  label?: string
+  error?: string
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div className={cn('grid min-w-0 content-start gap-1', className)}>
+      {label && (
+        <label htmlFor={id} className="sr-only">
+          {label}
+        </label>
+      )}
+      {children}
+      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
+    </div>
+  )
+}
+
+/** Date, start and duration on one row (wrapping on a phone); the duration as quick picks or minutes. */
+function When({ values, errors, set, describe }: Part) {
+  const [custom, setCustom] = useState(!DURATIONS.includes(values.duration))
+  return (
+    <div className="grid gap-1">
+      <div className="flex flex-wrap items-start gap-2">
+        <label htmlFor={fieldId('date')} className="sr-only">
+          {translate('date')}
+        </label>
+        <input
+          {...describe('date')}
+          type="date"
+          value={values.date}
+          onChange={(event) => set(dateChange(values, event.target.value))}
+          className={cn(inputClass, 'w-40')}
+        />
+        <label htmlFor={fieldId('time')} className="sr-only">
+          {translate('schedStart')}
+        </label>
+        <input
+          {...describe('time')}
+          type="time"
+          step={300}
+          value={values.time}
+          onChange={(event) => set({ time: event.target.value })}
+          className={cn(inputClass, 'w-28')}
+        />
+        <Choices
+          label={translate('schedDuration')}
+          value={custom ? 'custom' : values.duration}
+          options={[
+            ...DURATIONS.map((minutes) => ({
+              value: minutes,
+              label: shortDuration(Number(minutes)),
+            })),
+            { value: 'custom', label: translate('schedDurationCustom') },
+          ]}
+          onChange={(choice) => {
+            setCustom(choice === 'custom')
+            if (choice === 'custom') focusSoon(fieldId('duration'))
+            else set({ duration: choice })
+          }}
+        />
+        {custom && (
+          <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
+            <input
+              {...describe('duration')}
+              aria-label={translate('schedDurationMinutes')}
+              inputMode="numeric"
+              value={values.duration}
+              onChange={(event) => set({ duration: event.target.value })}
+              className={cn(inputClass, 'w-20')}
+            />
+            {translate('schedMinutesUnit')}
+          </span>
+        )}
+      </div>
+      {(['date', 'time', 'duration'] as const).map(
+        (name) =>
+          errors[name] && (
+            <FieldError key={name} id={`${fieldId(name)}-error`}>
+              {errors[name]}
+            </FieldError>
+          ),
+      )}
+    </div>
+  )
+}
+
+/** "1 h", "1.5 h", "45 min": short enough for a chip. */
+const shortDuration = (minutes: number) =>
+  minutes < 60
+    ? translate('schedMinutes', { count: minutes })
+    : translate('schedHoursShort', { count: minutes / 60 })
 
 const ordinalLabel = (pos: 1 | 2 | 3 | 4 | -1) =>
   translate(
@@ -543,6 +494,172 @@ const ordinalLabel = (pos: 1 | 2 | 3 | 4 | -1) =>
             ? 'schedOrdinal3'
             : 'schedOrdinal4',
   )
+
+/** One menu of the common rules for the start date (as a calendar offers them); Custom… opens the whole rule. */
+function RepeatFields({ values, errors, set, describe }: Part) {
+  const [custom, setCustom] = useState(presetOf(values) === 'custom')
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(values.date) ? values.date : '2026-01-01'
+  const day = weekdayName(weekdayOfDate(date), 'long')
+  const rule = recurrenceOf(values)
+  const presets: { value: RepeatPreset; label: string }[] = [
+    { value: 'none', label: translate('schedRepeatNever') },
+    { value: 'weekly', label: translate('schedRepeatWeeklyOn', { day }) },
+    { value: 'biweekly', label: translate('schedRepeatBiweeklyOn', { day }) },
+    {
+      value: 'monthly',
+      label: translate('schedRepeatMonthlyOn', { ordinal: ordinalLabel(setPosOf(date)), day }),
+    },
+    { value: 'custom', label: translate('schedRepeatCustom') },
+  ]
+  const preset = custom && values.repeat !== 'none' ? 'custom' : presetOf(values)
+  return (
+    <div className="grid gap-2">
+      <div className="sm:max-w-[50%]">
+        <Combobox
+          id={fieldId('repeat')}
+          label={translate('schedRepeat')}
+          value={preset}
+          options={presets}
+          onChange={(choice) => {
+            const next = presets.find((entry) => entry.value === choice)?.value
+            if (!next) return
+            setCustom(next === 'custom')
+            set(presetValues(next, values))
+          }}
+          placeholder={translate('schedRepeat')}
+        />
+      </div>
+      {values.repeat !== 'none' && (
+        <div className="grid gap-3 rounded-lg bg-muted/50 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-body-sm text-muted-foreground">{translate('schedEvery')}</span>
+            <Combobox
+              id={fieldId('interval')}
+              label={translate('schedEvery')}
+              value={values.interval}
+              options={Array.from({ length: 12 }, (_, i) => ({
+                value: String(i + 1),
+                label: String(i + 1),
+              }))}
+              onChange={(interval) => set({ interval })}
+              placeholder="1"
+              invalid={Boolean(errors.interval)}
+              className="w-18"
+            />
+            <Combobox
+              id={fieldId('repeat') + '-unit'}
+              label={translate('schedRepeatUnit')}
+              value={values.repeat}
+              options={[
+                {
+                  value: 'weekly',
+                  label: translate('schedUnitWeeks', { count: Number(values.interval) || 1 }),
+                },
+                {
+                  value: 'monthly',
+                  label: translate('schedUnitMonths', { count: Number(values.interval) || 1 }),
+                },
+              ]}
+              onChange={(unit) => set({ repeat: unit === 'monthly' ? 'monthly' : 'weekly' })}
+              placeholder={translate('schedRepeatUnit')}
+              className="w-32"
+            />
+            {values.repeat === 'weekly' ? (
+              <fieldset id={fieldId('by_day')} tabIndex={-1} className="outline-none">
+                <legend className="sr-only">{translate('schedOnDays')}</legend>
+                <DayToggles value={values.by_day} onChange={(by_day) => set({ by_day })} />
+              </fieldset>
+            ) : (
+              <Combobox
+                id={fieldId('monthly')}
+                label={translate('schedOn')}
+                value={values.monthly}
+                options={[
+                  {
+                    value: 'day',
+                    label: translate('schedOnDayN', { day: Number(date.slice(8, 10)) }),
+                  },
+                  {
+                    value: 'weekday',
+                    label: translate('schedOnNthWeekday', {
+                      ordinal: ordinalLabel(setPosOf(date)),
+                      day,
+                    }),
+                  },
+                ]}
+                onChange={(monthly) => set({ monthly: monthly === 'weekday' ? 'weekday' : 'day' })}
+                placeholder={translate('schedOn')}
+                className="w-auto"
+              />
+            )}
+          </div>
+          {(errors.interval || errors.by_day) && (
+            <FieldError id={`${fieldId(errors.interval ? 'interval' : 'by_day')}-error`}>
+              {errors.interval ?? errors.by_day}
+            </FieldError>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-body-sm text-muted-foreground">{translate('schedEnds')}</span>
+            <Segmented
+              label={translate('schedEnds')}
+              value={values.ends}
+              options={[
+                { value: 'never', label: translate('schedEndsNever') },
+                { value: 'until', label: translate('schedEndsOn') },
+                { value: 'count', label: translate('schedEndsAfter') },
+              ]}
+              onChange={(ends) => set({ ends })}
+            />
+            {values.ends === 'until' && (
+              <input
+                {...describe('until')}
+                aria-label={translate('schedLastDate')}
+                type="date"
+                min={values.date}
+                value={values.until}
+                onChange={(event) => set({ until: event.target.value })}
+                className={cn(inputClass, 'w-40')}
+              />
+            )}
+            {values.ends === 'count' && (
+              <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
+                <input
+                  {...describe('count')}
+                  aria-label={translate('schedSessions')}
+                  inputMode="numeric"
+                  value={values.count}
+                  onChange={(event) => set({ count: event.target.value })}
+                  className={cn(inputClass, 'w-20')}
+                />
+                {translate('schedSessionsUnit')}
+              </span>
+            )}
+          </div>
+          {(errors.until || errors.count) && (
+            <FieldError id={`${fieldId(errors.until ? 'until' : 'count')}-error`}>
+              {errors.until ?? errors.count}
+            </FieldError>
+          )}
+          <label className="flex w-fit items-center gap-2 text-body-sm">
+            <Checkbox
+              checked={values.skip_holidays}
+              onCheckedChange={(checked) => set({ skip_holidays: checked === true })}
+            />
+            {translate('schedSkipHolidays')}
+          </label>
+        </div>
+      )}
+      {rule &&
+        Object.keys(errors).every(
+          (key) => !['interval', 'by_day', 'until', 'count', 'date'].includes(key),
+        ) && (
+          <p className="text-body-sm text-muted-foreground" aria-live="polite">
+            {recurrenceSummary({ ...rule }, values.date)}
+          </p>
+        )}
+    </div>
+  )
+}
 
 function DayToggles({
   value,
@@ -573,6 +690,127 @@ function DayToggles({
   )
 }
 
+type Place = 'live' | 'google_meet' | 'teams' | 'manual'
+const PROVIDER_OF = { google_meet: 'google', teams: 'microsoft' } as const
+
+/**
+ * Where, as tiles: in person, the meeting providers this installation offers, or one's own link. A provider
+ * without keys here is left out; one the host (me) has not connected says so with a link to connect it.
+ * Another host's connections are not known here: the API checks them (422 meeting_provider).
+ */
+function Where({ values, errors, set, describe, me }: Part & { me: string | undefined }) {
+  const calendars = useCalendars()
+  const offered = calendars.data?.providers ?? []
+  const connected = new Set(
+    (calendars.data?.data ?? [])
+      .filter((entry) => entry.status === 'active')
+      .map((entry) => entry.provider),
+  )
+  const place: Place = values.mode === 'live' ? 'live' : values.provider
+  const tiles: { value: Place; icon: LucideIcon; label: string; connect?: string }[] = [
+    { value: 'live', icon: MapPin, label: translate('schedLive') },
+  ]
+  for (const value of ['google_meet', 'teams'] as const) {
+    const provider = PROVIDER_OF[value]
+    // A session that already has it keeps its tile, whatever the installation offers now.
+    if (!offered.includes(provider) && place !== value) continue
+    tiles.push({
+      value,
+      icon: value === 'google_meet' ? Video : Users,
+      label: value === 'google_meet' ? 'Google Meet' : 'Microsoft Teams',
+      connect:
+        values.host_id === me && !connected.has(provider) && place !== value
+          ? translate(
+              provider === 'google' ? 'schedConnectGoogleFirst' : 'schedConnectMicrosoftFirst',
+            )
+          : undefined,
+    })
+  }
+  tiles.push({ value: 'manual', icon: Link2, label: translate('schedManualLink') })
+  const choose = (value: Place) =>
+    set(value === 'live' ? { mode: 'live' } : { mode: 'online', provider: value })
+  const problem = errors.provider ?? (place === 'manual' ? undefined : errors.meeting_url)
+  return (
+    <div className="grid gap-2">
+      <fieldset
+        id={fieldId('provider')}
+        tabIndex={-1}
+        className="grid grid-cols-2 gap-2 outline-none sm:grid-cols-4"
+      >
+        <legend className="sr-only">{translate('schedWhere')}</legend>
+        {tiles.map((tile) =>
+          tile.connect ? (
+            <div
+              key={tile.value}
+              className="flex min-h-9 items-center gap-2 rounded-lg border border-dashed px-3 py-1.5 text-sm text-muted-foreground"
+            >
+              <tile.icon aria-hidden className="size-4 shrink-0" />
+              <span className="grid min-w-0 leading-tight">
+                <span className="truncate">{tile.label}</span>
+                <a
+                  href={CONNECT_CALENDAR}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={tile.connect}
+                  className="w-fit text-xs text-link underline underline-offset-2 hover:no-underline"
+                >
+                  {translate('schedConnect')}
+                </a>
+              </span>
+            </div>
+          ) : (
+            <button
+              key={tile.value}
+              type="button"
+              aria-pressed={place === tile.value}
+              onClick={() => choose(tile.value)}
+              className={cn(
+                'flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-left text-sm transition-colors outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50',
+                place === tile.value
+                  ? 'border-primary/60 bg-primary/5 font-medium text-foreground hover:bg-primary/5'
+                  : 'text-muted-foreground',
+              )}
+            >
+              <tile.icon aria-hidden className="size-4 shrink-0" />
+              <span className="min-w-0 truncate">{tile.label}</span>
+            </button>
+          ),
+        )}
+      </fieldset>
+      {place === 'live' ? (
+        <Field id={fieldId('location')} label={translate('location')} error={errors.location}>
+          <input
+            {...describe('location')}
+            value={values.location}
+            onChange={(event) => set({ location: event.target.value })}
+            placeholder={translate('schedLocationPlaceholder')}
+            className={inputClass}
+          />
+        </Field>
+      ) : place === 'manual' ? (
+        <Field
+          id={fieldId('meeting_url')}
+          label={translate('schedMeetingLink')}
+          error={errors.meeting_url}
+        >
+          <input
+            {...describe('meeting_url')}
+            type="url"
+            value={values.meeting_url}
+            onChange={(event) => set({ meeting_url: event.target.value })}
+            placeholder="https://"
+            className={inputClass}
+          />
+        </Field>
+      ) : (
+        <p className={cn('text-body-sm', problem ? 'text-destructive' : 'text-muted-foreground')}>
+          {problem ?? translate('schedLinkMadeOnSave')}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /** Overlaps with the host's other sessions or busy times, in one line; the full list in its tooltip. */
 function ConflictLine({ conflicts, zone }: { conflicts: Conflict[]; zone: string }) {
   const describe = (conflict: Conflict) =>
@@ -587,7 +825,7 @@ function ConflictLine({ conflicts, zone }: { conflicts: Conflict[]; zone: string
     }`
   const first = conflicts[0]
   return (
-    <div className="flex h-5 items-center" aria-live="polite">
+    <span className="flex min-w-0 items-center" aria-live="polite">
       {first && (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -612,6 +850,6 @@ function ConflictLine({ conflicts, zone }: { conflicts: Conflict[]; zone: string
           </TooltipContent>
         </Tooltip>
       )}
-    </div>
+    </span>
   )
 }

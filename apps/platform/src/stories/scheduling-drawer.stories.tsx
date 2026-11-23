@@ -80,13 +80,26 @@ const titleField = async () =>
     name: /^Title/,
   })
 
+/** A Combobox trigger by its label: its name is the label followed by the chosen value. */
+const picker = (sheet: ReturnType<typeof within>, label: string) =>
+  sheet.getByRole('button', { name: new RegExp(`^${label}`) })
+const pick = async (sheet: ReturnType<typeof within>, label: string, option: string) => {
+  // Event types and hosts load first: their rows appear then.
+  await userEvent.click(await sheet.findByRole('button', { name: new RegExp(`^${label}`) }))
+  await userEvent.click(await screen.findByRole('option', { name: option }))
+}
+
 /** A one-off session: title, then Schedule; the drawer turns into the new session's details. */
 export const CreateOneOff: Story = {
   play: async () => {
     const sheet = await drawer()
     await expect(sheet.getByRole('heading', { name: 'New session' })).toBeVisible()
-    // Without a running engagement the engagement picker is off, not empty.
-    await expect(sheet.getByRole('button', { name: /^Engagement/ })).toBeDisabled()
+    // Without a running engagement and with one member hosting there is nothing to choose: both stay out.
+    await expect(sheet.queryByRole('button', { name: /^Engagement/ })).not.toBeInTheDocument()
+    await expect(sheet.getByRole('button', { name: /^Repeat Does not repeat/ })).toBeVisible()
+    await expect(sheet.getByText(/3 Dec · 14:00 – 15:00 \(Zurich\)/)).toBeVisible()
+    await userEvent.click(sheet.getByRole('button', { name: '45 min' }))
+    await expect(await sheet.findByText(/14:00 – 14:45/)).toBeVisible()
     await userEvent.type(await titleField(), 'Kick-off')
     await userEvent.click(sheet.getByRole('button', { name: 'Schedule' }))
     await toastShows('Session scheduled.')
@@ -96,19 +109,74 @@ export const CreateOneOff: Story = {
 
 export const CreateOneOffDark: Story = { ...CreateOneOff, parameters: { dark: true } }
 
-/** Weekly on Tuesdays and Thursdays, every 2 weeks, until a date: the summary reads it back with the count. */
+/** An event type names the session (until a title is typed) and sets its length and place. */
+export const EventTypePrefills: Story = {
+  play: async () => {
+    const sheet = await drawer()
+    await pick(sheet, 'Event type', 'Intro call')
+    await expect(await titleField()).toHaveValue('Intro call')
+    await expect(sheet.getByRole('button', { name: '30 min' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(sheet.getByRole('button', { name: 'My own link' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    // A typed title stays when the type changes.
+    await userEvent.clear(await titleField())
+    await userEvent.type(await titleField(), 'First meeting')
+    await pick(sheet, 'Event type', 'Coaching session')
+    await expect(await titleField()).toHaveValue('First meeting')
+  },
+}
+
+/** "Weekly on Thursday" from the repeat menu: the rule's panel and its summary, then a series is made. */
+export const WeeklyViaSelect: Story = {
+  play: async () => {
+    const sheet = await drawer()
+    await pick(sheet, 'Repeat', 'Weekly on Thursday')
+    await expect(await sheet.findByText('Every week on Thu')).toBeVisible()
+    await expect(sheet.getByRole('button', { name: 'Thursday' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await userEvent.type(await titleField(), 'Weekly check-in')
+    await userEvent.click(sheet.getByRole('button', { name: 'Schedule' }))
+    await toastShows('Session scheduled.')
+    await expect(await sheet.findByText(/Every week on Thu/)).toBeVisible()
+  },
+}
+
+/** Custom…: every 2 weeks on Tuesdays and Thursdays until a date; the menu then says Custom. */
 export const RecurringSummary: Story = {
   render: () => <Drawer start={create({ date: '2026-12-01' })} />,
   play: async () => {
     const sheet = await drawer()
-    await userEvent.click(sheet.getByRole('radio', { name: 'Weekly' }))
+    await pick(sheet, 'Repeat', 'Custom…')
     await userEvent.click(sheet.getByRole('button', { name: 'Thursday' }))
-    await userEvent.click(sheet.getByRole('button', { name: /^Every/ }))
-    await userEvent.click(await screen.findByRole('option', { name: '2 weeks' }))
+    await pick(sheet, 'Every', '2')
     await userEvent.click(sheet.getByRole('radio', { name: 'On a date' }))
     fireEvent.change(field('until'), { target: { value: '2027-06-30' } })
     await expect(
       await sheet.findByText('Every 2 weeks on Tue and Thu until 30 Jun 2027, 31 sessions'),
+    ).toBeVisible()
+    await expect(picker(sheet, 'Repeat')).toHaveAccessibleName(/Custom…/)
+  },
+}
+
+/** Custom monthly: on the first Tuesday, ten times. */
+export const CustomMonthly: Story = {
+  render: () => <Drawer start={create({ date: '2026-12-01' })} />,
+  play: async () => {
+    const sheet = await drawer()
+    await pick(sheet, 'Repeat', 'Custom…')
+    await pick(sheet, 'Frequency', 'month')
+    await expect(await sheet.findByText('Every month on day 1')).toBeVisible()
+    await pick(sheet, 'On', 'The first Tuesday')
+    await userEvent.click(sheet.getByRole('radio', { name: 'After' }))
+    await expect(
+      await sheet.findByText('Every month on the first Tuesday, 10 sessions'),
     ).toBeVisible()
   },
 }
@@ -118,9 +186,10 @@ export const ConflictsWarning: Story = {
   render: () => <Drawer start={create({ date: '2026-12-02', minutes: 9 * 60 + 30 })} />,
   play: async () => {
     const sheet = await drawer()
-    const repeat = sheet.getByRole('radio', { name: 'Once' })
-    const before = repeat.getBoundingClientRect().top
     await expect(await sheet.findByText(/1 overlap: /)).toBeVisible()
+    await sheet.findByRole('button', { name: /^Event type/ })
+    const repeat = picker(sheet, 'Repeat')
+    const before = repeat.getBoundingClientRect().top
     await expect(sheet.getByText(/Strategy session/)).toBeVisible()
     await expect(repeat.getBoundingClientRect().top).toBe(before)
     // Moving the time onto the busy block names it without a title.
@@ -130,17 +199,15 @@ export const ConflictsWarning: Story = {
   },
 }
 
-/** Online: Google Meet works (my Google calendar is connected), Teams says why it does not. */
-export const MeetingProviderDisabled: Story = {
+/** Google Meet works (my Google calendar is connected); Teams is offered but not connected: a link to connect it. */
+export const MeetConnectLink: Story = {
   play: async () => {
     const sheet = await drawer()
-    await userEvent.click(sheet.getByRole('radio', { name: 'Online' }))
-    const teams = sheet.getByRole('button', { name: 'Microsoft Teams' })
-    await expect(teams).toHaveAttribute('aria-disabled', 'true')
-    await userEvent.hover(teams)
-    await expect(
-      await screen.findByRole('tooltip', { name: /Connect your Microsoft 365 calendar/ }),
-    ).toBeVisible()
+    const connect = await sheet.findByRole('link', {
+      name: /Connect your Microsoft 365 calendar/,
+    })
+    await expect(connect).toHaveAttribute('href', '/account#calendars')
+    await expect(sheet.queryByRole('button', { name: 'Microsoft Teams' })).not.toBeInTheDocument()
     await userEvent.click(sheet.getByRole('button', { name: 'Google Meet' }))
     await expect(sheet.getByRole('button', { name: 'Google Meet' })).toHaveAttribute(
       'aria-pressed',
@@ -149,6 +216,46 @@ export const MeetingProviderDisabled: Story = {
     await expect(
       sheet.getByText('The link is made in the host’s calendar when you save.'),
     ).toBeVisible()
+  },
+}
+
+/** An installation without calendar keys: no Meet or Teams at all, only in person or one's own link. */
+export const MeetHiddenWhenNotConfigured: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        team,
+        clients,
+        http.get('/api/v1/scheduling/calendars', () =>
+          HttpResponse.json({ providers: [], data: [] }),
+        ),
+        ...schedulingHandlers(state),
+      ],
+    },
+  },
+  play: async () => {
+    const sheet = await drawer()
+    await userEvent.click(await sheet.findByRole('button', { name: 'My own link' }))
+    await expect(sheet.getByRole('textbox', { name: 'Meeting link' })).toBeVisible()
+    await expect(sheet.queryByText('Google Meet')).not.toBeInTheDocument()
+    await expect(sheet.queryByText('Microsoft Teams')).not.toBeInTheDocument()
+    await userEvent.click(sheet.getByRole('button', { name: 'In person' }))
+    await expect(sheet.getByRole('textbox', { name: 'Location' })).toHaveValue('Office')
+  },
+}
+
+/** The notes stay behind two quiet buttons until wanted. */
+export const NotesExpand: Story = {
+  play: async () => {
+    const sheet = await drawer()
+    await expect(sheet.queryByRole('textbox', { name: /Note for the client/ })).toBeNull()
+    await userEvent.click(sheet.getByRole('button', { name: 'Add note for client' }))
+    const note = await sheet.findByRole('textbox', { name: /Note for the client/ })
+    await waitFor(() => expect(note).toHaveFocus())
+    await userEvent.type(note, 'Bring the plans.')
+    await expect(sheet.queryByRole('button', { name: 'Add note for client' })).toBeNull()
+    await userEvent.click(sheet.getByRole('button', { name: 'Add internal note' }))
+    await expect(await sheet.findByRole('textbox', { name: /Internal notes/ })).toBeVisible()
   },
 }
 
