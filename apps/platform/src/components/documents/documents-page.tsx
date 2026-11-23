@@ -38,6 +38,7 @@ import {
   Download,
   Eye,
   FileSignature,
+  Layers,
   LayoutTemplate,
   FolderInput,
   FolderOpen,
@@ -98,7 +99,19 @@ import {
   downloadUrl,
   KIND_LABELS,
   KINDS,
+  DOC_TYPE_LABELS,
+  DOC_TYPES,
+  groupChange,
+  groupLabel,
+  groupsQuery,
+  groupValue,
   listQuery,
+  NO_CLIENT,
+  openDim,
+  storedGrouping,
+  storeGrouping,
+  useDocGroups,
+  zipUrl,
   DEFAULT_VIEW,
   parseView,
   pathTo,
@@ -113,6 +126,7 @@ import {
   type BulkResult,
   type DocFile,
   type Folder,
+  type GroupDim,
   type Kind,
   type Section,
   type SortField,
@@ -120,7 +134,7 @@ import {
   type ViewParams,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
-import { among, oneValue, SINCE_PRESETS, type QueryField } from '@/lib/list-query'
+import { among, oneValue, SINCE_PRESETS, type QueryField, type QueryOption } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 import { folderLabel, isSystemFolder, withoutEmptySystem } from '@/lib/system-folders'
@@ -133,6 +147,8 @@ import { DropProvider, useDropTarget, type DropActions } from './drop-target'
 import { extractBlock } from './extract'
 import { FolderMark } from './folder-art'
 import { FolderTree } from './folder-tree'
+import { GroupByMenu, GroupCrumbs, inPreset, VIEW_PRESETS } from './group-controls'
+import { GroupView } from './group-view'
 import { ItemsView } from './items-view'
 import { KIND_STYLE, KindIcon } from './kind'
 import { OrganizeDrawer } from './organize-drawer'
@@ -247,11 +263,32 @@ export function DocumentsPage() {
   const allFolders = folders.data ?? []
   const folderIds = new Set(allFolders.map((folder) => folder.id))
   // A folder that is gone (trashed elsewhere, a stale link) shows the top level instead.
-  const current = view.folder && (!folders.data || folderIds.has(view.folder)) ? view.folder : null
+  // Group by: virtual folders the API computes from what each file is (nothing moves); `dim` is the
+  // level still to choose, null at the files of one group.
+  const grouping = view.section === 'files' && view.group.length > 0
+  const dim = grouping ? openDim(view) : null
+  const current =
+    !grouping && view.folder && (!folders.data || folderIds.has(view.folder)) ? view.folder : null
   const listing = view.section === 'files' || view.section === 'recent'
   const list = useDocList(
     listQuery({ ...view, folder: current }, session?.user.id),
+    listing && !!session && dim === null,
+  )
+  const groupsLevel = useDocGroups(groupsQuery(view, session?.user.id), dim !== null && !!session)
+  // The sidebar's Views and the client chip's names count over every file.
+  const typeGroups = useDocGroups(
+    groupsQuery({ ...DEFAULT_VIEW, group: ['type'] }, session?.user.id),
     listing && !!session,
+  )
+  const clientGroups = useDocGroups(
+    groupsQuery({ ...DEFAULT_VIEW, group: ['client'] }, session?.user.id),
+    listing && !!session,
+  )
+  const searchFields = queryFields(
+    (clientGroups.data?.groups ?? []).map((group) => ({
+      value: group.key,
+      label: groupLabel('client', group),
+    })),
   )
   const trash = useTrash()
   const sections = useCollapsed()
@@ -291,14 +328,61 @@ export function DocumentsPage() {
   const openFolder = (id: string | null) => {
     clearSelection()
     setSearch('')
-    navigate({ section: 'files', folder: id, search: '', file: null }, true)
+    navigate({ section: 'files', folder: id, search: '', file: null, group: [], ...NO_GROUP }, true)
   }
+  const setGrouping = (group: GroupDim[], change: Partial<ViewParams> = {}) => {
+    storeGrouping(group)
+    clearSelection()
+    navigate({ section: 'files', folder: null, file: null, group, ...NO_GROUP, ...change }, true)
+  }
+  const openGroup = (by: GroupDim, key: string) => {
+    clearSelection()
+    navigate({ ...groupChange(by, key), file: null }, true)
+  }
+  // Back to a level of the breadcrumb: the groups chosen before it stay.
+  const openLevel = (index: number) => {
+    clearSelection()
+    const chosen = view.group.filter((by) => groupValue(view, by) !== null)
+    const change: Partial<ViewParams> = { file: null }
+    for (const by of chosen.slice(index)) Object.assign(change, groupChange(by, null))
+    navigate(change, true)
+  }
+  const groupName = (by: GroupDim, key: string) =>
+    by === 'client' && !clientGroups.data
+      ? translate('client')
+      : groupLabel(by, {
+          key,
+          label: clientGroups.data?.groups.find((group) => group.key === key)?.label ?? '',
+        })
+  // The ZIP of a group: asked first, so a group too big says so instead of a broken download.
+  const downloadZip = (change: Partial<ViewParams> = {}) => {
+    const target = { ...view, ...change }
+    docsApi.checkZip(groupsQuery(target, session?.user.id)).then(() => {
+      const link = document.createElement('a')
+      link.href = zipUrl(target, session?.user.id)
+      link.download = ''
+      link.click()
+      toast.success(translate('zipStarted'))
+    }, docError)
+  }
+  // The last Group by choice comes back when Documents opens plainly (nothing chosen in the link).
+  const restoreGrouping = useEffectEvent(() => {
+    if (query.toString() !== '') return
+    const stored = storedGrouping()
+    if (stored.length > 0) navigate({ group: stored })
+  })
+  useEffect(() => restoreGrouping(), [])
   const openSection = (section: Section) => {
     clearSelection()
     setTrashSelected(new Set())
     setSearch('')
     navigate(
-      { section, search: '', file: null, ...(section !== 'files' && { folder: null }) },
+      {
+        section,
+        search: '',
+        file: null,
+        ...(section !== 'files' && { folder: null, group: [], ...NO_GROUP }),
+      },
       true,
     )
   }
@@ -347,7 +431,8 @@ export function DocumentsPage() {
       : translate('allDocuments')
 
   // ---- what is on screen ----
-  const filtered = view.kinds.length > 0 || view.mine || view.date !== null
+  const byGroup = view.type !== null || view.year !== null || view.client !== null
+  const filtered = view.kinds.length > 0 || view.mine || view.date !== null || byGroup || grouping
   const searching = view.search.trim().length > 0
   const visibleFolders: Folder[] =
     view.section !== 'files' || filtered
@@ -360,7 +445,8 @@ export function DocumentsPage() {
             withoutEmptySystem(allFolders, new Set(pathTo(allFolders, current).map((f) => f.id))),
           ).get(current ?? '') ?? [])
   if (view.sort === 'name' && view.desc) visibleFolders.reverse()
-  const files = list.data?.data ?? []
+  // At a level of groups there are no files on screen (the list keeps its last page as a placeholder).
+  const files = dim === null ? (list.data?.data ?? []) : []
   // The top level of "All documents", unfiltered: the storage overview and Recent show there.
   const home = view.section === 'files' && current === null && !searching && !filtered
   const usage = useUsage(home)
@@ -879,10 +965,11 @@ export function DocumentsPage() {
       </>
     )
   }
-  const showLocation = searching || view.section === 'recent'
+  const showLocation = searching || view.section === 'recent' || grouping || byGroup
+  const inGroup = grouping && view.group.some((by) => groupValue(view, by) !== null)
   const dropHere = view.section === 'trash' ? null : current
   const surfaceDrop = useDropTarget(dropHere)
-  const loading = listing && !list.data && !list.error
+  const loading = listing && dim === null && !list.data && !list.error
 
   return (
     <DropProvider value={canWrite ? dropActions : null}>
@@ -962,6 +1049,17 @@ export function DocumentsPage() {
                 trashCount={trashItemsList.length}
                 kind={view.kinds.length === 1 ? (view.kinds[0] ?? null) : null}
                 pinned={pinned}
+                views={VIEW_PRESETS.map((preset) => ({
+                  id: preset.id,
+                  label: preset.label,
+                  count: preset.type
+                    ? (typeGroups.data?.groups.find((group) => group.key === preset.type)?.count ??
+                      null)
+                    : (clientGroups.data?.groups.filter((group) => group.key !== NO_CLIENT)
+                        .length ?? null),
+                  current: inPreset(view, preset),
+                  onSelect: () => setGrouping(preset.group, { type: preset.type }),
+                }))}
                 actions={{
                   create: (name) =>
                     void docsApi.createFolder(name, null).then(({ data }) => {
@@ -989,7 +1087,14 @@ export function DocumentsPage() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="sticky top-[52px] z-10 flex h-12 shrink-0 items-center gap-1 border-b bg-card px-2 md:px-3">
-            {view.section === 'files' ? (
+            {grouping ? (
+              <GroupCrumbs
+                view={view}
+                label={groupName}
+                onFolders={() => openFolder(null)}
+                onLevel={openLevel}
+              />
+            ) : view.section === 'files' ? (
               <Breadcrumbs
                 crumbs={crumbs}
                 searching={searching}
@@ -1042,6 +1147,23 @@ export function DocumentsPage() {
                 </Button>
               </div>
             )}
+            {inGroup && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label={translate('downloadAllZip')}
+                    className="mr-1 cursor-pointer gap-1.5 font-normal text-foreground/80"
+                    onClick={() => downloadZip()}
+                  >
+                    <Download className="stroke-[1.5]" />
+                    <span className="max-lg:sr-only">{translate('downloadAllZip')}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{translate('downloadAllZip')}</TooltipContent>
+              </Tooltip>
+            )}
             {listing && (
               <>
                 <ListSearch
@@ -1052,13 +1174,20 @@ export function DocumentsPage() {
                   value={search}
                   onChange={setSearch}
                   query={{
-                    fields: QUERY_FIELDS,
+                    fields: searchFields,
                     params: view,
                     onChange: (change) => navigate(change),
                   }}
                 />
-                <Filters view={view} onChange={(change) => navigate(change)} />
+                <Filters
+                  view={view}
+                  fields={searchFields}
+                  onChange={(change) => navigate(change)}
+                />
                 {view.section === 'files' && (
+                  <GroupByMenu group={view.group} onChange={(group) => setGrouping(group)} />
+                )}
+                {view.section === 'files' && dim === null && (
                   <SortMenu view={view} onChange={(change) => navigate(change)} />
                 )}
                 <ViewToggle layout={view.layout} onChange={(layout) => navigate({ layout })} />
@@ -1129,7 +1258,41 @@ export function DocumentsPage() {
                 {home && usage.data && usage.data.files > 0 && (
                   <StorageOverview usage={usage.data} onTrash={() => openSection('trash')} />
                 )}
-                {list.error ? (
+                {dim !== null ? (
+                  groupsLevel.error ? (
+                    <LoadProblem
+                      error={groupsLevel.error}
+                      what={translate('theFiles')}
+                      onRetry={() => void groupsLevel.refetch()}
+                    />
+                  ) : groupsLevel.data?.by !== dim ? (
+                    <LoadingRows />
+                  ) : groupsLevel.data.groups.length === 0 ? (
+                    <State
+                      icon={<Layers />}
+                      title={translate('groupEmpty')}
+                      text={translate('groupEmptyText')}
+                      action={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="cursor-pointer"
+                          onClick={() => setGrouping([])}
+                        >
+                          {translate('groupingFolders')}
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <GroupView
+                      dim={dim}
+                      groups={groupsLevel.data.groups}
+                      layout={view.layout}
+                      onOpen={(group) => openGroup(dim, group.key)}
+                      onDownload={(group) => downloadZip(groupChange(dim, group.key))}
+                    />
+                  )
+                ) : list.error ? (
                   <LoadProblem
                     error={list.error}
                     what={translate('theFiles')}
@@ -1145,7 +1308,7 @@ export function DocumentsPage() {
                     onNewFolder={() => setNewFolderIn(current)}
                     onClear={() => {
                       setSearch('')
-                      navigate({ search: '', kinds: [], mine: false, date: null })
+                      navigate({ search: '', kinds: [], mine: false, date: null, ...NO_GROUP })
                     }}
                   />
                 ) : (
@@ -1651,7 +1814,48 @@ function SortMenu({
   )
 }
 
-/** The search's field terms: `kind:`, `uploaded:` and `by:me`, the Filters popover's choices. */
+/** No group chosen: what leaving a grouped view (or clearing the filters) resets. */
+const NO_GROUP = { type: null, year: null, client: null } satisfies Partial<ViewParams>
+
+/**
+ * The search's field terms: `kind:`, `uploaded:`, `by:me` and the groups' `type:`, `year:` and
+ * `client:` (a virtual folder is these filters), the Filters popover's choices.
+ */
+const queryFields = (clients: QueryOption[]): QueryField<ViewParams>[] => [
+  ...QUERY_FIELDS,
+  {
+    id: 'type',
+    label: translate('type'),
+    type: 'enum',
+    values: DOC_TYPES.map((type) => ({ value: type, label: DOC_TYPE_LABELS[type] })),
+    placeholder: translate('anyType'),
+    ...oneValue(
+      (view) => view.type,
+      (type) => ({ type: among(DOC_TYPES, type ? [type] : [])[0] ?? null }),
+    ),
+  },
+  {
+    id: 'year',
+    label: translate('year'),
+    type: 'number',
+    ...oneValue(
+      (view) => (view.year === null ? null : String(view.year)),
+      (year) => ({ year: year && /^\d{4}$/.test(year) ? Number(year) : null }),
+    ),
+  },
+  {
+    id: 'client',
+    label: translate('client'),
+    type: 'enum',
+    values: clients,
+    placeholder: translate('anyClient'),
+    ...oneValue(
+      (view) => view.client,
+      (client) => ({ client }),
+    ),
+  },
+]
+
 const QUERY_FIELDS: QueryField<ViewParams>[] = [
   {
     id: 'kind',
@@ -1688,14 +1892,16 @@ const QUERY_FIELDS: QueryField<ViewParams>[] = [
 
 function Filters({
   view,
+  fields,
   onChange,
 }: {
   view: ViewParams
+  fields: QueryField<ViewParams>[]
   onChange: (change: Partial<ViewParams>) => void
 }) {
   return (
     <ListFilters
-      fields={QUERY_FIELDS}
+      fields={fields}
       params={view}
       onChange={onChange}
       variant="outline"
@@ -1729,7 +1935,15 @@ function Empty({
   onClear: () => void
 }) {
   const canWrite = useCan('write:documents')
-  if (view.search.trim() || view.kinds.length || view.mine || view.date)
+  if (
+    view.search.trim() ||
+    view.kinds.length ||
+    view.mine ||
+    view.date ||
+    view.type ||
+    view.year ||
+    view.client
+  )
     return (
       <State
         icon={<SearchX />}

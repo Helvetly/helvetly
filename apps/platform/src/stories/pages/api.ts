@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { billingFixture } from '@/components/billing/billing-fixture'
 import publicOffer from '@/components/billing/public-offer.fixture.json'
 import type { Period as BooksPeriod } from '@/lib/books'
-import type { DocFile, Folder } from '@/lib/documents'
+import type { DocFile, DocGroup, Folder } from '@/lib/documents'
 import type { Engagement, Entry, Period } from '@/lib/engagements'
 import type { Expense, ExpenseCategory, Summary as ExpenseSummary } from '@/lib/expenses'
 import type { Line } from '@/lib/invoices'
@@ -456,6 +456,26 @@ export const file = (id: string, name: string, kind: DocFile['kind'], type: stri
   deleted_by: null,
   purge_at: null,
 })
+/** The groups of the Documents' grouped views, by what they group by. */
+export const documentGroups: Record<string, DocGroup[]> = {
+  type: [
+    { key: 'invoices', label: '', count: 12, size: 2_400_000 },
+    { key: 'quotes', label: '', count: 4, size: 610_000 },
+    { key: 'receipts', label: '', count: 6, size: 1_500_000 },
+    { key: 'contracts', label: '', count: 2, size: 380_000 },
+    { key: 'other', label: '', count: 3, size: 640_000 },
+  ],
+  year: [
+    { key: '2026', label: '', count: 15, size: 3_100_000 },
+    { key: '2025', label: '', count: 8, size: 2_420_000 },
+  ],
+  client: [
+    { key: 'cli_acme', label: 'Acme AG', count: 9, size: 1_900_000 },
+    { key: 'cli_bern', label: 'Bern Bau GmbH', count: 6, size: 1_200_000 },
+    { key: 'none', label: '', count: 8, size: 2_420_000 },
+  ],
+}
+
 export const files = [
   file('doc_1', 'Mandate agreement Alpenglow.pdf', 'pdf', 'application/pdf'),
   file('doc_2', 'Office lease 2026.pdf', 'pdf', 'application/pdf'),
@@ -670,6 +690,14 @@ export const shellHandlers = [
       },
     }),
   ),
+  http.get('/api/v1/documents/groups/zip', () => new HttpResponse(null, { status: 204 })),
+  http.get('/api/v1/documents/groups', ({ request }) => {
+    const query = new URL(request.url).searchParams
+    const by = (query.get('group') ?? '').split(',').find((dim) => !query.get(dim))
+    return by
+      ? HttpResponse.json({ data: { by, groups: documentGroups[by] ?? [] } })
+      : HttpResponse.json(page(files))
+  }),
   http.get('/api/v1/documents/:id/content', () => new HttpResponse(null, { status: 204 })),
   http.get('/api/v1/documents', () => HttpResponse.json(page(files))),
   http.get('/api/v1/templates', () => HttpResponse.json({ data: templates })),

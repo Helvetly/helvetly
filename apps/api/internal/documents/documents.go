@@ -47,10 +47,14 @@ type Service struct {
 	filer   aimodel.Provider // nil: AI filing is off
 	budget  aimodel.Budget
 	text    func([]byte, int) string
+	// A group's ZIP holds at most zipFiles files and zipBytes bytes (groups.go).
+	zipFiles int
+	zipBytes int64
 }
 
 func New(db *store.Store, a Auth, files Storage, maxSize int64, log *slog.Logger) *Service {
-	return &Service{db: db, auth: a, files: files, log: log, maxSize: maxSize, now: func() time.Time { return time.Now().UTC() }}
+	return &Service{db: db, auth: a, files: files, log: log, maxSize: maxSize, now: func() time.Time { return time.Now().UTC() },
+		zipFiles: maxZipFiles, zipBytes: maxZipBytes}
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.Session) error
@@ -75,6 +79,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/documents", s.upload)
 	handle("POST /api/v1/documents/bulk", s.bulk)
 	handle("GET /api/v1/documents/usage", s.usage)
+	handle("GET /api/v1/documents/groups", s.groups)
+	handle("GET /api/v1/documents/groups/zip", s.groupZip)
 	handle("GET /api/v1/documents/trash", s.trash)
 	handle("POST /api/v1/documents/trash/empty", s.emptyTrash)
 	handle("GET /api/v1/documents/{id}", s.get)
@@ -375,13 +381,26 @@ const (
 )
 
 func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	f, err := listFilter(r, sess)
+	if err != nil {
+		return err
+	}
+	page, size, err := paging(r)
+	if err != nil {
+		return err
+	}
+	return s.writePage(w, r, sess, f, page, size)
+}
+
+// listFilter: the list's filters from the query, the virtual groups' keys (type, year, client) included.
+func listFilter(r *http.Request, sess store.Session) (store.DocumentFilter, error) {
 	v := r.URL.Query()
 	f := store.DocumentFilter{Folder: v.Get("folder_id"), Search: strings.TrimSpace(v.Get("search")),
 		UploadedBy: v.Get("uploaded_by"), ClientID: v.Get("client_id"), From: v.Get("from"), To: v.Get("to"), Zone: sess.Workspace.Zone(),
-		Tag: strings.ToLower(strings.TrimSpace(v.Get("tag")))}
+		Tag: strings.ToLower(strings.TrimSpace(v.Get("tag"))), Type: v.Get("type"), Client: v.Get("client")}
 	for _, k := range v["kind"] {
 		if !slices.Contains(kinds, k) {
-			return badRequest("Unknown kind " + strconv.Quote(k) + ".")
+			return f, badRequest("Unknown kind " + strconv.Quote(k) + ".")
 		}
 	}
 	if len(v["kind"]) > 0 {
@@ -389,29 +408,49 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	}
 	for _, d := range []string{f.From, f.To} {
 		if _, err := time.Parse(time.DateOnly, d); d != "" && err != nil {
-			return badRequest("Dates are YYYY-MM-DD.")
+			return f, badRequest("Dates are YYYY-MM-DD.")
 		}
+	}
+	if f.Type != "" && !slices.Contains(store.DocumentTypes, f.Type) {
+		return f, badRequest("Unknown type " + strconv.Quote(f.Type) + ".")
+	}
+	if y := v.Get("year"); y != "" {
+		n, err := strconv.Atoi(y)
+		if err != nil || n < 1900 || n > 9999 {
+			return f, badRequest("year is a year such as 2026.")
+		}
+		f.Year = n
 	}
 	f.Sort = strings.TrimPrefix(v.Get("sort"), "-")
 	f.Desc = strings.HasPrefix(v.Get("sort"), "-")
 	if _, ok := store.DocumentSorts[f.Sort]; !ok && f.Sort != "" {
-		return badRequest("Unknown sort " + strconv.Quote(f.Sort) + ".")
+		return f, badRequest("Unknown sort " + strconv.Quote(f.Sort) + ".")
 	}
-	page, size := 1, defaultPageSize
+	return f, nil
+}
+
+func paging(r *http.Request) (page, size int, err error) {
+	v := r.URL.Query()
+	page, size = 1, defaultPageSize
 	if p := v.Get("page"); p != "" {
 		n, err := strconv.Atoi(p)
 		if err != nil || n < 1 {
-			return badRequest("page must be a positive number.")
+			return 0, 0, badRequest("page must be a positive number.")
 		}
 		page = n
 	}
 	if p := v.Get("page_size"); p != "" {
 		n, err := strconv.Atoi(p)
 		if err != nil || n < 1 || n > maxPageSize {
-			return badRequest("page_size must be from 1 to 500.")
+			return 0, 0, badRequest("page_size must be from 1 to 500.")
 		}
 		size = n
 	}
+	return page, size, nil
+}
+
+// writePage answers a page of the files matching f, with the meta of the paging.
+func (s *Service) writePage(w http.ResponseWriter, r *http.Request, sess store.Session, f store.DocumentFilter, page, size int) error {
 	docs, total, err := s.db.ListDocuments(r.Context(), sess.Workspace.ID, f, size, (page-1)*size)
 	if err != nil {
 		return err
