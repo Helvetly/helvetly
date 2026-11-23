@@ -81,7 +81,7 @@ export function Kpi({
           </span>
         )}
       </p>
-      <p className="flex items-start gap-1 text-[30px] leading-none font-normal tracking-[-0.02em] tabular-nums">
+      <p className="flex flex-wrap items-start gap-1 text-[30px] leading-none font-normal tracking-[-0.02em] tabular-nums">
         {unit && (
           <span className="mt-1 mr-0.5 text-[13px] tracking-normal text-muted-foreground">
             {unit}

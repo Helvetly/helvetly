@@ -57,7 +57,10 @@ export function DashboardCard({
   children: ReactNode
 }) {
   return (
-    <section className={cn('flex min-w-0 flex-col rounded-xl border bg-card', className)}>
+    // A container: what a card shows follows its own width, wherever the page lays it out.
+    <section
+      className={cn('@container flex min-w-0 flex-col rounded-xl border bg-card', className)}
+    >
       <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-3 pb-2">
         <ToneTile icon={icon} tone={tone} />
         <div className="flex min-w-0 items-center gap-1.5">
