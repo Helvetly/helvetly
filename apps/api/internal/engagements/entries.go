@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"time"
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/invoicecalc"
@@ -255,4 +256,45 @@ func (s *Service) deleteEntry(w http.ResponseWriter, r *http.Request, sess store
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+var errEngagementPeriod = auth.Error(http.StatusUnprocessableEntity, "engagement_period",
+	"The session's date is outside the engagement's open periods: it has ended, or its period has not started yet.", nil)
+
+// AddEntry logs en on the engagement inside the caller's transaction, for Scheduling's sessions that count: the
+// engagement is locked, its due periods opened, and en.Date picks the period (422 engagement_period for none).
+// Unlike the route, a date need not be today or earlier: a late cancellation counts on the session's own date.
+func AddEntry(ctx context.Context, q store.Q, ws store.Workspace, engagementID string, en store.EngagementEntry, now time.Time) error {
+	e, err := q.Engagement(ctx, ws.ID, engagementID, true)
+	if err != nil {
+		return err
+	}
+	periods, err := ensurePeriods(ctx, q, e, ws.Today(now))
+	if err != nil {
+		return err
+	}
+	last := lastDay(e)
+	for _, p := range periods {
+		if p.StartsOn <= en.Date && en.Date <= p.EndsOn && en.Date >= e.StartDate && (last == "" || en.Date <= last) {
+			en.PeriodID = p.ID
+			return q.CreateEntry(ctx, e.ID, en, now)
+		}
+	}
+	return errEngagementPeriod
+}
+
+// RemoveEntry deletes an entry AddEntry made, inside the caller's transaction; one already gone is fine, one on an
+// invoice is refused (409 entry_invoiced).
+func RemoveEntry(ctx context.Context, q store.Q, engagementID, entryID string) error {
+	en, err := q.Entry(ctx, engagementID, entryID, true)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if en.Invoice != nil {
+		return errEntryInvoiced
+	}
+	return q.DeleteEntry(ctx, en.ID)
 }
