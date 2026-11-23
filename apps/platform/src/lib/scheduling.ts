@@ -465,8 +465,8 @@ export const weekStart = (date: string) => addDays(date, 1 - weekdayOf(date))
 export const monthStart = (date: string) => `${date.slice(0, 7)}-01`
 const daysInMonth = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate()
 
-export type View = 'day' | 'week' | 'month' | 'list'
-export const VIEWS: readonly View[] = ['day', 'week', 'month', 'list']
+export type View = 'day' | 'week' | 'month'
+export const VIEWS: readonly View[] = ['day', 'week', 'month']
 
 /** The civil dates a view shows around `date`: one day, a week from Monday, or the month's weeks. */
 export function daysOf(view: View, date: string): string[] {
@@ -480,9 +480,9 @@ export function daysOf(view: View, date: string): string[] {
   return days
 }
 
-/** The instants a view asks the API for; the list shows 30 days from the date. */
+/** The instants a view asks the API for. */
 export function rangeOf(view: View, date: string, zone: string) {
-  const days = view === 'list' ? [date, addDays(date, 29)] : daysOf(view, date)
+  const days = daysOf(view, date)
   const first = days[0] ?? date
   const last = days.at(-1) ?? date
   return {
@@ -491,11 +491,10 @@ export function rangeOf(view: View, date: string, zone: string) {
   }
 }
 
-/** Where the arrows go: a day, a week, a month or 30 days on. */
+/** Where the arrows go: a day, a week or a month on. */
 export function step(view: View, date: string, direction: 1 | -1) {
   if (view === 'day') return addDays(date, direction)
   if (view === 'week') return addDays(date, 7 * direction)
-  if (view === 'list') return addDays(date, 30 * direction)
   const [y, m] = date.split('-').map(Number)
   const month = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1 + direction, 1))
   return month.toISOString().slice(0, 10)
@@ -541,7 +540,7 @@ export const weekdayName = (day: Weekday, width: 'short' | 'long') =>
 export function periodLabel(view: View, date: string) {
   if (view === 'month') return civil(date, { month: 'long', year: 'numeric' })
   if (view === 'day') return longDayLabel(date)
-  const days = view === 'week' ? daysOf('week', date) : [date, addDays(date, 29)]
+  const days = daysOf('week', date)
   return `${shortDate(days[0] ?? date)} – ${shortDate(days.at(-1) ?? date)}`
 }
 

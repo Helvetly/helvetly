@@ -1,17 +1,23 @@
 import type { Locale } from '@helvetly/i18n'
 import { Badge, type Tone } from '@helvetly/ui/components/badge'
-import { HeidiMark } from '@helvetly/ui/components/heidi-mark'
+import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { LogoMark } from '@helvetly/ui/components/logo'
 import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import {
-  CalendarRange,
-  FileSignature,
+  BookOpen,
+  Building2,
+  CalendarDays,
+  ClipboardCheck,
   FileText,
-  Folder,
-  LayoutDashboard,
-  Receipt,
+  IdCard,
+  type LucideIcon,
+  LayoutGrid,
+  Package,
+  ReceiptText,
+  ScrollText,
   Search,
   Users,
+  Wallet,
 } from 'lucide-react'
 
 import { CountUp } from '@/components/count-up'
@@ -84,15 +90,36 @@ export function ProductWindow({ lang }: { lang: Locale }) {
       bar: 'bg-lilac-solid',
     },
   ]
-  const NAV = [
-    { icon: LayoutDashboard, label: translate('dashboard'), active: true },
-    { icon: FileText, label: translate('invoices') },
-    { icon: Receipt, label: translate('expenses') },
-    { icon: Users, label: translate('clients') },
-    { icon: Folder, label: translate('documents') },
-    { icon: CalendarRange, label: translate('engagements') },
-    { icon: FileSignature, label: translate('signatures') },
-  ]
+  // The platform's sidebar (apps/platform/src/components/shell/nav.ts): same items, order and icons.
+  const NAV: { label?: string; items: { icon: LucideIcon; label: string; active?: boolean }[] }[] =
+    [
+      {
+        items: [
+          { icon: LayoutGrid, label: translate('dashboard'), active: true },
+          { icon: CalendarDays, label: translate('scheduling') },
+          { icon: FileText, label: translate('documents') },
+        ],
+      },
+      {
+        label: translate('sales'),
+        items: [
+          { icon: Building2, label: translate('clients') },
+          { icon: ScrollText, label: translate('quotes') },
+          { icon: ClipboardCheck, label: translate('engagements') },
+          { icon: ReceiptText, label: translate('invoices') },
+          { icon: Package, label: translate('productsServices') },
+          { icon: Wallet, label: translate('expenses') },
+          { icon: BookOpen, label: translate('books') },
+        ],
+      },
+      {
+        label: translate('team'),
+        items: [
+          { icon: Users, label: translate('members') },
+          { icon: IdCard, label: translate('employees') },
+        ],
+      },
+    ]
   return (
     // A picture of the app, not part of the page: inert keeps it out of focus and of the accessibility checks.
     <div
@@ -115,30 +142,37 @@ export function ProductWindow({ lang }: { lang: Locale }) {
 
       <div className="flex bg-background text-left">
         {/* Sidebar */}
-        <div className="hidden w-48 shrink-0 flex-col gap-0.5 p-3 lg:flex">
-          <div className="mb-3 flex items-center gap-2 px-2 py-1">
+        <div className="hidden w-48 shrink-0 flex-col p-3 lg:flex">
+          <div className="mb-1 flex items-center gap-2 px-2 py-1">
             <span className="inline-flex size-6 items-center justify-center rounded-[28%] bg-linear-to-br from-logo-from to-logo-to text-white">
               <LogoMark className="size-[62%]" />
             </span>
             <span className="text-body-sm font-semibold">{translate('acmeTreuhand')}</span>
           </div>
-          {NAV.map(({ icon: Icon, label, active }) => (
-            <div
-              key={label}
-              className={cn(
-                'flex items-center gap-2 rounded-md px-2 py-1.5 text-body-sm',
-                active
-                  ? 'bg-sidebar-accent font-medium text-foreground'
-                  : 'text-sidebar-foreground',
+          {NAV.map((group) => (
+            <div key={group.label ?? 'top'} className="flex flex-col gap-px">
+              {group.label && (
+                <p className="px-2 pt-2 pb-0.5 text-caption text-muted-foreground">{group.label}</p>
               )}
-            >
-              <Icon className="size-3.5" />
-              {label}
+              {group.items.map(({ icon: Icon, label, active }) => (
+                <div
+                  key={label}
+                  className={cn(
+                    'flex items-center gap-2 rounded-md px-2 py-1 text-body-sm',
+                    active
+                      ? 'bg-sidebar-accent font-medium text-foreground'
+                      : 'text-sidebar-foreground',
+                  )}
+                >
+                  <Icon className="size-3.5 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </div>
+              ))}
             </div>
           ))}
-          <div className="mt-3 flex items-center gap-2 rounded-md bg-heidi-soft/70 px-2 py-1.5 text-body-sm font-medium text-heidi-ink">
-            <HeidiMark className="size-4" animated />
-            {translate('askHeidi')}
+          <div className="mt-auto flex items-center gap-2 rounded-md px-2 pt-3 pb-1 text-body-sm text-sidebar-foreground">
+            <HeidiSparkle className="size-3.5" animated />
+            <span className="truncate">{translate('heidiAiAssistant')}</span>
           </div>
         </div>
 
@@ -152,6 +186,10 @@ export function ProductWindow({ lang }: { lang: Locale }) {
               <p className="text-title font-semibold tracking-tight">
                 {translate('goodMorningAnna')}
               </p>
+            </div>
+            <div className="bg-sky text-sky-ink ml-auto hidden h-8 items-center gap-1.5 rounded-full px-2.5 text-caption font-medium md:flex">
+              <CalendarDays className="size-3.5" />
+              {translate('nextSession1400StudioLumen')}
             </div>
             <div className="hidden h-8 w-44 items-center gap-2 rounded-lg border border-input px-2.5 text-body-sm text-placeholder sm:flex">
               <Search className="size-3.5" />

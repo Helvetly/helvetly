@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { occurrence } from '@/mocks/scheduling'
 
 import {
-  addDays,
   daysOf,
   defaultCancelAs,
   defaultUnits,
@@ -60,7 +59,6 @@ describe('views', () => {
     expect(step('day', '2026-12-31', 1)).toBe('2027-01-01')
     expect(step('week', '2026-12-02', -1)).toBe('2026-11-25')
     expect(step('month', '2026-01-31', 1)).toBe('2026-02-01')
-    expect(step('list', '2026-12-02', 1)).toBe(addDays('2026-12-02', 30))
   })
 
   it('shows whole weeks around a month', () => {
