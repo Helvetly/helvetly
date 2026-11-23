@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { event, occurrence } from '@/mocks/scheduling'
 
 import {
+  asksDuration,
   autoTitle,
   blankValues,
   changesOf,
   dateChange,
+  eventTypeValues,
   presetOf,
   presetValues,
   setPosOf,
@@ -248,5 +250,45 @@ describe('title', () => {
 
   it('keeps an existing session’s title', () => {
     expect(valuesFrom(occurrence(), event()).title_auto).toBe(false)
+  })
+})
+
+describe('event type', () => {
+  const german = {
+    id: 'set_german',
+    name: 'German 60 min',
+    duration_minutes: 60,
+    mode: 'online' as const,
+    meeting_provider: 'google_meet' as const,
+    location: null,
+  }
+
+  it('sets its length, place and name, and keeps what it leaves open', () => {
+    expect(eventTypeValues(blank({ title: '', title_auto: true, duration: '45' }), german)).toEqual(
+      {
+        event_type_id: 'set_german',
+        duration: '60',
+        mode: 'online',
+        provider: 'google_meet',
+        location: 'Office',
+        title: 'German 60 min',
+      },
+    )
+    expect(
+      eventTypeValues(blank(), {
+        ...german,
+        mode: 'live',
+        meeting_provider: null,
+        location: 'Bern',
+      }),
+    ).toMatchObject({ mode: 'live', provider: 'manual', location: 'Bern' })
+  })
+
+  it('asks for the duration only without a type, with another length or when overridden', () => {
+    const typed = { ...blank(), ...eventTypeValues(blank(), german) }
+    expect(asksDuration(typed, german, false)).toBe(false)
+    expect(asksDuration(typed, german, true)).toBe(true)
+    expect(asksDuration({ ...typed, duration: '90' }, german, false)).toBe(true)
+    expect(asksDuration(typed, undefined, false)).toBe(true)
   })
 })

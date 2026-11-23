@@ -115,10 +115,6 @@ export const EventTypePrefills: Story = {
     const sheet = await drawer()
     await pick(sheet, 'Event type', 'Intro call')
     await expect(await titleField()).toHaveValue('Intro call')
-    await expect(sheet.getByRole('button', { name: '30 min' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
     await expect(sheet.getByRole('button', { name: 'My own link' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -128,6 +124,28 @@ export const EventTypePrefills: Story = {
     await userEvent.type(await titleField(), 'First meeting')
     await pick(sheet, 'Event type', 'Coaching session')
     await expect(await titleField()).toHaveValue('First meeting')
+  },
+}
+
+/** The event type's length is not asked again: the summary names it, and Change opens the picks anyway. */
+export const EventTypeDuration: Story = {
+  play: async () => {
+    const sheet = await drawer()
+    await expect(sheet.getByRole('button', { name: '45 min' })).toBeVisible()
+    await pick(sheet, 'Event type', 'Intro call')
+    await expect(await sheet.findByText(/3 Dec · 14:00 – 14:30 \(Zurich\)/)).toBeVisible()
+    await expect(sheet.getByText('· 30 min')).toBeVisible()
+    await expect(sheet.queryByRole('button', { name: '45 min' })).not.toBeInTheDocument()
+    await userEvent.click(sheet.getByRole('button', { name: 'Change duration' }))
+    await expect(sheet.getByRole('button', { name: '30 min' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(sheet.queryByRole('button', { name: 'Change duration' })).not.toBeInTheDocument()
+    // The custom length's unit sits inside its field.
+    await userEvent.click(sheet.getByRole('button', { name: 'Custom' }))
+    const minutes = await sheet.findByRole('textbox', { name: 'Duration in minutes' })
+    await expect(minutes.closest('[data-slot=input-group]')).toHaveTextContent('min')
   },
 }
 
@@ -256,6 +274,36 @@ export const NotesExpand: Story = {
     await expect(sheet.queryByRole('button', { name: 'Add note for client' })).toBeNull()
     await userEvent.click(sheet.getByRole('button', { name: 'Add internal note' }))
     await expect(await sheet.findByRole('textbox', { name: /Internal notes/ })).toBeVisible()
+  },
+}
+
+/** The client comes first, before the event type. */
+export const ClientFirst: Story = {
+  play: async () => {
+    const sheet = await drawer()
+    const type = await sheet.findByRole('button', { name: /^Event type/ })
+    const client = sheet.getByRole('button', { name: /^Client/ })
+    await expect(
+      client.compareDocumentPosition(type) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  },
+}
+
+/** Each row's icon sits on its first line: an open note's label, not the middle of its box. */
+export const NotesAlignment: Story = {
+  play: async () => {
+    const sheet = await drawer()
+    await userEvent.click(sheet.getByRole('button', { name: 'Add note for client' }))
+    await sheet.findByRole('textbox', { name: /Note for the client/ })
+    const label = sheet.getByText('Note for the client', { selector: 'label' })
+    const icon = label.closest('[data-row]')?.querySelector('[data-row-icon]')
+    if (!icon) throw new Error('No row icon')
+    const box = icon.getBoundingClientRect()
+    const text = label.getBoundingClientRect()
+    await expect(Math.abs(box.top - text.top)).toBeLessThanOrEqual(1)
+    await expect(
+      Math.abs(box.top + box.height / 2 - (text.top + text.height / 2)),
+    ).toBeLessThanOrEqual(1)
   },
 }
 
