@@ -227,7 +227,7 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
         onPrimary={canWrite ? () => newAt(date) : undefined}
         start={
           <>
-            <Button type="button" variant="outline" size="sm" onClick={() => go(today)}>
+            <Button type="button" variant="outline" onClick={() => go(today)}>
               {translate('today')}
             </Button>
             <div className="flex shrink-0 items-center">
@@ -236,7 +236,7 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon-sm"
+                    size="icon"
                     aria-label={translate('schedPrevious')}
                     onClick={() => go(step(view, date, -1))}
                   >
@@ -250,7 +250,7 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon-sm"
+                    size="icon"
                     aria-label={translate('schedNext')}
                     onClick={() => go(step(view, date, 1))}
                   >
