@@ -1,15 +1,10 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
@@ -36,7 +31,6 @@ import {
   awaitsApproval,
   showsApproval,
 } from '@/components/approvals/approval-panel'
-import { dropdownKit, titleClass } from '@/components/data/menus'
 import { Money } from '@/components/invoices/invoice-bits'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { HeroFact, RecordHero } from '@/components/invoices/record-hero'
@@ -62,7 +56,7 @@ import { QuoteRowStatus } from './quote-bits'
 import {
   ACTIONS,
   commandLabel,
-  QuoteMenuItems,
+  quoteActions,
   useContractEntry,
   useQuoteCommands,
 } from './quote-commands'
@@ -205,20 +199,13 @@ function Detail({
                 </TooltipTrigger>
                 <TooltipContent>{translate('moreActions')}</TooltipContent>
               </Tooltip>
-              <DropdownMenuContent align="end" className="min-w-52">
-                <DropdownMenuLabel className={titleClass}>
-                  {quoteNumber(quote)} · {quote.client.name}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <QuoteMenuItems
-                  kit={dropdownKit}
-                  quote={quote}
-                  writable={writable}
-                  run={commands.run}
-                  skip={skip}
-                  contract={contract}
-                />
-              </DropdownMenuContent>
+              <ActionMenuContent
+                kind="dropdown"
+                menu={{
+                  header: `${quoteNumber(quote)} · ${quote.client.name}`,
+                  actions: quoteActions({ quote, writable, run: commands.run, skip, contract }),
+                }}
+              />
             </DropdownMenu>
             {writable && can.edit && (
               <Button variant="outline" className="gap-1.5" onClick={onEdit}>

@@ -34,6 +34,7 @@ type upload struct {
 type input struct {
 	conversation, message, importID string
 	path                            string // the app screen it was sent from; context only, never for access
+	lang                            string // the interface's language, Heidi's last fallback for the reply's
 	files                           []upload
 }
 
@@ -51,7 +52,7 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 	f := r.MultipartForm
 	bad := func(message string) (input, error) { return input{}, invalid(message) }
 	for k, v := range f.Value {
-		if !slices.Contains([]string{"message", "conversation_id", "page", "path", "import_id"}, k) || len(v) != 1 {
+		if !slices.Contains([]string{"message", "conversation_id", "page", "path", "import_id", "lang"}, k) || len(v) != 1 {
 			return bad("The message contains repeated or unknown fields.")
 		}
 	}
@@ -123,7 +124,7 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 		}
 		files = append(files, upload{Header: h, Name: name, Type: ct, Hash: sum})
 	}
-	return input{conversation: id, message: message, importID: importID, path: screenPath, files: files}, nil
+	return input{conversation: id, message: message, importID: importID, path: screenPath, lang: value("lang"), files: files}, nil
 }
 
 var (
@@ -301,7 +302,7 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			result.Provider = false
 		default:
 			progress := func(label string) { _ = st.status(label) }
-			result, err = s.modelAnswer(r.Context(), sess, id, message, in.path, files, localVerdict(message) == inScope, progress)
+			result, err = s.modelAnswer(r.Context(), sess, id, message, in.path, uiLanguage(r, in.lang), files, localVerdict(message) == inScope, progress)
 			if err != nil {
 				return err
 			}

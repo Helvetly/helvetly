@@ -33,22 +33,20 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { type ComponentProps, memo, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
-import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
+import { useExportAction, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { CURRENCY_OPTIONS } from '@/components/clients/fields'
 import { activeFilters, ListFilters, sinceOptions } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
-  dropdownKit,
   PageContextMenu,
   RowContextMenu,
   RowMenuButton,
-  type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
-import { ImportItem, useImportDrawer } from '@/components/import/import-button'
+import { useImportAction, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { PageHeader } from '@/components/shell/page-header'
@@ -309,19 +307,12 @@ export function ProductsPage() {
       remove: () => setDeleting(rows.filter((row) => selected.has(row.id))),
     }),
   }
-  const pageItems = ({ Item }: MenuKit) => (
-    <>
-      {canWrite && (
-        <ImportItem Item={Item} onSelect={importDrawer.open}>
-          {translate('import')}
-        </ImportItem>
-      )}
-      <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
-        {translate('exportCSV')}
-        {filtered ? ' (filtered)' : ''}
-      </ExportItem>
-    </>
+  const importAction = useImportAction(translate('import'), importDrawer.open)
+  const exportAction = useExportAction(
+    `${translate('exportCSV')}${filtered ? ' (filtered)' : ''}`,
+    localizedHref(exportUrl(params)),
   )
+  const pageItems = [canWrite && importAction, exportAction]
   const access = useMemo(() => ({ canManage, canWrite }), [canManage, canWrite])
   const open = useStableCallback(openProduct)
   const toggle = useStableCallback(toggleRow)
@@ -346,14 +337,14 @@ export function ProductsPage() {
         onSelect={(index) => update(VIEWS[index]?.change ?? ALL)}
         primary={translate('newItem')}
         onPrimary={() => setForm({})}
-        menu={pageItems(dropdownKit)}
+        menu={pageItems}
       />
       {importDrawer.isOpen && <ImportDrawer kind="products" onClose={importDrawer.close} />}
       {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoProductsAndServices')} />}
       <PageContextMenu
         title={translate('productsServices')}
         primary={{ label: translate('newItem'), onSelect: () => setForm({}) }}
-        items={pageItems}
+        actions={pageItems}
         views={{
           tabs: VIEWS.map((view) => view.label),
           active: viewIndex,
@@ -670,40 +661,44 @@ function productMenu(
   onCommand: (command: ProductCommand, product: Product) => void,
 ): RowMenuSpec {
   return {
-    title: product.sku ? `${product.sku} · ${product.name}` : product.name,
-    items: ({ Item, Separator }) => (
-      <>
-        <Item onSelect={onOpen}>
-          <PanelRightOpen />
-          {translate('openDetails')}
-        </Item>
-        {can.canWrite && (
-          <>
-            <Item onSelect={() => onCommand('edit', product)}>
-              <Pencil />
-              {translate('edit4')}
-            </Item>
-            <Item onSelect={() => onCommand('duplicate', product)}>
-              <CopyPlus />
-              {translate('duplicate')}
-            </Item>
-          </>
-        )}
-        {can.canManage && (
-          <>
-            <Separator />
-            <Item onSelect={() => onCommand('archive', product)}>
-              {product.is_archived ? <ArchiveRestore /> : <Archive />}
-              {product.is_archived ? translate('restore') : translate('archive')}
-            </Item>
-            <Item variant="destructive" onSelect={() => onCommand('delete', product)}>
-              <Trash2 />
-              {translate('delete')}
-            </Item>
-          </>
-        )}
-      </>
-    ),
+    header: product.sku ? `${product.sku} · ${product.name}` : product.name,
+    actions: [
+      {
+        id: 'open',
+        group: 'view',
+        icon: <PanelRightOpen />,
+        label: translate('openDetails'),
+        onSelect: onOpen,
+      },
+      can.canManage && {
+        id: 'archive',
+        group: product.is_archived ? 'status' : 'danger',
+        icon: product.is_archived ? <ArchiveRestore /> : <Archive />,
+        label: product.is_archived ? translate('restore') : translate('archive'),
+        onSelect: () => onCommand('archive', product),
+      },
+      can.canWrite && {
+        id: 'edit',
+        group: 'edit',
+        icon: <Pencil />,
+        label: translate('edit4'),
+        onSelect: () => onCommand('edit', product),
+      },
+      can.canWrite && {
+        id: 'duplicate',
+        group: 'edit',
+        icon: <CopyPlus />,
+        label: translate('duplicate'),
+        onSelect: () => onCommand('duplicate', product),
+      },
+      can.canManage && {
+        id: 'delete',
+        group: 'danger',
+        icon: <Trash2 />,
+        label: translate('delete'),
+        onSelect: () => onCommand('delete', product),
+      },
+    ],
   }
 }
 

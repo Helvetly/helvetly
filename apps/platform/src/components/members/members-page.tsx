@@ -1,4 +1,5 @@
 'use client'
+import type { Action } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -398,40 +399,40 @@ function memberMenu(
   const roles = lastOwner ? [] : assignableRoles(actor, member.role)
   if (roles.length === 0 && (!member.is_you || lastOwner)) return null
   return {
-    title: member.name,
-    items: ({ Item, Separator }) => (
-      <>
-        {roles.map((entry) => (
-          <Item key={entry} onSelect={() => entry !== member.role && run.setRole(member, entry)}>
-            {entry === member.role ? <Check /> : <span className="size-4" />} {capitalize(entry)}
-          </Item>
-        ))}
-        {/* An admin's access editor holds only the HR rows, which only an owner changes. */}
-        {roles.length > 0 &&
-          (member.role === 'member' || (member.role === 'admin' && actor === 'owner')) && (
-            <Item onSelect={() => run.editAccess(member)}>
-              <KeyRound />
-              {translate('changeAccess')}
-            </Item>
-          )}
-        {roles.length > 0 && !member.is_you && <Separator />}
-        {roles.length > 0 && !member.is_you && (
-          <Item variant="destructive" onSelect={() => run.ask({ kind: 'remove', member })}>
-            <UserX />
-            {translate('removeFromWorkspace')}
-          </Item>
-        )}
-        {member.is_you && (
-          <>
-            {roles.length > 0 && <Separator />}
-            <Item variant="destructive" onSelect={() => run.ask({ kind: 'leave', member })}>
-              <LogOut />
-              {translate('leaveWorkspace2')}
-            </Item>
-          </>
-        )}
-      </>
-    ),
+    header: member.name,
+    actions: [
+      ...roles.map((entry): Action => ({
+        id: `role:${entry}`,
+        group: 'status',
+        icon: entry === member.role ? <Check /> : <span className="size-4" />,
+        label: capitalize(entry),
+        onSelect: () => entry !== member.role && run.setRole(member, entry),
+      })),
+      // An admin's access editor holds only the HR rows, which only an owner changes.
+      roles.length > 0 &&
+        (member.role === 'member' || (member.role === 'admin' && actor === 'owner')) && {
+          id: 'access',
+          group: 'edit',
+          icon: <KeyRound />,
+          label: translate('changeAccess'),
+          onSelect: () => run.editAccess(member),
+        },
+      roles.length > 0 &&
+        !member.is_you && {
+          id: 'remove',
+          group: 'danger',
+          icon: <UserX />,
+          label: translate('removeFromWorkspace'),
+          onSelect: () => run.ask({ kind: 'remove', member }),
+        },
+      member.is_you && {
+        id: 'leave',
+        group: 'danger',
+        icon: <LogOut />,
+        label: translate('leaveWorkspace2'),
+        onSelect: () => run.ask({ kind: 'leave', member }),
+      },
+    ],
   }
 }
 
@@ -441,26 +442,32 @@ function invitationMenu(
   run: { resend: (invitation: Invitation) => void; ask: (pending: Pending) => void },
 ): RowMenuSpec {
   return {
-    title: invitation.email,
-    items: ({ Item, Separator }) => (
-      <>
-        {link && (
-          <Item onSelect={() => void copyLink(link)}>
-            <Link2 />
-            {translate('copyLink')}
-          </Item>
-        )}
-        <Item onSelect={() => run.resend(invitation)}>
-          <RefreshCw />
-          {translate('resend')}
-        </Item>
-        <Separator />
-        <Item variant="destructive" onSelect={() => run.ask({ kind: 'revoke', invitation })}>
-          <Trash2 />
-          {translate('revoke4')}
-        </Item>
-      </>
-    ),
+    header: invitation.email,
+    actions: [
+      {
+        id: 'resend',
+        group: 'send',
+        icon: <RefreshCw />,
+        label: translate('resend'),
+        onSelect: () => run.resend(invitation),
+      },
+      link
+        ? {
+            id: 'copy',
+            group: 'send',
+            icon: <Link2 />,
+            label: translate('copyLink'),
+            onSelect: () => void copyLink(link),
+          }
+        : null,
+      {
+        id: 'revoke',
+        group: 'danger',
+        icon: <Trash2 />,
+        label: translate('revoke4'),
+        onSelect: () => run.ask({ kind: 'revoke', invitation }),
+      },
+    ],
   }
 }
 

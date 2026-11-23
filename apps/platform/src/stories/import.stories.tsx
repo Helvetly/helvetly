@@ -1,9 +1,6 @@
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
@@ -12,8 +9,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { AIApprovalProvider } from '@/components/ai/ai-approval'
 import { billingFixture } from '@/components/billing/billing-fixture'
-import { dropdownKit } from '@/components/data/menus'
-import { ImportItem } from '@/components/import/import-button'
+import { useImportAction } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import type { ImportBatch, ImportFile, ImportRecord, ImportSummary } from '@/lib/imports'
 import { aiConsent, aiNotice } from '@/mocks/ai-notice'
@@ -626,32 +622,37 @@ export const NotInPlan: Story = {
 
 const ImportMenu = () => {
   const [drawer, setDrawer] = useState(false)
+  const importAction = useImportAction('Import', () => setDrawer(true))
   return (
     <div className="p-8">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline">More actions</Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <ImportItem Item={dropdownKit.Item} onSelect={() => setDrawer(true)}>
-            Import
-          </ImportItem>
-        </DropdownMenuContent>
+        <ActionMenuContent kind="dropdown" menu={{ actions: [importAction] }} />
       </DropdownMenu>
       {drawer && <p>Drawer opened</p>}
     </div>
   )
 }
 
-/** A page's "…" menu on Basic: Import is off, tagged with the plan that has it. */
+/** A page's "…" menu on Basic: Import is off, tagged with the plan that has it, its reason in a tooltip. */
 export const MenuItemOnBasic: Story = {
   render: () => <ImportMenu />,
   parameters: { layout: 'centered', msw: { handlers: [sessionHandler(), onPlan('basic')] } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'More actions' }))
-    const item = await body().findByRole('menuitem', { name: /Import/ })
-    await waitFor(() => expect(item).toHaveAttribute('data-disabled'))
+    // Locked once billing answers: the item is then rendered with its reason's tooltip.
+    await waitFor(() =>
+      expect(body().getByRole('menuitem', { name: /Import/ })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      ),
+    )
+    const item = body().getByRole('menuitem', { name: /Import/ })
+    await userEvent.click(item)
+    await expect(canvas.queryByText('Drawer opened')).not.toBeInTheDocument()
     await expect(item.querySelector('[data-slot=plan-tag]')).toHaveTextContent('Pro')
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(item).not.toBeInTheDocument())

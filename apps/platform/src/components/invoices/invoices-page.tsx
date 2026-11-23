@@ -1,18 +1,17 @@
 'use client'
 
 import { locale, localizedHref } from '@helvetly/i18n'
+import type { Action, ActionMenuSpec } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
-import { DropdownMenuItem, DropdownMenuSeparator } from '@helvetly/ui/components/dropdown-menu'
 import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { CloudOff, Download, FileDown, FilePlus2, ReceiptText, SearchX, Trash2 } from 'lucide-react'
-import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   type ComponentProps,
   memo,
@@ -26,7 +25,7 @@ import { toast } from 'sonner'
 
 import { ApprovalInbox } from '@/components/approvals/approval-inbox'
 import {
-  ExportItem,
+  useExportAction,
   PlanTag,
   unlessLocked,
   useFeatureLock,
@@ -35,15 +34,13 @@ import { ClientFilter } from '@/components/data/client-filter'
 import { ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
-  dropdownKit,
   PageContextMenu,
   RowContextMenu,
   RowMenuButton,
-  type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
-import { ImportItem, useImportDrawer } from '@/components/import/import-button'
+import { useImportAction, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Initials } from '@/components/initials'
@@ -94,7 +91,13 @@ import { useStableCallback } from '@/lib/use-stable-callback'
 import { composeQuery, isLegacyEditorPath, parseCompose } from './compose'
 import { DERIVED, DerivePicker, type DeriveFrom } from './derive-picker'
 import { InvoiceNumber, KIND_ICONS, Money, RowStatus } from './invoice-bits'
-import { CommandItems, useInvoiceCommands, type InvoiceCommand } from './invoice-commands'
+import {
+  invoiceActions,
+  useInvoiceActionState,
+  useInvoiceCommands,
+  type InvoiceActionState,
+  type InvoiceCommand,
+} from './invoice-commands'
 import { InvoiceDetail } from './invoice-detail'
 import { InvoiceEditorDrawer } from './invoice-editor'
 import { InvoiceKpis } from './invoice-kpis'
@@ -256,7 +259,7 @@ function invoiceColumns(access: boolean, act: RowActions): DataColumn<InvoiceLis
             value1: invoice.number ?? translate('draft4'),
             name: invoice.client.name,
           })}
-          menu={invoiceMenu(invoice, access, act.command)}
+          menu={invoiceMenu(invoice, access, act)}
         />
       ),
     },
@@ -406,30 +409,30 @@ export function InvoicesPage() {
   const open = useStableCallback(openInvoice)
   const toggle = useStableCallback(toggleRow)
   const run = useStableCallback(commands.run)
+  const actionState = useInvoiceActionState()
   const act = useMemo<RowActions>(
-    () => ({ open, toggle, prefetch, command: run }),
-    [open, toggle, prefetch, run],
+    () => ({ open, toggle, prefetch, command: run, actions: actionState }),
+    [open, toggle, prefetch, run, actionState],
   )
   const columns = useMemo(() => invoiceColumns(canManage, act), [canManage, act])
-  const pageItems = ({ Item }: MenuKit) => (
-    <>
-      {canWrite && (
-        <ImportItem Item={Item} onSelect={importDrawer.open}>
-          {translate('import')}
-        </ImportItem>
-      )}
-      <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
-        {translate('exportCSV')}
-        {filtered ? ' (filtered)' : ''}
-      </ExportItem>
-      <Item asChild>
-        <Link href="/settings/invoices">
-          <ReceiptText />
-          {translate('invoiceSettings2')}
-        </Link>
-      </Item>
-    </>
+  const router = useRouter()
+  const importAction = useImportAction(translate('import'), importDrawer.open)
+  const exportAction = useExportAction(
+    `${translate('exportCSV')}${filtered ? ' (filtered)' : ''}`,
+    localizedHref(exportUrl(params)),
   )
+  const newActions = useNewInvoiceActions(openEditor, setDeriving, canWrite)
+  const pageItems: ActionMenuSpec['actions'] = [
+    canWrite && importAction,
+    exportAction,
+    {
+      id: 'settings',
+      group: 'view',
+      icon: <ReceiptText />,
+      label: translate('invoiceSettings2'),
+      onSelect: () => router.push('/settings/invoices'),
+    },
+  ]
 
   return (
     <>
@@ -441,15 +444,15 @@ export function InvoicesPage() {
         onSelect={selectTab}
         primary={translate('newInvoice')}
         onPrimary={newInvoice}
-        primaryMenu={<NewMenuItems onNew={openEditor} onDerive={setDeriving} canWrite={canWrite} />}
-        menu={pageItems(dropdownKit)}
+        primaryMenu={newActions}
+        menu={pageItems}
       />
       {importDrawer.isOpen && <ImportDrawer kind="invoices" onClose={importDrawer.close} />}
       {dropping && <DropOverlay title={translate('dropToImportTheseInvoices')} />}
       <PageContextMenu
         title={translate('invoices')}
         primary={{ label: translate('newInvoice'), onSelect: newInvoice }}
-        items={pageItems}
+        actions={pageItems}
         views={{
           tabs,
           active,
@@ -599,7 +602,7 @@ export function InvoicesPage() {
                 })}
                 renderRow={(invoice, tr) => (
                   <RowContextMenu
-                    menu={invoiceMenu(invoice, canManage, act.command)}
+                    menu={invoiceMenu(invoice, canManage, act)}
                     bulk={selected.has(invoice.id) ? selection : undefined}
                   >
                     {tr}
@@ -702,49 +705,43 @@ export function InvoicesPage() {
 }
 
 /** The split button's menu: the types made from scratch, then those made from an issued invoice (picked next). */
-function NewMenuItems({
-  onNew,
-  onDerive,
-  canWrite,
-}: {
-  onNew: (kind: InvoiceKind) => void
-  onDerive: (derived: DeriveFrom) => void
-  canWrite: boolean
-}) {
+function useNewInvoiceActions(
+  onNew: (kind: InvoiceKind) => void,
+  onDerive: (derived: DeriveFrom) => void,
+  canWrite: boolean,
+): ActionMenuSpec['actions'] {
   const corrections = useFeatureLock('invoice_corrections')
-  return (
-    <>
-      {CREATABLE_KINDS.map((kind) => {
-        const Icon = KIND_ICONS[kind]
-        return (
-          <DropdownMenuItem key={kind} onSelect={() => onNew(kind)}>
-            <Icon /> {kindInfo(kind).label}
-          </DropdownMenuItem>
-        )
-      })}
-      {canWrite && <DropdownMenuSeparator />}
-      {canWrite &&
-        DERIVED.map((derived) => {
-          const Icon = KIND_ICONS[derived.kind]
-          return (
-            <DropdownMenuItem
-              key={derived.kind}
-              disabled={Boolean(corrections)}
-              onSelect={() => onDerive(derived)}
-            >
-              <Icon />
-              <span className="grid leading-tight">
-                {kindInfo(derived.kind).label}
-                <span className="text-xs text-muted-foreground">
-                  {translate('fromAnIssuedInvoice')}
-                </span>
-              </span>
-              {corrections && <PlanTag lock={corrections} />}
-            </DropdownMenuItem>
-          )
-        })}
-    </>
-  )
+  return [
+    ...CREATABLE_KINDS.map((kind): Action => {
+      const Icon = KIND_ICONS[kind]
+      return {
+        id: kind,
+        group: 'create',
+        icon: <Icon />,
+        label: kindInfo(kind).label,
+        onSelect: () => onNew(kind),
+      }
+    }),
+    ...(canWrite ? DERIVED : []).map((derived): Action => {
+      const Icon = KIND_ICONS[derived.kind]
+      return {
+        id: `from:${derived.kind}`,
+        group: 'create',
+        icon: <Icon />,
+        label: (
+          <span className="grid leading-tight">
+            {kindInfo(derived.kind).label}
+            <span className="text-xs text-muted-foreground">
+              {translate('fromAnIssuedInvoice')}
+            </span>
+          </span>
+        ),
+        disabledReason: corrections?.hint,
+        extra: corrections && <PlanTag lock={corrections} />,
+        onSelect: () => onDerive(derived),
+      }
+    }),
+  ]
 }
 
 /** The bulk bar's buttons; deleting only when the selection holds drafts. */
@@ -773,16 +770,16 @@ export function bulkActions(
 }
 
 /** An invoice's actions, for its "…" button and its right-click menu. */
-function invoiceMenu(
-  invoice: InvoiceListItem,
-  canManage: boolean,
-  run: ReturnType<typeof useInvoiceCommands>['run'],
-): RowMenuSpec {
+function invoiceMenu(invoice: InvoiceListItem, canManage: boolean, act: RowActions): RowMenuSpec {
   return {
-    title: `${invoice.number ?? translate('draft')} · ${invoice.client.name}`,
-    items: (kit) => (
-      <CommandItems kit={kit} invoice={invoice} canManage={canManage} run={run} showOpen />
-    ),
+    header: `${invoice.number ?? translate('draft')} · ${invoice.client.name}`,
+    actions: invoiceActions({
+      invoice,
+      canManage,
+      state: act.actions,
+      run: act.command,
+      showOpen: true,
+    }),
   }
 }
 
@@ -884,10 +881,11 @@ type RowActions = {
   toggle: (id: string) => void
   prefetch: (id: string) => void
   command: (name: InvoiceCommand, invoice: InvoiceListItem) => void
+  actions: InvoiceActionState
 }
 
 const InvoiceItem = memo(function InvoiceItem({ invoice, selected, bulk, access, act }: RowProps) {
-  const menu = invoiceMenu(invoice, access, act.command)
+  const menu = invoiceMenu(invoice, access, act)
   return (
     <RowContextMenu menu={menu} bulk={bulk}>
       <li

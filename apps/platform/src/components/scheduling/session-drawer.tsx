@@ -1,13 +1,9 @@
 'use client'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Kbd } from '@helvetly/ui/components/kbd'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
@@ -511,29 +507,38 @@ function SessionDetails({
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {canWrite && isOpen(occurrence.status) && (
-                  <DropdownMenuItem onSelect={onEdit}>
-                    <Pencil />
-                    {translate('schedEditSession')}
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem asChild>
-                  <a href={icsUrl(occurrence.id)} download>
-                    <Download />
-                    {translate('schedDownloadIcs')}
-                  </a>
-                </DropdownMenuItem>
-                {engagement && (
-                  // Stacked over this drawer: closing it comes back to the session.
-                  <DropdownMenuItem
-                    onSelect={() => drawers.open({ kind: 'engagement', id: engagement.id })}
-                  >
-                    <ClipboardCheck />
-                    {translate('schedOpenEngagement')}
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
+              <ActionMenuContent
+                kind="dropdown"
+                menu={{
+                  header: occurrence.title,
+                  actions: [
+                    {
+                      id: 'ics',
+                      group: 'view',
+                      icon: <Download />,
+                      label: translate('schedDownloadIcs'),
+                      href: icsUrl(occurrence.id),
+                      download: true,
+                    },
+                    engagement && {
+                      id: 'engagement',
+                      group: 'view',
+                      icon: <ClipboardCheck />,
+                      label: translate('schedOpenEngagement'),
+                      // Stacked over this drawer: closing it comes back to the session.
+                      onSelect: () => drawers.open({ kind: 'engagement', id: engagement.id }),
+                    },
+                    canWrite &&
+                      isOpen(occurrence.status) && {
+                        id: 'edit',
+                        group: 'edit',
+                        icon: <Pencil />,
+                        label: translate('schedEditSession'),
+                        onSelect: onEdit,
+                      },
+                  ],
+                }}
+              />
             </DropdownMenu>
             <Button
               type="button"

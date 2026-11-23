@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import type { Action, ActionGroup, ActionMenuSpec } from '@helvetly/ui/components/action-menu'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -19,15 +20,15 @@ import {
   Undo2,
   Wallet,
 } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
+import { featureLock, lockedAction } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
-import type { MenuKit } from '@/components/data/menus'
 import { useOpenHref } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
+import { useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import {
   cannotIssueReasons,
@@ -370,143 +371,108 @@ function PlanCommand({
   ) : null
 }
 
+/** What the menus need beyond the invoice: write access and the plan's locks. Stable while billing is. */
+export function useInvoiceActionState() {
+  const writable = useCan('write:invoices')
+  const billing = useBilling().data
+  return useMemo(
+    () => ({
+      writable,
+      corrections: featureLock(billing, 'invoice_corrections'),
+      instalments: featureLock(billing, 'automations'),
+    }),
+    [writable, billing],
+  )
+}
+
+export type InvoiceActionState = ReturnType<typeof useInvoiceActionState>
+
 /**
- * The menu items for `invoice` (row "…", right-click and drawer "…"); `skip` leaves out the
- * primary action.
+ * The actions for `invoice` (row "…", right-click and drawer "…"); `skip` leaves out those shown
+ * as buttons beside the menu.
  */
-export function CommandItems({
-  kit: { Item, Separator },
+export function invoiceActions({
   invoice,
   canManage,
+  state: { writable, corrections, instalments },
   run,
   skip = NOTHING,
   showOpen = false,
 }: {
-  kit: MenuKit
   invoice: CommandTarget
   canManage: boolean
+  state: InvoiceActionState
   run: (command: InvoiceCommand, invoice: InvoiceListItem) => void
   skip?: InvoiceCommand[]
   showOpen?: boolean
-}) {
+}): ActionMenuSpec['actions'] {
   const available = availableCommands(invoice, canManage)
-  const writable = useCan('write:invoices')
-  const corrections = useFeatureLock('invoice_corrections')
-  const instalments = useFeatureLock('automations')
   const show = (command: keyof typeof available) =>
     writable && available[command] && !skip.includes(command)
-  return (
-    <>
-      {showOpen && (
-        <Item onSelect={() => run('open', invoice)}>
-          <PanelRightOpen />
-          {translate('openDetails')}
-        </Item>
-      )}
-      {show('edit') && (
-        <Item onSelect={() => run('edit', invoice)}>
-          <Pencil />
-          {translate('editDraft')}
-        </Item>
-      )}
-      {show('issue') && (
-        <Item onSelect={() => run('issue', invoice)}>
-          <Stamp />
-          {translate('issue2')}
-        </Item>
-      )}
-      {show('send') && (
-        <Item onSelect={() => run('send', invoice)}>
-          <Send /> {invoice.sent_at ? translate('sendAgain') : translate('sendByEmail')}
-        </Item>
-      )}
-      {show('refund') && (
-        <Item onSelect={() => run('refund', invoice)}>
-          <Undo2 />
-          {translate('recordRefund')}
-        </Item>
-      )}
-      {show('payment') && (
-        <Item onSelect={() => run('payment', invoice)}>
-          <Wallet />
-          {translate('recordPayment')}
-        </Item>
-      )}
-      <Item asChild>
-        <a href={localizedHref(pdfUrl(invoice.id, true))} download>
-          <Download />
-          {translate('downloadPDF2')}
-        </a>
-      </Item>
-      {show('duplicate') && (
-        <Item onSelect={() => run('duplicate', invoice)}>
-          <Copy />
-          {translate('duplicate')}
-        </Item>
-      )}
-      {show('plan') && (
-        <Item disabled={Boolean(instalments)} onSelect={() => run('plan', invoice)}>
-          <CalendarRange />
-          {translate('splitIntoInstalmentInvoices2')}
-          {instalments && <PlanTag lock={instalments} />}
-        </Item>
-      )}
-      {(show('convert_invoice') || show('convert_prepayment')) && <Separator />}
-      {show('convert_invoice') && (
-        <Item onSelect={() => run('convert_invoice', invoice)}>
-          <ArrowRightLeft />
-          {translate('convertToInvoice')}
-        </Item>
-      )}
-      {show('convert_prepayment') && (
-        <Item onSelect={() => run('convert_prepayment', invoice)}>
-          <ArrowRightLeft />
-          {translate('convertToPrepayment')}
-        </Item>
-      )}
-      {(show('credit_note') ||
-        show('correct') ||
-        show('debit_note') ||
-        show('void') ||
-        show('delete')) && <Separator />}
-      {show('correct') && (
-        <Item disabled={Boolean(corrections)} onSelect={() => run('correct', invoice)}>
-          <FilePen />
-          {translate('correct')}
-          {corrections && <PlanTag lock={corrections} />}
-        </Item>
-      )}
-      {show('debit_note') && (
-        <Item disabled={Boolean(corrections)} onSelect={() => run('debit_note', invoice)}>
-          <FilePlus />
-          {translate('debitNote')}
-          {corrections && <PlanTag lock={corrections} />}
-        </Item>
-      )}
-      {show('credit_note') && (
-        <Item disabled={Boolean(corrections)} onSelect={() => run('credit_note', invoice)}>
-          <FileMinus />
-          {translate('createCreditNote')}
-          {corrections && <PlanTag lock={corrections} />}
-        </Item>
-      )}
-      {show('void') && (
-        <Item
-          variant="destructive"
-          disabled={Boolean(corrections)}
-          onSelect={() => run('void', invoice)}
-        >
-          <Ban />
-          {translate('void3')}
-          {corrections && <PlanTag lock={corrections} />}
-        </Item>
-      )}
-      {show('delete') && (
-        <Item variant="destructive" onSelect={() => run('delete', invoice)}>
-          <Trash2 />
-          {translate('deleteDraft')}
-        </Item>
-      )}
-    </>
-  )
+  const action = (
+    command: keyof typeof available,
+    group: ActionGroup,
+    icon: ReactNode,
+    label: string,
+    more: Partial<Action> = {},
+  ): Action | false =>
+    show(command) && {
+      id: command,
+      group,
+      icon,
+      label,
+      onSelect: () => run(command, invoice),
+      ...more,
+    }
+  return [
+    showOpen && {
+      id: 'open',
+      group: 'view',
+      icon: <PanelRightOpen />,
+      label: translate('openDetails'),
+      onSelect: () => run('open', invoice),
+    },
+    {
+      id: 'pdf',
+      group: 'view',
+      icon: <Download />,
+      label: translate('downloadPDF2'),
+      href: localizedHref(pdfUrl(invoice.id, true)),
+      download: true,
+    },
+    action(
+      'send',
+      'send',
+      <Send />,
+      invoice.sent_at ? translate('sendAgain') : translate('sendByEmail'),
+    ),
+    action('issue', 'status', <Stamp />, translate('issue2'), { tone: 'success' }),
+    action('payment', 'status', <Wallet />, translate('recordPayment'), { tone: 'success' }),
+    action('refund', 'status', <Undo2 />, translate('recordRefund')),
+    action('void', 'status', <Ban />, translate('void3'), {
+      tone: 'destructive',
+      ...lockedAction(corrections),
+    }),
+    action('edit', 'edit', <Pencil />, translate('editDraft')),
+    action('duplicate', 'edit', <Copy />, translate('duplicate')),
+    action(
+      'plan',
+      'edit',
+      <CalendarRange />,
+      translate('splitIntoInstalmentInvoices2'),
+      lockedAction(instalments),
+    ),
+    action('convert_invoice', 'create', <ArrowRightLeft />, translate('convertToInvoice')),
+    action('convert_prepayment', 'create', <ArrowRightLeft />, translate('convertToPrepayment')),
+    action('correct', 'create', <FilePen />, translate('correct'), lockedAction(corrections)),
+    action('debit_note', 'create', <FilePlus />, translate('debitNote'), lockedAction(corrections)),
+    action(
+      'credit_note',
+      'create',
+      <FileMinus />,
+      translate('createCreditNote'),
+      lockedAction(corrections),
+    ),
+    action('delete', 'danger', <Trash2 />, translate('deleteDraft')),
+  ]
 }

@@ -1,14 +1,10 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Disclosure } from '@helvetly/ui/components/disclosure'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { InlineError } from '@helvetly/ui/components/inline-error'
 import { Input } from '@helvetly/ui/components/input'
@@ -399,19 +395,31 @@ function ExportButtons({
             <ChevronDown aria-hidden className="text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-48">
-          <DropdownMenuItem asChild>
-            <a href={localizedHref(vatReturnFileUrl(period, 'pdf'))} download>
-              <FileText />
-              {translate('pdfSummary')}
-            </a>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <a href={localizedHref(vatReturnFileUrl(period, 'csv'))} download>
-              <SheetIcon /> CSV
-            </a>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
+        <ActionMenuContent
+          kind="dropdown"
+          align="start"
+          className="min-w-48"
+          menu={{
+            actions: [
+              {
+                id: 'pdf',
+                group: 'view',
+                icon: <FileText />,
+                label: translate('pdfSummary'),
+                href: localizedHref(vatReturnFileUrl(period, 'pdf')),
+                download: true,
+              },
+              {
+                id: 'csv',
+                group: 'view',
+                icon: <SheetIcon />,
+                label: 'CSV',
+                href: localizedHref(vatReturnFileUrl(period, 'csv')),
+                download: true,
+              },
+            ],
+          }}
+        />
       </DropdownMenu>
     </span>
   )

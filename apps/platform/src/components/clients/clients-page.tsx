@@ -37,20 +37,18 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { memo, useEffect, useMemo, useState, type ComponentProps } from 'react'
 import { toast } from 'sonner'
 
-import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
+import { useExportAction, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { ListFilters, sinceOptions } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
-  dropdownKit,
   PageContextMenu,
   RowContextMenu,
   RowMenuButton,
-  type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
-import { ImportItem, useImportDrawer } from '@/components/import/import-button'
+import { useImportAction, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Initials } from '@/components/initials'
@@ -272,19 +270,12 @@ export function ClientsPage() {
       remove: () => setDeleting(rows.filter((row) => selected.has(row.id))),
     }),
   }
-  const pageItems = ({ Item }: MenuKit) => (
-    <>
-      {canWrite && (
-        <ImportItem Item={Item} onSelect={importDrawer.open}>
-          {translate('import')}
-        </ImportItem>
-      )}
-      <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
-        {translate('exportCSV')}
-        {filtered ? ' (filtered)' : ''}
-      </ExportItem>
-    </>
+  const importAction = useImportAction(translate('import'), importDrawer.open)
+  const exportAction = useExportAction(
+    `${translate('exportCSV')}${filtered ? ' (filtered)' : ''}`,
+    localizedHref(exportUrl(params)),
   )
+  const pageItems = [canWrite && importAction, exportAction]
   const access = useMemo(() => ({ canWrite, canDelete }), [canWrite, canDelete])
   const open = useStableCallback(openClient)
   const toggle = useStableCallback(toggleRow)
@@ -314,14 +305,14 @@ export function ClientsPage() {
         onSelect={(index) => update({ status: [...(STATUS_VIEWS[index]?.status ?? [])] })}
         primary={translate('newClient')}
         onPrimary={() => setForm({})}
-        menu={pageItems(dropdownKit)}
+        menu={pageItems}
       />
       {importDrawer.isOpen && <ImportDrawer kind="clients" onClose={importDrawer.close} />}
       {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoNewClients')} />}
       <PageContextMenu
         title={translate('clients')}
         primary={{ label: translate('newClient'), onSelect: () => setForm({}) }}
-        items={pageItems}
+        actions={pageItems}
         selectAll={
           rows.length && !allSelected
             ? { onSelect: () => setSelected(new Set(rows.map((row) => row.id))) }
@@ -598,36 +589,37 @@ function clientMenu(
   onCommand: (command: ClientCommand, client: Client) => void,
 ): RowMenuSpec {
   return {
-    title: `#${client.number} · ${client.name}`,
-    items: ({ Item, Separator }) => (
-      <>
-        <Item onSelect={onOpen}>
-          <PanelRightOpen />
-          {translate('openDetails')}
-        </Item>
-        {can.canWrite && (
-          <Item onSelect={() => onCommand('edit', client)}>
-            <Pencil />
-            {translate('edit4')}
-          </Item>
-        )}
-        {can.canWrite && (
-          <>
-            <Separator />
-            <Item onSelect={() => onCommand('toggle', client)}>
-              {client.is_active ? <PowerOff /> : <Power />}
-              {client.is_active ? translate('deactivate') : translate('activate')}
-            </Item>
-          </>
-        )}
-        {can.canDelete && (
-          <Item variant="destructive" onSelect={() => onCommand('delete', client)}>
-            <Trash2 />
-            {translate('delete')}
-          </Item>
-        )}
-      </>
-    ),
+    header: `#${client.number} · ${client.name}`,
+    actions: [
+      {
+        id: 'open',
+        group: 'view',
+        icon: <PanelRightOpen />,
+        label: translate('openDetails'),
+        onSelect: onOpen,
+      },
+      can.canWrite && {
+        id: 'toggle',
+        group: 'status',
+        icon: client.is_active ? <PowerOff /> : <Power />,
+        label: client.is_active ? translate('deactivate') : translate('activate'),
+        onSelect: () => onCommand('toggle', client),
+      },
+      can.canWrite && {
+        id: 'edit',
+        group: 'edit',
+        icon: <Pencil />,
+        label: translate('edit4'),
+        onSelect: () => onCommand('edit', client),
+      },
+      can.canDelete && {
+        id: 'delete',
+        group: 'danger',
+        icon: <Trash2 />,
+        label: translate('delete'),
+        onSelect: () => onCommand('delete', client),
+      },
+    ],
   }
 }
 

@@ -1,4 +1,4 @@
-import { ContextMenuItem } from '@helvetly/ui/components/context-menu'
+import type { Action } from '@helvetly/ui/components/action-menu'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Star, StarOff } from 'lucide-react'
 
@@ -19,17 +19,10 @@ export function StarGlyph({ className }: { className?: string }) {
 }
 
 /** "Star" / "Unstar" for a folder, in any right-click menu. */
-export function StarItem({
-  folder,
-  onToggle,
-}: {
-  folder: Folder
-  onToggle: (folder: Folder) => void
-}) {
-  return (
-    <ContextMenuItem onSelect={() => onToggle(folder)}>
-      {folder.starred ? <StarOff /> : <Star />}{' '}
-      {folder.starred ? translate('unstar') : translate('star')}
-    </ContextMenuItem>
-  )
-}
+export const starAction = (folder: Folder, onToggle: (folder: Folder) => void): Action => ({
+  id: 'star',
+  group: 'status',
+  icon: folder.starred ? <StarOff /> : <Star />,
+  label: folder.starred ? translate('unstar') : translate('star'),
+  onSelect: () => onToggle(folder),
+})

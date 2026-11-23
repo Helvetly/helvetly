@@ -352,12 +352,12 @@ export const EditSeriesSession: Story = {
   play: async () => {
     const sheet = await drawer()
     await expect(await sheet.findByText(/Every week on Tue and Fri, 12 sessions/)).toBeVisible()
-    // Edit lives in the "…" menu, first: no separate pencil in the header.
+    // Edit lives in the "…" menu, in its Edit group after the view actions: no separate pencil in the header.
     await expect(sheet.queryByRole('button', { name: 'Edit session' })).not.toBeInTheDocument()
     await userEvent.click(sheet.getByRole('button', { name: 'More actions' }))
     const items = await screen.findAllByRole('menuitem')
-    await expect(items[0]).toHaveAccessibleName('Edit session')
-    await userEvent.click(items[0]!)
+    await expect(items.at(-1)).toHaveAccessibleName('Edit session')
+    await userEvent.click(items.at(-1)!)
     await sheet.findByRole('heading', { name: 'Edit session' })
     fireEvent.change(field('time'), { target: { value: '10:00' } })
     await userEvent.click(sheet.getByRole('button', { name: 'Save changes' }))

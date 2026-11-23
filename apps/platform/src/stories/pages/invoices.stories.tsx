@@ -17,6 +17,7 @@ import {
   phone,
   shows,
 } from './frame'
+import { sameRowMenus } from './menus'
 import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
 const meta = {
@@ -360,4 +361,33 @@ export const Filters: Story = {
     cleared: ['status', 'min', 'max'],
     count: 2,
   }),
+}
+
+/**
+ * A draft's "…" and its right-click menu are the same, in the standard groups: view, status (Issue,
+ * green), edit, then Delete draft alone and last, in red.
+ */
+export const DraftRowMenu: Story = {
+  play: async (context) => {
+    await shows('Sophie Meier')?.(context)
+    const body = within(context.canvasElement.ownerDocument.body)
+    const [button] = await body.findAllByRole('button', { name: /^Actions for draft · / })
+    if (!button) throw new Error('no draft row')
+    const order = await sameRowMenus(button)
+    await expect(order.slice(1).join(', ')).toBe(
+      'Open details, Download PDF, |, Issue, |, Edit draft, Duplicate, |, Delete draft',
+    )
+    await expect(order[0]).toMatch(/^Draft · /)
+    await userEvent.click(button)
+    const menu = within(await body.findByRole('menu'))
+    await expect(menu.getByRole('menuitem', { name: 'Issue' })).toHaveAttribute(
+      'data-tone',
+      'success',
+    )
+    await expect(menu.getByRole('menuitem', { name: 'Delete draft' })).toHaveAttribute(
+      'data-tone',
+      'destructive',
+    )
+    await userEvent.keyboard('{Escape}')
+  },
 }

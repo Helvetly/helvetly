@@ -1,9 +1,9 @@
 'use client'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -480,36 +480,50 @@ export function LinesEditor({
                     <Ellipsis />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-48">
-                  <DropdownMenuItem disabled={index === 0} onSelect={() => move(index, index - 1)}>
-                    <ArrowUp />
-                    {translate('moveUp')}{' '}
-                    <span className="ml-auto text-xs text-muted-foreground">⌥↑</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={index === lines.length - 1}
-                    onSelect={() => move(index, index + 1)}
-                  >
-                    <ArrowDown />
-                    {translate('moveDown')}{' '}
-                    <span className="ml-auto text-xs text-muted-foreground">⌥↓</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      const copy = { ...line, key: lineKey() }
-                      onChange([...lines.slice(0, index + 1), copy, ...lines.slice(index + 1)])
-                      focusCellAfter(copy.key, 'description', true)
-                    }}
-                  >
-                    <Copy />
-                    {translate('duplicateLine')}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onSelect={() => remove(index)}>
-                    <Trash2 />
-                    {translate('deleteLine')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
+                <ActionMenuContent
+                  kind="dropdown"
+                  className="min-w-48"
+                  menu={{
+                    actions: [
+                      {
+                        id: 'up',
+                        group: 'edit',
+                        icon: <ArrowUp />,
+                        label: translate('moveUp'),
+                        shortcut: '⌥↑',
+                        disabled: index === 0,
+                        onSelect: () => move(index, index - 1),
+                      },
+                      {
+                        id: 'down',
+                        group: 'edit',
+                        icon: <ArrowDown />,
+                        label: translate('moveDown'),
+                        shortcut: '⌥↓',
+                        disabled: index === lines.length - 1,
+                        onSelect: () => move(index, index + 1),
+                      },
+                      {
+                        id: 'duplicate',
+                        group: 'edit',
+                        icon: <Copy />,
+                        label: translate('duplicateLine'),
+                        onSelect: () => {
+                          const copy = { ...line, key: lineKey() }
+                          onChange([...lines.slice(0, index + 1), copy, ...lines.slice(index + 1)])
+                          focusCellAfter(copy.key, 'description', true)
+                        },
+                      },
+                      {
+                        id: 'delete',
+                        group: 'danger',
+                        icon: <Trash2 />,
+                        label: translate('deleteLine'),
+                        onSelect: () => remove(index),
+                      },
+                    ],
+                  }}
+                />
               </DropdownMenu>
             </span>
           </div>

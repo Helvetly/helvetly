@@ -10,18 +10,11 @@ const edit = vi.fn<() => void>()
 const remove = vi.fn<() => void>()
 const openRow = vi.fn<() => void>()
 const menu: RowMenuSpec = {
-  title: '#7 · Muster AG',
-  items: ({ Item, Separator }) => (
-    <>
-      <Item onSelect={edit}>
-        <Pencil /> Edit
-      </Item>
-      <Separator />
-      <Item variant="destructive" onSelect={remove}>
-        <Trash2 /> Delete
-      </Item>
-    </>
-  ),
+  header: '#7 · Muster AG',
+  actions: [
+    { id: 'delete', group: 'danger', icon: <Trash2 />, label: 'Delete', onSelect: remove },
+    { id: 'edit', group: 'edit', icon: <Pencil />, label: 'Edit', onSelect: edit },
+  ],
 }
 
 function Row({ bulk }: { bulk?: Parameters<typeof RowContextMenu>[0]['bulk'] }) {
@@ -109,7 +102,15 @@ test('the page menu: its actions, select all, views and refresh; rows keep their
     <PageContextMenu
       title="Clients"
       primary={{ label: 'New client', onSelect: create }}
-      items={({ Item }) => <Item onSelect={vi.fn<() => void>()}>Export CSV</Item>}
+      actions={[
+        {
+          id: 'export',
+          group: 'view',
+          icon: <Upload />,
+          label: 'Export CSV',
+          onSelect: vi.fn<() => void>(),
+        },
+      ]}
       views={{ tabs: ['All', 'Active'], active: 0, onSelect: pick }}
       selectAll={{ onSelect: selectAll }}
       onRefresh={refresh}
@@ -128,7 +129,7 @@ test('the page menu: its actions, select all, views and refresh; rows keep their
   fireEvent.contextMenu(screen.getByTestId('surface'))
   const context = await screen.findByRole('menu')
   expect(within(context).getByText('Clients')).toBeInTheDocument()
-  expect(names()).toEqual(['New client', 'Export CSV', 'Select all', 'View', 'Refresh'])
+  expect(names()).toEqual(['Export CSV', 'New client', 'Select all', 'View', 'Refresh'])
 
   await userEvent.click(screen.getByRole('menuitem', { name: 'View' }))
   await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Active' }))

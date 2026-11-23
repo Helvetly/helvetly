@@ -1,6 +1,8 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import type { Action as MenuAction, ActionMenuSpec } from '@helvetly/ui/components/action-menu'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import {
   Check,
   Copy,
@@ -11,16 +13,14 @@ import {
   ReceiptText,
   Send,
   ScrollText,
-  Sparkles,
   Trash2,
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
-import type { MenuKit } from '@/components/data/menus'
 import { ContractSignDrawer } from '@/components/signatures/create-drawer'
 import { useAI } from '@/lib/ai'
 import { translate } from '@/lib/i18n'
@@ -50,15 +50,6 @@ export const ACTIONS: Record<QuoteCommand, Action> = {
   invoice: { label: translate('createInvoice'), icon: ReceiptText },
   duplicate: { label: translate('duplicateQuote'), icon: Copy },
   delete: { label: translate('deleteDraft2'), icon: Trash2 },
-}
-
-/** The menus' groups (status, editing, making something of it); delete goes last, apart. */
-const STATUS: QuoteCommand[] = ['send', 'accept', 'decline']
-const EDITING: QuoteCommand[] = ['edit', 'revise', 'duplicate']
-
-/** Accept reads as the good outcome, decline as the bad one, in both themes. */
-const TONES: Partial<Record<QuoteCommand, string>> = {
-  accept: 'text-success focus:bg-success-surface focus:**:text-success! [&_svg]:text-success!',
 }
 
 /** "Send again" for a quote that went out before, the command's own label otherwise. */
@@ -211,13 +202,24 @@ export function useContractEntry(start: (quote: Quote) => void) {
 
 export type ContractEntry = ReturnType<typeof useContractEntry>
 
+/** Where each command goes in the menus, and its tone. */
+const PLACE: Record<QuoteCommand, Pick<MenuAction, 'group' | 'tone'>> = {
+  send: { group: 'send' },
+  accept: { group: 'status', tone: 'success' },
+  decline: { group: 'status', tone: 'destructive' },
+  edit: { group: 'edit' },
+  revise: { group: 'edit' },
+  duplicate: { group: 'edit' },
+  invoice: { group: 'create' },
+  delete: { group: 'danger' },
+}
+const ORDER: QuoteCommand[] = ['send', 'accept', 'decline', 'edit', 'revise', 'duplicate']
+
 /**
- * A quote's menu items, for the drawer's "…" and a row's "…" and right-click menus, in groups: view,
- * status, editing, creating (a contract, an invoice); deleting a draft goes last, apart. Only the
- * commands its state allows (writers only); `skip` leaves out those shown as buttons beside the menu.
+ * A quote's actions, for the drawer's "…" and a row's "…" and right-click menus. Only the commands
+ * its state allows (writers only); `skip` leaves out those shown as buttons beside the menu.
  */
-export function QuoteMenuItems({
-  kit: { Item, Separator },
+export function quoteActions({
   quote,
   writable,
   run,
@@ -225,90 +227,58 @@ export function QuoteMenuItems({
   skip,
   contract,
 }: {
-  kit: MenuKit
   quote: Quote
   writable: boolean
   run: (command: QuoteCommand, quote: Quote) => void
   onOpen?: () => void
   skip?: QuoteCommand[]
   contract?: ContractEntry
-}) {
+}): ActionMenuSpec['actions'] {
   const can = quoteCommands(quote)
   const allowed = (command: QuoteCommand) => writable && can[command] && !skip?.includes(command)
-  const item = (command: QuoteCommand) => {
+  const action = (command: QuoteCommand): MenuAction => {
     const Icon = ACTIONS[command].icon
-    return (
-      <Item
-        key={command}
-        variant={command === 'decline' ? 'destructive' : 'default'}
-        className={TONES[command]}
-        onSelect={() => run(command, quote)}
-      >
-        <Icon />
-        {command === 'edit' ? translate('edit4') : commandLabel(command, quote)}
-      </Item>
-    )
+    return {
+      id: command,
+      ...PLACE[command],
+      icon: <Icon />,
+      label:
+        command === 'edit'
+          ? translate('edit4')
+          : command === 'delete'
+            ? translate('deleteDraft')
+            : commandLabel(command, quote),
+      onSelect: () => run(command, quote),
+    }
   }
-  const groups: [string, ReactNode[]][] = [
-    [
-      'view',
-      [
-        onOpen && (
-          <Item key="open" onSelect={onOpen}>
-            <PanelRightOpen />
-            {translate('openDetails')}
-          </Item>
-        ),
-        <Item key="pdf" asChild>
-          <a href={localizedHref(quotePdfUrl(quote.id, true))} download>
-            <Download />
-            {translate('downloadPDF2')}
-          </a>
-        </Item>,
-      ],
-    ],
-    ['status', STATUS.filter(allowed).map(item)],
-    ['editing', EDITING.filter(allowed).map(item)],
-    [
-      'create',
-      [
-        contract && (
-          <Item
-            key="contract"
-            disabled={Boolean(contract.lock)}
-            onSelect={() => contract.start(quote)}
-          >
-            {contract.ai ? <Sparkles className="text-brand" /> : <ScrollText />}
-            {contract.ai ? translate('createContractWithAI') : translate('createContract')}
-            {contract.lock && <PlanTag lock={contract.lock} />}
-          </Item>
-        ),
-        allowed('invoice') && item('invoice'),
-      ],
-    ],
-    [
-      'delete',
-      [
-        allowed('delete') && (
-          <Item key="delete" variant="destructive" onSelect={() => run('delete', quote)}>
-            <Trash2 />
-            {translate('deleteDraft')}
-          </Item>
-        ),
-      ],
-    ],
+  return [
+    onOpen && {
+      id: 'open',
+      group: 'view',
+      icon: <PanelRightOpen />,
+      label: translate('openDetails'),
+      onSelect: onOpen,
+    },
+    {
+      id: 'pdf',
+      group: 'view',
+      icon: <Download />,
+      label: translate('downloadPDF2'),
+      href: localizedHref(quotePdfUrl(quote.id, true)),
+      download: true,
+    },
+    ...ORDER.filter(allowed).map(action),
+    contract && {
+      id: 'contract',
+      group: 'create',
+      ...(contract.ai
+        ? { tone: 'ai' as const, icon: <HeidiSparkle />, label: translate('createContractWithAI') }
+        : { icon: <ScrollText />, label: translate('createContract') }),
+      disabledReason: contract.lock?.hint,
+      extra: contract.lock && <PlanTag lock={contract.lock} />,
+      onSelect: () => contract.start(quote),
+    },
+    allowed('invoice') && action('invoice'),
+    allowed('delete') && action('delete'),
   ]
-  const shown = groups
-    .map(([name, items]) => [name, items.filter(Boolean)] as const)
-    .filter(([, items]) => items.length > 0)
-  return (
-    <>
-      {shown.map(([name, items], index) => (
-        <Fragment key={name}>
-          {index > 0 && <Separator />}
-          {items}
-        </Fragment>
-      ))}
-    </>
-  )
 }

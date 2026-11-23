@@ -1,15 +1,11 @@
 'use client'
 import { languageTag, localizedHref } from '@helvetly/i18n'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { EmptyState } from '@helvetly/ui/components/empty-state'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -23,6 +19,7 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
+  FileDown,
   Landmark,
   ListTree,
   Receipt,
@@ -227,15 +224,20 @@ export function LedgerPage() {
                 <ChevronDown className="text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {FORMATS.map(([format, label]) => (
-                <DropdownMenuItem key={format} asChild>
-                  <a href={localizedHref(ledgerExportUrl(format, from, to))} download>
-                    {label}
-                  </a>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
+            <ActionMenuContent
+              kind="dropdown"
+              className="min-w-0"
+              menu={{
+                actions: FORMATS.map(([format, label]) => ({
+                  id: format,
+                  group: 'view',
+                  icon: <FileDown />,
+                  label,
+                  href: localizedHref(ledgerExportUrl(format, from, to)),
+                  download: true,
+                })),
+              }}
+            />
           </DropdownMenu>
           <Button variant="outline" size="lg" onClick={() => setAccounts(true)}>
             <ListTree />

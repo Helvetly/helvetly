@@ -1,4 +1,4 @@
-import { ContextMenuItem } from '@helvetly/ui/components/context-menu'
+import type { Action } from '@helvetly/ui/components/action-menu'
 import { Pin, PinOff } from 'lucide-react'
 import { useState } from 'react'
 
@@ -95,11 +95,13 @@ export function usePinnedTabs() {
 export type Pinned = ReturnType<typeof usePinnedTabs>
 
 /** "Add as tab" / "Remove tab" for a place, in any right-click menu. */
-export function PinItem({ pinned, tab }: { pinned: Pinned; tab: PinnedTab }) {
+export function pinAction(pinned: Pinned, tab: PinnedTab): Action {
   const on = pinned.has(tab)
-  return (
-    <ContextMenuItem onSelect={() => pinned.toggle(tab)}>
-      {on ? <PinOff /> : <Pin />} {on ? translate('removeTab') : translate('addAsTab')}
-    </ContextMenuItem>
-  )
+  return {
+    id: 'pin',
+    group: 'status',
+    icon: on ? <PinOff /> : <Pin />,
+    label: on ? translate('removeTab') : translate('addAsTab'),
+    onSelect: () => pinned.toggle(tab),
+  }
 }

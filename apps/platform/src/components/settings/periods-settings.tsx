@@ -1,5 +1,6 @@
 'use client'
 import { languageTag } from '@helvetly/i18n'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
@@ -19,12 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
@@ -654,21 +650,30 @@ function MonthRow({
                 <MoreHorizontal aria-hidden />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {state === 'closed' ? (
-                <DropdownMenuItem onSelect={() => actions.reopen(month)}>
-                  <LockOpen aria-hidden />
-                  {translate('reopen2')}
-                  {label}…
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onSelect={() => actions.close(month)}>
-                  <Lock aria-hidden />
-                  {translate('close2')}
-                  {label}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
+            <ActionMenuContent
+              kind="dropdown"
+              className="min-w-0"
+              menu={{
+                header: label,
+                actions: [
+                  state === 'closed'
+                    ? {
+                        id: 'reopen',
+                        group: 'status',
+                        icon: <LockOpen aria-hidden />,
+                        label: `${translate('reopen2')}${label}…`,
+                        onSelect: () => actions.reopen(month),
+                      }
+                    : {
+                        id: 'close',
+                        group: 'status',
+                        icon: <Lock aria-hidden />,
+                        label: `${translate('close2')}${label}`,
+                        onSelect: () => actions.close(month),
+                      },
+                ],
+              }}
+            />
           </DropdownMenu>
         ) : (
           <span className="size-7" />

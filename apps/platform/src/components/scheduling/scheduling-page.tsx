@@ -1,6 +1,5 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
-import { DropdownMenuItem } from '@helvetly/ui/components/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import {
   CalendarCheck2,
@@ -238,12 +237,16 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
         savedViews={false}
         primary={canWrite ? translate('schedNewSession') : undefined}
         onPrimary={canWrite ? () => newAt(date) : undefined}
-        menu={
-          <DropdownMenuItem disabled={shown.length === 0} onSelect={() => downloadCsv(shown, zone)}>
-            <Download />
-            {translate('schedExportCsv')}
-          </DropdownMenuItem>
-        }
+        menu={[
+          {
+            id: 'export',
+            group: 'view',
+            icon: <Download />,
+            label: translate('schedExportCsv'),
+            disabled: shown.length === 0,
+            onSelect: () => downloadCsv(shown, zone),
+          },
+        ]}
         start={
           <>
             <Button type="button" variant="outline" onClick={() => go(today)}>

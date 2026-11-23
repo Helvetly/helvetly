@@ -1,12 +1,7 @@
 'use client'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from '@helvetly/ui/components/context-menu'
+import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
   Check,
@@ -38,8 +33,8 @@ import { endDrag, startDrag, useDropTarget } from './drop-target'
 import { FolderMark } from './folder-art'
 import { InlineRename } from './inline-rename'
 import { KindIcon } from './kind'
-import { PinItem, type Pinned, type PinnedTab } from './pinned-tabs'
-import { StarGlyph, StarItem } from './star'
+import { pinAction, type Pinned, type PinnedTab } from './pinned-tabs'
+import { StarGlyph, starAction } from './star'
 import { FolderName } from './system-mark'
 
 export type TreeActions = {
@@ -315,9 +310,11 @@ function Pinnable({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent className="min-w-48">
-        <PinItem pinned={pinned} tab={tab} />
-      </ContextMenuContent>
+      <ActionMenuContent
+        kind="context"
+        className="min-w-48"
+        menu={{ actions: [pinAction(pinned, tab)] }}
+      />
     </ContextMenu>
   )
 }
@@ -505,28 +502,38 @@ function TreeNode({
             )}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent>
-          {canWrite && (
-            <ContextMenuItem onSelect={() => actions.newFolder(folder.id)}>
-              <FolderPlus />
-              {translate('newFolderInside')}
-            </ContextMenuItem>
-          )}
-          {canWrite && !system && (
-            <ContextMenuItem onSelect={onRenameStart}>
-              <Pencil />
-              {translate('rename2')}
-            </ContextMenuItem>
-          )}
-          <StarItem folder={folder} onToggle={actions.star} />
-          {canWrite && !system && <ContextMenuSeparator />}
-          {canWrite && !system && (
-            <ContextMenuItem variant="destructive" onSelect={() => actions.trash(folder)}>
-              <Trash2 />
-              {translate('moveToTrash3')}
-            </ContextMenuItem>
-          )}
-        </ContextMenuContent>
+        <ActionMenuContent
+          kind="context"
+          menu={{
+            header: folderLabel(folder),
+            actions: [
+              starAction(folder, actions.star),
+              canWrite &&
+                !system && {
+                  id: 'rename',
+                  group: 'edit',
+                  icon: <Pencil />,
+                  label: translate('rename2'),
+                  onSelect: onRenameStart,
+                },
+              canWrite && {
+                id: 'new-folder',
+                group: 'create',
+                icon: <FolderPlus />,
+                label: translate('newFolderInside'),
+                onSelect: () => actions.newFolder(folder.id),
+              },
+              canWrite &&
+                !system && {
+                  id: 'trash',
+                  group: 'danger',
+                  icon: <Trash2 />,
+                  label: translate('moveToTrash3'),
+                  onSelect: () => actions.trash(folder),
+                },
+            ],
+          }}
+        />
       </ContextMenu>
       {expanded && hasChildren && <ul className="grid">{children}</ul>}
     </li>
