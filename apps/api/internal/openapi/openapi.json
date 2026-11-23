@@ -14789,6 +14789,10 @@
           "notify": {
             "type": "boolean",
             "description": "Email the client (default true)."
+          },
+          "allow_day_off": {
+            "type": "boolean",
+            "description": "A one-off on one of the workspace's days off is a special request: without true it is refused (409 day_off, naming the day). A series skips days off per skip_holidays."
           }
         },
         "required": ["client_id", "starts_local"],
@@ -14909,6 +14913,10 @@
           "notify": {
             "type": "boolean",
             "description": "Email the client (default true)."
+          },
+          "allow_day_off": {
+            "type": "boolean",
+            "description": "Moving a session onto another day that is a day off needs true (409 day_off otherwise)."
           },
           "scope": {
             "type": "string",

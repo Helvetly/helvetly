@@ -19,6 +19,7 @@ import {
 } from '@/lib/scheduling'
 
 import { HostDot, StatusBadge } from './bits'
+import { DayOffLine, withDaysOff, type DaysOff } from './day-off'
 
 const unique = (pairs: [string, string][]) =>
   [...new Map(pairs).entries()].map(([value, label]) => ({ value, label }))
@@ -27,11 +28,14 @@ const unique = (pairs: [string, string][]) =>
 export function ListView({
   zone,
   occurrences,
+  daysOff,
   onOpen,
   empty,
 }: {
   zone: string
   occurrences: Occurrence[]
+  /** The range's days off, each shown on its date. */
+  daysOff?: DaysOff
   onOpen: (occurrence: Occurrence) => void
   empty: string
 }) {
@@ -127,12 +131,16 @@ export function ListView({
         />
       ) : (
         <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto">
-          {[...groups.entries()].map(([date, sessions]) => (
+          {withDaysOff(groups, daysOff).map(([date, sessions]) => (
             <section key={date} className="grid gap-1.5">
               <h3 className="px-1 text-body-sm font-medium text-muted-foreground">
                 {longDayLabel(date)}
               </h3>
-              <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+              {daysOff?.has(date) && <DayOffLine name={daysOff.get(date) ?? ''} />}
+              <ul
+                hidden={sessions.length === 0}
+                className="divide-y overflow-hidden rounded-xl border bg-card"
+              >
                 {sessions.map((occurrence) => (
                   <li key={occurrence.id}>
                     <button

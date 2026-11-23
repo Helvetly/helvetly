@@ -214,10 +214,11 @@ func (s *Service) createEvent(w http.ResponseWriter, r *http.Request, sess store
 	if !s.auth.Decode(w, r, &body) {
 		return nil
 	}
-	if err := decode(body, append(slices.Clone(eventFields), "notify")...); err != nil {
+	if err := decode(body, append(slices.Clone(eventFields), "notify", "allow_day_off")...); err != nil {
 		return err
 	}
 	notify := notifyOf(body)
+	allowDayOff := flagOf(body, "allow_day_off")
 	ctx, now := r.Context(), s.now()
 	var out map[string]any
 	var occIDs []string
@@ -229,6 +230,12 @@ func (s *Service) createEvent(w http.ResponseWriter, r *http.Request, sess store
 		e := store.SchedEvent{ID: auth.NewID("sev"), WorkspaceID: sess.Workspace.ID, CreatedBy: &sess.User.ID, CreatedAt: now, UpdatedAt: now}
 		if _, err := s.applyEvent(ctx, q, sess, &e, body, true); err != nil {
 			return err
+		}
+		// A series keeps its own skip_holidays rule; a one-off on a day off is a deliberate special request.
+		if e.RRule == nil && !allowDayOff {
+			if err := refuseDayOff(ctx, q, sess.Workspace, startsLocal(e).In(loadZone(e.TimeZone))); err != nil {
+				return err
+			}
 		}
 		if err := q.CreateSchedEvent(ctx, e); err != nil {
 			return err
@@ -284,6 +291,24 @@ func notifyOf(body map[string]json.RawMessage) bool {
 		return b
 	}
 	return true
+}
+
+// flagOf reads an optional boolean field, false when absent or not a boolean.
+func flagOf(body map[string]json.RawMessage, key string) bool {
+	var b bool
+	_ = json.Unmarshal(body[key], &b)
+	return b
+}
+
+// refuseDayOff answers 409 day_off, naming the holiday, when start falls on one of the workspace's days off.
+func refuseDayOff(ctx context.Context, q store.Q, ws store.Workspace, start time.Time) error {
+	day := recur.DateOf(start.In(ws.Location())).String()
+	list, err := q.SchedulingHolidays(ctx, ws.ID, day, day)
+	if err != nil || len(list) == 0 {
+		return err
+	}
+	return auth.Error(http.StatusConflict, "day_off", "This day is a day off ("+list[0].Name+"): schedule it only as a special request.",
+		map[string]any{"date": day, "name": list[0].Name})
 }
 
 func (s *Service) getEvent(w http.ResponseWriter, r *http.Request, sess store.Session) error {

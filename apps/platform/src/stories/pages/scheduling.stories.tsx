@@ -371,6 +371,110 @@ export const Month: Story = {
 
 export const MonthDark = dark(Month)
 
+const withDayOff = (date: string, name: string) => sampleState({ holidays: [{ date, name }] })
+const fieldValue = (id: string) => {
+  const field = document.getElementById(id)
+  return field instanceof HTMLInputElement ? field.value : null
+}
+const dayOffHeading = () => document.querySelector('[data-day-heading="2026-12-03"]')
+const scheduleButton = () => within(document.body).getByRole('button', { name: 'Schedule' })
+
+/** A day off in the month: its name as a chip on a calm amber tint; past days add nothing, other days open the form there. */
+export const MonthDayOff: Story = {
+  parameters: withState(withDayOff('2026-12-25', 'Christmas Day'), { view: 'month' }),
+  play: async () => {
+    const page = body()
+    await expect(await page.findByText('Christmas Day')).toBeVisible()
+    const cell = document.querySelector('[data-day-cell="2026-12-25"]')
+    await expect(cell).toHaveAttribute('data-day-off', 'true')
+    // Past days take no new session; today and later have their "+" and the whole cell.
+    await expect(
+      page.queryByRole('button', { name: /^New session on Tuesday, 1 December/ }),
+    ).not.toBeInTheDocument()
+    await expect(document.querySelector('[data-add-day="2026-12-01"]')).toBeNull()
+    await expect(document.querySelector('[data-add-day="2026-12-10"]')).not.toBeNull()
+
+    // Keyboard: the cell is a button; Enter opens the form on that day at 09:00.
+    page.getByRole('button', { name: /^New session on Thursday, 10 December 2026$/ }).focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(await page.findByRole('heading', { name: 'New session' })).toBeVisible()
+    await waitFor(() => expect(fieldValue('session-date')).toBe('2026-12-10'))
+    await expect(fieldValue('session-time')).toBe('09:00')
+    await expect(document.querySelector('[data-day-off-warning]')).toBeNull()
+    await userEvent.click(page.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() =>
+      expect(page.queryByRole('heading', { name: 'New session' })).not.toBeInTheDocument(),
+    )
+
+    // The day off's "+" opens the form with the special-request warning.
+    await userEvent.click(document.querySelector('[data-add-day="2026-12-25"]') ?? document.body)
+    await expect(await page.findByText(/is a day off \(Christmas Day\)/)).toBeVisible()
+    await waitFor(() => expect(fieldValue('session-date')).toBe('2026-12-25'))
+    await expect(scheduleButton()).toBeDisabled()
+  },
+}
+
+/** A day off in the week: the heading names it, the column is tinted; scheduling there needs a deliberate yes. */
+export const WeekDayOff: Story = {
+  parameters: withState(withDayOff('2026-12-03', 'Company outing')),
+  play: async () => {
+    const page = body()
+    await waitFor(() => expect(dayOffHeading()).toHaveTextContent('Company outing'))
+    await expect(dayOffHeading()).toHaveAttribute('data-day-off', 'true')
+    await expect(document.querySelector('[data-day-column="2026-12-03"]')).toHaveAttribute(
+      'title',
+      'Day off: no bookings (Company outing)',
+    )
+    // The heading's "+" opens the form that day; Schedule waits for the special-request box.
+    await userEvent.click(
+      page.getByRole('button', { name: /^New session on Thursday, 3 December 2026/ }),
+    )
+    await expect(
+      await page.findByText(/is a day off \(Company outing\)\. Schedule anyway/),
+    ).toBeVisible()
+    await expect(scheduleButton()).toBeDisabled()
+    await userEvent.click(page.getByRole('checkbox', { name: 'Schedule as a special request' }))
+    await expect(scheduleButton()).toBeEnabled()
+    // Another date takes the warning away; coming back keeps that date's yes.
+    const date = document.getElementById('session-date')
+    if (!(date instanceof HTMLInputElement)) throw new Error('No date field')
+    fireEvent.change(date, { target: { value: '2026-12-04' } })
+    await waitFor(() => expect(document.querySelector('[data-day-off-warning]')).toBeNull())
+    await expect(scheduleButton()).toBeEnabled()
+    fireEvent.change(date, { target: { value: '2026-12-03' } })
+    await expect(
+      await page.findByRole('checkbox', { name: 'Schedule as a special request' }),
+    ).toBeChecked()
+    await expect(scheduleButton()).toBeEnabled()
+  },
+}
+
+/** The list names a day off on its date, with or without sessions that day. */
+export const ListDayOff: Story = {
+  parameters: withState(withDayOff('2026-12-03', 'Company outing'), { layout: 'list' }),
+  play: async () => {
+    const page = body()
+    await expect(await page.findByText('Day off · Company outing')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Thursday, 3 December 2026' })).toBeVisible()
+  },
+}
+
+/** Moving a session onto a day off (Alt+→ here, a drag alike) asks first, then moves it as a special request. */
+export const MoveOntoDayOff: Story = {
+  parameters: withState(withDayOff('2026-12-03', 'Company outing')),
+  play: async () => {
+    const page = body()
+    await page.findByText('Company outing')
+    const block = await page.findByRole('button', { name: /Strategy session/ })
+    block.focus()
+    await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}')
+    const dialog = within(await page.findByRole('dialog'))
+    await expect(dialog.getByText(/is a day off \(Company outing\)/)).toBeVisible()
+    await userEvent.click(dialog.getByRole('button', { name: 'Move anyway' }))
+    await toastShows('Session saved.')
+  },
+}
+
 /** The list by day with its filters (an old ?view=list link opens it); a status filter narrows it, a CSV of what is shown. */
 export const List: Story = {
   parameters: withState(shared, { view: 'list' }),

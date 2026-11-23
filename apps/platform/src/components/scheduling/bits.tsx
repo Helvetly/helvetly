@@ -223,7 +223,12 @@ export function useSessionChange() {
     else save(occurrence, body, 'this', done)
   }
   /** Moves a session to new instants, written as the series' wall clock. */
-  const move = async (occurrence: Occurrence, startsAt: Date, endsAt: Date) => {
+  const move = async (
+    occurrence: Occurrence,
+    startsAt: Date,
+    endsAt: Date,
+    extra: Partial<EventInput> = {},
+  ) => {
     try {
       const event = await queryClient.fetchQuery({
         queryKey: schedulingKeys.event(occurrence.event_id),
@@ -232,6 +237,7 @@ export function useSessionChange() {
       await change(occurrence, {
         starts_local: localOf(startsAt, event.time_zone),
         duration_minutes: Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000),
+        ...extra,
       })
     } catch (error) {
       toast.error(errorMessage(error))

@@ -55,9 +55,12 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 	if !s.auth.Decode(w, r, &body) {
 		return nil
 	}
-	if err := decode(body, append(slices.Clone(eventFields), "notify", "scope")...); err != nil {
+	if err := decode(body, append(slices.Clone(eventFields), "notify", "scope", "allow_day_off")...); err != nil {
 		return err
 	}
+	allowDayOff := flagOf(body, "allow_day_off")
+	_, moves := body["starts_local"]
+	delete(body, "allow_day_off")
 	scope, err := scopeOf(body)
 	if err != nil {
 		return err
@@ -91,6 +94,19 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 		}
 		if err != nil {
 			return err
+		}
+		// Moving one session onto another day that is a day off needs the same deliberate yes as creating it there.
+		if moves && !allowDayOff && (e.RRule == nil || scope == "this") {
+			moved, err := q.SchedOccurrence(ctx, sess.Workspace.ID, o.ID, false)
+			if err != nil {
+				return err
+			}
+			zone := sess.Workspace.Location()
+			if recur.DateOf(moved.StartsAt.In(zone)) != recur.DateOf(o.StartsAt.In(zone)) {
+				if err := refuseDayOff(ctx, q, sess.Workspace, moved.StartsAt); err != nil {
+					return err
+				}
+			}
 		}
 		if err := s.cal.Enqueue(ctx, q, sess.Workspace.ID, slices.Concat(ed.touched, ed.cancelled, ed.added)); err != nil {
 			return err

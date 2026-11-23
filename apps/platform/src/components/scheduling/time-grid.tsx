@@ -1,6 +1,7 @@
 'use client'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import {
   useId,
   useLayoutEffect,
@@ -18,6 +19,7 @@ import {
   hostTint,
   instantOf,
   isOpen,
+  longDayLabel,
   timeLabel,
   zoned,
   type Busy,
@@ -26,6 +28,7 @@ import {
 } from '@/lib/scheduling'
 
 import { HostDot, PAST_HATCH } from './bits'
+import { DAY_OFF_TINT, dayOffHint, type DaysOff } from './day-off'
 import type { Hours } from './hours-menu'
 import { clipToDay, layoutDay, snapMinutes } from './layout'
 
@@ -57,6 +60,7 @@ export function TimeGrid({
   lanes,
   now,
   hours,
+  daysOff,
   canWrite,
   onOpen,
   onCreate,
@@ -72,9 +76,11 @@ export function TimeGrid({
   now: Date
   /** The hours shown; sessions outside them are counted at the column's top or bottom edge. */
   hours: Hours
+  daysOff: DaysOff
   canWrite: boolean
   onOpen: (occurrence: Occurrence) => void
-  onCreate: (date: string, minutes: number, hostId?: string) => void
+  /** Without minutes (a day's heading), the page picks a sensible start. */
+  onCreate: (date: string, minutes?: number, hostId?: string) => void
   onMove: (occurrence: Occurrence, startsAt: Date, endsAt: Date) => void
   /** Shows the full day, from an edge's count of hidden sessions. */
   onShowAll: () => void
@@ -213,38 +219,68 @@ export function TimeGrid({
           style={{ gridTemplateColumns: template }}
         >
           <div />
-          {days.map((day) => (
-            <div
-              key={day}
-              data-day-heading={day}
-              className="grid min-w-0 border-l px-1 py-1.5 text-center"
-            >
-              <span
+          {days.map((day) => {
+            const dayOff = daysOff.get(day)
+            const addLabel = translate('schedNewSessionOn', { day: longDayLabel(day) })
+            return (
+              <div
+                key={day}
+                data-day-heading={day}
+                data-day-off={dayOff ? true : undefined}
                 className={cn(
-                  'truncate text-body-sm',
-                  day === today.date ? 'font-semibold text-brand' : 'text-muted-foreground',
+                  'group/head relative grid min-w-0 border-l px-1 py-1.5 text-center',
+                  dayOff && DAY_OFF_TINT,
                 )}
               >
-                {dayLabel(day)}
-              </span>
-              {lanes && (
                 <span
-                  className="grid"
-                  style={{ gridTemplateColumns: `repeat(${lanes.length}, minmax(0, 1fr))` }}
+                  className={cn(
+                    'truncate text-body-sm',
+                    day === today.date ? 'font-semibold text-brand' : 'text-muted-foreground',
+                  )}
                 >
-                  {lanes.map((lane) => (
-                    <span
-                      key={lane.id}
-                      className="flex min-w-0 items-center justify-center gap-1 text-caption text-muted-foreground"
-                    >
-                      <HostDot id={lane.id} />
-                      <span className="truncate">{lane.name.split(' ')[0]}</span>
-                    </span>
-                  ))}
+                  {dayLabel(day)}
                 </span>
-              )}
-            </div>
-          ))}
+                {dayOff && (
+                  <span title={dayOffHint(dayOff)} className="truncate text-caption text-warning">
+                    <span className="sr-only">{translate('schedDayOff')}: </span>
+                    {dayOff}
+                  </span>
+                )}
+                {canWrite && day >= today.date && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={dayOff ? `${addLabel}. ${dayOffHint(dayOff)}` : addLabel}
+                        data-add-day={day}
+                        onClick={() => onCreate(day)}
+                        className="absolute top-1/2 right-1 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity group-hover/head:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100"
+                      >
+                        <Plus className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{addLabel}</TooltipContent>
+                  </Tooltip>
+                )}
+                {lanes && (
+                  <span
+                    className="grid"
+                    style={{ gridTemplateColumns: `repeat(${lanes.length}, minmax(0, 1fr))` }}
+                  >
+                    {lanes.map((lane) => (
+                      <span
+                        key={lane.id}
+                        className="flex min-w-0 items-center justify-center gap-1 text-caption text-muted-foreground"
+                      >
+                        <HostDot id={lane.id} />
+                        <span className="truncate">{lane.name.split(' ')[0]}</span>
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         <div
@@ -291,9 +327,17 @@ export function TimeGrid({
               key={day}
               ref={index === 0 ? firstDay : undefined}
               data-day-column={day}
+              data-day-off={daysOff.has(day) || undefined}
+              title={daysOff.has(day) ? dayOffHint(daysOff.get(day) ?? '') : undefined}
               className={cn('relative grid border-l', day === today.date && 'bg-brand/5')}
               style={{ gridTemplateColumns: `repeat(${laneList.length}, minmax(0, 1fr))` }}
             >
+              {daysOff.has(day) && (
+                <div
+                  aria-hidden
+                  className={cn('pointer-events-none absolute inset-0', DAY_OFF_TINT)}
+                />
+              )}
               {pastUntil(day) > first && (
                 <div
                   aria-hidden

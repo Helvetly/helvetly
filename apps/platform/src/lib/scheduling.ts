@@ -202,6 +202,8 @@ export type EventInput = {
   recurrence: Omit<Recurrence, 'rrule'> | null
   skip_holidays: boolean
   notify: boolean
+  /** A one-off on (or a move onto) a day off: the deliberate special request the API asks for. */
+  allow_day_off?: boolean
 }
 
 export type Scope = 'this' | 'following' | 'all'
