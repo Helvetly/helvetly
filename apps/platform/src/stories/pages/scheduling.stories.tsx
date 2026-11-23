@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fireEvent, spyOn, userEvent, waitFor, within } from 'storybook/test'
 
 import { HOURS_KEY } from '@/components/scheduling/hours-menu'
 import { SchedulingPage } from '@/components/scheduling/scheduling-page'
@@ -65,6 +65,26 @@ const peopleMenu = async () => {
 const closeMenu = async () => {
   await userEvent.keyboard('{Escape}')
   await waitFor(() => expect(body().queryByRole('menu')).not.toBeInTheDocument())
+}
+/** The page header's "…" menu. */
+const moreMenu = async () => {
+  await userEvent.click(body().getByRole('button', { name: 'More' }))
+  return within(await body().findByRole('menu'))
+}
+/** Exports through the "…" menu and answers the CSV it downloaded. */
+const exportedCsv = async () => {
+  const blobs: Blob[] = []
+  const create = spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+    if (blob instanceof Blob) blobs.push(blob)
+    return 'blob:sessions'
+  })
+  const click = spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  await userEvent.click((await moreMenu()).getByRole('menuitem', { name: 'Export CSV' }))
+  create.mockRestore()
+  click.mockRestore()
+  const [blob] = blobs
+  if (!blob) throw new Error('Nothing exported')
+  return blob.text()
 }
 const everyone = async () => {
   await userEvent.click((await peopleMenu()).getByRole('menuitemradio', { name: 'Everyone' }))
@@ -218,17 +238,21 @@ export const ViewMenuSwitches: Story = {
     const menu = await viewMenu()
     await expect(menu.queryByRole('menuitemradio', { name: 'Full day' })).not.toBeInTheDocument()
     await userEvent.click(menu.getByRole('menuitemradio', { name: 'List' }))
-    await expect(await page.findByRole('button', { name: 'Export CSV' })).toBeVisible()
+    await expect(await page.findByRole('button', { name: /^Filters/ })).toBeVisible()
+    // Export is in the header's "…" menu, not in the list's toolbar.
+    await expect(page.queryByRole('button', { name: 'Export CSV' })).not.toBeInTheDocument()
     await expect(localStorage.getItem(LAYOUT_KEY)).toBe('list')
     await expect(new URLSearchParams(window.location.search).get('layout')).toBe('list')
     await pickView('Day')
     await expect(
       await page.findByRole('heading', { name: 'Wednesday, 2 December 2026', level: 2 }),
     ).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Filters/ })).toBeVisible()
     await userEvent.click((await viewMenu()).getByRole('menuitemradio', { name: 'Calendar' }))
     await expect(await page.findByRole('button', { name: /Strategy session/ })).toBeVisible()
-    await expect(page.queryByRole('button', { name: 'Export CSV' })).not.toBeInTheDocument()
+    await expect(page.queryByRole('button', { name: /^Filters/ })).not.toBeInTheDocument()
+    // The calendar exports the sessions of the range it shows.
+    await expect(await exportedCsv()).toContain('Strategy session')
     await expect(localStorage.getItem(VIEW_KEY)).toBe('day')
   },
 }
@@ -510,7 +534,12 @@ export const List: Story = {
       expect(page.queryByRole('button', { name: /Strategy session/ })).not.toBeInTheDocument(),
     )
     await expect(page.getByRole('button', { name: /^Filters/ })).toHaveTextContent('1')
-    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled()
+    // The "…" menu exports what the filters leave.
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(page.queryByRole('dialog')).not.toBeInTheDocument())
+    const csv = await exportedCsv()
+    await expect(csv).toContain('Intro call')
+    await expect(csv).not.toContain('Strategy session')
     // A row opens the session in the drawer, from the keyboard too.
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(page.queryByRole('dialog')).not.toBeInTheDocument())
@@ -522,16 +551,37 @@ export const List: Story = {
 }
 export const ListDark = dark(List)
 
-/** An empty period in the list: one quiet line and a way to schedule, no big picture. */
+/** An empty period in the list: the standard empty state; the header's New session schedules. */
 export const ListEmpty: Story = {
   parameters: withState(emptyState(), { layout: 'list' }),
   play: async () => {
     const page = body()
-    await expect(await page.findByText('No sessions in this period.')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeDisabled()
-    const actions = page.getAllByRole('button', { name: 'New session' })
-    await userEvent.click(actions.at(-1) ?? document.body)
-    await expect(await page.findByRole('heading', { name: 'New session' })).toBeVisible()
+    const empty = await page.findByText('No sessions in this period')
+    await expect(empty.closest('[data-slot="empty-state"]')).toHaveTextContent(
+      'Try another range or filters, or schedule a session with New session.',
+    )
+    await expect(page.getAllByRole('button', { name: 'New session' })).toHaveLength(1)
+    await expect((await moreMenu()).getByRole('menuitem', { name: 'Export CSV' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    await closeMenu()
+  },
+}
+
+/** Filters that leave nothing say so and offer to clear them. */
+export const ListFilteredEmpty: Story = {
+  parameters: withState(shared, { layout: 'list' }),
+  play: async () => {
+    const page = body()
+    await page.findByRole('button', { name: /Strategy session/ })
+    await userEvent.type(page.getByRole('searchbox'), 'nothing like this')
+    await expect(
+      await page.findByText('No session matches these filters or this search.'),
+    ).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Clear filters' }))
+    await expect(await page.findByRole('button', { name: /Strategy session/ })).toBeVisible()
+    await expect(page.getByRole('searchbox')).toHaveValue('')
   },
 }
 
@@ -561,7 +611,7 @@ export const CardCorners: Story = {
     await page.findByRole('heading', { name: 'December 2026' })
     check()
     await userEvent.click((await viewMenu()).getByRole('menuitemradio', { name: 'List' }))
-    await page.findByRole('button', { name: 'Export CSV' })
+    await page.findByRole('button', { name: /^Filters/ })
     check()
   },
 }
@@ -575,7 +625,7 @@ export const Phone = phone({
       await page.findByRole('heading', { name: 'Wednesday, 2 December 2026' }),
     ).toBeVisible()
     await expect(page.getByRole('button', { name: /^Calendar view:/ })).toHaveTextContent('List')
-    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'More' })).toBeVisible()
   },
 } satisfies Story)
 

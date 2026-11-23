@@ -1,7 +1,15 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { DropdownMenuItem } from '@helvetly/ui/components/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
-import { CalendarCheck2, CalendarDays, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
+import {
+  CalendarCheck2,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Inbox,
+} from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
@@ -37,7 +45,7 @@ import { setUrlQuery } from '@/lib/url-query'
 import { useSessionChange } from './bits'
 import { useDayOffMove, useDaysOff } from './day-off'
 import { FULL_DAY, saveHours, storedHours, workingHours, type HoursChoice } from './hours-menu'
-import { ListView } from './list-view'
+import { downloadCsv, filterOccurrences, ListView, NO_FILTER, type Filter } from './list-view'
 import { MonthView } from './month-view'
 import { PeopleMenu, type HostMode } from './people-menu'
 import { RequestsDrawer } from './requests'
@@ -154,6 +162,8 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
   }
 
   const members = useMembers()
+  const [listFilter, setListFilter] = useState<Filter>(NO_FILTER)
+  const [listSearch, setListSearch] = useState('')
   const hostParam =
     hostMode === 'me' ? 'me' : hostMode === 'pick' && picked.length ? picked.join(',') : 'all'
   const range = rangeOf(view, date, zone)
@@ -176,6 +186,9 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
   const daysOffShown = new Map([...daysOff].filter(([day]) => shownDays.includes(day)))
 
   const list: Occurrence[] = toMark ? (unmarked.data ?? []) : (occurrences.data ?? [])
+  const listed = layout === 'list' || toMark
+  // The calendar has no list filters: it exports the range and people it shows.
+  const shown = listed ? filterOccurrences(list, listFilter, listSearch) : list
   const waiting = requests.data?.length ?? 0
   const toMarkCount = unmarked.data?.length ?? 0
 
@@ -225,6 +238,12 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
         savedViews={false}
         primary={canWrite ? translate('schedNewSession') : undefined}
         onPrimary={canWrite ? () => newAt(date) : undefined}
+        menu={
+          <DropdownMenuItem disabled={shown.length === 0} onSelect={() => downloadCsv(shown, zone)}>
+            <Download />
+            {translate('schedExportCsv')}
+          </DropdownMenuItem>
+        }
         start={
           <>
             <Button type="button" variant="outline" onClick={() => go(today)}>
@@ -339,15 +358,19 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
             what={translate('schedSessions')}
             onRetry={() => void occurrences.refetch()}
           />
-        ) : layout === 'list' || toMark ? (
+        ) : listed ? (
           <ListView
             zone={zone}
             occurrences={list}
             daysOff={toMark ? undefined : daysOffShown}
             now={now}
             onOpen={(entry) => openSession(entry.id)}
-            onNew={canWrite && !toMark ? () => newAt(date) : undefined}
+            filter={listFilter}
+            onFilter={setListFilter}
+            search={listSearch}
+            onSearch={setListSearch}
             empty={toMark ? translate('schedNothingToMark') : translate('schedNoSessionsInRange')}
+            emptyHint={canWrite && !toMark ? translate('schedNoSessionsInRangeText') : undefined}
           />
         ) : view === 'month' ? (
           <MonthView
