@@ -234,18 +234,36 @@ func (s *Service) editThis(ctx context.Context, q store.Q, sess store.Session, e
 	return edit{touched: []string{o.ID}}, q.SaveSchedOccurrence(ctx, o)
 }
 
-// seriesTime reads starts_local on an occurrence of a series as the series' new time of day; moving to another day
-// is a change of the repeat rule.
-func seriesTime(e *store.SchedEvent, old store.SchedEvent, o store.SchedOccurrence, set map[string]bool) error {
+// seriesTime reads starts_local on an occurrence of a series as where that session goes: the series takes its time
+// of day and moves by as many days, its rule's days with it (unless the change sets its own rule). It answers the
+// days moved.
+func seriesTime(e *store.SchedEvent, old store.SchedEvent, o store.SchedOccurrence, set map[string]bool) (int, error) {
 	if !set["starts_local"] {
-		return nil
+		return 0, nil
 	}
 	given := startsLocal(*e)
-	if given.Date != recur.DateOf(o.OriginalStart.In(loadZone(old.TimeZone))) {
-		return validationFailed(map[string]string{"starts_local": "To move the series to other days, change its repeat rule."})
+	days := daysBetween(recur.DateOf(o.StartsAt.In(loadZone(old.TimeZone))), given.Date)
+	if !set["recurrence"] {
+		if err := shiftRule(e, *ruleOf(old), days); err != nil {
+			return 0, err
+		}
 	}
-	e.StartsLocal = wall(startsLocal(old).Date.At(given.Hour, given.Minute))
+	e.StartsLocal = wall(startsLocal(old).Date.AddDays(days).At(given.Hour, given.Minute))
+	return days, nil
+}
+
+// shiftRule sets r, moved by days, as e's rule.
+func shiftRule(e *store.SchedEvent, r recur.Rule, days int) error {
+	r, ok := r.Shift(days)
+	if !ok {
+		return validationFailed(map[string]string{"starts_local": "This series repeats on a day of the month that cannot move by days: change its repeat rule instead."})
+	}
+	setRule(e, &r)
 	return nil
+}
+
+func daysBetween(from, to recur.Date) int {
+	return int(wall(to.At(0, 0)).Sub(wall(from.At(0, 0))).Hours() / 24)
 }
 
 func changesRule(set map[string]bool) bool {
@@ -259,11 +277,9 @@ func (s *Service) editAll(ctx context.Context, q store.Q, sess store.Session, e 
 	if err != nil {
 		return edit{}, err
 	}
-	if err := seriesTime(&e, old, o, in.set); err != nil {
+	days, err := seriesTime(&e, old, o, in.set)
+	if err != nil {
 		return edit{}, err
-	}
-	if in.set["starts_local"] && !in.set["recurrence"] {
-		setRule(&e, ruleOf(old))
 	}
 	e.Sequence++
 	e.UpdatedAt = s.now()
@@ -271,12 +287,13 @@ func (s *Service) editAll(ctx context.Context, q store.Q, sess store.Session, e 
 		return edit{}, err
 	}
 	now := s.now()
-	rows, err := q.SchedOccurrences(ctx, e.WorkspaceID, store.SchedOccurrenceFilter{EventID: e.ID, From: &now})
+	// Every row, the started and past ones too: they keep their time and hold their week's slot.
+	rows, err := q.SchedOccurrences(ctx, e.WorkspaceID, store.SchedOccurrenceFilter{EventID: e.ID})
 	if err != nil {
 		return edit{}, err
 	}
-	first := slices.IndexFunc(rows, func(x store.SchedOccurrence) bool { return isOpen(x.Status) })
-	ed, err := s.reconcile(ctx, q, sess.User.ID, old, e, rows, now, in.set)
+	first := slices.IndexFunc(rows, func(x store.SchedOccurrence) bool { return isOpen(x.Status) && !s.timeLocked(x) })
+	ed, err := s.reconcile(ctx, q, sess.User.ID, old, e, rows, now, in.set, days)
 	if err != nil {
 		return ed, err
 	}
@@ -304,12 +321,20 @@ func (s *Service) editFollowing(ctx context.Context, q store.Q, sess store.Sessi
 	}
 	rule := ruleOf(old)
 	before := len(slotStarts(old, holidays, time.Time{}, o.OriginalStart))
+	days := 0
+	if in.set["starts_local"] { // the session goes there; the ones after move by as many days
+		given := startsLocal(n)
+		days = daysBetween(recur.DateOf(o.StartsAt.In(oldZone)), given.Date)
+		n.StartsLocal = wall(from.AddDays(days).At(given.Hour, given.Minute))
+	}
 	if !in.set["recurrence"] {
 		r := *rule
 		if r.Count > 0 {
 			r.Count = max(r.Count-before, 1)
 		}
-		setRule(&n, &r)
+		if err := shiftRule(&n, r, days); err != nil {
+			return edit{}, err
+		}
 	}
 	// The old series ends the day before: its RRULE gets UNTIL (or the count it had made), sequence + 1.
 	if rule.Count > 0 {
@@ -332,7 +357,11 @@ func (s *Service) editFollowing(ctx context.Context, q store.Q, sess store.Sessi
 		return edit{}, err
 	}
 	rows = slices.DeleteFunc(rows, func(x store.SchedOccurrence) bool { return x.OriginalStart.Before(o.OriginalStart) })
-	ed, err := s.reconcile(ctx, q, sess.User.ID, old, n, rows, o.OriginalStart, in.set)
+	since := o.OriginalStart
+	if first := startsLocal(n).In(loadZone(n.TimeZone)); first.Before(since) { // moved to an earlier day or time
+		since = first
+	}
+	ed, err := s.reconcile(ctx, q, sess.User.ID, old, n, rows, since, in.set, days)
 	if err != nil {
 		return ed, err
 	}
@@ -347,10 +376,11 @@ func (s *Service) editFollowing(ctx context.Context, q store.Q, sess store.Sessi
 // reconcile fits rows (an event's occurrences from from on) to target's rule: each open row keeps its id and takes
 // the new slot of its date (a row changed on its own keeps its time), a row whose date has no slot any more is
 // cancelled (the business's change, not counted), closed rows stay as they are, and dates without a row get new
-// occurrences. Rows move to target when it is another event (a "following" split). Fields set in the change reach
+// occurrences. Rows move to target when it is another event (a "following" split), and to the slot shift days
+// after their date when the series moved by days. Fields set in the change reach
 // every open row, those changed on their own included.
 func (s *Service) reconcile(ctx context.Context, q store.Q, actor string, old, target store.SchedEvent, rows []store.SchedOccurrence,
-	from time.Time, set map[string]bool) (edit, error) {
+	from time.Time, set map[string]bool, shift int) (edit, error) {
 	var ed edit
 	holidays, err := holidaySet(ctx, q, target.WorkspaceID)
 	if err != nil {
@@ -367,7 +397,7 @@ func (s *Service) reconcile(ctx context.Context, q store.Q, actor string, old, t
 	now := s.now()
 	final := make([]store.SchedOccurrence, 0, len(rows))
 	for _, row := range rows {
-		d := recur.DateOf(row.OriginalStart.In(oldZone))
+		d := recur.DateOf(row.OriginalStart.In(oldZone)).AddDays(shift)
 		taken[d] = true
 		row.EventID = target.ID
 		if !isOpen(row.Status) || s.timeLocked(row) { // closed and started sessions keep their time and slot
