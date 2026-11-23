@@ -193,3 +193,23 @@ func hasSystemRoots(folders []store.Folder) bool {
 	}
 	return found["clients"] && found["expenses"]
 }
+
+// BackfillAutoTags tags the files no automatic tagging has seen yet (those from before it), each once: tagging marks
+// the file, so a second run finds nothing, and the people's own tags stay as they are.
+func (s *Service) BackfillAutoTags(ctx context.Context) error {
+	const batch = 500
+	for {
+		files, err := s.db.UntaggedDocuments(ctx, batch)
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			if err := s.db.Tx(ctx, func(q store.Q) error { return q.AutoTag(ctx, f.WorkspaceID, f.ID, s.now()) }); err != nil {
+				return err
+			}
+		}
+		if len(files) < batch {
+			return nil
+		}
+	}
+}

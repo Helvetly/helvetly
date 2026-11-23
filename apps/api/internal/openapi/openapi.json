@@ -9321,7 +9321,14 @@
             "items": {
               "type": "string"
             },
-            "description": "Lower-case tags, at most 10."
+            "description": "Lower-case tags: at most 10 of the people's own, then the automatic ones."
+          },
+          "auto_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Those of tags the app set from what the file is (kind, year-YYYY, client-<name>, the record's number, expense-<category>, from-quote-<number>, signed). A removed one is never set again."
           },
           "ai_filing": {
             "anyOf": [
@@ -12409,8 +12416,8 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 10,
-            "description": "Replaces the tags: trimmed and lower-cased; each uses letters a–z, digits and hyphens (not first or last), at most 32 characters."
+            "maxItems": 20,
+            "description": "Replaces the tags: trimmed and lower-cased; each uses letters a–z, digits and hyphens (not first or last), at most 32 characters; at most 10 besides the file's auto_tags. An automatic tag left out is removed for good."
           }
         },
         "examples": [

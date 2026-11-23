@@ -118,19 +118,10 @@ var expensesKind = Kind{
 			if err := q.AddDocumentLink(ctx, sess.Workspace.ID, *src.DocumentID, "expense", e.ID, sess.User.ID, now); err != nil {
 				return "", err
 			}
-			category, tags := "", []string{"expense"}
-			if e.CategoryID != nil {
-				c, err := q.ExpenseCategory(ctx, sess.Workspace.ID, *e.CategoryID)
-				if err != nil {
-					return "", err
-				}
-				category = c.Name
-				tags = append(tags, category)
-			}
 			folder := func() (string, error) {
 				return q.ExpenseYearFolder(ctx, sess.Workspace.ID, e.CategoryID, store.ExpenseYear(e.DocumentDate, sess.Workspace.Today(now)), sess.User.ID, now)
 			}
-			if err := placeDocument(ctx, q, sess, *src.DocumentID, folder, tags, now); err != nil {
+			if err := placeDocument(ctx, q, sess, *src.DocumentID, folder, nil, now); err != nil {
 				return "", err
 			}
 		}

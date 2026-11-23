@@ -28,7 +28,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
-import { RecordLink, useDrawers } from '@/components/record-link'
+import { RecordLink, RecordPageButton, useDrawers } from '@/components/record-link'
 import { apiFieldErrors } from '@/components/section-form'
 import { ApiError } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -501,6 +501,7 @@ function SessionDetails({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            <RecordPageButton />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

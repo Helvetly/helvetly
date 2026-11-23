@@ -10,7 +10,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path"
-	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -19,7 +18,6 @@ import (
 	"helvetly.com/api/internal/retention"
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
-	"helvetly.com/api/internal/tags"
 	fileuploads "helvetly.com/api/internal/uploads"
 )
 
@@ -295,9 +293,6 @@ func (s *Service) fileCopy(ctx context.Context, q store.Q, sess store.Session, e
 	if err != nil {
 		return "", err
 	}
-	tags := func(id string, existing []string) error {
-		return q.SetDocumentTags(ctx, ws, id, expenseTags(existing, categoryName(e)), now)
-	}
 	id, at, unplaced, err := q.LiveDocumentBySum(ctx, ws, u.receipt.SHA256)
 	switch {
 	case err == nil:
@@ -316,7 +311,7 @@ func (s *Service) fileCopy(ctx context.Context, q store.Q, sess store.Session, e
 			if err := q.UpdateDocument(ctx, ws, id, name, &folder, now); err != nil {
 				return "", err
 			}
-			return u.docKey(ws), tags(id, doc.Tags)
+			return u.docKey(ws), nil
 		}
 		return u.docKey(ws), nil
 	case !errors.Is(err, store.ErrNotFound):
@@ -337,7 +332,7 @@ func (s *Service) fileCopy(ctx context.Context, q store.Q, sess store.Session, e
 	if err := q.AddDocumentLink(ctx, ws, u.docID, "expense", e.ID, sess.User.ID, now); err != nil {
 		return "", err
 	}
-	return "", tags(u.docID, nil)
+	return "", nil
 }
 
 func categoryName(e store.Expense) string {
@@ -345,17 +340,6 @@ func categoryName(e store.Expense) string {
 		return ""
 	}
 	return e.Category.Name
-}
-
-// expenseTags: the tags plus "expense" and the category as a tag ("Büromaterial" → bueromaterial), at most 10.
-func expenseTags(have []string, category string) []string {
-	out := slices.Clone(have)
-	for _, t := range []string{"expense", tags.Slug(category)} {
-		if t != "" && len(out) < 10 && !slices.Contains(out, t) {
-			out = append(out, t)
-		}
-	}
-	return out
 }
 
 func readHead(h *multipart.FileHeader) ([]byte, error) {
