@@ -348,9 +348,10 @@ jobs:
       - *install
       - run: gh run download '${{ github.run_id }}' --name 'storybook-${{ github.sha }}' # gh: see the coverage job
         env: *gh-download-env
-      - run: pnpm test:visual --shard=${{ matrix.shard }} # Playwright inside the pinned mcr.microsoft.com/playwright image
+      - run: pnpm test:visual # Playwright inside the pinned mcr.microsoft.com/playwright image
         env:
           CI: 'true'
+          HELVETLY_VISUAL_SHARD: ${{ matrix.shard }} # stories dealt round-robin (e2e/visual/storybook.ts), not Playwright's contiguous --shard
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
