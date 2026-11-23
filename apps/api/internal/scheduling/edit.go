@@ -95,6 +95,16 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 		if err != nil {
 			return err
 		}
+		// A started session keeps its time: a one-off or "this" edit that moves it is refused (series edits skip it).
+		if s.timeLocked(o) && (e.RRule == nil || scope == "this") {
+			after, err := q.SchedOccurrence(ctx, sess.Workspace.ID, o.ID, false)
+			if err != nil {
+				return err
+			}
+			if !after.StartsAt.Equal(o.StartsAt) || !after.EndsAt.Equal(o.EndsAt) {
+				return errTimeLocked
+			}
+		}
 		// Moving one session onto another day that is a day off needs the same deliberate yes as creating it there.
 		if moves && !allowDayOff && (e.RRule == nil || scope == "this") {
 			moved, err := q.SchedOccurrence(ctx, sess.Workspace.ID, o.ID, false)
@@ -360,7 +370,7 @@ func (s *Service) reconcile(ctx context.Context, q store.Q, actor string, old, t
 		d := recur.DateOf(row.OriginalStart.In(oldZone))
 		taken[d] = true
 		row.EventID = target.ID
-		if !isOpen(row.Status) {
+		if !isOpen(row.Status) || s.timeLocked(row) { // closed and started sessions keep their time and slot
 			final = append(final, row)
 			continue
 		}

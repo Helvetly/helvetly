@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
+import { Lock } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -36,6 +37,29 @@ import {
 const PAST_HATCH_LINES =
   'bg-[repeating-linear-gradient(135deg,transparent_0_6px,color-mix(in_oklch,var(--foreground)_10%,transparent)_6px_7px)]'
 export const PAST_HATCH = `bg-muted/50 ${PAST_HATCH_LINES}`
+
+/** A session that has started keeps its time: start, end and length no longer change. */
+export const hasStarted = (occurrence: Pick<Occurrence, 'starts_at'>, now: Date) =>
+  Date.parse(occurrence.starts_at) <= now.getTime()
+
+/** The lock beside a started session's time, its reason in a tooltip. */
+export function TimeLock() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          data-time-lock
+          aria-label={translate('schedTimeLocked')}
+          className="inline-flex shrink-0 rounded-sm text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <Lock aria-hidden className="size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{translate('schedTimeLocked')}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 export function StatusBadge({ status }: { status: Status }) {
   return <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>

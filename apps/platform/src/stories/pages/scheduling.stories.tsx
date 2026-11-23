@@ -662,6 +662,29 @@ export const DragToMove: Story = {
   },
 }
 
+/** A session that has started keeps its time: dragging or Alt+arrows do nothing, and the block shows a lock. */
+export const PastSessionLocked: Story = {
+  play: async () => {
+    const page = body()
+    const block = await page.findByRole('button', { name: /Kick-off/ })
+    await expect(block).toHaveAttribute('data-locked', 'true')
+    await expect(block).toHaveClass('cursor-default')
+    await expect(
+      within(block).getByLabelText("This session has started; its time can't change."),
+    ).toBeVisible()
+    const { left, top } = block.getBoundingClientRect()
+    fireEvent.pointerDown(block, { button: 0, clientX: left + 5, clientY: top + 5, pointerId: 1 })
+    fireEvent.pointerMove(block, { clientX: left + 5, clientY: top + 85, pointerId: 1 })
+    fireEvent.pointerUp(block, { clientX: left + 5, clientY: top + 85, pointerId: 1 })
+    block.focus()
+    await userEvent.keyboard('{Alt>}{ArrowDown}{/Alt}')
+    await expect(page.queryByText('Session saved.')).not.toBeInTheDocument()
+    await expect(page.getByRole('button', { name: /Kick-off/ })).toHaveTextContent('14:00')
+    // A session still ahead keeps its grip.
+    await expect(page.getByRole('button', { name: /Strategy session/ })).toHaveClass('cursor-grab')
+  },
+}
+
 /** Moving one session of a series asks which sessions take the change; "This session" moves only it. */
 export const KeyboardMoveInSeries: Story = {
   parameters: withState(shared, { date: '2026-12-04' }),

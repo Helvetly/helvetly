@@ -5364,6 +5364,7 @@
   "schedWaiveText": "Elle ne consomme plus de séance et son entrée sur le mandat est retirée. C’est journalisé.",
   "schedNeedsEngagementWrite": "Il faut le droit de modifier les mandats : cette séance est saisie sur son mandat.",
   "schedNotStartedYet": "Possible une fois la séance commencée.",
+  "schedTimeLocked": "Cette séance a commencé ; son horaire ne peut plus changer.",
   "schedCancelThisSession": "Annuler cette séance ?",
   "schedCancelText": "La règle suggère si c’est tardif ; vous décidez.",
   "schedCancelledAs": "Annulée",

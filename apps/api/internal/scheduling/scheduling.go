@@ -172,6 +172,7 @@ var (
 	errNotStarted      = auth.Error(http.StatusConflict, "not_started", "This session has not started yet.", nil)
 	errNotOpen         = auth.Error(http.StatusConflict, "not_open", "This session is no longer open.", nil)
 	errStarted         = auth.Error(http.StatusConflict, "started", "This session has already started.", nil)
+	errTimeLocked      = auth.Error(http.StatusConflict, "occurrence_started", "This session has started; its time can't change.", nil)
 	errRequestOpen     = auth.Error(http.StatusConflict, "request_open", "This session already has an open request.", nil)
 	errRequestClosed   = auth.Error(http.StatusConflict, "request_closed", "This request has been answered already.", nil)
 	errSlotTaken       = auth.Error(http.StatusConflict, "slot_taken", "This time has just been taken: pick another.", nil)

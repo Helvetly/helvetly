@@ -5364,6 +5364,7 @@
   "schedWaiveText": "It no longer uses up a session and its engagement entry is removed. This is logged.",
   "schedNeedsEngagementWrite": "Changing engagements is needed: this session logs on its engagement.",
   "schedNotStartedYet": "Possible once the session has started.",
+  "schedTimeLocked": "This session has started; its time can't change.",
   "schedCancelThisSession": "Cancel this session?",
   "schedCancelText": "The policy suggests whether it is late; you decide.",
   "schedCancelledAs": "Cancelled",

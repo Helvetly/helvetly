@@ -57,7 +57,7 @@ import {
 } from '@/lib/scheduling'
 
 import { AddressInput } from './address-input'
-import { Choices } from './bits'
+import { Choices, TimeLock } from './bits'
 import {
   asksDuration,
   autoTitle,
@@ -91,6 +91,7 @@ export function SessionFields({
   zone,
   excludeId,
   editing,
+  timeLocked = false,
   set,
 }: {
   values: Values
@@ -99,6 +100,8 @@ export function SessionFields({
   excludeId?: string
   /** Changing an existing session: the client stays. */
   editing: boolean
+  /** The session has started: date, start and length are read-only. */
+  timeLocked?: boolean
   set: (change: Partial<Values>) => void
 }) {
   const me = useSession().data?.user.id
@@ -263,7 +266,8 @@ export function SessionFields({
           errors={errors}
           set={set}
           describe={describe}
-          durationAsked={durationAsked}
+          durationAsked={durationAsked && !timeLocked}
+          locked={timeLocked}
         />
         <div className="mt-1.5 flex h-5 min-w-0 items-center gap-2 text-body-sm">
           <span
@@ -276,12 +280,16 @@ export function SessionFields({
                 {timeLabel(slot.ends_at, zone)} ({zoneName(zone)})
               </span>
             )}
-            {!durationAsked && (
+            {(!durationAsked || timeLocked) && (
               <>
                 <span>
                   {slot && '· '}
                   {shortDuration(Number(values.duration))}
                 </span>
+              </>
+            )}
+            {!durationAsked && !timeLocked && (
+              <>
                 <button
                   type="button"
                   aria-label={translate('schedChangeDuration')}
@@ -483,7 +491,14 @@ function Field({
  * Date, start and duration on one row (wrapping on a phone); the duration as quick picks or minutes, left out while
  * the event type's length holds (the summary below names it).
  */
-function When({ values, errors, set, describe, durationAsked }: Part & { durationAsked: boolean }) {
+function When({
+  values,
+  errors,
+  set,
+  describe,
+  durationAsked,
+  locked,
+}: Part & { durationAsked: boolean; locked: boolean }) {
   return (
     <div className="grid gap-1">
       <div className="flex flex-wrap items-start gap-2">
@@ -494,8 +509,9 @@ function When({ values, errors, set, describe, durationAsked }: Part & { duratio
           {...describe('date')}
           type="date"
           value={values.date}
+          readOnly={locked}
           onChange={(event) => set(dateChange(values, event.target.value))}
-          className={cn(inputClass, 'w-auto')}
+          className={cn(inputClass, 'w-auto', locked && 'text-muted-foreground')}
         />
         <label htmlFor={fieldId('time')} className="sr-only">
           {translate('schedStart')}
@@ -505,9 +521,15 @@ function When({ values, errors, set, describe, durationAsked }: Part & { duratio
           type="time"
           step={300}
           value={values.time}
+          readOnly={locked}
           onChange={(event) => set({ time: event.target.value })}
-          className={cn(inputClass, 'w-auto')}
+          className={cn(inputClass, 'w-auto', locked && 'text-muted-foreground')}
         />
+        {locked && (
+          <span className="flex h-9 items-center">
+            <TimeLock />
+          </span>
+        )}
         {durationAsked && (
           <Duration values={values} errors={errors} set={set} describe={describe} />
         )}

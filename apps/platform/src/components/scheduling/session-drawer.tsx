@@ -50,7 +50,7 @@ import {
 } from '@/lib/scheduling'
 
 import { MapLink } from './address-input'
-import { HostDot, StatusBadge, useSessionChange } from './bits'
+import { hasStarted, HostDot, StatusBadge, TimeLock, useSessionChange } from './bits'
 import { DayOffWarning, useDaysOff } from './day-off'
 import { whenLabel, RequestCard } from './requests'
 import { SessionFields } from './session-form'
@@ -362,6 +362,7 @@ function ViewSession({
       <EditSession
         occurrence={occurrence.data}
         event={event.data}
+        timeLocked={hasStarted(occurrence.data, now)}
         onDirty={onDirty}
         onDone={() => {
           onDirty(false)
@@ -384,11 +385,14 @@ function ViewSession({
 function EditSession({
   occurrence,
   event,
+  timeLocked,
   onDirty,
   onDone,
 }: {
   occurrence: Occurrence
   event: SchedEvent
+  /** The session has started: its date, start and length stay. */
+  timeLocked: boolean
   onDirty: (dirty: boolean) => void
   onDone: () => void
 }) {
@@ -419,6 +423,7 @@ function EditSession({
           zone={event.time_zone}
           excludeId={occurrence.id}
           editing
+          timeLocked={timeLocked}
           set={form.set}
         />
       </FormShell>
@@ -578,13 +583,18 @@ function SessionDetails({
 
         <Panel>
           <Row icon={CalendarDays} label={translate('schedWhen')}>
-            {whenLabel(occurrence.starts_at, zone)}–{timeLabel(occurrence.ends_at, zone)}
-            {eventZone && (
-              <span className="text-muted-foreground">
-                {' '}
-                · {timeLabel(occurrence.starts_at, eventZone)} {zoneName(eventZone)}
+            <span className="inline-flex items-center gap-1.5">
+              <span>
+                {whenLabel(occurrence.starts_at, zone)}–{timeLabel(occurrence.ends_at, zone)}
+                {eventZone && (
+                  <span className="text-muted-foreground">
+                    {' '}
+                    · {timeLabel(occurrence.starts_at, eventZone)} {zoneName(eventZone)}
+                  </span>
+                )}
               </span>
-            )}
+              {hasStarted(occurrence, now) && isOpen(occurrence.status) && <TimeLock />}
+            </span>
           </Row>
           <Row icon={User} label={translate('client')}>
             <RecordLink href={`/clients?id=${encodeURIComponent(occurrence.client.id)}`}>

@@ -177,6 +177,11 @@ func isOpen(status string) bool {
 	return status == store.SchedRequested || status == store.SchedScheduled || status == store.SchedRescheduled
 }
 
+// timeLocked reports whether a session has started (or taken place) and is still on the books: its time stays.
+func (s *Service) timeLocked(o store.SchedOccurrence) bool {
+	return (o.Status == store.SchedScheduled || o.Status == store.SchedRescheduled) && !o.StartsAt.After(s.now())
+}
+
 // resolver names what occurrences point at, with one query per kind of record.
 type resolver struct {
 	events      map[string]store.SchedEvent

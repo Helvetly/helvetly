@@ -31,6 +31,9 @@ func (s *Service) MoveFromCalendar(ctx context.Context, workspaceID, occurrenceI
 		if !isOpen(o.Status) {
 			return errClosed
 		}
+		if s.timeLocked(o) {
+			return errTimeLocked
+		}
 		if e.RRule == nil { // a one-off's time lives on its event too, or its next edit would move it back
 			l := startsAt.In(loadZone(e.TimeZone))
 			e.StartsLocal = time.Date(l.Year(), l.Month(), l.Day(), l.Hour(), l.Minute(), 0, 0, time.UTC)

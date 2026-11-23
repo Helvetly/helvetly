@@ -4809,7 +4809,7 @@
         "operationId": "update_session",
         "tags": ["Scheduling"],
         "summary": "Change a session or its series",
-        "description": "Partial change. For a series, scope says how far it reaches: this session (it becomes an exception; a new time makes it rescheduled), this and the following (the series is split into a new event; the sessions keep their ids), or all upcoming sessions (changed ones keep their own time; details.kept counts them; a rule change cancels slots that no longer exist). Closed sessions refuse: 409 occurrence_closed. Conflicts come back as warnings.",
+        "description": "Partial change. For a series, scope says how far it reaches: this session (it becomes an exception; a new time makes it rescheduled), this and the following (the series is split into a new event; the sessions keep their ids), or all upcoming sessions (changed ones keep their own time; details.kept counts them; a rule change cancels slots that no longer exist). Closed sessions refuse: 409 occurrence_closed. A session that has started keeps its time: moving it or changing its length answers 409 occurrence_started (series edits skip started sessions). Conflicts come back as warnings.",
         "parameters": [
           {
             "name": "id",
