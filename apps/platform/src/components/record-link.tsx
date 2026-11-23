@@ -12,7 +12,15 @@ import { translate } from '@/lib/i18n'
 
 /** A record with a detail drawer of its own, which opens on top of whatever is on screen. */
 export type RecordRef = {
-  kind: 'invoice' | 'quote' | 'client' | 'engagement' | 'expense' | 'document' | 'signature'
+  kind:
+    | 'invoice'
+    | 'quote'
+    | 'client'
+    | 'engagement'
+    | 'expense'
+    | 'document'
+    | 'signature'
+    | 'session'
   id: string
 }
 
@@ -43,6 +51,7 @@ const ROUTES: {
   { kind: 'expense', path: '/expenses', key: 'id' },
   { kind: 'document', path: '/documents', key: 'file' },
   { kind: 'signature', path: '/documents', key: 'request', fixed: { view: 'signatures' } },
+  { kind: 'session', path: '/scheduling', key: 'session' },
 ]
 
 /** Where each kind's page opens its new-record form: `key=value`, and the key of a preset client. */
@@ -159,9 +168,13 @@ export function parseDrawerKey(value: string): DrawerRef | null {
   return route && first && second === undefined ? { kind: route.kind, id: first } : null
 }
 
+/** The most drawers stacked at once; opening another replaces the top one. */
+export const MAX_STACK = 4
+
 /**
  * The stack after opening `record` while `here` (path and query) is on screen: the page's own drawer
- * for it is uncovered, one already in the stack comes back to the top, anything else goes on top.
+ * for it is uncovered, one already in the stack comes back to the top, anything else goes on top
+ * (in place of the top one once MAX_STACK are open).
  */
 export function nextStack(stack: DrawerRef[], record: DrawerRef, here: string): DrawerRef[] {
   const page = new URL(here, 'http://local')
@@ -177,7 +190,8 @@ export function nextStack(stack: DrawerRef[], record: DrawerRef, here: string): 
   if (shown) return []
   const key = drawerKey(record)
   const index = stack.findIndex((entry) => drawerKey(entry) === key)
-  return index >= 0 ? stack.slice(0, index + 1) : [...stack, record]
+  if (index >= 0) return stack.slice(0, index + 1)
+  return [...stack.slice(0, MAX_STACK - 1), record]
 }
 
 /** Inside a stacked drawer: its record's page, and closing every stacked drawer to go there. */
