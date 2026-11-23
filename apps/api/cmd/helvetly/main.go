@@ -281,7 +281,8 @@ func run() error {
 		Provider: importModel, Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost, AllowStorage: billingSvc.AllowStorage,
 		File: documentsSvc.QueueFiling,
 	})
-	bg.Go(ctx, "imports", importsSvc.Run) // every few seconds: queued import files
+	bg.Go(ctx, "imports", importsSvc.Run)             // every few seconds: queued import files
+	bg.Go(ctx, "import-expiry", importsSvc.RunExpiry) // every ten minutes: unfinished imports idle for 48 h
 	if importModel != nil {
 		// counted in the automation pool with AI import, never in Heidi's
 		documentsSvc.SetFiler(importModel, aimodel.Budget{DB: db, Pool: aimodel.PoolAutomation,

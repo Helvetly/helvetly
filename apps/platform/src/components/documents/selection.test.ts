@@ -5,6 +5,7 @@ import type { Folder } from '@/lib/documents'
 import {
   bandRect,
   canDrop,
+  checkModifiers,
   clickSelect,
   EMPTY_SELECTION,
   fileKey,
@@ -17,6 +18,8 @@ import {
 
 const order: ItemKey[] = [folderKey('f1'), fileKey('a'), fileKey('b'), fileKey('c'), fileKey('d')]
 const plain = { shift: false, toggle: false }
+const check = (shiftKey: boolean, metaKey = false) =>
+  checkModifiers({ shiftKey, metaKey, ctrlKey: false })
 
 describe('clickSelect', () => {
   it('selects one, toggles with ⌘ and extends with shift', () => {
@@ -34,6 +37,19 @@ describe('clickSelect', () => {
     )
     s = clickSelect(s, fileKey('d'), order, { shift: true, toggle: false })
     expect([...s.keys]).toEqual([fileKey('b'), fileKey('c'), fileKey('d')])
+  })
+
+  it('extends and shrinks a checkbox range across folders and files', () => {
+    let s = clickSelect(EMPTY_SELECTION, folderKey('f1'), order, check(false))
+    s = clickSelect(s, fileKey('c'), order, check(true))
+    expect([...s.keys]).toEqual([folderKey('f1'), fileKey('a'), fileKey('b'), fileKey('c')])
+    s = clickSelect(s, fileKey('a'), order, check(true))
+    expect([...s.keys]).toEqual([folderKey('f1'), fileKey('a')])
+    // A plain or ⌘ checkbox click toggles one item and keeps the rest.
+    s = clickSelect(s, fileKey('d'), order, check(false, true))
+    expect([...s.keys]).toEqual([folderKey('f1'), fileKey('a'), fileKey('d')])
+    s = clickSelect(s, fileKey('a'), order, check(false))
+    expect([...s.keys]).toEqual([folderKey('f1'), fileKey('d')])
   })
 
   it('treats shift without an anchor as a plain click', () => {

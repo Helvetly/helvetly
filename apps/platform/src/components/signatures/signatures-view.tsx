@@ -1,8 +1,7 @@
 'use client'
-import { Button } from '@helvetly/ui/components/button'
 import { formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { FileSignature, Plus } from 'lucide-react'
+import { FileSignature } from 'lucide-react'
 import { useState } from 'react'
 
 import { LoadProblem } from '@/components/data/load-problem'
@@ -40,13 +39,7 @@ const touched = (request: SignatureRequest) =>
     .at(-1) ?? request.created_at
 
 /** The Signatures section of Documents: every request of the workspace, newest first. */
-export function SignaturesView({
-  onOpen,
-  onCreate,
-}: {
-  onOpen: (id: string) => void
-  onCreate: () => void
-}) {
+export function SignaturesView({ onOpen }: { onOpen: (id: string) => void }) {
   const [status, setStatus] = useState<RequestStatus | null>(null)
   const list = useSignatureRequests(status)
   const requests = list.data ?? []
@@ -85,12 +78,6 @@ export function SignaturesView({
           title={status ? translate('nothingHere') : translate('nothingOutForSignature')}
           text={
             status ? translate('noRequestHasThisStatus') : translate('sendAPDFToSignOnlineOrMakeA')
-          }
-          action={
-            <Button size="sm" className="cursor-pointer gap-1.5" onClick={onCreate}>
-              <Plus className="size-4" />
-              {translate('pdfForSignature3')}
-            </Button>
           }
         />
       ) : (

@@ -26,3 +26,16 @@ test.each([false, true])(
     method.mockRestore()
   },
 )
+
+test('opening the address already open adds no second history entry', async () => {
+  vi.resetModules()
+  const { setUrlQuery } = await import('./url-query')
+  const push = vi.spyOn(window.history, 'pushState')
+  const replace = vi.spyOn(window.history, 'replaceState')
+  setUrlQuery('/documents', new URLSearchParams({ folder: 'fld_1' }), true)
+  setUrlQuery('/documents', new URLSearchParams({ folder: 'fld_1' }), true)
+  expect(push).toHaveBeenCalledOnce()
+  expect(replace).toHaveBeenCalledOnce()
+  push.mockRestore()
+  replace.mockRestore()
+})

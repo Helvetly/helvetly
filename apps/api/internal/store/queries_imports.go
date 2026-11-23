@@ -26,6 +26,7 @@ type ImportBatch struct {
 	ClientName *string        `json:"client_name"`
 	Status     string         `json:"status"`
 	CreatedAt  time.Time      `json:"created_at"`
+	ExpiresAt  time.Time      `json:"expires_at"`
 	Files      []ImportFile   `json:"files"`
 	Records    []ImportRecord `json:"records"`
 }
@@ -36,7 +37,20 @@ type ImportBatchSummary struct {
 	ClientID  *string   `json:"client_id"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
 	Pending   int       `json:"pending"`
+}
+
+// ImportExpiry: an unfinished import is discarded this long after its last activity.
+const ImportExpiry = 48 * time.Hour
+
+// importLastActivity is batch b's latest write: made, a file read, a record edited or created.
+const importLastActivity = `greatest(b.created_at, (SELECT max(f.updated_at) FROM import_files f WHERE f.batch_id = b.id),
+	(SELECT max(r.updated_at) FROM import_records r WHERE r.batch_id = b.id))`
+
+// Expired: whether an unfinished import has gone ImportExpiry without activity; one still being read never has.
+func (b ImportBatch) Expired(now time.Time) bool {
+	return b.Status != "extracting" && !now.Before(b.ExpiresAt)
 }
 
 type ImportFile struct {
@@ -98,13 +112,15 @@ func (q Q) CreateImportBatch(ctx context.Context, b ImportBatch, files []ImportF
 // ImportBatch: the person's batch with its files and records; ErrNotFound for anyone else's.
 func (q Q) ImportBatch(ctx context.Context, workspaceID, userID, id string) (ImportBatch, error) {
 	var b ImportBatch
-	err := q.db.QueryRow(ctx, `SELECT b.id, b.kind, b.client_id, c.name, b.created_at
+	var last time.Time
+	err := q.db.QueryRow(ctx, `SELECT b.id, b.kind, b.client_id, c.name, b.created_at, `+importLastActivity+`
 		FROM import_batches b LEFT JOIN clients c ON c.id = b.client_id
 		WHERE b.workspace_id=$1 AND b.user_id=$2 AND b.id=$3`,
-		workspaceID, userID, id).Scan(&b.ID, &b.Kind, &b.ClientID, &b.ClientName, &b.CreatedAt)
+		workspaceID, userID, id).Scan(&b.ID, &b.Kind, &b.ClientID, &b.ClientName, &b.CreatedAt, &last)
 	if err != nil {
 		return b, err
 	}
+	b.ExpiresAt = last.Add(ImportExpiry)
 	b.WorkspaceID, b.UserID, b.Status = workspaceID, userID, "review"
 	rows, err := q.db.Query(ctx, `SELECT id, name, size, content_type, object_key, entry_index, reused, status, error, chunks_done,
 		chunks_total, document_type FROM import_files WHERE batch_id=$1 ORDER BY position`, id)
@@ -154,7 +170,7 @@ func (q Q) importRecords(ctx context.Context, where string, args ...any) ([]Impo
 // nil for none), with how many records still wait. A client's batches never show where no client is named, nor the
 // other way round.
 func (q Q) ImportBatches(ctx context.Context, workspaceID, userID, kind string, clientID *string) ([]ImportBatchSummary, error) {
-	rows, err := q.db.Query(ctx, `SELECT b.id, b.kind, b.client_id, b.created_at,
+	rows, err := q.db.Query(ctx, `SELECT b.id, b.kind, b.client_id, b.created_at, `+importLastActivity+`,
 			EXISTS (SELECT 1 FROM import_files f WHERE f.batch_id=b.id AND f.status IN ('queued','extracting')),
 			(SELECT count(*) FROM import_records r WHERE r.batch_id=b.id AND r.status NOT IN ('created','skipped'))
 		FROM import_batches b WHERE b.workspace_id=$1 AND b.user_id=$2 AND b.kind=$3
@@ -168,9 +184,11 @@ func (q Q) ImportBatches(ctx context.Context, workspaceID, userID, kind string, 
 	for rows.Next() {
 		var s ImportBatchSummary
 		var extracting bool
-		if err := rows.Scan(&s.ID, &s.Kind, &s.ClientID, &s.CreatedAt, &extracting, &s.Pending); err != nil {
+		var last time.Time
+		if err := rows.Scan(&s.ID, &s.Kind, &s.ClientID, &s.CreatedAt, &last, &extracting, &s.Pending); err != nil {
 			return nil, err
 		}
+		s.ExpiresAt = last.Add(ImportExpiry)
 		s.Status = "review"
 		if extracting {
 			s.Status = "extracting"
@@ -184,6 +202,20 @@ func (q Q) ImportBatches(ctx context.Context, workspaceID, userID, kind string, 
 func (q Q) DeleteImportBatch(ctx context.Context, workspaceID, userID, id string) (bool, error) {
 	tag, err := q.db.Exec(ctx, `DELETE FROM import_batches WHERE workspace_id=$1 AND user_id=$2 AND id=$3`, workspaceID, userID, id)
 	return tag.RowsAffected() == 1, err
+}
+
+// ClaimExpiredImport locks one unfinished batch (a record not created or skipped, no file being read) whose last
+// activity is ImportExpiry before now, skipping batches another instance holds; ErrNotFound when there is none. Run it
+// in a transaction. Only WorkspaceID, UserID, ID and Kind are set.
+func (q Q) ClaimExpiredImport(ctx context.Context, now time.Time) (ImportBatch, error) {
+	var b ImportBatch
+	err := q.db.QueryRow(ctx, `SELECT b.id, b.workspace_id, b.user_id, b.kind FROM import_batches b
+		WHERE EXISTS (SELECT 1 FROM import_records r WHERE r.batch_id = b.id AND r.status NOT IN ('created','skipped'))
+			AND NOT EXISTS (SELECT 1 FROM import_files f WHERE f.batch_id = b.id AND f.status IN ('queued','extracting'))
+			AND `+importLastActivity+` <= $1
+		ORDER BY b.created_at, b.id LIMIT 1 FOR UPDATE OF b SKIP LOCKED`, now.Add(-ImportExpiry)).
+		Scan(&b.ID, &b.WorkspaceID, &b.UserID, &b.Kind)
+	return b, err
 }
 
 // LockImportRecord reads one record of a batch for update. Run it in a transaction.
