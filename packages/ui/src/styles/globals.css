@@ -103,6 +103,8 @@
   --color-heidi-via: var(--heidi-via);
   --color-heidi-to: var(--heidi-to);
   /* The type scale: use these instead of text-[Npx]. */
+  --text-micro: 11px;
+  --text-micro--line-height: 14px;
   --text-caption: 12px;
   --text-caption--line-height: 16px;
   --text-body-sm: 13px;

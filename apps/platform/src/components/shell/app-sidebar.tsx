@@ -375,6 +375,7 @@ function PlanText({
   return (
     <PlanBadge
       plan={plan}
+      size="sm"
       data-testid={testId}
       className="mt-0.5 max-w-full justify-self-start truncate"
     >
