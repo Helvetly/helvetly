@@ -691,6 +691,7 @@ export const shellHandlers = [
     }),
   ),
   http.get('/api/v1/documents/groups/zip', () => new HttpResponse(null, { status: 204 })),
+  http.get('/api/v1/documents/exports', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/groups', ({ request }) => {
     const query = new URL(request.url).searchParams
     const by = (query.get('group') ?? '').split(',').find((dim) => !query.get(dim))

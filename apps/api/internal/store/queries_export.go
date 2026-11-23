@@ -235,4 +235,5 @@ var ExportExcluded = map[string]string{
 	"calendar_event_links":     "sync state: the external event each session was pushed as",
 	"calendar_push_queue":      "sync job bookkeeping: pushes still to make",
 	"calendar_feeds":           "a member's iCal feed secret (token hash and sealed token)",
+	"document_zip_exports":     "a member's download of files the export carries anyway, deleted 7 days after it is ready",
 }

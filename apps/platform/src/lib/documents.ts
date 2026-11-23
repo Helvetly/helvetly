@@ -168,15 +168,8 @@ export type Section = 'files' | 'recent' | 'trash' | 'signatures' | 'templates'
 
 export const GROUP_DIMS = ['type', 'year', 'client'] as const
 export type GroupDim = (typeof GROUP_DIMS)[number]
-/** The Group by choices, Folders (none) first. */
-export const GROUPINGS: readonly (readonly GroupDim[])[] = [
-  [],
-  ['type'],
-  ['year'],
-  ['client'],
-  ['type', 'year'],
-  ['year', 'type'],
-]
+/** At most this many grouping levels, each dimension once (the API's rule). */
+export const MAX_GROUP_LEVELS = GROUP_DIMS.length
 export const DOC_TYPES = [
   'invoices',
   'quotes',
@@ -211,10 +204,9 @@ const isDocType = (value: string): value is DocType =>
 const isDim = (value: string): value is GroupDim =>
   (GROUP_DIMS as readonly string[]).includes(value)
 
-/** A grouping from its URL form ("type,year"); anything not among GROUPINGS is Folders. */
+/** A grouping from its URL form ("client,year"): the known dimensions in their order, each once. */
 export function parseGrouping(raw: string | null): GroupDim[] {
-  const dims = (raw ?? '').split(',').filter(isDim)
-  return GROUPINGS.find((grouping) => grouping.join() === dims.join())?.slice() ?? []
+  return [...new Set((raw ?? '').split(',').filter(isDim))]
 }
 
 const GROUPING_KEY = 'helvetly.documents.group'
@@ -279,9 +271,31 @@ export function groupsQuery(view: ViewParams, userId: string | undefined) {
   return filterQuery(view, userId, new URLSearchParams({ group: view.group.join() }))
 }
 
-/** The download of every file of the view's group, as one ZIP. */
+/** What the view shows, as the ZIP's query: its list's filters (its folder too, outside a grouping) and grouping. */
+export function zipQuery(view: ViewParams, userId: string | undefined) {
+  const query = listQuery(view, userId)
+  query.delete('page_size')
+  query.delete('sort')
+  if (view.group.length > 0) query.set('group', view.group.join())
+  return query
+}
+
+/** The download of what the view shows, as one ZIP (streamed: up to the API's limit for it). */
 export const zipUrl = (view: ViewParams, userId: string | undefined) =>
-  `/api/v1/documents/groups/zip?${groupsQuery(view, userId)}`
+  `/api/v1/documents/groups/zip?${zipQuery(view, userId)}`
+
+/** A ZIP too big to stream, built in the background and announced in the bell. */
+export type ZipExport = {
+  id: string
+  name: string
+  status: 'pending' | 'ready' | 'failed'
+  files: number
+  bytes: number
+  created_at: string
+  expires_at: string | null
+}
+export const zipExportUrl = (id: string) =>
+  `/api/v1/documents/exports/${encodeURIComponent(id)}/download`
 
 export type ViewParams = {
   section: Section
@@ -477,12 +491,20 @@ export const docsApi = {
     }),
   list: (query: URLSearchParams) => request<Page<DocFile>>(`/documents?${query}`),
   groups: (query: URLSearchParams) => request<{ data: GroupLevel }>(`/documents/groups?${query}`),
-  /** Whether the ZIP of a group can be made: resolves, or throws the API's refusal (too big, empty). */
+  /** Whether the ZIP can be made: null to stream it, async when it is built in the background, or the API's
+   * refusal (too big, empty). */
   checkZip: (query: URLSearchParams) => {
     const check = new URLSearchParams(query)
     check.set('check', '1')
-    return request<void>(`/documents/groups/zip?${check}`)
+    return request<{ data: { async: boolean; files: number; bytes: number } } | null>(
+      `/documents/groups/zip?${check}`,
+    )
   },
+  /** Queues the ZIP to be built in the background. */
+  queueZip: (query: URLSearchParams) =>
+    request<{ data: ZipExport }>(`/documents/groups/zip?${query}`, { method: 'POST' }),
+  /** The person's own ZIPs: pending, ready, recently failed. */
+  zipExports: () => request<{ data: ZipExport[] }>('/documents/exports'),
   get: (id: string) => request<{ data: DocFile }>(path(id)),
   update: (
     id: string,
@@ -598,6 +620,7 @@ export const docKeys = {
   detail: (id: string) => [...queryKeys.documents, 'file', id] as const,
   trash: [...queryKeys.documents, 'trash'] as const,
   usage: [...queryKeys.documents, 'usage'] as const,
+  zipExports: [...queryKeys.documents, 'zip-exports'] as const,
 }
 
 export const foldersQuery = {
@@ -625,6 +648,17 @@ export function useDocGroups(query: URLSearchParams, enabled = true) {
     queryKey: docKeys.groups(text),
     queryFn: async () => (await docsApi.groups(new URLSearchParams(text))).data,
     placeholderData: keepPreviousData,
+    enabled,
+  })
+}
+
+/** The person's ZIPs; asked again every few seconds while one is being prepared. */
+export function useZipExports(enabled = true) {
+  return useQuery({
+    queryKey: docKeys.zipExports,
+    queryFn: async () => (await docsApi.zipExports()).data,
+    refetchInterval: (query) =>
+      query.state.data?.some((zip) => zip.status === 'pending') ? 5000 : false,
     enabled,
   })
 }

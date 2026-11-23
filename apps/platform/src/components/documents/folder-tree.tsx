@@ -18,7 +18,6 @@ import {
   Pencil,
   Plus,
   Trash2,
-  Layers,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
@@ -61,15 +60,6 @@ const TYPES: Kind[] = ['pdf', 'image', 'spreadsheet', 'document']
 const row =
   'group/row relative flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg pr-2 text-left text-[14px] text-foreground/75 transition-colors duration-100 outline-none hover:bg-foreground/[0.045] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 has-focus-visible:ring-2 has-focus-visible:ring-ring/50 aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:font-medium aria-[current=page]:text-foreground data-current:bg-foreground/[0.06] data-current:font-medium data-current:text-foreground data-drop-over:bg-brand-solid/10 data-drop-over:text-foreground data-drop-over:ring-2 data-drop-over:ring-brand-solid/70'
 
-type TreeView = {
-  id: string
-  label: string
-  count: number | null
-  current: boolean
-  onSelect: () => void
-}
-const NO_VIEWS: TreeView[] = []
-
 /** The left column: the workspace's folders as a tree, plus the Trash as a drop target. */
 export function FolderTree({
   folders,
@@ -79,7 +69,6 @@ export function FolderTree({
   kind,
   pinned,
   actions,
-  views = NO_VIEWS,
 }: {
   folders: Folder[]
   current: string | null
@@ -89,14 +78,6 @@ export function FolderTree({
   kind: Kind | null
   pinned: Pinned
   actions: TreeActions
-  /** The grouped views under Types (Invoices by year, …), each with its count. */
-  views?: {
-    id: string
-    label: string
-    count: number | null
-    current: boolean
-    onSelect: () => void
-  }[]
 }) {
   const canWrite = useCan('write:documents')
   const onPath = new Set(pathTo(folders, current).map((folder) => folder.id))
@@ -133,8 +114,7 @@ export function FolderTree({
       </TreeNode>
     ))
 
-  const rootOpen =
-    section === 'files' && current === null && kind === null && !views.some((view) => view.current)
+  const rootOpen = section === 'files' && current === null && kind === null
   return (
     <div className="flex min-h-full flex-col gap-5 p-3">
       <nav aria-label={translate('folders')} className="grid content-start gap-0.5">
@@ -268,27 +248,6 @@ export function FolderTree({
           </Pinnable>
         ))}
       </nav>
-
-      {views.length > 0 && (
-        <nav aria-label={translate('groupedViews')} className="grid content-start gap-0.5">
-          <Label>{translate('views')}</Label>
-          {views.map((view) => (
-            <button
-              key={view.id}
-              type="button"
-              aria-current={view.current ? 'page' : undefined}
-              onClick={view.onSelect}
-              className={cn(row, 'pl-1.5')}
-            >
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                <Layers className="size-3.5 stroke-[1.75]" />
-              </span>
-              <span className="min-w-0 flex-1 truncate">{view.label}</span>
-              {view.count !== null && view.count > 0 && <Count>{view.count}</Count>}
-            </button>
-          ))}
-        </nav>
-      )}
 
       <div className="mt-auto grid gap-0.5">
         <Pinnable pinned={pinned} tab={{ type: 'trash' }}>

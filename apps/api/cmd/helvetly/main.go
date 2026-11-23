@@ -237,7 +237,8 @@ func run() error {
 	employeesSvc := employees.New(db, authSvc, documentsSvc, cfg.SecretKey, slog.Default())
 	signaturesSvc := signatures.New(db, authSvc, files, signMailer, cfg.PublicURL, slog.Default())
 	templatesSvc := templates.New(db, authSvc, files, templateMailer, signaturesSvc, slog.Default())
-	bg.Go(ctx, "documents trash", documentsSvc.Run) // purges the Trash
+	bg.Go(ctx, "documents trash", documentsSvc.Run)                 // purges the Trash
+	bg.Go(ctx, "documents zip exports", documentsSvc.RunZipExports) // every few seconds: big ZIPs to build, old ones to delete
 	notificationsSvc := notifications.New(db, authSvc, notifyMailer, cfg.PublicURL, cfg.SecretKey, slog.Default())
 	bg.Go(ctx, "notification emails", notificationsSvc.Run) // batched notification emails
 	workspacesSvc := workspaces.New(db, authSvc, billingSvc, files, slog.Default())
