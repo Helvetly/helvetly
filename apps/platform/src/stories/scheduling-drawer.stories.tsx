@@ -276,7 +276,7 @@ export const Today: Story = {
   play: async ({ canvasElement }) => {
     const card = within(canvasElement)
     await expect(await card.findByRole('heading', { name: 'Today' })).toBeVisible()
-    await expect(card.getByRole('link', { name: '2 requests waiting' })).toBeVisible()
+    await expect(await card.findByRole('link', { name: '2 requests waiting' })).toBeVisible()
     await expect(card.getByRole('link', { name: /Strategy session/ }).getAttribute('href')).toMatch(
       /^\/scheduling\/?\?view=day&session=soc_1$/,
     )
