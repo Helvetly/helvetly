@@ -413,3 +413,9 @@ export function useSignatureMutation<Input>(
     },
   })
 }
+
+const LOOPBACK = new Set(['::1', '127.0.0.1', '::ffff:127.0.0.1'])
+
+/** An audit event's address, labelled; a loopback one (a local run) says so. Display only. */
+export const ipLabel = (ip: string) =>
+  translate(LOOPBACK.has(ip) ? 'ipThisComputer' : 'ipAddress', { ip })

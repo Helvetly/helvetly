@@ -40,23 +40,24 @@ export function lineDiff(before: string, after: string) {
   const b = after.split('\n')
   // common[i * width + j]: the longest common run of a[i..] and b[j..]
   const width = b.length + 1
-  const common = new Array<number>((a.length + 1) * width).fill(0)
+  const common = Array.from({ length: (a.length + 1) * width }, () => 0)
   const at = (i: number, j: number) => common[i * width + j] ?? 0
   for (let i = a.length - 1; i >= 0; i--)
     for (let j = b.length - 1; j >= 0; j--)
       common[i * width + j] =
         a[i] === b[j] ? at(i + 1, j + 1) + 1 : Math.max(at(i + 1, j), at(i, j + 1))
-  const out: { kind: 'same' | 'removed' | 'added'; text: string }[] = []
+  // key: where the line sits in before (r) and after (a), unique within one diff.
+  const out: { kind: 'same' | 'removed' | 'added'; text: string; key: string }[] = []
   let i = 0
   let j = 0
   while (i < a.length || j < b.length) {
     if (i < a.length && j < b.length && a[i] === b[j]) {
-      out.push({ kind: 'same', text: a[i] ?? '' })
+      out.push({ kind: 'same', text: a[i] ?? '', key: `s${i}-${j}` })
       i++
       j++
     } else if (j < b.length && (i === a.length || at(i, j + 1) >= at(i + 1, j))) {
-      out.push({ kind: 'added', text: b[j++] ?? '' })
-    } else out.push({ kind: 'removed', text: a[i++] ?? '' })
+      out.push({ kind: 'added', text: b[j] ?? '', key: `a${j++}` })
+    } else out.push({ kind: 'removed', text: a[i] ?? '', key: `r${i++}` })
   }
   return out
 }
@@ -200,16 +201,19 @@ export function TemplateAIPanel({
 function Diff({ before, after, strong }: { before: string; after: string; strong?: boolean }) {
   return (
     <div className={cn('grid leading-relaxed whitespace-pre-wrap', strong && 'font-medium')}>
-      {lineDiff(before, after).map((line, index) =>
+      {lineDiff(before, after).map((line) =>
         line.kind === 'same' ? (
-          <span key={index}>{line.text || ' '}</span>
+          <span key={line.key}>{line.text || ' '}</span>
         ) : line.kind === 'added' ? (
-          <ins key={index} className="rounded-sm bg-success-surface px-1 text-success no-underline">
+          <ins
+            key={line.key}
+            className="rounded-sm bg-success-surface px-1 text-success no-underline"
+          >
             {line.text || ' '}
           </ins>
         ) : (
           <del
-            key={index}
+            key={line.key}
             className="rounded-sm px-1 text-muted-foreground line-through decoration-destructive/60"
           >
             {line.text || ' '}

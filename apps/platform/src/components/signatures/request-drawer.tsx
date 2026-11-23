@@ -33,6 +33,7 @@ import { errorMessage } from '@/lib/api'
 import { contentUrl, downloadUrl } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import {
+  ipLabel,
   originalUrl,
   progressOf,
   remindTargets,
@@ -332,7 +333,22 @@ function Details({ request }: { request: SignatureRequest }) {
                   title={event.user_agent ?? undefined}
                 >
                   {time.format(new Date(event.at))}
-                  {event.ip && ` · ${event.ip}`}
+                  {event.ip && (
+                    <>
+                      {' · '}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="cursor-default rounded-sm underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                          >
+                            {ipLabel(event.ip)}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{translate('ipAddressHint')}</TooltipContent>
+                      </Tooltip>
+                    </>
+                  )}
                 </p>
               </TimelineItem>
             ))}
@@ -391,17 +407,17 @@ function SignerRow({ signer, index }: { signer: Signer; index: number }) {
 function Hash({ label, value }: { label: string; value: string }) {
   const short = value.length > 20 ? `${value.slice(0, 12)}…${value.slice(-6)}` : value
   return (
-    <div className="flex min-w-0 items-center gap-2 text-[12px]">
+    <div className="flex min-w-0 items-center gap-2 text-caption">
       <span className="min-w-0 truncate text-muted-foreground">{label}</span>
       <Tooltip>
         <TooltipTrigger asChild>
-          <code
-            tabIndex={0}
-            aria-label={`${label} ${value}`}
+          {/* Named by its visible short hash; the tooltip describes it with the whole one. */}
+          <button
+            type="button"
             className="font-code shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11.5px] text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {short}
-          </code>
+          </button>
         </TooltipTrigger>
         <TooltipContent className="font-code max-w-80 break-all">{value}</TooltipContent>
       </Tooltip>

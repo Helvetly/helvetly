@@ -9340,6 +9340,19 @@
               "$ref": "#/components/schemas/DocumentLink"
             }
           },
+          "shared_with": {
+            "type": "array",
+            "description": "The clients that see the file in their client portal, newest share first.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "client_id": { "type": "string" },
+                "client_name": { "type": "string" },
+                "shared_at": { "type": "string", "format": "date-time" }
+              },
+              "required": ["client_id", "client_name", "shared_at"]
+            }
+          },
           "retained_until": {
             "type": ["string", "null"],
             "format": "date"

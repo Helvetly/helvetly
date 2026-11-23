@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  ipLabel,
   addField,
   buildCreateBody,
   checkSigners,
@@ -143,51 +144,60 @@ describe('the create body', () => {
   })
 })
 
+const remindSigner = (position: number, status: Signer['status']): Signer => ({
+  id: `sgr_${position}`,
+  position,
+  name: `Signer ${position}`,
+  email: `s${position}@example.ch`,
+  status,
+  sent_at: null,
+  viewed_at: null,
+  signed_at: null,
+  declined_at: null,
+  decline_reason: null,
+})
+const remindRequest = (change: Partial<SignatureRequest>): SignatureRequest => ({
+  id: 'sig_1',
+  title: 'Lease',
+  message: null,
+  status: 'pending',
+  signing_order: 'parallel',
+  document: null,
+  signed_document: null,
+  folder_id: null,
+  original_sha256: '',
+  final_sha256: null,
+  page_count: 1,
+  expires_at: '',
+  created_by: null,
+  created_at: '',
+  completed_at: null,
+  signers: [],
+  fields: [],
+  ...change,
+})
+
 describe('remindTargets', () => {
-  const signer = (position: number, status: Signer['status']): Signer => ({
-    id: `sgr_${position}`,
-    position,
-    name: `Signer ${position}`,
-    email: `s${position}@example.ch`,
-    status,
-    sent_at: null,
-    viewed_at: null,
-    signed_at: null,
-    declined_at: null,
-    decline_reason: null,
-  })
-  const request = (change: Partial<SignatureRequest>): SignatureRequest => ({
-    id: 'sig_1',
-    title: 'Lease',
-    message: null,
-    status: 'pending',
-    signing_order: 'parallel',
-    document: null,
-    signed_document: null,
-    folder_id: null,
-    original_sha256: '',
-    final_sha256: null,
-    page_count: 1,
-    expires_at: '',
-    created_by: null,
-    created_at: '',
-    completed_at: null,
-    signers: [],
-    fields: [],
-    ...change,
-  })
-  const signers = [signer(2, 'waiting'), signer(1, 'signed'), signer(3, 'viewed')]
+  const signers = [remindSigner(2, 'waiting'), remindSigner(1, 'signed'), remindSigner(3, 'viewed')]
 
   it('names the signer whose turn it is, one after another', () => {
     expect(
-      remindTargets(request({ signing_order: 'sequential', signers })).map((s) => s.id),
+      remindTargets(remindRequest({ signing_order: 'sequential', signers })).map((s) => s.id),
     ).toEqual(['sgr_2'])
   })
   it('names everyone who has not signed, everyone at once', () => {
-    expect(remindTargets(request({ signers })).map((s) => s.id)).toEqual(['sgr_2', 'sgr_3'])
+    expect(remindTargets(remindRequest({ signers })).map((s) => s.id)).toEqual(['sgr_2', 'sgr_3'])
   })
   it('names nobody once the request is no longer out for signature', () => {
     for (const status of ['completed', 'declined', 'revoked', 'expired'] as const)
-      expect(remindTargets(request({ status, signers }))).toEqual([])
+      expect(remindTargets(remindRequest({ status, signers }))).toEqual([])
+  })
+})
+
+describe('ipLabel', () => {
+  it('labels an address and names a loopback one', () => {
+    expect(ipLabel('203.0.113.7')).toBe('IP 203.0.113.7')
+    expect(ipLabel('::1')).toBe('IP ::1 (this computer)')
+    expect(ipLabel('127.0.0.1')).toBe('IP 127.0.0.1 (this computer)')
   })
 })

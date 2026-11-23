@@ -2,7 +2,12 @@ import { lineDiff } from './email-template-ai'
 
 describe('lineDiff', () => {
   it('keeps common lines and marks the rest', () => {
-    expect(lineDiff('Hello\n\nBye', 'Dear {client}\n\nBye\nThanks')).toEqual([
+    expect(
+      lineDiff('Hello\n\nBye', 'Dear {client}\n\nBye\nThanks').map(({ kind, text }) => ({
+        kind,
+        text,
+      })),
+    ).toEqual([
       { kind: 'added', text: 'Dear {client}' },
       { kind: 'removed', text: 'Hello' },
       { kind: 'same', text: '' },

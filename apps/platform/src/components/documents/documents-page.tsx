@@ -175,7 +175,7 @@ import {
   type ItemKey,
   type Selection,
 } from './selection'
-import { ShareDrawer } from './share-drawer'
+import { ShareDialog } from './share-dialog'
 import { starAction } from './star'
 import { StorageOverview } from './storage-overview'
 import { TrashView } from './trash-view'
@@ -1541,7 +1541,7 @@ export function DocumentsPage() {
         />
       )}
 
-      {shareFrom && <ShareDrawer file={shareFrom} onClose={() => setShareFrom(null)} />}
+      {shareFrom && <ShareDialog file={shareFrom} onClose={() => setShareFrom(null)} />}
       {signFrom !== undefined && (
         <CreateSignatureDrawer
           initial={signFrom}

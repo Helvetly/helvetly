@@ -189,3 +189,21 @@ export const AllEvents: Story = {
   },
 }
 export const AllEventsDark = dark(AllEvents)
+
+/** An event's address is labelled as an IP with a tooltip; a loopback one says it is this computer. */
+export const IPAddresses: Story = {
+  parameters: shown(
+    request({
+      events: [event('created', 0), { ...event('viewed', 1, first), ip: '::1' }],
+    }),
+  ),
+  play: async () => {
+    const aside = await sidebar()
+    await expect(await within(aside).findByText('IP 203.0.113.24')).toBeVisible()
+    const local = within(aside).getByText('IP ::1 (this computer)')
+    await userEvent.hover(local)
+    await expect(await body().findByRole('tooltip')).toHaveTextContent(
+      'The address the action came from, kept as signing evidence.',
+    )
+  },
+}

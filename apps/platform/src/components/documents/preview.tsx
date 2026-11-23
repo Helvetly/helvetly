@@ -30,6 +30,7 @@ import {
   Receipt,
   RotateCcw,
   Search,
+  Share2,
   Sparkles,
   Trash2,
   X,
@@ -71,6 +72,7 @@ import { folderLabel } from '@/lib/system-folders'
 import { extractBlock } from './extract'
 import { FolderMark } from './folder-art'
 import { KindIcon, KIND_STYLE } from './kind'
+import { ShareButton, ShareDialog } from './share-dialog'
 
 export type PreviewCommands = {
   rename: (file: DocFile) => void
@@ -131,6 +133,7 @@ export function Preview({
   }, [prev, next, onNavigate])
 
   const trashed = !!file?.deleted_at
+  const [sharing, setSharing] = useState(false)
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent
@@ -185,6 +188,9 @@ export function Preview({
               onClick={() => commands.extract(file)}
             />
           )}
+          {canWrite && file && !trashed && (
+            <ShareButton file={file} onOpen={() => setSharing(true)} />
+          )}
           {file && (
             <Button asChild variant="outline" className="cursor-pointer gap-1.5">
               <a href={localizedHref(downloadUrl(file.id))}>
@@ -217,6 +223,13 @@ export function Preview({
                       label: translate('sendForSignature'),
                       ...lockedAction(signLock),
                       onSelect: () => commands.sign(file),
+                    },
+                    {
+                      id: 'share',
+                      group: 'send',
+                      icon: <Share2 />,
+                      label: translate('shareWithClientEllipsis'),
+                      onSelect: () => setSharing(true),
                     },
                     {
                       id: 'rename',
@@ -269,10 +282,16 @@ export function Preview({
           </div>
           {file && (
             <aside className="hidden w-[380px] shrink-0 overflow-y-auto border-l bg-panel lg:block dark:bg-background">
-              <Details file={file} commands={commands} known={tagCounts(siblings)} />
+              <Details
+                file={file}
+                commands={commands}
+                known={tagCounts(siblings)}
+                onShare={() => setSharing(true)}
+              />
             </aside>
           )}
         </div>
+        {sharing && file && <ShareDialog file={file} onClose={() => setSharing(false)} />}
       </SheetContent>
     </Sheet>
   )
@@ -380,10 +399,12 @@ function Details({
   file,
   commands,
   known,
+  onShare,
 }: {
   file: DocFile
   commands: PreviewCommands
   known: KnownTag[]
+  onShare: () => void
 }) {
   const canWrite = useCan('write:documents')
   const retained = isRetained(file.retained_until)
@@ -488,6 +509,7 @@ function Details({
           </ul>
         )}
       </Panel>
+      <SharedWithPanel file={file} canShare={canWrite && !file.deleted_at} onShare={onShare} />
       {file.sha256 && (
         <Panel title={translate('integrity')} className="grid grid-cols-[minmax(0,1fr)]">
           <button
@@ -640,5 +662,52 @@ function AttachClient({ onPick }: { onPick: (clientId: string) => void }) {
         </div>
       </PopoverContent>
     </Popover>
+  )
+}
+
+/** The clients that see the file in their portal; managed in the share modal. */
+function SharedWithPanel({
+  file,
+  canShare,
+  onShare,
+}: {
+  file: DocFile
+  canShare: boolean
+  onShare: () => void
+}) {
+  const shared = file.shared_with ?? []
+  const share = canShare && (
+    <Button variant="ghost" size="sm" className="cursor-pointer gap-1 px-2" onClick={onShare}>
+      <Share2 className="size-3.5" />
+      {translate('share')}
+    </Button>
+  )
+  return (
+    <Panel
+      title={translate('sharedWith')}
+      className="grid grid-cols-[minmax(0,1fr)]"
+      action={share}
+    >
+      {shared.length === 0 ? (
+        <p className="text-body-sm text-muted-foreground">{translate('notSharedWithAnyClient')}</p>
+      ) : (
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-1">
+          {shared.map((entry) => (
+            <li
+              key={entry.client_id}
+              className="flex h-9 min-w-0 items-center gap-2 px-2 text-body-sm"
+            >
+              <Building2 className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate" title={entry.client_name}>
+                {entry.client_name}
+              </span>
+              <span className="shrink-0 text-caption text-muted-foreground">
+                {formatDate(entry.shared_at)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   )
 }

@@ -441,7 +441,7 @@ function TemplateDialog({
             />
           )}
           {beforeAI && (
-            <p className="flex items-center gap-2 text-body-sm text-muted-foreground" role="status">
+            <output className="flex items-center gap-2 text-body-sm text-muted-foreground">
               {translate('emailTemplatesAIApplied')}
               <Button
                 type="button"
@@ -454,7 +454,7 @@ function TemplateDialog({
               >
                 {translate('undo')}
               </Button>
-            </p>
+            </output>
           )}
           {writable && (
             <div className="flex flex-wrap items-center gap-1.5">

@@ -1,18 +1,11 @@
 'use client'
-import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
 import { DataTable, type DataColumn } from '@helvetly/ui/components/data-table'
 import { Separator } from '@helvetly/ui/components/separator'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@helvetly/ui/components/tooltip'
 import { formatDate, formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Link2, Lock, Share2 } from 'lucide-react'
+import { Link2, Lock } from 'lucide-react'
 import {
   useRef,
   useState,
@@ -55,7 +48,7 @@ import {
   type ItemKey,
   type Rect,
 } from './selection'
-import { ShareDrawer } from './share-drawer'
+import { isShared, ShareButton, ShareDialog } from './share-dialog'
 import { StarGlyph } from './star'
 import { FolderName } from './system-mark'
 import { Thumbnail } from './thumbnail'
@@ -277,11 +270,11 @@ function ItemMenu({
 // ---- grid ----
 
 const card =
-  'group/item relative block w-full cursor-pointer rounded-xl bg-card ring-1 ring-border/80 transition-[box-shadow,background-color] duration-150 outline-none hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring/50 data-selected:bg-primary/[0.04] data-selected:ring-2 data-selected:ring-primary/70 data-focused:ring-2 data-focused:ring-ring/50 data-selected:data-focused:ring-primary data-drop-over:bg-primary/[0.06] data-drop-over:ring-2 data-drop-over:ring-primary dark:bg-muted/40'
+  'group/item relative block w-full cursor-pointer rounded-xl bg-card ring-1 ring-border/80 transition-[box-shadow,background-color] duration-150 outline-none not-data-selected:hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring/50 data-selected:bg-primary/[0.04] data-selected:ring-2 data-selected:ring-primary/70 data-selected:hover:ring-primary data-focused:ring-2 data-focused:ring-ring/50 data-selected:data-focused:ring-primary data-drop-over:bg-primary/[0.06] data-drop-over:ring-2 data-drop-over:ring-primary dark:bg-muted/40'
 
 // A folder has no box: hover is a soft wash, selection and a drop over it a clear ring.
 const tile =
-  'group/item relative flex w-full cursor-pointer flex-col items-center gap-2.5 rounded-2xl px-2 pt-3 pb-3 outline-none transition-colors duration-150 hover:bg-foreground/[0.035] focus-visible:ring-2 focus-visible:ring-ring/50 data-focused:ring-2 data-focused:ring-ring/40 data-selected:bg-primary/[0.07] data-selected:ring-2 data-selected:ring-primary/60 data-selected:data-focused:ring-primary data-drop-over:bg-primary/[0.08] data-drop-over:ring-2 data-drop-over:ring-primary dark:hover:bg-foreground/[0.05] dark:data-selected:bg-primary/[0.14]'
+  'group/item relative flex w-full cursor-pointer flex-col items-center gap-2.5 rounded-2xl px-2 pt-3 pb-3 outline-none transition-colors duration-150 not-data-selected:hover:bg-foreground/[0.035] focus-visible:ring-2 focus-visible:ring-ring/50 data-focused:ring-2 data-focused:ring-ring/40 data-selected:bg-primary/[0.07] data-selected:ring-2 data-selected:ring-primary/60 data-selected:hover:ring-primary data-selected:data-focused:ring-primary data-drop-over:bg-primary/[0.08] data-drop-over:ring-2 data-drop-over:ring-primary dark:not-data-selected:hover:bg-foreground/[0.05] dark:data-selected:bg-primary/[0.14]'
 
 function Grid(props: ItemsProps) {
   const section = (id: SectionId, title: string, children: ReactNode, hint?: string) => (
@@ -443,7 +436,8 @@ function FileCard({ props, file }: { props: ItemsProps; file: DocFile }) {
             file={file}
             className="aspect-[4/3] w-full border-b border-border/60 bg-muted/60 dark:bg-background/40"
           />
-          <span className="flex w-full items-start gap-2 px-3 pt-2.5 pb-3">
+          {/* The share button's column on the right (outside this box, over the card) is kept free here. */}
+          <span className="flex w-full items-start gap-2 pt-2.5 pr-11 pb-3 pl-3">
             <KindIcon kind={file.kind} className="mt-0.5 size-5 rounded-[5px] [&_svg]:size-3" />
             <span className="block min-w-0 flex-1">
               {renaming ? (
@@ -479,40 +473,14 @@ function FileCard({ props, file }: { props: ItemsProps; file: DocFile }) {
       />
       <span
         className={cn(
-          'absolute right-2 bottom-2 z-[2] rounded-md bg-card/90 opacity-0 transition-opacity group-hover/card:opacity-100 has-focus-visible:opacity-100',
+          'absolute right-2 bottom-2.5 z-[2] opacity-0 transition-opacity group-hover/card:opacity-100 has-focus-visible:opacity-100',
+          isShared(file) && 'opacity-100',
         )}
       >
         <ShareButton file={file} onOpen={() => setSharing(true)} />
       </span>
-      {sharing && <ShareDrawer file={file} onClose={() => setSharing(false)} />}
+      {sharing && <ShareDialog file={file} onClose={() => setSharing(false)} />}
     </div>
-  )
-}
-
-/** The one "Share with client" icon button (list row and grid card), labelled by a tooltip. */
-function ShareButton({ file, onOpen }: { file: DocFile; onOpen: () => void }) {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={translate('shareWithAClient', { name: file.name })}
-            onClick={(event) => {
-              event.stopPropagation()
-              onOpen()
-            }}
-            onDoubleClick={(event) => event.stopPropagation()}
-            className="relative z-[1] text-muted-foreground"
-          >
-            <Share2 className="size-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{translate('shareWithClient2')}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   )
 }
 
@@ -740,7 +708,7 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
       // The share button and the menu.
       size: 80,
       className:
-        'pl-1 opacity-0 transition-opacity group-hover/row:opacity-100 group-data-selected/row:opacity-100 has-focus-visible:opacity-100',
+        'pl-1 opacity-0 transition-opacity group-hover/row:opacity-100 group-data-selected/row:opacity-100 has-focus-visible:opacity-100 has-data-shared:opacity-100',
       cell: (row) =>
         'folder' in row ? (
           <MenuButton label={translate('actionsFor', { name: folderLabel(row.folder) })} />
@@ -838,7 +806,7 @@ function FileActions({ file }: { file: DocFile }) {
         <ShareButton file={file} onOpen={() => setSharing(true)} />
         <MenuButton label={translate('actionsFor', { name: file.name })} />
       </span>
-      {sharing && <ShareDrawer file={file} onClose={() => setSharing(false)} />}
+      {sharing && <ShareDialog file={file} onClose={() => setSharing(false)} />}
     </>
   )
 }
