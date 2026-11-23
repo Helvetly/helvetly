@@ -1,16 +1,11 @@
 'use client'
 
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
@@ -205,48 +200,54 @@ function Detail({
                   </TooltipTrigger>
                   <TooltipContent>{translate('moreActions')}</TooltipContent>
                 </Tooltip>
-                <DropdownMenuContent align="end" className="min-w-52">
-                  {hr.seesEmployeeWrites && (
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        archive.mutate(
-                          { id: employee.id, archived: !archived },
-                          {
-                            onSuccess: () =>
-                              toast.success(
-                                translate(
-                                  archived ? 'employeeRestoredToast' : 'employeeArchivedToast',
+                <ActionMenuContent
+                  kind="dropdown"
+                  menu={{
+                    header: fullName(employee),
+                    actions: [
+                      hr.owner && {
+                        id: 'hold',
+                        group: 'status',
+                        icon: employee.legal_hold ? <LockOpen /> : <Lock />,
+                        label: translate(
+                          employee.legal_hold ? 'employeeLiftHold' : 'employeeSetHold',
+                        ),
+                        onSelect: () => {
+                          setReason('')
+                          setPending('hold')
+                        },
+                      },
+                      hr.seesEmployeeWrites && {
+                        id: archived ? 'restore' : 'archive',
+                        group: archived ? 'status' : 'danger',
+                        tone: archived ? 'success' : 'destructive',
+                        icon: archived ? <ArchiveRestore /> : <Archive />,
+                        label: translate(archived ? 'employeeRestore' : 'employeeArchive'),
+                        onSelect: () =>
+                          archive.mutate(
+                            { id: employee.id, archived: !archived },
+                            {
+                              onSuccess: () =>
+                                toast.success(
+                                  translate(
+                                    archived ? 'employeeRestoredToast' : 'employeeArchivedToast',
+                                  ),
                                 ),
-                              ),
-                            onError: (error) => toast.error(errorMessage(error)),
-                          },
-                        )
-                      }
-                    >
-                      {archived ? <ArchiveRestore /> : <Archive />}
-                      {translate(archived ? 'employeeRestore' : 'employeeArchive')}
-                    </DropdownMenuItem>
-                  )}
-                  {hr.owner && (
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setReason('')
-                        setPending('hold')
-                      }}
-                    >
-                      {employee.legal_hold ? <LockOpen /> : <Lock />}
-                      {translate(employee.legal_hold ? 'employeeLiftHold' : 'employeeSetHold')}
-                    </DropdownMenuItem>
-                  )}
-                  {hr.owner && employee.erased_at === null && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem variant="destructive" onSelect={() => setPending('erase')}>
-                        <Eraser /> {translate('employeeErase')}
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
+                              onError: (error) => toast.error(errorMessage(error)),
+                            },
+                          ),
+                      },
+                      hr.owner &&
+                        employee.erased_at === null && {
+                          id: 'erase',
+                          group: 'danger',
+                          icon: <Eraser />,
+                          label: translate('employeeErase'),
+                          onSelect: () => setPending('erase'),
+                        },
+                    ],
+                  }}
+                />
               </DropdownMenu>
             )}
             {hr.seesEmployeeWrites && !locked && (

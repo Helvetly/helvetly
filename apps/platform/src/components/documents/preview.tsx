@@ -1,15 +1,10 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
@@ -45,7 +40,7 @@ import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
+import { lockedAction, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import type { KnownTag } from '@/components/clients/fields'
 import { InlineTagsEditor } from '@/components/clients/inline-tags'
@@ -208,42 +203,51 @@ export function Preview({
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-52">
-                {file.kind === 'pdf' && (
-                  <>
-                    <DropdownMenuItem
-                      disabled={Boolean(signLock)}
-                      onSelect={() => commands.sign(file)}
-                    >
-                      <FileSignature />
-                      {translate('sendForSignature')}
-                      {signLock && <PlanTag lock={signLock} />}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-                <DropdownMenuItem onSelect={() => commands.rename(file)}>
-                  <Pencil />
-                  {translate('rename2')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => commands.move(file)}>
-                  <FolderInput />
-                  {translate('moveTo2')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => commands.copy(file)}>
-                  <Copy />
-                  {translate('makeACopy')}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={isRetained(file.retained_until)}
-                  onSelect={() => commands.trash(file)}
-                >
-                  <Trash2 />
-                  {translate('moveToTrash3')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+              <ActionMenuContent
+                kind="dropdown"
+                menu={{
+                  header: file.name,
+                  actions: [
+                    file.kind === 'pdf' && {
+                      id: 'sign',
+                      group: 'send',
+                      icon: <FileSignature />,
+                      label: translate('sendForSignature'),
+                      ...lockedAction(signLock),
+                      onSelect: () => commands.sign(file),
+                    },
+                    {
+                      id: 'rename',
+                      group: 'edit',
+                      icon: <Pencil />,
+                      label: translate('rename2'),
+                      onSelect: () => commands.rename(file),
+                    },
+                    {
+                      id: 'move',
+                      group: 'edit',
+                      icon: <FolderInput />,
+                      label: translate('moveTo2'),
+                      onSelect: () => commands.move(file),
+                    },
+                    {
+                      id: 'copy',
+                      group: 'edit',
+                      icon: <Copy />,
+                      label: translate('makeACopy'),
+                      onSelect: () => commands.copy(file),
+                    },
+                    {
+                      id: 'trash',
+                      group: 'danger',
+                      icon: <Trash2 />,
+                      label: translate('moveToTrash3'),
+                      disabled: isRetained(file.retained_until),
+                      onSelect: () => commands.trash(file),
+                    },
+                  ],
+                }}
+              />
             </DropdownMenu>
           )}
           {canWrite && file && trashed && (

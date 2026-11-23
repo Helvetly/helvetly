@@ -82,6 +82,8 @@ export const WithItems: Story = {
   play: async ({ canvasElement }) => {
     await openPicker(canvasElement)
     await expect(await body.findByRole('option', { name: /Service 1/ })).toBeVisible()
+    // The add row waits for the permissions, which may load after the items.
+    await body.findByRole('option', { name: 'Add to catalogue' })
     const options = body.getAllByRole('option')
     await expect(options.at(-1)).toHaveAccessibleName('Add to catalogue')
     await userEvent.keyboard('{ArrowDown}')

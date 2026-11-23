@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
-import { MenuText, RowContextMenu, RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
+import { RowContextMenu, RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { initialsOf } from '@/components/initials'
 import { downloadUrl } from '@/lib/documents'
@@ -222,45 +222,56 @@ function requestMenu(
   const notPending = pending ? undefined : translate('onlyWhileWaitingForSignatures')
   const shown = request.signed_document ?? request.document
   return {
-    title: request.title,
-    items: ({ Item, Separator }) => (
-      <>
-        <Item onSelect={() => on.onOpen(request.id)}>
-          <PanelRightOpen />
-          {translate('open')}
-        </Item>
-        <Item disabled={!pending || on.reminding} onSelect={() => on.onRemind(request.id)}>
-          <BellRing />
-          <MenuText label={translate('sendReminder')} why={notPending} />
-        </Item>
-        <Item asChild>
-          <a
-            href={localizedHref(
-              request.signed_document
-                ? downloadUrl(request.signed_document.id)
-                : originalUrl(request.id),
-            )}
-            download
-          >
-            <FileDown />
-            {request.signed_document
-              ? translate('downloadSignedPDF')
-              : translate('downloadOriginalPDF')}
-          </a>
-        </Item>
-        <Item disabled={!shown} onSelect={() => shown && on.onShowDocument(request, shown.id)}>
-          <FolderOpen />
-          <MenuText
-            label={translate('openInDocuments')}
-            why={shown ? undefined : translate('itsFileIsNoLongerInDocuments')}
-          />
-        </Item>
-        <Separator />
-        <Item variant="destructive" disabled={!pending} onSelect={() => on.onRevoke(request)}>
-          <Ban />
-          <MenuText label={translate('revoke')} why={notPending} />
-        </Item>
-      </>
-    ),
+    header: request.title,
+    actions: [
+      {
+        id: 'open',
+        group: 'view',
+        icon: <PanelRightOpen />,
+        label: translate('open'),
+        onSelect: () => on.onOpen(request.id),
+      },
+      {
+        id: 'download',
+        group: 'view',
+        icon: <FileDown />,
+        label: request.signed_document
+          ? translate('downloadSignedPDF')
+          : translate('downloadOriginalPDF'),
+        href: localizedHref(
+          request.signed_document
+            ? downloadUrl(request.signed_document.id)
+            : originalUrl(request.id),
+        ),
+        download: true,
+      },
+      {
+        id: 'documents',
+        group: 'view',
+        icon: <FolderOpen />,
+        label: translate('openInDocuments'),
+        onSelect: () => shown && on.onShowDocument(request, shown.id),
+        disabled: !shown,
+        disabledReason: shown ? undefined : translate('itsFileIsNoLongerInDocuments'),
+      },
+      {
+        id: 'remind',
+        group: 'send',
+        icon: <BellRing />,
+        label: translate('sendReminder'),
+        onSelect: () => on.onRemind(request.id),
+        disabled: !pending || on.reminding,
+        disabledReason: notPending,
+      },
+      {
+        id: 'revoke',
+        group: 'danger',
+        icon: <Ban />,
+        label: translate('revoke'),
+        onSelect: () => on.onRevoke(request),
+        disabled: !pending,
+        disabledReason: notPending,
+      },
+    ],
   }
 }

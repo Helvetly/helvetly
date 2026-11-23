@@ -1,19 +1,9 @@
 'use client'
+import { ActionMenuContent, type Action } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Kbd } from '@helvetly/ui/components/kbd'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Segmented } from '@helvetly/ui/components/segmented'
@@ -516,40 +506,63 @@ function ItemMenu({
           <Ellipsis />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-52" onCloseAutoFocus={keepFocus}>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <Tag />
-            {translate('category')}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="max-h-80 min-w-56 overflow-y-auto">
-            <DropdownMenuRadioGroup value={line.category_id} onValueChange={onCategory}>
-              <DropdownMenuRadioItem value="">
-                {translate('defaultExpenseCategory')}
-              </DropdownMenuRadioItem>
-              {categories
-                .filter((category) => !category.is_archived || category.id === line.category_id)
-                .map((category) => (
-                  <DropdownMenuRadioItem key={category.id} value={category.id}>
-                    {category.name}
-                    <span className="ml-auto pl-3 text-xs text-muted-foreground tabular-nums">
-                      {category.account_code}
-                    </span>
-                  </DropdownMenuRadioItem>
-                ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuItem disabled={full} onSelect={onDuplicate}>
-          <Copy />
-          {translate('duplicateItem')}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" disabled={only} onSelect={onDelete}>
-          <Trash2 />
-          {translate('deleteItem')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
+      <ActionMenuContent
+        kind="dropdown"
+        onCloseAutoFocus={keepFocus}
+        menu={{
+          actions: [
+            {
+              id: 'category',
+              group: 'edit',
+              icon: <Tag />,
+              label: translate('category'),
+              submenu: [
+                {
+                  id: 'default',
+                  group: 'edit',
+                  icon: null,
+                  label: translate('defaultExpenseCategory'),
+                  checked: line.category_id === '',
+                  onSelect: () => onCategory(''),
+                },
+                ...categories
+                  .filter((category) => !category.is_archived || category.id === line.category_id)
+                  .map((category): Action => ({
+                    id: category.id,
+                    group: 'edit',
+                    icon: null,
+                    label: (
+                      <>
+                        {category.name}
+                        <span className="ml-auto pl-3 text-xs text-muted-foreground tabular-nums">
+                          {category.account_code}
+                        </span>
+                      </>
+                    ),
+                    checked: line.category_id === category.id,
+                    onSelect: () => onCategory(category.id),
+                  })),
+              ],
+            },
+            {
+              id: 'duplicate',
+              group: 'edit',
+              icon: <Copy />,
+              label: translate('duplicateItem'),
+              disabled: full,
+              onSelect: onDuplicate,
+            },
+            {
+              id: 'delete',
+              group: 'danger',
+              icon: <Trash2 />,
+              label: translate('deleteItem'),
+              disabled: only,
+              onSelect: onDelete,
+            },
+          ],
+        }}
+      />
     </DropdownMenu>
   )
 }

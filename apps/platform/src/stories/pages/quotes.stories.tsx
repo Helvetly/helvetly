@@ -888,7 +888,7 @@ export const Filters: Story = {
 }
 
 /**
- * A sent quote's "…" in groups (view · status · edit · create), separated; Accept reads green, Decline red, and
+ * A sent quote's "…" in groups (view · send · status · edit · create), separated; Accept reads green, Decline red, and
  * "Create contract with AI" sits with Create invoice under Create.
  */
 export const RowMenuGroups: Story = {
@@ -905,12 +905,13 @@ export const RowMenuGroups: Story = {
       node.getAttribute('role') === 'separator' ? '|' : (node.textContent ?? '').trim(),
     )
     await expect(order.join(', ')).toContain(
-      'Open details, Download PDF, |, Send again, Accept, Decline, |, Revise, Duplicate, |, Create contract with AI',
+      'Open details, Download PDF, |, Send again, |, Accept, Decline, |, Revise, Duplicate, |, Create contract with AI',
     )
     const accept = within(menu).getByRole('menuitem', { name: 'Accept' })
     const decline = within(menu).getByRole('menuitem', { name: 'Decline' })
     const plain = within(menu).getByRole('menuitem', { name: 'Revise' })
     await expect(getComputedStyle(accept).color).not.toBe(getComputedStyle(plain).color)
+    await expect(accept).toHaveAttribute('data-tone', 'success')
     await expect(decline).toHaveAttribute('data-variant', 'destructive')
     await expect(getComputedStyle(decline).color).not.toBe(getComputedStyle(accept).color)
     await userEvent.keyboard('{Escape}')

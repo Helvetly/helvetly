@@ -1,10 +1,15 @@
 'use client'
+import {
+  ActionMenuBody,
+  ActionMenuContent,
+  actionMenuHeaderClass,
+  type ActionMenuSpec,
+} from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
   ContextMenuSeparator,
@@ -14,56 +19,20 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@helvetly/ui/components/context-menu'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { CheckCheck, Ellipsis, Plus, RefreshCw, Rows3 } from 'lucide-react'
-import type { ComponentType, MouseEvent, ReactElement, ReactNode } from 'react'
+import type { MouseEvent, ReactElement } from 'react'
 
 import { translate } from '@/lib/i18n'
 import { useCanWriteHere } from '@/lib/permissions'
 
 import type { BulkAction } from './table-page'
 
-type ItemProps = {
-  onSelect?: (event: Event) => void
-  variant?: 'default' | 'destructive'
-  disabled?: boolean
-  asChild?: boolean
-  className?: string
-  children: ReactNode
-}
-
-/** The parts a menu is built from: one list of actions renders as a "…" menu and a right-click menu. */
-export type MenuKit = {
-  Item: ComponentType<ItemProps>
-  Separator: ComponentType
-  /** Only for a key that really does it, e.g. ⌘V. */
-  Shortcut: ComponentType<{ children: ReactNode }>
-}
-
-export const dropdownKit: MenuKit = {
-  Item: DropdownMenuItem,
-  Separator: DropdownMenuSeparator,
-  Shortcut: DropdownMenuShortcut,
-}
-export const contextKit: MenuKit = {
-  Item: ContextMenuItem,
-  Separator: ContextMenuSeparator,
-  Shortcut: ContextMenuShortcut,
-}
-
-/** A row's actions: the header line ("#12 · Muster AG") and the items, written once. */
-export type RowMenuSpec = { title: string; items: (kit: MenuKit) => ReactNode }
+/** An item's menu: its header line ("#12 · Muster AG") and its actions, written once. */
+export type RowMenuSpec = ActionMenuSpec
 
 /** The header line of an item's menu, e.g. "#12 · Muster AG". */
-export const titleClass = 'truncate text-xs font-normal text-muted-foreground'
+export const titleClass = actionMenuHeaderClass
 
 /**
  * Text fields keep the browser's own menu (spelling, paste), and so do portalled menus and
@@ -79,21 +48,6 @@ function keepNativeMenu(event: MouseEvent<Element>) {
     event.stopPropagation()
 }
 
-/**
- * A menu item's label, with why it is unavailable on a line under it: a disabled item takes no pointer, so it
- * could show no tooltip.
- */
-export function MenuText({ label, why }: { label: string; why?: string }) {
-  return why ? (
-    <span className="grid">
-      <span>{label}</span>
-      <span className="text-xs text-muted-foreground">{why}</span>
-    </span>
-  ) : (
-    label
-  )
-}
-
 /** The "…" button at the end of a row. */
 export function RowMenuButton({ label, menu }: { label: string; menu: RowMenuSpec }) {
   return (
@@ -103,10 +57,7 @@ export function RowMenuButton({ label, menu }: { label: string; menu: RowMenuSpe
           <Ellipsis />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-52">
-        <DropdownMenuLabel className={titleClass}>{menu.title}</DropdownMenuLabel>
-        {menu.items(dropdownKit)}
-      </DropdownMenuContent>
+      <ActionMenuContent kind="dropdown" menu={menu} />
     </DropdownMenu>
   )
 }
@@ -135,33 +86,35 @@ export function RowContextMenu({
       >
         {children}
       </ContextMenuTrigger>
-      <ContextMenuContent className="min-w-52">
-        <ContextMenuLabel className={titleClass}>
-          {many ? translate('dynamicSelected', { count: many.count }) : menu.title}
-        </ContextMenuLabel>
-        {many ? <BulkItems actions={many.actions} /> : menu.items(contextKit)}
-      </ContextMenuContent>
+      {many ? (
+        <BulkMenu count={many.count} actions={many.actions} />
+      ) : (
+        <ActionMenuContent kind="context" menu={menu} />
+      )}
     </ContextMenu>
   )
 }
 
-const bulkItem = ({ label, icon, onClick, destructive }: BulkAction) => (
-  <ContextMenuItem key={label} variant={destructive ? 'destructive' : 'default'} onSelect={onClick}>
-    {icon} {label}
-  </ContextMenuItem>
-)
-
-function BulkItems({ actions }: { actions: BulkAction[] }) {
+/** The selection's actions; a member without write sees only those that change nothing. */
+function BulkMenu({ count, actions }: { count: number; actions: BulkAction[] }) {
   const writable = useCanWriteHere()
-  const allowed = actions.filter((action) => writable || !action.write)
-  const safe = allowed.filter((action) => !action.destructive)
-  const destructive = allowed.filter((action) => action.destructive)
   return (
-    <>
-      {safe.map(bulkItem)}
-      {safe.length > 0 && destructive.length > 0 && <ContextMenuSeparator />}
-      {destructive.map(bulkItem)}
-    </>
+    <ActionMenuContent
+      kind="context"
+      menu={{
+        header: translate('dynamicSelected', { count }),
+        actions: actions
+          .filter((action) => writable || !action.write)
+          .map((action) => ({
+            id: action.label,
+            group: action.destructive ? 'danger' : 'edit',
+            label: action.label,
+            icon: action.icon,
+            onSelect: action.onClick,
+            disabledReason: action.disabled,
+          })),
+      }}
+    />
   )
 }
 
@@ -172,7 +125,7 @@ function BulkItems({ actions }: { actions: BulkAction[] }) {
 export function PageContextMenu({
   title,
   primary,
-  items,
+  actions,
   views,
   selectAll,
   onRefresh,
@@ -182,8 +135,8 @@ export function PageContextMenu({
   title: string
   /** The header's solid button, e.g. "New client". */
   primary?: { label: string; onSelect: () => void }
-  /** More page actions, the same function that fills the header's "…" menu. */
-  items?: (kit: MenuKit) => ReactNode
+  /** More page actions, the same list that fills the header's "…" menu. */
+  actions?: ActionMenuSpec['actions']
   views?: { tabs: string[]; active: number; onSelect: (index: number) => void }
   /** Passed only while there is something left to select; `keys` when a shortcut does it too. */
   selectAll?: { onSelect: () => void; keys?: string }
@@ -198,13 +151,23 @@ export function PageContextMenu({
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="min-w-56">
-        <ContextMenuLabel className={titleClass}>{title}</ContextMenuLabel>
-        {primary && writable && (
-          <ContextMenuItem onSelect={primary.onSelect}>
-            <Plus /> {primary.label}
-          </ContextMenuItem>
-        )}
-        {items?.(contextKit)}
+        <ActionMenuBody
+          kind="context"
+          menu={{
+            header: title,
+            actions: [
+              primary &&
+                writable && {
+                  id: 'new',
+                  group: 'create',
+                  label: primary.label,
+                  icon: <Plus />,
+                  onSelect: primary.onSelect,
+                },
+              ...(actions ?? []),
+            ],
+          }}
+        />
         <ContextMenuSeparator />
         {selectAll && (
           <ContextMenuItem onSelect={selectAll.onSelect}>

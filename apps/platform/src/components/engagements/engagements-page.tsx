@@ -1,13 +1,10 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import type { Action } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
-import {
-  DropdownMenuCheckboxItem,
-  DropdownMenuSeparator,
-} from '@helvetly/ui/components/dropdown-menu'
 import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -33,21 +30,19 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
-import { ExportItem, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
+import { useExportAction, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
 import { ClientFilter } from '@/components/data/client-filter'
 import { ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
-  dropdownKit,
   PageContextMenu,
   RowContextMenu,
   RowMenuButton,
-  type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
-import { ImportItem, useImportDrawer } from '@/components/import/import-button'
+import { useImportAction, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Kpi, KpiBand, TickGauge } from '@/components/kpi-band'
@@ -316,48 +311,54 @@ export function engagementMenu(
   const cancellable = engagement.status === 'active' || engagement.status === 'scheduled'
   const manage = access.canWrite && access.canManage
   return {
-    title: `#${engagement.number} · ${engagement.client.name}`,
-    items: ({ Item, Separator }) => (
-      <>
-        <Item onSelect={onOpen}>
-          <PanelRightOpen />
-          {translate('openDetails')}
-        </Item>
-        {access.canWrite && (
-          <Item onSelect={() => onCommand('log', engagement)}>
-            <ClipboardPlus />
-            {translate('logDelivery')}
-          </Item>
-        )}
-        {access.canWrite && (
-          <Item onSelect={() => onCommand('edit', engagement)}>
-            <Pencil />
-            {translate('edit4')}
-          </Item>
-        )}
-        {access.canWrite && engagement.recurrence === 'none' && (
-          <Item onSelect={() => onCommand('renew', engagement)}>
-            <RefreshCw />
-            {translate('renew')}
-          </Item>
-        )}
-        {manage && (cancellable || engagement.status === 'cancelled') && (
-          <Item onSelect={() => onCommand(cancellable ? 'cancel' : 'resume', engagement)}>
-            {cancellable ? <Ban /> : <RotateCcw />}
-            {cancellable ? translate('cancelEngagement') : translate('resume')}
-          </Item>
-        )}
-        {manage && (
-          <>
-            <Separator />
-            <Item variant="destructive" onSelect={() => onCommand('delete', engagement)}>
-              <Trash2 />
-              {translate('delete')}
-            </Item>
-          </>
-        )}
-      </>
-    ),
+    header: `#${engagement.number} · ${engagement.client.name}`,
+    actions: [
+      {
+        id: 'open',
+        group: 'view',
+        icon: <PanelRightOpen />,
+        label: translate('openDetails'),
+        onSelect: onOpen,
+      },
+      manage &&
+        (cancellable || engagement.status === 'cancelled') && {
+          id: cancellable ? 'cancel' : 'resume',
+          group: 'status',
+          tone: cancellable ? 'destructive' : 'success',
+          icon: cancellable ? <Ban /> : <RotateCcw />,
+          label: cancellable ? translate('cancelEngagement') : translate('resume'),
+          onSelect: () => onCommand(cancellable ? 'cancel' : 'resume', engagement),
+        },
+      access.canWrite && {
+        id: 'edit',
+        group: 'edit',
+        icon: <Pencil />,
+        label: translate('edit4'),
+        onSelect: () => onCommand('edit', engagement),
+      },
+      access.canWrite && {
+        id: 'log',
+        group: 'create',
+        icon: <ClipboardPlus />,
+        label: translate('logDelivery'),
+        onSelect: () => onCommand('log', engagement),
+      },
+      access.canWrite &&
+        engagement.recurrence === 'none' && {
+          id: 'renew',
+          group: 'create',
+          icon: <RefreshCw />,
+          label: translate('renew'),
+          onSelect: () => onCommand('renew', engagement),
+        },
+      manage && {
+        id: 'delete',
+        group: 'danger',
+        icon: <Trash2 />,
+        label: translate('delete'),
+        onSelect: () => onCommand('delete', engagement),
+      },
+    ],
   }
 }
 
@@ -462,36 +463,25 @@ function useMenu(filters: EngagementQuery) {
       toast.error(translate('couldNotChangeTheDailyDigest'))
     },
   })
-  const items = ({ Item }: MenuKit) => (
-    <>
-      {canWrite && (
-        <ImportItem Item={Item} onSelect={importDrawer.open}>
-          {translate('import')}
-        </ImportItem>
-      )}
-      <ExportItem Item={Item} href={localizedHref(exportUrl(filters))}>
-        {translate('exportCSV')}
-      </ExportItem>
-    </>
-  )
-  const digestToggle = canManage && (
-    <>
-      <DropdownMenuSeparator />
-      <DropdownMenuCheckboxItem
-        checked={settings.data?.digest ?? false}
-        disabled={!settings.data}
-        onCheckedChange={(digest) => toggle.mutate({ digest })}
-        className="items-start"
-      >
-        <span className="grid leading-snug">
-          {translate('dailyEMailDigest')}
-          <span className="text-[12px] text-muted-foreground">
-            {translate('eachMorningWhatNeedsInvoicingOrIsEndingSoon')}
-          </span>
+  const importAction = useImportAction(translate('import'), importDrawer.open)
+  const exportAction = useExportAction(translate('exportCSV'), localizedHref(exportUrl(filters)))
+  const items = [canWrite && importAction, exportAction]
+  const digestToggle: Action | false = canManage && {
+    id: 'digest',
+    group: 'edit',
+    icon: null,
+    checked: settings.data?.digest ?? false,
+    disabled: !settings.data,
+    onSelect: () => toggle.mutate({ digest: !(settings.data?.digest ?? false) }),
+    label: (
+      <span className="grid leading-snug">
+        {translate('dailyEMailDigest')}
+        <span className="text-[12px] text-muted-foreground">
+          {translate('eachMorningWhatNeedsInvoicingOrIsEndingSoon')}
         </span>
-      </DropdownMenuCheckboxItem>
-    </>
-  )
+      </span>
+    ),
+  }
   return { items, digestToggle }
 }
 
@@ -669,12 +659,7 @@ export function EngagementsPage() {
         savedViews={false}
         primary={translate('newEngagement2')}
         onPrimary={() => setCreating(true)}
-        menu={
-          <>
-            {items(dropdownKit)}
-            {digestToggle}
-          </>
-        }
+        menu={[...items, digestToggle]}
       />
       {importDrawer.isOpen && <ImportDrawer kind="engagements" onClose={importDrawer.close} />}
       {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoEngagements')} />}
@@ -712,7 +697,7 @@ export function EngagementsPage() {
       <PageContextMenu
         title={translate('engagements')}
         primary={{ label: translate('newEngagement2'), onSelect: () => setCreating(true) }}
-        items={items}
+        actions={items}
         views={{ tabs: VIEWS.map((entry) => entry.label), active: view, onSelect: select }}
         selectAll={
           rows.length && !allSelected

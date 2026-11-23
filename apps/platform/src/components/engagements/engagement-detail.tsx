@@ -1,21 +1,16 @@
 'use client'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Ellipsis, X, Trash2 } from 'lucide-react'
+import { Ban, Ellipsis, Pencil, RefreshCw, RotateCcw, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -161,48 +156,56 @@ function Detail({ engagement, onClose }: { engagement: Engagement; onClose: () =
                     <Ellipsis />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-44">
-                  <DropdownMenuItem onSelect={() => setEditing(true)}>
-                    {translate('edit')}
-                  </DropdownMenuItem>
-                  {engagement.recurrence === 'none' && (
-                    <DropdownMenuItem
-                      // A second renew while the first runs would renew twice.
-                      disabled={act.isPending}
-                      onSelect={() =>
-                        act.mutate(async () => {
-                          await renewEngagement(engagement.id)
-                          toast.success(translate('renewedForTheNextPeriod'))
-                        })
-                      }
-                    >
-                      {translate('renew')}
-                    </DropdownMenuItem>
-                  )}
-                  {privileged && (cancellable || engagement.status === 'cancelled') && (
-                    <DropdownMenuItem
-                      disabled={act.isPending}
-                      onSelect={() =>
-                        act.mutate(() =>
-                          cancellable
-                            ? cancelEngagement(engagement.id)
-                            : resumeEngagement(engagement.id),
-                        )
-                      }
-                    >
-                      {cancellable ? translate('cancelEngagement') : translate('resume')}
-                    </DropdownMenuItem>
-                  )}
-                  {privileged && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                        <Trash2 />
-                        {translate('delete')}
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
+                <ActionMenuContent
+                  kind="dropdown"
+                  menu={{
+                    header: `#${engagement.number} · ${engagement.client.name}`,
+                    actions: [
+                      privileged &&
+                        (cancellable || engagement.status === 'cancelled') && {
+                          id: cancellable ? 'cancel' : 'resume',
+                          group: 'status',
+                          tone: cancellable ? 'destructive' : 'success',
+                          icon: cancellable ? <Ban /> : <RotateCcw />,
+                          label: cancellable ? translate('cancelEngagement') : translate('resume'),
+                          disabled: act.isPending,
+                          onSelect: () =>
+                            act.mutate(() =>
+                              cancellable
+                                ? cancelEngagement(engagement.id)
+                                : resumeEngagement(engagement.id),
+                            ),
+                        },
+                      {
+                        id: 'edit',
+                        group: 'edit',
+                        icon: <Pencil />,
+                        label: translate('edit'),
+                        onSelect: () => setEditing(true),
+                      },
+                      engagement.recurrence === 'none' && {
+                        id: 'renew',
+                        group: 'create',
+                        icon: <RefreshCw />,
+                        label: translate('renew'),
+                        // A second renew while the first runs would renew twice.
+                        disabled: act.isPending,
+                        onSelect: () =>
+                          act.mutate(async () => {
+                            await renewEngagement(engagement.id)
+                            toast.success(translate('renewedForTheNextPeriod'))
+                          }),
+                      },
+                      privileged && {
+                        id: 'delete',
+                        group: 'danger',
+                        icon: <Trash2 />,
+                        label: translate('delete'),
+                        onSelect: () => setDeleting(true),
+                      },
+                    ],
+                  }}
+                />
               </DropdownMenu>
             )}
             <RecordPageButton />

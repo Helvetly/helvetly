@@ -1,4 +1,5 @@
 'use client'
+import { ActionMenuContent, type ActionMenuSpec } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import {
   ContextMenu,
@@ -168,10 +169,10 @@ export function PageHeader({
   primary?: string
   /** What the primary button does; without it the button says the flow is coming. */
   onPrimary?: () => void
-  /** Items for a chevron joined to the primary button (a split button), e.g. other kinds to create. */
-  primaryMenu?: ReactNode
-  /** The page's own "…" menu items; without them there is no "…" button. */
-  menu?: ReactNode
+  /** Actions for a chevron joined to the primary button (a split button), e.g. other kinds to create. */
+  primaryMenu?: ActionMenuSpec['actions']
+  /** The page's own "…" menu actions; without any there is no "…" button. */
+  menu?: ActionMenuSpec['actions']
   /** The page's own controls, before the primary button. */
   actions?: ReactNode
   /** A single-view page's own controls on the left, where tabs would be (the calendar's date navigation). */
@@ -362,16 +363,14 @@ export function PageHeader({
         <div className="flex min-w-0 flex-auto items-center gap-2 md:px-2.5">{start}</div>
       )}
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        {menu && (
+        {menu?.some(Boolean) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" aria-label={translate('more')}>
                 <Ellipsis />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-52">
-              {menu}
-            </DropdownMenuContent>
+            <ActionMenuContent kind="dropdown" menu={{ actions: menu }} />
           </DropdownMenu>
         )}
         {actions}
@@ -447,7 +446,7 @@ function PrimaryButton({
 }: {
   label: string
   onClick: () => void
-  menu?: ReactNode
+  menu?: ActionMenuSpec['actions']
 }) {
   useShortcut('newRecord', onClick)
   // In a narrow panel only the "+" is left; its name stays for screen readers and in the tooltip.
@@ -468,7 +467,7 @@ function PrimaryButton({
       </TooltipContent>
     </Tooltip>
   )
-  if (!menu) return button
+  if (!menu?.some(Boolean)) return button
   return (
     <span className="flex">
       {button}
@@ -481,9 +480,7 @@ function PrimaryButton({
             <ChevronDown />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-64">
-          {menu}
-        </DropdownMenuContent>
+        <ActionMenuContent kind="dropdown" menu={{ actions: menu }} className="min-w-64" />
       </DropdownMenu>
     </span>
   )

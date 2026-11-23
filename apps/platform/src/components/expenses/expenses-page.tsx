@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import type { Action, ActionGroup, ActionMenuSpec } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -29,12 +30,12 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { type ComponentProps, memo, useEffect, useMemo, useState } from 'react'
+import { type ComponentProps, memo, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { ApprovalInbox } from '@/components/approvals/approval-inbox'
 import {
-  ExportItem,
+  useExportAction,
   FeatureLockNotice,
   unlessLocked,
   useFeatureLock,
@@ -45,11 +46,9 @@ import { activeFilters, ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import {
-  dropdownKit,
   PageContextMenu,
   RowContextMenu,
   RowMenuButton,
-  type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
@@ -311,26 +310,27 @@ export function ExpensesPage() {
       },
     ],
   }
-  const pageItems = ({ Item }: MenuKit) => (
-    <>
-      {canAdd && (
-        <Item onSelect={importReceipts}>
-          <FileUp />
-          {translate('importReceipts')}
-        </Item>
-      )}
-      <ExportItem Item={Item} href={localizedHref(exportUrl(params))}>
-        {translate('exportCSV')}
-        {filtered || params.view !== 'all' ? translate('thisView') : ''}
-      </ExportItem>
-      {canManage && (
-        <Item onSelect={() => setManagingCategories(true)}>
-          <Tags />
-          {translate('expenseCategories')}
-        </Item>
-      )}
-    </>
+  const exportAction = useExportAction(
+    `${translate('exportCSV')}${filtered || params.view !== 'all' ? translate('thisView') : ''}`,
+    localizedHref(exportUrl(params)),
   )
+  const pageItems: ActionMenuSpec['actions'] = [
+    canAdd && {
+      id: 'import',
+      group: 'create',
+      icon: <FileUp />,
+      label: translate('importReceipts'),
+      onSelect: importReceipts,
+    },
+    exportAction,
+    canManage && {
+      id: 'categories',
+      group: 'edit',
+      icon: <Tags />,
+      label: translate('expenseCategories'),
+      onSelect: () => setManagingCategories(true),
+    },
+  ]
   const access = useMemo(() => ({ canManage, canWrite }), [canManage, canWrite])
   const open = useStableCallback(openExpense)
   const toggle = useStableCallback(toggleRow)
@@ -356,7 +356,7 @@ export function ExpensesPage() {
         onSelect={(index) => update({ view: VIEWS[index]?.view ?? 'all' })}
         primary={canAdd ? translate('newExpense') : undefined}
         onPrimary={() => setForm({})}
-        menu={pageItems(dropdownKit)}
+        menu={pageItems}
       />
       <FeatureLockNotice
         lock={lock}
@@ -370,7 +370,7 @@ export function ExpensesPage() {
       <PageContextMenu
         title={translate('expenses')}
         primary={{ label: translate('newExpense'), onSelect: () => setForm({}) }}
-        items={pageItems}
+        actions={pageItems}
         views={{
           tabs: VIEWS.map((entry) => entry.label),
           active: viewIndex,
@@ -644,6 +644,55 @@ const EMPTY_VIEW: Record<Exclude<View, 'all'>, { title: string; text: string }> 
   },
 }
 
+/** What a writer can do to an expense, for its row's menus and its drawer's "…". */
+export function expenseActions(
+  expense: Expense,
+  canManage: boolean,
+  onCommand: (command: ExpenseCommand, expense: Expense) => void,
+): Action[] {
+  const live = expense.status !== 'void'
+  const draft = expense.status === 'draft'
+  const canVoid = expense.status === 'booked' && canManage
+  const action = (
+    command: ExpenseCommand,
+    group: ActionGroup,
+    icon: ReactNode,
+    label: string,
+    more: Partial<Action> = {},
+  ): Action => ({
+    id: command,
+    group,
+    icon,
+    label,
+    onSelect: () => onCommand(command, expense),
+    ...more,
+  })
+  const paid = expense.payment_status !== 'unpaid'
+  return [
+    draft &&
+      action('book', 'status', <BookCheck />, translate('book'), {
+        tone: 'success',
+        disabled: !expense.is_complete,
+      }),
+    live &&
+      (paid
+        ? action('mark_unpaid', 'status', <CircleDashed />, translate('markUnpaid'))
+        : action('mark_paid', 'status', <CircleCheck />, translate('markPaid'), {
+            tone: 'success',
+          })),
+    live &&
+      expense.paid_by_member &&
+      !expense.reimbursed_on &&
+      action('mark_reimbursed', 'status', <HandCoins />, translate('markReimbursed'), {
+        tone: 'success',
+      }),
+    canVoid && action('void', 'status', <Ban />, translate('void'), { tone: 'destructive' }),
+    live && action('edit', 'edit', <Pencil />, translate('edit4')),
+    action('duplicate', 'edit', <Copy />, translate('duplicate')),
+    draft && action('delete', 'danger', <Trash2 />, translate('deleteDraft')),
+  ].filter((entry): entry is Action => Boolean(entry))
+}
+
 /** An expense's actions, for its "…" button and its right-click menu. */
 function expenseMenu(
   expense: Expense,
@@ -651,74 +700,18 @@ function expenseMenu(
   onOpen: () => void,
   onCommand: (command: ExpenseCommand, expense: Expense) => void,
 ): RowMenuSpec {
-  const live = expense.status !== 'void'
-  const draft = expense.status === 'draft'
-  const canVoid = expense.status === 'booked' && can.canManage
   return {
-    title: `#${expense.number} · ${expense.supplier_name ?? translate('noSupplier')}`,
-    items: ({ Item, Separator }) => (
-      <>
-        <Item onSelect={onOpen}>
-          <PanelRightOpen />
-          {translate('openDetails')}
-        </Item>
-        {can.canWrite && (
-          <>
-            {live && (
-              <Item onSelect={() => onCommand('edit', expense)}>
-                <Pencil />
-                {translate('edit4')}
-              </Item>
-            )}
-            {draft && (
-              <Item disabled={!expense.is_complete} onSelect={() => onCommand('book', expense)}>
-                <BookCheck />
-                {translate('book')}
-              </Item>
-            )}
-            <Item onSelect={() => onCommand('duplicate', expense)}>
-              <Copy />
-              {translate('duplicate')}
-            </Item>
-            {live && (
-              <>
-                <Separator />
-                {expense.payment_status === 'unpaid' ? (
-                  <Item onSelect={() => onCommand('mark_paid', expense)}>
-                    <CircleCheck />
-                    {translate('markPaid')}
-                  </Item>
-                ) : (
-                  <Item onSelect={() => onCommand('mark_unpaid', expense)}>
-                    <CircleDashed />
-                    {translate('markUnpaid')}
-                  </Item>
-                )}
-                {expense.paid_by_member && !expense.reimbursed_on && (
-                  <Item onSelect={() => onCommand('mark_reimbursed', expense)}>
-                    <HandCoins />
-                    {translate('markReimbursed')}
-                  </Item>
-                )}
-              </>
-            )}
-            {(draft || canVoid) && <Separator />}
-            {canVoid && (
-              <Item variant="destructive" onSelect={() => onCommand('void', expense)}>
-                <Ban />
-                {translate('void')}
-              </Item>
-            )}
-            {draft && (
-              <Item variant="destructive" onSelect={() => onCommand('delete', expense)}>
-                <Trash2 />
-                {translate('deleteDraft')}
-              </Item>
-            )}
-          </>
-        )}
-      </>
-    ),
+    header: `#${expense.number} · ${expense.supplier_name ?? translate('noSupplier')}`,
+    actions: [
+      {
+        id: 'open',
+        group: 'view',
+        icon: <PanelRightOpen />,
+        label: translate('openDetails'),
+        onSelect: onOpen,
+      },
+      ...(can.canWrite ? expenseActions(expense, can.canManage, onCommand) : []),
+    ],
   }
 }
 

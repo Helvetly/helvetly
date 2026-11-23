@@ -1,17 +1,11 @@
 'use client'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuTrigger,
-} from '@helvetly/ui/components/context-menu'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
+import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Download, FolderOpen, Layers } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-import { titleClass } from '@/components/data/menus'
 import { formatSize, groupLabel, type DocGroup, type GroupDim } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 
@@ -55,17 +49,28 @@ export function GroupView({ dim, groups, layout, onOpen, onDownload }: Props) {
   const menu = (group: DocGroup, children: ReactNode) => (
     <ContextMenu key={group.key}>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent className="min-w-52">
-        <ContextMenuLabel className={titleClass}>{groupLabel(dim, group)}</ContextMenuLabel>
-        <ContextMenuItem onSelect={() => onOpen(group)}>
-          <FolderOpen />
-          {translate('open')}
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => onDownload(group)}>
-          <Download />
-          {translate('downloadAllZip')}
-        </ContextMenuItem>
-      </ContextMenuContent>
+      <ActionMenuContent
+        kind="context"
+        menu={{
+          header: groupLabel(dim, group),
+          actions: [
+            {
+              id: 'open',
+              group: 'view',
+              icon: <FolderOpen />,
+              label: translate('open'),
+              onSelect: () => onOpen(group),
+            },
+            {
+              id: 'zip',
+              group: 'view',
+              icon: <Download />,
+              label: translate('downloadAllZip'),
+              onSelect: () => onDownload(group),
+            },
+          ],
+        }}
+      />
     </ContextMenu>
   )
   if (layout === 'list')

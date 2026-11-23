@@ -1,14 +1,9 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { displayPhone } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -24,14 +19,14 @@ import {
   Pencil,
   Phone,
   Power,
+  PowerOff,
   Trash2,
   X,
   type LucideIcon,
 } from 'lucide-react'
 import type { ReactElement, ReactNode } from 'react'
 
-import { dropdownKit } from '@/components/data/menus'
-import { ImportItem } from '@/components/import/import-button'
+import { useImportAction } from '@/components/import/import-button'
 import { initialsOf } from '@/components/initials'
 import { newInvoiceHref } from '@/components/invoices/compose'
 import { RecordLink, RecordPageButton } from '@/components/record-link'
@@ -143,6 +138,7 @@ export function ClientHeader({
   tabs: ReactNode
 }) {
   const facts = headerFacts(client)
+  const importAction = useImportAction(translate('importInvoices'), () => onImportInvoices?.())
   return (
     <header className="sticky top-0 z-10 bg-card/95 backdrop-blur">
       <div className="flex h-12 items-center gap-1 border-b border-border/60 px-3">
@@ -161,25 +157,35 @@ export function ClientHeader({
                 </Button>
               </DropdownMenuTrigger>
             </Tip>
-            <DropdownMenuContent align="end" className="min-w-48">
-              <DropdownMenuItem onSelect={onEdit}>
-                <Pencil />
-                {translate('editDetails')}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={onToggle}>
-                <Power /> {client.is_active ? translate('deactivate') : translate('activate')}
-              </DropdownMenuItem>
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-                    <Trash2 />
-                    {translate('delete')}
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
+            <ActionMenuContent
+              kind="dropdown"
+              menu={{
+                header: `#${client.number} · ${client.name}`,
+                actions: [
+                  {
+                    id: 'toggle',
+                    group: 'status',
+                    icon: client.is_active ? <PowerOff /> : <Power />,
+                    label: client.is_active ? translate('deactivate') : translate('activate'),
+                    onSelect: onToggle,
+                  },
+                  {
+                    id: 'edit',
+                    group: 'edit',
+                    icon: <Pencil />,
+                    label: translate('editDetails'),
+                    onSelect: onEdit,
+                  },
+                  canDelete && {
+                    id: 'delete',
+                    group: 'danger',
+                    icon: <Trash2 />,
+                    label: translate('delete'),
+                    onSelect: onDelete,
+                  },
+                ],
+              }}
+            />
           </DropdownMenu>
           <Tip label={translate('fillATemplateForThisClientThenSaveEmailOrSign')}>
             <Button variant="outline" onClick={onFillTemplate}>
@@ -207,11 +213,11 @@ export function ClientHeader({
                     </Button>
                   </DropdownMenuTrigger>
                 </Tip>
-                <DropdownMenuContent align="end" className="min-w-48">
-                  <ImportItem Item={dropdownKit.Item} onSelect={onImportInvoices}>
-                    {translate('importInvoices')}
-                  </ImportItem>
-                </DropdownMenuContent>
+                <ActionMenuContent
+                  kind="dropdown"
+                  menu={{ actions: [importAction] }}
+                  className="min-w-48"
+                />
               </DropdownMenu>
             )}
           </div>

@@ -1,5 +1,6 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { ActionMenuContent, type ActionMenuSpec } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
@@ -260,7 +261,7 @@ function EditorBar({
   kind?: InvoiceKind
   /** Before the menu, so the menu sits next to the document's actions. */
   status?: ReactNode
-  menu?: ReactNode
+  menu?: ActionMenuSpec['actions']
   actions?: ReactNode
   onClose: () => void
 }) {
@@ -283,9 +284,7 @@ function EditorBar({
               </TooltipTrigger>
               <TooltipContent>{translate('more')}</TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="min-w-52">
-              {menu}
-            </DropdownMenuContent>
+            <ActionMenuContent kind="dropdown" menu={{ header: title, actions: menu }} />
           </DropdownMenu>
         )}
         {actions}
@@ -747,11 +746,15 @@ function Editor({
         title={title}
         kind={kind}
         onClose={cancel}
-        menu={
-          <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-            <Trash2 /> {draftId ? translate('deleteDraft2') : translate('discard')}
-          </DropdownMenuItem>
-        }
+        menu={[
+          {
+            id: 'delete',
+            group: 'danger',
+            icon: <Trash2 />,
+            label: draftId ? translate('deleteDraft2') : translate('discard'),
+            onSelect: () => setDeleting(true),
+          },
+        ]}
         status={<SaveIndicator state={saveState} onRetry={() => void persist().catch(() => {})} />}
         actions={
           <>

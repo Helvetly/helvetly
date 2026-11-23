@@ -1,13 +1,8 @@
 'use client'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
@@ -261,28 +256,35 @@ function Detail({
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-44">
-                <DropdownMenuItem onSelect={() => onCommand('duplicate', product)}>
-                  <CopyPlus />
-                  {translate('duplicate')}
-                </DropdownMenuItem>
-                {canManage && (
-                  <>
-                    <DropdownMenuItem onSelect={() => onCommand('archive', product)}>
-                      {product.is_archived ? <ArchiveRestore /> : <Archive />}
-                      {product.is_archived ? translate('restore') : translate('archive')}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onSelect={() => onCommand('delete', product)}
-                    >
-                      <Trash2 />
-                      {translate('delete')}
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
+              <ActionMenuContent
+                kind="dropdown"
+                menu={{
+                  header: product.sku ? `${product.sku} · ${product.name}` : product.name,
+                  actions: [
+                    canManage && {
+                      id: 'archive',
+                      group: product.is_archived ? 'status' : 'danger',
+                      icon: product.is_archived ? <ArchiveRestore /> : <Archive />,
+                      label: product.is_archived ? translate('restore') : translate('archive'),
+                      onSelect: () => onCommand('archive', product),
+                    },
+                    {
+                      id: 'duplicate',
+                      group: 'edit',
+                      icon: <CopyPlus />,
+                      label: translate('duplicate'),
+                      onSelect: () => onCommand('duplicate', product),
+                    },
+                    canManage && {
+                      id: 'delete',
+                      group: 'danger',
+                      icon: <Trash2 />,
+                      label: translate('delete'),
+                      onSelect: () => onCommand('delete', product),
+                    },
+                  ],
+                }}
+              />
             </DropdownMenu>
             <Button variant="outline" className="gap-1.5" onClick={edit}>
               <Pencil className="size-3.5" />

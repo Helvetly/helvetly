@@ -21,7 +21,7 @@ import { toast } from 'sonner'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { inputClass } from '@/components/clients/fields'
 import { LoadProblem } from '@/components/data/load-problem'
-import { MenuText, RowContextMenu, RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
+import { RowContextMenu, RowMenuButton, type RowMenuSpec } from '@/components/data/menus'
 import { LoadingRows, State } from '@/components/data/table-page'
 import { FormDialog } from '@/components/invoices/invoice-dialogs'
 import { downloadUrl } from '@/lib/documents'
@@ -228,49 +228,61 @@ function templateMenu(
     duplicating: boolean
   },
 ): RowMenuSpec {
+  const why = template.document ? undefined : translate('itsPDFWasDeletedChooseAnotherInTheEditor')
   return {
-    title: template.name,
-    items: ({ Item, Separator }) => {
-      const noPdf = !template.document
-      const why = noPdf ? translate('itsPDFWasDeletedChooseAnotherInTheEditor') : undefined
-      return (
-        <>
-          <Item disabled={noPdf} onSelect={() => on.onFill(template)}>
-            <FilePen />
-            <MenuText label={translate('useTemplate')} why={why} />
-          </Item>
-          <Item onSelect={() => on.onEdit(template)}>
-            <Pencil />
-            {translate('editTemplate')}
-          </Item>
-          <Item disabled={noPdf} onSelect={() => on.onRename(template)}>
-            <TextCursorInput />
-            <MenuText label={translate('renameTemplate')} why={why} />
-          </Item>
-          <Item disabled={noPdf || on.duplicating} onSelect={() => on.onDuplicate(template)}>
-            <Copy />
-            <MenuText label={translate('duplicateTemplate')} why={why} />
-          </Item>
-          <Item disabled={noPdf} asChild={!noPdf}>
-            {template.document ? (
-              <a href={localizedHref(downloadUrl(template.document.id))} download>
-                <FileDown />
-                {translate('downloadSourcePDF')}
-              </a>
-            ) : (
-              <>
-                <FileDown />
-                <MenuText label={translate('downloadSourcePDF')} why={why} />
-              </>
-            )}
-          </Item>
-          <Separator />
-          <Item variant="destructive" onSelect={() => on.onDelete(template)}>
-            <Trash2 />
-            {translate('delete')}
-          </Item>
-        </>
-      )
-    },
+    header: template.name,
+    actions: [
+      {
+        id: 'download',
+        group: 'view',
+        icon: <FileDown />,
+        label: translate('downloadSourcePDF'),
+        href: template.document ? localizedHref(downloadUrl(template.document.id)) : undefined,
+        download: true,
+        disabled: !template.document,
+        disabledReason: why,
+      },
+      {
+        id: 'edit',
+        group: 'edit',
+        icon: <Pencil />,
+        label: translate('editTemplate'),
+        onSelect: () => on.onEdit(template),
+      },
+      {
+        id: 'rename',
+        group: 'edit',
+        icon: <TextCursorInput />,
+        label: translate('renameTemplate'),
+        onSelect: () => on.onRename(template),
+        disabled: !template.document,
+        disabledReason: why,
+      },
+      {
+        id: 'duplicate',
+        group: 'edit',
+        icon: <Copy />,
+        label: translate('duplicateTemplate'),
+        onSelect: () => on.onDuplicate(template),
+        disabled: !template.document || on.duplicating,
+        disabledReason: why,
+      },
+      {
+        id: 'use',
+        group: 'create',
+        icon: <FilePen />,
+        label: translate('useTemplate'),
+        onSelect: () => on.onFill(template),
+        disabled: !template.document,
+        disabledReason: why,
+      },
+      {
+        id: 'delete',
+        group: 'danger',
+        icon: <Trash2 />,
+        label: translate('delete'),
+        onSelect: () => on.onDelete(template),
+      },
+    ],
   }
 }

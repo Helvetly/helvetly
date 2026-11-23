@@ -1,20 +1,11 @@
 'use client'
 import { localizedHref } from '@helvetly/i18n'
+import { ActionMenuContent, type Action } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
@@ -52,7 +43,6 @@ import {
 } from '@/components/approvals/approval-panel'
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { dropdownKit } from '@/components/data/menus'
 import { useMarkSent } from '@/components/invoices/invoice-dialogs'
 import { HeroFact, HeroLink, RecordHero } from '@/components/invoices/record-hero'
 import { RecordLink, RecordPageButton } from '@/components/record-link'
@@ -95,7 +85,7 @@ import { editHref } from './compose'
 import { DunningCard, dunnable } from './dunning-card'
 import { InstalmentSchedule } from './instalment-schedule'
 import { ApprovalBadge, InvoiceStatusBadge, Money } from './invoice-bits'
-import { CommandItems, type InvoiceCommand } from './invoice-commands'
+import { invoiceActions, useInvoiceActionState, type InvoiceCommand } from './invoice-commands'
 import { PaymentSummary } from './payment-methods'
 import { PdfView } from './pdf-view'
 import { PlanCard } from './plan-card'
@@ -395,6 +385,8 @@ function Detail({
   ]
   // The server voids only open invoices with neither payments nor credit notes.
   if (!isZero(invoice.amount_paid) || !isZero(invoice.amount_credited)) skip.push('void')
+  const actionState = useInvoiceActionState()
+  const einvoice = useEinvoiceAction(invoice)
 
   return (
     <Tabs defaultValue="overview" className="min-h-full gap-0">
@@ -413,23 +405,16 @@ function Detail({
                   <Ellipsis />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-52">
-                <CommandItems
-                  kit={dropdownKit}
-                  invoice={invoice}
-                  canManage={canManage}
-                  run={run}
-                  skip={skip}
-                />
-                {invoice.status !== 'draft' && (
-                  <EinvoiceItems
-                    id={invoice.id}
-                    sellerCountry={invoice.seller?.country}
-                    buyerCountry={invoice.buyer?.country}
-                    blocked={einvoiceBlock(invoice)}
-                  />
-                )}
-              </DropdownMenuContent>
+              <ActionMenuContent
+                kind="dropdown"
+                menu={{
+                  header: `${invoice.number ?? translate('draft')} · ${invoice.client.name}`,
+                  actions: [
+                    ...invoiceActions({ invoice, canManage, state: actionState, run, skip }),
+                    invoice.status !== 'draft' && einvoice,
+                  ],
+                }}
+              />
             </DropdownMenu>
             {invoice.status === 'draft' && invoice.plan?.seq !== 0 && (
               <Button asChild variant="outline" className="gap-1.5">
@@ -803,66 +788,51 @@ function Detail({
 }
 
 /** The structured XML of an issued invoice: XRechnung or Peppol, e-Factura for a Romanian buyer and KSeF for a Polish seller. */
-function EinvoiceItems({
-  id,
-  sellerCountry,
-  buyerCountry,
-  blocked,
-}: {
-  id: string
-  sellerCountry?: string
-  buyerCountry?: string
-  blocked: string | null
-}) {
+/** The e-invoice XML download, a choice of the formats the two countries allow. */
+function useEinvoiceAction(invoice: Invoice): Action {
   const [busy, setBusy] = useState(false)
   const lock = useFeatureLock('einvoice_xml')
+  const blocked = einvoiceBlock(invoice)
   const download = async (format: Parameters<typeof downloadEinvoice>[1]) => {
     if (busy) return
     setBusy(true)
     try {
-      await downloadEinvoice(id, format)
+      await downloadEinvoice(invoice.id, format)
     } catch (error) {
       toast.error(errorMessage(error))
     } finally {
       setBusy(false)
     }
   }
-  return (
-    <DropdownMenuGroup>
-      <DropdownMenuSeparator />
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger disabled={Boolean(blocked)}>
-          <FileCode2 />
-          <span className="grid">
-            {translate('eInvoiceXML')}
-            {blocked && (
-              <span className="max-w-60 text-[12px] text-pretty text-muted-foreground">
-                {blocked}
-              </span>
-            )}
-          </span>
-          {lock && <PlanTag lock={lock} className="ml-1.5" />}
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent>
-          {einvoiceFormatsFor(sellerCountry, buyerCountry).map((format) => (
-            <DropdownMenuItem
-              key={format.value}
-              disabled={busy || Boolean(lock)}
-              onSelect={() => void download(format.value)}
-            >
-              <FileCode2 />
-              <span className="grid">
-                {format.label}
-                {format.hint && (
-                  <span className="text-[12px] text-muted-foreground">{format.hint}</span>
-                )}
-              </span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
-    </DropdownMenuGroup>
-  )
+  return {
+    id: 'einvoice',
+    group: 'view',
+    icon: <FileCode2 />,
+    label: (
+      <span className="grid">
+        {translate('eInvoiceXML')}
+        {blocked && (
+          <span className="max-w-60 text-[12px] text-pretty text-muted-foreground">{blocked}</span>
+        )}
+      </span>
+    ),
+    disabled: Boolean(blocked),
+    extra: lock && <PlanTag lock={lock} className="ml-1.5" />,
+    submenu: einvoiceFormatsFor(invoice.seller?.country, invoice.buyer?.country).map((format) => ({
+      id: format.value,
+      group: 'view',
+      icon: <FileCode2 />,
+      label: (
+        <span className="grid">
+          {format.label}
+          {format.hint && <span className="text-[12px] text-muted-foreground">{format.hint}</span>}
+        </span>
+      ),
+      disabled: busy,
+      disabledReason: lock?.hint,
+      onSelect: () => void download(format.value),
+    })),
+  }
 }
 
 const useToggleReminders = () =>
