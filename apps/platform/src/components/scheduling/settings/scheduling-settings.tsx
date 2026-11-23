@@ -25,12 +25,14 @@ import {
   isClock,
   MAX_NOTICE_MINUTES,
   policySentence,
+  presetText,
   useSaveSchedulingSettings,
   useSchedulingSettings,
   weekdayName,
   type SchedulingSettings,
 } from '@/lib/scheduling-settings'
 
+import { DurationSelect } from './duration-select'
 import { EventTypesSection } from './event-types'
 import { HolidaysSection } from './holidays'
 import { LeadTimeChips } from './lead-time-chips'
@@ -55,6 +57,16 @@ const SECTIONS: { id: SectionId; fields: (keyof SchedulingSettings & string)[] }
   { id: 'reminders', fields: ['client_reminders', 'host_reminders', 'auto_attended_after_hours'] },
   { id: 'calendar', fields: ['feed_details', 'default_location'] },
 ]
+
+const NOTICE_PRESETS = [0, 60, 120, 240, 720, 1440, 2880, 4320, 10080]
+const AUTO_ATTEND_PRESETS = [60, 120, 240, 720, 1440, 2880, 4320, 10080]
+
+/** The free-cancellation notice in one sentence, under its field. */
+function noticeExplained(minutes: number) {
+  if (!Number.isFinite(minutes)) return undefined
+  if (minutes <= 0) return translate('schedulingSettingsPolicyAnytime')
+  return `${translate('schedulingSettingsPolicyFree', { notice: presetText(minutes) })} ${translate('schedulingSettingsNoticeLate')}`
+}
 
 export function settingsProblems(values: SchedulingSettings) {
   const problems: Record<string, string> = {}
@@ -129,7 +141,6 @@ function SettingsForm({ saved, canEdit }: { saved: SchedulingSettings; canEdit: 
   })
   const v = form.values
   const e = form.errors
-  const noticeHours = v.notice_minutes / 60
   const [clock, setClock] = useState(v.cutoff_time ?? '14:00')
   const footer = (id: SectionId) => (canEdit ? form.section(id) : undefined)
 
@@ -191,21 +202,20 @@ function SettingsForm({ saved, canEdit }: { saved: SchedulingSettings; canEdit: 
             <FormField
               id="policy-notice"
               label={translate('schedulingSettingsNotice')}
-              width="sm"
+              width="md"
               error={e.notice_minutes}
               tip={translate('schedulingSettingsNoticeTip')}
+              status={noticeExplained(v.notice_minutes)}
             >
-              <Input
-                {...describedBy('policy-notice', e.notice_minutes)}
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step={0.5}
-                value={Number.isFinite(noticeHours) ? noticeHours : ''}
-                onChange={(event) =>
-                  form.set('notice_minutes', Math.round(Number(event.target.value) * 60))
-                }
-                className="text-right tabular-nums"
+              <DurationSelect
+                id="policy-notice"
+                value={v.notice_minutes}
+                onChange={(minutes) => form.set('notice_minutes', minutes)}
+                presets={NOTICE_PRESETS}
+                units={['hours', 'days']}
+                suffix="before"
+                zero={translate('schedulingSettingsNoticeAnytime')}
+                invalid={Boolean(e.notice_minutes)}
               />
             </FormField>
           </FieldGrid>
@@ -323,21 +333,17 @@ function SettingsForm({ saved, canEdit }: { saved: SchedulingSettings; canEdit: 
               <FormField
                 id="reminders-auto-attend"
                 label={translate('schedulingSettingsAutoAttendAfter')}
-                width="xs"
+                width="md"
                 error={e.auto_attended_after_hours}
               >
-                <Input
-                  {...describedBy('reminders-auto-attend', e.auto_attended_after_hours)}
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  value={
-                    Number.isFinite(v.auto_attended_after_hours) ? v.auto_attended_after_hours : ''
-                  }
-                  onChange={(event) =>
-                    form.set('auto_attended_after_hours', Number(event.target.value))
-                  }
-                  className="text-right tabular-nums"
+                <DurationSelect
+                  id="reminders-auto-attend"
+                  value={v.auto_attended_after_hours * 60}
+                  onChange={(minutes) => form.set('auto_attended_after_hours', minutes / 60)}
+                  presets={AUTO_ATTEND_PRESETS}
+                  units={['hours', 'days']}
+                  suffix="after"
+                  invalid={Boolean(e.auto_attended_after_hours)}
                 />
               </FormField>
             </FieldGrid>

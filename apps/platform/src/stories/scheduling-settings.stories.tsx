@@ -73,10 +73,58 @@ export const PolicyExample: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText(/Clients can cancel free of charge up to/)).toBeVisible()
+    // Once under the notice field, once in the example.
+    await expect(
+      await canvas.findAllByText(/Clients can cancel free of charge up to/),
+    ).toHaveLength(2)
     await expect(canvas.getByText(/A later cancellation counts as used\./)).toBeVisible()
     await userEvent.click(canvas.getByRole('switch', { name: 'Late cancellations count as used' }))
     await expect(canvas.getByText(/A later cancellation is still free\./)).toBeVisible()
+  },
+}
+
+/** The notice is a preset in words, or Custom… with its unit beside it; the sentence under it follows. */
+export const NoticePresets: Story = {
+  parameters: page('owner'),
+  render: () => (
+    <Shell>
+      <SchedulingSettingsPage />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const notice = await canvas.findByRole('button', { name: /^Free cancellation until/ })
+    await expect(notice).toHaveTextContent('24 hours before')
+    await expect(
+      canvas.getByText(
+        'Clients can cancel free of charge up to 24 hours before the session. Later cancellations count as late.',
+      ),
+    ).toBeVisible()
+
+    await userEvent.click(notice)
+    await userEvent.click(
+      await body(canvasElement).findByRole('option', { name: '48 hours before' }),
+    )
+    await expect(canvas.getByText(/up to 48 hours before the session\./)).toBeVisible()
+
+    await userEvent.click(notice)
+    await userEvent.click(await body(canvasElement).findByRole('option', { name: 'Custom…' }))
+    const amount = canvas.getByRole('textbox', { name: 'Custom amount' })
+    await expect(amount).toHaveValue('2')
+    await expect(canvas.getByRole('combobox', { name: 'Unit' })).toHaveValue('days')
+    await userEvent.clear(amount)
+    await userEvent.type(amount, '36')
+    await userEvent.selectOptions(canvas.getByRole('combobox', { name: 'Unit' }), 'hours')
+    await expect(canvas.getByText(/up to 36 hours before the session\./)).toBeVisible()
+
+    const policy = within(
+      canvasElement.querySelector<HTMLElement>('#scheduling-policy') ?? canvasElement,
+    )
+    await userEvent.click(policy.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(schedulingCalls()).toContain('PUT /scheduling/settings'))
+    await expect(
+      await canvas.findByRole('button', { name: /^Free cancellation until/ }),
+    ).toHaveTextContent('Custom…')
   },
 }
 

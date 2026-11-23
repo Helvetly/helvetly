@@ -2,10 +2,44 @@ import { describe, expect, it } from 'vitest'
 
 import {
   DEFAULT_SETTINGS,
+  durationMinutes,
   parseLeadTime,
   policySentence,
+  presetText,
+  splitDuration,
   windowProblem,
 } from './scheduling-settings'
+
+describe('presetText', () => {
+  it.each([
+    [0, 'No minimum'],
+    [30, '30 minutes'],
+    [60, '1 hour'],
+    [1440, '24 hours'],
+    [2880, '48 hours'],
+    [4320, '3 days'],
+    [10080, '1 week'],
+    [90, '1 hour 30 minutes'],
+  ])('%j → %j', (minutes, text) => expect(presetText(minutes)).toBe(text))
+})
+
+describe('splitDuration and durationMinutes', () => {
+  it.each([
+    [2880, ['hours', 'days'], 2, 'days'],
+    [1500, ['hours', 'days'], 25, 'hours'],
+    [90, ['minutes', 'hours'], 90, 'minutes'],
+    [120, ['minutes', 'hours'], 2, 'hours'],
+    [30, ['hours', 'days'], 0.5, 'hours'],
+  ] as const)('%j in %j → %j %s and back', (minutes, units, amount, unit) => {
+    expect(splitDuration(minutes, units)).toEqual({ amount, unit })
+    expect(durationMinutes(String(amount), unit)).toBe(minutes)
+  })
+  it('reads a comma and refuses nothing typed', () => {
+    expect(durationMinutes('1,5', 'hours')).toBe(90)
+    expect(durationMinutes(' ', 'hours')).toBeNaN()
+    expect(durationMinutes('soon', 'days')).toBeNaN()
+  })
+})
 
 describe('parseLeadTime', () => {
   it.each([
