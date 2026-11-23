@@ -3,7 +3,6 @@ package portal
 import (
 	"context"
 	"fmt"
-	"html"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -62,8 +61,8 @@ func (s *Service) sendLinks(ctx context.Context, r *http.Request, email string) 
 	if err != nil {
 		return err
 	}
-	var text, body strings.Builder
 	seen := map[string]bool{}
+	var portals [][2]string
 	for _, a := range access {
 		if seen[a.WorkspaceID] {
 			continue
@@ -73,14 +72,21 @@ func (s *Service) sendLinks(ctx context.Context, r *http.Request, email string) 
 		if err != nil {
 			return fmt.Errorf("portal address: %w", err)
 		}
-		fmt.Fprintf(&text, "%s: %s\n", a.WorkspaceName, link)
-		fmt.Fprintf(&body, `<li><strong>%s</strong>: <a href="%s">%s</a></li>`, html.EscapeString(a.WorkspaceName), html.EscapeString(link), html.EscapeString(link))
+		portals = append(portals, [2]string{a.WorkspaceName, link})
 	}
-	if len(seen) == 0 {
+	if len(portals) == 0 {
 		return nil
 	}
-	intro := "You asked for your client portal links. Open your supplier's link and enter this email address: we send you a code to sign in, there is no password."
-	return s.mail.Send(ctx, mailer.Message{To: []string{email}, Subject: "Your client portal links",
-		Text: intro + "\n\n" + text.String() + "\nIf you did not ask for this, you can ignore this email.\n",
-		HTML: "<p>" + intro + "</p><ul>" + body.String() + "</ul><p>If you did not ask for this, you can ignore this email.</p>"})
+	return s.mail.Send(ctx, linksEmail(email, portals))
+}
+
+// linksEmail lists the portals (name, link) of an address's suppliers, each its own call to action.
+func linksEmail(to string, portals [][2]string) mailer.Message {
+	l := mailer.NewLetter("en").Greeting("").
+		Lead("You asked for your client portal links. Open your supplier's portal and enter this email address: we send you a code to sign in, there is no password.")
+	for _, p := range portals {
+		l.Action(p[0], p[1])
+	}
+	l.FinePrint("If you did not ask for this, you can ignore this email.")
+	return mailer.Message{To: []string{to}, Subject: "Your client portal links", Text: l.Text(), HTML: l.HTML()}
 }

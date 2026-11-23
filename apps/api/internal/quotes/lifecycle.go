@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"net/http"
 	"slices"
 	"strconv"
@@ -136,6 +135,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			return nil
 		}
 		m.Attachments = []mail.Attachment{{Name: FileName(t), ContentType: "application/pdf", Data: pdf}}
+		m = withLetter(m, t)
 		// last, so a failed email leaves the quote as it was
 		if err := s.mail.Send(ctx, m); err != nil {
 			return fmt.Errorf("send quote %s: %w", t.ID, err)
@@ -187,7 +187,6 @@ func (s *Service) message(ctx context.Context, q store.Q, workspaceID string, t 
 	if message != nil {
 		m.Text = *message
 	}
-	m.HTML = "<p>" + strings.ReplaceAll(html.EscapeString(m.Text), "\n", "<br>\n") + "</p>"
 	if seller.Email != nil {
 		m.ReplyTo = *seller.Email
 	}
