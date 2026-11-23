@@ -5,8 +5,27 @@ import { Sheet, SheetContent, SheetTitle } from '@helvetly/ui/components/sheet'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ArrowLeft, Check, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 
+import { ApiError } from '@/lib/api'
 import { translate } from '@/lib/i18n'
+
+/** The server's field errors as one line, or its message; anything else (a broken page) as a plain retry. */
+export function serverProblem(error: unknown) {
+  if (!(error instanceof ApiError)) return translate('somethingWentWrongTryAgain')
+  const fields =
+    typeof error.details.fields === 'object' && error.details.fields
+      ? Object.values(error.details.fields).filter((v): v is string => typeof v === 'string')
+      : []
+  return fields.length ? fields.join(' ') : error.message
+}
+
+/** A failed step's server call as a toast naming the action; the step's own checks stay in the footer. */
+export function failed(action: string, error: unknown) {
+  // The server's refusals say what happened; anything else is a bug, shown as a retry and kept for the console.
+  if (!(error instanceof ApiError)) console.error(action, error)
+  toast.error(action, { description: serverProblem(error) })
+}
 
 /**
  * A step-by-step editor in a sheet that takes nearly the whole screen: steps in the header, Back,

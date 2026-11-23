@@ -8,6 +8,7 @@ import { ArrowRight, Gauge, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 
 import { SettingsSection } from '@/components/settings/layout'
+import { useAI } from '@/lib/ai'
 import {
   formatLimit,
   formatReset,
@@ -44,7 +45,11 @@ const rowLabel = (item: UsageItem) => usageLabel(item.limit).replace(/ this mont
  * item under the most pressure.
  */
 export function UsageOverview({ billing }: { billing: Billing }) {
-  const items = usageItems(billing).filter((item) => meterState(item) !== 'off')
+  const ai = useAI().available
+  // An installation without AI shows no AI allowances.
+  const items = usageItems(billing).filter(
+    (item) => meterState(item) !== 'off' && (ai || !item.limit.startsWith('ai_')),
+  )
   const pressing = items
     .filter((item) => ['near', 'full'].includes(meterState(item)))
     .toSorted((a, b) => share(b) - share(a))[0]

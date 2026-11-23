@@ -20,11 +20,10 @@ import { toast } from 'sonner'
 
 import { NativeSelect } from '@/components/clients/fields'
 import { OptionSegments } from '@/components/option-segments'
-import { serverProblem } from '@/components/signatures/create-drawer'
 import { SesLine } from '@/components/signatures/parts'
 import { DocPreview, PdfPicker } from '@/components/signatures/pdf-parts'
 import { Placement } from '@/components/signatures/placement'
-import { Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
+import { failed, Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { contentUrl } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { dropSigner, signerColor, titleFromName } from '@/lib/signatures'
@@ -95,7 +94,6 @@ export function TemplateEditor({
   const [active, setActive] = useState(0)
   const [pages, setPages] = useState(0)
   const [tried, setTried] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
   const save = useTemplateMutation((body: TemplateInput) =>
     template ? templatesApi.update(template.id, body) : templatesApi.create(body),
   )
@@ -126,7 +124,6 @@ export function TemplateEditor({
     // Any step's gap stops the save, and the editor goes to it.
     const gap = [0, 1, 2].find((index) => templateProblem(index, state))
     if (gap !== undefined) return setStep(gap)
-    setServerError(null)
     save.mutate(draft, {
       onSuccess: ({ data }) => {
         toast.success(
@@ -134,7 +131,7 @@ export function TemplateEditor({
         )
         onSaved(data)
       },
-      onError: (error) => setServerError(serverProblem(error)),
+      onError: (error) => failed(translate('couldNotSaveTheTemplate'), error),
     })
   }
 
@@ -168,7 +165,7 @@ export function TemplateEditor({
       discardTitle={template ? translate('discardYourChanges') : translate('discardThisTemplate')}
       onClose={onClose}
       status={summary}
-      error={serverError ?? (tried ? problem : null)}
+      error={tried ? problem : null}
       action={
         step < STEPS.length - 1 ? (
           <div className="flex gap-2">

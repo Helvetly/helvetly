@@ -17,6 +17,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
+	"helvetly.com/api/internal/contractpdf"
 	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/signatures"
@@ -62,10 +63,21 @@ func value(v string) (string, string) {
 	return v, ""
 }
 
-// signing: the signature request a template's signing fields make for the given signers.
-func signing(t store.Template, b generateBody, title, documentID string) signatures.CreateBody {
+// maxBlockSigners: the signature page's places, the requests' own limit of signers.
+const maxBlockSigners = 10
+
+// signing: the signature request a template's signing fields make for the given signers; a template without
+// signers has them sign in the block of the page appended at blockPage (signpdf.SignatureBlock).
+func signing(t store.Template, b generateBody, title, documentID string, blockPage int) signatures.CreateBody {
 	body := signatures.CreateBody{DocumentID: documentID, Title: title, Message: b.Delivery.Message,
 		SigningOrder: b.Delivery.SigningOrder, ExpiresInDays: b.Delivery.ExpiresInDays, Signers: b.Delivery.Signers}
+	if len(t.Signers) == 0 {
+		for _, f := range signpdf.SignatureBlock(min(len(b.Delivery.Signers), maxBlockSigners)) {
+			body.Fields = append(body.Fields, signatures.FieldInput{Signer: f.Signer, Page: blockPage, Kind: f.Kind,
+				X: f.X, Y: f.Y, W: f.W, H: f.H})
+		}
+		return body
+	}
 	for _, f := range t.Fields {
 		if f.Signer != nil {
 			body.Fields = append(body.Fields, signatures.FieldInput{Signer: *f.Signer, Page: f.Page, Kind: f.Kind, X: f.X, Y: f.Y,
@@ -185,12 +197,10 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 			return err // before the document is stored
 		}
 		switch {
-		case len(t.Signers) == 0:
-			bad["delivery.type"] = "This template has no signers: save or email the document."
-		case len(d.Signers) != len(t.Signers):
+		case len(t.Signers) > 0 && len(d.Signers) != len(t.Signers):
 			bad["delivery.signers"] = fmt.Sprintf("Add one signer per role: %d.", len(t.Signers))
 		default:
-			for k, v := range signatures.CheckSending(signing(t, b, title, "")) {
+			for k, v := range signatures.CheckSending(signing(t, b, title, "", 1)) {
 				if k != "title" {
 					bad["delivery."+k] = v
 				}
@@ -225,6 +235,18 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 	filled, err := signpdf.Fill(original, texts, title)
 	if err != nil {
 		return fmt.Errorf("fill %s: %w", t.ID, err)
+	}
+	blockPage := 0
+	if d.Type == "signature" && len(t.Signers) == 0 {
+		// A template without signing fields: everyone signs on a page added at the end.
+		names := make([]string, len(d.Signers))
+		for i, signer := range d.Signers {
+			names[i] = strings.TrimSpace(signer.Name)
+		}
+		heading, date := contractpdf.SignatureWords(deref(d.Language))
+		if filled, blockPage, err = signpdf.AppendSignaturePage(filled, title, heading, date, names); err != nil {
+			return fmt.Errorf("signature page %s: %w", t.ID, err)
+		}
 	}
 	sum := sha256.Sum256(filled)
 	now := s.now()
@@ -298,7 +320,7 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 		list := strings.Join(to, ", ")
 		out.EmailedTo = &list
 	case "signature":
-		id, err := s.sign.Create(r, sess, signing(t, b, title, file.ID))
+		id, err := s.sign.Create(r, sess, signing(t, b, title, file.ID, blockPage))
 		if err != nil {
 			return err // the document stays in Documents
 		}

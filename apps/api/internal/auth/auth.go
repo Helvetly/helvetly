@@ -64,6 +64,9 @@ type Service struct {
 	// OnPhotoRemoved deletes a closed account's own stored objects (photo, feedback screenshots) after the commit
 	// (internal/avatars; auth holds no storage). Nil: the objects stay behind.
 	OnPhotoRemoved func(ctx context.Context, objectKey string)
+	// AIAvailable: the installation has an AI model (OPENAI_API_KEY, or the development fake); false hides every AI
+	// entry point in the platform (`ai_available` of the config).
+	AIAvailable bool
 	// CompleteOnboarding checks the workspace's stored company details and, when they are complete, runs mark in the
 	// same transaction (internal/invoices holds the settings; auth cannot import it). Nil: onboarding cannot be
 	// finished, so a wiring mistake refuses instead of letting the step be skipped.
@@ -115,7 +118,8 @@ func (s *Service) authConfig(w http.ResponseWriter, _ *http.Request) {
 		// The platform's page views; empty = off (the platform loads no analytics).
 		"google_analytics_id": s.cfg.GoogleAnalyticsID,
 		// Where tokens and agents call the API (PUBLIC_API_URL), else this platform's own origin.
-		"api_url": cmp.Or(s.cfg.APIURL, s.cfg.PublicURL)})
+		"api_url":      cmp.Or(s.cfg.APIURL, s.cfg.PublicURL),
+		"ai_available": s.AIAvailable})
 }
 
 // ---- errors and JSON ----

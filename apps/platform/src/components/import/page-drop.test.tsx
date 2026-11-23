@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -10,6 +12,10 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/clients',
   useSearchParams: () => query.current,
 }))
+
+const withQueries = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+)
 
 afterEach(() => {
   clearHandOff()
@@ -148,7 +154,7 @@ describe('useFileDrop', () => {
 
 describe('useImportDrop', () => {
   it('hands the dropped files to the kind’s import drawer and opens it', () => {
-    renderHook(() => useImportDrop('clients', true))
+    renderHook(() => useImportDrop('clients', true), { wrapper: withQueries })
     const file = new File(['a'], 'clients.csv', { type: 'text/csv' })
     drag('drop', [file])
     expect(peekHandOff('clients')).toEqual([file])
@@ -157,7 +163,7 @@ describe('useImportDrop', () => {
 
   it('leaves HEIC photos out with a toast, and opens nothing when no file is left', () => {
     const error = vi.spyOn(toast, 'error').mockReturnValue('')
-    renderHook(() => useImportDrop('products', true))
+    renderHook(() => useImportDrop('products', true), { wrapper: withQueries })
     drag('drop', [new File(['a'], 'IMG_0042.HEIC')])
     expect(error).toHaveBeenCalledOnce()
     expect(peekHandOff('products')).toEqual([])
@@ -166,7 +172,7 @@ describe('useImportDrop', () => {
 
   it('is off while the import drawer is already open', () => {
     query.current = new URLSearchParams('import=1')
-    const { result } = renderHook(() => useImportDrop('clients', true))
+    const { result } = renderHook(() => useImportDrop('clients', true), { wrapper: withQueries })
     drag('dragenter')
     expect(result.current).toBe(false)
     drag('drop', [new File(['a'], 'a.csv')])

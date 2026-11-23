@@ -430,7 +430,7 @@ func TestPreviewNeedsPermissionAndAProvider(t *testing.T) {
 	}
 	e.as(e.sess)
 	e.s.provider = nil
-	if w := e.preview("request-0001", pngBytes(t), nil); w.Code != 409 || code(w) != "ai_not_configured" {
+	if w := e.preview("request-0001", pngBytes(t), nil); w.Code != 503 || code(w) != "ai_unavailable" {
 		t.Errorf("no provider: %d %s", w.Code, w.Body)
 	}
 	if n := e.model.calls.Load(); n != 0 {

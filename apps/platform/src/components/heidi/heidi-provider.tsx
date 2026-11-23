@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 
 import { featureLock, PLANS_HREF, toastLocked } from '@/components/billing/feature-lock'
 import { addFiles as addImportFiles } from '@/components/import/import-files'
+import { useAI } from '@/lib/ai'
 import { useBilling } from '@/lib/billing'
 import { chatReadable, importable, type HeidiPage } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
@@ -143,7 +144,9 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
     })
   }, [])
 
-  useShortcut('heidi', () => setOpen(!panel.open || Boolean(lock)))
+  // Without AI on the installation there is no Heidi: every entry point reads a null context.
+  const { available } = useAI('heidi')
+  useShortcut('heidi', () => setOpen(!panel.open || Boolean(lock)), available)
 
   const value = useMemo<HeidiContextValue>(
     () => ({
@@ -169,7 +172,7 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
     [panel, lock, max, page, draft, files, chat, setOpen, setMax, persist, addFiles],
   )
 
-  return <HeidiContext.Provider value={value}>{children}</HeidiContext.Provider>
+  return <HeidiContext.Provider value={available ? value : null}>{children}</HeidiContext.Provider>
 }
 
 /** Heidi's panel and conversation; null outside the signed-in area (and in isolated tests). */

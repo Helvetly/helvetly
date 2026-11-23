@@ -14,6 +14,7 @@ import { Fragment, type ReactNode } from 'react'
 
 import { LoadError } from '@/components/load-error'
 import { SectionFooter, useSectionForm, type SectionState } from '@/components/section-form'
+import { useAI } from '@/lib/ai'
 import { translate } from '@/lib/i18n'
 import {
   categoryOf,
@@ -56,7 +57,9 @@ function PrefsForm({ prefs }: { prefs: NotificationPrefs }) {
   })
   const state = form.section('notifications')
   const events = form.values.events
-  const grouped = groups(events)
+  // An installation without AI sends no AI notifications: their group is not offered.
+  const ai = useAI().available
+  const grouped = groups(events).filter(([category]) => ai || category !== 'ai')
   const set = (event: string, key: Channel, value: boolean) =>
     form.set(
       'events',

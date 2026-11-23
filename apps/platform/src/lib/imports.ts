@@ -1004,6 +1004,8 @@ export function importProblem(error: unknown): ImportProblem {
         title: translate('aiConsentRequiredTitle'),
         message: translate('aiConsentRequiredMessage'),
       }
+    case 'ai_unavailable':
+      return { kind: 'not_configured', title: translate('aiIsNotAvailableRightNow'), message }
     case 'ai_not_configured':
       return {
         kind: 'not_configured',

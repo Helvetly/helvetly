@@ -4,14 +4,12 @@ import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
-import { useQuery } from '@tanstack/react-query'
 import { Camera } from 'lucide-react'
 import { useState } from 'react'
 
 import { useFeatureLock } from '@/components/billing/feature-lock'
-import { useBilling, usageItems } from '@/lib/billing'
+import { useAI } from '@/lib/ai'
 import { canRecognize, RECEIPT_MAX_FILES } from '@/lib/expenses'
-import { heidiApi, usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
 
 import { ReceiptDrop, StagedReceipts } from './expense-receipts'
@@ -25,15 +23,10 @@ export const READ_MAX_PAGES = 5
  */
 export function useReceiptAIBlock(): string | null {
   const lock = useFeatureLock('ai_import')
-  const usage = useQuery({ queryKey: usageKey, queryFn: heidiApi.usage })
-  const billing = useBilling().data
+  const ai = useAI()
+  if (!ai.available) return translate('receiptAIUnavailable')
   if (lock) return lock.hint
-  if (usage.data?.provider_available === false) return translate('receiptAIUnavailable')
-  const pool = billing
-    ? usageItems(billing).find((item) => item.limit === 'ai_automation_tokens_per_month')
-    : undefined
-  if (pool && pool.max !== null && pool.used !== null && pool.used >= pool.max)
-    return translate('receiptAIPoolUsedUp')
+  if (ai.usedUp) return translate('receiptAIPoolUsedUp')
   return null
 }
 
@@ -59,6 +52,7 @@ export function ExpenseStart({
   onCancel: () => void
 }) {
   const blocked = useReceiptAIBlock()
+  const { available } = useAI()
   const [files, setFiles] = useState<File[]>([])
   const [ai, setAI] = useState(true)
   const [split, setSplit] = useState<Split>('one')
@@ -115,19 +109,21 @@ export function ExpenseStart({
             onRemove={(file) => setFiles(files.filter((entry) => entry !== file))}
           />
         )}
-        <SwitchRow
-          id="expense-read-with-ai"
-          label={
-            <span className="inline-flex items-center gap-1.5">
-              <HeidiSparkle />
-              {translate('readWithAI')}
-            </span>
-          }
-          description={translate('readWithAIHint', { pages: READ_MAX_PAGES })}
-          checked={reads}
-          disabledReason={aiReason}
-          onCheckedChange={setAI}
-        />
+        {available && (
+          <SwitchRow
+            id="expense-read-with-ai"
+            label={
+              <span className="inline-flex items-center gap-1.5">
+                <HeidiSparkle />
+                {translate('readWithAI')}
+              </span>
+            }
+            description={translate('readWithAIHint', { pages: READ_MAX_PAGES })}
+            checked={reads}
+            disabledReason={aiReason}
+            onCheckedChange={setAI}
+          />
+        )}
         {files.length > 1 && !blocked && (
           <div className="grid gap-1.5">
             <Segmented

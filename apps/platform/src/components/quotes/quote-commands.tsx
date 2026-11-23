@@ -12,6 +12,7 @@ import {
   Pencil,
   ReceiptText,
   Send,
+  ScrollText,
   Trash2,
   X,
   type LucideIcon,
@@ -20,6 +21,8 @@ import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
+import { ContractSignDrawer } from '@/components/signatures/create-drawer'
+import { useAI } from '@/lib/ai'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import {
@@ -33,7 +36,7 @@ import {
   type QuoteCommand,
 } from '@/lib/quotes'
 
-import { ContractFlow, ContractSignDrawer } from './quote-contract'
+import { ContractFlow } from './quote-contract'
 import { failQuote, QuoteDecisionDialog, QuoteSendDialog } from './quote-dialogs'
 
 type Action = { label: string; icon: LucideIcon }
@@ -191,8 +194,10 @@ export function useContractEntry(start: (quote: Quote) => void) {
   const readsQuotes = useCan('read:invoices')
   const writesDocuments = useCan('write:documents')
   const allowed = readsQuotes && writesDocuments
+  // Without AI on the installation it is "Create contract", from a template only.
+  const ai = useAI().available
   // stable while nothing changes, so list rows need not render again
-  return useMemo(() => (allowed ? { lock, start } : null), [allowed, lock, start])
+  return useMemo(() => (allowed ? { lock, start, ai } : null), [allowed, lock, start, ai])
 }
 
 export type ContractEntry = ReturnType<typeof useContractEntry>
@@ -266,9 +271,9 @@ export function quoteActions({
     contract && {
       id: 'contract',
       group: 'create',
-      tone: 'ai',
-      icon: <HeidiSparkle />,
-      label: translate('createContractWithAI'),
+      ...(contract.ai
+        ? { tone: 'ai' as const, icon: <HeidiSparkle />, label: translate('createContractWithAI') }
+        : { icon: <ScrollText />, label: translate('createContract') }),
       disabledReason: contract.lock?.hint,
       extra: contract.lock && <PlanTag lock={contract.lock} />,
       onSelect: () => contract.start(quote),

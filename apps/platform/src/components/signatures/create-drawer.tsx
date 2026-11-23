@@ -22,10 +22,10 @@ import { toast } from 'sonner'
 
 import { EmailComposer, EmailLanguageField, EmailPreviewPane } from '@/components/email-composer'
 import { OptionSegments } from '@/components/option-segments'
-import { Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
-import { ApiError, errorMessage } from '@/lib/api'
+import { useOpenHref } from '@/components/record-link'
+import { failed, Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { useClientSearch } from '@/lib/clients'
-import { contentUrl, refreshDocuments, type DocFile } from '@/lib/documents'
+import { contentUrl, refreshDocuments, useDoc, type DocFile } from '@/lib/documents'
 import {
   emailLanguage,
   useEmailPreview,
@@ -78,15 +78,6 @@ const signerRow = (signer: DraftSigner = { name: '', email: '' }): SignerRow => 
 /** What a signing field's box says before it is signed. */
 export const fieldCaption = (field: DraftField) =>
   field.kind === 'text' && field.label ? field.label : FIELD_LABELS[field.kind]
-
-/** The server's field errors as one line, or its message. */
-export function serverProblem(error: unknown) {
-  const fields =
-    error instanceof ApiError && typeof error.details.fields === 'object' && error.details.fields
-      ? Object.values(error.details.fields).filter((v): v is string => typeof v === 'string')
-      : []
-  return fields.length ? fields.join(' ') : errorMessage(error)
-}
 
 /** What the step's Next needs before it lets you on, or null. */
 export function stepProblem(
@@ -141,7 +132,6 @@ export function CreateSignatureDrawer({
   const [pages, setPages] = useState(0)
   const [tried, setTried] = useState(false)
   const [sending, setSending] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
   const draft = useTemplateDraft('signature_request', language, {
     document: title.trim(),
     sender: session?.user.name || session?.user.email || '',
@@ -185,7 +175,6 @@ export function CreateSignatureDrawer({
   const send = async () => {
     if (!document) return
     setSending(true)
-    setServerError(null)
     try {
       const { data } = await signaturesApi.create(
         buildCreateBody({
@@ -212,7 +201,7 @@ export function CreateSignatureDrawer({
       )
       onSent(data.id)
     } catch (error) {
-      setServerError(serverProblem(error))
+      failed(translate('couldNotSendForSignature'), error)
     } finally {
       setSending(false)
     }
@@ -240,7 +229,7 @@ export function CreateSignatureDrawer({
       discardTitle={translate('discardThisRequest')}
       onClose={onClose}
       status={summary}
-      error={serverError ?? (tried ? problem : null)}
+      error={tried ? problem : null}
       action={
         step < STEPS.length - 1 ? (
           <Button className="cursor-pointer" onClick={next}>
@@ -698,5 +687,29 @@ function ReviewStep({
       </p>
       <SesLine />
     </>
+  )
+}
+
+/** Sends a filed document (a contract) for signature with this drawer, once its file is loaded. */
+export function ContractSignDrawer({
+  documentId,
+  onClose,
+}: {
+  documentId: string
+  onClose: () => void
+}) {
+  const openHref = useOpenHref()
+  const doc = useDoc(documentId).data
+  if (!doc) return null
+  return (
+    <CreateSignatureDrawer
+      initial={doc}
+      folderId={null}
+      onClose={onClose}
+      onSent={(id) => {
+        onClose()
+        openHref(`/documents?${new URLSearchParams({ view: 'signatures', request: id })}`)
+      }}
+    />
   )
 }

@@ -17,6 +17,7 @@ import { AppSidebar } from '@/components/shell/app-sidebar'
 import { MobileTabBar } from '@/components/shell/mobile-tab-bar'
 import { isChoosePlan, PlanGate } from '@/components/shell/plan-gate'
 import { PrimaryActionProvider } from '@/components/shell/primary-action'
+import { useAuthConfig } from '@/lib/queries'
 
 // Tablets get the icon rail; phones (below 768px) get the sheet.
 const SIDEBAR_KEY = 'helvetly:sidebar'
@@ -32,6 +33,8 @@ const subscribe = (onChange: () => void) => {
  * on its own.
  */
 export default function SignedInLayout({ children }: { children: ReactNode }) {
+  // The installation's config (whether it has AI) for every AI entry point's useAI, loaded once at start.
+  useAuthConfig()
   const rail = useSyncExternalStore(
     subscribe,
     () => window.matchMedia(RAIL).matches,

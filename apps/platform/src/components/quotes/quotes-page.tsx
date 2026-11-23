@@ -419,7 +419,9 @@ export function QuotesPage() {
         onSelect={(index) => navigate({ status: VIEWS[index]?.status ?? null })}
         primary={translate('newQuote2')}
         onPrimary={newQuote}
-        primaryMenu={[canWrite && { ...importAction, label: translate('importQuotes') }]}
+        primaryMenu={[
+          canWrite && importAction && { ...importAction, label: translate('importQuotes') },
+        ]}
       />
       {importDrawer.isOpen && <ImportDrawer kind="quotes" onClose={importDrawer.close} />}
       {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoQuotes')} />}

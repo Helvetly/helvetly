@@ -46,6 +46,7 @@ import type { KnownTag } from '@/components/clients/fields'
 import { InlineTagsEditor } from '@/components/clients/inline-tags'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordPageButton } from '@/components/record-link'
+import { useAI } from '@/lib/ai'
 import { useClientSearch } from '@/lib/clients'
 import {
   contentUrl,
@@ -111,6 +112,7 @@ export function Preview({
   const canWrite = useCan('write:documents')
   const signLock = useFeatureLock('simple_signatures')
   const aiLock = useFeatureLock('ai_import')
+  const ai = useAI()
   const query = useDoc(id)
   const file = query.data ?? siblings.find((sibling) => sibling.id === id)
   const index = siblings.findIndex((sibling) => sibling.id === id)
@@ -177,7 +179,7 @@ export function Preview({
             <ChevronRight />
           </HeaderButton>
           <span className="mx-1 h-5 w-px bg-border" />
-          {canWrite && file && !trashed && (
+          {canWrite && file && !trashed && ai.available && (
             <ExtractButton
               reason={aiLock?.hint ?? extractBlock([file], 0)}
               onClick={() => commands.extract(file)}

@@ -4,6 +4,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { segmentLabels } from '@helvetly/ui/components/segmented'
+import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { fieldSurface } from '@helvetly/ui/lib/field-surface'
@@ -18,8 +19,10 @@ import {
   LayoutTemplate,
   Loader2,
   Mail,
+  Plus,
   Search,
   Sparkles,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -33,10 +36,11 @@ import {
   type Recipients,
 } from '@/components/email-composer'
 import { emails, recipientErrors } from '@/components/invoices/invoice-dialogs'
-import { fieldCaption, serverProblem } from '@/components/signatures/create-drawer'
+import { ContractSignDrawer, fieldCaption } from '@/components/signatures/create-drawer'
 import { SesLine } from '@/components/signatures/parts'
 import { DocPreview } from '@/components/signatures/pdf-parts'
-import { Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
+import { failed, Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
+import { useAI } from '@/lib/ai'
 import { useClientSearch, type Client } from '@/lib/clients'
 import {
   emailLanguage,
@@ -49,6 +53,7 @@ import { useSession } from '@/lib/queries'
 import { checkSigners, signerColor, type DraftSigner, type SigningOrder } from '@/lib/signatures'
 import {
   DATA_LABELS,
+  blockSigners,
   defaultSigners,
   generateProblem,
   initialValues,
@@ -131,14 +136,18 @@ export function FillTemplateDrawer({
   const [changingClient, setChangingClient] = useState(!initialClient)
   const [signers, setSigners] = useState<DraftSigner[]>([])
   const [order, setOrder] = useState<SigningOrder>('parallel')
+  // A template without signing fields: everyone signs on a page added at the end, or the person places the fields
+  // on the filed document with the signatures' own drawer (`placing`).
+  const [placeMyself, setPlaceMyself] = useState(false)
+  const [placing, setPlacing] = useState<string | null>(null)
   const [pages, setPages] = useState(0)
   const [tried, setTried] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
   // A contract: where each field's value came from (quote or AI), and how the AI went.
   const [sources, setSources] = useState<ContractDraft['sources']>({})
   const [aiNote, setAiNote] = useState<string | null>(null)
   const [drafting, setDrafting] = useState(false)
   const { ensure } = useAIApproval()
+  const ai = useAI()
   const generate = useTemplateMutation((input: { id: string; body: GenerateRequest }) =>
     templatesApi.generate(input.id, input.body),
   )
@@ -155,7 +164,9 @@ export function FillTemplateDrawer({
     },
   )
   const message = email.message
-  const steps = delivery === 'save' ? STEPS : MESSAGE_STEPS
+  // Placing the fields yourself files the document first; the signatures' drawer then asks for the message.
+  const sent: DeliveryType = delivery === 'signature' && placeMyself ? 'save' : delivery
+  const steps = sent === 'save' ? STEPS : MESSAGE_STEPS
   const emailPreview = useEmailPreview(
     delivery === 'signature' ? '/signatures/email-preview' : '/templates/email-preview',
     delivery === 'signature'
@@ -188,25 +199,31 @@ export function FillTemplateDrawer({
     setSources(draft?.sources ?? {})
     setAiNote(draft ? (AI_NOTES[draft.ai] ?? null) : null)
     setDelivery(chosen.signers.length > 0 ? 'signature' : 'save')
+    setPlaceMyself(false)
     setRecipients({
       to: primaryContact(forClient)?.email ?? forClient.email ?? '',
       cc: '',
       bcc: '',
     })
     setLanguage(emailLanguage(forClient.language, emailLanguage(locale)))
-    setSigners(defaultSigners(chosen, forClient))
+    const you = session ? { name: session.user.name, email: session.user.email } : null
+    setSigners(
+      chosen.signers.length > 0 ? defaultSigners(chosen, forClient) : blockSigners(forClient, you),
+    )
   }
   // The quote's details for the template's fields; the model only with the person's approval.
   const contractDraft = async (templateId: string) => {
     if (!contract) return null
     setDrafting(true)
-    setServerError(null)
     try {
-      const useAI = await ensure()
-      const body = { template_id: templateId, use_ai: useAI }
+      // The model only on an installation with one, a pool not used up and the person's approval.
+      const body = {
+        template_id: templateId,
+        use_ai: ai.available && !ai.usedUp && (await ensure()),
+      }
       return (await templatesApi.contractDraft(contract.quoteId, body)).data
     } catch (error) {
-      setServerError(serverProblem(error))
+      failed(translate('couldNotFillInTheTemplate'), error)
       return null
     } finally {
       setDrafting(false)
@@ -227,14 +244,13 @@ export function FillTemplateDrawer({
   const send = () => {
     setTried(true)
     if (problem || !template || !client) return
-    setServerError(null)
     const body: GenerateRequest = {
       client_id: client.id,
       ...(contract && { quote_id: contract.quoteId }),
       title: title.trim(),
       values: valuesByField(template, values),
       delivery:
-        delivery === 'email'
+        sent === 'email'
           ? {
               type: 'email',
               to: emails(recipients.to).join(', ').toLowerCase(),
@@ -244,7 +260,7 @@ export function FillTemplateDrawer({
               message: message.trim() || null,
               language,
             }
-          : delivery === 'signature'
+          : sent === 'signature'
             ? {
                 type: 'signature',
                 signers: signers.map((signer) => ({
@@ -262,6 +278,10 @@ export function FillTemplateDrawer({
       { id: template.id, body },
       {
         onSuccess: ({ data }) => {
+          if (delivery === 'signature' && placeMyself) {
+            toast.success(translate('savedToDocuments', { name: data.document.name }))
+            return setPlacing(data.document.id)
+          }
           if (contract) {
             contract.onMade(data)
             return onClose()
@@ -275,7 +295,7 @@ export function FillTemplateDrawer({
           )
           onClose()
         },
-        onError: (error) => setServerError(serverProblem(error)),
+        onError: (error) => failed(translate('couldNotCreateTheDocument'), error),
       },
     )
   }
@@ -298,12 +318,15 @@ export function FillTemplateDrawer({
     />
   )
   const actionLabel =
-    delivery === 'signature'
-      ? translate('sendForSignature2')
-      : delivery === 'email'
-        ? translate('sendEmail')
-        : translate('saveToDocuments')
+    delivery === 'signature' && placeMyself
+      ? translate('saveAndPlaceFields')
+      : delivery === 'signature'
+        ? translate('sendForSignature2')
+        : delivery === 'email'
+          ? translate('sendEmail')
+          : translate('saveToDocuments')
 
+  if (placing) return <ContractSignDrawer documentId={placing} onClose={onClose} />
   return (
     <WizardSheet
       icon={contract ? <Sparkles /> : <LayoutTemplate />}
@@ -311,7 +334,9 @@ export function FillTemplateDrawer({
         step > 0 && title.trim()
           ? title.trim()
           : contract
-            ? translate('createContractWithAI')
+            ? ai.available
+              ? translate('createContractWithAI')
+              : translate('createContract')
             : translate('newDocumentFromATemplate')
       }
       steps={steps}
@@ -322,7 +347,7 @@ export function FillTemplateDrawer({
       discardTitle={translate('discardThisDocument')}
       onClose={onClose}
       status={[template?.name ?? 'No template chosen', client?.name].filter(Boolean).join(' · ')}
-      error={serverError ?? (tried ? problem : null)}
+      error={tried ? problem : null}
       action={
         step < steps.length - 1 ? (
           <Button
@@ -437,10 +462,9 @@ export function FillTemplateDrawer({
               text={
                 template.signers.length > 0
                   ? translate('eachSignerGetsALinkToSignOnline')
-                  : translate('thisTemplateHasNoSigningFieldsAddThemIn')
+                  : translate('everyoneSignsOnAPageAddedAtTheEnd')
               }
               selected={delivery === 'signature'}
-              disabled={template.signers.length === 0}
               onPick={() => setDelivery('signature')}
             />
           </div>
@@ -452,6 +476,15 @@ export function FillTemplateDrawer({
               order={order}
               onOrder={setOrder}
               tried={tried}
+            />
+          )}
+          {delivery === 'signature' && template.signers.length === 0 && (
+            <SwitchRow
+              id="fill-place-fields"
+              label={translate('placeFieldsMyself')}
+              description={translate('placeFieldsMyselfText')}
+              checked={placeMyself}
+              onCheckedChange={setPlaceMyself}
             />
           )}
           {delivery === 'signature' && <SesLine />}
@@ -842,11 +875,16 @@ function RoleSigners({
   const check = checkSigners(signers)
   const set = (index: number, change: Partial<DraftSigner>) =>
     onSigners(signers.map((signer, i) => (i === index ? { ...signer, ...change } : signer)))
+  // Without signing fields the signers are free: anyone, up to 10, each signing on the page added at the end.
+  const free = template.signers.length === 0
+  const roles = free
+    ? signers.map((_, index) => ({ label: translate('signer', { value1: index + 1 }) }))
+    : template.signers
   return (
     <section className="grid gap-2">
       <h3 className="text-[13px] font-medium">{translate('signers')}</h3>
       <ol className="grid gap-2">
-        {template.signers.map((role, index) => {
+        {roles.map((role, index) => {
           const signer = signers[index] ?? { name: '', email: '' }
           const row = check.rows[index]
           return (
@@ -857,6 +895,24 @@ function RoleSigners({
                   style={{ backgroundColor: signerColor(index + ROLE_LANE) }}
                 />
                 {role.label}
+                {free && signers.length > 1 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        className="ml-auto"
+                        aria-label={translate('removeSigner', { value1: index + 1 })}
+                        onClick={() => onSigners(signers.filter((_, i) => i !== index))}
+                      >
+                        <X />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {translate('removeSigner', { value1: index + 1 })}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </span>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="grid gap-1">
@@ -886,7 +942,18 @@ function RoleSigners({
           )
         })}
       </ol>
-      {template.signers.length > 1 && (
+      {free && signers.length < 10 && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-fit gap-1.5"
+          onClick={() => onSigners([...signers, { name: '', email: '' }])}
+        >
+          <Plus className="size-3.5" />
+          {translate('addAnotherSigner')}
+        </Button>
+      )}
+      {roles.length > 1 && (
         <div className={cn(segmentTrack, 'grid grid-cols-2')}>
           {(
             [

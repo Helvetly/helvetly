@@ -42,6 +42,7 @@ import { inputClass } from '@/components/clients/fields'
 import { loadProblemText } from '@/components/data/load-problem'
 import { ApprovalBadge } from '@/components/invoices/invoice-bits'
 import { RecordPageButton } from '@/components/record-link'
+import { useAI } from '@/lib/ai'
 import { useApproval } from '@/lib/approvals'
 import { useFolders, type Folder } from '@/lib/documents'
 import { categoryLabel } from '@/lib/expense-categories'
@@ -164,7 +165,8 @@ function Detail({
   const base = (value: string) => formatMoney(value, expense.base.currency)
   const [rereading, setRereading] = useState(false)
   const aiBlock = useReceiptAIBlock()
-  const rereadable = draft && expense.receipts_count > 0
+  // Without AI on the installation there is nothing to read again with.
+  const rereadable = useAI().available && draft && expense.receipts_count > 0
   const subtitle = [
     expense.category && categoryLabel(expense.category),
     expense.document_date && formatDay(expense.document_date),

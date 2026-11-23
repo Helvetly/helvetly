@@ -84,7 +84,7 @@ func (s *Service) suggest(w http.ResponseWriter, r *http.Request, sess store.Ses
 			map[string]any{"fields": map[string]string{"company_name": "invalid"}})
 	}
 	if s.namer == nil {
-		return auth.Error(http.StatusConflict, "ai_not_configured", "Name suggestions are not available on this server.", nil)
+		return auth.Error(http.StatusServiceUnavailable, "ai_unavailable", "Name suggestions are not available on this server.", nil)
 	}
 	if !s.limit.Allow(r) {
 		return auth.Error(http.StatusTooManyRequests, "rate_limited", "Wait a moment before asking again.", nil)

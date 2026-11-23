@@ -279,6 +279,7 @@ func run() error {
 	if cfg.AI.FakeImportModel {
 		importModel = aimodel.Fake{}
 	}
+	authSvc.AIAvailable = importModel != nil
 	importsSvc := imports.New(db, authSvc, files, slog.Default(), imports.Options{
 		Provider: importModel, Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost, AllowStorage: billingSvc.AllowStorage,
 		File: documentsSvc.QueueFiling,

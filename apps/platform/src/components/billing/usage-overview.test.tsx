@@ -1,11 +1,17 @@
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render as renderPlain, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
 
 import { billingFixture, entitlementsFixture } from './billing-fixture'
 import { UsageOverview } from './usage-overview'
 
-const render = (ui: ReactElement) => renderPlain(<TooltipProvider>{ui}</TooltipProvider>)
+const render = (ui: ReactElement) =>
+  renderPlain(
+    <QueryClientProvider client={new QueryClient()}>
+      <TooltipProvider>{ui}</TooltipProvider>
+    </QueryClientProvider>,
+  )
 
 test('the nudge names the item at its limit and what the next plan includes', () => {
   render(

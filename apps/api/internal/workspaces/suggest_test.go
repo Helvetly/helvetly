@@ -152,7 +152,7 @@ func TestSuggestRefusesBeforeTheProviderAndSpendsNothing(t *testing.T) {
 func TestSuggestProviderOffConsumesNothing(t *testing.T) {
 	e := newEnv(t) // no namer
 	owner, ws := e.approvedOwner("My workspace", "owner")
-	if code, body := e.do(owner, http.MethodPost, path, ask("Muster")); code != http.StatusConflict || errCode(body) != "ai_not_configured" {
+	if code, body := e.do(owner, http.MethodPost, path, ask("Muster")); code != http.StatusServiceUnavailable || errCode(body) != "ai_unavailable" {
 		t.Fatalf("provider off: %d %v", code, body)
 	}
 	if _, _, found := e.suggestionRow(ws); found {

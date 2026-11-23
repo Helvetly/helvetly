@@ -337,7 +337,8 @@ func (s *Service) contractWrite(w http.ResponseWriter, r *http.Request, sess sto
 			out.Warnings = append(out.Warnings, removed...)
 		}
 	}
-	out.Warnings = append(out.Warnings, src.check(out.sections)...)
+	// Never null: the platform reads the warnings as a list.
+	out.Warnings = nonNilWarnings(append(out.Warnings, src.check(out.sections)...))
 
 	payload, err := json.Marshal(map[string]any{"mode": in.Mode, "language": lang, "number": src.quote.Number,
 		"example_document_id": in.ExampleDocumentID, "clauses": len(out.Clauses), "warnings": len(out.Warnings)})

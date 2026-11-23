@@ -10,9 +10,11 @@ import { planFeatureLines, planFootnote } from '@helvetly/ui/lib/plan-features'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, Check, Lock, Sparkles } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { useAI } from '@/lib/ai'
 import { errorMessage } from '@/lib/api'
 import {
   ANY_PEOPLE,
@@ -49,6 +51,9 @@ const TAGLINES: Record<Plan['id'], string> = {
   pro: translate('runYourBusinessWithHeidiExpensesSignaturesAnd'),
   business: translate('workWithClientsAtScaleTheClientPortal'),
 }
+
+/** The plan lines that offer AI: none on an installation without it. */
+const AI_LINES = new Set(['ai_import', 'heidi'])
 
 /** A product recommendation, not measured popularity. */
 const RECOMMENDED: Plan['id'] = 'pro'
@@ -185,6 +190,7 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
  */
 export function PlanCards({ billing, offer }: { billing: Billing; offer?: PublicOffer }) {
   const [interval, setPeriod] = useState<Interval>(billing.interval || 'month')
+  const searchParams = useSearchParams()
   // the subscription bills the workspace's people, kept in step by the API as members join or leave
   const team = Math.max(1, billedSeats(billing))
   const most = selfServiceSeats(billing.plans)
@@ -200,16 +206,24 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
   const subscribed = billing.plan !== ''
   const trialing = subscribed && billing.status === 'trialing'
   const pastDue = subscribed && billing.status === 'past_due'
-  // Pro, unless the workspace already has Pro or more
-  const recommended = isUpgrade(billing.plan, RECOMMENDED) ? RECOMMENDED : undefined
+  // The plan a link asked for (?plan=, e.g. "Buy more" AI), else Pro, unless the workspace already has it or more
+  const asked = billing.plans.find((plan) => plan.id === searchParams?.get('plan'))?.id
+  const wanted = asked ?? RECOMMENDED
+  const recommended = isUpgrade(billing.plan, wanted) ? wanted : undefined
   // the offer on sale gives the numbers; the workspace's plans name the plans and their features
-  const lines = offer
-    ? planFeatureLines(
-        { ...offer, plans: billing.plans },
-        (id) => billing.plans.find((plan) => plan.id === id)?.features ?? [],
-        locale,
-      )
-    : []
+  const ai = useAI().available
+  const lines = (
+    offer
+      ? planFeatureLines(
+          { ...offer, plans: billing.plans },
+          (id) => billing.plans.find((plan) => plan.id === id)?.features ?? [],
+          locale,
+        )
+      : []
+  ).map((entry) =>
+    // An installation without AI never offers it.
+    ai ? entry : { ...entry, lines: entry.lines.filter((line) => !AI_LINES.has(line.key)) },
+  )
 
   return (
     <div className="grid gap-10">
@@ -321,7 +335,9 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
                   )}
                 </div>
                 <p className="mt-1 min-h-[2lh] text-body-sm text-pretty text-muted-foreground">
-                  {TAGLINES[plan.id]}
+                  {!ai && plan.id === 'pro'
+                    ? translate('runYourBusinessWithExpensesSignaturesAnd')
+                    : TAGLINES[plan.id]}
                 </p>
 
                 <div data-slot="plan-price" className="mt-5 grid gap-1">

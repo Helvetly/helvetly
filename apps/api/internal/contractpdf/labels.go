@@ -33,3 +33,12 @@ var languages = map[string]labels{
 
 // Languages: the languages a contract is printed in.
 func Languages() []string { return []string{"de", "fr", "it", "en"} }
+
+// SignatureWords are a signature page's heading and date caption in lang (English when it has none).
+func SignatureWords(lang string) (heading, date string) {
+	l, ok := languages[lang]
+	if !ok {
+		l = languages["en"]
+	}
+	return l.Signatures, l.Date
+}

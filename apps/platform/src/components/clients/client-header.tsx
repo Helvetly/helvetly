@@ -194,13 +194,13 @@ export function ClientHeader({
             </Button>
           </Tip>
           <div className="flex items-center">
-            <Button asChild className={cn(onImportInvoices && 'rounded-r-none')}>
+            <Button asChild className={cn(onImportInvoices && importAction && 'rounded-r-none')}>
               <RecordLink href={newInvoiceHref(client.id)}>
                 <FilePlus2 className="size-3.5" />
                 {translate('newInvoice2')}
               </RecordLink>
             </Button>
-            {onImportInvoices && (
+            {onImportInvoices && importAction && (
               <DropdownMenu>
                 <Tip label={translate('moreWaysToAddInvoices')}>
                   <DropdownMenuTrigger asChild>

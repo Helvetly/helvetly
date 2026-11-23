@@ -146,13 +146,15 @@ export function CommandPalette({
                 <Plus /> {label}
               </CommandItem>
             ))}
-            <CommandItem onSelect={run(() => heidi?.ask())}>
-              <Sparkle />
-              {translate('askHeidi3')}
-              <CommandShortcut>
-                <ShortcutKeys id="heidi" />
-              </CommandShortcut>
-            </CommandItem>
+            {heidi && (
+              <CommandItem onSelect={run(() => heidi.ask())}>
+                <Sparkle />
+                {translate('askHeidi3')}
+                <CommandShortcut>
+                  <ShortcutKeys id="heidi" />
+                </CommandShortcut>
+              </CommandItem>
+            )}
             {onHelp && (
               <CommandItem onSelect={run(onHelp)}>
                 <LifeBuoy />

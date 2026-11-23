@@ -1176,6 +1176,40 @@ export const ViewsPresetOpen: Story = {
   },
 }
 
+/** An installation without AI: no "Organize with AI", and no Heidi in the sidebar or anywhere else. */
+export const WithoutAI: Story = {
+  parameters: pageParameters('/documents', {}, [
+    http.get('/api/v1/auth/config', () =>
+      HttpResponse.json({
+        google: true,
+        email: true,
+        passkey: true,
+        dev_codes: false,
+        ai_available: false,
+      }),
+    ),
+  ]),
+  play: async (context) => {
+    await shows('Receipts 2026', 'Budget 2027.xlsx')?.(context)
+    const body = within(context.canvasElement.ownerDocument.body)
+    await expect(body.getByRole('button', { name: 'Upload' })).toBeVisible()
+    await waitFor(() => expect(body.queryByRole('button', { name: 'Organize with AI' })).toBeNull())
+    await expect(body.queryByText('Ask Heidi')).toBeNull()
+  },
+}
+
+/** With AI, the same page offers it: what WithoutAI takes away. */
+export const WithAI: Story = {
+  play: async (context) => {
+    await shows('Receipts 2026')?.(context)
+    const body = within(context.canvasElement.ownerDocument.body)
+    await expect(
+      await body.findByRole('button', { name: 'Organize with AI' }, { timeout: 8000 }),
+    ).toBeVisible()
+    await expect(body.getAllByText('Ask Heidi').length).toBeGreaterThan(0)
+  },
+}
+
 /**
  * A PDF's "⋮" and its right-click menu are one menu, in the standard groups: view, share and sign,
  * edit, create (Extract with AI in Heidi's tone), then Move to Trash alone and last.

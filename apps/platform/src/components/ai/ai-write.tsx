@@ -12,7 +12,9 @@ import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
+import { AIBudgetTip } from '@/components/ai/ai-budget'
 import { inputClass } from '@/components/clients/fields'
+import { useAI } from '@/lib/ai'
 import {
   aiWrite,
   aiWriteError,
@@ -72,6 +74,7 @@ export function AIWrite({
   className?: string
 }) {
   const { ensure } = useAIApproval()
+  const ai = useAI('heidi')
   const [open, setOpen] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [proposal, setProposal] = useState<string | null>(null)
@@ -127,15 +130,23 @@ export function AIWrite({
   }
   const grown = proposal !== null || write.isPending
   const failure = write.error ? aiWriteError(write.error) : null
+  if (!ai.available) return null
+  const button = (
+    <Button type="button" variant="ai" size="xs" className={className} disabled={ai.usedUp}>
+      <HeidiSparkle />
+      {translate('aiWriteButton')}
+    </Button>
+  )
+  if (ai.usedUp)
+    return (
+      <AIBudgetTip usedUp pool="heidi">
+        {button}
+      </AIBudgetTip>
+    )
 
   return (
     <Popover open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="ai" size="xs" className={className}>
-          <HeidiSparkle />
-          {translate('aiWriteButton')}
-        </Button>
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{button}</PopoverTrigger>
       <PopoverContent
         align="start"
         collisionPadding={16}

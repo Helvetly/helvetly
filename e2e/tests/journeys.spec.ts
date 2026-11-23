@@ -54,6 +54,9 @@ test('email sign-in validates input, rejects a wrong code, accepts once and logs
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
   await page.getByRole('button', { name: 'Skip', exact: true }).click()
   await page.getByRole('button', { name: 'Skip', exact: true }).click()
+  // The import step is offered: the installation can import (E2E fakes the import model, so `ai_available`).
+  await expect(page.getByRole('heading', { name: 'Bring your data' })).toBeVisible()
+  await page.getByRole('button', { name: 'Skip', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'You’re all set, Journey Owner' })).toBeVisible()
   await page.getByRole('button', { name: 'Go to the dashboard' }).click()
   await expect(page).toHaveURL(/\/clients/)
