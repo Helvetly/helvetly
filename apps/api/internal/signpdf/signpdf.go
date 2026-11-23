@@ -88,10 +88,16 @@ type Text struct {
 	Page       int
 	X, Y, W, H float64
 	Value      string
+	Size       float64 // in points; 0 is DefaultSize
+	AutoFit    bool    // shrink to fit the box, never above Size
+	Align      string  // left (also ""), center or right
 }
 
+// DefaultSize is a filled value's size when its field names none: every value the same, whatever its box.
+const DefaultSize = 10.0
+
 // Fill returns the original with each text written into its box: Liberation Sans (any script through pdffont's
-// fallbacks), black, sized by drawLines.
+// fallbacks), black, sized and aligned by drawLines.
 func Fill(original []byte, texts []Text, title string) (out []byte, err error) {
 	defer recoverInto(&err)
 	pdf := fpdf.New("P", "pt", "A4", "")
@@ -101,7 +107,7 @@ func Fill(original []byte, texts []Text, title string) (out []byte, err error) {
 	pages(pdf, original, func(page int, w, h float64) {
 		for _, t := range texts {
 			if t.Page == page && strings.TrimSpace(t.Value) != "" {
-				drawLines(pdf, txt, t.Value, t.X*w, t.Y*h, t.W*w, t.H*h)
+				drawLines(pdf, txt, t, t.X*w, t.Y*h, t.W*w, t.H*h)
 			}
 		}
 	})
@@ -153,22 +159,33 @@ func fitSize(w, h float64, lines int, widest float64) float64 {
 	return max(size, minSize)
 }
 
-// drawLines writes text into the box like print on the page: black, left aligned, vertically centred, at fitSize.
-func drawLines(pdf *fpdf.Fpdf, txt *pdffont.Text, text string, x, y, w, h float64) {
-	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
-	txt.Font("", 1)
-	widest := 0.0
-	for _, l := range lines {
-		widest = max(widest, txt.Width(l))
+// drawLines writes t's value into the box like print on the page: black, vertically centred, at its size (shrunk to
+// fitSize with AutoFit), aligned as it says.
+func drawLines(pdf *fpdf.Fpdf, txt *pdffont.Text, t Text, x, y, w, h float64) {
+	lines := strings.Split(strings.ReplaceAll(t.Value, "\r\n", "\n"), "\n")
+	size := t.Size
+	if size <= 0 {
+		size = DefaultSize
 	}
-	size := fitSize(w, h, len(lines), widest)
+	if t.AutoFit {
+		txt.Font("", 1)
+		widest := 0.0
+		for _, l := range lines {
+			widest = max(widest, txt.Width(l))
+		}
+		size = min(size, fitSize(w, h, len(lines), widest))
+	}
 	txt.Font("", size)
+	align := map[string]string{"center": "CM", "right": "RM"}[t.Align]
+	if align == "" {
+		align = "LM"
+	}
 	pdf.SetTextColor(0, 0, 0)
 	lh := size * leading
 	top := y + (h-lh*float64(len(lines)))/2
 	for i, l := range lines {
 		pdf.SetXY(x, top+lh*float64(i))
-		txt.Cell(w, lh, l, "LM")
+		txt.Cell(w, lh, l, align)
 	}
 }
 

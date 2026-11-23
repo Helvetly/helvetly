@@ -1,4 +1,5 @@
 'use client'
+import { locale } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
@@ -25,12 +26,26 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
+import {
+  EmailComposer,
+  EmailLanguageField,
+  EmailPreviewPane,
+  type Recipients,
+} from '@/components/email-composer'
+import { emails, recipientErrors } from '@/components/invoices/invoice-dialogs'
 import { fieldCaption, serverProblem } from '@/components/signatures/create-drawer'
 import { SesLine } from '@/components/signatures/parts'
 import { DocPreview } from '@/components/signatures/pdf-parts'
 import { Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { useClientSearch, type Client } from '@/lib/clients'
+import {
+  emailLanguage,
+  useEmailPreview,
+  useTemplateDraft,
+  type EmailLanguage,
+} from '@/lib/email-templates'
 import { translate } from '@/lib/i18n'
+import { useSession } from '@/lib/queries'
 import { checkSigners, signerColor, type DraftSigner, type SigningOrder } from '@/lib/signatures'
 import {
   DATA_LABELS,
@@ -55,6 +70,8 @@ import {
 } from '@/lib/templates'
 
 const STEPS = [translate('templateClient'), translate('fillIn'), translate('send')] as const
+/** With an email or a signature request, the email is written in a step of its own. */
+const MESSAGE_STEPS = [...STEPS, translate('message')] as const
 
 /** What a box says before a client fills it: the field's kind or label. */
 function caption(field: TemplateDraftField) {
@@ -106,8 +123,12 @@ export function FillTemplateDrawer({
   const [title, setTitle] = useState('')
   const [values, setValues] = useState<Record<string, string>>({})
   const [delivery, setDelivery] = useState<DeliveryType>('save')
-  const [emailTo, setEmailTo] = useState('')
-  const [message, setMessage] = useState('')
+  const [recipients, setRecipients] = useState<Recipients>({ to: '', cc: '', bcc: '' })
+  const [language, setLanguage] = useState<EmailLanguage>(
+    emailLanguage(initialClient?.language, emailLanguage(locale)),
+  )
+  // Opened from a client: that client is the one, until "Change" asks for the picker.
+  const [changingClient, setChangingClient] = useState(!initialClient)
   const [signers, setSigners] = useState<DraftSigner[]>([])
   const [order, setOrder] = useState<SigningOrder>('parallel')
   const [pages, setPages] = useState(0)
@@ -122,8 +143,38 @@ export function FillTemplateDrawer({
     templatesApi.generate(input.id, input.body),
   )
 
-  const state = { template, client, title, values, delivery, emailTo, signers }
-  const problem = generateProblem(step, state)
+  const session = useSession().data
+  const email = useTemplateDraft(
+    delivery === 'signature' ? 'signature_request' : 'document',
+    language,
+    {
+      document: title.trim(),
+      client: client?.name ?? '',
+      sender: session?.user.name || session?.user.email || '',
+      company: session?.workspace.name ?? '',
+    },
+  )
+  const message = email.message
+  const steps = delivery === 'save' ? STEPS : MESSAGE_STEPS
+  const emailPreview = useEmailPreview(
+    delivery === 'signature' ? '/signatures/email-preview' : '/templates/email-preview',
+    delivery === 'signature'
+      ? { title, message, language, expires_in_days: 30 }
+      : { title, subject: email.subject, message, language },
+    step === 3 && delivery !== 'save',
+  )
+  const state = { template, client, title, values, delivery, emailTo: recipients.to, signers }
+  const addressErrors =
+    step === 3 && delivery === 'email'
+      ? recipientErrors(recipients.to, recipients.cc, recipients.bcc)
+      : {}
+  const problem =
+    generateProblem(step, state) ??
+    Object.values(addressErrors)[0] ??
+    (step === 3 && delivery === 'email' && !email.subject.trim()
+      ? translate('emailSubjectRequired')
+      : null)
+  const composerErrors = tried ? addressErrors : {}
   const dirty = preparedFor !== '' && step > 0
 
   const prepare = (chosen: Template, forClient: Client, draft: ContractDraft | null) => {
@@ -137,7 +188,12 @@ export function FillTemplateDrawer({
     setSources(draft?.sources ?? {})
     setAiNote(draft ? (AI_NOTES[draft.ai] ?? null) : null)
     setDelivery(chosen.signers.length > 0 ? 'signature' : 'save')
-    setEmailTo(primaryContact(forClient)?.email ?? forClient.email ?? '')
+    setRecipients({
+      to: primaryContact(forClient)?.email ?? forClient.email ?? '',
+      cc: '',
+      bcc: '',
+    })
+    setLanguage(emailLanguage(forClient.language, emailLanguage(locale)))
     setSigners(defaultSigners(chosen, forClient))
   }
   // The quote's details for the template's fields; the model only with the person's approval.
@@ -179,7 +235,15 @@ export function FillTemplateDrawer({
       values: valuesByField(template, values),
       delivery:
         delivery === 'email'
-          ? { type: 'email', to: emailTo.trim().toLowerCase(), message: message.trim() || null }
+          ? {
+              type: 'email',
+              to: emails(recipients.to).join(', ').toLowerCase(),
+              cc: emails(recipients.cc),
+              bcc: emails(recipients.bcc),
+              subject: email.subject.trim() || null,
+              message: message.trim() || null,
+              language,
+            }
           : delivery === 'signature'
             ? {
                 type: 'signature',
@@ -188,6 +252,7 @@ export function FillTemplateDrawer({
                   email: signer.email.trim().toLowerCase(),
                 })),
                 message: message.trim() || null,
+                language,
                 signing_order: order,
                 expires_in_days: 30,
               }
@@ -249,7 +314,7 @@ export function FillTemplateDrawer({
             ? translate('createContractWithAI')
             : translate('newDocumentFromATemplate')
       }
-      steps={STEPS}
+      steps={steps}
       step={step}
       onStep={setStep}
       dirty={dirty}
@@ -259,7 +324,7 @@ export function FillTemplateDrawer({
       status={[template?.name ?? 'No template chosen', client?.name].filter(Boolean).join(' · ')}
       error={serverError ?? (tried ? problem : null)}
       action={
-        step < STEPS.length - 1 ? (
+        step < steps.length - 1 ? (
           <Button
             className="cursor-pointer gap-1.5"
             disabled={drafting}
@@ -292,7 +357,23 @@ export function FillTemplateDrawer({
             />
           )}
           <TemplatePicker selected={template} onPick={setTemplate} />
-          {!contract && <ClientPicker selected={client} onPick={setClient} />}
+          {contract ? null : changingClient || !client ? (
+            <ClientPicker selected={client} onPick={setClient} />
+          ) : (
+            <p className="flex min-w-0 items-center gap-2 text-body">
+              <Building2 className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
+              <span className="min-w-0 truncate">
+                {translate('forClient', { name: client.name })}
+              </span>
+              <button
+                type="button"
+                className="shrink-0 cursor-pointer rounded-sm text-body-sm text-muted-foreground underline underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                onClick={() => setChangingClient(true)}
+              >
+                {translate('change')}
+              </button>
+            </p>
+          )}
         </Split>
       )}
       {step === 1 && template && (
@@ -363,16 +444,6 @@ export function FillTemplateDrawer({
               onPick={() => setDelivery('signature')}
             />
           </div>
-          {delivery === 'email' && (
-            <FormField id="fill-to" label={translate('to3')} required>
-              <Input
-                id="fill-to"
-                type="email"
-                value={emailTo}
-                onChange={(event) => setEmailTo(event.target.value)}
-              />
-            </FormField>
-          )}
           {delivery === 'signature' && (
             <RoleSigners
               template={template}
@@ -383,26 +454,46 @@ export function FillTemplateDrawer({
               tried={tried}
             />
           )}
-          {delivery !== 'save' && (
-            <FormField
-              id="fill-message"
-              label={translate('message')}
-              hint={
-                delivery === 'signature'
-                  ? translate('shownInTheEmailAndOnTheSigningPage')
-                  : undefined
-              }
-            >
-              <Textarea
-                id="fill-message"
-                value={message}
-                maxLength={2000}
-                rows={4}
-                placeholder={translate('helloPleaseFindTheDocumentAttached')}
-                onChange={(event) => setMessage(event.target.value)}
-              />
-            </FormField>
-          )}
+          {delivery === 'signature' && <SesLine />}
+        </Split>
+      )}
+      {step === 3 && template && client && delivery !== 'save' && (
+        <Split
+          preview={
+            <EmailPreviewPane preview={emailPreview.data} pending={emailPreview.isPending} />
+          }
+        >
+          <StepTitle
+            title={
+              delivery === 'signature'
+                ? translate('theEmailToTheSigners')
+                : translate('theEmailToTheClient')
+            }
+            text={
+              delivery === 'signature'
+                ? translate('eachSignerGetsThisEmailWithTheirOwnLink')
+                : translate('theDocumentGoesWithItAsAPDF')
+            }
+          />
+          <EmailLanguageField id="fill-language" value={language} onChange={setLanguage} />
+          <EmailComposer
+            id="fill"
+            {...(delivery === 'email'
+              ? {
+                  recipients,
+                  onRecipients: setRecipients,
+                  subject: email.subject,
+                  onSubject: email.setSubject,
+                  attachments: [`${title.trim()}.pdf`],
+                }
+              : {})}
+            message={message}
+            onMessage={email.setMessage}
+            disabled={email.loading}
+            errors={composerErrors}
+            language={language}
+            context={{ document: title, client: client.name }}
+          />
           {delivery === 'signature' && <SesLine />}
         </Split>
       )}

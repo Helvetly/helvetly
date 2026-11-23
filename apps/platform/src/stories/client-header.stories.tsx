@@ -122,9 +122,12 @@ export const Toolbar: Story = {
     await userEvent.click(await body.findByRole('menuitem', { name: 'Delete' }))
     await expect(command).toHaveBeenLastCalledWith('delete', expect.anything())
 
-    await userEvent.click(await top.findByRole('button', { name: 'Document' }))
+    await userEvent.click(await top.findByRole('button', { name: 'Prepare document' }))
     const drawer = within(await body.findByRole('dialog', { name: 'New document from a template' }))
-    // The drawer starts with this client chosen and lists the others once its reads answer.
+    // The drawer starts with this client fixed; Change lists the others once its reads answer.
+    await expect(drawer.getByText('For: Alpenglow Studio GmbH')).toBeVisible()
+    await expect(drawer.queryByRole('searchbox', { name: 'Search clients' })).toBeNull()
+    await userEvent.click(drawer.getByRole('button', { name: 'Change' }))
     await expect(await drawer.findByRole('button', { name: /Bergblick AG/ })).toBeVisible()
     await expect(drawer.getByRole('button', { name: /Alpenglow Studio GmbH/ })).toHaveAttribute(
       'aria-pressed',
@@ -209,7 +212,7 @@ export const Phone: Story = {
     await expect(top.getByRole('link', { name: 'New invoice' })).toBeVisible()
     // Every toolbar control stays on the screen; Document keeps its name for readers.
     await expect(top.getByRole('button', { name: 'More actions' })).toBeVisible()
-    await expect(top.getByRole('button', { name: 'Document' })).toBeVisible()
+    await expect(top.getByRole('button', { name: 'Prepare document' })).toBeVisible()
     await expect(top.getByRole('button', { name: 'More ways to add invoices' })).toBeVisible()
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),

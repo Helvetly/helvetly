@@ -158,9 +158,14 @@ test('filling needs the custom answers, and valid signers when sending to sign',
   expect(generateProblem(1, state)).toBe('Fill in “Project”.')
   expect(generateProblem(1, { ...state, values: { f3: 'Website' } })).toBeNull()
   expect(generateProblem(2, state)).toMatch(/signers/)
-  expect(generateProblem(2, { ...state, delivery: 'email', emailTo: 'luc@romande' })).toMatch(
+  // The address is asked for in the message step, after the delivery is chosen.
+  expect(generateProblem(2, { ...state, delivery: 'email', emailTo: 'luc@romande' })).toBeNull()
+  expect(generateProblem(3, { ...state, delivery: 'email', emailTo: 'luc@romande' })).toMatch(
     /email address/,
   )
+  expect(
+    generateProblem(3, { ...state, delivery: 'email', emailTo: 'luc@romande.ch, ana@b.ch' }),
+  ).toBeNull()
 })
 
 test.each([

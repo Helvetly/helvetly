@@ -742,7 +742,12 @@ func (s *Service) contractCreate(w http.ResponseWriter, r *http.Request, sess st
 		if s.mail == nil {
 			return errMailUnavailable // the contract stays in Documents
 		}
-		if err := s.mail.Send(ctx, emailMessage(sess, to, sec.Title, d.Message, file.Name, printed.PDF)); err != nil {
+		m, err := s.emailMessage(ctx, sess, nil, nil, d.Message, sec.Title, file.Name, printed.PDF)
+		if err != nil {
+			return err
+		}
+		m.To = []string{to}
+		if err := s.mail.Send(ctx, m); err != nil {
 			s.log.ErrorContext(ctx, "email written contract", "document", file.ID, "error", err)
 			return auth.Error(http.StatusServiceUnavailable, "mail_failed",
 				"The contract is in Documents, but the email could not be sent. Try again in a minute.", map[string]any{"document_id": file.ID})

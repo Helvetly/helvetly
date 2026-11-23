@@ -15,6 +15,7 @@ import (
 
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/signatures"
 	"helvetly.com/api/internal/signpdf"
@@ -47,10 +48,12 @@ type Signatures interface {
 
 const (
 	maxNameLen        = 200
+	minFontSize       = 8
+	maxFontSize       = 24
 	maxDescriptionLen = 500
 	maxLabelLen       = 100
 	maxValueLen       = 500
-	maxMessageLen     = 2000
+	maxMessageLen     = emailtemplate.MaxMessage
 	maxSigners        = 10
 	maxFields         = 200
 )
@@ -79,6 +82,14 @@ type Service struct {
 	contractNumber func(ctx context.Context, q store.Q, workspaceID, date string, seq int64) (string, error)
 	// logo: the workspace's logo for written contracts (SetLogo).
 	logo func(ctx context.Context, workspaceID string) ([]byte, error)
+	// for the email preview: the business's header and footer, as mail.Branded sends them
+	brands    func(ctx context.Context, workspaceID string) (mail.Brand, error)
+	publicURL string
+}
+
+// SetBrands lets the email preview show the business's header and footer, as mail.Branded sends them.
+func (s *Service) SetBrands(brands func(ctx context.Context, workspaceID string) (mail.Brand, error), publicURL string) {
+	s.brands, s.publicURL = brands, publicURL
 }
 
 func New(db *store.Store, a Auth, files Storage, mailer Mailer, sign Signatures, log *slog.Logger) *Service {
@@ -110,6 +121,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	}
 	handle("GET /api/v1/templates", s.list)
 	handle("POST /api/v1/templates", s.create)
+	handle("POST /api/v1/templates/email-preview", s.preview)
 	handle("GET /api/v1/templates/{id}", s.get)
 	handle("PUT /api/v1/templates/{id}", s.update)
 	handle("DELETE /api/v1/templates/{id}", s.remove)
@@ -295,6 +307,15 @@ func (s *Service) check(ctx context.Context, sess store.Session, in input) (stor
 			}
 		}
 		field := store.TemplateField{ID: auth.NewID("tfd"), Kind: f.Kind, Signer: f.Signer, Page: f.Page, X: f.X, Y: f.Y, W: f.W, H: f.H}
+		if isData(f.Kind) {
+			if f.FontSize != nil && (*f.FontSize < minFontSize || *f.FontSize > maxFontSize) {
+				bad[key+".font_size"] = fmt.Sprintf("Use %d to %d pt.", minFontSize, maxFontSize)
+			}
+			if !slices.Contains([]string{"", "left", "center", "right"}, f.Align) {
+				bad[key+".align"] = "Use left, center or right."
+			}
+			field.FontSize, field.AutoFit, field.Align = f.FontSize, f.AutoFit, f.Align
+		}
 		if f.Kind == "text" || f.Kind == "custom" {
 			label, msg := signatures.PlainText(deref(f.Label), maxLabelLen)
 			if msg != "" {

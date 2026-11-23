@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 
-import { fitFontSize, LEADING } from '@/lib/fit-text'
+import { LEADING, printedSize } from '@/lib/fit-text'
 import { translate } from '@/lib/i18n'
 import {
   FIELD_LABELS,
@@ -20,6 +20,7 @@ import {
   type RequestStatus,
   type SignerStatus,
 } from '@/lib/signatures'
+import { FONT_SIZES, type PrintSettings } from '@/lib/templates'
 
 import type { Palette } from './placement'
 
@@ -111,6 +112,7 @@ export function FieldBox({
   box,
   color,
   kind,
+  print,
   mode = 'edit',
   selected,
   muted,
@@ -122,6 +124,8 @@ export function FieldBox({
   box: Box
   color: string
   kind: string
+  /** How an `output` value is printed (a template's data field); none: 10 pt, left. */
+  print?: PrintSettings
   mode?: 'edit' | 'output'
   selected?: boolean
   muted?: boolean
@@ -138,7 +142,7 @@ export function FieldBox({
   if (mode === 'output')
     return (
       <div {...rest} data-kind={kind} data-mode="output" className="absolute" style={position}>
-        <PrintedText>{children}</PrintedText>
+        <PrintedText print={print}>{children}</PrintedText>
       </div>
     )
   return (
@@ -165,8 +169,13 @@ export function FieldBox({
   )
 }
 
-/** Text that fills its box like print: black, left aligned, vertically centred, sized by fitFontSize. */
-function PrintedText({ children }: { children?: ReactNode }) {
+/**
+ * Text in its box like print: black, vertically centred, at its size in points on this page (10 by default),
+ * shrunk by fitFontSize with auto-fit, aligned as set: the same rule as the API's signpdf.drawLines.
+ */
+function PrintedText({ children, print }: { children?: ReactNode; print?: PrintSettings }) {
+  const points = print?.font_size ?? FONT_SIZES.default
+  const autoFit = !!print?.auto_fit
   const boxRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLSpanElement>(null)
   useLayoutEffect(() => {
@@ -177,7 +186,7 @@ function PrintedText({ children }: { children?: ReactNode }) {
       text.style.fontSize = '100px' // measured large, then scaled: width grows linearly with the size
       const widest = text.offsetWidth / 100
       const lines = Math.max(1, Math.round(text.offsetHeight / (100 * LEADING)))
-      text.style.fontSize = `${fitFontSize(box.clientWidth, box.clientHeight, lines, widest)}px`
+      text.style.fontSize = `${printedSize(box, points, autoFit, lines, widest)}px`
     }
     fit()
     if (typeof ResizeObserver === 'undefined') return
@@ -186,12 +195,22 @@ function PrintedText({ children }: { children?: ReactNode }) {
     observer.observe(box)
     observer.observe(text)
     return () => observer.disconnect()
-  }, [])
+  }, [points, autoFit])
+  const align = print?.align ?? 'left'
   return (
-    <div ref={boxRef} className="flex size-full items-center overflow-hidden">
+    <div
+      ref={boxRef}
+      className={cn(
+        'flex size-full items-center overflow-hidden',
+        align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start',
+      )}
+    >
       <span
         ref={textRef}
-        className="inline-block whitespace-pre text-black"
+        className={cn(
+          'inline-block whitespace-pre text-black',
+          align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left',
+        )}
         style={{
           fontFamily: 'Helvetica, Arial, "Liberation Sans", sans-serif',
           lineHeight: LEADING,

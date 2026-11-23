@@ -1211,9 +1211,20 @@ export function DocumentsPage() {
           </div>
 
           {view.section === 'templates' ? (
-            <TemplatesView onEdit={(template) => setEditing({ template, document: null })} />
+            <TemplatesView
+              onEdit={(template) => setEditing({ template, document: null })}
+              onFill={(template) => setFilling(template)}
+            />
           ) : view.section === 'signatures' ? (
-            <SignaturesView onOpen={(id) => navigate({ request: id })} />
+            <SignaturesView
+              onOpen={(id) => navigate({ request: id })}
+              onShowDocument={(request, file) =>
+                navigate(
+                  { section: 'files', folder: request.folder_id, file, request: null, ...NO_GROUP },
+                  true,
+                )
+              }
+            />
           ) : view.section === 'trash' ? (
             <TrashView
               items={trash.data}

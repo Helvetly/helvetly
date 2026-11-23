@@ -51,7 +51,7 @@ const base = {
 
 test.each([
   [0, { document: null }, 'Choose a PDF to send.'],
-  [0, { title: ' ' }, 'Give the request a title.'],
+  [0, { title: ' ' }, null],
   [1, { signers: [] }, 'Add at least one signer.'],
   [
     1,
@@ -65,7 +65,9 @@ test.each([
     'Say what to enter in each text field.',
   ],
   [2, {}, null],
+  [3, { title: ' ' }, 'Give the request a title.'],
   [3, {}, null],
+  [4, {}, null],
 ])('step %i: %o', (step, change, problem) => {
   expect(stepProblem(step, { ...base, ...change })).toBe(problem)
 })

@@ -18,7 +18,7 @@ import { toast } from 'sonner'
 
 import { ClientFixButton, NoClientEmail } from '@/components/clients/client-fix'
 import { inputClass as fieldClass } from '@/components/clients/fields'
-import { EmailMessageField } from '@/components/email-message-field'
+import { EmailComposer } from '@/components/email-composer'
 import {
   fixActionClass,
   fixCount,
@@ -27,7 +27,6 @@ import {
   FixList,
   type Fix,
 } from '@/components/fix-list'
-import { RecipientFields } from '@/components/recipient-fields'
 import { RecordLink } from '@/components/record-link'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
@@ -537,43 +536,29 @@ export function SendDialog({
         </Callout>
       )}
       <NoClientEmail client={client} />
-      <RecipientFields
+      <EmailComposer
         id="send"
-        to={recipients}
-        onToChange={setTo}
-        toTip={translate('separateSeveralAddressesWithCommasDefaultsToTheClient')}
-        toPlaceholder={translate('accountsClientCh')}
+        recipients={{ to: recipients, cc, bcc }}
+        onRecipients={(next) => {
+          if (next.to !== recipients) setTo(next.to)
+          setCc(next.cc)
+          setBcc(next.bcc)
+        }}
         toReadOnly={draft.isPending}
-        cc={cc}
-        onCcChange={setCc}
-        bcc={bcc}
-        onBccChange={setBcc}
-        errors={errors}
-      />
-      <FormField id="send-subject" label={translate('subject')} required error={errors.subject}>
-        <input
-          {...describedBy('send-subject', errors.subject)}
-          value={shownSubject}
-          maxLength={200}
-          disabled={draft.isPending}
-          onChange={(event) => setSubject(event.target.value)}
-          className={fieldClass}
-        />
-      </FormField>
-      <EmailMessageField
-        id="send-message"
-        required
-        error={errors.message}
-        value={shownMessage}
+        subject={shownSubject}
+        onSubject={setSubject}
+        message={shownMessage}
+        onMessage={setMessage}
+        messageRequired
         disabled={draft.isPending}
-        onChange={setMessage}
+        errors={errors}
         replyTo={draft.data?.reply_to}
+        attachments={[`${documentName(invoice)}.pdf`]}
         context={{
           document: documentName(invoice),
           client: invoice.client.name,
           amount: formatMoney(invoice.amount_due, invoice.currency),
           due_date: formatDate(invoice.due_date),
-          subject: shownSubject,
         }}
       />
     </FormDialog>
