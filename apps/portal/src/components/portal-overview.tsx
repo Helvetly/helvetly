@@ -17,11 +17,9 @@ import { useQuery } from '@tanstack/react-query'
 import {
   CalendarClock,
   CalendarDays,
-  Check,
   CircleAlert,
   CircleCheck,
   Download,
-  FilePenLine,
   FileText,
   Gauge,
   Video,
@@ -46,13 +44,7 @@ import {
   type PortalEngagement,
   type PortalInvoice,
 } from '@/lib/portal'
-import {
-  isAwaiting,
-  listPortalQuotes,
-  portalQuotePdfUrl,
-  quoteName,
-  type PortalQuote,
-} from '@/lib/quotes'
+import { documentTitle } from '@/lib/quotes'
 import {
   civilDay,
   formatClock,
@@ -69,9 +61,7 @@ import { amountOf } from '@/lib/units'
 
 import { cardClass, DownloadLink, FileTile, RetryAlert, SectionTitle, ViewAll } from './portal-bits'
 import { UsageBar } from './portal-engagements'
-import { DecisionDialog, type Asking } from './portal-quotes'
 import { NextSessionCard, useUpcomingSessions } from './portal-sessions'
-import { PreviewLock } from './portal-shell'
 
 /** Days ahead that count as "This week" on the to-do list. */
 const WEEK_DAYS = 7
@@ -330,18 +320,14 @@ function sessionItem({ session, reason, at }: SessionAttention, today: string): 
 /** Everything waiting for the client, one row each with one action: overdue first, then today, this week, later. */
 function Attention({
   invoices,
-  quotes,
   sessions,
   today,
   onPay,
-  onAsk,
 }: {
   invoices: PortalInvoice[]
-  quotes: PortalQuote[]
   sessions: ClientSession[]
   today: string
   onPay: (invoice: PortalInvoice) => void
-  onAsk: (asking: Asking) => void
 }) {
   const items: Item[] = [
     ...byUrgency(invoices).map((invoice): Item => {
@@ -375,37 +361,6 @@ function Attention({
           <DownloadLink
             href={portalInvoicePdfUrl(invoice.id)}
             label={translate('downloadPDFOfInvoice', { number: invoice.number })}
-          />
-        ),
-      }
-    }),
-    ...quotes.filter(isAwaiting).map((quote): Item => {
-      const group = groupOf(quote.valid_until, today)
-      return {
-        key: quote.id,
-        group,
-        at: Date.parse(quote.valid_until),
-        icon: FilePenLine,
-        tone: group === 'later' ? 'neutral' : 'amber',
-        title: translate('quoteTitle', { name: quoteName(quote) }),
-        meta: translate('validUntil2', { value1: formatDate(quote.valid_until) }),
-        amount: formatMoney(quote.total, quote.currency),
-        action: (
-          <PreviewLock>
-            <Button
-              variant="outline"
-              aria-label={translate('acceptQuote', { value1: quoteName(quote) })}
-              onClick={() => onAsk({ quote, decision: 'accept' })}
-            >
-              <Check aria-hidden />
-              {translate('accept')}
-            </Button>
-          </PreviewLock>
-        ),
-        pdf: (
-          <DownloadLink
-            href={portalQuotePdfUrl(quote.id)}
-            label={translate('downloadPDFOfQuote', { value1: quoteName(quote) })}
           />
         ),
       }
@@ -588,7 +543,7 @@ function RecentDocuments({ today }: { today: string }) {
             <li key={doc.id} className="flex items-center gap-3 px-2 py-3">
               <FileTile contentType={doc.content_type} />
               <span className="grid min-w-0 flex-1 leading-tight">
-                <span className="truncate text-body">{doc.name}</span>
+                <span className="truncate text-body">{documentTitle(doc)}</span>
                 <span className="text-body-sm text-muted-foreground">
                   <span className="max-sm:hidden">{formatSize(doc.size)} · </span>
                   {sharedText(doc.shared_at, today)}
@@ -596,7 +551,7 @@ function RecentDocuments({ today }: { today: string }) {
               </span>
               <DownloadLink
                 href={portalDocumentUrl(doc.id)}
-                label={translate('download2', { name: doc.name })}
+                label={translate('download2', { name: documentTitle(doc) })}
               />
             </li>
           ))}
@@ -614,7 +569,6 @@ export function PortalOverview() {
   const today = civilToday()
   const [hour] = useState(() => new Date().getHours())
   const [payingID, setPayingID] = useState<string | null>(null)
-  const [asking, setAsking] = useState<Asking | null>(null)
   const session = useQuery({
     queryKey: portalKeys.session,
     queryFn: getPortalSession,
@@ -622,8 +576,7 @@ export function PortalOverview() {
   })
   const invoices = useQuery({ queryKey: portalKeys.invoices, queryFn: listPortalInvoices })
   const paying = invoices.data?.data.find((invoice) => invoice.id === payingID)
-  // Quotes and engagements add tiles and rows; a failure there leaves them out, their pages say why.
-  const quotes = useQuery({ queryKey: portalKeys.quotes, queryFn: listPortalQuotes })
+  // Engagements add a tile; a failure there leaves it out, its page says why.
   const engagements = useQuery({
     queryKey: portalKeys.engagements,
     queryFn: listPortalEngagements,
@@ -674,14 +627,12 @@ export function PortalOverview() {
             {invoices.data ? (
               <Attention
                 invoices={invoices.data.data}
-                quotes={quotes.data ?? []}
                 sessions={sessions.data ?? []}
                 today={today}
                 onPay={(invoice) => {
                   setPayingID(invoice.id)
                   void invoices.refetch()
                 }}
-                onAsk={setAsking}
               />
             ) : (
               <Loader className="min-h-24" />
@@ -702,9 +653,6 @@ export function PortalOverview() {
           retry={invoices.isError ? () => void invoices.refetch() : undefined}
           onClose={() => setPayingID(null)}
         />
-      )}
-      {asking && (
-        <DecisionDialog key={asking.quote.id} {...asking} onClose={() => setAsking(null)} />
       )}
     </div>
   )

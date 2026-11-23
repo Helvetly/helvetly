@@ -68,13 +68,10 @@ export const Filled: Story = {
     await expect(within(overdue).getByText(/12 days overdue/)).toBeVisible()
     const week = within(attention).getByRole('list', { name: 'This week' })
     await expect(within(week).getByText(`Invoice ${year}-012`)).toBeVisible()
-    // Later, soonest first: the quote valid 9 more days, the invoice due in 25, the quote valid 27.
     const later = within(attention).getByRole('list', { name: 'Later' })
-    await expect(
-      within(later)
-        .getAllByRole('listitem')
-        .map((row) => row.querySelector('.font-medium')?.textContent),
-    ).toEqual([`Quote Q-${year}-002 · Rev. 2`, `Invoice ${year}-014`, `Quote Q-${year}-001`])
+    await expect(within(later).getByText(`Invoice ${year}-014`)).toBeVisible()
+    // A sent quote is a document, never a thing to answer.
+    await expect(within(attention).queryByText(/Quote/)).toBeNull()
     await expect(within(attention).getByRole('link', { name: 'All invoices' })).toHaveAttribute(
       'href',
       '/invoices/',
@@ -87,6 +84,7 @@ export const Filled: Story = {
     await expect(canvas.queryByRole('region', { name: 'Engagements' })).toBeNull()
     const documents = canvas.getByRole('region', { name: 'Recently shared' })
     await expect(await within(documents).findByText('Contract.pdf')).toBeVisible()
+    await expect(within(documents).getByText(`Quote Q-${year}-002 · Rev. 2`)).toBeVisible()
     await expect(within(documents).getAllByRole('listitem')).toHaveLength(3)
   },
 }
@@ -154,19 +152,6 @@ export const PayBalanceUnavailable: Story = {
   },
 }
 
-/** Accept answers a quote in place; once accepted it leaves the list. */
-export const AcceptInPlace: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.click(await canvas.findByRole('button', { name: `Accept quote Q-${year}-001` }))
-    const dialog = await within(document.body).findByRole('dialog')
-    await userEvent.click(within(dialog).getByRole('button', { name: /Accept quote/ }))
-    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull())
-    const attention = canvas.getByRole('region', { name: 'Needs your attention' })
-    await waitFor(() => expect(within(attention).queryByText(`Quote Q-${year}-001`)).toBeNull())
-  },
-}
-
 /** Each currency is its own exact total. */
 export const SeveralCurrencies: Story = {
   parameters: {
@@ -191,13 +176,12 @@ export const SeveralCurrencies: Story = {
   },
 }
 
-/** Nothing due, nothing to answer, no engagements, no files: a calm "all set" and no empty sections. */
+/** Nothing due, no engagements, no files: a calm "all set" and no empty sections. */
 export const AllClear: Story = {
   parameters: {
     msw: {
       handlers: [
         http.get(`${P}/invoices`, () => HttpResponse.json({ data: [] })),
-        http.get(`${P}/quotes`, () => HttpResponse.json({ data: [] })),
         http.get(`${P}/engagements`, () => HttpResponse.json({ data: [] })),
         http.get(`${P}/documents`, () => HttpResponse.json({ data: [] })),
         ...portalHandlers,

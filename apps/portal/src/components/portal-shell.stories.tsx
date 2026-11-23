@@ -371,7 +371,6 @@ export const ScrolledHeader: Story = {
     const canvas = within(canvasElement)
     await canvas.findByText('Needs your attention')
     // Every section loaded, so the page has its full height before it scrolls.
-    await canvas.findAllByText(/^Quote Q-/)
     await canvas.findByText('Engagement usage')
     await within(await canvas.findByRole('region', { name: 'Recently shared' })).findAllByRole(
       'listitem',
@@ -394,7 +393,7 @@ export const ScrolledHeaderDark: Story = {
   parameters: { ...Desktop.parameters, dark: true },
 }
 
-/** A workspace with Scheduling: the Sessions tab joins the bar, six across on a phone without pushing sideways. */
+/** A workspace with Scheduling: the Sessions tab joins the bar, five across on a phone without pushing sideways. */
 export const WithSessions: Story = {
   render: page(<PortalOverview />),
   parameters: {
@@ -405,7 +404,7 @@ export const WithSessions: Story = {
     const nav = await within(canvasElement).findByRole('navigation', { name: 'Portal' })
     const tab = await within(nav).findByRole('link', { name: 'Sessions' })
     await expect(tab).toHaveAttribute('href', '/sessions/')
-    await expect(within(nav).getAllByRole('link')).toHaveLength(6)
+    await expect(within(nav).getAllByRole('link')).toHaveLength(5)
     await expect(
       await within(canvasElement).findByRole('region', { name: 'Next session' }),
     ).toBeVisible()

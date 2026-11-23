@@ -520,7 +520,15 @@ export const Documents: Story = {
       'href',
       '/api/v1/public/portal/documents/doc_1/download',
     )
-    // Four documents: no search box yet.
+    // A sent quote is one of the documents, named by its number and revision, with no answer to give.
+    const quote = `Quote Q-${new Date().getFullYear()}-002 · Rev. 2`
+    await expect(canvas.getByText(quote)).toBeVisible()
+    await expect(canvas.getByRole('link', { name: `Download ${quote}` })).toHaveAttribute(
+      'href',
+      '/api/v1/public/portal/documents/doc_5/download',
+    )
+    await expect(canvas.queryByRole('button', { name: /Accept|Decline/ })).toBeNull()
+    // Five documents: no search box yet.
     await expect(canvas.queryByRole('searchbox')).toBeNull()
   },
 }
@@ -533,11 +541,13 @@ export const DocumentsSearch: Story = {
     HttpResponse.json({
       data: [
         ...portalDocuments,
-        ...portalDocuments
-          .slice(0, 3)
-          .map((doc, n) =>
-            Object.assign({}, doc, { id: `doc_x${n}`, name: `Archive ${n + 1} ${doc.name}` }),
-          ),
+        ...portalDocuments.slice(0, 3).map((doc, n) =>
+          Object.assign({}, doc, {
+            id: `doc_x${n}`,
+            name: `Archive ${n + 1} ${doc.name}`,
+            quote: null,
+          }),
+        ),
       ],
     }),
   ),
