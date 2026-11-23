@@ -25,6 +25,7 @@ const (
 	FeatureEmployees            = "employees"
 	FeatureCustomPortalDomain   = "custom_portal_domain"
 	FeatureDocumentApprovals    = "document_approvals"
+	FeatureScheduling           = "scheduling"
 )
 
 // ErrFeatureDenied wraps a gate's refusal (the plan lacks the feature, the workspace has none, or its plan cannot be
