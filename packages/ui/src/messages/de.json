@@ -81,7 +81,7 @@
   "planLineCorrections": "Gutschriften und Rechnungskorrekturen",
   "planLineLedger": "Buchhaltung: Hauptbuch, MWST-Abrechnungen und Buchhaltungsexporte",
   "planLineAPI": "API-Zugang",
-  "planLinePortal": "Kundenportal: Kunden sehen und bezahlen Rechnungen, nehmen Offerten an und laden Dokumente herunter",
+  "planLinePortal": "Kundenportal: Kunden sehen und bezahlen Rechnungen und laden Offerten und Dokumente herunter",
   "planLineDomain": "Ihr Portal unter Ihrer eigenen Domain (portal.ihrefirma.ch)",
   "planLineApprovals": "Freigaben, bevor Rechnungen hinausgehen",
   "planLineEInvoice": "E-Rechnungen als XML: XRechnung, ZUGFeRD und mehr",

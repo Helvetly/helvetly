@@ -20,7 +20,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays,
   Eye,
-  FilePenLine,
   FileText,
   FolderOpen,
   Gauge,
@@ -61,7 +60,6 @@ import { LoginAvatar, WorkspaceMark } from './portal-bits'
 const NAV = [
   { href: '/', label: translate('overview'), icon: House },
   { href: '/invoices', label: translate('invoices'), icon: FileText },
-  { href: '/quotes', label: translate('quotes'), icon: FilePenLine },
   { href: '/engagements', label: translate('engagements'), icon: Gauge },
   { href: '/documents', label: translate('documents'), icon: FolderOpen },
 ]

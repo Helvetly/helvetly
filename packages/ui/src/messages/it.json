@@ -81,7 +81,7 @@
   "planLineCorrections": "Note di credito e correzioni di fatture",
   "planLineLedger": "Contabilità: libro mastro, rendiconti IVA ed esportazioni contabili",
   "planLineAPI": "Accesso API",
-  "planLinePortal": "Portale clienti: i tuoi clienti vedono e pagano le fatture, accettano le offerte e scaricano i documenti",
+  "planLinePortal": "Portale clienti: i tuoi clienti vedono e pagano le fatture e scaricano offerte e documenti",
   "planLineDomain": "Il tuo portale sul tuo dominio (portale.tuaazienda.ch)",
   "planLineApprovals": "Approvazioni prima dell’invio delle fatture",
   "planLineEInvoice": "Fatture elettroniche XML: XRechnung, ZUGFeRD e altri",

@@ -37,7 +37,7 @@ func swissDate(d string) string {
 }
 
 // send numbers a draft on its first send, files its PDF and emails it; a sent quote is emailed again as it was.
-// email false only marks it sent (handed over another way); the client sees it in the portal either way.
+// email false only marks it sent (handed over another way); the client sees it in the portal's Documents either way.
 func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	var body struct {
 		To      []string `json:"to"`
