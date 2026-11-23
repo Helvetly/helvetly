@@ -4400,6 +4400,7 @@
   "organizeTopLevel": "Livello principale",
   "organizeFolderFor": "Cartella per {name}",
   "organizeNewFolder": "Nuova cartella",
+  "organizeSystemOnly": "Helvetly gestisce le cartelle dei clienti e delle spese. Scegline una esistente o una cartella al di fuori di Clienti e Spese.",
   "organizeRemoveTag": "Rimuovi il tag {tag}",
   "organizeSelected": "{count, plural, =0 {Niente selezionato} one {# modifica selezionata} other {# modifiche selezionate}}",
   "organizeApply": "{count, plural, =0 {Applica} one {Applica # modifica} other {Applica # modifiche}}",

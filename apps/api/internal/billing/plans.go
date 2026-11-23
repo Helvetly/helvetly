@@ -112,6 +112,10 @@ const (
 
 	Emails         Limit = store.EmailRecipients        // business email recipients accepted this quota month (usage_events)
 	MaxEmailAttach Limit = "max_email_attachment_bytes" // one message's attachments, per recipient
+
+	// ScheduledEvents: sessions and series created plus client bookings this quota month, a series counting once
+	// (usage_events).
+	ScheduledEvents Limit = "scheduled_events_per_month"
 )
 
 // Unlimited: the plan has no cap on that limit.

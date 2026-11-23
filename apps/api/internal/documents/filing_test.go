@@ -392,3 +392,29 @@ func TestAIFilingWaitsForABusyPoolWithoutSpendingTries(t *testing.T) {
 		t.Fatalf("once the pool is free: %d calls, %+v", len(m.asked()), d.AIFiling)
 	}
 }
+
+// An upload named by one of the workspace's invoice numbers is filed in its client's folder without the model.
+func TestFilingMatchesRecords(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	m := e.filer(nil)
+	e.approveAI(b)
+	acme := e.client(b, "Acme AG")
+	e.invoice(b, acme, "invoice", "2026/IN/005", 2026, "")
+	d := e.uploaded(b, "2026-IN-005.pdf", pdf)
+	e.fileDue()
+	if len(m.asked()) != 0 {
+		t.Fatal("the model was asked")
+	}
+	got := e.get(b, d.ID)
+	if got.FolderID == nil || !slices.Equal(got.Tags, []string{"invoice"}) {
+		t.Fatalf("filed = %+v", got)
+	}
+	folders := e.allFolders(b)
+	year := folderByID(folders, *got.FolderID)
+	kind := folderByID(folders, *year.ParentID)
+	client := folderByID(folders, *kind.ParentID)
+	if year.Name != "2026" || kind.SystemKind == nil || *kind.SystemKind != "invoices" || client.Name != "Acme AG" {
+		t.Fatalf("filed into %s/%s/%s", client.Name, kind.Name, year.Name)
+	}
+}

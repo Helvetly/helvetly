@@ -20,7 +20,13 @@ import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 export { inputClass }
 
 /** `group` puts the option under that heading, in the order groups first appear. */
-export type Option = { value: string; label: string; hint?: string; group?: string }
+export type Option = {
+  value: string
+  label: string
+  hint?: string
+  group?: string
+  adornment?: ReactNode
+}
 
 /** More options than this get a search box in the list; fewer are a plain list with type-ahead. */
 const SEARCH_FROM = 8
@@ -220,6 +226,7 @@ export function Combobox({
                         <span className="min-w-0 flex-1 truncate" title={option.label}>
                           {option.label}
                         </span>
+                        {option.adornment}
                         {option.hint && (
                           <CommandShortcut className="shrink-0 tracking-normal tabular-nums">
                             {option.hint}
