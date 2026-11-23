@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/scheduling"
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
 )
@@ -49,7 +50,10 @@ type Service struct {
 	publicLimit *auth.RateLimiter
 	// linksByIP and linksByEmail cap the portal-links emails per client address and per recipient.
 	linksByIP, linksByEmail *auth.RateLimiter
-	mail                    Mailer
+	sched                   *scheduling.Service
+	// schedWrites caps a session's requests and bookings; linkByIP and linkByToken the booking links' calls.
+	schedWrites, linkByIP, linkByToken *auth.RateLimiter
+	mail                               Mailer
 	// async runs the links email after the answer (go in production; tests wait for it).
 	async func(func())
 	auth  Auth
@@ -62,7 +66,8 @@ type Service struct {
 func New(db *store.Store, a Auth, files Storage, scopes URLs, cfg Config, log *slog.Logger) *Service {
 	return &Service{db: db, auth: a, files: files, scopes: scopes, cfg: cfg, log: log, now: func() time.Time { return time.Now().UTC() },
 		publicLimit: auth.NewRateLimiter(120, time.Minute), linksByIP: auth.NewRateLimiter(10, time.Hour),
-		linksByEmail: auth.NewRateLimiter(3, time.Hour), async: func(f func()) { go f() }}
+		linksByEmail: auth.NewRateLimiter(3, time.Hour), schedWrites: auth.NewRateLimiter(30, time.Hour),
+		linkByIP: auth.NewRateLimiter(60, time.Minute), linkByToken: auth.NewRateLimiter(300, time.Hour), async: func(f func()) { go f() }}
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.PortalSession) error
@@ -83,6 +88,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	s.registerQuotes(handle)
 	s.registerProfile(handle)
 	s.registerAvatar(handle)
+	s.registerScheduling(mux, handle)
 }
 
 func data(v any) map[string]any { return map[string]any{"data": v} }

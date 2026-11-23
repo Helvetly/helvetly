@@ -11,6 +11,7 @@ import { portalAddressHandlers } from '@/mocks/portal-address'
 import { portalDomainHandlers } from '@/mocks/portal-domain'
 import { replyToHandlers } from '@/mocks/reply-to'
 import { emptyState, schedulingHandlers } from '@/mocks/scheduling'
+import { schedulingSettingsHandlers } from '@/mocks/scheduling-settings'
 import { legalFormsHandler, nextNumbersHandler, sampleSettings } from '@/test/invoice-api'
 
 export const storySession: Session = {
@@ -82,6 +83,7 @@ export const screenHandlers = [
   sessionHandler(),
   ...portalAddressHandlers,
   ...replyToHandlers,
+  ...schedulingSettingsHandlers,
   ...portalDomainHandlers,
   legalFormsHandler,
   nextNumbersHandler,

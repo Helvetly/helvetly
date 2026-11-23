@@ -36,6 +36,7 @@ import { setCsrfToken, type User } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
+import { Calendars } from './calendars'
 import { DeletedWorkspaces } from './deleted-workspaces'
 import { ProfilePhoto } from './profile-photo'
 import { Sessions } from './sessions'
@@ -59,6 +60,7 @@ export function AccountSettings() {
             <Profile user={user} />
             <Language />
             <SignInMethods email={user.email} />
+            <Calendars userId={user.id} />
             <TwoFactor />
             <Sessions />
             <DeletedWorkspaces />

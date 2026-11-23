@@ -92,3 +92,21 @@ describe('portal client', () => {
     })
   })
 })
+
+describe('portal sign-in', () => {
+  it('sends the browser zone with the code', async () => {
+    let sent: unknown
+    server.use(
+      http.post('/api/v1/public/portal/auth/verify', async ({ request }) => {
+        sent = await request.json()
+        return HttpResponse.json({ csrf_token: 't' }, { status: 201 })
+      }),
+    )
+    await verifyPortalCode('a@b.ch', '123456')
+    expect(sent).toEqual({
+      email: 'a@b.ch',
+      code: '123456',
+      time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    })
+  })
+})

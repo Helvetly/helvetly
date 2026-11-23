@@ -396,7 +396,7 @@ func (s *Service) linkView(l store.SchedBookingLink) BookingLink {
 	v := BookingLink{SchedBookingLink: l, Active: l.RevokedAt == nil && (l.ExpiresAt == nil || l.ExpiresAt.After(s.now()))}
 	if v.Active {
 		if token, err := s.seal.open(l.WorkspaceID, l.ID, l.TokenSealed); err == nil {
-			u := s.portalURL + "/book?link=" + url.QueryEscape(token)
+			u := s.portalURL + "/booking?link=" + url.QueryEscape(token)
 			v.URL = &u
 		}
 	}

@@ -23,7 +23,7 @@ import (
 )
 
 // Categories group the events in the settings and the Notifications page's filter, in this order.
-var Categories = []string{"invoices", "clients", "documents", "expenses", "engagements", "team", "billing", "books", "ai"}
+var Categories = []string{"invoices", "clients", "documents", "expenses", "engagements", "scheduling", "team", "billing", "books", "ai"}
 
 // Events are what a person can be told about, in the order the settings list them (docs/notifications-contract.md).
 // Every event is in the bell by default; emails says whether it can email at all and emailOn whether it does
@@ -55,6 +55,14 @@ var Events = []event{
 	{"expense.reimbursed", "expenses", true, true},
 	{"engagement.draft_created", "engagements", true, false},
 	{"engagement.over_committed", "engagements", true, false},
+	{"scheduling.booked", "scheduling", true, true},
+	{"scheduling.booking_requested", "scheduling", true, true},
+	{"scheduling.cancel_requested", "scheduling", true, true},
+	{"scheduling.reschedule_requested", "scheduling", true, true},
+	{"scheduling.cancelled_by_client", "scheduling", true, true},
+	{"scheduling.proposal_answered", "scheduling", true, true},
+	{"scheduling.calendar_disconnected", "scheduling", true, true},
+	{"scheduling.event_detached", "scheduling", true, false},
 	{"member.invited", "team", true, false},
 	{"member.joined", "team", true, true},
 	{"member.role_changed", "team", true, true},
@@ -210,6 +218,8 @@ var needsYou = map[string]bool{
 	"billing.trial_ending": true, "billing.payment_failed": true, "billing.payment_disputed": true,
 	"vat.return_due": true, "import.ready": true, "import.failed": true,
 	"approval.requested": true, "approval.approved": true, "approval.rejected": true,
+	"scheduling.booking_requested": true, "scheduling.cancel_requested": true, "scheduling.reschedule_requested": true,
+	"scheduling.calendar_disconnected": true, "scheduling.event_detached": true,
 }
 
 // settledBy: the later event about the same record (the same href) that settles one that needs you.

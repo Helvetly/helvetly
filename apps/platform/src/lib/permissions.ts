@@ -298,6 +298,7 @@ const ROUTES: [string, Resource][] = [
   // Owners and admins only: the settings tabs also check the role (members can hold `*:*`).
   ['/settings/approvals', 'workspace'],
   ['/settings/emails', 'invoice-settings'],
+  ['/settings/scheduling', 'scheduling'],
   ['/settings/audit-log', 'audit-log'],
   ['/employees/payroll', 'payroll'],
   // The list also serves payroll, which picks employees by name: see `canReadPath`.

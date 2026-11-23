@@ -647,3 +647,14 @@ Pages: /scheduling
 3. Open a session to move, cancel or mark it. After it has passed, mark it **Attended** or **No-show**; the calendar counts the past sessions still to mark.
 4. **Requests** lists clients' requests to book, move or cancel a session. **Approve** or **Decline** each one; the client is told.
    Times show in your time zone, with the workspace's time zone named when it differs.
+
+## Set up booking and cancellation rules (scheduling settings)
+
+Keywords: scheduling settings, booking rules, cancellation policy, event type, holiday, day off, reminder, buffer, notice, late cancellation
+Pages: /settings/scheduling
+
+1. Go to **Settings → Scheduling**. Only owners and admins change these; others can read them.
+2. **Booking** sets who schedules (only your team, or clients too), whether client requests are confirmed automatically or reviewed, the minimum notice, how far ahead clients can book and buffers around sessions.
+3. **Cancellation policy** sets until when a session can be cancelled or moved for free, an optional weekday cut-off, and whether late cancellations and no-shows count as used.
+4. **Reminders** sets when clients and hosts are reminded. **Holidays and days off** blocks days from booking; **Suggest holidays** adds your canton's public holidays.
+5. **Event types** lists the kinds of session you offer, with their length and hosts.

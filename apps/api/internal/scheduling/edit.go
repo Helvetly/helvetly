@@ -47,6 +47,7 @@ func lockOccurrence(ctx context.Context, q store.Q, workspaceID, id string) (sto
 type edit struct {
 	touched, cancelled, added []string
 	kept                      int
+	ended                     string // a "following" split: the old series, which now ends before it
 }
 
 func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -118,7 +119,7 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 
 func (ed edit) changes(workspaceID, eventID, actor string, notify bool) changes {
 	return changes{
-		{Kind: ChangeUpdated, WorkspaceID: workspaceID, EventID: eventID, OccurrenceIDs: ed.touched, ActorID: actor, Notify: notify},
+		{Kind: ChangeUpdated, WorkspaceID: workspaceID, EventID: eventID, OccurrenceIDs: ed.touched, EndedEventID: ed.ended, ActorID: actor, Notify: notify},
 		{Kind: ChangeCancelled, WorkspaceID: workspaceID, EventID: eventID, OccurrenceIDs: ed.cancelled, ActorID: actor, Notify: notify},
 		{Kind: ChangeInvited, WorkspaceID: workspaceID, EventID: eventID, OccurrenceIDs: ed.added, ActorID: actor, Notify: notify},
 	}
@@ -309,6 +310,7 @@ func (s *Service) editFollowing(ctx context.Context, q store.Q, sess store.Sessi
 	if err != nil {
 		return ed, err
 	}
+	ed.ended = old.ID
 	moved, err := q.SchedOccurrence(ctx, old.WorkspaceID, o.ID, false)
 	if err != nil {
 		return ed, err

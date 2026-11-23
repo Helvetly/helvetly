@@ -18,6 +18,7 @@ import (
 
 	"helvetly.com/api/internal/config"
 	"helvetly.com/api/internal/portalscope"
+	"helvetly.com/api/internal/scheduling"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/store/storetest"
 )
@@ -75,6 +76,7 @@ func newEnv(t *testing.T) *env {
 	mails := &fakeMail{}
 	svc.SetMailer(mails)
 	svc.async = func(f func()) { f() } // the links email before the answer, so a test sees it
+	svc.SetScheduling(scheduling.New(st, a, nil, bytes.Repeat([]byte{7}, 32), "https://helvetly.example.com", srv.URL, discard))
 	svc.Register(mux)
 	front = scopes.Handler(mux)
 	e := &env{t: t, srv: srv, auth: fa, files: files, raw: raw, store: st, mail: mails}
