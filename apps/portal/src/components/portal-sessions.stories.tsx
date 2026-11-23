@@ -72,7 +72,7 @@ export const Filled: Story = {
       'href',
       `${S}/occurrences/soc_soon/ics`,
     )
-    await expect(canvas.getByRole('link', { name: 'Book a session' })).toHaveAttribute(
+    await expect(await canvas.findByRole('link', { name: 'Book a session' })).toHaveAttribute(
       'href',
       '/book/',
     )
