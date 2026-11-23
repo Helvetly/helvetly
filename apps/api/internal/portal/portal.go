@@ -76,6 +76,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/public/portal/auth/start", s.start)
 	mux.HandleFunc("POST /api/v1/public/portal/auth/verify", s.verify)
 	mux.HandleFunc("POST /api/v1/public/portal/auth/links", s.emailLinks)
+	mux.HandleFunc("GET /api/v1/public/portal/auth/preview", s.startPreview)
 	mux.HandleFunc("GET /api/v1/public/portal/scope", s.getScope)
 	mux.HandleFunc("GET /api/v1/public/portal/scope/logo", s.getScopeLogo)
 	handle := func(pattern string, h handler) {

@@ -340,5 +340,9 @@
   "bookToSessions": "Zu Ihren Terminen",
   "bookManualHint": "{supplier} bestätigt jede Buchung.",
   "bookLinkGone": "Dieser Buchungslink ist nicht mehr gültig",
-  "bookLinkGoneText": "Fragen Sie nach einem neuen Link."
+  "bookLinkGoneText": "Fragen Sie nach einem neuen Link.",
+  "previewBanner": "Vorschau als {client} · schreibgeschützt · gestartet von {member}",
+  "endPreview": "Vorschau beenden",
+  "readOnlyPreview": "Schreibgeschützte Vorschau",
+  "previewLinkExpired": "Dieser Vorschau-Link ist abgelaufen oder wurde bereits verwendet. Starten Sie in Helvetly eine neue Vorschau."
 }

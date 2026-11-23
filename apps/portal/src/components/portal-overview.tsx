@@ -57,6 +57,7 @@ import { cardClass, DownloadLink, FileTile, RetryAlert, SectionTitle } from './p
 import { UsageBar } from './portal-engagements'
 import { DecisionDialog, type Asking } from './portal-quotes'
 import { NextSessionCard } from './portal-sessions'
+import { PreviewLock } from './portal-shell'
 
 /** Days before a due date (or a quote's last day) that move it into "Due soon". */
 const SOON_DAYS = 14
@@ -331,14 +332,16 @@ function Attention({
           meta: translate('validUntil2', { value1: formatDate(quote.valid_until) }),
           amount: formatMoney(quote.total, quote.currency),
           action: (
-            <Button
-              variant="outline"
-              aria-label={translate('acceptQuote', { value1: quoteName(quote) })}
-              onClick={() => onAsk({ quote, decision: 'accept' })}
-            >
-              <Check aria-hidden />
-              {translate('accept')}
-            </Button>
+            <PreviewLock>
+              <Button
+                variant="outline"
+                aria-label={translate('acceptQuote', { value1: quoteName(quote) })}
+                onClick={() => onAsk({ quote, decision: 'accept' })}
+              >
+                <Check aria-hidden />
+                {translate('accept')}
+              </Button>
+            </PreviewLock>
           ),
           pdf: (
             <DownloadLink

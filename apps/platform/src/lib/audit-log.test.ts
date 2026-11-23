@@ -73,6 +73,28 @@ describe('eventSentence', () => {
       'Client portal address changed to new',
     ],
     [
+      'a portal preview',
+      {
+        kind: 'portal.preview_started',
+        category: 'portal',
+        subject_type: 'client',
+        subject: null,
+        payload: { client_name: 'Acme AG' },
+      },
+      'Viewed the portal as Acme AG, read-only',
+    ],
+    [
+      'a portal preview ended',
+      {
+        kind: 'portal.preview_ended',
+        category: 'portal',
+        subject_type: 'client',
+        subject: null,
+        payload: { client_name: 'Acme AG' },
+      },
+      'Ended the portal preview as Acme AG',
+    ],
+    [
       'a booked expense',
       {
         kind: 'expense.booked',

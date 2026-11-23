@@ -5685,5 +5685,10 @@
   "zipNothingHere": "In questa vista non ci sono file da scaricare.",
   "zipGone": "Questo ZIP non è più disponibile. Scaricalo di nuovo da Documenti.",
   "notifyZipReady": "Il tuo ZIP è pronto",
-  "zipsYouAsked": "ZIP che hai richiesto"
+  "zipsYouAsked": "ZIP che hai richiesto",
+  "viewAsClient": "Visualizza come cliente",
+  "viewAsClientHint": "Apri il portale di questo cliente in sola lettura per verificare cosa vede",
+  "auditPortalPreviewStarted": "Anteprima del portale avviata",
+  "auditPortalPreviewEnded": "Anteprima del portale terminata",
+  "auditSentencePortalPreview": "{action, select, preview_started {Portale visualizzato come {client}, in sola lettura} other {Anteprima del portale come {client} terminata}}"
 }

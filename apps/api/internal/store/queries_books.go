@@ -132,7 +132,7 @@ const eventCategory = `CASE
 	WHEN e.kind LIKE 'expense.%' THEN 'expenses'
 	WHEN e.kind LIKE 'approval.%' THEN 'approvals'
 	WHEN e.kind LIKE 'period.%' THEN 'books'
-	WHEN e.kind LIKE 'workspace.portal%' THEN 'portal'
+	WHEN e.kind LIKE 'workspace.portal%' OR e.kind LIKE 'portal.%' THEN 'portal'
 	WHEN e.kind LIKE 'employee.%' OR e.kind LIKE 'payroll.%' THEN 'employees'
 	ELSE 'settings' END`
 

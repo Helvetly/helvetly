@@ -1,10 +1,11 @@
 'use client'
+import { Callout } from '@helvetly/ui/components/callout'
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
 import { LanguageDialogButton } from '@helvetly/ui/components/language-switcher'
 import { Logo } from '@helvetly/ui/components/logo'
 import type { EmailCodeSent } from '@helvetly/ui/lib/http'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, TriangleAlert } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
@@ -32,6 +33,13 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
   const router = useRouter()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<{ email: string; sent: EmailCodeSent } | null>(null)
+  // A member's preview link that was used or ran out lands here (portal/preview.go). Read once on the client: the
+  // static page renders nothing of it before the queries below settle.
+  const [previewExpired] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('preview') === 'expired',
+  )
   // A client already signed in has nothing to do here.
   const session = useQuery({
     queryKey: portalKeys.session,
@@ -55,6 +63,16 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
   return (
     <div className="flex min-h-svh items-center justify-center bg-background bg-[radial-gradient(80rem_36rem_at_50%_-8rem,var(--brand-surface),transparent_70%)] px-4 py-10">
       <div className="grid w-full max-w-[27rem] gap-5">
+        {previewExpired && (
+          <Callout
+            role="alert"
+            tone="warning"
+            icon={TriangleAlert}
+            className="rounded-lg px-3 py-2.5"
+          >
+            {translate('previewLinkExpired')}
+          </Callout>
+        )}
         {/* A card from sm up; a phone keeps the full width for the six code boxes. */}
         <div className="sm:rounded-2xl sm:bg-card sm:p-10 sm:shadow-elevation-soft">
           {shared ? (

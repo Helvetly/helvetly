@@ -16,6 +16,7 @@ import (
 type PortalAddresses interface {
 	Slug(ctx context.Context, ws store.Workspace) (string, error)
 	URLFor(slug string) string
+	URLOf(ctx context.Context, s store.PortalScope) (string, error)
 }
 
 // SetPortal turns on the client portal's address settings (/api/v1/workspace/portal).
@@ -30,14 +31,20 @@ func (s *Service) registerPortal(mux *http.ServeMux) {
 
 var errPortalAdminOnly = auth.Error(http.StatusForbidden, "forbidden", "Only an owner or admin can change the portal address.", nil)
 
-// writePortal answers with the slug, the whole address and whether the portal is on for the workspace.
+// writePortal answers with the slug, the whole address, where clients sign in (canonical_url: the active custom
+// domain, else the address; portalscope.CanonicalURL) and whether the portal is on for the workspace.
 func (s *Service) writePortal(w http.ResponseWriter, r *http.Request, workspaceID, slug string) {
 	off, err := s.db.PortalOff(r.Context(), workspaceID)
+	var canonical string
+	if err == nil {
+		canonical, err = s.portal.URLOf(r.Context(), store.PortalScope{WorkspaceID: workspaceID, Slug: slug})
+	}
 	if err != nil {
 		s.auth.WriteError(w, r, err)
 		return
 	}
-	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"slug": slug, "url": s.portal.URLFor(slug), "enabled": !off}})
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"slug": slug, "url": s.portal.URLFor(slug),
+		"canonical_url": canonical, "enabled": !off}})
 }
 
 // getPortal is where the workspace's clients sign in: its slug, the whole address and whether the portal is on.

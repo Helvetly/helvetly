@@ -57,6 +57,7 @@ import {
 import { scoped } from '@/lib/scope'
 
 import { cardClass, DownloadLink, EmptyState, PageHeader, RetryAlert } from './portal-bits'
+import { PreviewLock } from './portal-shell'
 
 /** The API's limit on a request's note. */
 const NOTE_MAX = 500
@@ -337,28 +338,34 @@ function RequestBanner({ session }: { session: ClientSession }) {
       <p className="flex-1 text-pretty">{text}</p>
       {proposal ? (
         <div className="flex gap-2">
-          <Button size="sm" disabled={act.isPending} onClick={() => act.mutate('accept')}>
-            {translate('sessionsAcceptProposal')}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={act.isPending}
-            onClick={() => act.mutate('decline')}
-          >
-            {translate('sessionsDeclineProposal')}
-          </Button>
+          <PreviewLock>
+            <Button size="sm" disabled={act.isPending} onClick={() => act.mutate('accept')}>
+              {translate('sessionsAcceptProposal')}
+            </Button>
+          </PreviewLock>
+          <PreviewLock>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={act.isPending}
+              onClick={() => act.mutate('decline')}
+            >
+              {translate('sessionsDeclineProposal')}
+            </Button>
+          </PreviewLock>
         </div>
       ) : (
         request.status === 'pending' && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={act.isPending}
-            onClick={() => act.mutate('withdraw')}
-          >
-            {translate('sessionsWithdraw')}
-          </Button>
+          <PreviewLock>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={act.isPending}
+              onClick={() => act.mutate('withdraw')}
+            >
+              {translate('sessionsWithdraw')}
+            </Button>
+          </PreviewLock>
         )
       )}
     </output>
@@ -438,24 +445,28 @@ function SessionCard({
             text={translate('sessionsAddToCalendar')}
           />
           {session.can_reschedule && (
-            <Button
-              variant="outline"
-              aria-label={translate('sessionsRescheduleLabel', label)}
-              onClick={() => onAsk({ session, kind: 'reschedule' })}
-            >
-              <CalendarClock aria-hidden />
-              {translate('sessionsReschedule')}
-            </Button>
+            <PreviewLock>
+              <Button
+                variant="outline"
+                aria-label={translate('sessionsRescheduleLabel', label)}
+                onClick={() => onAsk({ session, kind: 'reschedule' })}
+              >
+                <CalendarClock aria-hidden />
+                {translate('sessionsReschedule')}
+              </Button>
+            </PreviewLock>
           )}
           {session.can_cancel && (
-            <Button
-              variant="outline"
-              aria-label={translate('sessionsCancelLabel', label)}
-              onClick={() => onAsk({ session, kind: 'cancel' })}
-            >
-              <CalendarX aria-hidden />
-              {translate('sessionsCancelSession')}
-            </Button>
+            <PreviewLock>
+              <Button
+                variant="outline"
+                aria-label={translate('sessionsCancelLabel', label)}
+                onClick={() => onAsk({ session, kind: 'cancel' })}
+              >
+                <CalendarX aria-hidden />
+                {translate('sessionsCancelSession')}
+              </Button>
+            </PreviewLock>
           )}
         </div>
       )}

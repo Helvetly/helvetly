@@ -19,6 +19,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays,
+  Eye,
   FilePenLine,
   FileText,
   FolderOpen,
@@ -31,10 +32,12 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   createContext,
+  cloneElement,
   useContext,
   useEffect,
   useRef,
   useState,
+  type ReactElement,
   type ReactNode,
   type RefObject,
 } from 'react'
@@ -73,6 +76,46 @@ export function usePortalSession(): PortalSession {
   const session = useContext(SessionContext)
   if (!session) throw new Error(translate('useportalsessionMustBeUsedInsidePortalShell'))
   return session
+}
+
+/** True in a member's read-only preview of the client's portal (false outside a signed-in page). */
+export function useIsPreview() {
+  return Boolean(useContext(SessionContext)?.preview)
+}
+
+/**
+ * A write action: in a preview its control is off and its tooltip says why (the API refuses it anyway). The wrapper
+ * takes the pointer a disabled button no longer does, so the tooltip still shows; the banner says it to everyone.
+ */
+export function PreviewLock({ children }: { children: ReactElement<{ disabled?: boolean }> }) {
+  if (!useIsPreview()) return children
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex rounded-md">{cloneElement(children, { disabled: true })}</span>
+      </TooltipTrigger>
+      <TooltipContent>{translate('readOnlyPreview')}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** Says, on every page of a preview, whose portal this is, that it is read-only and who opened it. */
+function PreviewBanner({ session, onEnd }: { session: PortalSession; onEnd: () => void }) {
+  if (!session.preview) return null
+  return (
+    <output className="flex min-h-10 items-center gap-3 border-b bg-brand-surface px-4 py-1.5 text-body-sm text-foreground sm:px-6 lg:px-8">
+      <Eye aria-hidden className="size-4 shrink-0 stroke-[1.75] text-brand" />
+      <span className="min-w-0 flex-1">
+        {translate('previewBanner', {
+          client: session.client.name,
+          member: session.preview.started_by,
+        })}
+      </span>
+      <Button variant="outline" size="sm" className="shrink-0" onClick={onEnd}>
+        {translate('endPreview')}
+      </Button>
+    </output>
+  )
 }
 
 function AccountMenu({
@@ -141,7 +184,7 @@ function AccountMenu({
             )}
           </span>
         </DropdownMenuLabel>
-        {session.clients.length > 1 && (
+        {session.clients.length > 1 && !session.preview && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="px-2 pt-1 pb-1 text-xs font-normal text-muted-foreground">
@@ -320,6 +363,8 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
     try {
       await signOutPortal()
       queryClient.clear()
+      // A preview's tab was opened by the app for it: it closes; were it kept, it shows the sign-in.
+      if (session.preview) window.close()
       router.replace(scoped('/login'))
     } catch (error) {
       toast.error(errorMessage(error))
@@ -333,6 +378,7 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
           ref={markScrolled}
           className="sticky top-0 z-30 border-b bg-card transition-shadow duration-150 ease-out data-scrolled:shadow-(--sticky-shadow)"
         >
+          <PreviewBanner session={session} onEnd={() => void signOut()} />
           {/* Full width: the brand sits at the far left, the tabs and account menu at the far right. */}
           <div className="flex h-16 items-center gap-4 px-4 sm:px-6 md:gap-6 lg:px-8">
             <WorkspaceBrand

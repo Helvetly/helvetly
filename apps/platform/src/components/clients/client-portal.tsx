@@ -10,6 +10,7 @@ import {
   AtSign,
   Copy,
   ExternalLink,
+  Eye,
   Globe,
   KeyRound,
   Send,
@@ -22,9 +23,9 @@ import { toast } from 'sonner'
 
 import { useFeatureLock } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { useResendPortalInvite, type Client } from '@/lib/clients'
+import { useResendPortalInvite, useStartPortalPreview, type Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
-import { usePortalAddress } from '@/lib/workspaces'
+import { portalLinkOf, usePortalAddress } from '@/lib/workspaces'
 
 /** The address a client signs in to the portal with: its email, else its billing email ('' for none). */
 export function portalLogin(client: { email: string | null; billing_email: string | null }) {
@@ -138,7 +139,24 @@ export function PortalAccess({
   return (
     <div className="grid">
       {offNote}
-      <StatusRow icon={KeyRound} label={translate('access')}>
+      <StatusRow
+        icon={KeyRound}
+        label={translate('access')}
+        action={
+          login && (
+            <ViewAsClient
+              clientId={client.id}
+              blocked={
+                portalLock
+                  ? `${portalLock.hint}.`
+                  : workspaceOff
+                    ? translate('portalOffForWorkspace')
+                    : undefined
+              }
+            />
+          )
+        }
+      >
         <Badge tone="green">{translate('on')}</Badge>
         <span className="text-body-sm text-muted-foreground max-sm:hidden">
           {translate('seesItsInvoicesEngagementsAndSharedDocuments')}
@@ -199,6 +217,42 @@ export function PortalAccess({
       )}
       <PortalLinkRow />
     </div>
+  )
+}
+
+/**
+ * Opens the client's portal read-only in a new tab, signed in as a preview through a one-use link. `blocked` says
+ * why it cannot open (the button is then off).
+ */
+function ViewAsClient({ clientId, blocked }: { clientId: string; blocked?: string }) {
+  const start = useStartPortalPreview()
+  const open = () => {
+    // The tab opens at the click, so no popup blocker stops it; the link follows once the API made it.
+    const tab = window.open('', '_blank')
+    if (tab) tab.opener = null
+    start.mutate(clientId, {
+      onSuccess: (url) => {
+        if (tab) tab.location.href = url
+        else window.open(url, '_blank', 'noopener')
+      },
+      onError: (error) => {
+        tab?.close()
+        toastError(error)
+      },
+    })
+  }
+  return (
+    <Tip label={blocked ?? translate('viewAsClientHint')}>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={start.isPending || Boolean(blocked)}
+        onClick={open}
+      >
+        <Eye />
+        <span className="max-sm:sr-only">{translate('viewAsClient')}</span>
+      </Button>
+    </Tip>
   )
 }
 
@@ -317,7 +371,7 @@ const host = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
 /** The drawer's "Portal" row; nothing until the API says where the portal is. */
 function PortalLinkRow() {
-  const url = usePortalAddress().data?.url
+  const url = portalLinkOf(usePortalAddress().data)
   if (!url) return null
   return (
     <StatusRow icon={Globe} label={translate('portal')} action={<PortalLinkActions url={url} />}>
@@ -335,7 +389,7 @@ function PortalLinkRow() {
 
 /** Where clients sign in, with copy and open buttons; nothing until the API says. */
 export function PortalLink() {
-  const url = usePortalAddress().data?.url
+  const url = portalLinkOf(usePortalAddress().data)
   if (!url) return null
   return (
     <p className="flex min-w-0 items-center gap-1 text-body-sm text-muted-foreground">

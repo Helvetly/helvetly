@@ -160,22 +160,7 @@ func validZone(name string) bool {
 // signedIn lets the request through with its portal session, or answers 401; unsafe methods also need the CSRF token.
 func (s *Service) signedIn(h handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie(cookieName(r))
-		// Only a workspace's own address has sessions; one opened on the shared portal before it stopped signing in
-		// is not read.
-		if err != nil || scopeWorkspace(r) == "" {
-			s.fail(w, r, errUnauthenticated)
-			return
-		}
-		sess, err := s.db.Q.PortalSessionByToken(r.Context(), hashToken(c.Value), s.now())
-		// A session is valid only under the scope it was opened in: one workspace's never reads another's.
-		if err == nil && (sess.Scoped != (scopeWorkspace(r) != "") || sess.Scoped && sess.Workspace.ID != scopeWorkspace(r)) {
-			err = store.ErrNotFound
-		}
-		if err == store.ErrNotFound {
-			s.fail(w, r, errUnauthenticated)
-			return
-		}
+		sess, err := s.session(r)
 		if err != nil {
 			s.fail(w, r, err)
 			return
@@ -183,6 +168,10 @@ func (s *Service) signedIn(h handler) http.HandlerFunc {
 		safe := r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions
 		if !safe && subtle.ConstantTimeCompare([]byte(r.Header.Get(csrfHeader)), []byte(sess.CSRFToken)) != 1 {
 			s.fail(w, r, errCSRF)
+			return
+		}
+		if !safe && readOnly(r, sess) {
+			s.fail(w, r, errPreviewReadOnly)
 			return
 		}
 		// A workspace whose plan no longer has the portal ends its sessions on their next request, without saying why:
@@ -197,7 +186,8 @@ func (s *Service) signedIn(h handler) http.HandlerFunc {
 			s.fail(w, r, err)
 			return
 		}
-		if err := s.db.Q.TouchPortalSession(r.Context(), sess.ID, s.now()); err != nil {
+		// A preview leaves no trace of activity.
+		if err := s.touch(r, sess); err != nil {
 			s.fail(w, r, err)
 			return
 		}
@@ -205,6 +195,41 @@ func (s *Service) signedIn(h handler) http.HandlerFunc {
 			s.fail(w, r, err)
 		}
 	}
+}
+
+// session is the request's live session under its scope: a member's preview (its own cookie) before the client's own.
+func (s *Service) session(r *http.Request) (store.PortalSession, error) {
+	// Only a workspace's own address has sessions; one opened on the shared portal before it stopped signing in
+	// is not read.
+	if scopeWorkspace(r) == "" {
+		return store.PortalSession{}, errUnauthenticated
+	}
+	for _, name := range []string{previewCookieName(r), cookieName(r)} {
+		c, err := r.Cookie(name)
+		if err != nil {
+			continue
+		}
+		sess, err := s.db.Q.PortalSessionByToken(r.Context(), hashToken(c.Value), s.now())
+		if err == store.ErrNotFound {
+			continue
+		}
+		if err != nil {
+			return sess, err
+		}
+		// A session is valid only under the scope it was opened in (one workspace's never reads another's), and a
+		// preview only from its own cookie.
+		if sess.Scoped && sess.Workspace.ID == scopeWorkspace(r) && (sess.PreviewBy != "") == (name == previewCookieName(r)) {
+			return sess, nil
+		}
+	}
+	return store.PortalSession{}, errUnauthenticated
+}
+
+func (s *Service) touch(r *http.Request, sess store.PortalSession) error {
+	if sess.PreviewBy != "" {
+		return nil
+	}
+	return s.db.Q.TouchPortalSession(r.Context(), sess.ID, s.now())
 }
 
 func (s *Service) getSession(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
@@ -221,6 +246,10 @@ func (s *Service) getSession(w http.ResponseWriter, r *http.Request, sess store.
 	if err != nil {
 		return err
 	}
+	var preview any
+	if sess.PreviewBy != "" {
+		preview = map[string]string{"started_by": sess.PreviewByName}
+	}
 	clients := make([]clientRef, 0, len(access))
 	for _, a := range access {
 		clients = append(clients, clientRef{a.ClientID, a.ClientName, a.WorkspaceName})
@@ -232,6 +261,7 @@ func (s *Service) getSession(w http.ResponseWriter, r *http.Request, sess store.
 		"workspace":  map[string]string{"name": sess.Workspace.Name},
 		"csrf_token": sess.CSRFToken,
 		"clients":    clients,
+		"preview":    preview,
 	})
 	return nil
 }
@@ -256,10 +286,18 @@ func (s *Service) switchClient(w http.ResponseWriter, r *http.Request, sess stor
 }
 
 func (s *Service) deleteSession(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
-	if err := s.db.Q.DeletePortalSession(r.Context(), sess.ID); err != nil {
+	name := cookieName(r)
+	err := s.db.Tx(r.Context(), func(q store.Q) error {
+		if err := q.DeletePortalSession(r.Context(), sess.ID); err != nil || sess.PreviewBy == "" {
+			return err
+		}
+		name = previewCookieName(r)
+		return s.logPreview(r, q, "portal.preview_ended", sess.Workspace.ID, sess.PreviewBy, sess.ClientID, sess.ClientName, sess.ID)
+	})
+	if err != nil {
 		return err
 	}
-	http.SetCookie(w, &http.Cookie{Name: cookieName(r), Path: "/", MaxAge: -1, HttpOnly: true, Secure: s.cfg.CookieSecure, SameSite: http.SameSiteLaxMode})
+	http.SetCookie(w, &http.Cookie{Name: name, Path: "/", MaxAge: -1, HttpOnly: true, Secure: s.cfg.CookieSecure, SameSite: http.SameSiteLaxMode})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
