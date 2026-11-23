@@ -58,7 +58,10 @@ func (q Q) AddQuoteContract(ctx context.Context, workspaceID, quoteID, documentI
 	_, err := q.db.Exec(ctx, `INSERT INTO quote_contracts (workspace_id, quote_id, document_id, number, template_id, created_by, created_at)
 		VALUES ($1, $2, $3, $4, nullif($5, ''), nullif($6, ''), $7) ON CONFLICT DO NOTHING`,
 		workspaceID, quoteID, documentID, number, templateID, userID, now)
-	return err
+	if err != nil {
+		return err
+	}
+	return q.AutoTag(ctx, workspaceID, documentID, now)
 }
 
 // SetQuoteContractSections keeps a written contract's reviewed sections (JSON) with its link to the quote.

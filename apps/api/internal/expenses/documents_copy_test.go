@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"helvetly.com/api/internal/tags"
+
 	"helvetly.com/api/internal/store"
 )
 
@@ -64,7 +66,7 @@ func TestReceiptIsCopiedToDocumentsAndFollowsCategoryChange(t *testing.T) {
 	list := e.docs(ws)
 	name := cats["6640"].Name
 	if len(list) != 1 || !slices.Equal(list[0].Folder, []string{"Expenses", "2026", name}) || list[0].Name != "train.pdf" ||
-		!slices.Contains(list[0].Tags, "expense") || !slices.Contains(list[0].Tags, toLower(name)) {
+		!slices.Contains(list[0].Tags, "receipt") || !slices.Contains(list[0].Tags, "year-2026") || !slices.Contains(list[0].Tags, catTag(name)) {
 		t.Fatalf("documents: %+v", list)
 	}
 	var linked int
@@ -84,7 +86,8 @@ func TestReceiptIsCopiedToDocumentsAndFollowsCategoryChange(t *testing.T) {
 	e.do(b, "PATCH", "/api/v1/expenses/"+x.ID, map[string]any{"category_id": other.ID, "document_date": "2025-12-30"}, 200, nil)
 	list = e.docs(ws)
 	if len(list) != 1 || !slices.Equal(list[0].Folder, []string{"Expenses", "2025", other.Name}) ||
-		slices.Contains(list[0].Tags, toLower(name)) || !slices.Contains(list[0].Tags, toLower(other.Name)) || !slices.Contains(list[0].Tags, "expense") {
+		slices.Contains(list[0].Tags, catTag(name)) || !slices.Contains(list[0].Tags, catTag(other.Name)) ||
+		slices.Contains(list[0].Tags, "year-2026") || !slices.Contains(list[0].Tags, "year-2025") || !slices.Contains(list[0].Tags, "receipt") {
 		t.Fatalf("after change: %+v", list)
 	}
 
@@ -143,7 +146,7 @@ func TestReceiptCopiesNeverCrossTenants(t *testing.T) {
 	}
 }
 
-func toLower(s string) string { return expenseTags(nil, s)[1] }
+func catTag(name string) string { return tags.Slug("expense-" + name) }
 
 // receiptKeys: the stored receipt objects, not the linked copies in Documents.
 func (f *fakeStorage) receiptKeys() []string {

@@ -453,6 +453,9 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 			return validationFailed(map[string]string{"items": "Use folder names of at most 60 characters, without control characters."})
 		}
 		typed, problem := cleanTags(it.Tags)
+		if problem == "" && len(typed) > maxTags {
+			problem = tooManyTags
+		}
 		if problem != "" {
 			return validationFailed(map[string]string{"items": problem})
 		}
