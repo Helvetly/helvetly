@@ -29,6 +29,7 @@ import { DocPreview, PdfPicker } from '@/components/signatures/pdf-parts'
 import { Choice } from '@/components/templates/fill-drawer'
 import { failed, Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { useAI } from '@/lib/ai'
+import { ApiError } from '@/lib/api'
 import { type Client, type Language } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
@@ -143,8 +144,11 @@ export function ContractWriter({
   ])
   const [message, setMessage] = useState('')
   const [tried, setTried] = useState(false)
-  const create = useTemplateMutation((body: ContractSections & { delivery: Delivery }) =>
-    templatesApi.createContract(quote.id, body),
+  // The contract an attempt filed before its delivery failed: the retry sends that one, under its number.
+  const [filed, setFiled] = useState<string | null>(null)
+  const create = useTemplateMutation(
+    (body: ContractSections & { delivery: Delivery; document_id?: string }) =>
+      templatesApi.createContract(quote.id, body),
   )
   const pdfUrl = usePdfUrl(preview?.pdf ?? null)
 
@@ -261,13 +265,17 @@ export function ContractWriter({
             }
           : { type: 'save' }
     create.mutate(
-      { ...toSections(sections), delivery: body },
+      { ...toSections(sections), delivery: body, ...(filed && { document_id: filed }) },
       {
         onSuccess: ({ data }) => {
           onMade(data)
           onClose()
         },
-        onError: (error) => failed(translate('couldNotCreateTheContract'), error),
+        onError: (error) => {
+          const saved = error instanceof ApiError ? error.details.document_id : undefined
+          if (typeof saved === 'string') setFiled(saved)
+          failed(translate('couldNotCreateTheContract'), error)
+        },
       },
     )
   }

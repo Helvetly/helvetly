@@ -267,9 +267,19 @@ func (q Q) SetSignatureStatus(ctx context.Context, id, status string, now time.T
 }
 
 func (q Q) CompleteSignatureRequest(ctx context.Context, id, documentID, finalSHA256 string, now time.Time) error {
-	_, err := q.db.Exec(ctx, `UPDATE signature_requests SET status = 'completed', signed_document_id = $2, final_sha256 = $3,
-		completed_at = $4, updated_at = $4 WHERE id = $1`, id, documentID, finalSHA256, now)
-	return err
+	var workspaceID string
+	var original *string
+	if err := q.db.QueryRow(ctx, `UPDATE signature_requests SET status = 'completed', signed_document_id = $2, final_sha256 = $3,
+		completed_at = $4, updated_at = $4 WHERE id = $1 RETURNING workspace_id, document_id`, id, documentID, finalSHA256, now).
+		Scan(&workspaceID, &original); err != nil {
+		return err
+	}
+	if original != nil {
+		if err := q.AutoTag(ctx, workspaceID, *original, now); err != nil {
+			return err
+		}
+	}
+	return q.AutoTag(ctx, workspaceID, documentID, now)
 }
 
 func (q Q) TouchSignatureRequest(ctx context.Context, id string, now time.Time) error {

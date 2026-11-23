@@ -228,7 +228,8 @@ func (e *env) do(b *browser, method, path string, body any, want int, out any) {
 type apiError struct {
 	Code    string `json:"code"`
 	Details struct {
-		Fields map[string]string `json:"fields"`
+		Fields     map[string]string `json:"fields"`
+		DocumentID string            `json:"document_id"`
 	} `json:"details"`
 }
 

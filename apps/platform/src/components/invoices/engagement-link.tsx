@@ -4,12 +4,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, X } from 'lucide-react'
-import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { Combobox } from '@/components/clients/fields'
 import { EngagementForm } from '@/components/engagements/engagement-form'
+import { RecordLink } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import {
   linkInvoice,
@@ -71,12 +71,12 @@ export function EngagementLink({
   if (linked)
     return (
       <span className={cn(quietValue, 'justify-between')}>
-        <Link
+        <RecordLink
           href={`/engagements?id=${encodeURIComponent(linked.id)}`}
           className="truncate underline underline-offset-2"
         >
           {linked.title}
-        </Link>
+        </RecordLink>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

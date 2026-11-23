@@ -47,7 +47,7 @@ func TestReadScopePerResource(t *testing.T) {
 	ws, _ := e.person("", "owner", nil, "read:clients")
 	for _, res := range openapi.Resources() {
 		t.Run(res.Name, func(t *testing.T) {
-			_, token := e.person(ws, "admin", nil, "read:"+res.Name) // one token per resource: under 600 requests a minute
+			_, token := e.person(ws, "admin", nil, "read:"+res.Name) // one token per resource
 			for _, op := range openapi.Operations {
 				status, code, details := e.do(token, op.Method, pathParam.ReplaceAllString(op.Path, "x1"))
 				action := "read"
