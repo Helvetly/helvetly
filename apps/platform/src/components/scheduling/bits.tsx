@@ -32,6 +32,11 @@ import {
   type Status,
 } from '@/lib/scheduling'
 
+/** Past days and hours: thin diagonal lines, a share of the foreground, so they stay calm in both themes. */
+const PAST_HATCH_LINES =
+  'bg-[repeating-linear-gradient(135deg,transparent_0_6px,color-mix(in_oklch,var(--foreground)_10%,transparent)_6px_7px)]'
+export const PAST_HATCH = `bg-muted/50 ${PAST_HATCH_LINES}`
+
 export function StatusBadge({ status }: { status: Status }) {
   return <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
 }

@@ -30,6 +30,7 @@ const meta = {
   beforeEach: () => {
     closeHeidi()
     Object.assign(shared, sampleState())
+    localStorage.removeItem(VIEW_KEY)
   },
   parameters: withState(shared),
   render: () => (
@@ -42,7 +43,9 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+const VIEW_KEY = 'helvetly.scheduling.view'
 const body = () => within(document.body)
+const pastCount = () => document.querySelectorAll('[data-past]').length
 const everyone = async () => {
   await userEvent.click(await body().findByRole('radio', { name: 'Everyone' }))
 }
@@ -60,6 +63,15 @@ export const Week: Story = {
     await expect(page.getByText('Busy')).toBeInTheDocument()
     await expect(page.getByRole('button', { name: '2 requests waiting' })).toBeVisible()
     await expect(page.getByRole('button', { name: '1 session to mark' })).toBeVisible()
+    // Monday, Tuesday and the morning of Wednesday (09:30 in Zurich) are past and hatched.
+    await expect(pastCount()).toBe(3)
+    // A past slot is no place for a new session: 09:00 is offered Thursday to Sunday, 09:30 from Wednesday.
+    await expect(
+      page.getAllByRole('button', { name: /^New session on .* at 09:00$/ }),
+    ).toHaveLength(4)
+    await expect(
+      page.getAllByRole('button', { name: /^New session on .* at 09:30$/ }),
+    ).toHaveLength(5)
   },
 }
 export const WeekDark = dark(Week)
@@ -100,15 +112,34 @@ export const ManyOverlaps: Story = {
   },
 }
 
-/** Nothing scheduled: the grid stays, with a sentence and a way to schedule one. */
+/** Nothing scheduled: the empty grid fills the page with no sentence under it; a slot schedules one. */
 export const Empty: Story = {
   parameters: withState(emptyState()),
   play: async () => {
     const page = body()
-    await toastShows('Nothing scheduled here yet.')
+    await expect(
+      await page.findByRole('heading', { name: '30 Nov 2026 – 6 Dec 2026' }),
+    ).toBeVisible()
+    await expect(page.queryByText('Nothing scheduled here yet.')).not.toBeInTheDocument()
     await expect(page.queryByRole('button', { name: /requests waiting/ })).not.toBeInTheDocument()
-    await userEvent.click(page.getByRole('button', { name: 'Schedule a session' }))
+    await userEvent.click(page.getByRole('button', { name: /^New session on .*3.* at 10:00$/ }))
     await expect(await page.findByRole('heading', { name: 'New session' })).toBeVisible()
+  },
+}
+
+/** The chosen view is remembered: Month is saved, and the next visit without ?view opens on it. */
+export const ViewRemembered: Story = {
+  beforeEach: () => {
+    localStorage.setItem(VIEW_KEY, 'day')
+  },
+  play: async () => {
+    const page = body()
+    await expect(
+      await page.findByRole('heading', { name: 'Wednesday, 2 December 2026' }),
+    ).toBeVisible()
+    await userEvent.click(page.getByRole('radio', { name: 'Month' }))
+    await expect(await page.findByRole('heading', { name: 'December 2026' })).toBeVisible()
+    await expect(localStorage.getItem(VIEW_KEY)).toBe('month')
   },
 }
 
@@ -142,6 +173,8 @@ export const Month: Story = {
   play: async () => {
     const page = body()
     await expect(await page.findByRole('heading', { name: 'December 2026' })).toBeVisible()
+    // 30 November and 1 December are past.
+    await expect(pastCount()).toBe(2)
     await userEvent.click(
       (await page.findAllByRole('button', { name: '1 session' }))[0] ?? document.body,
     )
@@ -204,8 +237,8 @@ export const DragToMove: Story = {
     const block = await page.findByRole('button', { name: /Strategy session/ })
     const { left, top } = block.getBoundingClientRect()
     fireEvent.pointerDown(block, { button: 0, clientX: left + 5, clientY: top + 5, pointerId: 1 })
-    fireEvent.pointerMove(block, { clientX: left + 5, clientY: top + 53, pointerId: 1 })
-    fireEvent.pointerUp(block, { clientX: left + 5, clientY: top + 53, pointerId: 1 })
+    fireEvent.pointerMove(block, { clientX: left + 5, clientY: top + 85, pointerId: 1 })
+    fireEvent.pointerUp(block, { clientX: left + 5, clientY: top + 85, pointerId: 1 })
     await toastShows('Session saved.')
     await waitFor(() =>
       expect(page.getByRole('button', { name: /Strategy session/ })).toHaveTextContent('11:00'),

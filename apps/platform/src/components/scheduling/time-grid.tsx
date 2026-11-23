@@ -1,7 +1,14 @@
 'use client'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react'
 
 import { translate } from '@/lib/i18n'
 import {
@@ -18,10 +25,10 @@ import {
   type Person,
 } from '@/lib/scheduling'
 
-import { HostDot } from './bits'
+import { HostDot, PAST_HATCH } from './bits'
 import { clipToDay, layoutDay, snapMinutes } from './layout'
 
-const HOUR = 48
+const HOUR = 80
 const SNAP = 15
 const MIN_LENGTH = 15
 
@@ -69,10 +76,17 @@ export function TimeGrid({
   const hintId = useId()
   const today = zoned(now, zone)
 
-  useEffect(() => {
-    // Opens on the working day, not at midnight.
-    if (scroller.current) scroller.current.scrollTop = 7 * HOUR
-  }, [])
+  const showsToday = days.includes(today.date)
+  // Now (today on show) or 08:00, a third of the way down.
+  const openAt = showsToday ? (today.minutes / 60) * HOUR : 8 * HOUR
+  // The page gives each range its own grid (key), so this runs on open and on another range.
+  useLayoutEffect(() => {
+    const element = scroller.current
+    if (element) element.scrollTop = Math.max(0, openAt - element.clientHeight / 3)
+  }, [openAt])
+  /** Minutes of `day` that have passed: no new session starts there, and none is moved there. */
+  const pastUntil = (day: string) =>
+    day < today.date ? 1440 : day === today.date ? today.minutes : 0
 
   const laneList = lanes ?? [null]
   const laneOf = (hostId: string | null | undefined) =>
@@ -107,6 +121,7 @@ export function TimeGrid({
       target.mode === 'move' || target.dDays !== 0
         ? instantOf(startDate, startMinutes, zone)
         : new Date(target.occurrence.starts_at)
+    if (startsAt.getTime() !== Date.parse(target.occurrence.starts_at) && startsAt < now) return
     onMove(target.occurrence, startsAt, new Date(startsAt.getTime() + length * 60_000))
   }
 
@@ -166,11 +181,12 @@ export function TimeGrid({
     const index = days.indexOf(local.date)
     const date = horizontal ? (days[index + horizontal] ?? local.date) : local.date
     const startsAt = instantOf(date, local.minutes + (vertical ?? 0), zone)
+    if (startsAt < now) return
     onMove(occurrence, startsAt, new Date(startsAt.getTime() + lengthOf(occurrence) * 60_000))
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+    <div className="flex min-h-80 flex-1 flex-col overflow-hidden border-t bg-card">
       <p id={hintId} className="sr-only">
         {translate('schedKeyboardHint')}
       </p>
@@ -227,6 +243,14 @@ export function TimeGrid({
                 {clock((i + 1) * 60)}
               </span>
             ))}
+            {showsToday && (
+              <span
+                className="text-brand-foreground absolute right-1 z-10 -translate-y-1/2 rounded-full bg-brand px-1.5 py-0.5 text-caption leading-none font-semibold tabular-nums"
+                style={{ top: (today.minutes / 60) * HOUR }}
+              >
+                {clock(today.minutes)}
+              </span>
+            )}
           </div>
           <div
             ref={columns}
@@ -245,9 +269,20 @@ export function TimeGrid({
             {days.map((day) => (
               <div
                 key={day}
-                className="relative grid border-l first:border-l-0"
+                className={cn(
+                  'relative grid border-l first:border-l-0',
+                  day === today.date && 'bg-brand/5',
+                )}
                 style={{ gridTemplateColumns: `repeat(${laneList.length}, minmax(0, 1fr))` }}
               >
+                {day <= today.date && (
+                  <div
+                    aria-hidden
+                    data-past
+                    className={cn('pointer-events-none absolute inset-x-0 top-0', PAST_HATCH)}
+                    style={{ height: (pastUntil(day) / 60) * HOUR }}
+                  />
+                )}
                 {laneList.map((lane, laneIndex) => (
                   <DayColumn
                     key={lane?.id ?? 'all'}
@@ -260,6 +295,7 @@ export function TimeGrid({
                     )}
                     busy={busy.filter((block) => !lanes || laneOf(block.host_id) === laneIndex)}
                     canWrite={canWrite}
+                    pastUntil={pastUntil(day)}
                     hintId={hintId}
                     shifted={shifted}
                     dragging={drag?.moved ? drag.occurrence.id : null}
@@ -272,12 +308,19 @@ export function TimeGrid({
                 {day === today.date && (
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute inset-x-0 z-20 h-0.5 bg-destructive/70"
+                    className="pointer-events-none absolute inset-x-0 z-20 h-0.5 -translate-y-px bg-brand"
                     style={{ top: (today.minutes / 60) * HOUR }}
                   />
                 )}
               </div>
             ))}
+            {showsToday && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 z-20 h-px bg-brand/50"
+                style={{ top: (today.minutes / 60) * HOUR }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -296,6 +339,7 @@ function DayColumn({
   occurrences,
   busy,
   canWrite,
+  pastUntil,
   hintId,
   shifted,
   dragging,
@@ -311,6 +355,7 @@ function DayColumn({
   occurrences: Occurrence[]
   busy: Busy[]
   canWrite: boolean
+  pastUntil: number
   hintId: string
   shifted: (
     occurrence: Occurrence,
@@ -347,17 +392,22 @@ function DayColumn({
   return (
     <div className={cn('relative', divided && 'border-l border-dashed border-border/60')}>
       {canWrite &&
-        Array.from({ length: 48 }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            tabIndex={-1}
-            aria-label={translate('schedNewSessionAt', { day: dayLabel(day), time: clock(i * 30) })}
-            onClick={() => onCreate(day, i * 30, lane?.id)}
-            className="absolute inset-x-0 cursor-cell hover:bg-muted/50"
-            style={{ top: (i * HOUR) / 2, height: HOUR / 2 }}
-          />
-        ))}
+        Array.from({ length: 48 }, (_, i) => i)
+          .filter((i) => (i + 1) * 30 > pastUntil)
+          .map((i) => (
+            <button
+              key={i}
+              type="button"
+              tabIndex={-1}
+              aria-label={translate('schedNewSessionAt', {
+                day: dayLabel(day),
+                time: clock(i * 30),
+              })}
+              onClick={() => onCreate(day, i * 30, lane?.id)}
+              className="absolute inset-x-0 cursor-cell hover:bg-muted/50"
+              style={{ top: (i * HOUR) / 2, height: HOUR / 2 }}
+            />
+          ))}
       {busyBlocks.map((block) => (
         <div
           key={block.key}
