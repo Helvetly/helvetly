@@ -26,7 +26,7 @@ var (
 // typeLetters is what {TYPE} prints for each document kind.
 var typeLetters = map[string]string{
 	"invoice": "INV", "partial": "INV", "prepayment": "PP", "debit_note": "DN", "corrected": "COR",
-	"credit_note": "CN", "proforma": "PF", "self_billed": "SB", "quote": "Q",
+	"credit_note": "CN", "proforma": "PF", "self_billed": "SB", "quote": "Q", "contract": "C",
 }
 
 // parseNumberFormat checks a format; the message says what is wrong with it.

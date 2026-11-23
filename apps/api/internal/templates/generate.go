@@ -5,10 +5,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -22,6 +24,7 @@ import (
 
 type generateBody struct {
 	ClientID string            `json:"client_id"`
+	QuoteID  string            `json:"quote_id"` // optional: the quote the document is the contract of
 	Title    string            `json:"title"`
 	Values   map[string]string `json:"values"`
 	Delivery struct {
@@ -38,6 +41,7 @@ type generated struct {
 	Document           store.FolderRef `json:"document"`
 	SignatureRequestID *string         `json:"signature_request_id"`
 	EmailedTo          *string         `json:"emailed_to"`
+	ContractNumber     *string         `json:"contract_number"` // a quote's contract: its number, also its file name
 }
 
 // value: a stamped value (empty allowed), or why it can't be used.
@@ -85,6 +89,17 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 		return err
 	} else if !ok {
 		bad["client_id"] = "Choose a client."
+	}
+	if b.QuoteID != "" {
+		quote, err := s.db.Quote(ctx, ws, b.QuoteID, s.now().Format(time.DateOnly), false)
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			bad["quote_id"] = "Choose a quote of this workspace."
+		case err != nil:
+			return err
+		case quote.ClientID != b.ClientID:
+			bad["quote_id"] = "The quote is for another client."
+		}
 	}
 
 	var texts []signpdf.Text
@@ -181,6 +196,7 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 	file := store.ClientFile{ID: auth.NewID("doc"), Name: fileName(title) + ".pdf", Size: int64(len(filled)),
 		ContentType: "application/pdf", SHA256: hex.EncodeToString(sum[:]), CreatedAt: now}
 	file.ObjectKey = "workspaces/" + ws + "/documents/" + file.ID + "/filled.pdf"
+	contractNumber := ""
 	// stored before the transaction, so no row lock waits on the upload; no row points at it until the commit
 	if err := s.db.ReserveObject(ctx, ws, file.ObjectKey, file.Size, true, now); err != nil {
 		return err
@@ -196,8 +212,24 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 		if !found {
 			return validationFailed(map[string]string{"client_id": "Choose a client."})
 		}
+		if b.QuoteID != "" {
+			// numbered in the transaction that files it, so a failed contract leaves no gap
+			seq, err := q.NextContractNumber(ctx, ws, now.Year())
+			if err != nil {
+				return err
+			}
+			if contractNumber, err = s.contractNumber(ctx, q, ws, now.Format(time.DateOnly), seq); err != nil {
+				return err
+			}
+			file.Name, file.Contract = fileName(contractNumber)+".pdf", true
+		}
 		if err := q.CreateClientFile(ctx, ws, b.ClientID, sess.User.ID, &file); err != nil {
 			return err
+		}
+		if b.QuoteID != "" {
+			if err := q.AddQuoteContract(ctx, ws, b.QuoteID, file.ID, contractNumber, t.ID, sess.User.ID, now); err != nil {
+				return err
+			}
 		}
 		return q.UseTemplate(ctx, ws, t.ID, now)
 	})
@@ -209,6 +241,9 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 
 	out := generated{Document: store.FolderRef{ID: file.ID, Name: file.Name}}
+	if contractNumber != "" {
+		out.ContractNumber = &contractNumber
+	}
 	switch d.Type {
 	case "email":
 		if s.mail == nil {

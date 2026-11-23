@@ -33,7 +33,7 @@ var WorkspaceExportTables = []ExportTable{
 	child("invoice_refunds", "invoices", "invoice_id"), child("invoice_prepayments", "invoices", "invoice_id"),
 	child("invoice_instalments", "invoices", "invoice_id"), child("invoice_deliveries", "invoices", "invoice_id"),
 	child("invoice_xml_exports", "invoices", "invoice_id"), own("invoice_settings"), own("invoice_counters"), own("email_templates"),
-	own("quotes"), own("quote_revisions"), own("quote_counters"),
+	own("quotes"), own("quote_revisions"), own("quote_counters"), own("quote_contracts"), own("contract_counters"),
 	own("instalment_plans"), child("instalment_plan_items", "instalment_plans", "plan_id"), own("reminder_log"),
 	own("expenses"), child("expense_lines", "expenses", "expense_id"), own("expense_categories"), own("expense_receipts"),
 	own("engagements"), own("engagement_settings"), child("engagement_periods", "engagements", "engagement_id"),

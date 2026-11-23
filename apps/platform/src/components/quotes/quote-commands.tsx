@@ -10,15 +10,18 @@ import {
   Pencil,
   ReceiptText,
   Send,
+  Sparkles,
   Trash2,
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
+import { PlanTag, useFeatureLock } from '@/components/billing/feature-lock'
 import type { MenuKit } from '@/components/data/menus'
 import { translate } from '@/lib/i18n'
+import { useCan } from '@/lib/permissions'
 import {
   quoteCommands,
   quoteName,
@@ -30,6 +33,7 @@ import {
   type QuoteCommand,
 } from '@/lib/quotes'
 
+import { ContractFlow, ContractSignDrawer } from './quote-contract'
 import { failQuote, QuoteDecisionDialog, QuoteSendDialog } from './quote-dialogs'
 
 type Action = { label: string; icon: LucideIcon }
@@ -45,8 +49,14 @@ export const ACTIONS: Record<QuoteCommand, Action> = {
   delete: { label: translate('deleteDraft2'), icon: Trash2 },
 }
 
-/** The menus' order; delete goes last, apart. */
-const MENU: QuoteCommand[] = ['send', 'accept', 'decline', 'revise', 'invoice', 'duplicate']
+/** The menus' groups (status, editing, making something of it); delete goes last, apart. */
+const STATUS: QuoteCommand[] = ['send', 'accept', 'decline']
+const EDITING: QuoteCommand[] = ['edit', 'revise', 'duplicate']
+
+/** Accept reads as the good outcome, decline as the bad one, in both themes. */
+const TONES: Partial<Record<QuoteCommand, string>> = {
+  accept: 'text-success focus:bg-success-surface focus:**:text-success! [&_svg]:text-success!',
+}
 
 /** "Send again" for a quote that went out before, the command's own label otherwise. */
 export const commandLabel = (command: QuoteCommand, quote: Quote) =>
@@ -68,6 +78,9 @@ type Handlers = {
  */
 export function useQuoteCommands(handlers: Handlers) {
   const [pending, setPending] = useState<{ command: QuoteCommand; quote: Quote } | null>(null)
+  // "Create contract with AI": its drawer, then (from its toast) the signature drawer
+  const [contractFor, setContractFor] = useState<Quote | null>(null)
+  const [signing, setSigning] = useState<string | null>(null)
   const remove = useDeleteQuote()
   const revise = useQuoteAction((id: string) => quotesApi.revise(id))
   const invoice = useQuoteAction((id: string) => quotesApi.invoice(id))
@@ -124,8 +137,23 @@ export function useQuoteCommands(handlers: Handlers) {
   const close = () => setPending(null)
   const quote = pending?.quote
   const name = quote ? quoteName(quote) : ''
-  const dialogs = quote && (
+  const contractDialogs = (
     <>
+      {contractFor && (
+        <ContractFlow
+          quote={contractFor}
+          onClose={() => setContractFor(null)}
+          onSign={setSigning}
+        />
+      )}
+      {signing && <ContractSignDrawer documentId={signing} onClose={() => setSigning(null)} />}
+    </>
+  )
+  const dialogs = !quote ? (
+    contractDialogs
+  ) : (
+    <>
+      {contractDialogs}
       {pending.command === 'send' && <QuoteSendDialog quote={quote} onClose={close} />}
       {(pending.command === 'accept' || pending.command === 'decline') && (
         <QuoteDecisionDialog quote={quote} accept={pending.command === 'accept'} onClose={close} />
@@ -160,13 +188,28 @@ export function useQuoteCommands(handlers: Handlers) {
     </>
   )
 
-  return { run, busy, dialogs }
+  return { run, busy, dialogs, contract: setContractFor }
 }
 
 /**
- * A quote's menu items, for the drawer's "…" and a row's "…" and right-click menus: the commands its
- * state allows (writers only), the PDF, then deleting a draft apart. `skip` leaves out those shown as
- * buttons beside the menu.
+ * "Create contract with AI" for the menus: null without the rights (quotes read, documents written);
+ * locked (shown with its plan) when the plan has no document templates.
+ */
+export function useContractEntry(start: (quote: Quote) => void) {
+  const lock = useFeatureLock('document_templates')
+  const readsQuotes = useCan('read:invoices')
+  const writesDocuments = useCan('write:documents')
+  const allowed = readsQuotes && writesDocuments
+  // stable while nothing changes, so list rows need not render again
+  return useMemo(() => (allowed ? { lock, start } : null), [allowed, lock, start])
+}
+
+export type ContractEntry = ReturnType<typeof useContractEntry>
+
+/**
+ * A quote's menu items, for the drawer's "…" and a row's "…" and right-click menus, in groups: view,
+ * status, editing, creating (a contract, an invoice); deleting a draft goes last, apart. Only the
+ * commands its state allows (writers only); `skip` leaves out those shown as buttons beside the menu.
  */
 export function QuoteMenuItems({
   kit: { Item, Separator },
@@ -175,6 +218,7 @@ export function QuoteMenuItems({
   run,
   onOpen,
   skip,
+  contract,
 }: {
   kit: MenuKit
   quote: Quote
@@ -182,47 +226,84 @@ export function QuoteMenuItems({
   run: (command: QuoteCommand, quote: Quote) => void
   onOpen?: () => void
   skip?: QuoteCommand[]
+  contract?: ContractEntry
 }) {
   const can = quoteCommands(quote)
   const allowed = (command: QuoteCommand) => writable && can[command] && !skip?.includes(command)
-  return (
-    <>
-      {onOpen && (
-        <Item onSelect={onOpen}>
-          <PanelRightOpen />
-          {translate('openDetails')}
-        </Item>
-      )}
-      {allowed('edit') && (
-        <Item onSelect={() => run('edit', quote)}>
-          <Pencil />
-          {translate('edit4')}
-        </Item>
-      )}
-      {MENU.filter(allowed).map((command) => {
-        const Icon = ACTIONS[command].icon
-        return (
-          <Item key={command} onSelect={() => run(command, quote)}>
-            <Icon />
-            {commandLabel(command, quote)}
-          </Item>
-        )
-      })}
-      <Item asChild>
-        <a href={localizedHref(quotePdfUrl(quote.id, true))} download>
-          <Download />
-          {translate('downloadPDF2')}
-        </a>
+  const item = (command: QuoteCommand) => {
+    const Icon = ACTIONS[command].icon
+    return (
+      <Item
+        key={command}
+        variant={command === 'decline' ? 'destructive' : 'default'}
+        className={TONES[command]}
+        onSelect={() => run(command, quote)}
+      >
+        <Icon />
+        {command === 'edit' ? translate('edit4') : commandLabel(command, quote)}
       </Item>
-      {allowed('delete') && (
-        <>
-          <Separator />
-          <Item variant="destructive" onSelect={() => run('delete', quote)}>
+    )
+  }
+  const groups: [string, ReactNode[]][] = [
+    [
+      'view',
+      [
+        onOpen && (
+          <Item key="open" onSelect={onOpen}>
+            <PanelRightOpen />
+            {translate('openDetails')}
+          </Item>
+        ),
+        <Item key="pdf" asChild>
+          <a href={localizedHref(quotePdfUrl(quote.id, true))} download>
+            <Download />
+            {translate('downloadPDF2')}
+          </a>
+        </Item>,
+      ],
+    ],
+    ['status', STATUS.filter(allowed).map(item)],
+    ['editing', EDITING.filter(allowed).map(item)],
+    [
+      'create',
+      [
+        contract && (
+          <Item
+            key="contract"
+            disabled={Boolean(contract.lock)}
+            onSelect={() => contract.start(quote)}
+          >
+            <Sparkles className="text-brand" />
+            {translate('createContractWithAI')}
+            {contract.lock && <PlanTag lock={contract.lock} />}
+          </Item>
+        ),
+        allowed('invoice') && item('invoice'),
+      ],
+    ],
+    [
+      'delete',
+      [
+        allowed('delete') && (
+          <Item key="delete" variant="destructive" onSelect={() => run('delete', quote)}>
             <Trash2 />
             {translate('deleteDraft')}
           </Item>
-        </>
-      )}
+        ),
+      ],
+    ],
+  ]
+  const shown = groups
+    .map(([name, items]) => [name, items.filter(Boolean)] as const)
+    .filter(([, items]) => items.length > 0)
+  return (
+    <>
+      {shown.map(([name, items], index) => (
+        <Fragment key={name}>
+          {index > 0 && <Separator />}
+          {items}
+        </Fragment>
+      ))}
     </>
   )
 }

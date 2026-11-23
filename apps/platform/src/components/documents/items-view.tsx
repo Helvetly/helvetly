@@ -32,6 +32,7 @@ import {
   type DocFile,
   type Folder,
   type SortField,
+  linkLabel,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { usePrefetch } from '@/lib/queries'
@@ -523,7 +524,7 @@ function FileBadges({ file, className }: { file: DocFile; className?: string }) 
     <span className={cn('flex gap-1', className)}>
       {file.links.length > 0 && (
         <span
-          title={file.links.map((link) => link.label).join(', ')}
+          title={file.links.map(linkLabel).join(', ')}
           className="flex h-5 items-center gap-0.5 rounded-full bg-card/95 px-1.5 text-[11px] text-muted-foreground shadow-elevation-1"
         >
           <Link2 className="size-3" />
@@ -810,7 +811,7 @@ function StatusPill({ file }: { file: DocFile }) {
       title={
         retained
           ? translate('keptUntil', { retained_until: file.retained_until })
-          : file.links.map((link) => link.label).join(', ')
+          : file.links.map(linkLabel).join(', ')
       }
       className="inline-flex h-6 max-w-full items-center gap-1.5 rounded-full border border-border/80 px-2 text-[12px] text-foreground/80"
     >

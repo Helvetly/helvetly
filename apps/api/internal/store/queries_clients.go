@@ -79,6 +79,7 @@ type ClientFile struct {
 	UploadedBy  *Uploader `json:"uploaded_by"` // null once the person's account is gone
 	ObjectKey   string    `json:"-"`
 	SHA256      string    `json:"-"` // hex, "" when not computed
+	Contract    bool      `json:"-"` // filed in the client's Documents/<year>/Contracts instead
 }
 
 type Uploader struct {
@@ -471,7 +472,13 @@ func scanClientFile(row interface{ Scan(...any) error }) (ClientFile, error) {
 // CreateClientFile files the upload in Clients/<client>/Documents/<year>, under a free name (f.Name is updated), and
 // links it to the client. Run it in a transaction.
 func (q Q) createClientFile(ctx context.Context, workspaceID, clientID, uploaderID string, f *ClientFile) error {
-	folder, err := q.ClientRecordFolder(ctx, workspaceID, clientID, "documents", f.CreatedAt.Year(), uploaderID, f.CreatedAt)
+	folderOf := q.ClientRecordFolder
+	if f.Contract {
+		folderOf = func(ctx context.Context, ws, c, _ string, year int, user string, now time.Time) (string, error) {
+			return q.ContractsFolder(ctx, ws, c, year, user, now)
+		}
+	}
+	folder, err := folderOf(ctx, workspaceID, clientID, "documents", f.CreatedAt.Year(), uploaderID, f.CreatedAt)
 	if err != nil {
 		return err
 	}

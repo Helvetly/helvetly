@@ -96,6 +96,7 @@ type env struct {
 	srv   *httptest.Server
 	files *fakeStorage
 	mail  *fakeMail
+	svc   *Service
 }
 
 // newEnv starts the API; without mail it runs as a server with no mail server.
@@ -119,7 +120,8 @@ func newEnv(t *testing.T, withMail bool) *env {
 	mux := http.NewServeMux()
 	a.Register(mux)
 	sign.Register(mux)
-	New(st, a, e.files, tm, sign, discard).Register(mux)
+	e.svc = New(st, a, e.files, tm, sign, discard)
+	e.svc.Register(mux)
 	e.srv = httptest.NewServer(mux)
 	t.Cleanup(e.srv.Close)
 	return e
@@ -298,6 +300,7 @@ type generatedOut struct {
 	Document           store.FolderRef `json:"document"`
 	SignatureRequestID *string         `json:"signature_request_id"`
 	EmailedTo          *string         `json:"emailed_to"`
+	ContractNumber     *string         `json:"contract_number"`
 }
 
 func (e *env) generate(b *browser, t template, body obj) generatedOut {

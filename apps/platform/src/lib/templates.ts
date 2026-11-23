@@ -13,6 +13,7 @@ import {
   type DraftField,
   type DraftSigner,
   type FieldKind,
+  type RequestStatus,
   type SigningOrder,
 } from '@/lib/signatures'
 
@@ -103,6 +104,8 @@ export type Delivery =
 
 export type GenerateRequest = {
   client_id: string
+  /** The quote the document is a contract of: filed in the client's Documents/<year>/Contracts and linked to it. */
+  quote_id?: string
   title: string
   /** Field id → the text stamped in it, for every client-data field. */
   values: Record<string, string>
@@ -110,6 +113,8 @@ export type GenerateRequest = {
 }
 
 export type Generated = {
+  /** A quote's contract (quote_id given): its number. */
+  contract_number?: string | null
   document: { id: string; name: string }
   signature_request_id: string | null
   emailed_to: string | null
@@ -326,6 +331,60 @@ export const templatesApi = {
   remove: (id: string) => request<void>(path(id), { method: 'DELETE' }),
   generate: (id: string, body: GenerateRequest) =>
     request<{ data: Generated }>(`${path(id)}/documents`, { method: 'POST', json: body }),
+  contractDraft: (quoteId: string, body: { template_id: string; use_ai: boolean }) =>
+    request<{ data: ContractDraft }>(`/quotes/${encodeURIComponent(quoteId)}/contract-draft`, {
+      method: 'POST',
+      json: body,
+    }),
+  quoteContracts: (quoteId: string) =>
+    request<{ data: QuoteContract[] }>(`/quotes/${encodeURIComponent(quoteId)}/contracts`),
+  contractCounts: () => request<{ data: Record<string, number> }>('/quotes/contract-counts'),
+}
+
+/**
+ * A contract's custom fields filled from a quote (`POST /quotes/{id}/contract-draft`): `sources` says
+ * which were matched by name ("quote") and which the AI model wrote ("ai"); `ai` is how the model went.
+ */
+export type ContractDraft = {
+  fields: Record<string, string>
+  sources: Record<string, 'quote' | 'ai'>
+  ai: 'used' | 'not_needed' | 'skipped' | 'unavailable' | 'quota_exceeded' | 'failed'
+  quote: { id: string; number: string | null }
+}
+
+/** A contract made from a quote, newest first, with its latest signature request. */
+export type QuoteContract = {
+  document_id: string
+  /** Its own number, e.g. 2026/C/001; the file is named after it (2026-C-001.pdf). */
+  number: string
+  name: string
+  created_at: string
+  signature: { id: string; status: RequestStatus } | null
+}
+
+export const contractKeys = {
+  all: [...queryKeys.documents, 'quote-contracts'] as const,
+  of: (quoteId: string) => [...contractKeys.all, quoteId] as const,
+  counts: () => [...contractKeys.all, 'counts'] as const,
+}
+
+/** The contracts made from a quote. */
+export function useQuoteContracts(quoteId: string, enabled = true) {
+  return useQuery({
+    queryKey: contractKeys.of(quoteId),
+    queryFn: async () => (await templatesApi.quoteContracts(quoteId)).data,
+    enabled,
+  })
+}
+
+/** How many contracts each quote has, for the list's mark; {} while loading or without access. */
+export function useContractCounts(enabled = true) {
+  return useQuery({
+    queryKey: contractKeys.counts(),
+    queryFn: async () => (await templatesApi.contractCounts()).data,
+    enabled,
+    staleTime: 30_000,
+  })
 }
 
 // Under documents, so refreshDocuments (after any file write) refreshes these too.

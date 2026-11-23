@@ -896,6 +896,7 @@ const TYPE_LETTERS = {
   proforma: 'PF',
   self_billed: 'SB',
   quote: 'Q',
+  contract: 'C',
 } as const
 
 export type NumberedKind = keyof typeof TYPE_LETTERS
@@ -933,6 +934,8 @@ export type NextNumbers = {
     { year: number; ever: number }
   >
   quote: number
+  /** Contracts made from quotes (2026/C/001), counted per year like quotes. */
+  contract: number
 }
 
 /** The kinds that share the invoice counter; the others count apart. */
@@ -946,10 +949,11 @@ export function nextNumberOf(
   counters: NextNumbers,
 ) {
   const yearly = /\{YY(YY)?\}/.test(format)
-  if (kind === 'quote') {
-    // quotes count per year, so a format without one keeps the default
-    const useFormat = format.includes('{TYPE}') && yearly ? format : 'Q-{YYYY}-{NNN}'
-    return exampleNumber(useFormat, date, counters.quote, kind)
+  if (kind === 'quote' || kind === 'contract') {
+    // quotes and contracts count per year, so a format without one (or without the type) keeps the default
+    const useFormat =
+      format.includes('{TYPE}') && yearly ? format : `${TYPE_LETTERS[kind]}-{YYYY}-{NNN}`
+    return exampleNumber(useFormat, date, counters[kind], kind)
   }
   const series = counters.series[own.has(kind) ? (kind as keyof NextNumbers['series']) : 'invoice']
   return exampleNumber(format, date, yearly ? series.year : series.ever, kind)

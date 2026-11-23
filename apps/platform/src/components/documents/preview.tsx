@@ -38,6 +38,7 @@ import {
   Sparkles,
   Trash2,
   X,
+  FileCheck2,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -60,6 +61,7 @@ import {
   KIND_LABELS,
   docsApi,
   linkHref,
+  linkLabel,
   refreshDocuments,
   tagCounts,
   useDoc,
@@ -94,6 +96,7 @@ const LINK_ICONS = {
   invoice: FileText,
   expense: Receipt,
   signature: FileSignature,
+  quote: FileCheck2,
 }
 
 /** The file large, with its details and links on the right; ← and → step through the list. */
@@ -453,9 +456,9 @@ function Details({
                     href={linkHref(link)}
                     className="min-w-0 flex-1 truncate underline underline-offset-2 hover:no-underline"
                   >
-                    {link.label}
+                    {linkLabel(link)}
                   </Link>
-                  {link.retains ? (
+                  {link.type === 'quote' ? null : link.retains ? (
                     <Lock
                       aria-label={translate('keepsThisFile')}
                       className="size-3.5 text-muted-foreground"

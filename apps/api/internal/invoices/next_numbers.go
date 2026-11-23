@@ -16,11 +16,12 @@ type nextCounters struct {
 }
 
 type nextNumbersJSON struct {
-	Series map[string]nextCounters `json:"series"`
-	Quote  int64                   `json:"quote"`
+	Series   map[string]nextCounters `json:"series"`
+	Quote    int64                   `json:"quote"`
+	Contract int64                   `json:"contract"`
 }
 
-// getNextNumbers: the counters behind the settings' "Next numbers", per series and for quotes; the page fills the
+// getNextNumbers: the counters behind the settings' "Next numbers", per series and for quotes and contracts; the page fills the
 // format being edited with them, since the saved one may differ.
 func (s *Service) getNextNumbers(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	ctx := r.Context()
@@ -40,6 +41,9 @@ func (s *Service) getNextNumbers(w http.ResponseWriter, r *http.Request, sess st
 	}
 	var err error
 	if out.Quote, err = s.db.Q.PeekQuoteNumber(ctx, id, year); err != nil {
+		return err
+	}
+	if out.Contract, err = s.db.Q.PeekContractNumber(ctx, id, year); err != nil {
 		return err
 	}
 	auth.WriteJSON(w, http.StatusOK, data(out))

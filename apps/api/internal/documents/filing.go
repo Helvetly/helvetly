@@ -46,17 +46,22 @@ const filingInstructions = "You file documents in a small business's document ma
 	"Set folder_id to the id of the listed folder the file belongs in, or, when none fits, folder_id to null and " +
 	"new_folder to a short, general top-level folder name (one or two words, Title Case, plural where natural, such as " +
 	"Contracts or Insurance) that more files like it would fit. " + recordRules + " For those, set folder_id to null and " +
-	"new_folder to that path. When the message says the file stays in its folder, set both to null. Use only the given " +
-	"information."
+	"new_folder to that path. When the message says the file stays in its folder, set both to null. Set " +
+	"is_completed_contract to true only for an actual completed contract or agreement (its parties named, dates and key " +
+	"terms filled in, no empty lines, blanks or [Name]-style placeholders, not marked as a template, sample or draft), " +
+	"else false; contract_reason says why in one short sentence for a contract-like file, else is empty. Use only the " +
+	"given information."
 
 var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any{
 	"type": "object",
 	"properties": map[string]any{
-		"tags":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-		"folder_id":  map[string]any{"type": []string{"string", "null"}},
-		"new_folder": map[string]any{"type": []string{"string", "null"}},
+		"tags":                  map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"folder_id":             map[string]any{"type": []string{"string", "null"}},
+		"new_folder":            map[string]any{"type": []string{"string", "null"}},
+		"is_completed_contract": map[string]any{"type": "boolean"},
+		"contract_reason":       map[string]any{"type": "string"},
 	},
-	"required":             []string{"tags", "folder_id", "new_folder"},
+	"required":             []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason"},
 	"additionalProperties": false,
 }}
 
@@ -153,6 +158,9 @@ type filing struct {
 	tags                []string
 	folderID, newFolder string
 	record              *recordPlace
+	// the model's verdict on a contract (is_completed_contract, contract_reason), and the reason recorded
+	completedContract bool
+	contractReason    string
 }
 
 func (s *Service) file(ctx context.Context, j store.FilingJob) {
@@ -276,6 +284,10 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if mayMove && decided.record == nil {
 		decided = toClient(decided, doc, listed, index.client(doc, text))
 	}
+	if decided.record != nil && decided.record.contracts {
+		ok, reason := completedContract(doc.Name, text, decided.completedContract, decided.contractReason)
+		decided.record.contracts, decided.contractReason = ok, reason // not completed: the client's Documents/<year>
+	}
 	return s.applyFiling(ctx, j, ws, decided)
 }
 
@@ -362,11 +374,14 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 		Tags      []string `json:"tags"`
 		FolderID  *string  `json:"folder_id"`
 		NewFolder *string  `json:"new_folder"`
+		Completed bool     `json:"is_completed_contract"`
+		Reason    string   `json:"contract_reason"`
 	}
 	if json.Unmarshal([]byte(strings.TrimSpace(text)), &out) != nil {
 		return filing{}, errSkip
 	}
-	var f filing
+	reason := []rune(strings.Join(strings.Fields(out.Reason), " "))
+	f := filing{completedContract: out.Completed, contractReason: string(reason[:min(len(reason), 200)])}
 	for _, t := range out.Tags {
 		if tag := tags.Slug(t); tag != "" && len(f.tags) < filingAITags && !slices.Contains(f.tags, tag) {
 			f.tags = append(f.tags, tag)
@@ -445,6 +460,9 @@ func (s *Service) applyFiling(ctx context.Context, j store.FilingJob, ws store.W
 			return err
 		}
 		rec = store.FilingRecord{Status: "filed", FromFolderID: cur.FolderID}
+		if f.record != nil && f.record.kind == "documents" && f.contractReason != "" {
+			rec.ContractReason = &f.contractReason
+		}
 		for _, t := range f.tags {
 			if !slices.Contains(cur.Tags, t) && len(cur.Tags)+len(rec.Tags) < maxTags {
 				rec.Tags = append(rec.Tags, t)

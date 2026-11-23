@@ -885,3 +885,187 @@ export const Filters: Story = {
     cleared: ['min', 'from', 'to'],
   }),
 }
+
+/**
+ * A sent quote's "…" in groups (view · status · edit · create), separated; Accept reads green, Decline red, and
+ * "Create contract with AI" sits with Create invoice under Create.
+ */
+export const RowMenuGroups: Story = {
+  play: async (context) => {
+    const { canvasElement } = context
+    await shows('Keller Holzbau AG')?.(context)
+    const body = page(canvasElement)
+    await userEvent.click(
+      body.getByRole('button', { name: 'Actions for Q-2026-004 · Keller Holzbau AG' }),
+    )
+    const menu = await body.findByRole('menu')
+    await expect(within(menu).getByText('Q-2026-004 · Keller Holzbau AG')).toBeVisible()
+    const order = [...menu.querySelectorAll('[role=menuitem], [role=separator]')].map((node) =>
+      node.getAttribute('role') === 'separator' ? '|' : (node.textContent ?? '').trim(),
+    )
+    await expect(order.join(', ')).toContain(
+      'Open details, Download PDF, |, Send again, Accept, Decline, |, Revise, Duplicate, |, Create contract with AI',
+    )
+    const accept = within(menu).getByRole('menuitem', { name: 'Accept' })
+    const decline = within(menu).getByRole('menuitem', { name: 'Decline' })
+    const plain = within(menu).getByRole('menuitem', { name: 'Revise' })
+    await expect(getComputedStyle(accept).color).not.toBe(getComputedStyle(plain).color)
+    await expect(decline).toHaveAttribute('data-variant', 'destructive')
+    await expect(getComputedStyle(decline).color).not.toBe(getComputedStyle(accept).color)
+    await userEvent.keyboard('{Escape}')
+  },
+}
+export const RowMenuGroupsDark = dark(RowMenuGroups)
+
+const contractTemplate = {
+  id: 'tpl_service',
+  name: 'Service contract',
+  description: null,
+  document: null,
+  signers: [],
+  fields: [
+    {
+      id: 'fld_client',
+      kind: 'client.name',
+      signer: null,
+      label: null,
+      page: 1,
+      x: 0.1,
+      y: 0.1,
+      w: 0.4,
+      h: 0.03,
+    },
+    {
+      id: 'fld_total',
+      kind: 'custom',
+      signer: null,
+      label: 'Total',
+      page: 1,
+      x: 0.1,
+      y: 0.2,
+      w: 0.4,
+      h: 0.03,
+    },
+    {
+      id: 'fld_start',
+      kind: 'custom',
+      signer: null,
+      label: 'Start of work',
+      page: 1,
+      x: 0.1,
+      y: 0.3,
+      w: 0.4,
+      h: 0.03,
+    },
+  ],
+  used_count: 3,
+  last_used_at: '2026-11-20T10:00:00Z',
+  created_at: '2026-11-01T10:00:00Z',
+  updated_at: '2026-11-01T10:00:00Z',
+}
+const otherTemplate = {
+  ...contractTemplate,
+  id: 'tpl_nda',
+  name: 'NDA',
+  fields: [],
+  used_count: 0,
+  last_used_at: null,
+}
+const contractHandlers: RequestHandler[] = [
+  http.get('/api/v1/templates', () =>
+    HttpResponse.json({ data: [otherTemplate, contractTemplate] }),
+  ),
+  http.post('/api/v1/quotes/quo_sent/contract-draft', () =>
+    HttpResponse.json({
+      data: {
+        fields: { fld_total: 'CHF 12’400.00', fld_start: '01.12.2026' },
+        sources: { fld_total: 'quote', fld_start: 'ai' },
+        ai: 'used',
+        quote: { id: 'quo_sent', number: 'Q-2026-004' },
+      },
+    }),
+  ),
+  http.post('/api/v1/templates/tpl_service/documents', async ({ request }) => {
+    const sent = (await request.json()) as { quote_id?: string; values: Record<string, string> }
+    if (sent.quote_id !== 'quo_sent' || sent.values.fld_start !== '01.12.2026')
+      return HttpResponse.json({ error: { code: 'bad', message: 'Wrong body.' } }, { status: 400 })
+    return HttpResponse.json(
+      {
+        data: {
+          contract_number: '2026/C/001',
+          document: { id: 'doc_contract', name: '2026-C-001.pdf' },
+          signature_request_id: null,
+          emailed_to: null,
+        },
+      },
+      { status: 201 },
+    )
+  }),
+  http.get('/api/v1/quotes/contract-counts', () => HttpResponse.json({ data: { quo_sent: 1 } })),
+  http.get('/api/v1/quotes/quo_sent/contracts', () =>
+    HttpResponse.json({
+      data: [
+        {
+          document_id: 'doc_contract',
+          number: '2026/C/001',
+          name: '2026-C-001.pdf',
+          created_at: '2026-11-23T10:00:00Z',
+          signature: { id: 'sig_1', status: 'pending' },
+        },
+      ],
+    }),
+  ),
+]
+
+/**
+ * "Create contract with AI" from a row: the most recently used template first, the quote fills its fields (the
+ * AI's marked), then the numbered contract is saved and the toast names its number.
+ */
+export const ContractFromQuote: Story = {
+  parameters: quotes({}, contractHandlers),
+  play: async (context) => {
+    const { canvasElement } = context
+    await shows('Keller Holzbau AG')?.(context)
+    const body = page(canvasElement)
+    await expect(body.getAllByLabelText('A contract was made from this quote')[0]).toBeVisible()
+    await userEvent.click(
+      body.getByRole('button', { name: 'Actions for Q-2026-004 · Keller Holzbau AG' }),
+    )
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Create contract with AI' }))
+    const drawer = await body.findByRole('dialog', { name: /Create contract with AI/ }, wait)
+    const list = await within(drawer).findByLabelText('Templates', {}, wait)
+    const rows = await within(list).findAllByRole('button')
+    await expect(rows[0]).toHaveTextContent('Service contract')
+    await expect(within(drawer).queryByRole('searchbox', { name: 'Search clients' })).toBeNull()
+    await userEvent.click(rows[0] as HTMLElement)
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+
+    const start = await within(drawer).findByRole('textbox', { name: /Start of work/ }, wait)
+    await expect(start).toHaveValue('01.12.2026')
+    await expect(within(drawer).getByRole('textbox', { name: /Total/ })).toHaveValue(
+      'CHF 12’400.00',
+    )
+    await expect(within(drawer).getByLabelText('Filled by AI from quote Q-2026-004')).toBeVisible()
+    await expect(within(drawer).getByLabelText('Filled from quote Q-2026-004')).toBeVisible()
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await userEvent.click(await within(drawer).findByRole('button', { name: 'Save to Documents' }))
+    await toasted(canvasElement, 'Contract 2026/C/001 created')
+    await waitFor(() =>
+      expect(body.getByRole('button', { name: 'Send for signature' })).toBeVisible(),
+    )
+    await expect(body.getByRole('button', { name: 'Open' })).toBeInTheDocument()
+  },
+}
+
+/** The quote's details list its contracts: number, signature status, Open. */
+export const ContractSection: Story = {
+  parameters: quotes({ id: 'quo_sent' }, contractHandlers),
+  play: async ({ canvasElement }) => {
+    const body = page(canvasElement)
+    await expect(await body.findByText('2026/C/001', {}, wait)).toBeVisible()
+    await expect(body.getByText('Out for signature')).toBeVisible()
+    await expect(body.getByRole('button', { name: 'Open' })).toBeVisible()
+    await expect(body.queryByRole('button', { name: 'Send for signature' })).toBeNull()
+  },
+}
+export const ContractSectionDark = dark(ContractSection)

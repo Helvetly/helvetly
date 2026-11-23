@@ -43,6 +43,17 @@ describe('folderLabel', () => {
     expect(folderLabel({ name: 'Invoices', system_kind: 'invoices' }, t)).toBe(invoices)
   })
 
+  it.each([
+    ['en', 'Contracts'],
+    ['de', 'Verträge'],
+    ['fr', 'Contrats'],
+    ['it', 'Contratti'],
+  ] as const)('shows the Contracts folder in %s', (language, label) => {
+    expect(folderLabel({ name: 'Contracts', system_kind: 'contracts' }, translator(language))).toBe(
+      label,
+    )
+  })
+
   it('switching the language changes only the labels of typed system folders', () => {
     const german = translator('de')
     expect(folderLabel({ name: 'Acme AG', system_kind: 'client' }, german)).toBe('Acme AG')
@@ -70,6 +81,9 @@ describe('pathLabel', () => {
   it('translates the root and the record type of a client path', () => {
     expect(pathLabel('Clients/Acme AG/Invoices/2025', t)).toBe('Kunden/Acme AG/Rechnungen/2025')
     expect(pathLabel('Clients/Invoices/Quotes', t)).toBe('Kunden/Invoices/Offerten')
+    expect(pathLabel('Clients/Acme AG/Documents/2025/Contracts', t)).toBe(
+      'Kunden/Acme AG/Dokumente/2025/Verträge',
+    )
   })
   it('translates the root and the folder of expenses without a category', () => {
     expect(pathLabel('Expenses/2025/Uncategorised', t)).toBe('Ausgaben/2025/Ohne Kategorie')

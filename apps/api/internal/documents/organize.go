@@ -359,6 +359,12 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder, na
 			if place, system := recordPath(path, names); system && place != nil ||
 				!system && (existing[strings.Join(path, "/")] || len(path) <= organizeDepth) {
 				p.Folder = strings.Join(path, "/")
+				if place != nil && place.contracts {
+					// a template, sample or draft is no contract: the client's Documents/<year> instead
+					if ok, why := completedContract(d.Name, "", true, ""); !ok {
+						p.Folder, a.Reason = strings.Join(path[:4], "/"), why
+					}
+				}
 			}
 		}
 		for _, t := range a.Tags {
