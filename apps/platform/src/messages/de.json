@@ -5822,5 +5822,13 @@
   "placeFieldsMyselfText": "Speichert das Dokument und öffnet es, damit Sie die Unterschriftsfelder selbst platzieren.",
   "addAnotherSigner": "Unterzeichner hinzufügen",
   "hereIsWhereMostPeopleStart": "Hier fangen die meisten an.",
-  "runYourBusinessWithExpensesSignaturesAnd": "Führen Sie Ihr Geschäft mit Spesen, Unterschriften und Automationen."
+  "runYourBusinessWithExpensesSignaturesAnd": "Führen Sie Ihr Geschäft mit Spesen, Unterschriften und Automationen.",
+  "emailTemplatesAITitle": "Alle Sprachen mit KI schreiben",
+  "emailTemplatesAIInstruction": "Anweisung für Heidi (optional)",
+  "emailTemplatesAIInstructionHint": "z. B. förmlicher, Zahlung per QR-Rechnung erwähnen",
+  "emailTemplatesAIWrite": "Schreiben",
+  "emailTemplatesAIPreview": "Änderungen auf {language}",
+  "emailTemplatesAIApply": "In allen Sprachen übernehmen",
+  "emailTemplatesAIApplied": "Heidis Texte stehen in den Feldern. Gespeichert wird erst mit «Speichern».",
+  "remindsSigners": "Erinnert {names}"
 }

@@ -308,6 +308,12 @@ func run() error {
 			Now: func() time.Time { return time.Now().UTC() }})
 	}
 	emailTemplatesSvc := emailtemplate.New(db, authSvc)
+	if importModel != nil {
+		// "Write with AI" of the email templates: counted in the automation pool, never Heidi's
+		emailTemplatesSvc.SetAI(importModel, aimodel.Budget{DB: db, Pool: aimodel.PoolAutomation,
+			Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost,
+			Now: func() time.Time { return time.Now().UTC() }})
+	}
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())
 	authSvc.OnPhotoRemoved = avatarsSvc.RemoveObject

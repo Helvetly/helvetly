@@ -5822,5 +5822,13 @@
   "placeFieldsMyselfText": "Salva il documento, poi lo apre per posizionare i campi firma dove vuoi.",
   "addAnotherSigner": "Aggiungi firmatario",
   "hereIsWhereMostPeopleStart": "Ecco da dove inizia la maggior parte delle persone.",
-  "runYourBusinessWithExpensesSignaturesAnd": "Gestisci la tua attività con spese, firme e automazioni."
+  "runYourBusinessWithExpensesSignaturesAnd": "Gestisci la tua attività con spese, firme e automazioni.",
+  "emailTemplatesAITitle": "Scrivere tutte le lingue con l’IA",
+  "emailTemplatesAIInstruction": "Istruzione per Heidi (facoltativa)",
+  "emailTemplatesAIInstructionHint": "p. es. più formale, menzionare il pagamento con QR-fattura",
+  "emailTemplatesAIWrite": "Scrivi",
+  "emailTemplatesAIPreview": "Modifiche in {language}",
+  "emailTemplatesAIApply": "Applica a tutte le lingue",
+  "emailTemplatesAIApplied": "I testi di Heidi sono nei campi. Nulla viene salvato finché non scegli «Salva».",
+  "remindsSigners": "Ricorda a {names}"
 }

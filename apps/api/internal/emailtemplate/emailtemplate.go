@@ -21,6 +21,10 @@ type Template struct {
 // report) and of a workspace's own message template.
 const MaxMessage = 2500
 
+// MaxTemplate is the longest message, in characters, of a workspace's own template, in every language; the email
+// sent from it may grow to MaxMessage once its variables are filled and the sender edits it.
+const MaxTemplate = 1000
+
 const maxSubject = 200
 
 var (
@@ -43,6 +47,17 @@ func Variables(kind string) []string {
 		return []string{"document", "client", "sender", "company"}
 	case "signature_request", "signature_reminder":
 		return []string{"document", "sender", "company"}
+	}
+	return nil
+}
+
+// Required lists the variables every text of a kind written by AI must keep: the record it is about.
+func Required(kind string) []string {
+	switch kind {
+	case "invoice", "credit_note", "proforma", "quote":
+		return []string{"number"}
+	case "document", "signature_request", "signature_reminder":
+		return []string{"document"}
 	}
 	return nil
 }
@@ -174,8 +189,8 @@ func Check(kind string, t Template) map[string]string {
 	}
 	if msg := unknown(kind, t.Body); msg != "" {
 		bad["body"] = msg
-	} else if n := utf8.RuneCountInString(t.Body); strings.TrimSpace(t.Body) == "" || n > MaxMessage {
-		bad["body"] = fmt.Sprintf("Enter a message of at most %d characters.", MaxMessage)
+	} else if n := utf8.RuneCountInString(t.Body); strings.TrimSpace(t.Body) == "" || n > MaxTemplate {
+		bad["body"] = fmt.Sprintf("Enter a message of at most %d characters.", MaxTemplate)
 	}
 	return bad
 }

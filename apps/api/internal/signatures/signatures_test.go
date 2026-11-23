@@ -477,9 +477,18 @@ func TestSequentialOrder(t *testing.T) {
 	if got := e.get(b, req.ID); statuses(got) != "signed,sent" {
 		t.Fatalf("statuses %s", statuses(got))
 	}
-	e.sign(second, http.StatusOK)
+	// A reminder goes only to the signer whose turn it is.
+	before := len(e.mail.to("first@example.com"))
+	e.do(b, "POST", "/api/v1/signatures/"+req.ID+"/remind", nil, http.StatusOK, nil)
+	if len(e.mail.to("first@example.com")) != before || e.mail.link("second@example.com") == second {
+		t.Fatal("the reminder went to the wrong signer")
+	}
+	e.sign(e.mail.link("second@example.com"), http.StatusOK)
 	if got := e.get(b, req.ID); got.Status != "completed" {
 		t.Fatalf("status %s", got.Status)
+	}
+	if code := e.code(b, "POST", "/api/v1/signatures/"+req.ID+"/remind", nil, http.StatusConflict); code != "nothing_to_remind" {
+		t.Fatalf("remind a completed request: %s", code)
 	}
 }
 
@@ -529,7 +538,7 @@ func TestTokensAreHashedAndExpire(t *testing.T) {
 	}
 	e.sign(token, http.StatusGone)
 	e.do(nil, "GET", "/api/v1/public/sign/"+token+"/document", nil, http.StatusGone, nil)
-	if code := e.code(b, "POST", "/api/v1/signatures/"+req.ID+"/remind", nil, http.StatusConflict); code != "not_pending" {
+	if code := e.code(b, "POST", "/api/v1/signatures/"+req.ID+"/remind", nil, http.StatusConflict); code != "nothing_to_remind" {
 		t.Fatalf("remind an expired request: %s", code)
 	}
 }
@@ -589,6 +598,9 @@ func TestReminderReplacesTheLinkAndRevokeStopsIt(t *testing.T) {
 	}
 
 	e.do(b, "POST", "/api/v1/signatures/"+req.ID+"/revoke", nil, http.StatusOK, nil)
+	if code := e.code(b, "POST", "/api/v1/signatures/"+req.ID+"/remind", nil, http.StatusConflict); code != "nothing_to_remind" {
+		t.Fatalf("remind a revoked request: %s", code)
+	}
 	latest := e.mail.link("one@example.com")
 	e.sign(latest, http.StatusConflict)
 	e.do(nil, "GET", "/api/v1/public/sign/"+latest+"/document", nil, http.StatusGone, nil)

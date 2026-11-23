@@ -12,7 +12,10 @@ import {
   resizeField,
   signersWithoutSignature,
   swapSigners,
+  remindTargets,
   titleFromName,
+  type SignatureRequest,
+  type Signer,
   type DraftField,
 } from './signatures'
 
@@ -137,5 +140,54 @@ describe('the create body', () => {
     // Only the extension goes: the rest of the name is never guessed away.
     expect(titleFromName('Vertrag Vorlage Deutsch V1.0.docx')).toBe('Vertrag Vorlage Deutsch V1.0')
     expect(titleFromName('.pdf')).toBe('.pdf')
+  })
+})
+
+describe('remindTargets', () => {
+  const signer = (position: number, status: Signer['status']): Signer => ({
+    id: `sgr_${position}`,
+    position,
+    name: `Signer ${position}`,
+    email: `s${position}@example.ch`,
+    status,
+    sent_at: null,
+    viewed_at: null,
+    signed_at: null,
+    declined_at: null,
+    decline_reason: null,
+  })
+  const request = (change: Partial<SignatureRequest>): SignatureRequest => ({
+    id: 'sig_1',
+    title: 'Lease',
+    message: null,
+    status: 'pending',
+    signing_order: 'parallel',
+    document: null,
+    signed_document: null,
+    folder_id: null,
+    original_sha256: '',
+    final_sha256: null,
+    page_count: 1,
+    expires_at: '',
+    created_by: null,
+    created_at: '',
+    completed_at: null,
+    signers: [],
+    fields: [],
+    ...change,
+  })
+  const signers = [signer(2, 'waiting'), signer(1, 'signed'), signer(3, 'viewed')]
+
+  it('names the signer whose turn it is, one after another', () => {
+    expect(
+      remindTargets(request({ signing_order: 'sequential', signers })).map((s) => s.id),
+    ).toEqual(['sgr_2'])
+  })
+  it('names everyone who has not signed, everyone at once', () => {
+    expect(remindTargets(request({ signers })).map((s) => s.id)).toEqual(['sgr_2', 'sgr_3'])
+  })
+  it('names nobody once the request is no longer out for signature', () => {
+    for (const status of ['completed', 'declined', 'revoked', 'expired'] as const)
+      expect(remindTargets(request({ status, signers }))).toEqual([])
   })
 })

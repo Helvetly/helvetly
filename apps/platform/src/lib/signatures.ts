@@ -319,6 +319,16 @@ export const titleFromName = (name: string) =>
   name.replace(/\.[a-z0-9]{1,5}$/i, '').trim() || name.trim()
 
 /** Signed so far, out of all signers. */
+/** Who a reminder goes to (the API's due signers): none unless out for signature; one after another, the signer
+ *  whose turn it is; everyone at once, all who have not signed. */
+export const remindTargets = ({ status, signing_order, signers }: SignatureRequest): Signer[] => {
+  if (status !== 'pending') return []
+  const unsigned = signers
+    .filter((signer) => signer.status !== 'signed' && signer.status !== 'declined')
+    .toSorted((a, b) => a.position - b.position)
+  return signing_order === 'sequential' ? unsigned.slice(0, 1) : unsigned
+}
+
 export const progressOf = ({ signers }: SignatureRequest) => ({
   signed: signers.filter((signer) => signer.status === 'signed').length,
   total: signers.length,

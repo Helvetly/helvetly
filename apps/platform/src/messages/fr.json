@@ -5822,5 +5822,13 @@
   "placeFieldsMyselfText": "Enregistre le document, puis l’ouvre pour placer les champs de signature où vous voulez.",
   "addAnotherSigner": "Ajouter un signataire",
   "hereIsWhereMostPeopleStart": "Voici par où la plupart commencent.",
-  "runYourBusinessWithExpensesSignaturesAnd": "Gérez votre entreprise avec les dépenses, les signatures et les automatisations."
+  "runYourBusinessWithExpensesSignaturesAnd": "Gérez votre entreprise avec les dépenses, les signatures et les automatisations.",
+  "emailTemplatesAITitle": "Rédiger toutes les langues avec l’IA",
+  "emailTemplatesAIInstruction": "Consigne pour Heidi (facultatif)",
+  "emailTemplatesAIInstructionHint": "p. ex. plus formel, mentionner le paiement par QR-facture",
+  "emailTemplatesAIWrite": "Rédiger",
+  "emailTemplatesAIPreview": "Modifications en {language}",
+  "emailTemplatesAIApply": "Appliquer à toutes les langues",
+  "emailTemplatesAIApplied": "Les textes de Heidi sont dans les champs. Rien n’est enregistré avant « Enregistrer ».",
+  "remindsSigners": "Relance {names}"
 }

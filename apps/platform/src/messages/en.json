@@ -5822,5 +5822,13 @@
   "placeFieldsMyselfText": "Saves the document, then opens it to put the signature fields where you want them.",
   "addAnotherSigner": "Add signer",
   "hereIsWhereMostPeopleStart": "Here is where most people start.",
-  "runYourBusinessWithExpensesSignaturesAnd": "Run your business with expenses, signatures and automations."
+  "runYourBusinessWithExpensesSignaturesAnd": "Run your business with expenses, signatures and automations.",
+  "emailTemplatesAITitle": "Write every language with AI",
+  "emailTemplatesAIInstruction": "Instruction for Heidi (optional)",
+  "emailTemplatesAIInstructionHint": "e.g. more formal, mention payment by QR bill",
+  "emailTemplatesAIWrite": "Write",
+  "emailTemplatesAIPreview": "Changes in {language}",
+  "emailTemplatesAIApply": "Apply to all languages",
+  "emailTemplatesAIApplied": "Heidi’s texts are in the fields. Nothing is saved until you choose Save.",
+  "remindsSigners": "Reminds {names}"
 }

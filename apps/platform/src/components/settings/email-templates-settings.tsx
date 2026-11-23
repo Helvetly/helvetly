@@ -13,7 +13,6 @@ import { FormField, HelpTip, describedBy } from '@helvetly/ui/components/form-fi
 import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Segmented } from '@helvetly/ui/components/segmented'
-import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Mail, Pencil, RotateCcw } from 'lucide-react'
@@ -21,6 +20,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { LoadProblem } from '@/components/data/load-problem'
+import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   EMAIL_KINDS,
@@ -35,7 +35,12 @@ import {
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 
+import { TemplateAIButton, TemplateAIPanel, type TemplateTexts } from './email-template-ai'
 import { SettingsSection } from './layout'
+
+/** A template's longest message and subject (emailtemplate.MaxTemplate and maxSubject); the API refuses more. */
+export const TEMPLATE_MESSAGE_MAX = 1000
+const TEMPLATE_SUBJECT_MAX = 200
 
 const KIND_LABELS: Record<EmailKind, string> = {
   invoice: translate('emailTemplatesKindInvoice'),
@@ -199,6 +204,9 @@ function TemplateDialog({
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   const lastField = useRef<'subject' | 'body'>('body')
   const caret = useRef<number | null>(null)
+  const [aiOpen, setAIOpen] = useState(false)
+  // The drafts before Heidi's texts were applied: Undo puts them back until Save.
+  const [beforeAI, setBeforeAI] = useState<typeof drafts | null>(null)
   const template = templates.find((entry) => entry.language === language)
   const busy = save.isPending || reset.isPending
 
@@ -233,6 +241,24 @@ function TemplateDialog({
     const token = `{${variable}}`
     caret.current = start + token.length
     set(field, text.slice(0, start) + token + text.slice(end))
+  }
+
+  const textOf = (code: EmailLanguage): Draft => {
+    const saved = templates.find((entry) => entry.language === code)
+    return drafts[code] ?? { subject: saved?.subject ?? '', body: saved?.body ?? '' }
+  }
+  const texts: TemplateTexts = {
+    de: textOf('de'),
+    fr: textOf('fr'),
+    it: textOf('it'),
+    en: textOf('en'),
+  }
+
+  const applyAI = (written: TemplateTexts) => {
+    setBeforeAI(drafts)
+    setDrafts(written)
+    setErrors({})
+    setAIOpen(false)
   }
 
   const changed = templates.flatMap((entry) => {
@@ -356,9 +382,23 @@ function TemplateDialog({
             label={translate('emailTemplatesSubject')}
             required
             error={shownErrors.subject}
+            mark={
+              writable && (
+                <span
+                  data-slot="textarea-count"
+                  className={cn(
+                    'ml-auto text-xs text-muted-foreground tabular-nums',
+                    values.subject.length > TEMPLATE_SUBJECT_MAX && 'text-destructive',
+                  )}
+                >
+                  {values.subject.length} / {TEMPLATE_SUBJECT_MAX}
+                </span>
+              )
+            }
           >
             <Input
               {...describedBy(`${prefix}-subject`, shownErrors.subject)}
+              maxLength={TEMPLATE_SUBJECT_MAX}
               ref={subjectRef}
               required
               disabled={!writable}
@@ -373,17 +413,49 @@ function TemplateDialog({
             required
             error={shownErrors.body}
           >
-            <Textarea
+            <TextareaBox
               {...describedBy(`${prefix}-body`, shownErrors.body)}
               ref={bodyRef}
               required
-              className="min-h-48"
+              resizable={false}
+              maxLength={TEMPLATE_MESSAGE_MAX}
+              max={writable ? TEMPLATE_MESSAGE_MAX : undefined}
+              className="field-sizing-content max-h-[calc(8lh+0.75rem)] min-h-[calc(4lh+0.75rem)] leading-relaxed"
               disabled={!writable}
               value={values.body}
               onFocus={() => (lastField.current = 'body')}
               onChange={(event) => set('body', event.target.value)}
+              tools={
+                writable && (
+                  <TemplateAIButton open={aiOpen} onOpen={() => setAIOpen((open) => !open)} />
+                )
+              }
             />
           </FormField>
+          {writable && aiOpen && (
+            <TemplateAIPanel
+              kind={kind}
+              current={texts}
+              onApply={applyAI}
+              onClose={() => setAIOpen(false)}
+            />
+          )}
+          {beforeAI && (
+            <p className="flex items-center gap-2 text-body-sm text-muted-foreground" role="status">
+              {translate('emailTemplatesAIApplied')}
+              <Button
+                type="button"
+                variant="link"
+                size="xs"
+                onClick={() => {
+                  setDrafts(beforeAI)
+                  setBeforeAI(null)
+                }}
+              >
+                {translate('undo')}
+              </Button>
+            </p>
+          )}
           {writable && (
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="mr-1 text-body-sm text-muted-foreground">

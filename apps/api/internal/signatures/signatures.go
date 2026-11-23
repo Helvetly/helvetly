@@ -152,6 +152,7 @@ func validationFailed(fields map[string]string) error {
 var (
 	errMailUnavailable = auth.Error(http.StatusServiceUnavailable, "mail_unavailable", "Email is not set up on this server.", nil)
 	errNotPending      = auth.Error(http.StatusConflict, "not_pending", "This request is no longer out for signature.", nil)
+	errNothingToRemind = auth.Error(http.StatusConflict, "nothing_to_remind", "Nobody is waiting for a reminder: the request is no longer out for signature or everyone has signed.", nil)
 )
 
 // ---- presenting ----
@@ -516,6 +517,7 @@ func (s *Service) Create(r *http.Request, sess store.Session, body CreateBody) (
 func (s *Service) remind(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	ctx, id := r.Context(), r.PathValue("id")
 	var req store.SignatureRequest
+	var waiting []store.Signer
 	err := s.db.Tx(ctx, func(q store.Q) error {
 		if err := q.LockSignatureRequest(ctx, id); err != nil {
 			return err
@@ -524,8 +526,13 @@ func (s *Service) remind(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if req, err = s.load(ctx, q, sess.Workspace.ID, id); err != nil {
 			return err
 		}
-		if req.Status != "pending" {
-			return errNotPending
+		for _, sg := range due(req) {
+			if sg.DeclinedAt == nil {
+				waiting = append(waiting, sg)
+			}
+		}
+		if req.Status != "pending" || len(waiting) == 0 {
+			return errNothingToRemind
 		}
 		n, err := q.CountSignatureEvents(ctx, id, "reminded", s.now().Add(-time.Hour))
 		if err != nil {
@@ -541,12 +548,6 @@ func (s *Service) remind(w http.ResponseWriter, r *http.Request, sess store.Sess
 	}
 	if s.mail == nil {
 		return errMailUnavailable
-	}
-	var waiting []store.Signer
-	for _, sg := range due(req) {
-		if sg.DeclinedAt == nil {
-			waiting = append(waiting, sg)
-		}
 	}
 	if err := s.invite(ctx, req, waiting, "reminded"); err != nil {
 		return auth.Error(http.StatusServiceUnavailable, "mail_failed", "The reminder could not be sent. Try again in a minute.", nil)
