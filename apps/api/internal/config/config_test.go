@@ -69,6 +69,19 @@ func TestLoad(t *testing.T) {
 			"CUSTOM_DOMAIN_TARGET": "https://portal.helvetly.com"}, "CUSTOM_DOMAIN_TARGET", nil},
 		{"plain http cloudflare api", map[string]string{"AUTH_DEV_SIGNIN": "true", "CLOUDFLARE_API_TOKEN": "tok", "CLOUDFLARE_ZONE_ID": "0123456789abcdef0123456789abcdef",
 			"CUSTOM_DOMAIN_TARGET": "portal.helvetly.com", "CLOUDFLARE_API_URL": "http://api.cloudflare.com"}, "CLOUDFLARE_API_URL", nil},
+		{"calendars", map[string]string{"AUTH_DEV_SIGNIN": "true", "GOOGLE_CALENDAR_CLIENT_ID": "g", "GOOGLE_CALENDAR_CLIENT_SECRET": "gs",
+			"MICROSOFT_CLIENT_ID": "m", "MICROSOFT_CLIENT_SECRET": "ms"}, "", func(c Config) bool {
+			return c.Calendars.Google() && c.Calendars.Microsoft() && c.Calendars.MicrosoftTenant == "common" && c.Calendars.GoogleAPIURL == "" && !c.Calendars.Fake
+		}},
+		{"no calendars", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return !c.Calendars.Google() && !c.Calendars.Microsoft() }},
+		{"half of google calendar", map[string]string{"AUTH_DEV_SIGNIN": "true", "GOOGLE_CALENDAR_CLIENT_ID": "g"}, "GOOGLE_CALENDAR_CLIENT_ID and", nil},
+		{"half of microsoft", map[string]string{"AUTH_DEV_SIGNIN": "true", "MICROSOFT_CLIENT_SECRET": "ms"}, "MICROSOFT_CLIENT_ID and", nil},
+		{"bad tenant", map[string]string{"AUTH_DEV_SIGNIN": "true", "MICROSOFT_TENANT": "a/b"}, "MICROSOFT_TENANT", nil},
+		{"plain http graph", map[string]string{"AUTH_DEV_SIGNIN": "true", "MICROSOFT_GRAPH_URL": "http://graph.example.com"}, "MICROSOFT_GRAPH_URL", nil},
+		{"local fake google api", map[string]string{"AUTH_DEV_SIGNIN": "true", "GOOGLE_CALENDAR_API_URL": "http://localhost:9999/"}, "", func(c Config) bool {
+			return c.Calendars.GoogleAPIURL == "http://localhost:9999"
+		}},
+		{"fake calendars need dev sign-in", map[string]string{"SECRET_KEY": key, "HELVETLY_E2E_FAKE_CALENDARS": "true"}, "HELVETLY_E2E_FAKE_CALENDARS", nil},
 		{"fake domains need dev sign-in", map[string]string{"SECRET_KEY": key, "HELVETLY_E2E_FAKE_DOMAINS": "true"}, "HELVETLY_E2E_FAKE_DOMAINS", nil},
 		{"media off by default", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return c.MediaURL == "" }},
 		{"media origin", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "MEDIA_URL": "https://Media.helvetly.com/"}, "",
@@ -168,7 +181,9 @@ func TestLoad(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, k := range []string{"HTTP_ADDR", "DATABASE_URL", "PUBLIC_URL", "PORTAL_URL", "DOCS_URL", "MEDIA_URL", "SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 				"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_TLS", "MAIL_FROM", "SESSION_TTL", "COOKIE_SECURE", "AUTH_DEV_SIGNIN", "S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "DOCUMENTS_MAX_UPLOAD_MB", "S3_OBJECT_LOCK_DAYS", "S3_OBJECT_LOCK_MODE", "S3_PROXY_DOWNLOADS", "S3_ADDRESSING",
-				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_FALLBACK_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ZONE_ID", "CUSTOM_DOMAIN_TARGET", "CLOUDFLARE_API_URL", "HELVETLY_E2E_FAKE_DOMAINS"} {
+				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_FALLBACK_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ZONE_ID", "CUSTOM_DOMAIN_TARGET", "CLOUDFLARE_API_URL", "HELVETLY_E2E_FAKE_DOMAINS",
+				"GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_TENANT",
+				"GOOGLE_CALENDAR_API_URL", "MICROSOFT_GRAPH_URL", "HELVETLY_E2E_FAKE_CALENDARS"} {
 				t.Setenv(k, tc.env[k])
 			}
 			for _, k := range []string{"S3_ACCESS_KEY", "S3_SECRET_KEY"} { // required: every case has them unless it says "-"
