@@ -283,6 +283,7 @@ func run() error {
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())
 	authSvc.OnPhotoRemoved = avatarsSvc.RemoveObject
+	calendarSvc := wireCalendars(ctx, bg, cfg, db, authSvc)
 	portalSvc := portal.New(db, authSvc, files, portalScopes, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure}, slog.Default())
 	portalSvc.SetMailer(portalLinksMailer)
 	mcpSvc := mcp.New(authSvc, openapi.Operations)
@@ -328,6 +329,7 @@ func run() error {
 		avatarsSvc.Register(mux)
 		importsSvc.Register(mux)
 		notificationsSvc.Register(mux)
+		calendarSvc.Register(mux)
 	}
 
 	guarded := permissions.Guard(authSvc, billingSvc.Guard(server.New(platform.Handler(cfg.PortalURL, strings.HasPrefix(cfg.PublicURL, "https://"), portalscope.OnDomain), api))) // scopes, then plan limits, before the handlers

@@ -146,6 +146,22 @@ Production needs at least `DATABASE_URL`, `PUBLIC_URL`, `PORTAL_URL` (another ho
 `AUTH_DEV_SIGNIN`. Every setting is described in [.env.example](.env.example). Build-time values
 (`NEXT_PUBLIC_*`, Docker build arguments) end up in the browser's JavaScript: public URLs only, never secrets.
 
+### Calendar sync
+
+Optional, with Scheduling: each member connects their own Google Calendar or Microsoft 365 / Outlook calendar.
+Sessions are pushed to it (the client is never invited by the provider: Helvetly sends the invitations), Meet or Teams
+links are made through it, and the member's busy times come back without titles. Each provider is offered only when
+its two settings are set: `GOOGLE_CALENDAR_CLIENT_ID` and `GOOGLE_CALENDAR_CLIENT_SECRET` (a Google Cloud OAuth client
+of its own, not the sign-in one, with the Calendar API and the scopes `calendar.events` and
+`calendar.calendarlist.readonly`), and `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` (an Entra ID app for
+work, school and personal accounts with the delegated Graph permissions `openid email offline_access User.Read
+Calendars.ReadWrite`; `MICROSOFT_TENANT` defaults to `common`). Register the redirect URIs
+`<PUBLIC_URL>/api/v1/scheduling/calendars/google/callback` and `…/microsoft/callback`. Change notifications arrive at
+`<PUBLIC_URL>/api/webhooks/google-calendar` and `/api/webhooks/microsoft-graph` (allow them past any bot challenge);
+without a public https `PUBLIC_URL` calendars are polled every 15 minutes instead. Tokens are sealed with `SECRET_KEY`.
+Every member also has a private iCal feed (`/api/v1/public/calendar/<token>.ics`) for Apple Calendar and others; do
+not cache it at a proxy.
+
 ### Custom portal domains
 
 Optional, on the Business plan: a workspace serves its client portal on its own host (`portal.firma.ch`) instead of
