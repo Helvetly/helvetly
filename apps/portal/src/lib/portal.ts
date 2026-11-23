@@ -72,6 +72,8 @@ export type PortalDocument = {
   size: number
   content_type: string
   shared_at: string
+  /** The quote revision whose PDF this is, sent to the client; null for a file shared by hand. */
+  quote?: { number: string; revision: number } | null
 }
 
 /** What a client may ask to change (the API's clients.ProfileFields). */
@@ -115,7 +117,6 @@ export const portalKeys = {
   all: ['portal'] as const,
   session: ['portal', 'session'] as const,
   invoices: ['portal', 'invoices'] as const,
-  quotes: ['portal', 'quotes'] as const,
   engagements: ['portal', 'engagements'] as const,
   engagementHistory: (engagementId: string) => ['portal', 'engagements', engagementId] as const,
   documents: ['portal', 'documents'] as const,

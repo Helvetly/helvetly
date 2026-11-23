@@ -114,8 +114,6 @@ func TestPreviewIsReadOnly(t *testing.T) {
 		t.Fatalf("read: %d", res.StatusCode)
 	}
 	for _, tc := range []struct{ method, path string }{
-		{"POST", "/quotes/quo_1/accept"},
-		{"POST", "/quotes/quo_1/decline"},
 		{"POST", "/profile/requests"},
 		{"PUT", "/avatar"},
 		{"DELETE", "/avatar"},
