@@ -12,42 +12,88 @@ import { isHeic } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
 import type { ImportKind } from '@/lib/imports'
 
-/** Whether files are being dragged over the window; dropping them calls onFiles. */
+/** What a window drag event does to the count of elements the dragged files are over. */
+export type DragSignal = 'enter' | 'over' | 'leave' | 'reset'
+
+export function nextDragDepth(depth: number, signal: DragSignal) {
+  if (signal === 'enter') return depth + 1
+  if (signal === 'leave') return Math.max(0, depth - 1)
+  // A dragover means the files are over the page, whatever enter and leave events went missing.
+  if (signal === 'over') return Math.max(1, depth)
+  return 0
+}
+
+/**
+ * Whether files are being dragged over the window; dropping them anywhere calls onFiles, unless an
+ * inner drop target handled the drop and stopped it. While enabled the browser never opens a
+ * dropped file, and the flag resets on drop, drag end, leaving the window, Escape, blur and hiding.
+ */
 export function useFileDrop(enabled: boolean, onFiles: (files: File[]) => void) {
   const [over, setOver] = useState(false)
   const drop = useEffectEvent(onFiles)
   useEffect(() => {
     if (!enabled) return
     let depth = 0
+    let exit: ReturnType<typeof setTimeout> | undefined
+    const signal = (next: DragSignal) => {
+      clearTimeout(exit)
+      depth = nextDragDepth(depth, next)
+      setOver(depth > 0)
+    }
+    const reset = () => signal('reset')
     // 'Files' is the DataTransfer type of files from the desktop, the same in every language.
     const hasFiles = (event: DragEvent) => event.dataTransfer?.types.includes('Files') ?? false
     const enter = (event: DragEvent) => {
-      if (!hasFiles(event)) return
-      depth += 1
-      setOver(true)
+      if (hasFiles(event)) signal('enter')
     }
     const leave = (event: DragEvent) => {
-      if (hasFiles(event) && --depth <= 0) setOver(false)
+      if (!hasFiles(event)) return
+      signal('leave')
+      // No related target: the pointer left the window (some browsers never set one, so the
+      // next dragover inside cancels this).
+      if (event.relatedTarget === null) exit = setTimeout(reset, 150)
     }
+    // Capture phase, so no inner element can let the browser open the file instead.
     const overEvent = (event: DragEvent) => {
-      if (hasFiles(event)) event.preventDefault()
-    }
-    const dropEvent = (event: DragEvent) => {
       if (!hasFiles(event)) return
       event.preventDefault()
-      depth = 0
-      setOver(false)
-      drop([...(event.dataTransfer?.files ?? [])])
+      signal('over')
+    }
+    const dropCapture = (event: DragEvent) => {
+      if (!hasFiles(event)) return
+      event.preventDefault()
+      reset()
+    }
+    // Bubble phase: an inner drop target (a folder) that handled the drop stopped it before here.
+    const dropEvent = (event: DragEvent) => {
+      if (hasFiles(event)) drop([...(event.dataTransfer?.files ?? [])])
+    }
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') reset()
+    }
+    const hidden = () => {
+      if (document.visibilityState === 'hidden') reset()
     }
     window.addEventListener('dragenter', enter)
     window.addEventListener('dragleave', leave)
-    window.addEventListener('dragover', overEvent)
+    window.addEventListener('dragover', overEvent, true)
+    window.addEventListener('drop', dropCapture, true)
     window.addEventListener('drop', dropEvent)
+    window.addEventListener('dragend', reset)
+    window.addEventListener('keydown', key)
+    window.addEventListener('blur', reset)
+    document.addEventListener('visibilitychange', hidden)
     return () => {
+      clearTimeout(exit)
       window.removeEventListener('dragenter', enter)
       window.removeEventListener('dragleave', leave)
-      window.removeEventListener('dragover', overEvent)
+      window.removeEventListener('dragover', overEvent, true)
+      window.removeEventListener('drop', dropCapture, true)
       window.removeEventListener('drop', dropEvent)
+      window.removeEventListener('dragend', reset)
+      window.removeEventListener('keydown', key)
+      window.removeEventListener('blur', reset)
+      document.removeEventListener('visibilitychange', hidden)
       setOver(false)
     }
   }, [enabled])

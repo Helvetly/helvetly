@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { clearHandOff, peekHandOff } from './hand-off'
-import { useFileDrop, useImportDrop } from './page-drop'
+import { nextDragDepth, useFileDrop, useImportDrop } from './page-drop'
 
 const query = vi.hoisted(() => ({ current: new URLSearchParams() }))
 vi.mock('next/navigation', () => ({
@@ -19,14 +19,29 @@ afterEach(() => {
 })
 
 /** A window drag event carrying `files` the way a desktop drag does (type "Files"). */
-function drag(type: string, files: File[] = [], types = ['Files']) {
+function drag(type: string, files: File[] = [], types = ['Files'], relatedTarget?: null) {
   const event = new Event(type, { cancelable: true })
   Object.defineProperty(event, 'dataTransfer', { value: { types, files } })
+  if (relatedTarget === null) Object.defineProperty(event, 'relatedTarget', { value: null })
   act(() => {
     window.dispatchEvent(event)
   })
   return event
 }
+
+describe('nextDragDepth', () => {
+  it.each([
+    [0, 'enter', 1],
+    [1, 'enter', 2],
+    [2, 'leave', 1],
+    [0, 'leave', 0],
+    [0, 'over', 1],
+    [3, 'over', 3],
+    [3, 'reset', 0],
+  ] as const)('%i after %s is %i', (depth, signal, next) => {
+    expect(nextDragDepth(depth, signal)).toBe(next)
+  })
+})
 
 describe('useFileDrop', () => {
   it('shows while files hover the window, through nested enters, and hands over the drop', () => {
@@ -46,6 +61,70 @@ describe('useFileDrop', () => {
     expect(dropped.defaultPrevented).toBe(true)
     expect(result.current).toBe(false)
     expect(onFiles).toHaveBeenCalledWith([file])
+  })
+
+  it.each([
+    ['drag end', () => drag('dragend')],
+    [
+      'Escape',
+      () => act(() => void window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))),
+    ],
+    ['window blur', () => act(() => void window.dispatchEvent(new Event('blur')))],
+    [
+      'a hidden tab',
+      () => {
+        vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+        act(() => void document.dispatchEvent(new Event('visibilitychange')))
+      },
+    ],
+  ])('resets on %s, however many enters came first', (_, end) => {
+    const { result } = renderHook(() => useFileDrop(true, vi.fn()))
+    drag('dragenter')
+    drag('dragenter')
+    expect(result.current).toBe(true)
+    end()
+    expect(result.current).toBe(false)
+  })
+
+  it('resets when the files leave the window, unless a dragover follows', () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderHook(() => useFileDrop(true, vi.fn()))
+      drag('dragenter')
+      drag('dragenter')
+      drag('dragleave', [], ['Files'], null)
+      drag('dragover')
+      act(() => void vi.advanceTimersByTime(500))
+      expect(result.current).toBe(true)
+
+      drag('dragleave', [], ['Files'], null)
+      act(() => void vi.advanceTimersByTime(500))
+      expect(result.current).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('shows on a dragover even when the enter was missed, and prevents the browser opening the file', () => {
+    const { result } = renderHook(() => useFileDrop(true, vi.fn()))
+    expect(drag('dragover').defaultPrevented).toBe(true)
+    expect(result.current).toBe(true)
+  })
+
+  it('leaves a drop an inner target stopped to that target, but still resets and prevents it', () => {
+    const onFiles = vi.fn<(files: File[]) => void>()
+    const { result } = renderHook(() => useFileDrop(true, onFiles))
+    const inner = document.createElement('div')
+    document.body.append(inner)
+    inner.addEventListener('drop', (event) => event.stopPropagation())
+    drag('dragenter')
+    const event = new Event('drop', { cancelable: true, bubbles: true })
+    Object.defineProperty(event, 'dataTransfer', { value: { types: ['Files'], files: [] } })
+    act(() => void inner.dispatchEvent(event))
+    expect(event.defaultPrevented).toBe(true)
+    expect(result.current).toBe(false)
+    expect(onFiles).not.toHaveBeenCalled()
+    inner.remove()
   })
 
   it('ignores drags without files, such as selected text', () => {

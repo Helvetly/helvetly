@@ -303,6 +303,85 @@ export const RowClickOpens: Story = {
   parameters: pageParameters('/documents', { layout: 'list' }),
 }
 
+/** A folder's card or row on the page (not its entry in the sidebar). */
+function folderItem(canvas: HTMLElement, id: string) {
+  const item = canvas.ownerDocument.querySelector(`[data-key="folder:${id}"]`)
+  if (!item) throw new Error(`folder ${id} is not shown`)
+  return item
+}
+
+/** A plain click on a folder opens it and selects nothing; its checkbox selects without opening. */
+export const FolderClickOpens: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const check = await body.findByRole('checkbox', { name: 'Select Contracts' }, { timeout: 8000 })
+    await userEvent.click(check)
+    await expect(check).toBeChecked()
+    await expect(url(canvasElement).get('folder')).toBeNull()
+
+    await userEvent.click(folderItem(canvasElement, 'fld_contracts'))
+    await waitFor(() => expect(url(canvasElement).get('folder')).toBe('fld_contracts'))
+  },
+}
+
+/** A double-click opens the folder once: the second click lands on what the opened folder shows. */
+export const FolderDoubleClickOpensOnce: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await body.findAllByText('Contracts', {}, { timeout: 8000 })
+    const name = folderItem(canvasElement, 'fld_contracts')
+    const push = spyOn(window.history, 'pushState')
+    try {
+      await userEvent.dblClick(name)
+      await waitFor(() => expect(url(canvasElement).get('folder')).toBe('fld_contracts'))
+      const opens = push.mock.calls.filter(([, , to]) => String(to).includes('fld_contracts'))
+      await expect(opens).toHaveLength(1)
+    } finally {
+      push.mockRestore()
+    }
+  },
+}
+
+/** In the list a folder row's click opens it too. */
+export const FolderRowClickOpens: Story = {
+  ...FolderClickOpens,
+  parameters: pageParameters('/documents', { layout: 'list' }),
+}
+
+/** Files from the desktop, the way a browser sends a drag of them. */
+function desktopDrag(type: 'dragenter' | 'dragover' | 'drop', file: File, target: Element) {
+  const data = new DataTransfer()
+  data.items.add(file)
+  const event = new DragEvent(type, { dataTransfer: data, bubbles: true, cancelable: true })
+  target.dispatchEvent(event)
+  return event
+}
+
+/**
+ * Files dragged anywhere over the page light it up; a drop outside any folder uploads to the
+ * current folder, the browser never opens the file, and the page's light goes out.
+ */
+export const DropUploadsAnywhere: Story = {
+  parameters: pageParameters('/documents', {}, [
+    http.post('/api/v1/documents', () =>
+      HttpResponse.json({ data: { ...sampleFiles[0], id: 'doc_new', name: 'scan.pdf' } }),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const doc = canvasElement.ownerDocument
+    const body = within(doc.body)
+    await body.findAllByText('Contracts', {}, { timeout: 8000 })
+    const file = new File(['%PDF-1.4'], 'scan.pdf', { type: 'application/pdf' })
+    desktopDrag('dragenter', file, doc.body)
+    await expect(desktopDrag('dragover', file, doc.body).defaultPrevented).toBe(true)
+    await waitFor(() => expect(body.getByText(/Drop to upload to/)).toBeVisible())
+    const drop = desktopDrag('drop', file, doc.body)
+    await expect(drop.defaultPrevented).toBe(true)
+    await waitFor(() => expect(body.queryByText(/Drop to upload to/)).toBeNull())
+    await body.findByTitle('scan.pdf', {}, { timeout: 8000 })
+  },
+}
+
 const lockTip = "Managed by Helvetly: can't be renamed, moved or deleted"
 
 /** Helvetly's own folders carry a quiet lock, and their menu offers no rename, move or trash. */
