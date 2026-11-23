@@ -1119,7 +1119,7 @@ export function DocumentsPage() {
                 current={current}
                 section={view.section}
                 trashCount={trashItemsList.length}
-                kind={view.kinds.length === 1 ? (view.kinds[0] ?? null) : null}
+                kinds={view.kinds}
                 pinned={pinned}
                 actions={{
                   create: (name) =>
@@ -1127,11 +1127,7 @@ export function DocumentsPage() {
                       refreshDocuments(queryClient)
                       openFolder(data.id)
                     }, docError),
-                  kind: (kind) =>
-                    navigate({
-                      section: 'files',
-                      kinds: view.kinds.length === 1 && view.kinds[0] === kind ? [] : [kind],
-                    }),
+                  kinds: (kinds) => navigate({ section: 'files', kinds }),
                   open: openFolder,
                   section: openSection,
                   newFolder: (parent) => setNewFolderIn(parent),
@@ -1911,6 +1907,17 @@ const queryFields = (clients: QueryOption[]): QueryField<ViewParams>[] => [
       (client) => ({ client }),
     ),
   },
+  // Last in the popover, just above "Clear all".
+  {
+    id: 'by',
+    label: translate('byMe'),
+    type: 'enum',
+    // `by:me`; its chip reads "By me".
+    values: [{ value: 'me', label: '' }],
+    placeholder: translate('uploadedByMe'),
+    get: (view) => (view.mine ? ['me'] : []),
+    set: (values) => ({ mine: values.includes('me') }),
+  },
 ]
 
 const QUERY_FIELDS: QueryField<ViewParams>[] = [
@@ -1934,16 +1941,6 @@ const QUERY_FIELDS: QueryField<ViewParams>[] = [
       (view) => view.date,
       (date) => ({ date: SINCE_PRESETS.find((preset) => preset === date) ?? null }),
     ),
-  },
-  {
-    id: 'by',
-    label: translate('byMe'),
-    type: 'enum',
-    // `by:me`; its chip reads "By me".
-    values: [{ value: 'me', label: '' }],
-    placeholder: translate('uploadedByMe'),
-    get: (view) => (view.mine ? ['me'] : []),
-    set: (values) => ({ mine: values.includes('me') }),
   },
 ]
 

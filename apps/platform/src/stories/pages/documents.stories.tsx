@@ -455,6 +455,68 @@ export const Filters: Story = {
   }),
 }
 
+/**
+ * The sidebar's types are toggles: several at once, each marked, the same state as the Kind filter
+ * (its chip and the popover); "Uploaded by me" is the popover's last control, above "Clear all".
+ */
+const kindRequests: URLSearchParams[] = []
+const typesPage = pageParameters('/documents', {}, [
+  http.get('/api/v1/documents', ({ request }) => {
+    kindRequests.push(new URL(request.url).searchParams)
+    return HttpResponse.json(page(sampleFiles))
+  }),
+])
+export const TypesMultiSelect: Story = {
+  // A query string: the kind repeats (a record holds one value per key).
+  parameters: {
+    ...typesPage,
+    nextjs: { navigation: { pathname: '/documents', query: 'kind=pdf&kind=image' } },
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const types = within(
+      await body.findByRole('navigation', { name: 'File types' }, { timeout: 8000 }),
+    )
+    const pressed = (name: string) =>
+      types.getByRole('button', { name }).getAttribute('aria-pressed')
+    await expect(['PDFs', 'Images', 'Spreadsheets', 'Documents'].map(pressed)).toEqual([
+      'true',
+      'true',
+      'false',
+      'false',
+    ])
+    await waitFor(() =>
+      expect(kindRequests.some((query) => query.getAll('kind').join() === 'pdf,image')).toBe(true),
+    )
+    await expect(
+      await body.findByRole('button', { name: 'Remove filter Kind: PDF or Image' }),
+    ).toBeVisible()
+
+    // The popover's Kind holds both; "Uploaded by me" comes last, right above "Clear all".
+    await userEvent.click(body.getByRole('button', { name: /^Filters/ }))
+    const dialog = await body.findByRole('dialog', { name: 'Filters' })
+    await expect(within(dialog).getByRole('button', { name: /^Kind/ })).toHaveTextContent(
+      /PDF.*Image/,
+    )
+    const controls = [...dialog.querySelectorAll('button, [role="checkbox"]')]
+    const mine = within(dialog).getByRole('checkbox', { name: 'Uploaded by me' })
+    const clearAll = within(dialog).getByRole('button', { name: 'Clear all' })
+    await expect(controls.indexOf(clearAll) - controls.indexOf(mine)).toBe(1)
+    await userEvent.keyboard('{Escape}')
+
+    // A row toggles its type in or out; "Clear" in the section's header takes them all out.
+    await userEvent.click(types.getByRole('button', { name: 'Spreadsheets' }))
+    await waitFor(() =>
+      expect(url(canvasElement).getAll('kind')).toEqual(['pdf', 'image', 'spreadsheet']),
+    )
+    await userEvent.click(types.getByRole('button', { name: 'PDFs' }))
+    await waitFor(() => expect(url(canvasElement).getAll('kind')).toEqual(['image']))
+    await userEvent.click(types.getByRole('button', { name: 'Clear' }))
+    await waitFor(() => expect(url(canvasElement).has('kind')).toBe(false))
+  },
+}
+export const TypesMultiSelectDark = dark(TypesMultiSelect)
+
 // ---- grouped views: virtual folders computed from what each file is ----
 
 const url = (canvas: HTMLElement) => new URL(canvas.ownerDocument.location.href).searchParams
