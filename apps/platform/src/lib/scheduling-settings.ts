@@ -247,6 +247,37 @@ export function durationText(minutes: number): string {
   return parts.join(' ')
 }
 
+export const UNIT_MINUTES = { minutes: 1, hours: 60, days: 1440 } as const
+export type DurationUnit = keyof typeof UNIT_MINUTES
+
+/** A preset as people say it: "1 week", "3 days", "48 hours" (up to two days in hours), else durationText. */
+export function presetText(minutes: number): string {
+  if (minutes > 0 && minutes % 10080 === 0)
+    return translate('schedulingSettingsWeeks', { count: minutes / 10080 })
+  if (minutes > 0 && minutes <= 2880 && minutes % 60 === 0)
+    return translate('schedulingSettingsHours', { count: minutes / 60 })
+  return durationText(minutes)
+}
+
+/** Minutes as an amount of the largest of `units` that holds them whole: 2880 → 2 days; 90 → 90 minutes. */
+export function splitDuration(
+  minutes: number,
+  units: readonly DurationUnit[],
+): { amount: number; unit: DurationUnit } {
+  const fits = units.filter((unit) => minutes % UNIT_MINUTES[unit] === 0)
+  const unit =
+    fits.toSorted((a, b) => UNIT_MINUTES[b] - UNIT_MINUTES[a])[0] ??
+    units.toSorted((a, b) => UNIT_MINUTES[a] - UNIT_MINUTES[b])[0] ??
+    'minutes'
+  return { amount: minutes / UNIT_MINUTES[unit], unit }
+}
+
+/** What a custom amount means in minutes; empty or not a number is NaN, which validation refuses. */
+export function durationMinutes(amount: string, unit: DurationUnit): number {
+  const text = amount.trim().replace(',', '.')
+  return text === '' ? NaN : Math.round(Number(text) * UNIT_MINUTES[unit])
+}
+
 /** A list of weekdays as a sentence part: "Mon–Fri", "Mon, Wed and Fri". */
 export function daysText(days: readonly number[]): string {
   const sorted = [...new Set(days)].toSorted((a, b) => a - b)

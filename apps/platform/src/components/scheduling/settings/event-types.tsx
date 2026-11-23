@@ -4,6 +4,12 @@ import { Combobox } from '@helvetly/ui/components/combobox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from '@helvetly/ui/components/input-group'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
@@ -28,6 +34,8 @@ import {
   type EventTypeInput,
 } from '@/lib/scheduling-settings'
 
+import { DurationSelect } from './duration-select'
+
 const blank = (): EventTypeInput => ({
   name: '',
   description: null,
@@ -47,6 +55,10 @@ const blank = (): EventTypeInput => ({
   bookable: true,
   color: null,
 })
+
+const DURATION_PRESETS = [15, 30, 45, 60, 90, 120]
+const BUFFER_PRESETS = [0, 5, 10, 15, 30, 45, 60]
+const MIN_NOTICE_PRESETS = [0, 60, 120, 240, 720, 1440, 2880, 4320, 10080]
 
 const inRange = (value: number, min: number, max: number) =>
   Number.isInteger(value) && value >= min && value <= max
@@ -196,8 +208,6 @@ function IconAction({
   )
 }
 
-const numberField = (value: number) => (Number.isFinite(value) ? value : '')
-
 /** One drawer to add or change an event type. */
 function EventTypeDrawer({ type, onClose }: { type: EventType | null; onClose: () => void }) {
   const [draft, setDraft] = useState<EventTypeInput>(() => {
@@ -214,8 +224,6 @@ function EventTypeDrawer({ type, onClose }: { type: EventType | null; onClose: (
     setDraft((current) => ({ ...current, ...change }))
     setErrors({})
   }
-  const number = (field: keyof EventTypeInput) => (event: { target: { value: string } }) =>
-    set({ [field]: event.target.value === '' ? NaN : Number(event.target.value) })
   const submit = () => {
     const problems = eventTypeProblems(draft)
     if (Object.keys(problems).length > 0) return setErrors(problems)
@@ -290,13 +298,13 @@ function EventTypeDrawer({ type, onClose }: { type: EventType | null; onClose: (
                 label={translate('schedulingSettingsDuration')}
                 error={errors.duration_minutes}
               >
-                <Input
-                  {...describedBy('event-type-duration', errors.duration_minutes)}
-                  type="number"
-                  inputMode="numeric"
-                  value={numberField(draft.duration_minutes)}
-                  onChange={number('duration_minutes')}
-                  className="text-right tabular-nums"
+                <DurationSelect
+                  id="event-type-duration"
+                  value={draft.duration_minutes}
+                  onChange={(minutes) => set({ duration_minutes: minutes })}
+                  presets={DURATION_PRESETS}
+                  units={['minutes', 'hours']}
+                  invalid={Boolean(errors.duration_minutes)}
                 />
               </FormField>
               <FormField id="event-type-mode" label={translate('schedulingSettingsMode')} group>
@@ -372,13 +380,14 @@ function EventTypeDrawer({ type, onClose }: { type: EventType | null; onClose: (
                 label={translate('schedulingSettingsBufferBefore')}
                 error={errors.buffer_before}
               >
-                <Input
-                  {...describedBy('event-type-buffer-before', errors.buffer_before)}
-                  type="number"
-                  inputMode="numeric"
-                  value={numberField(draft.buffer_before)}
-                  onChange={number('buffer_before')}
-                  className="text-right tabular-nums"
+                <DurationSelect
+                  id="event-type-buffer-before"
+                  value={draft.buffer_before}
+                  onChange={(minutes) => set({ buffer_before: minutes })}
+                  presets={BUFFER_PRESETS}
+                  units={['minutes', 'hours']}
+                  zero={translate('schedulingSettingsNoBuffer')}
+                  invalid={Boolean(errors.buffer_before)}
                 />
               </FormField>
               <FormField
@@ -386,13 +395,14 @@ function EventTypeDrawer({ type, onClose }: { type: EventType | null; onClose: (
                 label={translate('schedulingSettingsBufferAfter')}
                 error={errors.buffer_after}
               >
-                <Input
-                  {...describedBy('event-type-buffer-after', errors.buffer_after)}
-                  type="number"
-                  inputMode="numeric"
-                  value={numberField(draft.buffer_after)}
-                  onChange={number('buffer_after')}
-                  className="text-right tabular-nums"
+                <DurationSelect
+                  id="event-type-buffer-after"
+                  value={draft.buffer_after}
+                  onChange={(minutes) => set({ buffer_after: minutes })}
+                  presets={BUFFER_PRESETS}
+                  units={['minutes', 'hours']}
+                  zero={translate('schedulingSettingsNoBuffer')}
+                  invalid={Boolean(errors.buffer_after)}
                 />
               </FormField>
               <FormField
@@ -401,13 +411,15 @@ function EventTypeDrawer({ type, onClose }: { type: EventType | null; onClose: (
                 error={errors.min_notice_minutes}
                 tip={translate('schedulingSettingsMinNoticeTip')}
               >
-                <Input
-                  {...describedBy('event-type-min-notice', errors.min_notice_minutes)}
-                  type="number"
-                  inputMode="numeric"
-                  value={numberField(draft.min_notice_minutes)}
-                  onChange={number('min_notice_minutes')}
-                  className="text-right tabular-nums"
+                <DurationSelect
+                  id="event-type-min-notice"
+                  value={draft.min_notice_minutes}
+                  onChange={(minutes) => set({ min_notice_minutes: minutes })}
+                  presets={MIN_NOTICE_PRESETS}
+                  units={['hours', 'days']}
+                  suffix="before"
+                  zero={translate('schedulingSettingsNoticeAnytime')}
+                  invalid={Boolean(errors.min_notice_minutes)}
                 />
               </FormField>
               <FormField
@@ -415,14 +427,24 @@ function EventTypeDrawer({ type, onClose }: { type: EventType | null; onClose: (
                 label={translate('schedulingSettingsHorizon')}
                 error={errors.max_horizon_days}
               >
-                <Input
-                  {...describedBy('event-type-horizon', errors.max_horizon_days)}
-                  type="number"
-                  inputMode="numeric"
-                  value={numberField(draft.max_horizon_days)}
-                  onChange={number('max_horizon_days')}
-                  className="text-right tabular-nums"
-                />
+                <InputGroup>
+                  <InputGroupInput
+                    {...describedBy('event-type-horizon', errors.max_horizon_days)}
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="tabular-nums"
+                    value={Number.isFinite(draft.max_horizon_days) ? draft.max_horizon_days : ''}
+                    onChange={(event) =>
+                      set({
+                        max_horizon_days:
+                          event.target.value.trim() === '' ? NaN : Number(event.target.value),
+                      })
+                    }
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupText>{translate('schedulingSettingsDaysAhead')}</InputGroupText>
+                  </InputGroupAddon>
+                </InputGroup>
               </FormField>
             </div>
             <SwitchRow
