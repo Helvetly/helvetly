@@ -36,7 +36,6 @@ import {
   FileCheck2,
 } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -45,7 +44,7 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import type { KnownTag } from '@/components/clients/fields'
 import { InlineTagsEditor } from '@/components/clients/inline-tags'
 import { PdfView } from '@/components/invoices/pdf-view'
-import { RecordPageButton } from '@/components/record-link'
+import { RecordLink, RecordPageButton } from '@/components/record-link'
 import { useAI } from '@/lib/ai'
 import { useClientSearch } from '@/lib/clients'
 import {
@@ -458,12 +457,12 @@ function Details({
                   className="group/link flex h-9 items-center gap-2 rounded-lg px-2 text-[13.5px] hover:bg-muted"
                 >
                   <Icon className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-                  <Link
+                  <RecordLink
                     href={linkHref(link)}
                     className="min-w-0 flex-1 truncate underline underline-offset-2 hover:no-underline"
                   >
                     {linkLabel(link)}
-                  </Link>
+                  </RecordLink>
                   {link.type === 'quote' ? null : link.retains ? (
                     <Lock
                       aria-label={translate('keepsThisFile')}
