@@ -46,9 +46,10 @@ type Document struct {
 	Previewable   bool            `json:"previewable"` // set by internal/documents
 	SHA256        *string         `json:"sha256"`
 	Tags          []string        `json:"tags"`
+	AutoTags      []string        `json:"auto_tags"` // those of Tags the app set (tags.Auto)
 	AIFiling      *Filing         `json:"ai_filing"`
 	Links         []DocumentLink  `json:"links"`
-	SharedWith    []DocumentShare `json:"shared_with"` // the clients that see it in their portal, newest first
+	SharedWith    []DocumentShare `json:"shared_with"` // clients that see it in portal, newest first
 	RetainedUntil *string         `json:"retained_until"`
 	UploadedBy    *Uploader       `json:"uploaded_by"`
 	CreatedAt     time.Time       `json:"created_at"`
@@ -391,7 +392,7 @@ func collect(rows interface {
 var documentSelect = `SELECT d.id, d.name, d.folder_id, f.name, d.size, d.content_type, d.sha256, d.object_key,
 		d.created_at, d.updated_at, d.deleted_at, d.trashed_with, u.id, u.name, ` + avatarColumn + `, x.id, x.name, ` + avatarOf("x") + `, ` + retentionSQL + `,
 		d.tags, ff.status, ff.folder_id, fl.name, coalesce(ff.created_folder, false), coalesce(ff.tags, '{}'),
-		f.system_kind, fl.system_kind
+		f.system_kind, fl.system_kind, d.auto_tags
 	FROM documents d LEFT JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
 	LEFT JOIN users u ON u.id = d.uploaded_by LEFT JOIN users x ON x.id = d.deleted_by
 	LEFT JOIN document_filings ff ON ff.document_id = d.id
@@ -403,7 +404,7 @@ func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, 
 	var filed Filing
 	err := row.Scan(append([]any{&d.ID, &d.Name, &d.FolderID, &folderName, &d.Size, &d.ContentType, &d.SHA256, &d.ObjectKey,
 		&d.CreatedAt, &d.UpdatedAt, &d.DeletedAt, &d.TrashedWith, &uid, &uname, &uavatar, &xid, &xname, &xavatar, &d.RetainedUntil,
-		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags, &folderKind, &filedKind}, extra...)...)
+		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags, &folderKind, &filedKind, &d.AutoTags}, extra...)...)
 	if filing != nil {
 		filed.Status = *filing
 		if filedID != nil && filedName != nil {
@@ -422,6 +423,9 @@ func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, 
 	d.Links, d.SharedWith = []DocumentLink{}, []DocumentShare{}
 	if d.Tags == nil {
 		d.Tags = []string{}
+	}
+	if d.AutoTags == nil {
+		d.AutoTags = []string{}
 	}
 	return d, err
 }
@@ -512,14 +516,27 @@ func (q Q) createDocument(ctx context.Context, workspaceID, userID string, d Doc
 
 // UpdateDocument renames and/or moves a live file.
 func (q Q) UpdateDocument(ctx context.Context, workspaceID, id, name string, folderID *string, now time.Time) error {
-	_, err := q.db.Exec(ctx, `UPDATE documents SET name = $3, folder_id = $4, updated_at = $5
-		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL`, workspaceID, id, name, folderID, now)
+	if _, err := q.db.Exec(ctx, `UPDATE documents SET name = $3, folder_id = $4, updated_at = $5
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL`, workspaceID, id, name, folderID, now); err != nil {
+		return err
+	}
+	return q.AutoTag(ctx, workspaceID, id, now)
+}
+
+// SetDocumentTags replaces a live file's tags for the app (AI filing, organizing, undo); its automatic tags stay.
+func (q Q) SetDocumentTags(ctx context.Context, workspaceID, id string, tags []string, now time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE documents SET updated_at = $4,
+			tags = $3::text[] || ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE NOT t = ANY($3::text[]) ORDER BY i)
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now)
 	return err
 }
 
-// SetDocumentTags replaces a live file's tags.
-func (q Q) SetDocumentTags(ctx context.Context, workspaceID, id string, tags []string, now time.Time) error {
-	_, err := q.db.Exec(ctx, `UPDATE documents SET tags = $3, updated_at = $4
+// SetOwnDocumentTags replaces a live file's tags as a person typed them; an automatic tag left out is removed for good
+// (never added again).
+func (q Q) SetOwnDocumentTags(ctx context.Context, workspaceID, id string, tags []string, now time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE documents SET tags = $3, updated_at = $4,
+			auto_tags = ARRAY(SELECT unnest(auto_tags) INTERSECT SELECT unnest($3::text[])),
+			removed_auto_tags = ARRAY(SELECT unnest(removed_auto_tags) UNION (SELECT unnest(auto_tags) EXCEPT SELECT unnest($3::text[])))
 		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now)
 	return err
 }
@@ -693,7 +710,10 @@ func (q Q) LinkTargetExists(ctx context.Context, workspaceID, targetType, id str
 func (q Q) AddDocumentLink(ctx context.Context, workspaceID, documentID, targetType, targetID, userID string, now time.Time) error {
 	_, err := q.db.Exec(ctx, `INSERT INTO document_links (document_id, workspace_id, target_type, target_id, created_by, created_at)
 		VALUES ($1, $2, $3, $4, nullif($5, ''), $6) ON CONFLICT DO NOTHING`, documentID, workspaceID, targetType, targetID, userID, now)
-	return err
+	if err != nil {
+		return err
+	}
+	return q.AutoTag(ctx, workspaceID, documentID, now)
 }
 
 func (q Q) RemoveDocumentLink(ctx context.Context, documentID, targetType, targetID string) error {

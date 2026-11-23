@@ -279,6 +279,7 @@ export const InvoiceCard: Story = {
                 title: next.title,
                 sent_at: '2026-11-09T09:00:00Z',
                 sent_on: '2026-11-09',
+                confirmed: true,
                 open_amount: '1081.00',
                 fee: next.level === 1 ? '0.00' : '20.00',
                 interest: next.level === 1 ? '0.00' : '2.05',
@@ -354,6 +355,7 @@ export const InvoiceCardDunningOff: Story = {
                   title: 'Zahlungserinnerung',
                   sent_at: '2026-11-09T09:00:00Z',
                   sent_on: '2026-11-09',
+                  confirmed: true,
                   open_amount: '1081.00',
                   fee: '0.00',
                   interest: '0.00',
@@ -380,5 +382,49 @@ export const InvoiceCardDunningOff: Story = {
     await expect(await body.findByRole('tooltip')).toHaveTextContent('nothing to pause')
     await expect(page.getByRole('button', { name: 'Send final reminder' })).toBeEnabled()
     await expect(page.getByText('To ap@kunde.ch · automatically')).toBeVisible()
+  },
+}
+
+/** A reminder the mail server may have taken (the connection dropped) says its delivery is not confirmed. */
+export const InvoiceCardDeliveryUnconfirmed: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/invoices/:id/dunning', () =>
+          HttpResponse.json({
+            data: {
+              ...fresh(),
+              next: { level: 2, levels: 2, title: 'Letzte Mahnung', due_on: '2026-12-29' },
+              notices: [
+                {
+                  level: 1,
+                  levels: 2,
+                  title: 'Zahlungserinnerung',
+                  sent_at: '2026-11-09T09:00:00Z',
+                  sent_on: '2026-11-09',
+                  confirmed: false,
+                  open_amount: '1081.00',
+                  fee: '0.00',
+                  interest: '0.00',
+                  total: '1081.00',
+                  interest_rate: '0',
+                  interest_from: null,
+                  email: 'ap@kunde.ch',
+                  sent_by: null,
+                },
+              ],
+            } satisfies Dunning,
+          }),
+        ),
+      ],
+    },
+  },
+  render: InvoiceCard.render,
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText(
+        'Delivery not confirmed: the mail server may have taken it, so it is not sent again.',
+      ),
+    ).toBeVisible()
   },
 }

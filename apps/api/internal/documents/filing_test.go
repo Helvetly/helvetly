@@ -407,7 +407,7 @@ func TestFilingMatchesRecords(t *testing.T) {
 		t.Fatal("the model was asked")
 	}
 	got := e.get(b, d.ID)
-	if got.FolderID == nil || !slices.Equal(got.Tags, []string{"invoice"}) {
+	if got.FolderID == nil || !slices.Equal(got.Tags, []string{"invoice", "year-2026", "client-acme-ag"}) {
 		t.Fatalf("filed = %+v", got)
 	}
 	folders := e.allFolders(b)

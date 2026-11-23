@@ -116,6 +116,11 @@ const (
 	// ScheduledEvents: sessions and series created plus client bookings this quota month, a series counting once
 	// (usage_events).
 	ScheduledEvents Limit = "scheduled_events_per_month"
+
+	// APIReads and APIWrites: API token requests a rolling minute per workspace, reads and writes apart, shared by
+	// every instance (auth counts them through APIRate).
+	APIReads  Limit = "api_read_requests_per_minute"
+	APIWrites Limit = "api_write_requests_per_minute"
 )
 
 // Unlimited: the plan has no cap on that limit.

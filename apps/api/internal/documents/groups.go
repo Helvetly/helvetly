@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -206,16 +207,17 @@ func (s *Service) writeZip(ctx context.Context, w io.Writer, files []store.Group
 	return z.Close()
 }
 
-// addToZip copies one stored object into z; an object storage no longer has is left out (and logged), as the
-// workspace export does.
+// addToZip copies one stored object into z. A ZIP is only ever complete: an object storage no longer has refuses
+// it (a *problem), any other failure to read is an error worth a retry.
 func (s *Service) addToZip(ctx context.Context, z *zip.Writer, name, key string) error {
 	body, err := s.files.Open(ctx, key)
+	if errors.Is(err, store.ErrNotFound) {
+		s.log.WarnContext(ctx, "group zip: stored file missing", "path", name, "error", err)
+		return refuse(http.StatusConflict, "file_missing", fmt.Sprintf(
+			"%s is missing from storage, so the ZIP would be incomplete. Contact support.", path.Base(name)), map[string]any{"path": name})
+	}
 	if err != nil {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		s.log.WarnContext(ctx, "group zip: stored file not readable", "path", name, "error", err)
-		return nil
+		return fmt.Errorf("open %s: %w", name, err)
 	}
 	defer body.Close()
 	entry, err := z.Create(name)

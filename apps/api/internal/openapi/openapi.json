@@ -3,7 +3,7 @@
   "info": {
     "title": "Helvetly API",
     "version": "1.0.0",
-    "description": "The public part of Helvetly's API: clients, invoices, quotes, instalment plans, payments, expenses, documents, engagements, scheduled sessions, products, the books (periods, audit log, VAT return, ledger) and the key figures (reports) of one workspace. Authenticate with a personal API token (Settings → API & MCP): `Authorization: Bearer hvt_…`. A token's scopes name what it may do per resource, the operation's tag in lower case: `read:invoices` calls the GET operations tagged Invoices, `write:invoices` also the others; `read:*` and `write:*` cover every resource, and write implies read. Anything else answers 403 token_scope. The token acts as its person with their live role and permissions, in the token's workspace, and works only while that person's access includes API & MCP (else 403 forbidden). Amounts are exact decimal strings. Errors are `{\"error\": {\"code\", \"message\", \"details\"}}`. 600 requests a minute per token. The same operations are tools on the MCP server at /api/mcp.",
+    "description": "The public part of Helvetly's API: clients, invoices, quotes, instalment plans, payments, expenses, documents, engagements, scheduled sessions, products, the books (periods, audit log, VAT return, ledger) and the key figures (reports) of one workspace. Authenticate with a personal API token (Settings → API & MCP): `Authorization: Bearer hvt_…`. A token's scopes name what it may do per resource, the operation's tag in lower case: `read:invoices` calls the GET operations tagged Invoices, `write:invoices` also the others; `read:*` and `write:*` cover every resource, and write implies read. Anything else answers 403 token_scope. The token acts as its person with their live role and permissions, in the token's workspace, and works only while that person's access includes API & MCP (else 403 forbidden). Amounts are exact decimal strings. Errors are `{\"error\": {\"code\", \"message\", \"details\"}}`. The workspace's plan sets its API requests a minute, reads (GET) and writes apart, shared by all its tokens (429 rate_limited). The same operations are tools on the MCP server at /api/mcp.",
     "contact": {
       "name": "Helvetly",
       "url": "https://www.helvetly.com"
@@ -9321,7 +9321,14 @@
             "items": {
               "type": "string"
             },
-            "description": "Lower-case tags, at most 10."
+            "description": "Lower-case tags: at most 10 of the people's own, then the automatic ones."
+          },
+          "auto_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Those of tags the app set from what the file is (kind, year-YYYY, client-<name>, the record's number, expense-<category>, from-quote-<number>, signed). A removed one is never set again."
           },
           "ai_filing": {
             "anyOf": [
@@ -10756,6 +10763,10 @@
           "qr_bill": {
             "type": "boolean"
           },
+          "confirmed": {
+            "type": "boolean",
+            "description": "The mail server took the email; false while it goes out, or when it may have gone (never sent again by itself)."
+          },
           "title": {
             "type": "string",
             "description": "The notice's title in the invoice's language."
@@ -10775,7 +10786,8 @@
           "email",
           "sent_by",
           "qr_bill",
-          "title"
+          "title",
+          "confirmed"
         ]
       },
       "SelfBillingAgreementList": {
@@ -12417,8 +12429,8 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 10,
-            "description": "Replaces the tags: trimmed and lower-cased; each uses letters a–z, digits and hyphens (not first or last), at most 32 characters."
+            "maxItems": 20,
+            "description": "Replaces the tags: trimmed and lower-cased; each uses letters a–z, digits and hyphens (not first or last), at most 32 characters; at most 10 besides the file's auto_tags. An automatic tag left out is removed for good."
           }
         },
         "examples": [

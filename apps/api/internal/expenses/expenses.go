@@ -321,19 +321,24 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 }
 
 // refile moves the expense's linked files that still sit in the folder Expenses/<year>/<category> its old category and
-// date gave to the new one, swapping the category tag; a file the user moved elsewhere stays.
+// date gave to the new one (moving tags it anew); a file the user moved elsewhere stays.
 func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, old, e store.Expense) error {
 	oldYear, year := store.ExpenseYear(old.DocumentDate, s.today(sess.Workspace)), store.ExpenseYear(e.DocumentDate, s.today(sess.Workspace))
 	if equalRef(old.CategoryID, e.CategoryID) && oldYear == year {
 		return nil
 	}
 	from, err := q.ExistingExpenseYearFolder(ctx, sess.Workspace.ID, old.CategoryID, oldYear)
-	if err != nil || from == "" {
+	if err != nil {
 		return err
 	}
 	docs, err := q.ExpenseDocuments(ctx, sess.Workspace.ID, e.ID)
 	if err != nil {
 		return err
+	}
+	for _, d := range docs { // the category and year tags follow, also where the file was moved elsewhere
+		if err := q.AutoTag(ctx, sess.Workspace.ID, d.ID, s.now()); err != nil {
+			return err
+		}
 	}
 	var to *string
 	for _, d := range docs {
@@ -352,11 +357,6 @@ func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, old
 			return err
 		}
 		if err := q.UpdateDocument(ctx, sess.Workspace.ID, d.ID, name, to, s.now()); err != nil {
-			return err
-		}
-		oldTag := strings.ToLower(strings.Join(strings.Fields(categoryName(old)), " "))
-		kept := slices.DeleteFunc(slices.Clone(d.Tags), func(t string) bool { return oldTag != "" && t == oldTag })
-		if err := q.SetDocumentTags(ctx, sess.Workspace.ID, d.ID, expenseTags(kept, categoryName(e)), s.now()); err != nil {
 			return err
 		}
 	}

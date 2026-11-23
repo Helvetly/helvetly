@@ -577,11 +577,24 @@ function TagsPanel({
         />
       ) : file.tags.length > 0 ? (
         <span className="flex flex-wrap gap-1">
-          {file.tags.map((tag) => (
-            <Badge size="sm" key={tag}>
-              {tag}
-            </Badge>
-          ))}
+          {file.tags.map((tag) =>
+            file.auto_tags?.includes(tag) ? (
+              <Tooltip key={tag}>
+                <TooltipTrigger asChild>
+                  <Badge size="sm" variant="outline" tabIndex={0} data-auto-tag="">
+                    {tag}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64 text-pretty">
+                  {translate('autoTagHint')}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Badge size="sm" key={tag}>
+                {tag}
+              </Badge>
+            ),
+          )}
         </span>
       ) : (
         <p className="text-body-sm text-muted-foreground">{translate('noTagsYet')}</p>

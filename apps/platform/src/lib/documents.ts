@@ -89,8 +89,10 @@ export type DocFile = {
   content_type: string
   kind: Kind
   sha256: string | null
-  /** Lower-case, at most 10. */
+  /** Lower-case: at most 10 of the people's own, then the automatic ones. */
   tags: string[]
+  /** Those of `tags` the app set from what the file is (shown muted); a removed one never comes back. */
+  auto_tags?: string[]
   ai_filing: AIFiling | null
   previewable: boolean
   links: DocLink[]
@@ -292,7 +294,7 @@ export const zipUrl = (view: ViewParams, userId: string | undefined) =>
 export type ZipExport = {
   id: string
   name: string
-  status: 'pending' | 'ready' | 'failed'
+  status: 'pending' | 'ready' | 'failed' | 'expired' // expired: only by id, until the cleanup deletes it
   files: number
   bytes: number
   created_at: string
@@ -517,6 +519,9 @@ export const docsApi = {
     request<{ data: ZipExport }>(`/documents/groups/zip?${query}`, { method: 'POST' }),
   /** The person's own ZIPs: pending, ready, recently failed. */
   zipExports: () => request<{ data: ZipExport[] }>('/documents/exports'),
+  /** One of the person's own ZIPs, by id, for as long as it is kept (the bell's link). */
+  zipExport: (id: string) =>
+    request<{ data: ZipExport }>(`/documents/exports/${encodeURIComponent(id)}/status`),
   get: (id: string) => request<{ data: DocFile }>(path(id)),
   update: (
     id: string,

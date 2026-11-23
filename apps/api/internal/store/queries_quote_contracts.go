@@ -2,7 +2,10 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // Quote contracts (migration 00055): the contract documents made from a quote, newest first.
@@ -55,7 +58,10 @@ func (q Q) AddQuoteContract(ctx context.Context, workspaceID, quoteID, documentI
 	_, err := q.db.Exec(ctx, `INSERT INTO quote_contracts (workspace_id, quote_id, document_id, number, template_id, created_by, created_at)
 		VALUES ($1, $2, $3, $4, nullif($5, ''), nullif($6, ''), $7) ON CONFLICT DO NOTHING`,
 		workspaceID, quoteID, documentID, number, templateID, userID, now)
-	return err
+	if err != nil {
+		return err
+	}
+	return q.AutoTag(ctx, workspaceID, documentID, now)
 }
 
 // SetQuoteContractSections keeps a written contract's reviewed sections (JSON) with its link to the quote.
@@ -111,4 +117,17 @@ func (q Q) QuoteContractCounts(ctx context.Context, workspaceID string) (map[str
 		out[id] = n
 	}
 	return out, rows.Err()
+}
+
+// QuoteContractFile: a live contract of the quote, by its document: its number, stored PDF (key, name) and the
+// printed document (JSON, without the logo); ErrNotFound when the quote has no such contract.
+func (q Q) QuoteContractFile(ctx context.Context, workspaceID, quoteID, documentID string) (number, key, name string, sections []byte, err error) {
+	err = q.db.QueryRow(ctx, `SELECT qc.number, d.object_key, d.name, qc.sections
+		FROM quote_contracts qc JOIN documents d ON d.id = qc.document_id AND d.workspace_id = qc.workspace_id
+		WHERE qc.workspace_id = $1 AND qc.quote_id = $2 AND qc.document_id = $3 AND d.deleted_at IS NULL AND qc.sections IS NOT NULL`,
+		workspaceID, quoteID, documentID).Scan(&number, &key, &name, &sections)
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = ErrNotFound
+	}
+	return number, key, name, sections, err
 }
