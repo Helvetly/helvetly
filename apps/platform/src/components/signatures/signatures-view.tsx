@@ -17,6 +17,7 @@ import { translate } from '@/lib/i18n'
 import {
   originalUrl,
   progressOf,
+  remindTargets,
   signaturesApi,
   useSignatureMutation,
   signerColor,
@@ -254,15 +255,19 @@ function requestMenu(
         disabled: !shown,
         disabledReason: shown ? undefined : translate('itsFileIsNoLongerInDocuments'),
       },
-      {
-        id: 'remind',
-        group: 'send',
-        icon: <BellRing />,
-        label: translate('sendReminder'),
-        onSelect: () => on.onRemind(request.id),
-        disabled: !pending || on.reminding,
-        disabledReason: notPending,
-      },
+      // Only while someone is still waiting for it, as the request's drawer shows it.
+      ...(remindTargets(request).length
+        ? [
+            {
+              id: 'remind',
+              group: 'send' as const,
+              icon: <BellRing />,
+              label: translate('sendReminder'),
+              onSelect: () => on.onRemind(request.id),
+              disabled: on.reminding,
+            },
+          ]
+        : []),
       {
         id: 'revoke',
         group: 'danger',

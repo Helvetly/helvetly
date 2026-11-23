@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 
 import { promptUpgrade, toastError } from '@/components/billing/upgrade-prompt'
 import { FileTile, kindOfType } from '@/components/documents/kind'
+import { ShareButton, ShareDialog } from '@/components/documents/share-dialog'
 import { RecordLink } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import {
@@ -266,9 +267,11 @@ function FileRow({
   onDelete: () => void
 }) {
   const href = fileUrl(clientId, file.id)
+  const kind = kindOfType(file.content_type)
+  const [sharing, setSharing] = useState(false)
   return (
     <li className="group/file -mx-2 flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/50">
-      <FileTile file={{ name: file.name, kind: kindOfType(file.content_type) }} />
+      <FileTile file={{ name: file.name, kind }} />
       <span className="grid min-w-0 flex-1 gap-0.5">
         <a
           href={localizedHref(href)}
@@ -292,6 +295,7 @@ function FileRow({
             </RecordLink>
           </Button>
         </Tip>
+        <ShareButton file={file} onOpen={() => setSharing(true)} />
         <Tip label={translate('download')}>
           <Button
             asChild
@@ -316,6 +320,17 @@ function FileRow({
           </Button>
         </Tip>
       </span>
+      {sharing && (
+        <ShareDialog
+          // This client is the likely audience.
+          file={{
+            ...file,
+            kind,
+            links: [{ type: 'client', id: clientId, label: '', retains: false }],
+          }}
+          onClose={() => setSharing(false)}
+        />
+      )}
     </li>
   )
 }

@@ -34,6 +34,9 @@ func TestShareTwiceNoop(t *testing.T) {
 	if sh, err := q.DocumentShares(ctx, "wsp_a", "doc_1"); err != nil || len(sh) != 1 || sh[0].ClientName != "One" {
 		t.Fatalf("shares = %+v, %v", sh, err)
 	}
+	if d, err := q.Document(ctx, "wsp_a", "doc_1"); err != nil || len(d.SharedWith) != 1 || d.SharedWith[0].ClientName != "One" {
+		t.Fatalf("document shared_with = %+v, %v", d.SharedWith, err)
+	}
 	if err := q.UnshareDocument(ctx, "wsp_a", "doc_1", "cli_1"); err != nil {
 		t.Fatal(err)
 	}

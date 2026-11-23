@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import type { DocFile } from '@/lib/documents'
 
-import { ShareDrawer } from './share-drawer'
+import { ShareDialog } from './share-dialog'
 
 let shares: { client_id: string; client_name: string; shared_at: string }[] = []
 let clients = [
@@ -54,24 +54,27 @@ afterEach(() => {
 afterAll(() => server.close())
 
 const file = (links: DocFile['links'] = []) =>
-  ({ id: 'doc_1', name: 'Contract.pdf', links }) as DocFile
+  ({ id: 'doc_1', name: 'Contract.pdf', kind: 'pdf', links }) satisfies Pick<
+    DocFile,
+    'id' | 'name' | 'kind' | 'links'
+  >
 
-function open(doc: DocFile) {
+function open(doc: Pick<DocFile, 'id' | 'name' | 'kind' | 'links'>) {
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <ShareDrawer file={doc} onClose={() => {}} />
+      <ShareDialog file={doc} onClose={() => {}} />
     </QueryClientProvider>,
   )
 }
 
-describe('ShareDrawer', () => {
+describe('ShareDialog', () => {
   it('preselects the linked client and shares with it', async () => {
     open(file([{ type: 'client', id: 'cli_2', label: 'Meier GmbH', retains: false }]))
-    const select = await screen.findByLabelText('Client')
-    await waitFor(() => expect(select).toHaveValue('cli_2'))
-    await userEvent.click(screen.getByRole('button', { name: 'Share' }))
+    const share = await screen.findByRole('button', { name: 'Share' })
+    await waitFor(() => expect(share).toBeEnabled())
+    await userEvent.click(share)
     await waitFor(() => expect(posted).toEqual([{ client_id: 'cli_2' }]))
     expect(await screen.findByRole('button', { name: 'Remove Meier GmbH' })).toBeEnabled()
   })
@@ -80,15 +83,17 @@ describe('ShareDrawer', () => {
     shares = [{ client_id: 'cli_1', client_name: 'Keller AG', shared_at: '2026-11-01T10:00:00Z' }]
     open(file())
     await userEvent.click(await screen.findByRole('button', { name: 'Remove Keller AG' }))
+    expect(deleted).toEqual([])
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(deleted).toEqual(['cli_1']))
-    expect(await screen.findByText('Not shared with anyone yet.')).toBeInTheDocument()
+    expect(await screen.findByText('Not shared with any client yet.')).toBeInTheDocument()
   })
 
   it('disables the picker when there is no client to share with', async () => {
     clients = []
     open(file())
-    await screen.findByText('Not shared with anyone yet.')
-    expect(screen.getByLabelText('Client')).toBeDisabled()
+    await screen.findByText('Not shared with any client yet.')
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Client/ })).toBeDisabled())
     expect(screen.getByRole('button', { name: 'Share' })).toBeDisabled()
   })
 })

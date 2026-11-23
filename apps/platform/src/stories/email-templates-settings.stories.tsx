@@ -165,3 +165,55 @@ export const ReadOnly: Story = {
   },
 }
 export const ReadOnlyPhone = phone(ReadOnly)
+
+/** The message grows with its text and has no resize grip; both fields count their characters against the limit. */
+export const Limits: Story = {
+  play: async () => {
+    const box = await openTemplate('Quote')
+    const text = field(box, 'Message')
+    await expect(getComputedStyle(text).resize).toBe('none')
+    await expect(getComputedStyle(text.closest('[data-slot="textarea-box"]') ?? text).resize).toBe(
+      'none',
+    )
+    await expect(text).toHaveAttribute('maxlength', '1000')
+    await userEvent.clear(text)
+    await userEvent.type(text, 'Hello')
+    await expect(box.getByText('5 / 1000')).toBeVisible()
+    await expect(box.getByText(/^\d+ \/ 200$/)).toBeVisible()
+    // A chip goes where the cursor is in the field last focused: the subject here.
+    const subject = field(box, 'Subject')
+    await userEvent.clear(subject)
+    await userEvent.type(subject, 'Quote  ready')
+    subject.setSelectionRange(6, 6)
+    await userEvent.click(box.getByRole('button', { name: '{number}' }))
+    await expect(subject).toHaveValue('Quote {number} ready')
+    await expect(text).toHaveValue('Hello')
+  },
+}
+
+/** Write with AI writes every language at once: each shows its changes before Apply, and Undo puts them back. */
+export const WriteWithAI: Story = {
+  play: async () => {
+    const box = await openTemplate('Quote')
+    await userEvent.click(box.getByRole('button', { name: 'Write with AI' }))
+    const panel = within(await box.findByRole('region', { name: 'Write with AI' }))
+    await userEvent.type(
+      panel.getByRole('textbox', { name: 'Instruction for Heidi (optional)' }),
+      'more formal',
+    )
+    await userEvent.click(panel.getByRole('button', { name: 'Write' }))
+    await expect(
+      await panel.findByLabelText('Changes in Deutsch', {}, { timeout: 5000 }),
+    ).toBeVisible()
+    await expect(panel.getByText('Dear {client}')).toBeVisible()
+    await userEvent.click(panel.getByRole('radio', { name: 'Français' }))
+    await expect(panel.getByLabelText('Changes in Français')).toBeVisible()
+    await userEvent.click(panel.getByRole('button', { name: 'Apply to all languages' }))
+    await expect(field(box, 'Message')).toHaveDisplayValue(/^Dear \{client\}/)
+    await userEvent.click(box.getByRole('radio', { name: /^English/ }))
+    await expect(field(box, 'Message')).toHaveDisplayValue(/^Dear \{client\}/)
+    await userEvent.click(box.getByRole('button', { name: 'Undo' }))
+    await expect(field(box, 'Message')).toHaveDisplayValue(/^Hello/)
+  },
+}
+export const WriteWithAIDark = dark(WriteWithAI)

@@ -6,9 +6,21 @@ import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { ChevronDown, FileText, GitCompareArrows, History } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  Clock,
+  FileText,
+  GitCompareArrows,
+  History,
+  Pencil,
+  Send,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
+import { TimelineItem, type TimelineTone } from '@/components/timeline'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { formatDay, formatMoney, UNITS, type Line } from '@/lib/invoices'
@@ -87,29 +99,26 @@ export function QuoteHistory({
 
 type Mark = 'draft' | 'current' | 'past' | 'accepted' | 'declined' | 'expired'
 
-const MARKS: Record<Mark, string> = {
-  draft: 'border border-dashed border-muted-foreground/50 bg-card',
-  current: 'bg-brand-solid',
-  past: 'bg-muted-foreground/40',
-  accepted: 'bg-success-solid',
-  declined: 'bg-destructive',
-  expired: 'bg-warning-solid',
+const MARKS: Record<Mark, { tone: TimelineTone; icon: LucideIcon }> = {
+  draft: { tone: 'neutral', icon: Pencil },
+  current: { tone: 'brand', icon: Send },
+  past: { tone: 'neutral', icon: History },
+  accepted: { tone: 'success', icon: Check },
+  declined: { tone: 'danger', icon: X },
+  expired: { tone: 'warning', icon: Clock },
 }
 
-/** One step of the vertical timeline: its dot, the line down to the next, and the content. */
+/** One step of the vertical timeline, in the app's timeline colours. */
 function Entry({ mark, last, children }: { mark: Mark; last: boolean; children: ReactNode }) {
   return (
-    <li className="relative grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 pb-5 last:pb-0">
-      {!last && (
-        <span aria-hidden className="absolute top-4 bottom-0 left-[4.5px] w-px bg-border" />
-      )}
-      <span
-        aria-hidden
-        data-mark={mark}
-        className={cn('mt-1.5 size-2.5 rounded-full ring-2 ring-card', MARKS[mark])}
-      />
-      <div className="grid min-w-0 gap-1">{children}</div>
-    </li>
+    <TimelineItem
+      tone={MARKS[mark].tone}
+      icon={MARKS[mark].icon}
+      dashed={mark === 'draft'}
+      last={last}
+    >
+      {children}
+    </TimelineItem>
   )
 }
 
