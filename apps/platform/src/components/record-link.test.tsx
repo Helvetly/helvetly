@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   drawerKey,
+  MAX_STACK,
   nextStack,
   parseDrawerKey,
   parseRecordHref,
@@ -85,6 +86,21 @@ describe('nextStack', () => {
     const signature = { kind: 'signature', id: 'sig_1' } as const
     expect(nextStack([], signature, '/documents?view=signatures&request=sig_1')).toEqual([])
     expect(nextStack([], signature, '/documents?file=sig_1')).toEqual([signature])
+  })
+  it('replaces the top drawer once MAX_STACK are open', () => {
+    const records = Array.from({ length: MAX_STACK }, (_, n) => ({
+      kind: 'client' as const,
+      id: `cli_${n}`,
+    }))
+    const full = records.reduce<DrawerRef[]>((stack, next) => nextStack(stack, next, '/'), [])
+    expect(full).toEqual(records)
+    expect(nextStack(full, invoice, '/')).toEqual([...records.slice(0, -1), invoice])
+  })
+  it('opens a session from its scheduling link, or uncovers the page’s own', () => {
+    const session = { kind: 'session', id: 'occ_1' } as const
+    expect(parseRecordHref('/scheduling?session=occ_1')).toEqual(session)
+    expect(nextStack([], session, '/scheduling?view=day&session=occ_1')).toEqual([])
+    expect(parseDrawerKey('session:occ_1')).toEqual(session)
   })
 })
 

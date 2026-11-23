@@ -21,6 +21,7 @@ import { ProductForm } from '@/components/products/product-form'
 import { productDefaults } from '@/components/products/product-form-model'
 import { QuoteDetail } from '@/components/quotes/quote-detail'
 import { NewQuoteSheet } from '@/components/quotes/quote-editor'
+import { SessionDrawer } from '@/components/scheduling/session-drawer'
 import { RequestDrawer } from '@/components/signatures/request-drawer'
 import { canDeleteClients, useDeleteClient, useSaveClient, type Client } from '@/lib/clients'
 import {
@@ -34,6 +35,7 @@ import { translate } from '@/lib/i18n'
 import { canManageInvoices, useInvoiceSettings } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
+import { getWorkspaceTimezone } from '@/lib/timezone'
 
 import {
   drawerKey,
@@ -124,18 +126,20 @@ export function RecordDrawers({ children }: { children: ReactNode }) {
 type StackEntry = DrawerRef & { slot?: string }
 
 // The static export renders without a window: nothing is stacked there.
-const readStack = (): StackEntry[] =>
-  typeof window === 'undefined'
-    ? []
-    : new URLSearchParams(window.location.search)
-        .getAll('drawer')
-        .map(parseDrawerKey)
-        .filter((record) => record !== null)
+function readStack(): StackEntry[] {
+  if (typeof window === 'undefined') return []
+  const query = new URLSearchParams(window.location.search)
+  // `?open=invoice:inv_1` is the deep link's spelling; the stack writes itself back as `?drawer=`.
+  return [...query.getAll('drawer'), ...query.getAll('open')]
+    .map(parseDrawerKey)
+    .filter((record) => record !== null)
+}
 
 /** Writes the stack into the address through the history API: a router navigation would re-render the page under it. */
 function markInAddress(stack: DrawerRef[]) {
   const query = new URLSearchParams(window.location.search)
   query.delete('drawer')
+  query.delete('open')
   for (const record of stack) query.append('drawer', drawerKey(record))
   const search = query.size > 0 ? `?${query}` : ''
   if (search === window.location.search) return
@@ -294,7 +298,30 @@ function RecordDrawer({
     return <StackedExpense id={record.id} open={open} onClose={onClose} />
   if (record.kind === 'document') return <StackedDocument id={record.id} onClose={onClose} />
   if (record.kind === 'signature') return <RequestDrawer id={record.id} onClose={onClose} />
+  if (record.kind === 'session')
+    return <StackedSession id={record.id} open={open} onClose={onClose} />
   return <EngagementDetail id={record.id} onOpenChange={(isOpen) => !isOpen && onClose()} />
+}
+
+function StackedSession({
+  id,
+  open,
+  onClose,
+}: {
+  id: string
+  open: (record: RecordRef) => void
+  onClose: () => void
+}) {
+  const [now] = useState(() => new Date())
+  return (
+    <SessionDrawer
+      target={{ kind: 'view', id }}
+      zone={getWorkspaceTimezone()}
+      now={now}
+      onClose={onClose}
+      onView={(next) => open({ kind: 'session', id: next })}
+    />
+  )
 }
 
 function StackedInvoice({

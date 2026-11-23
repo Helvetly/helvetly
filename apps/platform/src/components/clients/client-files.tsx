@@ -11,13 +11,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { formatDate, formatFileSize } from '@helvetly/ui/lib/format'
 import { useQueryClient } from '@tanstack/react-query'
 import { Download, Eye, Paperclip, Trash2, Upload } from 'lucide-react'
-import Link from 'next/link'
 import { useRef, useState, type DragEvent, type ReactElement } from 'react'
 import { toast } from 'sonner'
 
 import { promptUpgrade, toastError } from '@/components/billing/upgrade-prompt'
 import { FileTile, kindOfType } from '@/components/documents/kind'
 import { ShareButton, ShareDialog } from '@/components/documents/share-dialog'
+import { RecordLink } from '@/components/record-link'
 import { errorMessage } from '@/lib/api'
 import {
   clientKeys,
@@ -290,9 +290,9 @@ function FileRow({
             className="text-muted-foreground"
             aria-label={translate('preview2', { name: file.name })}
           >
-            <Link href={previewHref(file)}>
+            <RecordLink href={previewHref(file)}>
               <Eye />
-            </Link>
+            </RecordLink>
           </Button>
         </Tip>
         <ShareButton file={file} onOpen={() => setSharing(true)} />
