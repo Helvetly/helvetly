@@ -84,6 +84,11 @@ export const RESOURCES = [
     description: translate('personalApiTokensNeverBeyondTheirOwnAccess'),
     viewOnly: translate('viewLetsThemCreateAndUseTokens'),
   },
+  {
+    id: 'scheduling',
+    label: translate('schedulingSettingsTitle'),
+    description: translate('schedulingSettingsAccessDescription'),
+  },
   // HR: a "*" resource never reaches these; owners hold both, admins ADMIN_HR until the owner sets their own list.
   {
     id: 'employees',
@@ -181,6 +186,7 @@ export function levelsOf(scopes: readonly string[]): Levels {
     api: 'none',
     employees: 'none',
     payroll: 'none',
+    scheduling: 'none',
   }
   for (const resource of RESOURCES) {
     if (can(scopes, `write:${resource.id}`))
@@ -291,6 +297,7 @@ const ROUTES: [string, Resource][] = [
   // Owners and admins only: the settings tabs also check the role (members can hold `*:*`).
   ['/settings/approvals', 'workspace'],
   ['/settings/emails', 'invoice-settings'],
+  ['/settings/scheduling', 'scheduling'],
   ['/settings/audit-log', 'audit-log'],
   ['/employees/payroll', 'payroll'],
   // The list also serves payroll, which picks employees by name: see `canReadPath`.
