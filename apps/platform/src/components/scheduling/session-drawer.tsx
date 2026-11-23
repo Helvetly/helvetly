@@ -53,6 +53,7 @@ import {
   type SchedEvent,
 } from '@/lib/scheduling'
 
+import { MapLink } from './address-input'
 import { HostDot, StatusBadge, useSessionChange } from './bits'
 import { whenLabel, RequestCard } from './requests'
 import { SessionFields } from './session-form'
@@ -602,7 +603,14 @@ function SessionDetails({
             </Row>
           ) : (
             <Row icon={MapPin} label={translate('location')}>
-              {occurrence.location ?? <span className="text-muted-foreground">—</span>}
+              {occurrence.location ? (
+                <span className="inline-flex items-start gap-1.5">
+                  {occurrence.location}
+                  <MapLink location={occurrence.location} className="size-5 shrink-0" />
+                </span>
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
             </Row>
           )}
           {event.recurrence && (

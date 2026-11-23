@@ -3,7 +3,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Combobox } from '@helvetly/ui/components/combobox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
-import { Input } from '@helvetly/ui/components/input'
+import { Input, inputClass } from '@helvetly/ui/components/input'
 import {
   InputGroup,
   InputGroupAddon,
@@ -34,6 +34,7 @@ import {
   type EventTypeInput,
 } from '@/lib/scheduling-settings'
 
+import { AddressInput } from '../address-input'
 import { DurationSelect } from './duration-select'
 
 const blank = (): EventTypeInput => ({
@@ -340,11 +341,13 @@ function EventTypeDrawer({ type, onClose }: { type: EventType | null; onClose: (
               </FormField>
             ) : (
               <FormField id="event-type-location" label={translate('schedulingSettingsLocation')}>
-                <Input
+                <AddressInput
+                  id="event-type-location"
                   maxLength={200}
                   value={draft.location ?? ''}
                   placeholder={translate('schedulingSettingsLocationPlaceholder')}
-                  onChange={(event) => set({ location: event.target.value || null })}
+                  onChange={(location) => set({ location: location || null })}
+                  className={inputClass}
                 />
               </FormField>
             )}

@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"helvetly.com/api/internal/addresses"
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/aiwrite"
 	"helvetly.com/api/internal/approvals"
@@ -164,6 +165,10 @@ func run() error {
 		uidRegister = reg
 		clientsSvc.SetRegister(reg)
 	}
+	var addressSuggest *addresses.Service // nil when off: suggestions answer an empty list
+	if cfg.AddressSuggestURL != "" {
+		addressSuggest = addresses.New(cfg.AddressSuggestURL)
+	}
 	invoicesSvc := invoices.New(db, authSvc, files, mailer, slog.Default())
 	if branded != nil {
 		branded.Brands = invoicesSvc.MailBrand
@@ -305,6 +310,7 @@ func run() error {
 		exportSvc.Register(mux)
 		clientsSvc.Register(mux)
 		uidregister.Routes(mux, authSvc, uidRegister)
+		addresses.Routes(mux, authSvc, addressSuggest)
 		portalSvc.Register(mux)
 		invoicesSvc.Register(mux)
 		approvalsSvc.Register(mux)

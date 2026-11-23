@@ -59,7 +59,10 @@ type Config struct {
 	// UIDRegisterURL: the Swiss UID register's public SOAP service (UID_REGISTER_URL), for the client form's company
 	// lookup; the federal production endpoint by default, "off" = no lookups.
 	UIDRegisterURL string
-	AI             AI
+	// AddressSuggestURL: the Photon API behind the location fields' address suggestions (ADDRESS_SUGGEST_URL); the
+	// public instance by default, "off" = none.
+	AddressSuggestURL string
+	AI                AI
 	// FeedbackEmail receives Help & feedback reports (FEEDBACK_EMAIL); empty = reports are stored only.
 	FeedbackEmail string
 	// GoogleAnalyticsID: the GA4 measurement id of the platform's page views (GOOGLE_ANALYTICS_ID, G-...); empty = off,
@@ -511,6 +514,12 @@ func Load() (Config, error) {
 		c.UIDRegisterURL = ""
 	} else if u, err := url.Parse(c.UIDRegisterURL); err != nil || u.Host == "" || (u.Scheme != "https" && !(u.Scheme == "http" && localHost(u.Hostname()))) {
 		fail("UID_REGISTER_URL must be an https URL such as https://www.uid-wse.admin.ch/V5.0/PublicServices.svc, or off, got %q", c.UIDRegisterURL)
+	}
+
+	if c.AddressSuggestURL = env("ADDRESS_SUGGEST_URL", "https://photon.komoot.io/api/"); c.AddressSuggestURL == "off" {
+		c.AddressSuggestURL = ""
+	} else if u, err := url.Parse(c.AddressSuggestURL); err != nil || u.Host == "" || (u.Scheme != "https" && !(u.Scheme == "http" && localHost(u.Hostname()))) {
+		fail("ADDRESS_SUGGEST_URL must be an https URL such as https://photon.komoot.io/api/, or off, got %q", c.AddressSuggestURL)
 	}
 
 	if c.SessionTTL, err = time.ParseDuration(env("SESSION_TTL", "720h")); err != nil || c.SessionTTL <= 0 {
