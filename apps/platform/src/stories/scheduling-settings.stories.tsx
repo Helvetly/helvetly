@@ -204,3 +204,19 @@ export const CalendarFeed: Story = {
     )
   },
 }
+
+/** A member who never chose a zone follows the workspace's; the page must not break on it. */
+export const HoursFollowWorkspaceZone: Story = {
+  parameters: page('owner'),
+  beforeEach: () => resetSchedulingSettings({ providers: [], hours: { time_zone: null } }),
+  render: () => (
+    <Shell>
+      <Calendars userId="usr_story" />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const zone = await canvas.findByRole('button', { name: 'Time zone' })
+    await waitFor(() => expect(zone).toHaveTextContent('Zurich'))
+  },
+}

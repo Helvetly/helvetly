@@ -14,6 +14,7 @@ import { SettingsSection } from '@/components/settings/layout'
 import { timeZoneOptions } from '@/components/settings/workspace-settings'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
+import { useSession } from '@/lib/queries'
 import {
   useHostHours,
   useSaveHours,
@@ -93,8 +94,11 @@ function HoursForm({ userId, saved }: { userId: string; saved: HostHours }) {
     fieldErrors: apiFieldErrors,
     savedMessage: () => translate('schedulingSettingsHoursSaved'),
   })
+  const workspaceZone = useSession().data?.workspace.timezone
   const v = form.values
-  const zones = useMemo(() => timeZoneOptions(v.time_zone), [v.time_zone])
+  // No zone of my own follows the workspace's; it is shown until I pick one.
+  const zone = v.time_zone ?? workspaceZone ?? 'UTC'
+  const zones = useMemo(() => timeZoneOptions(zone), [zone])
   const [date, setDate] = useState('')
   const setWindow = (target: Window, change: Partial<Window>) =>
     form.set(
@@ -135,10 +139,10 @@ function HoursForm({ userId, saved }: { userId: string; saved: HostHours }) {
         <FormField id="hours-zone" label={translate('schedulingSettingsMyZone')} width="md">
           <Combobox
             id="hours-zone"
-            value={v.time_zone}
+            value={zone}
             options={zones}
             placeholder={translate('schedulingSettingsMyZone')}
-            onChange={(zone) => form.set('time_zone', zone)}
+            onChange={(picked) => form.set('time_zone', picked)}
           />
         </FormField>
         <SwitchRow

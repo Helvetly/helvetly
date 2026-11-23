@@ -67,7 +67,7 @@ export type EventTypeInput = Omit<EventType, 'id' | 'archived_at'>
 export type Window = { day: number; start: string; end: string }
 export type Override = { date: string; start?: string | null; end?: string | null }
 export type HostHours = {
-  time_zone: string
+  time_zone: string | null
   bookable: boolean
   color: string | null
   weekly: Window[]
