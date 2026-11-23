@@ -35,6 +35,14 @@ import { getWorkspaceTimezone } from '@/lib/timezone'
 import { setUrlQuery } from '@/lib/url-query'
 
 import { HostDot, useSessionChange } from './bits'
+import {
+  FULL_DAY,
+  HoursMenu,
+  saveHours,
+  storedHours,
+  workingHours,
+  type HoursChoice,
+} from './hours-menu'
 import { ListView } from './list-view'
 import { MonthView } from './month-view'
 import { RequestsDrawer } from './requests'
@@ -70,7 +78,8 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
   const session = useSession().data
   const me = session?.user.id
   const workspaceZone = session?.workspace.timezone ?? getWorkspaceTimezone()
-  const zone = useHostProfile(me).data?.time_zone ?? workspaceZone
+  const profile = useHostProfile(me).data
+  const zone = profile?.time_zone ?? workspaceZone
   const lock = useFeatureLock('scheduling')
   const canWrite = useCan('write:scheduling') && !lock
 
@@ -96,6 +105,13 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
     return id ? { kind: 'view', id } : null
   })
   const [requestsOpen, setRequestsOpen] = useState(false)
+  const [savedHours, setSavedHours] = useState(storedHours)
+  // Until a range is chosen, working hours suggest the host's own (they load after the first render).
+  const hoursChoice: HoursChoice = savedHours ?? { mode: 'full', work: workingHours(profile) }
+  const chooseHours = (next: HoursChoice) => {
+    setSavedHours(next)
+    saveHours(next)
+  }
 
   const remember = (next: { view?: View; date?: string; session?: string | null }) => {
     const query = new URLSearchParams(params.toString())
@@ -283,6 +299,9 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
                   choose(next)
                 }}
               />
+              {(view === 'day' || view === 'week') && !toMark && (
+                <HoursMenu choice={hoursChoice} onChange={chooseHours} />
+              )}
               <Segmented
                 label={translate('schedHosts')}
                 size="sm"
@@ -358,8 +377,10 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
             busy={busy.data ?? []}
             lanes={lanes}
             now={now}
+            hours={hoursChoice.mode === 'full' ? FULL_DAY : hoursChoice.work}
             canWrite={canWrite}
             onOpen={(entry) => openSession(entry.id)}
+            onShowAll={() => chooseHours({ ...hoursChoice, mode: 'full' })}
             onCreate={(day, minutes, hostId) => newAt(day, minutes, hostId)}
             onMove={(entry, startsAt, endsAt) => void move(entry, startsAt, endsAt)}
           />
