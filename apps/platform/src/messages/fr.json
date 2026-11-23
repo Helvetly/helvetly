@@ -5183,5 +5183,16 @@
   "anyYear": "N’importe quelle année…",
   "auditDocumentsExported": "Documents téléchargés (ZIP)",
   "auditSentenceDocumentsExported": "{count, plural, one {# document téléchargé en ZIP} other {# documents téléchargés en ZIP}}",
-  "groupedViews": "Vues groupées"
+  "groupedViews": "Vues groupées",
+  "schedulingCategory": "Rendez-vous",
+  "notifySessionBooked": "Un client a réservé un rendez-vous",
+  "notifyBookingRequested": "Un client demande à réserver un rendez-vous",
+  "notifyCancelRequested": "Un client demande à annuler",
+  "notifyRescheduleRequested": "Un client demande à déplacer un rendez-vous",
+  "notifyCancelledByClient": "Un client a annulé un rendez-vous",
+  "notifyProposalAnswered": "Un client a répondu à votre nouvel horaire",
+  "notifyCalendarDisconnected": "Votre calendrier a été déconnecté",
+  "notifySessionDetached": "Un rendez-vous a été retiré de votre calendrier",
+  "sessionsYouHost": "Rendez-vous que vous animez",
+  "yourCalendars": "Vos calendriers connectés"
 }

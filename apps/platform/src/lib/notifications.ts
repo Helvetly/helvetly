@@ -14,6 +14,7 @@ import {
   Bell,
   BookCheck,
   Building2,
+  CalendarDays,
   ClipboardCheck,
   CreditCard,
   FileSignature,
@@ -82,6 +83,10 @@ export const CATEGORIES: Record<string, Category> = {
     label: translate('engagements'),
     icon: ClipboardCheck,
   },
+  scheduling: {
+    label: translate('schedulingCategory'),
+    icon: CalendarDays,
+  },
   team: {
     label: translate('team'),
     icon: Users,
@@ -106,6 +111,7 @@ export const categoryOf = (category: string) => CATEGORIES[category] ?? OTHER
 const MANAGERS = translate('forOwnersAndAdmins')
 const YOURS = translate('requestsYouSent')
 const YOURS_APPROVALS = translate('approvalsYouAskedFor')
+const HOSTS = translate('sessionsYouHost')
 
 /** What each event is called in the settings; an event a newer server adds stays unlisted until named here. */
 export const EVENT_LABELS: Record<string, { label: string; hint: string }> = {
@@ -143,6 +149,20 @@ export const EVENT_LABELS: Record<string, { label: string; hint: string }> = {
   },
   'engagement.draft_created': { label: translate('engagementDraftReady'), hint: MANAGERS },
   'engagement.over_committed': { label: translate('engagementOverCommitment'), hint: MANAGERS },
+  'scheduling.booked': { label: translate('notifySessionBooked'), hint: HOSTS },
+  'scheduling.booking_requested': { label: translate('notifyBookingRequested'), hint: HOSTS },
+  'scheduling.cancel_requested': { label: translate('notifyCancelRequested'), hint: HOSTS },
+  'scheduling.reschedule_requested': { label: translate('notifyRescheduleRequested'), hint: HOSTS },
+  'scheduling.cancelled_by_client': { label: translate('notifyCancelledByClient'), hint: HOSTS },
+  'scheduling.proposal_answered': { label: translate('notifyProposalAnswered'), hint: HOSTS },
+  'scheduling.calendar_disconnected': {
+    label: translate('notifyCalendarDisconnected'),
+    hint: translate('yourCalendars'),
+  },
+  'scheduling.event_detached': {
+    label: translate('notifySessionDetached'),
+    hint: translate('yourCalendars'),
+  },
   'member.invited': { label: translate('someoneInvited'), hint: MANAGERS },
   'member.joined': { label: translate('someoneJoined'), hint: MANAGERS },
   'member.role_changed': { label: translate('yourRoleChanged'), hint: translate('aboutYou') },

@@ -16,7 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"helvetly.com/api/internal/auth"
+
 	"helvetly.com/api/internal/config"
 	"helvetly.com/api/internal/engagements"
 	"helvetly.com/api/internal/invoices"
@@ -31,6 +33,7 @@ var fixedNow = time.Date(2026, 11, 16, 9, 0, 0, 0, time.UTC)
 type env struct {
 	t   *testing.T
 	st  *store.Store
+	db  *pgxpool.Pool
 	svc *Service
 	srv *httptest.Server
 	mu  sync.Mutex
@@ -40,14 +43,14 @@ type env struct {
 func newEnv(t *testing.T) *env {
 	t.Helper()
 	t.Parallel()
-	st, _ := storetest.New(t)
+	st, db := storetest.New(t)
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
 	a, err := auth.New(config.Config{PublicURL: "https://helvetly.example.com", SecretKey: bytes.Repeat([]byte{7}, 32),
 		SessionTTL: time.Hour}, st, discard)
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &env{t: t, st: st, now: fixedNow}
+	e := &env{t: t, st: st, db: db, now: fixedNow}
 	e.svc = New(st, a, invoices.New(st, a, nil, nil, discard), bytes.Repeat([]byte{7}, 32), "https://app.example.com", "https://portal.example.com", discard)
 	e.svc.now = func() time.Time { e.mu.Lock(); defer e.mu.Unlock(); return e.now }
 	mux := http.NewServeMux()

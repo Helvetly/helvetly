@@ -29,6 +29,10 @@ var actions = map[string]string{
 	"import.failed": "Open the import", "portal.domain_active": "View the portal settings",
 	"portal.domain_failed": "Check the domain", "portal.domain_released": "View the portal settings", "quote.accepted": "Make the invoice", "quote.declined": "View the quote",
 	"approval.requested": "Review the draft", "approval.approved": "Issue it", "approval.rejected": "Open the draft",
+	"scheduling.booked": "Open the session", "scheduling.booking_requested": "Review the booking",
+	"scheduling.cancel_requested": "Review the request", "scheduling.reschedule_requested": "Review the request",
+	"scheduling.cancelled_by_client": "Open the session", "scheduling.proposal_answered": "Open the session",
+	"scheduling.calendar_disconnected": "Connect it again", "scheduling.event_detached": "Open the session",
 }
 
 // data is a notification's stored fields; numbers read as their text.
@@ -123,6 +127,12 @@ func words(event string, d data) message {
 		}
 		return message{title: fmt.Sprintf("%s %s quote %s", or(d.s("client_name"), "The client"), verb, or(d.s("quote_number"), "without a number")),
 			body: body, href: "/quotes?" + url.Values{"id": {d.s("quote_id")}}.Encode()}
+	case "scheduling.booked", "scheduling.booking_requested", "scheduling.cancel_requested", "scheduling.reschedule_requested",
+		"scheduling.cancelled_by_client", "scheduling.proposal_answered", "scheduling.event_detached":
+		return schedulingWords(event, d)
+	case "scheduling.calendar_disconnected":
+		return message{title: "Your " + providerName(d.s("provider")) + " calendar was disconnected",
+			body: strings.TrimSpace(d.s("account_email") + " · Connect it again so your sessions stay in your calendar."), href: "/account"}
 	case "portal.first_sign_in":
 		return message{title: or(d.s("contact_name"), "The client") + " signed in to the client portal for the first time",
 			body: or(d.s("client_name"), "The client") + " can now see its invoices and shared documents there.",
@@ -335,4 +345,38 @@ func burstTitle(event string, n int) string {
 		return fmt.Sprintf("%d e-invoices could not be delivered", n)
 	}
 	return fmt.Sprintf("%d updates in Helvetly", n)
+}
+
+// schedulingWords: what a client did about a session (scheduling-contract.md, "Notifications"); body names when.
+func schedulingWords(event string, d data) message {
+	client, title := or(d.s("client_name"), "A client"), or(d.s("title"), "a session")
+	when := or(d.s("when"), d.s("starts_at"))
+	href := "/scheduling?" + url.Values{"occurrence": {d.s("occurrence_id")}}.Encode()
+	m := message{href: href, body: when}
+	switch event {
+	case "scheduling.booked":
+		m.title = client + " booked " + title
+	case "scheduling.booking_requested":
+		m.title, m.body = client+" asks to book "+title, when+" · Confirm or decline it."
+	case "scheduling.cancel_requested":
+		m.title = client + " asks to cancel " + title
+		if d.s("late") == "true" {
+			m.body = when + " · Late: it counts as a used session if you approve it."
+		}
+	case "scheduling.reschedule_requested":
+		m.title = client + " asks to move " + title
+	case "scheduling.cancelled_by_client":
+		m.title, m.body = client+" cancelled "+title, when+" · On time, so it does not count."
+	case "scheduling.proposal_answered":
+		verb := map[string]string{"accepted": "accepted", "declined": "declined"}[d.s("answer")]
+		m.title = client + " " + or(verb, "answered") + " your new time for " + title
+	case "scheduling.event_detached":
+		m.title = "A session was removed from your " + providerName(d.s("provider")) + " calendar"
+		m.body = "The session still takes place: push it to your calendar again or cancel it in Scheduling."
+	}
+	return m
+}
+
+func providerName(p string) string {
+	return or(map[string]string{"google": "Google", "microsoft": "Microsoft"}[p], "connected")
 }

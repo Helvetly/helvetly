@@ -178,7 +178,7 @@ func run() error {
 	productsSvc := products.New(db, authSvc, slog.Default())
 	engagementsSvc := engagements.New(db, authSvc, invoicesSvc, slog.Default())
 	engagementsSvc.SetMailer(mailer, cfg.PublicURL)
-	schedulingSvc := wireScheduling(db, authSvc, invoicesSvc, cfg)
+	schedulingSvc := wireScheduling(ctx, bg, db, authSvc, invoicesSvc, mailer, portalScopes, invoicesSvc.MailBrand, cfg)
 	instalmentsSvc := instalments.New(db, authSvc, invoicesSvc, files, slog.Default())
 	instalmentsSvc.SetMailer(mailer)
 	billingSvc, err := billing.New(ctx, db, authSvc, cfg, slog.Default())

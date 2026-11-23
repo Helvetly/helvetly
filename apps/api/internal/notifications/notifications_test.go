@@ -615,3 +615,34 @@ func TestRenderApproval(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderScheduling(t *testing.T) {
+	session := `"occurrence_id":"soc_1","title":"Coaching","client_id":"cli_1","client_name":"Anna Muster","when":"Tue, 1 Dec 2026, 09:00–10:00 (Europe/Zurich)"`
+	for _, c := range []struct{ event, data, title, body, href, action string }{
+		{"scheduling.booked", `{` + session + `}`, "Anna Muster booked Coaching", "Tue, 1 Dec 2026, 09:00–10:00 (Europe/Zurich)",
+			"/scheduling?occurrence=soc_1", "Open the session"},
+		{"scheduling.booking_requested", `{` + session + `}`, "Anna Muster asks to book Coaching",
+			"Tue, 1 Dec 2026, 09:00–10:00 (Europe/Zurich) · Confirm or decline it.", "/scheduling?occurrence=soc_1", "Review the booking"},
+		{"scheduling.cancel_requested", `{` + session + `,"late":true}`, "Anna Muster asks to cancel Coaching",
+			"Tue, 1 Dec 2026, 09:00–10:00 (Europe/Zurich) · Late: it counts as a used session if you approve it.",
+			"/scheduling?occurrence=soc_1", "Review the request"},
+		{"scheduling.reschedule_requested", `{` + session + `,"late":false}`, "Anna Muster asks to move Coaching",
+			"Tue, 1 Dec 2026, 09:00–10:00 (Europe/Zurich)", "/scheduling?occurrence=soc_1", "Review the request"},
+		{"scheduling.cancelled_by_client", `{` + session + `}`, "Anna Muster cancelled Coaching",
+			"Tue, 1 Dec 2026, 09:00–10:00 (Europe/Zurich) · On time, so it does not count.", "/scheduling?occurrence=soc_1", "Open the session"},
+		{"scheduling.proposal_answered", `{` + session + `,"answer":"declined"}`, "Anna Muster declined your new time for Coaching",
+			"Tue, 1 Dec 2026, 09:00–10:00 (Europe/Zurich)", "/scheduling?occurrence=soc_1", "Open the session"},
+		{"scheduling.calendar_disconnected", `{"provider":"google","account_email":"ana@example.com"}`,
+			"Your Google calendar was disconnected", "ana@example.com · Connect it again so your sessions stay in your calendar.",
+			"/account", "Connect it again"},
+		{"scheduling.event_detached", `{"occurrence_id":"soc_2","provider":"microsoft","starts_at":"2026-12-01T08:00:00Z"}`,
+			"A session was removed from your Microsoft calendar",
+			"The session still takes place: push it to your calendar again or cancel it in Scheduling.", "/scheduling?occurrence=soc_2",
+			"Open the session"},
+	} {
+		m := render(store.Notification{Event: c.event, Data: []byte(c.data)})
+		if m.title != c.title || m.body != c.body || m.href != c.href || m.action != c.action {
+			t.Errorf("%s: %+v", c.event, m)
+		}
+	}
+}
