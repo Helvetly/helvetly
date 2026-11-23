@@ -171,17 +171,19 @@ test('filling needs the custom answers, and valid signers when sending to sign',
 })
 
 test.each([
-  ['fr', 'de', 'fr'],
-  [null, 'it', 'it'],
-  ['pl', 'xx', 'de'],
-] as const)('a contract for a %s client of a %s quote is in %s', (ofClient, ofQuote, want) => {
-  expect(contractLanguage(ofClient, ofQuote)).toBe(want)
+  ['de', 'de'],
+  ['it', 'it'],
+  ['pl', 'en'],
+  ['en', 'en'],
+] as const)('a contract written from a %s interface is in %s', (ui, want) => {
+  expect(contractLanguage(ui)).toBe(want)
 })
 
 test('the review needs a title and complete sections', () => {
   const ok = {
     title: 'T',
     language: 'de' as const,
+    governing_law: 'CH',
     intro: '',
     clauses: [{ heading: 'A', body: 'B' }],
   }
@@ -207,6 +209,7 @@ describe('contract responses', () => {
     const written = await templatesApi.contractWrite('quo_1', {
       mode: 'ai',
       language: 'en',
+      governing_law: 'CH',
       instructions: '',
     })
     expect(written.data).toMatchObject({ clauses: [], warnings: [] })
@@ -214,6 +217,7 @@ describe('contract responses', () => {
     const preview = await templatesApi.contractPreview('quo_1', {
       title: 'T',
       language: 'en',
+      governing_law: 'CH',
       intro: '',
       clauses: [],
     })

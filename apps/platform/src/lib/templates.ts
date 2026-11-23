@@ -126,6 +126,9 @@ export type Delivery =
       expires_in_days: number
     }
 
+/** A written contract's delivery: `signed` prints your stored signature on the contractor's side. */
+export type ContractDelivery = Delivery & { signed?: boolean }
+
 export type GenerateRequest = {
   client_id: string
   /** The quote the document is a contract of: filed in the client's Documents/<year>/Contracts and linked to it. */
@@ -401,7 +404,7 @@ export const templatesApi = {
       `/quotes/${encodeURIComponent(quoteId)}/contract-preview`,
       { method: 'POST', json: body },
     ).then(({ data }) => ({ data: { ...data, warnings: data.warnings ?? [] } })),
-  createContract: (quoteId: string, body: ContractSections & { delivery: Delivery }) =>
+  createContract: (quoteId: string, body: ContractCreateRequest) =>
     request<{ data: Generated }>(`/quotes/${encodeURIComponent(quoteId)}/contracts`, {
       method: 'POST',
       json: body,
@@ -409,7 +412,35 @@ export const templatesApi = {
   quoteContracts: (quoteId: string) =>
     request<{ data: QuoteContract[] }>(`/quotes/${encodeURIComponent(quoteId)}/contracts`),
   contractCounts: () => request<{ data: Record<string, number> }>('/quotes/contract-counts'),
+  contractLaw: (quoteId: string) =>
+    request<{ data: ContractLaw }>(`/quotes/${encodeURIComponent(quoteId)}/contract-law`),
 }
+
+/** A governing law: Switzerland ("CH"), an EU member state ("DE") or a US state ("US-CA"). */
+export type GoverningLaw = { code: string; name: string; family: 'CH' | 'EU' | 'US' }
+
+/** The law a contract from the quote gets by default (the seller's), the ones to choose from, a consumer client. */
+export type ContractLaw = { default: GoverningLaw; options: GoverningLaw[]; b2c: boolean }
+
+export function useContractLaw(quoteId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.documents, 'contract-law', quoteId],
+    queryFn: async () => (await templatesApi.contractLaw(quoteId)).data,
+    staleTime: 60_000,
+  })
+}
+
+/** A contract made: the reviewed sections, or (as_is) the example document itself, numbered and filed. */
+export type ContractCreateRequest = (
+  | ContractSections
+  | {
+      as_is: true
+      example_document_id: string
+      title: string
+      language: Language
+      governing_law: string
+    }
+) & { delivery: ContractDelivery }
 
 /**
  * A contract's custom fields filled from a quote (`POST /quotes/{id}/contract-draft`): `sources` says
@@ -428,6 +459,8 @@ export type ContractClause = { heading: string; body: string }
 export type ContractSections = {
   title: string
   language: Language
+  /** The governing law's code; it decides the required clauses, the formats and the page size. */
+  governing_law: string
   intro: string
   clauses: ContractClause[]
 }
@@ -438,13 +471,15 @@ export type ContractSections = {
  */
 export type ContractWarning = {
   clause: number
-  kind: 'amount' | 'date' | 'personal_data'
+  kind: 'amount' | 'date' | 'personal_data' | 'statute'
   text: string
 }
 
 export type ContractWriteRequest = {
   mode: 'ai' | 'example' | 'improve'
+  /** Your interface language: the contract's, unless the instructions ask for another. */
   language: Language
+  governing_law: string
   instructions: string
   example_document_id?: string
   clause?: ContractClause
@@ -455,13 +490,9 @@ export type WrittenContract = ContractSections & { warnings: ContractWarning[] }
 /** The contract as it prints, numbered "Draft": a base64 PDF. */
 export type ContractPreview = { pdf: string; pages: number; warnings: ContractWarning[] }
 
-/** The language a contract for this client is written in: the client's, else the quote's, else German. */
-const isLanguage = (value: string | null | undefined): value is Language =>
-  LANGUAGES.some((language) => language === value)
-
-export function contractLanguage(client: string | null | undefined, quote: string): Language {
-  if (isLanguage(client)) return client
-  return isLanguage(quote) ? quote : 'de'
+/** The language a contract is written in: the interface's when contracts print in it, else English. */
+export function contractLanguage(ui: string): Language {
+  return LANGUAGES.find((language) => language === ui) ?? 'en'
 }
 
 /** What the review step needs before it lets you on, or null. */

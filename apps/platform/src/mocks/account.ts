@@ -164,6 +164,18 @@ const recoveryCodes = () =>
 
 // The uploaded photo's bytes, served back like the API's own photo URL.
 let photo: { bytes: ArrayBuffer; type: string } | null = null
+/** Your stored signature for contracts: its image (none at first) and place ("" = the workspace's city). */
+let contractSignature: { image: { bytes: ArrayBuffer; type: string } | null; place: string } = {
+  image: null,
+  place: '',
+}
+const signatureView = () => ({
+  data: {
+    has_image: contractSignature.image !== null,
+    place: contractSignature.place,
+    default_place: 'Zürich',
+  },
+})
 
 /** Back to the sample data; tests call it between cases. */
 export function resetAccountMock() {
@@ -171,6 +183,7 @@ export function resetAccountMock() {
   sessions = sampleSessions()
   tokens = sampleTokens()
   photo = null
+  contractSignature = { image: null, place: '' }
   try {
     localStorage.removeItem(STORAGE_KEY)
   } catch {}
@@ -200,6 +213,37 @@ export const accountHandlers = [
     await delay()
     photo = null
     return HttpResponse.json({ avatar_url: '' })
+  }),
+
+  http.get('/api/v1/account/contract-signature', () => HttpResponse.json(signatureView())),
+  http.put<never, { place?: unknown }>(
+    '/api/v1/account/contract-signature',
+    async ({ request }) => {
+      const { place } = await request.json()
+      contractSignature.place = typeof place === 'string' ? place.trim() : ''
+      return HttpResponse.json(signatureView())
+    },
+  ),
+  http.put('/api/v1/account/contract-signature/image', async ({ request }) => {
+    const file = (await request.formData()).get('file')
+    if (!(file instanceof Blob) || !['image/png', 'image/jpeg'].includes(file.type))
+      return fail(422, 'validation_failed', 'Upload the image as a PNG or JPEG.', {
+        file: 'Upload the image as a PNG or JPEG.',
+      })
+    await delay()
+    contractSignature.image = { bytes: await file.arrayBuffer(), type: file.type }
+    return HttpResponse.json(signatureView())
+  }),
+  http.get('/api/v1/account/contract-signature/image', () =>
+    contractSignature.image
+      ? new HttpResponse(contractSignature.image.bytes, {
+          headers: { 'Content-Type': contractSignature.image.type },
+        })
+      : fail(404, 'not_found', 'Not found.'),
+  ),
+  http.delete('/api/v1/account/contract-signature/image', () => {
+    contractSignature.image = null
+    return HttpResponse.json(signatureView())
   }),
 
   http.get('/api/v1/account', async () => {

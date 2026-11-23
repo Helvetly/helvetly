@@ -114,7 +114,8 @@ func TestContractWriteModes(t *testing.T) {
 			if len(r.Files) != 1 || r.Files[0].ContentType != "application/pdf" || !bytes.HasPrefix(r.Files[0].Bytes, []byte("%PDF")) {
 				t.Errorf("the example is attached: %+v", r.Files)
 			}
-			if !strings.Contains(r.Instructions, "Write in French") || !strings.Contains(r.Instructions, "never copy any of them from the example") ||
+			if !strings.Contains(r.Instructions, "Write in French") || !strings.Contains(r.Instructions, "keep its content, structure") ||
+				!strings.Contains(r.Instructions, "Replace only what must come from this client and this quote") ||
 				!strings.Contains(r.Message, "<example>") {
 				t.Errorf("example request: %s\n%s", r.Instructions, r.Message)
 			}
@@ -350,7 +351,7 @@ func TestContractCreate(t *testing.T) {
 	// printed with its number, the quote's total and the reviewed text
 	doc := e.mustDoc(b, first.Data.Document.ID)
 	pdf := e.files.objects[doc.ObjectKey]
-	for _, want := range []string{"Vertragsnummer: " + want1, "CHF 5'405.00", "1. Gegenstand", "Unterschriften", "Müller AG"} {
+	for _, want := range []string{"Vertrag " + want1, "CHF 5'405.00", "Gegenstand", "Unterschriften", "Müller AG"} {
 		if !bytes.Contains(pdf, utf16be(want)) {
 			t.Errorf("the PDF lacks %q", want)
 		}
@@ -370,10 +371,14 @@ func TestContractCreate(t *testing.T) {
 		strings.Contains(strings.ToLower(string(sections)), `"logo"`) {
 		t.Fatalf("sections: %s", sections)
 	}
-	// each party signs in its box of the signature block, on the last page
+	// each party signs in its box of the signature block, on the last page, and the client dates it
 	if n := e.count(`SELECT count(*) FROM signature_fields f JOIN signature_requests r ON r.id = f.request_id
 		WHERE r.id = $1 AND f.kind = 'signature' AND f.page = 1 AND f.y > 0.3`, *second.Data.SignatureRequestID); n != 2 {
 		t.Fatalf("signature fields: %d", n)
+	}
+	if n := e.count(`SELECT count(*) FROM signature_fields f JOIN signature_requests r ON r.id = f.request_id
+		WHERE r.id = $1 AND f.kind = 'date' AND f.x > 0.5`, *second.Data.SignatureRequestID); n != 1 {
+		t.Fatalf("client date fields: %d", n)
 	}
 
 	// refused before a number is taken

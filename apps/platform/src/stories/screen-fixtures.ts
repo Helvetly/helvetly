@@ -146,6 +146,9 @@ export const storyDefaults = [
     nothing({ method: 'effective', period: 'quarterly', basis: 'agreed', net_rates: [] }),
   ),
   http.get('/api/v1/workspaces/deleted', () => nothing([])),
+  http.get('/api/v1/account/contract-signature', () =>
+    nothing({ has_image: false, place: '', default_place: 'Zürich' }),
+  ),
   http.get('/api/v1/templates', () => nothing([])),
   http.get('/api/v1/instalment-plans', () => nothing([])),
   http.get('/api/v1/invoices/:id/deliveries', () => nothing([])),
