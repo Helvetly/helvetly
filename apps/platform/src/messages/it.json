@@ -5183,5 +5183,16 @@
   "anyYear": "Qualsiasi anno…",
   "auditDocumentsExported": "Documenti scaricati (ZIP)",
   "auditSentenceDocumentsExported": "{count, plural, one {# documento scaricato come ZIP} other {# documenti scaricati come ZIP}}",
-  "groupedViews": "Viste raggruppate"
+  "groupedViews": "Viste raggruppate",
+  "schedulingCategory": "Appuntamenti",
+  "notifySessionBooked": "Un cliente ha prenotato un appuntamento",
+  "notifyBookingRequested": "Un cliente chiede di prenotare un appuntamento",
+  "notifyCancelRequested": "Un cliente chiede di annullare",
+  "notifyRescheduleRequested": "Un cliente chiede di spostare un appuntamento",
+  "notifyCancelledByClient": "Un cliente ha annullato un appuntamento",
+  "notifyProposalAnswered": "Un cliente ha risposto al suo nuovo orario",
+  "notifyCalendarDisconnected": "Il suo calendario è stato scollegato",
+  "notifySessionDetached": "Un appuntamento è stato rimosso dal suo calendario",
+  "sessionsYouHost": "Appuntamenti che conduce",
+  "yourCalendars": "I suoi calendari collegati"
 }

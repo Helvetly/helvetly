@@ -112,6 +112,42 @@ func TestBuildAttachment(t *testing.T) {
 	}
 }
 
+func TestBuildCalendar(t *testing.T) {
+	from := &mail.Address{Name: "Helvetly", Address: "no-reply@helvetly.local"}
+	ics := "BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nEND:VCALENDAR\r\n"
+	raw := build(from, Message{To: []string{"a@example.com"}, Subject: "Invitation", Text: "Hi", HTML: "<p>Hi</p>",
+		Calendar: []byte(ics), CalendarMethod: "REQUEST",
+		Attachments: []Attachment{{Name: "invite.ics", ContentType: "application/ics", Data: []byte(ics)}}}, "https://app.example.com", time.Now())
+	msg, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, params, _ := mime.ParseMediaType(msg.Header.Get("Content-Type"))
+	alt, err := multipart.NewReader(msg.Body, params["boundary"]).NextPart()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, altParams, _ := mime.ParseMediaType(alt.Header.Get("Content-Type"))
+	r := multipart.NewReader(alt, altParams["boundary"])
+	var types []string
+	var calendar string
+	for {
+		p, err := r.NextPart()
+		if err != nil {
+			break
+		}
+		types = append(types, p.Header.Get("Content-Type"))
+		body, _ := io.ReadAll(p)
+		calendar = string(body)
+	}
+	if strings.Join(types, " | ") != "text/plain; charset=utf-8 | text/html; charset=utf-8 | text/calendar; method=REQUEST; charset=utf-8" {
+		t.Fatalf("alternative parts %q", types)
+	}
+	if calendar != ics {
+		t.Fatalf("calendar part %q, want %q (CRLF kept, not doubled)", calendar, ics)
+	}
+}
+
 func TestBuildListUnsubscribe(t *testing.T) {
 	from := &mail.Address{Address: "no-reply@helvetly.local"}
 	for _, c := range []struct{ url, want, post string }{

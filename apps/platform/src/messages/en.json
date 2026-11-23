@@ -5183,5 +5183,16 @@
   "anyYear": "Any year…",
   "auditDocumentsExported": "Documents downloaded (ZIP)",
   "auditSentenceDocumentsExported": "{count, plural, one {# document downloaded as a ZIP} other {# documents downloaded as a ZIP}}",
-  "groupedViews": "Grouped views"
+  "groupedViews": "Grouped views",
+  "schedulingCategory": "Scheduling",
+  "notifySessionBooked": "A client booked a session",
+  "notifyBookingRequested": "A client asks to book a session",
+  "notifyCancelRequested": "A client asks to cancel",
+  "notifyRescheduleRequested": "A client asks to move a session",
+  "notifyCancelledByClient": "A client cancelled a session",
+  "notifyProposalAnswered": "A client answered your new time",
+  "notifyCalendarDisconnected": "Your calendar was disconnected",
+  "notifySessionDetached": "A session was removed from your calendar",
+  "sessionsYouHost": "Sessions you host",
+  "yourCalendars": "Your connected calendars"
 }

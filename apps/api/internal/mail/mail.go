@@ -40,6 +40,11 @@ type Message struct {
 	// Members: a workspace's email to its own members (notifications, a signer's answer): sent as Helvetly, unbranded.
 	Members bool
 	Brand   *Brand // set by Branded: the business a client email comes from
+	// Calendar is an iCalendar invitation (RFC 6047): a text/calendar part with CalendarMethod (REQUEST, CANCEL) next
+	// to the text and HTML, so mail clients offer to add, update or remove the event. Attach the .ics as well for the
+	// clients that only read attachments.
+	Calendar       []byte
+	CalendarMethod string
 }
 
 type Attachment struct {
@@ -191,10 +196,15 @@ func build(from *mail.Address, m Message, publicURL string, now time.Time) []byt
 		hdr("Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
 	}
 	b.WriteString("\r\n")
-	for _, part := range []struct{ ct, body string }{{"text/plain", plainText(m, publicURL)}, {"text/html", layout(m, publicURL)}} {
+	parts := []struct{ ct, body string }{{"text/plain", plainText(m, publicURL)}, {"text/html", layout(m, publicURL)}}
+	if len(m.Calendar) > 0 {
+		// the .ics has CRLF line ends already; the part after the HTML is the one clients prefer
+		parts = append(parts, struct{ ct, body string }{"text/calendar; method=" + headerSafe(m.CalendarMethod), string(m.Calendar)})
+	}
+	for _, part := range parts {
 		fmt.Fprintf(&b, "--%s\r\nContent-Type: %s; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n", boundary, part.ct)
 		qp := quotedprintable.NewWriter(&b)
-		_, _ = qp.Write([]byte(strings.ReplaceAll(part.body, "\n", "\r\n")))
+		_, _ = qp.Write([]byte(strings.ReplaceAll(strings.ReplaceAll(part.body, "\r\n", "\n"), "\n", "\r\n")))
 		_ = qp.Close()
 		b.WriteString("\r\n")
 	}
