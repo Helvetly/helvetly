@@ -3,11 +3,16 @@ import { describe, expect, it } from 'vitest'
 import { event, occurrence } from '@/mocks/scheduling'
 
 import {
+  autoTitle,
   blankValues,
   changesOf,
+  dateChange,
+  presetOf,
+  presetValues,
   setPosOf,
   slotOf,
   toInput,
+  typedTitle,
   validate,
   valuesFrom,
 } from './session-model'
@@ -170,5 +175,78 @@ describe('editing', () => {
       ends_at: '2026-12-01T09:00:00.000Z',
     })
     expect(slotOf(blank({ time: '' }), ZONE)).toBeNull()
+  })
+})
+
+describe('repeat menu', () => {
+  // 2026-12-01 is a Tuesday, the first of its month.
+  it.each([
+    ['none', {}],
+    ['weekly', { repeat: 'weekly', interval: '1', by_day: ['TU'] }],
+    ['biweekly', { repeat: 'weekly', interval: '2', by_day: ['TU'] }],
+    ['monthly', { repeat: 'monthly', interval: '1', monthly: 'weekday' }],
+    ['custom', { repeat: 'weekly', interval: '1', by_day: ['TU', 'TH'] }],
+    ['custom', { repeat: 'weekly', interval: '3', by_day: ['TU'] }],
+    ['custom', { repeat: 'weekly', interval: '1', by_day: ['TU'], ends: 'count' }],
+    ['custom', { repeat: 'monthly', interval: '1', monthly: 'day' }],
+  ] as const)('reads %s', (preset, change) => {
+    expect(presetOf(blank(change))).toBe(preset)
+  })
+
+  it.each(['none', 'weekly', 'biweekly', 'monthly'] as const)(
+    'sets %s so it reads back',
+    (preset) => {
+      const values = blank({ repeat: 'monthly', ends: 'count', by_day: ['FR'] })
+      expect(presetOf({ ...values, ...presetValues(preset, values) })).toBe(preset)
+    },
+  )
+
+  it('starts custom weekly on the start’s day and keeps a rule there is', () => {
+    expect(presetValues('custom', blank())).toEqual({
+      repeat: 'weekly',
+      interval: '1',
+      by_day: ['TU'],
+    })
+    expect(presetValues('custom', blank({ repeat: 'monthly' }))).toEqual({})
+  })
+
+  it('makes the API rule of each entry', () => {
+    const values = blank()
+    expect(toInput({ ...values, ...presetValues('biweekly', values) }, ZONE).recurrence).toEqual({
+      freq: 'weekly',
+      interval: 2,
+      by_day: ['TU'],
+    })
+    expect(toInput({ ...values, ...presetValues('monthly', values) }, ZONE).recurrence).toEqual({
+      freq: 'monthly',
+      interval: 1,
+      by_set_pos: { pos: 1, day: 'TU' },
+    })
+  })
+
+  it('moves a weekly rule to the new start’s day, never a custom one', () => {
+    expect(dateChange(blank({ repeat: 'weekly', by_day: ['TU'] }), '2026-12-03')).toEqual({
+      date: '2026-12-03',
+      by_day: ['TH'],
+    })
+    expect(dateChange(blank({ repeat: 'weekly', by_day: ['TU', 'FR'] }), '2026-12-03')).toEqual({
+      date: '2026-12-03',
+    })
+    expect(dateChange(blank({ repeat: 'weekly', by_day: ['TU'] }), '')).toEqual({ date: '' })
+  })
+})
+
+describe('title', () => {
+  it('follows picks until one is typed', () => {
+    const fresh = blank({ title: '', title_auto: true })
+    expect(autoTitle(fresh, 'Coaching session')).toEqual({ title: 'Coaching session' })
+    const typed = { ...fresh, ...typedTitle('Kick-off') }
+    expect(typed.title_auto).toBe(false)
+    expect(autoTitle(typed, 'Coaching session')).toEqual({})
+    expect(typedTitle(' ').title_auto).toBe(true)
+  })
+
+  it('keeps an existing session’s title', () => {
+    expect(valuesFrom(occurrence(), event()).title_auto).toBe(false)
   })
 })

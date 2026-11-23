@@ -23,6 +23,8 @@ export type Values = {
   event_type_id: string
   host_id: string
   title: string
+  /** The title is the form's own (empty, or from the engagement or event type), so a pick may replace it. */
+  title_auto: boolean
   date: string
   time: string
   duration: string
@@ -62,6 +64,7 @@ export function blankValues(start: {
     event_type_id: '',
     host_id: start.hostId,
     title: start.title ?? '',
+    title_auto: true,
     date: start.date,
     time: clock(start.minutes),
     duration: '60',
@@ -93,6 +96,7 @@ export function valuesFrom(occurrence: Occurrence, event: SchedEvent): Values {
     event_type_id: event.event_type_id ?? '',
     host_id: occurrence.host?.id ?? '',
     title: occurrence.title,
+    title_auto: false,
     date: start.date,
     time: clock(start.minutes),
     duration: String(
@@ -124,6 +128,48 @@ export function setPosOf(date: string): 1 | 2 | 3 | 4 | -1 {
   const index = Math.ceil(day / 7)
   return index === 1 || index === 2 || index === 3 || index === 4 ? index : -1
 }
+
+/** The repeat menu's entries: the common rules for the start date, or the full panel. */
+export type RepeatPreset = 'none' | 'weekly' | 'biweekly' | 'monthly' | 'custom'
+
+/** The menu entry the values are; any other rule (more days, an end, day of month…) is custom. */
+export function presetOf(values: Values): RepeatPreset {
+  if (values.repeat === 'none') return 'none'
+  if (values.ends !== 'never') return 'custom'
+  if (values.repeat === 'monthly')
+    return values.monthly === 'weekday' && values.interval === '1' ? 'monthly' : 'custom'
+  if (values.by_day.length !== 1 || values.by_day[0] !== weekdayOfDate(values.date)) return 'custom'
+  return values.interval === '1' ? 'weekly' : values.interval === '2' ? 'biweekly' : 'custom'
+}
+
+/** The values a menu entry sets; custom keeps the rule there is, or starts weekly on the start's day. */
+export function presetValues(preset: RepeatPreset, values: Values): Partial<Values> {
+  const by_day = [weekdayOfDate(values.date)]
+  if (preset === 'none') return { repeat: 'none' }
+  if (preset === 'weekly') return { repeat: 'weekly', interval: '1', by_day, ends: 'never' }
+  if (preset === 'biweekly') return { repeat: 'weekly', interval: '2', by_day, ends: 'never' }
+  if (preset === 'monthly')
+    return { repeat: 'monthly', interval: '1', monthly: 'weekday', ends: 'never' }
+  return values.repeat === 'none' ? { repeat: 'weekly', interval: '1', by_day } : {}
+}
+
+/** A new start date; a weekly rule on the old date's day moves to the new one, as the menu names it. */
+export function dateChange(values: Values, date: string): Partial<Values> {
+  const preset = presetOf(values)
+  return (preset === 'weekly' || preset === 'biweekly') && /^\d{4}-\d{2}-\d{2}$/.test(date)
+    ? { date, by_day: [weekdayOfDate(date)] }
+    : { date }
+}
+
+/** Picking an engagement or event type names the session after it, until a title is typed. */
+export const autoTitle = (values: Values, name: string): Partial<Values> =>
+  values.title_auto && name ? { title: name } : {}
+
+/** A typed title stays; clearing it lets the next pick name the session again. */
+export const typedTitle = (title: string): Partial<Values> => ({
+  title,
+  title_auto: title.trim() === '',
+})
 
 export function recurrenceOf(values: Values): Omit<Recurrence, 'rrule'> | null {
   if (values.repeat === 'none') return null
