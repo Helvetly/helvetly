@@ -15,8 +15,18 @@ import { LanguageDialog, LanguageMenuItem } from '@helvetly/ui/components/langua
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { errorMessage } from '@helvetly/ui/lib/http'
+import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { FilePenLine, FileText, FolderOpen, Gauge, House, LogOut, UserRound } from 'lucide-react'
+import {
+  CalendarDays,
+  FilePenLine,
+  FileText,
+  FolderOpen,
+  Gauge,
+  House,
+  LogOut,
+  UserRound,
+} from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -39,6 +49,7 @@ import {
   switchPortalClient,
   type PortalSession,
 } from '@/lib/portal'
+import { useSessionsVisible } from '@/lib/scheduling'
 import { scoped, unscoped } from '@/lib/scope'
 import { shorten } from '@/lib/text'
 
@@ -51,6 +62,9 @@ const NAV = [
   { href: '/engagements', label: translate('engagements'), icon: Gauge },
   { href: '/documents', label: translate('documents'), icon: FolderOpen },
 ]
+
+/** Shown when the plan has Scheduling and the client has sessions or may book (`useSessionsVisible`). */
+const SESSIONS = { href: '/sessions', label: translate('sessions'), icon: CalendarDays }
 
 const SessionContext = createContext<PortalSession | null>(null)
 
@@ -180,13 +194,19 @@ function AccountMenu({
  * pill in the platform sidebar's active colours (on phones only the icon carries it), never an underline.
  */
 function PortalNav({ pathname }: { pathname: string }) {
+  const nav = useSessionsVisible() ? [NAV[0]!, SESSIONS, ...NAV.slice(1)] : NAV
   return (
     <nav
       aria-label={translate('portal')}
       className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] md:static md:shrink-0 md:border-0 md:bg-transparent md:pb-0"
     >
-      <ul className="grid grid-cols-5 md:flex md:h-16 md:items-center md:gap-1">
-        {NAV.map(({ href, label, icon: Icon }) => {
+      <ul
+        className={cn(
+          'grid md:flex md:h-16 md:items-center md:gap-1',
+          nav.length > 5 ? 'grid-cols-6' : 'grid-cols-5',
+        )}
+      >
+        {nav.map(({ href, label, icon: Icon }) => {
           const active = href === '/' ? pathname === href : pathname.startsWith(href)
           return (
             <li key={href} className="md:flex">

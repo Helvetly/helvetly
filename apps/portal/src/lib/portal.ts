@@ -151,11 +151,14 @@ export async function getPortalScope(): Promise<PortalScope | null> {
 export const startPortalSignIn = (email: string) =>
   call<EmailCodeSent>('/auth/start', { method: 'POST', json: { email } })
 
-/** A session at this workspace's own address (the shared portal signs nobody in). */
+/**
+ * A session at this workspace's own address (the shared portal signs nobody in). The browser's zone goes along:
+ * the API keeps the first one as the client's, so its sessions show in its local time.
+ */
 export async function verifyPortalCode(email: string, code: string) {
   const result = await call<{ csrf_token: string }>('/auth/verify', {
     method: 'POST',
-    json: { email, code },
+    json: { email, code, time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
   })
   setCsrfToken(result.csrf_token)
   return result

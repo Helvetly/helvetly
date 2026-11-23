@@ -13,6 +13,8 @@ import type {
 } from '@/lib/portal'
 import type { PortalQuote } from '@/lib/quotes'
 
+import { schedulingOffHandlers } from './scheduling'
+
 const P = '/api/v1/public/portal'
 
 /** A small gradient PNG, so a story's photo loads without a server. */
@@ -418,6 +420,7 @@ export const portalHandlers = [
       { status: 201 },
     )
   }),
+  ...schedulingOffHandlers,
 ]
 
 export { unauthenticated }

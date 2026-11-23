@@ -105,10 +105,10 @@ func TestBookingLinks(t *testing.T) {
 	typeID := e.bookable(b, "auto")
 	var link struct{ Data BookingLink }
 	e.do(b, "POST", "/api/v1/scheduling/booking-links", map[string]any{"event_type_id": typeID}, 201, &link)
-	if link.Data.URL == nil || !strings.HasPrefix(*link.Data.URL, "https://portal.example.com/book?link=") || !link.Data.Active {
+	if link.Data.URL == nil || !strings.HasPrefix(*link.Data.URL, "https://portal.example.com/booking?link=") || !link.Data.Active {
 		t.Fatalf("link: %+v", link.Data)
 	}
-	token := strings.TrimPrefix(*link.Data.URL, "https://portal.example.com/book?link=")
+	token := strings.TrimPrefix(*link.Data.URL, "https://portal.example.com/booking?link=")
 	ctx := context.Background()
 	in := PublicBooking{BookInput: BookInput{StartsAt: mustTime("2026-11-18T09:00:00Z")}, Name: "Eva Neu", Email: "Eva@New.example"}
 	o, err := e.svc.BookWithLink(ctx, token, in)

@@ -118,6 +118,8 @@ func (s *Service) verify(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Email string `json:"email"`
 		Code  string `json:"code"`
+		// TimeZone is the browser's zone; the client's first one is kept (clients.time_zone) for its sessions' times.
+		TimeZone string `json:"time_zone"`
 	}
 	if !s.auth.Decode(w, r, &in) {
 		return
@@ -140,7 +142,19 @@ func (s *Service) verify(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		s.fail(w, r, err)
+		return
 	}
+	if zone := in.TimeZone; zone != "" && len(zone) <= 64 && validZone(zone) {
+		if err := s.db.Q.SetClientTimeZone(r.Context(), access[0].WorkspaceID, access[0].ClientID, &zone, true); err != nil {
+			s.log.WarnContext(r.Context(), "client time zone not saved", "error", err)
+		}
+	}
+}
+
+// validZone: an IANA zone name (LoadLocation refuses paths), never the server's "Local".
+func validZone(name string) bool {
+	_, err := time.LoadLocation(name)
+	return err == nil && name != "Local"
 }
 
 // signedIn lets the request through with its portal session, or answers 401; unsafe methods also need the CSRF token.

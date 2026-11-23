@@ -56,6 +56,7 @@ import { amountOf } from '@/lib/units'
 import { cardClass, DownloadLink, FileTile, RetryAlert, SectionTitle } from './portal-bits'
 import { UsageBar } from './portal-engagements'
 import { DecisionDialog, type Asking } from './portal-quotes'
+import { NextSessionCard } from './portal-sessions'
 
 /** Days before a due date (or a quote's last day) that move it into "Due soon". */
 const SOON_DAYS = 14
@@ -620,6 +621,7 @@ export function PortalOverview() {
           </section>
         )}
         <div className="grid min-w-0 gap-5 empty:hidden sm:gap-6 lg:w-96 lg:shrink-0">
+          <NextSessionCard />
           <RecentDocuments today={today} />
         </div>
       </div>
