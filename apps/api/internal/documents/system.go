@@ -1,9 +1,9 @@
 package documents
 
 import (
+	"cmp"
 	"context"
 	"net/http"
-	"strings"
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
@@ -28,19 +28,7 @@ var systemNames = map[string]map[string]string{
 }
 
 // language: the asker's language among en, de, fr and it: ?lang, else the first supported of Accept-Language.
-func language(r *http.Request) string {
-	tags := []string{r.URL.Query().Get("lang")}
-	for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
-		tags = append(tags, strings.TrimSpace(strings.SplitN(part, ";", 2)[0]))
-	}
-	for _, tag := range tags {
-		lang := strings.ToLower(strings.SplitN(tag, "-", 2)[0])
-		if _, ok := systemNames[lang]; ok || lang == "en" {
-			return lang
-		}
-	}
-	return "en"
-}
+func language(r *http.Request) string { return cmp.Or(requestLanguage(r), "en") }
 
 // folderName: a folder's name as the asker reads it (a client's or category's name and a year are never translated;
 // the folder of expenses without a category is).
@@ -192,4 +180,24 @@ func hasSystemRoots(folders []store.Folder) bool {
 		}
 	}
 	return found["clients"] && found["expenses"]
+}
+
+// BackfillAutoTags tags the files no automatic tagging has seen yet (those from before it), each once: tagging marks
+// the file, so a second run finds nothing, and the people's own tags stay as they are.
+func (s *Service) BackfillAutoTags(ctx context.Context) error {
+	const batch = 500
+	for {
+		files, err := s.db.UntaggedDocuments(ctx, batch)
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			if err := s.db.Tx(ctx, func(q store.Q) error { return q.AutoTag(ctx, f.WorkspaceID, f.ID, s.now()) }); err != nil {
+				return err
+			}
+		}
+		if len(files) < batch {
+			return nil
+		}
+	}
 }

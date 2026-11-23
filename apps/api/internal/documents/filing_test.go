@@ -98,7 +98,7 @@ func TestAIFiling(t *testing.T) {
 		{name: "existing folder", folders: []string{"Contracts", "Invoices"}, file: "invoice-acme.pdf", body: pdf,
 			wantStatus: "filed", wantFolder: "Invoices", wantTags: []string{"invoice", "acme"}, wantCalls: 1},
 		{name: "new folder", folders: []string{"Receipts"}, file: "contract baker.txt", body: "Contract between Baker and us",
-			wantStatus: "filed", wantFolder: "Contract", wantTags: []string{"contract", "baker"}, wantCreated: true, wantCalls: 1},
+			wantStatus: "filed", wantFolder: "Contracts", wantTags: []string{"contract", "baker"}, wantCreated: true, wantCalls: 1},
 		{name: "into a folder only tags", folders: []string{"Misc", "Invoices"}, intoFolder: "Misc", file: "invoice-acme.pdf",
 			body: pdf, wantStatus: "filed", wantFolder: "Misc", wantTags: []string{"invoice", "acme"}, wantCalls: 1},
 		{name: "no consent", file: "invoice-acme.pdf", body: pdf, noConsent: true},
@@ -224,7 +224,7 @@ func TestAIFilingNeverSendsHRFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	// queued by mistake: the job still never sends it
-	if err := e.st.QueueFiling(ctx, b.workspace, id, b.user, true, time.Now()); err != nil {
+	if err := e.st.QueueFiling(ctx, b.workspace, id, b.user, true, "", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	e.fileDue()
@@ -288,7 +288,7 @@ func TestUndoAIFiling(t *testing.T) {
 	second := e.uploaded(b, "contract-acme.txt", "Contract with Acme")
 	e.fileDue()
 	for _, id := range []string{first.ID, second.ID} {
-		if d := e.get(b, id); d.Folder == nil || d.Folder.Name != "Contract" {
+		if d := e.get(b, id); d.Folder == nil || d.Folder.Name != "Contracts" {
 			t.Fatalf("not filed: %+v", d)
 		}
 	}
@@ -407,7 +407,7 @@ func TestFilingMatchesRecords(t *testing.T) {
 		t.Fatal("the model was asked")
 	}
 	got := e.get(b, d.ID)
-	if got.FolderID == nil || !slices.Equal(got.Tags, []string{"invoice"}) {
+	if got.FolderID == nil || !slices.Equal(got.Tags, []string{"invoice", "year-2026", "client-acme-ag"}) {
 		t.Fatalf("filed = %+v", got)
 	}
 	folders := e.allFolders(b)

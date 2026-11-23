@@ -177,7 +177,7 @@ func TestReadOrganizeKeepsClientRecordsInClients(t *testing.T) {
 		row("doc_contract", "Contracts", true, "contract"),
 		row("doc_system", "Clients/Baker GmbH/Invoices/2026", true, "invoice"), // the model's own client path stands
 	}})
-	got, err := readOrganize(string(b), docs, folders, names, clients)
+	got, err := readOrganize(string(b), docs, folders, names, clients, "en")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestReadOrganizeKeepsClientRecordsInClients(t *testing.T) {
 		"doc_in":       {"Clients/Baker GmbH/Invoices/2026", true, "An invoice for Baker GmbH, so it goes in the client's folder."},
 		"doc_none":     {"Invoices/2026", true, "Looks like it. No known client could be found in it, so it stays outside Clients."},
 		"doc_twin":     {"Invoices", true, "Looks like it. No known client could be found in it, so it stays outside Clients."},
-		"doc_contract": {"Contracts", true, "Looks like it."},
+		"doc_contract": {"Clients/Acme AG/Documents/2026/Contracts", true, "A contract with Acme AG, so it goes in the client's folder."},
 		"doc_system":   {"Clients/Baker GmbH/Invoices/2026", true, "Looks like it."},
 	}
 	if len(got) != len(want) {
