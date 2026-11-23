@@ -45,7 +45,7 @@ func answerLabel(files []upload) string {
 
 // modelAnswer asks the model; known skips the scope classifier for a message the first pass already let through.
 // progress reports each step as its provider call starts.
-func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, message, path string, files []upload, known bool, progress func(label string)) (turn, error) {
+func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, message, path, ui string, files []upload, known bool, progress func(label string)) (turn, error) {
 	request := ProviderRequest{Instructions: instructions, Message: message}
 	here := screen(path)
 	if here != "" {
@@ -65,6 +65,7 @@ func (s *Service) modelAnswer(ctx context.Context, sess store.Session, id, messa
 		}
 		request.History = append(request.History, aimodel.Turn{Role: m.Role, Text: m.Text})
 	}
+	request.Instructions += "\n\n" + replyInstruction(replyLanguage(message, request.History, ui), ui)
 	for _, f := range files {
 		body, err := f.Header.Open()
 		if err != nil {

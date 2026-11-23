@@ -175,12 +175,14 @@ test('the chat is the same object until something it uses changes', async () => 
   )
   let page = ''
   let path = ''
+  let lang = ''
   window.history.pushState({}, '', '/books/')
   server.use(
     http.post('/api/v1/heidi/chat', async ({ request }) => {
       const form = await request.formData()
       page = String(form.get('page'))
       path = String(form.get('path'))
+      lang = String(form.get('lang'))
       return new HttpResponse('data: {"type":"done","usage":{"tokens":0}}\n\n', {
         headers: { 'Content-Type': 'text/event-stream' },
       })
@@ -203,6 +205,7 @@ test('the chat is the same object until something it uses changes', async () => 
   await act(() => result.current.send('Question'))
   await waitFor(() => expect(result.current.busy).toBe(false))
   expect(page).toBe('clients')
+  expect(lang).toBe('en')
   // The screen the question is asked from goes along, so "what is this page?" has an answer.
   expect(path).toBe('/books/')
   window.history.pushState({}, '', '/')
