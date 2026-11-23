@@ -98,7 +98,7 @@ are the reference.
   `BackfillSystemFolders` (once per start, idempotent) files what came before and turns the earlier
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
   move along; the emptied old folders are deleted). AI filing and organizing put a known
-  client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
+  client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there. Plain folders they make are named in the asker's language (the uploader's, kept on the filing; else the workspace's document language, else English), never the document's: a common kind named otherwise is translated, and an existing folder of that kind in any language is used instead of a new sibling (`documents/folder_language.go`); people's folders are never renamed.
   Before the model is asked, a file that is one of the workspace's invoices or quotes (by the PDF it shares, the
   imported invoice it is the original of, or a record number in its name or text, separators ignored) goes straight to
   its client's folder (`documents/record_match.go`); several records found leave it to the model. A client's contract
