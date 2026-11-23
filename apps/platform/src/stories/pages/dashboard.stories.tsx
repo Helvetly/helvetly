@@ -48,7 +48,7 @@ export const WithData: Story = {
     )
     await expect(figures.getByRole('link', { name: /^Collection rate/ })).toBeVisible()
     await expect(body().getByRole('button', { name: 'About Cash flow' })).toBeVisible()
-    await expect(body().getByRole('link', { name: /All engagements/ })).toBeVisible()
+    await expect(await body().findByRole('link', { name: /All engagements/ })).toBeVisible()
     const spending = await body().findByRole('heading', { name: 'Spending by category' })
     const card = within(spending.closest('section') ?? document.body)
     await card.findByText('Travel')

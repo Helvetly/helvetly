@@ -1,6 +1,7 @@
 package portal
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -23,7 +24,8 @@ func (s *Service) registerScheduling(mux *http.ServeMux, handle func(string, han
 		return
 	}
 	handle("GET "+schedBase+"/occurrences", s.sessions)
-	handle("GET "+schedBase+"/occurrences/{id}/ics", s.sessionICS)
+	handle("GET "+schedBase+"/occurrences/{id}/ics", s.ics(s.sched.ClientOccurrenceICS, "session.ics"))
+	handle("GET "+schedBase+"/series/{id}/ics", s.ics(s.sched.ClientSeriesICS, "series.ics"))
 	handle("POST "+schedBase+"/occurrences/{id}/cancel-request", s.limited(s.cancelRequest))
 	handle("POST "+schedBase+"/occurrences/{id}/reschedule-request", s.limited(s.rescheduleRequest))
 	handle("POST "+schedBase+"/requests/{id}/accept", s.limited(s.answer("accept")))
@@ -104,16 +106,19 @@ func deref(p *string) string {
 	return *p
 }
 
-func (s *Service) sessionICS(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
-	ics, err := s.sched.ClientOccurrenceICS(r.Context(), sess.Workspace, sess.ClientID, r.PathValue("id"))
-	if err != nil {
-		return schedFail(err)
+// ics serves the client's own session or series (by the path's id) as a PUBLISH .ics.
+func (s *Service) ics(load func(context.Context, store.Workspace, string, string) ([]byte, error), name string) handler {
+	return func(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
+		ics, err := load(r.Context(), sess.Workspace, sess.ClientID, r.PathValue("id"))
+		if err != nil {
+			return schedFail(err)
+		}
+		w.Header().Set("Content-Type", "text/calendar; charset=utf-8; method=PUBLISH")
+		w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
+		w.Header().Set("Cache-Control", "private, no-store")
+		_, err = w.Write(ics)
+		return err
 	}
-	w.Header().Set("Content-Type", "text/calendar; charset=utf-8; method=PUBLISH")
-	w.Header().Set("Content-Disposition", `attachment; filename="session.ics"`)
-	w.Header().Set("Cache-Control", "private, no-store")
-	_, err = w.Write(ics)
-	return err
 }
 
 func (s *Service) cancelRequest(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
