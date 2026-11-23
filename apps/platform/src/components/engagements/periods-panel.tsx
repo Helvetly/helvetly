@@ -1,13 +1,8 @@
 'use client'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { formatMoney } from '@helvetly/ui/lib/format'
 import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { useMutation } from '@tanstack/react-query'
@@ -139,59 +134,64 @@ export function PeriodsPanel({
                       </Button>
                     </DropdownMenuTrigger>
                   </Tip>
-                  <DropdownMenuContent align="end" className="min-w-60">
-                    {upfront && primary?.label !== 'Invoice upfront' && (
-                      <DropdownMenuItem
-                        disabled={!upfrontOpen || busy}
-                        onSelect={() => invoice.mutate({ period, kind: 'advance' })}
-                      >
-                        <FilePlus2 />
-                        {upfrontOpen ? translate('invoiceUpfront') : translate('invoicedUpfront')}
-                      </DropdownMenuItem>
-                    )}
-                    {canInvoice && primary?.label !== 'Invoice usage' && (
-                      <DropdownMenuItem
-                        disabled={!hasUsage || busy}
-                        onSelect={() =>
-                          invoice.mutate({
-                            period,
-                            kind: 'usage',
-                            detail: engagement.invoice_detail,
-                          })
-                        }
-                      >
-                        <FilePlus2 />
-                        {translate('invoiceUsage2')}
-                      </DropdownMenuItem>
-                    )}
-                    {canInvoice && (
-                      <DropdownMenuItem
-                        disabled={!hasUsage || busy}
-                        onSelect={() =>
-                          invoice.mutate({ period, kind: 'usage', detail: otherDetail })
-                        }
-                      >
-                        <FilePlus2 />
-                        {translate('invoiceUsage')}
-                        {detailLabel[otherDetail].toLowerCase()}
-                      </DropdownMenuItem>
-                    )}
-                    {canInvoice && <DropdownMenuSeparator />}
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        window.open(reportUrl(engagement.id, period.id, true), '_blank')
-                      }
-                    >
-                      <Download />
-                      {translate('downloadReport')}
-                    </DropdownMenuItem>
-                    {writeEngagements && (
-                      <DropdownMenuItem onSelect={() => setSending(period)}>
-                        <Mail />
-                        {translate('sendReport')}
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
+                  <ActionMenuContent
+                    kind="dropdown"
+                    className="min-w-60"
+                    menu={{
+                      header: periodLabel(period),
+                      actions: [
+                        {
+                          id: 'report',
+                          group: 'view',
+                          icon: <Download />,
+                          label: translate('downloadReport'),
+                          onSelect: () =>
+                            window.open(reportUrl(engagement.id, period.id, true), '_blank'),
+                        },
+                        writeEngagements && {
+                          id: 'send-report',
+                          group: 'send',
+                          icon: <Mail />,
+                          label: translate('sendReport'),
+                          onSelect: () => setSending(period),
+                        },
+                        upfront &&
+                          primary?.label !== 'Invoice upfront' && {
+                            id: 'upfront',
+                            group: 'create',
+                            icon: <FilePlus2 />,
+                            label: upfrontOpen
+                              ? translate('invoiceUpfront')
+                              : translate('invoicedUpfront'),
+                            disabled: !upfrontOpen || busy,
+                            onSelect: () => invoice.mutate({ period, kind: 'advance' }),
+                          },
+                        canInvoice &&
+                          primary?.label !== 'Invoice usage' && {
+                            id: 'usage',
+                            group: 'create',
+                            icon: <FilePlus2 />,
+                            label: translate('invoiceUsage2'),
+                            disabled: !hasUsage || busy,
+                            onSelect: () =>
+                              invoice.mutate({
+                                period,
+                                kind: 'usage',
+                                detail: engagement.invoice_detail,
+                              }),
+                          },
+                        canInvoice && {
+                          id: 'usage-other',
+                          group: 'create',
+                          icon: <FilePlus2 />,
+                          label: `${translate('invoiceUsage')}${detailLabel[otherDetail].toLowerCase()}`,
+                          disabled: !hasUsage || busy,
+                          onSelect: () =>
+                            invoice.mutate({ period, kind: 'usage', detail: otherDetail }),
+                        },
+                      ],
+                    }}
+                  />
                 </DropdownMenu>
               </div>
             </div>

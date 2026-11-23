@@ -30,15 +30,13 @@ import { useFeatureLock } from '@/components/billing/feature-lock'
 import { activeFilters, ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import {
-  dropdownKit,
   PageContextMenu,
   RowContextMenu,
   RowMenuButton,
-  type MenuKit,
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
-import { ImportItem, useImportDrawer } from '@/components/import/import-button'
+import { useImportAction, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
 import { Initials } from '@/components/initials'
@@ -76,7 +74,7 @@ import { useStableCallback } from '@/lib/use-stable-callback'
 
 import { QuoteRowStatus } from './quote-bits'
 import {
-  QuoteMenuItems,
+  quoteActions,
   useContractEntry,
   useQuoteCommands,
   type ContractEntry,
@@ -299,12 +297,8 @@ export function QuotesPage() {
   const aiLock = useFeatureLock('ai_import')
   const canImport = canWrite && !aiLock
   const dropping = useImportDrop('quotes', canImport && !creating && !openId)
-  const items = ({ Item }: MenuKit) =>
-    canWrite && (
-      <ImportItem Item={Item} onSelect={importDrawer.open}>
-        {translate('import')}
-      </ImportItem>
-    )
+  const importAction = useImportAction(translate('import'), importDrawer.open)
+  const items = [canWrite && importAction]
 
   const navigate = (change: Record<string, string | null>) => {
     const next = new URLSearchParams(query)
@@ -425,20 +419,14 @@ export function QuotesPage() {
         onSelect={(index) => navigate({ status: VIEWS[index]?.status ?? null })}
         primary={translate('newQuote2')}
         onPrimary={newQuote}
-        primaryMenu={
-          canWrite && (
-            <ImportItem Item={dropdownKit.Item} onSelect={importDrawer.open}>
-              {translate('importQuotes')}
-            </ImportItem>
-          )
-        }
+        primaryMenu={[canWrite && { ...importAction, label: translate('importQuotes') }]}
       />
       {importDrawer.isOpen && <ImportDrawer kind="quotes" onClose={importDrawer.close} />}
       {dropping && <DropOverlay title={translate('dropToReadTheseFilesIntoQuotes')} />}
       <PageContextMenu
         title={translate('quotes')}
         primary={{ label: translate('newQuote2'), onSelect: newQuote }}
-        items={items}
+        actions={items}
         views={{
           tabs: VIEWS.map((view) => view.label),
           active,
@@ -656,17 +644,14 @@ export function QuotesPage() {
 /** A quote's actions, for its "…" button and its right-click menu. */
 function quoteMenu(quote: Quote, writable: boolean, act: RowActions): RowMenuSpec {
   return {
-    title: `${quoteNumber(quote)} · ${quote.client.name}`,
-    items: (kit) => (
-      <QuoteMenuItems
-        kit={kit}
-        quote={quote}
-        writable={writable}
-        run={act.command}
-        onOpen={() => act.open(quote.id)}
-        contract={act.contract}
-      />
-    ),
+    header: `${quoteNumber(quote)} · ${quote.client.name}`,
+    actions: quoteActions({
+      quote,
+      writable,
+      run: act.command,
+      onOpen: () => act.open(quote.id),
+      contract: act.contract,
+    }),
   }
 }
 

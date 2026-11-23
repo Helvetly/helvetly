@@ -1,5 +1,6 @@
 'use client'
 
+import type { Action } from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { PlanBadge } from '@helvetly/ui/components/plan-badge'
@@ -9,7 +10,6 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import type { MenuKit } from '@/components/data/menus'
 import {
   FEATURE_LABELS,
   lockedFeature,
@@ -131,31 +131,25 @@ export function FeatureLockNotice({
 export const unlessLocked = (lock: FeatureLock, action: () => void) =>
   lock ? () => toastLocked(lock) : action
 
-/** A menu's CSV download, or, on a plan without data exports, a disabled item naming the plan that has them. */
-export function ExportItem({
-  Item,
-  href,
-  children,
-}: {
-  Item: MenuKit['Item']
-  href: string
-  children: ReactNode
-}) {
+/** A plan lock as a menu action's disabled reason (its tooltip) and plan tag. */
+export const lockedAction = (lock: FeatureLock): Pick<Action, 'disabledReason' | 'extra'> => ({
+  disabledReason: lock?.hint,
+  extra: lock && <PlanTag lock={lock} />,
+})
+
+/** A menu's CSV download, or, on a plan without data exports, a disabled action naming the plan that has them. */
+export function useExportAction(label: string, href: string): Action {
   const lock = useFeatureLock('data_export')
-  if (lock)
-    return (
-      <Item disabled>
-        <Download /> {children}
-        <PlanTag lock={lock} />
-      </Item>
-    )
-  return (
-    <Item asChild>
-      <a href={href} download>
-        <Download /> {children}
-      </a>
-    </Item>
-  )
+  return {
+    id: `export:${href}`,
+    group: 'view',
+    icon: <Download />,
+    label,
+    href: lock ? undefined : href,
+    download: true,
+    disabledReason: lock?.hint,
+    extra: lock && <PlanTag lock={lock} />,
+  }
 }
 
 /**

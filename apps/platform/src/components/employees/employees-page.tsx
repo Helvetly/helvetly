@@ -2,7 +2,6 @@
 
 import { Button } from '@helvetly/ui/components/button'
 import { DataTable, listTable, type DataColumn } from '@helvetly/ui/components/data-table'
-import { DropdownMenuItem } from '@helvetly/ui/components/dropdown-menu'
 import { HelpTip } from '@helvetly/ui/components/form-field'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -19,8 +18,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react'
-import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { ListFilters } from '@/components/data/list-filters'
@@ -123,6 +121,7 @@ export function EmployeesPage() {
   const reviewing = query.get('retention') === '1' && hr.owner
   const [search, setSearch] = useState(params.search)
 
+  const router = useRouter()
   const go = (change: Record<string, string | null>, push = false) => {
     const next = new URLSearchParams(query)
     for (const [key, value] of Object.entries(change))
@@ -168,29 +167,29 @@ export function EmployeesPage() {
         }
         primary={hr.writeEmployees && !empty ? translate('employeeNew') : undefined}
         onPrimary={create}
-        menu={
-          (hr.owner || hr.readEmployees) && (
-            <>
-              <DropdownMenuItem asChild>
-                <Link href="/settings/employment">
-                  <Settings /> {translate('employeeSettingsLink')}
-                </Link>
-              </DropdownMenuItem>
-              {hr.owner && (
-                <>
-                  <DropdownMenuItem onSelect={() => go({ retention: '1' }, true)}>
-                    <ScrollText /> {translate('employeeRetentionTitle')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings/workspace#export-workspace">
-                      <Download /> {translate('employeeExportLink')}
-                    </Link>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </>
-          )
-        }
+        menu={[
+          (hr.owner || hr.readEmployees) && {
+            id: 'settings',
+            group: 'view',
+            icon: <Settings />,
+            label: translate('employeeSettingsLink'),
+            onSelect: () => router.push('/settings/employment'),
+          },
+          hr.owner && {
+            id: 'retention',
+            group: 'view',
+            icon: <ScrollText />,
+            label: translate('employeeRetentionTitle'),
+            onSelect: () => go({ retention: '1' }, true),
+          },
+          hr.owner && {
+            id: 'export',
+            group: 'view',
+            icon: <Download />,
+            label: translate('employeeExportLink'),
+            onSelect: () => router.push('/settings/workspace#export-workspace'),
+          },
+        ]}
       />
       <PageIntro
         title={translate('employees')}

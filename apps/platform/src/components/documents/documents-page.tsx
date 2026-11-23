@@ -1,14 +1,13 @@
 'use client'
+import {
+  ActionMenuContent,
+  type Action,
+  type ActionMenuSpec,
+} from '@helvetly/ui/components/action-menu'
 import { Button } from '@helvetly/ui/components/button'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import {
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuSeparator,
-  ContextMenuShortcut,
-} from '@helvetly/ui/components/context-menu'
+import { ContextMenuItem, ContextMenuSeparator } from '@helvetly/ui/components/context-menu'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +69,7 @@ import {
 import { toast } from 'sonner'
 
 import {
+  lockedAction,
   PlanTag,
   toastLocked,
   useFeatureLock,
@@ -79,9 +79,9 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import { ListFilters, sinceOptions } from '@/components/data/list-filters'
 import { ListSearch } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
-import { dropdownKit, PageContextMenu, titleClass, type MenuKit } from '@/components/data/menus'
+import { PageContextMenu } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
-import { ImportItem, useImportDrawer } from '@/components/import/import-button'
+import { useImportAction, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { useFileDrop } from '@/components/import/page-drop'
 import { PageHeader } from '@/components/shell/page-header'
@@ -174,7 +174,7 @@ import {
   type Selection,
 } from './selection'
 import { ShareDrawer } from './share-drawer'
-import { StarItem } from './star'
+import { starAction } from './star'
 import { StorageOverview } from './storage-overview'
 import { TrashView } from './trash-view'
 import { UploadTray, useUploads } from './upload-tray'
@@ -771,92 +771,119 @@ export function DocumentsPage() {
     const folder = file ? undefined : allFolders.find((entry) => folderKey(entry.id) === key)
     const name = file ? file.name : folder && folderLabel(folder)
     const locked = hasManaged(split)
+    const pdf = canWrite && single && file?.kind === 'pdf' && !file.deleted_at
+    const extract = extractReason(split)
     return (
-      <ContextMenuContent className="min-w-52">
-        <ContextMenuLabel className={titleClass}>
-          {single ? name : translate('dynamicSelected2', { length: keys.length })}
-        </ContextMenuLabel>
-        {single && (
-          <ContextMenuItem onSelect={() => openItem(key)}>
-            {file ? <Eye /> : <FolderOpen />}{' '}
-            {file ? translate('preview') : translate('openAction')}
-            <ContextMenuShortcut>↵</ContextMenuShortcut>
-          </ContextMenuItem>
-        )}
-        {split.files.length > 0 && (
-          <ContextMenuItem onSelect={() => downloadFiles(split.files)}>
-            <Download />
-            {translate('download3')}
-            {split.files.length > 1
-              ? translate('dynamicFiles2', { length: split.files.length })
-              : ''}
-          </ContextMenuItem>
-        )}
-        {canWrite && single && file?.kind === 'pdf' && !file.deleted_at && (
-          <>
-            <ContextMenuItem
-              disabled={Boolean(templateLock)}
-              onSelect={() => setEditing({ template: null, document: file })}
-            >
-              <LayoutTemplate />
-              {translate('makeATemplate')}
-              {templateLock && <PlanTag lock={templateLock} />}
-            </ContextMenuItem>
-            <ContextMenuItem disabled={Boolean(signLock)} onSelect={() => setSignFrom(file)}>
-              <FileSignature />
-              {translate('sendForSignature')}
-              {signLock && <PlanTag lock={signLock} />}
-            </ContextMenuItem>
-          </>
-        )}
-        {canWrite && (
-          <ExtractItem
-            reason={extractReason(split)}
-            onSelect={() => setExtracting(split.files)}
-            lock={aiLock}
-          />
-        )}
-        {canWrite && single && file && !file.deleted_at && (
-          <ContextMenuItem onSelect={() => setShareFrom(file)}>
-            <Share2 />
-            {translate('shareWithClient')}
-          </ContextMenuItem>
-        )}
-        {canWrite && single && !locked && (
-          <ContextMenuItem onSelect={() => setRenaming(key)}>
-            <Pencil />
-            {translate('rename')}
-            <ContextMenuShortcut>{translate('f2')}</ContextMenuShortcut>
-          </ContextMenuItem>
-        )}
-        {single && folder && <StarItem folder={folder} onToggle={toggleStar} />}
-        {canWrite && !locked && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuItem onSelect={() => setPicker({ mode: 'move', ...split })}>
-              <FolderInput />
-              {translate('moveTo2')}
-            </ContextMenuItem>
-            {split.files.length > 0 && split.folders.length === 0 && (
-              <ContextMenuItem onSelect={() => setPicker({ mode: 'copy', ...split })}>
-                <Copy />
-                {translate('copyTo2')}
-              </ContextMenuItem>
-            )}
-            <ContextMenuItem onSelect={() => setClipboard({ mode: 'cut', ...split })}>
-              <Scissors />
-              {translate('cut')}
-              <ContextMenuShortcut>{translate('x')}</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem variant="destructive" onSelect={() => void trashItems(split)}>
-              <Trash2 />
-              {translate('moveToTrash2')}
-              <ContextMenuShortcut>⌫</ContextMenuShortcut>
-            </ContextMenuItem>
-          </>
-        )}
-      </ContextMenuContent>
+      <ActionMenuContent
+        kind="context"
+        menu={{
+          header: single ? name : translate('dynamicSelected2', { length: keys.length }),
+          actions: [
+            single && {
+              id: 'open',
+              group: 'view',
+              icon: file ? <Eye /> : <FolderOpen />,
+              label: file ? translate('preview') : translate('openAction'),
+              shortcut: '↵',
+              onSelect: () => openItem(key),
+            },
+            split.files.length > 0 && {
+              id: 'download',
+              group: 'view',
+              icon: <Download />,
+              label: `${translate('download3')}${
+                split.files.length > 1
+                  ? translate('dynamicFiles2', { length: split.files.length })
+                  : ''
+              }`,
+              onSelect: () => downloadFiles(split.files),
+            },
+            canWrite &&
+              single &&
+              file &&
+              !file.deleted_at && {
+                id: 'share',
+                group: 'send',
+                icon: <Share2 />,
+                label: translate('shareWithClient'),
+                onSelect: () => setShareFrom(file),
+              },
+            pdf && {
+              id: 'sign',
+              group: 'send',
+              icon: <FileSignature />,
+              label: translate('sendForSignature'),
+              ...lockedAction(signLock),
+              onSelect: () => setSignFrom(file),
+            },
+            single && folder && starAction(folder, toggleStar),
+            canWrite &&
+              single &&
+              !locked && {
+                id: 'rename',
+                group: 'edit',
+                icon: <Pencil />,
+                label: translate('rename'),
+                shortcut: translate('f2'),
+                onSelect: () => setRenaming(key),
+              },
+            canWrite &&
+              !locked && {
+                id: 'move',
+                group: 'edit',
+                icon: <FolderInput />,
+                label: translate('moveTo2'),
+                onSelect: () => setPicker({ mode: 'move', ...split }),
+              },
+            canWrite &&
+              !locked &&
+              split.files.length > 0 &&
+              split.folders.length === 0 && {
+                id: 'copy',
+                group: 'edit',
+                icon: <Copy />,
+                label: translate('copyTo2'),
+                onSelect: () => setPicker({ mode: 'copy', ...split }),
+              },
+            canWrite &&
+              !locked && {
+                id: 'cut',
+                group: 'edit',
+                icon: <Scissors />,
+                label: translate('cut'),
+                shortcut: translate('x'),
+                onSelect: () => setClipboard({ mode: 'cut', ...split }),
+              },
+            pdf && {
+              id: 'template',
+              group: 'create',
+              icon: <LayoutTemplate />,
+              label: translate('makeATemplate'),
+              ...lockedAction(templateLock),
+              onSelect: () => setEditing({ template: null, document: file }),
+            },
+            canWrite && {
+              id: 'extract',
+              group: 'create',
+              tone: 'ai',
+              icon: <HeidiSparkle />,
+              label: translate('extractWithAI'),
+              ...lockedAction(aiLock),
+              disabledReason: aiLock?.hint ?? extract ?? undefined,
+              onSelect: () => setExtracting(split.files),
+            },
+            canWrite &&
+              !locked && {
+                id: 'trash',
+                group: 'danger',
+                icon: <Trash2 />,
+                label: translate('moveToTrash2'),
+                shortcut: '⌫',
+                onSelect: () => void trashItems(split),
+              },
+          ],
+        }}
+      />
     )
   }
 
@@ -918,63 +945,52 @@ export function DocumentsPage() {
   // The page's own actions: the header's "…" menu and a right-click on the empty surface.
   // The header's "…" leaves New folder to the Create menu beside it.
   // The header has its own Upload and "New" buttons, so its "…" menu keeps Import and Paste.
-  const pageItems = ({ Item, Shortcut }: MenuKit, inHeader = false) => (
-    <>
-      {canWrite && (
-        <>
-          {!inHeader && (
-            <>
-              <Item onSelect={() => setNewFolderIn(current)}>
-                <FolderPlus />
-                {translate('newFolder2')}
-              </Item>
-              <Item onSelect={() => picker$.current?.click()}>
-                <UploadIcon />
-                {translate('uploadFiles2')}
-              </Item>
-            </>
-          )}
-          <ImportItem Item={Item} onSelect={importDrawer.open}>
-            {translate('importInvoicesContracts')}
-          </ImportItem>
-          {clipboard && view.section === 'files' && (
-            <Item onSelect={paste}>
-              <ClipboardPaste />
-              {translate('paste')}{' '}
-              {plural(clipboard.files.length + clipboard.folders.length, 'item')}
-              <Shortcut>{translate('v')}</Shortcut>
-            </Item>
-          )}
-        </>
-      )}
-      {view.section === 'files' && zipItem(Item)}
-    </>
-  )
+  const importAction = useImportAction(translate('importInvoicesContracts'), importDrawer.open)
+  const pageItems = (inHeader = false): ActionMenuSpec['actions'] => [
+    canWrite &&
+      !inHeader && {
+        id: 'new-folder',
+        group: 'create',
+        icon: <FolderPlus />,
+        label: translate('newFolder2'),
+        onSelect: () => setNewFolderIn(current),
+      },
+    canWrite &&
+      !inHeader && {
+        id: 'upload',
+        group: 'create',
+        icon: <UploadIcon />,
+        label: translate('uploadFiles2'),
+        onSelect: () => picker$.current?.click(),
+      },
+    canWrite && importAction,
+    canWrite &&
+      clipboard &&
+      view.section === 'files' && {
+        id: 'paste',
+        group: 'edit',
+        icon: <ClipboardPaste />,
+        label: `${translate('paste')} ${plural(clipboard.files.length + clipboard.folders.length, 'item')}`,
+        shortcut: translate('v'),
+        onSelect: paste,
+      },
+    view.section === 'files' && zipAction(),
+  ]
   // Download as ZIP: what the view shows; off while there is nothing, or while a ZIP is being prepared.
   const zipEmpty =
     dim === null ? list.data?.data.length === 0 : groupsLevel.data?.groups.length === 0
-  const zipItem = (Item: MenuKit['Item']) => {
-    const why = zipPending
+  const zipAction = (): Action => ({
+    id: 'zip',
+    group: 'view',
+    icon: zipPending ? <Loader2 className="animate-spin" /> : <Download />,
+    label: zipPending ? translate('zipPreparing') : translate('downloadAsZip'),
+    disabledReason: zipPending
       ? translate('zipPreparingHint')
       : zipEmpty
         ? translate('zipNothingHere')
-        : null
-    const item = (
-      <Item disabled={why !== null} onSelect={() => downloadZip()}>
-        {zipPending ? <Loader2 className="animate-spin" /> : <Download />}
-        {zipPending ? translate('zipPreparing') : translate('downloadAsZip')}
-      </Item>
-    )
-    if (why === null) return item
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div>{item}</div>
-        </TooltipTrigger>
-        <TooltipContent side="left">{why}</TooltipContent>
-      </Tooltip>
-    )
-  }
+        : undefined,
+    onSelect: () => downloadZip(),
+  })
 
   const crumbs = pathTo(allFolders, current)
   // ---- header tabs: the fixed "All files" and the views the person pinned. Browsing never opens a
@@ -1098,7 +1114,7 @@ export function DocumentsPage() {
           else if (view.section === 'templates') setEditing({ template: null, document: null })
           else setSignFrom(null)
         }}
-        menu={listing && pageItems(dropdownKit, true)}
+        menu={listing ? pageItems(true) : undefined}
       />
       {organizing && (
         <OrganizeDrawer
@@ -1239,7 +1255,7 @@ export function DocumentsPage() {
           ) : (
             <PageContextMenu
               title={view.section === 'files' ? folderName(current) : translate('recentlyUploaded')}
-              items={(kit) => pageItems(kit)}
+              actions={pageItems()}
               views={{
                 tabs: [translate('allFiles'), ...headerTabs.map(tabLabel)],
                 active: activeTab,
@@ -2137,25 +2153,3 @@ function CreateMenu({
 }
 
 /** Reads the chosen files with AI into the import drawer's review; disabled with the reason when it cannot. */
-function ExtractItem({
-  reason,
-  lock,
-  onSelect,
-}: {
-  reason: string | null
-  lock: FeatureLock
-  onSelect: () => void
-}) {
-  return (
-    <ContextMenuItem disabled={Boolean(reason)} onSelect={onSelect}>
-      <Sparkles />
-      <span className="grid">
-        {translate('extractWithAI')}
-        {reason && !lock && (
-          <span className="text-caption text-pretty text-muted-foreground">{reason}</span>
-        )}
-      </span>
-      {lock && <PlanTag lock={lock} />}
-    </ContextMenuItem>
-  )
-}

@@ -646,9 +646,9 @@ export const ExpensesImportMenu: Story = {
     const canvas = within(canvasElement)
     await canvas.findByText('No expenses yet')
     await userEvent.click(canvas.getByRole('button', { name: 'More' }))
-    const items = await within(document.body).findAllByRole('menuitem')
-    await expect(items[0]).toHaveTextContent('Import receipts')
-    await expect(items[0]?.querySelector('svg.lucide-file-up')).not.toBeNull()
+    // Import makes records: it sits in the Create group, after Export.
+    const item = await within(document.body).findByRole('menuitem', { name: 'Import receipts' })
+    await expect(item.querySelector('svg.lucide-file-up')).not.toBeNull()
     // The open menu hides the page from the a11y check that runs after play.
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(within(document.body).queryByRole('menu')).toBeNull())

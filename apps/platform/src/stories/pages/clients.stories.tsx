@@ -6,6 +6,7 @@ import { ClientsPage } from '@/components/clients/clients-page'
 import { ringClipper } from '../focus-ring'
 import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import { sameRowMenus } from './menus'
 import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly } from './page-drop'
 
 const meta = {
@@ -341,4 +342,18 @@ export const Filters: Story = {
     pick: { control: /^Type/, option: 'Companies', key: 'type', value: 'company' },
     cleared: ['created', 'type'],
   }),
+}
+
+/** A client's "…" and its right-click menu are the same: open, status, edit, then Delete alone and last. */
+export const RowMenu: Story = {
+  play: async (context) => {
+    await shows('Keller Holzbau AG')?.(context)
+    const body = within(context.canvasElement.ownerDocument.body)
+    const button = await body.findByRole('button', { name: /^Actions for .*Keller Holzbau AG/ })
+    const order = await sameRowMenus(button)
+    await expect(order[0]).toMatch(/^#\d+ · Keller Holzbau AG$/)
+    await expect(order.slice(1).join(', ')).toMatch(
+      /^Open details, \|, (Deactivate|Activate), \|, Edit, \|, Delete$/,
+    )
+  },
 }

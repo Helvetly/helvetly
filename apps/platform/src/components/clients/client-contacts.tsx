@@ -1,14 +1,9 @@
 'use client'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { PhoneInput } from '@helvetly/ui/components/phone-input'
 import {
   displayPhone,
@@ -19,7 +14,7 @@ import {
   type CountryCode,
 } from '@helvetly/ui/lib/phone'
 import { useQueryClient } from '@tanstack/react-query'
-import { Ellipsis, Plus, Trash2 } from 'lucide-react'
+import { Ellipsis, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -232,30 +227,37 @@ export function ClientContacts({ client }: { client: Client }) {
                     <Ellipsis />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-40">
-                  {contactActions(contact, contacts.length).map((action) =>
-                    action === 'edit' ? (
-                      <DropdownMenuItem key={action} onSelect={() => setEditing(contact.id)}>
-                        {translate('edit')}
-                      </DropdownMenuItem>
-                    ) : action === 'primary' ? (
-                      <DropdownMenuItem key={action} onSelect={() => makePrimary(contact)}>
-                        {translate('makePrimary')}
-                      </DropdownMenuItem>
-                    ) : (
-                      <span key={action} className="contents">
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onSelect={() => setDeleting(contact)}
-                        >
-                          <Trash2 />
-                          {translate('delete')}
-                        </DropdownMenuItem>
-                      </span>
+                <ActionMenuContent
+                  kind="dropdown"
+                  menu={{
+                    header: contact.name,
+                    actions: contactActions(contact, contacts.length).map((action) =>
+                      action === 'edit'
+                        ? {
+                            id: action,
+                            group: 'edit',
+                            icon: <Pencil />,
+                            label: translate('edit'),
+                            onSelect: () => setEditing(contact.id),
+                          }
+                        : action === 'primary'
+                          ? {
+                              id: action,
+                              group: 'status',
+                              icon: <Star />,
+                              label: translate('makePrimary'),
+                              onSelect: () => makePrimary(contact),
+                            }
+                          : {
+                              id: action,
+                              group: 'danger',
+                              icon: <Trash2 />,
+                              label: translate('delete'),
+                              onSelect: () => setDeleting(contact),
+                            },
                     ),
-                  )}
-                </DropdownMenuContent>
+                  }}
+                />
               </DropdownMenu>
             </li>
           ),

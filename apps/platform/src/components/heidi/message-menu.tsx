@@ -1,8 +1,8 @@
 'use client'
+import { ActionMenuItems } from '@helvetly/ui/components/action-menu'
 import {
   ContextMenu,
   ContextMenuContent,
-  ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@helvetly/ui/components/context-menu'
@@ -94,35 +94,44 @@ export function MessageMenu({
             quoted.current = false
           }}
         >
-          {opened.quote && (
-            <>
-              <ContextMenuItem
-                onSelect={() => {
+          <ActionMenuItems
+            kind="context"
+            actions={[
+              Boolean(opened.quote) && {
+                id: 'quote',
+                group: 'view',
+                icon: <TextQuote />,
+                label: translate('quoteInReply'),
+                onSelect: () => {
                   quoted.current = true
                   document.getSelection()?.removeAllRanges()
                   onQuote(opened.quote)
-                }}
-              >
-                <TextQuote />
-                {translate('quoteInReply')}
-              </ContextMenuItem>
-              <ContextMenuItem onSelect={() => copy(opened.selection)}>
-                <Copy />
-                {translate('copy4')}
-              </ContextMenuItem>
-              <ContextMenuSeparator />
-            </>
-          )}
-          <ContextMenuItem onSelect={() => copy(opened.plain)}>
-            <Copy />
-            {translate('copyMessage')}
-          </ContextMenuItem>
-          {markdown && markdown.trim() !== opened.plain.trim() && (
-            <ContextMenuItem onSelect={() => copy(markdown)}>
-              <FileCode />
-              {translate('copyAsMarkdown')}
-            </ContextMenuItem>
-          )}
+                },
+              },
+              Boolean(opened.quote) && {
+                id: 'copy-selection',
+                group: 'view',
+                icon: <Copy />,
+                label: translate('copy4'),
+                onSelect: () => copy(opened.selection),
+              },
+              {
+                id: 'copy',
+                group: 'send',
+                icon: <Copy />,
+                label: translate('copyMessage'),
+                onSelect: () => copy(opened.plain),
+              },
+              Boolean(markdown) &&
+                markdown?.trim() !== opened.plain.trim() && {
+                  id: 'markdown',
+                  group: 'send',
+                  icon: <FileCode />,
+                  label: translate('copyAsMarkdown'),
+                  onSelect: () => copy(markdown ?? ''),
+                },
+            ]}
+          />
           <ContextMenuSeparator />
           <p className="px-1.5 py-1 text-caption text-balance text-muted-foreground">
             {translate('shiftRightClickForTheBrowserSMenu')}

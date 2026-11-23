@@ -234,7 +234,7 @@ test('right-clicking the empty page offers the page’s actions', async () => {
     within(menu)
       .getAllByRole('menuitem')
       .map((item) => item.textContent?.trim()),
-  ).toEqual(['New engagement', 'Import', 'Export CSV', 'View', 'Refresh'])
+  ).toEqual(['Export CSV', 'New engagement', 'Import', 'View', 'Refresh'])
   fireEvent.click(within(menu).getByRole('menuitem', { name: 'New engagement' }))
   expect(await screen.findByText('Form open')).toBeInTheDocument()
 })

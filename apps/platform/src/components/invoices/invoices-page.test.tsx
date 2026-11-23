@@ -214,9 +214,9 @@ test('right-clicking a row offers what its state allows, and acts on it', async 
   expect(within(menu).getByText(/^Draft · /)).toBeInTheDocument()
   expect(menuItems()).toEqual([
     'Open details',
-    'Edit draft',
-    'Issue',
     'Download PDF',
+    'Issue',
+    'Edit draft',
     'Duplicate',
     'Delete draft',
   ])
@@ -252,10 +252,10 @@ test('right-clicking the page outside the rows offers the page’s actions', asy
   const menu = await screen.findByRole('menu')
   expect(within(menu).getByText('Invoices')).toBeInTheDocument()
   expect(menuItems()).toEqual([
-    'New invoice',
-    'Import',
     'Export CSV',
     'Invoice settings',
+    'New invoice',
+    'Import',
     'Select all',
     'View',
     'Refresh',

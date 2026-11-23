@@ -499,7 +499,7 @@ export const RowMenu: Story = {
       within(menu)
         .getAllByRole('menuitem')
         .map((item) => item.textContent?.trim()),
-    ).toEqual(['Open details', 'Log delivery', 'Edit', 'Renew', 'Cancel engagement', 'Delete'])
+    ).toEqual(['Open details', 'Cancel engagement', 'Edit', 'Log delivery', 'Renew', 'Delete'])
     await userEvent.keyboard('{Escape}')
     // The open menu hides the rest of the page from the accessibility tree until it has closed.
     await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
@@ -704,7 +704,7 @@ export const PageMenu: Story = {
       within(menu)
         .getAllByRole('menuitem')
         .map((item) => item.textContent?.trim()),
-    ).toEqual(['New engagement', 'Import', 'Export CSV', 'Select all', 'View', 'Refresh'])
+    ).toEqual(['Export CSV', 'New engagement', 'Import', 'Select all', 'View', 'Refresh'])
     await userEvent.click(body.getByRole('menuitem', { name: 'Select all' }))
     await expect(await body.findByRole('toolbar', { name: 'Selected rows' })).toBeVisible()
   },

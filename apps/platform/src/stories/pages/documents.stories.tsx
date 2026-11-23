@@ -14,6 +14,7 @@ import { sessionHandler } from '../screen-fixtures'
 import { files as sampleFiles, folders as sampleFolders, page } from './api'
 import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
+import { sameRowMenus } from './menus'
 
 const meta = {
   title: 'Pages/Documents',
@@ -953,6 +954,8 @@ export const GroupMenuDownload: Story = {
       'type=quotes',
     )
 
+    // the open menu hides the rest of the page from the accessibility tree until it is gone
+    await waitFor(() => expect(body.queryByRole('menu')).toBeNull())
     fireEvent.contextMenu(groups.getByRole('button', { name: /^Invoices/ }))
     await userEvent.click(await body.findByRole('menuitem', { name: 'Download all (ZIP)' }))
     await expect(
@@ -1169,6 +1172,46 @@ export const ViewsPresetOpen: Story = {
     await expect(panel.getByRole('button', { name: /By client/ })).toHaveAttribute(
       'aria-pressed',
       'true',
+    )
+  },
+}
+
+/**
+ * A PDF's "⋮" and its right-click menu are one menu, in the standard groups: view, share and sign,
+ * edit, create (Extract with AI in Heidi's tone), then Move to Trash alone and last.
+ */
+export const FileMenu: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const [button] = await body.findAllByRole(
+      'button',
+      { name: /^Actions for .+\.pdf$/ },
+      { timeout: 8000 },
+    )
+    if (!button) throw new Error('no PDF in the list')
+    const order = await sameRowMenus(button)
+    const label = '[^,|]*'
+    await expect(order.join(', ')).toMatch(
+      new RegExp(
+        [
+          `^${label}\\.pdf`,
+          `Preview${label}`,
+          `Download${label}`,
+          '\\|',
+          `Share with client…${label}`,
+          `Send for signature…${label}`,
+          '\\|',
+          `Rename${label}`,
+          'Move to…',
+          'Copy to…',
+          `Cut${label}`,
+          '\\|',
+          `Make a template…${label}`,
+          `Extract with AI${label}`,
+          '\\|',
+          `Move to Trash${label}$`,
+        ].join(', '),
+      ),
     )
   },
 }

@@ -1,4 +1,5 @@
 'use client'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
@@ -8,13 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
@@ -217,49 +212,46 @@ function Detail({
                 <Ellipsis />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-48">
-              {rereadable && (
-                <DropdownMenuItem
-                  className="cursor-pointer"
-                  disabled={aiBlock !== null}
-                  title={aiBlock ?? undefined}
-                  onSelect={() => setRereading(true)}
-                >
-                  <HeidiSparkle />
-                  {translate('readAgainWithAI')}
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                className="cursor-pointer"
-                onSelect={() => onCommand('duplicate', expense)}
-              >
-                <Copy />
-                {translate('duplicate')}
-              </DropdownMenuItem>
-              {expense.status === 'booked' && canManage && (
-                <DropdownMenuItem
-                  variant="destructive"
-                  className="cursor-pointer"
-                  onSelect={() => onCommand('void', expense)}
-                >
-                  <Ban />
-                  {translate('void')}
-                </DropdownMenuItem>
-              )}
-              {draft && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="cursor-pointer"
-                    onSelect={() => onCommand('delete', expense)}
-                  >
-                    <Trash2 />
-                    {translate('deleteDraft')}
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
+            <ActionMenuContent
+              kind="dropdown"
+              menu={{
+                header: `#${expense.number} · ${expense.supplier_name ?? translate('noSupplier')}`,
+                actions: [
+                  expense.status === 'booked' &&
+                    canManage && {
+                      id: 'void',
+                      group: 'status',
+                      tone: 'destructive',
+                      icon: <Ban />,
+                      label: translate('void'),
+                      onSelect: () => onCommand('void', expense),
+                    },
+                  {
+                    id: 'duplicate',
+                    group: 'edit',
+                    icon: <Copy />,
+                    label: translate('duplicate'),
+                    onSelect: () => onCommand('duplicate', expense),
+                  },
+                  rereadable && {
+                    id: 'reread',
+                    group: 'edit',
+                    tone: 'ai',
+                    icon: <HeidiSparkle />,
+                    label: translate('readAgainWithAI'),
+                    disabledReason: aiBlock ?? undefined,
+                    onSelect: () => setRereading(true),
+                  },
+                  draft && {
+                    id: 'delete',
+                    group: 'danger',
+                    icon: <Trash2 />,
+                    label: translate('deleteDraft'),
+                    onSelect: () => onCommand('delete', expense),
+                  },
+                ],
+              }}
+            />
           </DropdownMenu>
           {expense.status !== 'void' && (
             <Button
