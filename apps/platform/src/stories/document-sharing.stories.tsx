@@ -96,7 +96,9 @@ export const ShareWithLinkedClient: Story = {
     await waitFor(() => expect(share).toBeEnabled())
     await userEvent.click(share)
     await expect(await within(dialog).findByText('Meier GmbH')).toBeVisible()
-    await expect(within(dialog).getByRole('button', { name: 'View as client' })).toBeVisible()
+    await expect(
+      await within(dialog).findByRole('button', { name: 'View as client' }),
+    ).toBeVisible()
   },
 }
 
