@@ -18,7 +18,8 @@ var unsupportedHTML = regexp.MustCompile(`(?i)<style|<body|<hr|<pre|@media|!impo
 
 func TestLayoutKeepsToSupportedHTML(t *testing.T) {
 	brand := Brand{Name: "Muster AG", LogoPath: "/logo", Address: []string{"Weg 1"}, Phone: "+41 44 000 00 00", Email: "a@muster.ch", VAT: "CHE-123.456.789"}
-	body := `<p>Hi <a href="https://x.example">there</a></p><ul><li>One</li></ul>` + Button("Open", "https://x.example/o")
+	body := `<p>Hi <a href="https://x.example">there</a></p><ul><li>One</li></ul>` + Details([2]string{"Document", "Vertrag"}) +
+		Button("Open", "https://x.example/o")
 	for _, m := range []Message{
 		{Subject: "Helvetly's own", HTML: body},
 		{Subject: "With a footer", HTML: body, Footer: `Why <a href="https://x.example/u" style="color:#71717a">you</a>`},

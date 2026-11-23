@@ -11,12 +11,13 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// emailLogoPath is where a client email's header loads the invoice logo: public (mail clients carry no session),
-// found only by the logo's random id, which a new logo replaces.
+// emailLogoPath is where a client email's header loads the workspace logo (never the document logo of the invoice
+// settings): public (mail clients carry no session), found only by the logo's random id, which a new logo replaces.
 const emailLogoPath = "/api/v1/public/email-logo/"
 
 // MailBrand is the business a workspace's client email comes from (mail.Branded): the seller details of the
-// invoice settings, else the workspace's name, the reply address and the owner's email as the last reply address.
+// invoice settings, else the workspace's name, the workspace logo (none: the name alone), the reply address and the
+// owner's email as the last reply address.
 func (s *Service) MailBrand(ctx context.Context, workspaceID string) (mail.Brand, error) {
 	set, err := loadSettings(ctx, s.db.Q, workspaceID)
 	if err != nil {
@@ -39,8 +40,12 @@ func (s *Service) MailBrand(ctx context.Context, workspaceID string) (mail.Brand
 			b.Address = append(b.Address, l)
 		}
 	}
-	if set.LogoFileID != nil {
-		b.LogoPath = emailLogoPath + workspaceID + "/" + *set.LogoFileID
+	logo, err := s.db.WorkspaceLogoID(ctx, workspaceID)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return mail.Brand{}, err
+	}
+	if logo != nil {
+		b.LogoPath = emailLogoPath + workspaceID + "/" + *logo
 	}
 	members, err := s.db.ListMembers(ctx, workspaceID)
 	if err != nil {
@@ -73,13 +78,13 @@ func (s *Service) ReplyTo(ctx context.Context, sess store.Session) (string, erro
 	return replyAddress(own, set, sess.User.Email), err
 }
 
-// getEmailLogo serves the invoice logo to a client email's header while it is the workspace's current one.
+// getEmailLogo serves the workspace logo to a client email's header while it is the workspace's current one.
 func (s *Service) getEmailLogo(w http.ResponseWriter, r *http.Request) {
 	workspaceID, id := r.PathValue("workspace"), r.PathValue("id")
-	set, err := loadSettings(r.Context(), s.db.Q, workspaceID)
+	current, err := s.db.WorkspaceLogoID(r.Context(), workspaceID)
 	switch {
 	case err != nil && !errors.Is(err, store.ErrNotFound):
-	case err != nil || set.LogoFileID == nil || *set.LogoFileID != id:
+	case err != nil || current == nil || *current != id:
 		err = auth.ErrNotFound
 	default:
 		err = s.serveEmailLogo(w, r, workspaceID, id)
@@ -90,9 +95,9 @@ func (s *Service) getEmailLogo(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveEmailLogo answers with the logo at its size in the email (see scaleEmailLogo). The id names one immutable
-// upload, so the answer may be cached for good; the unscaled original stays what the platform and PDFs use.
+// upload, so the answer may be cached for good; the unscaled original stays what the platform and portal use.
 func (s *Service) serveEmailLogo(w http.ResponseWriter, r *http.Request, workspaceID, id string) error {
-	b, err := s.files.Get(r.Context(), logoKey(workspaceID, id))
+	b, err := s.files.Get(r.Context(), store.WorkspaceLogoKey(workspaceID, id))
 	if err != nil {
 		return err
 	}

@@ -162,6 +162,9 @@ func newEnv(t *testing.T) *env {
 	}
 	e := &env{t: t, st: st, raw: raw, files: &fakeStorage{objects: map[string][]byte{}}, mail: &fakeMail{}}
 	svc := New(st, a, e.files, e.mail, "https://helvetly.example.com", discard)
+	svc.SetBrands(func(context.Context, string) (mail.Brand, error) {
+		return mail.Brand{Name: "Muster AG", LogoPath: "/api/v1/public/email-logo/w/l"}, nil
+	})
 	mux := http.NewServeMux()
 	a.Register(mux)
 	svc.Register(mux)
@@ -382,8 +385,9 @@ func TestParallelSigningCompletesWithCertificate(t *testing.T) {
 
 	var v struct {
 		Data struct {
-			Signer struct{ Status string } `json:"signer"`
-			Fields []struct {
+			Request struct{ Workspace, Logo string } `json:"request"`
+			Signer  struct{ Status string }          `json:"signer"`
+			Fields  []struct {
 				SignerID string `json:"signer_id"`
 			} `json:"fields"`
 			ConsentText string `json:"consent_text"`
@@ -391,7 +395,8 @@ func TestParallelSigningCompletesWithCertificate(t *testing.T) {
 	}
 	e.do(nil, "GET", "/api/v1/public/sign/"+one, nil, http.StatusOK, &v)
 	e.do(nil, "GET", "/api/v1/public/sign/"+one, nil, http.StatusOK, nil) // a second view tells nobody again
-	if v.Data.Signer.Status != "viewed" || len(v.Data.Fields) != 3 || v.Data.ConsentText != ConsentText {
+	if v.Data.Signer.Status != "viewed" || len(v.Data.Fields) != 3 || v.Data.ConsentText != ConsentText ||
+		v.Data.Request.Workspace != "Muster AG" || v.Data.Request.Logo != "/api/v1/public/email-logo/w/l" {
 		t.Fatalf("view %+v", v.Data)
 	}
 	for _, f := range v.Data.Fields {
@@ -612,7 +617,7 @@ func TestEmailsFromTemplates(t *testing.T) {
 	body["title"], body["message"], body["language"] = "Vertrag", "Guten Tag\n\nBitte unterschreiben.", "de"
 	req := e.create(b, body)
 	invite := e.mail.to("one@example.com")[0]
-	if invite.Language != "de" || !strings.Contains(invite.Subject, "«Vertrag» zur Unterschrift") ||
+	if invite.Language != "de" || !strings.Contains(invite.Subject, "bittet Sie, «Vertrag» zu unterschreiben") ||
 		!strings.Contains(invite.HTML, "<p>Guten Tag</p>") || !strings.Contains(invite.HTML, "Prüfen und unterschreiben") ||
 		!strings.Contains(invite.HTML, "ZertES") || !strings.Contains(invite.Text, "Bitte unterschreiben.") {
 		t.Fatalf("invitation: %+v", invite)

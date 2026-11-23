@@ -296,11 +296,11 @@ func (r *renderer) services(y float64) float64 {
 	totals := [][2]string{{r.l.Subtotal, d.Subtotal}, {r.l.Discount, d.Discount}, {r.l.VAT, d.VAT}, {r.l.Total, d.Total}}
 	totals = slices.DeleteFunc(totals, func(t [2]string) bool { return t[1] == "" })
 	y = r.room(y+0.5, float64(len(totals))*5.5+2)
-	r.pdf.Line(right-80, y, right, y)
+	r.pdf.Line(left+descW, y, right, y) // the totals start under the Qty column
 	y += 2
 	for i, t := range totals {
 		r.set(map[bool]string{true: "B", false: ""}[i == len(totals)-1], 9.5)
-		r.cell(right-80, y, 45, 5, t[0], "L")
+		r.cell(left+descW, y, right-35-left-descW, 5, t[0], "L")
 		r.cell(right-35, y, 35, 5, t[1], "R")
 		y += 5.5
 	}

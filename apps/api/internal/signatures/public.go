@@ -33,7 +33,8 @@ type signingView struct {
 		Message   *string   `json:"message"`
 		Status    string    `json:"status"`
 		Sender    sender    `json:"sender"`
-		Workspace string    `json:"workspace"`
+		Workspace string    `json:"workspace"` // the business as its emails name it
+		Logo      string    `json:"logo"`      // the logo of its emails (a public path), empty for none
 		ExpiresAt time.Time `json:"expires_at"`
 		PageCount int       `json:"page_count"`
 	} `json:"request"`
@@ -122,7 +123,15 @@ func (s *Service) writeView(w http.ResponseWriter, r *http.Request, token string
 	if err != nil {
 		return err
 	}
-	auth.WriteJSON(w, http.StatusOK, data(view(req, sid)))
+	v := view(req, sid)
+	if s.brands != nil {
+		brand, err := s.brands(r.Context(), req.WorkspaceID)
+		if err != nil {
+			return err
+		}
+		v.Request.Workspace, v.Request.Logo = brand.Name, brand.LogoPath
+	}
+	auth.WriteJSON(w, http.StatusOK, data(v))
 	return nil
 }
 

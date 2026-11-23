@@ -184,3 +184,19 @@ func TestSignatureBlock(t *testing.T) {
 		}
 	}
 }
+
+// The client's street line prints its house number once, whether it was typed into the street, the number or both.
+func TestRenderPrintsTheNumberOnce(t *testing.T) {
+	apt := "21"
+	for _, p := range []store.Party{
+		{Name: "Muster AG", Street: "Lerchenstrasse", StreetNumber: "21", Apt: &apt, Zip: "8000", City: "Zürich", Country: "CH"},
+		{Name: "Muster AG", Street: "Lerchenstrasse 21", StreetNumber: "21", Zip: "8000", City: "Zürich", Country: "CH"},
+	} {
+		d := sample("de", 0)
+		d.Client = p
+		out := render(t, d)
+		if !bytes.Contains(out.PDF, text("Lerchenstrasse 21")) || bytes.Contains(out.PDF, text("21, 21")) || bytes.Contains(out.PDF, text("21 21")) {
+			t.Errorf("%+v: number not printed once", p)
+		}
+	}
+}
