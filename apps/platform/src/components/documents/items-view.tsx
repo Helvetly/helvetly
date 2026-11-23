@@ -32,6 +32,7 @@ import {
   type DocFile,
   type Folder,
   type SortField,
+  linkLabel,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { usePrefetch } from '@/lib/queries'
@@ -46,6 +47,7 @@ import { MenuButton } from './menu-button'
 import { Section, type SectionId } from './section'
 import {
   bandRect,
+  checkModifiers,
   fileKey,
   folderKey,
   intersects,
@@ -74,7 +76,8 @@ export type ItemsProps = {
   onSort: (field: SortField, desc: boolean) => void
   onClick: (key: ItemKey, event: MouseEvent) => void
   /** A checkbox adds the item to the selection or takes it out, as ⌘-click does. */
-  onToggle: (key: ItemKey) => void
+  /** A checkbox click: Shift selects the range from the anchor, otherwise it toggles the item. */
+  onToggle: (key: ItemKey, modifiers: { shift: boolean; toggle: boolean }) => void
   onToggleAll: (all: boolean) => void
   onRenameDone: (key: ItemKey, name: string | null) => void
   /** Before a context menu opens: make sure the item is part of the selection. */
@@ -342,9 +345,13 @@ function ItemCheck({
     <Checkbox
       aria-label={translate('select', { name: name })}
       checked={checked}
-      onCheckedChange={() => props.onToggle(item)}
+      // Handled here, not in onCheckedChange, which loses Shift; Space on the box clicks it too.
       // Not the card's click (which opens it), and never the start of a drag.
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation()
+        event.preventDefault()
+        props.onToggle(item, checkModifiers(event))
+      }}
       onDoubleClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.preventDefault()}
       className={cn(
@@ -517,7 +524,7 @@ function FileBadges({ file, className }: { file: DocFile; className?: string }) 
     <span className={cn('flex gap-1', className)}>
       {file.links.length > 0 && (
         <span
-          title={file.links.map((link) => link.label).join(', ')}
+          title={file.links.map(linkLabel).join(', ')}
           className="flex h-5 items-center gap-0.5 rounded-full bg-card/95 px-1.5 text-[11px] text-muted-foreground shadow-elevation-1"
         >
           <Link2 className="size-3" />
@@ -804,7 +811,7 @@ function StatusPill({ file }: { file: DocFile }) {
       title={
         retained
           ? translate('keptUntil', { retained_until: file.retained_until })
-          : file.links.map((link) => link.label).join(', ')
+          : file.links.map(linkLabel).join(', ')
       }
       className="inline-flex h-6 max-w-full items-center gap-1.5 rounded-full border border-border/80 px-2 text-[12px] text-foreground/80"
     >

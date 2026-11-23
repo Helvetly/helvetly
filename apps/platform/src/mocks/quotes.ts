@@ -382,6 +382,9 @@ export function listQuotes(query: URLSearchParams) {
 }
 
 export const quoteHandlers = [
+  // contracts made from quotes: none here (mocks/templates.ts keeps the ones it makes)
+  http.get('/api/v1/quotes/contract-counts', () => HttpResponse.json({ data: {} })),
+  http.get<Params>('/api/v1/quotes/:id/contracts', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/quotes', async ({ request }) => {
     await delay()
     return HttpResponse.json(listQuotes(new URL(request.url).searchParams))

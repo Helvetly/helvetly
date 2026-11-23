@@ -70,11 +70,18 @@ import {
   type QuoteSortField,
   type QuoteStatus,
 } from '@/lib/quotes'
+import { useContractCounts } from '@/lib/templates'
 import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
 
 import { QuoteRowStatus } from './quote-bits'
-import { QuoteMenuItems, useQuoteCommands } from './quote-commands'
+import {
+  QuoteMenuItems,
+  useContractEntry,
+  useQuoteCommands,
+  type ContractEntry,
+} from './quote-commands'
+import { ContractMark } from './quote-contract'
 import { QuoteDetail } from './quote-detail'
 import { NewQuoteSheet } from './quote-editor'
 
@@ -399,9 +406,12 @@ export function QuotesPage() {
   const open = useStableCallback(openQuote)
   const toggle = useStableCallback(toggleRow)
   const run = useStableCallback(commands.run)
+  const startContract = useStableCallback(commands.contract)
+  const contract = useContractEntry(startContract)
+  const counts = useContractCounts(useCan('read:documents')).data
   const act = useMemo<RowActions>(
-    () => ({ open, toggle, prefetch, command: run }),
-    [open, toggle, prefetch, run],
+    () => ({ open, toggle, prefetch, command: run, contract, counts: counts ?? {} }),
+    [open, toggle, prefetch, run, contract, counts],
   )
   const columns = useMemo(() => quoteColumns(canWrite, act), [canWrite, act])
 
@@ -654,6 +664,7 @@ function quoteMenu(quote: Quote, writable: boolean, act: RowActions): RowMenuSpe
         writable={writable}
         run={act.command}
         onOpen={() => act.open(quote.id)}
+        contract={act.contract}
       />
     ),
   }
@@ -674,6 +685,9 @@ type RowActions = {
   toggle: (id: string) => void
   prefetch: (id: string) => void
   command: (name: QuoteCommand, quote: Quote) => void
+  contract: ContractEntry
+  /** Contracts per quote, for the number's mark. */
+  counts: Record<string, number>
 }
 
 const rowName = (quote: Quote) => `${quoteNumber(quote)} · ${quote.client.name}`
@@ -690,16 +704,19 @@ function quoteColumns(writable: boolean, act: RowActions): DataColumn<Quote>[] {
       className: 'overflow-visible',
       // The row opens on click; the button makes it reachable by keyboard.
       cell: (quote) => (
-        <button
-          type="button"
-          onClick={() => act.open(quote.id)}
-          className={cn(
-            'max-w-full truncate rounded-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
-            quote.number ? 'font-code' : 'text-muted-foreground',
-          )}
-        >
-          {quoteNumber(quote)}
-        </button>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => act.open(quote.id)}
+            className={cn(
+              'max-w-full truncate rounded-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+              quote.number ? 'font-code' : 'text-muted-foreground',
+            )}
+          >
+            {quoteNumber(quote)}
+          </button>
+          <ContractMark count={act.counts[quote.id]} />
+        </span>
       ),
     },
     {
@@ -801,6 +818,7 @@ const QuoteItem = memo(function QuoteItem({
             <span className="truncate text-title-sm">{quote.client.name}</span>
             <span className="truncate text-body-sm text-muted-foreground">
               <span className={cn(quote.number && 'font-code')}>{quoteNumber(quote)}</span>
+              <ContractMark count={act.counts[quote.id]} />
               {translate('validUntil')}
               {formatDay(quote.valid_until)}
             </span>

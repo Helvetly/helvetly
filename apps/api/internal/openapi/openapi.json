@@ -9240,6 +9240,7 @@
               "engagements",
               "signatures",
               "documents",
+              "contracts",
               "year",
               null
             ],
@@ -12496,6 +12497,7 @@
               "engagements",
               "signatures",
               "documents",
+              "contracts",
               "year",
               null
             ],

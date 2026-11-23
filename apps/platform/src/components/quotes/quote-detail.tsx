@@ -6,6 +6,8 @@ import { Callout } from '@helvetly/ui/components/callout'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
@@ -34,7 +36,7 @@ import {
   awaitsApproval,
   showsApproval,
 } from '@/components/approvals/approval-panel'
-import { dropdownKit } from '@/components/data/menus'
+import { dropdownKit, titleClass } from '@/components/data/menus'
 import { Money } from '@/components/invoices/invoice-bits'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { HeroFact, RecordHero } from '@/components/invoices/record-hero'
@@ -57,7 +59,14 @@ import {
 } from '@/lib/quotes'
 
 import { QuoteRowStatus } from './quote-bits'
-import { ACTIONS, commandLabel, QuoteMenuItems, useQuoteCommands } from './quote-commands'
+import {
+  ACTIONS,
+  commandLabel,
+  QuoteMenuItems,
+  useContractEntry,
+  useQuoteCommands,
+} from './quote-commands'
+import { ContractSection } from './quote-contract'
 import { EDITOR_WIDTH, QuoteEditor } from './quote-editor'
 import { QuoteHistory } from './quote-history'
 
@@ -152,6 +161,8 @@ function Detail({
     onDeleted: onClose,
     onInvoice: (invoice) => openHref(`/invoices?id=${encodeURIComponent(invoice)}`),
   })
+  const contract = useContractEntry(commands.contract)
+  const readsDocuments = useCan('read:documents')
   const can = quoteCommands(quote)
   const primary = writable ? primaryCommand(quote) : null
   const target = { doc: 'quotes', id: quote.id } as const
@@ -195,12 +206,17 @@ function Detail({
                 <TooltipContent>{translate('moreActions')}</TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end" className="min-w-52">
+                <DropdownMenuLabel className={titleClass}>
+                  {quoteNumber(quote)} · {quote.client.name}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
                 <QuoteMenuItems
                   kit={dropdownKit}
                   quote={quote}
                   writable={writable}
                   run={commands.run}
                   skip={skip}
+                  contract={contract}
                 />
               </DropdownMenuContent>
             </DropdownMenu>
@@ -313,6 +329,7 @@ function Detail({
 
       <TabsContent value="overview" className="grid content-start gap-3 p-4 sm:p-5">
         {showsApproval(approval) && <ApprovalPanel target={target} approval={approval} />}
+        {readsDocuments && <ContractSection quote={quote} writable={contract !== null} />}
         <Panel title={translate('lines')}>
           <ul className="divide-y divide-border/60">
             {quote.lines.map((line) => (

@@ -68,6 +68,8 @@ export type ImportBatch = {
   client_name?: string | null
   status: 'extracting' | 'review'
   created_at: string
+  /** An unfinished import is discarded 48 h after its last change. */
+  expires_at?: string
   files: ImportFile[]
   records: ImportRecord[]
 }
@@ -78,6 +80,7 @@ export type ImportSummary = {
   client_id?: string | null
   status: 'extracting' | 'review'
   created_at: string
+  expires_at?: string
   pending: number
 }
 
@@ -622,6 +625,7 @@ export function isImportBatch(value: unknown): value is ImportBatch {
     isTarget(value.kind) &&
     isBatchStatus(value.status) &&
     isString(value.created_at) &&
+    isOptionalText(value.expires_at) &&
     isOptionalText(value.client_id) &&
     isOptionalText(value.client_name) &&
     Array.isArray(value.files) &&
@@ -638,6 +642,7 @@ function isSummary(value: unknown): value is ImportSummary {
     isTarget(value.kind) &&
     isBatchStatus(value.status) &&
     isString(value.created_at) &&
+    isOptionalText(value.expires_at) &&
     isOptionalText(value.client_id) &&
     typeof value.pending === 'number'
   )
@@ -867,6 +872,14 @@ export const matchReason = (reason: string) => {
 /** Rows ticked when the review opens: clean ones; duplicates and rows with issues wait for a look. */
 export const defaultSelection = (records: ImportRecord[]) =>
   new Set(records.filter(isClean).map((record) => record.id))
+
+/** How long until an unfinished import is discarded: whole hours, or "soon" under two. */
+export function expiryText(expiresAt: string, now = Date.now()) {
+  const hours = (Date.parse(expiresAt) - now) / 3_600_000
+  return hours < 2
+    ? translate('importExpiresSoon')
+    : translate('importExpiresIn', { hours: Math.floor(hours) })
+}
 
 /** The newest batch worth reopening: still being read, or with records not created yet. */
 /** The unfinished batch to offer: of the same client when the import is for one, else of none. */

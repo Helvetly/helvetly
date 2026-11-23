@@ -152,6 +152,9 @@ func (s *Service) edit(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		if err != nil {
 			return err
 		}
+		if err := s.live(b); err != nil {
+			return err
+		}
 		if rec, err = q.LockImportRecord(ctx, b.ID, r.PathValue("record_id")); err != nil {
 			return err
 		}
@@ -223,6 +226,9 @@ func (s *Service) commit(w http.ResponseWriter, r *http.Request, sess store.Sess
 	ctx := r.Context()
 	b, _, err := s.batch(ctx, s.db.Q, sess, r.PathValue("id"), "write")
 	if err != nil {
+		return err
+	}
+	if err := s.live(b); err != nil {
 		return err
 	}
 	results := []commitResult{}

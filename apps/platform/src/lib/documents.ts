@@ -29,6 +29,7 @@ export type SystemKind =
   | 'signatures'
   | 'documents'
   | 'expense_category'
+  | 'contracts'
   | 'year'
 
 /** A folder named inside a file, filing or Trash row. */
@@ -63,7 +64,8 @@ export const KINDS = [
 export type Kind = (typeof KINDS)[number] | 'other'
 
 export type DocLink = {
-  type: 'client' | 'invoice' | 'expense' | 'signature'
+  /** quote: the quote a contract was made from (label: its number); never unlinked by hand. */
+  type: 'client' | 'invoice' | 'expense' | 'signature' | 'quote'
   id: string
   label: string
   retains: boolean
@@ -462,10 +464,18 @@ export const isRetained = (until: string | null, today = isoDay(new Date())) =>
   until !== null && until >= today
 
 /** Where a backlink opens. */
+/** A link as shown: a contract's quote reads "Created from quote 2026/Q/001". */
+export const linkLabel = (link: DocLink) =>
+  link.type === 'quote'
+    ? translate('createdFromQuote', { number: link.label || translate('draft') })
+    : link.label
+
 export function linkHref(link: DocLink) {
   if (link.type === 'signature')
     return `/documents?${new URLSearchParams({ view: 'signatures', request: link.id })}`
-  const page = { client: '/clients', invoice: '/invoices', expense: '/expenses' }[link.type]
+  const page = { client: '/clients', invoice: '/invoices', expense: '/expenses', quote: '/quotes' }[
+    link.type
+  ]
   return `${page}?${new URLSearchParams({ id: link.id })}`
 }
 

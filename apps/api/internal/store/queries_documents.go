@@ -446,7 +446,7 @@ func (q Q) addLinks(ctx context.Context, docs []Document) error {
 	for i, d := range docs {
 		ids[i], at[d.ID] = d.ID, i
 	}
-	rows, err := q.db.Query(ctx, `SELECT l.document_id, l.target_type, l.target_id,
+	rows, err := q.db.Query(ctx, `SELECT document_id, target_type, target_id, label, retains FROM (SELECT l.document_id, l.target_type, l.target_id,
 			coalesce(CASE l.target_type
 				WHEN 'client' THEN c.name
 				WHEN 'invoice' THEN CASE WHEN i.number IS NULL
@@ -456,13 +456,18 @@ func (q Q) addLinks(ctx context.Context, docs []Document) error {
 				WHEN 'signature' THEN 'Signed · ' || sr.title
 			END, 'Deleted record'),
 			coalesce((l.target_type = 'invoice' AND i.status <> 'draft') OR (l.target_type = 'expense' AND e.status <> 'draft')
-				OR (l.target_type = 'signature' AND sr.completed_at IS NOT NULL), false)
+				OR (l.target_type = 'signature' AND sr.completed_at IS NOT NULL), false), l.created_at
 		FROM document_links l
 		LEFT JOIN clients c ON l.target_type = 'client' AND c.id = l.target_id
 		LEFT JOIN invoices i ON l.target_type = 'invoice' AND i.id = l.target_id
 		LEFT JOIN expenses e ON l.target_type = 'expense' AND e.id = l.target_id
 		LEFT JOIN signature_requests sr ON l.target_type = 'signature' AND sr.id = l.target_id
-		WHERE l.document_id = ANY($1) ORDER BY l.created_at, l.target_type, l.target_id`, ids)
+		WHERE l.document_id = ANY($1)
+		UNION ALL -- the quote a contract was made from (quote_contracts), labelled by its number alone
+		SELECT qc.document_id, 'quote', qc.quote_id, coalesce(t.number, ''), false, qc.created_at
+		FROM quote_contracts qc JOIN quotes t ON t.id = qc.quote_id WHERE qc.document_id = ANY($1)
+	) links (document_id, target_type, target_id, label, retains, created_at)
+	ORDER BY created_at, target_type, target_id`, ids)
 	if err != nil {
 		return err
 	}

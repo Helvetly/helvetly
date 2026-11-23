@@ -171,7 +171,14 @@ func fakeFiling(message string) map[string]any {
 			words = append(words, w)
 		}
 	}
-	out := map[string]any{"tags": words, "folder_id": nil, "new_folder": nil}
+	// a contract is completed unless its name says "unsigned"
+	completed := strings.Contains(base, "contract") && !strings.Contains(base, "unsigned")
+	reason := ""
+	if strings.Contains(base, "contract") {
+		reason = map[bool]string{true: "Both parties, dates and terms are filled in.", false: "It is not signed."}[completed]
+	}
+	out := map[string]any{"tags": words, "folder_id": nil, "new_folder": nil, "is_completed_contract": completed,
+		"contract_reason": reason}
 	if record := fakeRecordPath(base, clients); record != "" {
 		out["new_folder"] = record
 		return out
@@ -258,7 +265,7 @@ func fakeClients(message string) []string {
 }
 
 // fakeRecordPath files by the name: "invoice" or "quote" with a listed client's name (spaces as - or _) goes to
-// Clients/<client>/Invoices|Quotes/<year>, "receipt" to Expenses/<year>/Uncategorised; the year is a four-digit number in the
+// Clients/<client>/Invoices|Quotes/<year>, "contract" or "vertrag" to Clients/<client>/Documents/<year>/Contracts, "receipt" to Expenses/<year>/Uncategorised; the year is a four-digit number in the
 // name, else 2026. "" for anything else.
 func fakeRecordPath(base string, clients []string) string {
 	year := "2026"
@@ -274,6 +281,8 @@ func fakeRecordPath(base string, clients []string) string {
 	}
 	kind := ""
 	switch {
+	case strings.Contains(flat, "contract"), strings.Contains(flat, "vertrag"):
+		kind = "Documents"
 	case strings.Contains(flat, "invoice"):
 		kind = "Invoices"
 	case strings.Contains(flat, "quote"):
@@ -283,6 +292,9 @@ func fakeRecordPath(base string, clients []string) string {
 	}
 	for _, c := range clients {
 		if strings.Contains(flat, strings.ToLower(c)) {
+			if kind == "Documents" {
+				return "Clients/" + c + "/Documents/" + year + "/Contracts"
+			}
 			return "Clients/" + c + "/" + kind + "/" + year
 		}
 	}

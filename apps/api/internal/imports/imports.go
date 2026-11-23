@@ -237,26 +237,51 @@ func (s *Service) discard(w http.ResponseWriter, r *http.Request, sess store.Ses
 	if err != nil {
 		return err
 	}
-	var sources []string
-	if k.Private { // HR files exist only for their batch: discarding it deletes them, with what was read from them
-		if sources, err = s.db.PrivateImportSources(r.Context(), sess.Workspace.ID, r.PathValue("id")); err != nil {
-			return err
-		}
-	}
-	found, err := s.db.DeleteImportBatch(r.Context(), sess.Workspace.ID, sess.User.ID, r.PathValue("id"))
+	var keys []string
+	err = s.db.Tx(r.Context(), func(q store.Q) error {
+		keys, err = drop(r.Context(), q, sess.Workspace.ID, sess.User.ID, r.PathValue("id"), k.Private)
+		return err
+	})
 	if err != nil {
 		return err
 	}
-	if found && len(sources) > 0 {
-		keys, err := s.db.DeleteUnusedImportSources(r.Context(), sess.Workspace.ID, sources)
-		if err != nil {
-			return err
+	s.deleteKept(r.Context(), keys)
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// drop deletes a batch with its files and records, and for a private kind the HR files it stored that nothing else
+// refers to, returning their object keys to delete once q commits (storage then releases their bytes). ErrNotFound
+// when the batch is gone.
+func drop(ctx context.Context, q store.Q, workspaceID, userID, id string, private bool) ([]string, error) {
+	var sources []string
+	if private { // HR files exist only for their batch: discarding it deletes them, with what was read from them
+		var err error
+		if sources, err = q.PrivateImportSources(ctx, workspaceID, id); err != nil {
+			return nil, err
 		}
-		s.deleteKept(r.Context(), keys)
+	}
+	found, err := q.DeleteImportBatch(ctx, workspaceID, userID, id)
+	if err != nil {
+		return nil, err
 	}
 	if !found {
-		return store.ErrNotFound
+		return nil, store.ErrNotFound
 	}
-	w.WriteHeader(http.StatusNoContent)
+	if len(sources) == 0 {
+		return nil, nil
+	}
+	return q.DeleteUnusedImportSources(ctx, workspaceID, sources)
+}
+
+// errExpired: an unfinished import past store.ImportExpiry cannot be continued; the expiry job discards it.
+var errExpired = auth.Error(http.StatusGone, "import_expired",
+	"This import expired 48 hours after its last change and was discarded. Start a new one.", nil)
+
+// live refuses to continue an expired import.
+func (s *Service) live(b store.ImportBatch) error {
+	if b.Expired(s.now()) {
+		return errExpired
+	}
 	return nil
 }

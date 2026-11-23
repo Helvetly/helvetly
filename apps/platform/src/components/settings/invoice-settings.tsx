@@ -729,12 +729,14 @@ const ONES = { year: 1, ever: 1 }
 const FIRST_NUMBERS: NextNumbers = {
   series: { invoice: ONES, credit_note: ONES, proforma: ONES, self_billed: ONES },
   quote: 1,
+  contract: 1,
 }
 
 /** Every document type the number format numbers. */
 const NEXT_NUMBER_KINDS: { kind: NumberedKind; label: () => string }[] = [
   { kind: 'invoice', label: () => translate('invoice2') },
   { kind: 'quote', label: () => translate('quote2') },
+  { kind: 'contract', label: () => translate('contract') },
   { kind: 'credit_note', label: () => translate('creditNote2') },
   { kind: 'debit_note', label: () => translate('debitNote2') },
   { kind: 'prepayment', label: () => translate('prepayment').trim() },

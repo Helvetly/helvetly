@@ -127,6 +127,7 @@ export const nextNumbersHandler = http.get('/api/v1/invoice-settings/next-number
         self_billed: { year: 1, ever: 1 },
       },
       quote: 7,
+      contract: 2,
     },
   }),
 )

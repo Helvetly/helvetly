@@ -298,6 +298,59 @@ func TestAIFilingUsesTheSystemFolders(t *testing.T) {
 	}
 }
 
+func TestContractsFolder(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	acme := e.client(b, "Acme AG")
+	contracts := func(year int) string {
+		t.Helper()
+		var id string
+		err := e.st.Tx(context.Background(), func(q store.Q) error {
+			var err error
+			id, err = q.ContractsFolder(context.Background(), b.workspace, acme, year, b.user, time.Now())
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	// made on demand in Clients/<client>/Documents/<year>, once
+	id := contracts(2026)
+	if again := contracts(2026); again != id {
+		t.Fatalf("made twice: %s, %s", id, again)
+	}
+	folders := e.allFolders(b)
+	i := slices.IndexFunc(folders, func(f store.Folder) bool { return f.ID == id })
+	if i < 0 || folders[i].SystemKind == nil || *folders[i].SystemKind != "contracts" || folders[i].Name != "Contracts" ||
+		folderPath(folders, folders[i]) != "Clients/Acme AG/Documents/2026/Contracts" {
+		t.Fatalf("contracts folder: %+v", folders)
+	}
+
+	// a plain folder of that name is adopted
+	year := e.recordFolder(b, acme, "documents", 2025)
+	plain := e.folder(b, "contracts", &year)
+	if got := contracts(2025); got != plain.ID {
+		t.Fatalf("adopted %s, made %s", plain.ID, got)
+	}
+
+	// nobody renames, moves or trashes it
+	mine := e.folder(b, "Mine", nil)
+	e.fails(b, "PATCH", "/api/v1/documents/folders/"+id, map[string]any{"name": "Renamed"}, 409, "system_folder")
+	e.fails(b, "PATCH", "/api/v1/documents/folders/"+id, map[string]any{"parent_id": mine.ID}, 409, "system_folder")
+	if out := e.bulk(b, map[string]any{"action": "trash", "folder_ids": []string{id}}); out.Updated != 0 {
+		t.Fatalf("trashed: %+v", out)
+	}
+
+	// answered in the asker's language
+	for lang, want := range map[string]string{"de": "Verträge", "fr": "Contrats", "it": "Contratti", "en": "Contracts"} {
+		all := e.allFolders(b, "Accept-Language", lang)
+		if f := all[slices.IndexFunc(all, func(f store.Folder) bool { return f.ID == id })]; f.Name != want {
+			t.Fatalf("%s: %q, want %q", lang, f.Name, want)
+		}
+	}
+}
+
 func TestRecordPath(t *testing.T) {
 	travel := "exc_travel"
 	names := recordNames{clients: []store.ClientName{{ID: "c1", Name: "Acme  AG"}, {ID: "c2", Name: "Twin"}, {ID: "c3", Name: "twin"}},
@@ -311,6 +364,10 @@ func TestRecordPath(t *testing.T) {
 		{"Clients/Acme AG/Invoices/2025", true, &recordPlace{clientID: "c1", kind: "invoices", year: 2025}},
 		{"clients/acme ag/quotes/2024", true, &recordPlace{clientID: "c1", kind: "quotes", year: 2024}},
 		{"Clients/Acme AG/Contracts/2025", true, nil},
+		{"Clients/Acme AG/Documents/2025/Contracts", true, &recordPlace{clientID: "c1", kind: "documents", year: 2025, contracts: true}},
+		{"clients/acme ag/documents/2025/contracts", true, &recordPlace{clientID: "c1", kind: "documents", year: 2025, contracts: true}},
+		{"Clients/Acme AG/Invoices/2025/Contracts", true, nil},
+		{"Clients/Acme AG/Documents/2025/Other", true, nil},
 		{"Clients/Acme AG/Invoices", true, nil},
 		{"Clients/Acme AG/Invoices/25", true, nil},
 		{"Clients/Nobody/Invoices/2025", true, nil},
@@ -327,7 +384,7 @@ func TestRecordPath(t *testing.T) {
 		path, _ := splitPath(tc.path, organizeApplyDepth)
 		got, system := recordPath(path, names)
 		if system != tc.system || (got == nil) != (tc.want == nil) ||
-			got != nil && (got.clientID != tc.want.clientID || got.kind != tc.want.kind || got.year != tc.want.year ||
+			got != nil && (got.clientID != tc.want.clientID || got.kind != tc.want.kind || got.year != tc.want.year || got.contracts != tc.want.contracts ||
 				(got.categoryID == nil) != (tc.want.categoryID == nil) || got.categoryID != nil && *got.categoryID != *tc.want.categoryID) {
 			t.Errorf("%s: %+v %v, want %+v %v", tc.path, got, system, tc.want, tc.system)
 		}
@@ -390,6 +447,68 @@ func TestOrganizeApplyFilesIntoTheSystemFolders(t *testing.T) {
 	for _, f := range e.allFolders(b) {
 		if f.SystemKind == nil {
 			t.Fatalf("left a plain folder: %+v", f)
+		}
+	}
+}
+
+// Only a completed contract of a known client is filed in its Contracts folder; a template-like file goes to the
+// client's Documents/<year>, an unknown client's to no client folder; the reason is recorded.
+func TestAIFilingContracts(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	e.approveAI(b)
+	e.filer(nil)
+	e.client(b, "Acme AG")
+	const filled = "Service contract between Acme AG, Zurich, and Example GmbH, Bern. Start: 01.03.2025. Fee: CHF 4'000 a month. Signed 20.02.2025."
+	for _, tc := range []struct{ name, body, want string }{
+		{"acme ag contract 2025.txt", filled, "Clients/Acme AG/Documents/2025/Contracts"},
+		{"acme ag vertrag vorlage 2025.txt", filled, "Clients/Acme AG/Documents/2025"},
+		{"acme ag contract 2024.txt", "Contract between [Client name] and ______, start [date].", "Clients/Acme AG/Documents/2024"},
+		{"acme ag unsigned contract 2023.txt", filled, "Clients/Acme AG/Documents/2023"},
+		{"zeta corp contract 2025.txt", filled, ""},
+	} {
+		up := e.uploaded(b, tc.name, tc.body+" "+tc.name) // each its own content
+		e.fileDue()
+		folders := e.allFolders(b)
+		got := ""
+		if d := e.get(b, up.ID); d.FolderID != nil {
+			i := slices.IndexFunc(folders, func(f store.Folder) bool { return f.ID == *d.FolderID })
+			got = folderPath(folders, folders[i])
+		}
+		if tc.want == "" && strings.HasPrefix(got, "Clients/") || tc.want != "" && got != tc.want {
+			t.Errorf("%s filed in %q, want %q", tc.name, got, tc.want)
+		}
+		var reason *string
+		if err := e.raw.QueryRow(context.Background(), `SELECT contract_reason FROM document_filings WHERE document_id = $1`,
+			up.ID).Scan(&reason); err != nil {
+			t.Fatal(err)
+		}
+		if strings.HasPrefix(tc.want, "Clients/") && (reason == nil || *reason == "") {
+			t.Errorf("%s: no reason recorded", tc.name)
+		}
+	}
+}
+
+func TestCompletedContract(t *testing.T) {
+	for _, tc := range []struct {
+		name, text string
+		model      bool
+		want       bool
+	}{
+		{"Vertrag Acme.pdf", "Vertrag zwischen Acme AG und Beta GmbH, gültig ab 01.01.2025.", true, true},
+		{"Vertrag Vorlage Acme.pdf", "", true, false},
+		{"Mustervertrag.pdf", "", true, false},
+		{"contract-draft.pdf", "", true, false},
+		{"Contrat modèle.docx", "", true, false},
+		{"contract.pdf", "Between {{client}} and us", true, false},
+		{"contract.pdf", "Name: ..........", true, false},
+		{"contract.pdf", "Signed by <<Name>>", true, false},
+		{"contract.pdf", "This is a sample agreement.", true, false},
+		{"contract.pdf", "Fully filled.", false, false},
+		{"drafted-by-acme-contract.pdf", "", true, true}, // "drafted" is no template word
+	} {
+		if got, why := completedContract(tc.name, tc.text, tc.model, ""); got != tc.want || !got && why == "" {
+			t.Errorf("%s %q: %v %q, want %v", tc.name, tc.text, got, why, tc.want)
 		}
 	}
 }

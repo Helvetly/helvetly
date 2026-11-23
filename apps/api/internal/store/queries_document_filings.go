@@ -27,6 +27,8 @@ type FilingRecord struct {
 	FromFolderID, FolderID *string
 	CreatedFolder          bool
 	Tags                   []string
+	// ContractReason: why a client's contract-like file went, or did not go, to its Contracts folder
+	ContractReason *string
 }
 
 // QueueFiling queues AI filing of a new file (once).
@@ -81,8 +83,8 @@ func (q Q) FinishFiling(ctx context.Context, documentID string, r FilingRecord, 
 		r.Tags = []string{}
 	}
 	_, err := q.db.Exec(ctx, `UPDATE document_filings SET status = $2, from_folder_id = $3, folder_id = $4, created_folder = $5,
-		tags = $6, finished_at = $7 WHERE document_id = $1 AND status = 'queued'`,
-		documentID, r.Status, r.FromFolderID, r.FolderID, r.CreatedFolder, r.Tags, now)
+		tags = $6, finished_at = $7, contract_reason = $8 WHERE document_id = $1 AND status = 'queued'`,
+		documentID, r.Status, r.FromFolderID, r.FolderID, r.CreatedFolder, r.Tags, now, r.ContractReason)
 	return err
 }
 

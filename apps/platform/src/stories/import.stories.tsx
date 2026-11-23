@@ -829,6 +829,43 @@ export const DiscardUnfinished: Story = {
 }
 const discarded: string[] = []
 
+const hoursFromNow = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString()
+
+/** The offer says when the unfinished import is discarded: in whole hours, then "soon" under two. */
+export const UnfinishedExpires: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        http.get('/api/v1/imports', () =>
+          HttpResponse.json({ data: [summary({ expires_at: hoursFromNow(31.5) })] }),
+        ),
+      ],
+    },
+  },
+  play: async () => {
+    await opened()
+    await expect(await body().findByText('Expires in 31 h.')).toBeVisible()
+  },
+}
+
+export const UnfinishedExpiresSoon: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        http.get('/api/v1/imports', () =>
+          HttpResponse.json({ data: [summary({ expires_at: hoursFromNow(1) })] }),
+        ),
+      ],
+    },
+  },
+  play: async () => {
+    await opened()
+    await expect(await body().findByText('Expires soon.')).toBeVisible()
+  },
+}
+
 // One unfinished invoice import of the Invoices page; the API lists batches per entry point (kind, client).
 const asked: string[] = []
 /** Waits for the drawer of `title` and its list request, then lets the answer render before judging the banner. */

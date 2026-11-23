@@ -11,7 +11,7 @@ import {
 } from '@helvetly/ui/components/dropdown-menu'
 import { IconTile } from '@helvetly/ui/components/icon-tile'
 import { formatRelative } from '@helvetly/ui/lib/format'
-import { Ellipsis, FileSignature, LayoutTemplate, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Ellipsis, FileSignature, LayoutTemplate, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -31,13 +31,7 @@ import {
  * The Templates section of Documents: PDFs filled from a client's details, optionally signed.
  * Here a template is only edited; a document is made from one through Documents → Create.
  */
-export function TemplatesView({
-  onEdit,
-  onCreate,
-}: {
-  onEdit: (template: Template) => void
-  onCreate: () => void
-}) {
+export function TemplatesView({ onEdit }: { onEdit: (template: Template) => void }) {
   const list = useTemplates()
   const templates = list.data ?? []
   const [deleting, setDeleting] = useState<Template | null>(null)
@@ -58,12 +52,6 @@ export function TemplatesView({
         icon={<LayoutTemplate />}
         title={translate('noTemplatesYet')}
         text={translate('turnAContractOfferOrLetterIntoATemplate')}
-        action={
-          <Button size="sm" className="cursor-pointer gap-1.5" onClick={onCreate}>
-            <Plus className="size-4" />
-            {translate('newTemplate')}
-          </Button>
-        }
       />
     )
 

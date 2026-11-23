@@ -9,7 +9,8 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// System folders (store/queries_system_folders.go): Clients/<client>/<record type>/<year> and
+// System folders (store/queries_system_folders.go): Clients/<client>/<record type>/<year> (and
+// Clients/<client>/Documents/<year>/Contracts) and
 // Expenses/<year>/<category>. Nobody renames, moves or deletes them; typed ones are stored by their English name and
 // answered in the asker's language.
 
@@ -19,11 +20,11 @@ var errSystemFolder = refuse(http.StatusConflict, "system_folder",
 // systemNames: the names of the typed system folders in the other languages (English is the stored name).
 var systemNames = map[string]map[string]string{
 	"de": {"clients": "Kunden", "expenses": "Ausgaben", "invoices": "Rechnungen", "quotes": "Offerten",
-		"engagements": "Aufträge", "signatures": "Unterschriften", "documents": "Dokumente", "uncategorised": "Ohne Kategorie"},
+		"engagements": "Aufträge", "signatures": "Unterschriften", "documents": "Dokumente", "contracts": "Verträge", "uncategorised": "Ohne Kategorie"},
 	"fr": {"clients": "Clients", "expenses": "Dépenses", "invoices": "Factures", "quotes": "Devis",
-		"engagements": "Mandats", "signatures": "Signatures", "documents": "Documents", "uncategorised": "Sans catégorie"},
+		"engagements": "Mandats", "signatures": "Signatures", "documents": "Documents", "contracts": "Contrats", "uncategorised": "Sans catégorie"},
 	"it": {"clients": "Clienti", "expenses": "Spese", "invoices": "Fatture", "quotes": "Preventivi",
-		"engagements": "Incarichi", "signatures": "Firme", "documents": "Documenti", "uncategorised": "Senza categoria"},
+		"engagements": "Incarichi", "signatures": "Firme", "documents": "Documenti", "contracts": "Contratti", "uncategorised": "Senza categoria"},
 }
 
 // language: the asker's language among en, de, fr and it: ?lang, else the first supported of Accept-Language.

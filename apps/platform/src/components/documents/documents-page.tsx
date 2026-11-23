@@ -48,7 +48,6 @@ import {
   MousePointer2,
   List as ListIcon,
   Pencil,
-  Plus,
   RotateCcw,
   Scissors,
   SearchX,
@@ -84,6 +83,7 @@ import { dropdownKit, PageContextMenu, titleClass, type MenuKit } from '@/compon
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
 import { ImportItem, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
+import { useFileDrop } from '@/components/import/page-drop'
 import { PageHeader } from '@/components/shell/page-header'
 import { CreateSignatureDrawer } from '@/components/signatures/create-drawer'
 import { RequestDrawer } from '@/components/signatures/request-drawer'
@@ -167,7 +167,6 @@ import {
   EMPTY_SELECTION,
   fileKey,
   folderKey,
-  isDesktopDrag,
   moveFocus,
   splitKeys,
   type DragPayload,
@@ -317,7 +316,6 @@ export function DocumentsPage() {
   const [confirm, setConfirm] = useState<Confirm | null>(null)
   const [clipboard, setClipboard] = useState<Clipboard | null>(null)
   const [trashSelected, setTrashSelected] = useState<ReadonlySet<string>>(new Set())
-  const [desktopDrag, setDesktopDrag] = useState(false)
   // The create drawer: undefined = closed, null = open without a PDF chosen yet.
   const [shareFrom, setShareFrom] = useState<DocFile | null>(null)
   const [signFrom, setSignFrom] = useState<DocFile | null | undefined>(undefined)
@@ -436,35 +434,6 @@ export function DocumentsPage() {
     const timer = setTimeout(() => navigate({ search }), 250)
     return () => clearTimeout(timer)
   })
-
-  // Files dragged in from the desktop light up the whole page.
-  useEffect(() => {
-    let depth = 0
-    const enter = (event: DragEvent) => {
-      if (!isDesktopDrag(event.dataTransfer)) return
-      depth++
-      setDesktopDrag(true)
-    }
-    const leave = (event: DragEvent) => {
-      if (!isDesktopDrag(event.dataTransfer)) return
-      depth = Math.max(0, depth - 1)
-      if (depth === 0) setDesktopDrag(false)
-    }
-    const reset = () => {
-      depth = 0
-      setDesktopDrag(false)
-    }
-    window.addEventListener('dragenter', enter)
-    window.addEventListener('dragleave', leave)
-    window.addEventListener('drop', reset)
-    window.addEventListener('dragend', reset)
-    return () => {
-      window.removeEventListener('dragenter', enter)
-      window.removeEventListener('dragleave', leave)
-      window.removeEventListener('drop', reset)
-      window.removeEventListener('dragend', reset)
-    }
-  }, [])
 
   const folderName = (id: string | null) =>
     id
@@ -683,6 +652,11 @@ export function DocumentsPage() {
     upload,
     trash: (payload) => void trashItems(payload),
   }
+
+  // Files dragged in from the desktop light up the whole page; a drop outside a folder goes to the current one.
+  const desktopDrag = useFileDrop(canWrite && view.section !== 'trash', (dropped) =>
+    upload(dropped, current),
+  )
 
   // ---- selection and keyboard ----
   // A plain click opens the item (a file's preview, a folder); ⌘/Ctrl and Shift select, as does its checkbox.
@@ -1049,6 +1023,17 @@ export function DocumentsPage() {
   const surfaceDrop = useDropTarget(dropHere)
   const loading = listing && dim === null && !list.data && !list.error
 
+  // The header's solid button: Upload for files, "New" in Templates and Signatures (locked: says why).
+  const sectionLock =
+    view.section === 'templates' ? templateLock : view.section === 'signatures' ? signLock : null
+  const primaryLabel = listing
+    ? translate('upload2')
+    : view.section === 'templates'
+      ? translate('newTemplate')
+      : view.section === 'signatures' && canWrite
+        ? translate('pdfForSignature3')
+        : undefined
+
   return (
     <DropProvider value={canWrite ? dropActions : null}>
       <input
@@ -1081,11 +1066,11 @@ export function DocumentsPage() {
         }}
         savedViews={false}
         keepTab
-        // Upload, Create, Organize and "…" act on files: the Templates, Signatures and Trash views
-        // have their own controls under the tabs instead.
+        // Upload, Create, Organize and "…" act on files; Templates and Signatures put their own
+        // "New" here instead, and Trash has its controls under the tabs.
         actions={
-          canWrite &&
-          listing && (
+          (sectionLock && <PlanTag lock={sectionLock} className="self-center" />) ||
+          (canWrite && listing && (
             <>
               <Button
                 variant="ai"
@@ -1104,10 +1089,15 @@ export function DocumentsPage() {
                 onFolder={() => setNewFolderIn(current)}
               />
             </>
-          )
+          ))
         }
-        primary={listing ? translate('upload2') : undefined}
-        onPrimary={() => picker$.current?.click()}
+        primary={primaryLabel}
+        onPrimary={() => {
+          if (listing) picker$.current?.click()
+          else if (sectionLock) toastLocked(sectionLock)
+          else if (view.section === 'templates') setEditing({ template: null, document: null })
+          else setSignFrom(null)
+        }}
         menu={listing && pageItems(dropdownKit, true)}
       />
       {organizing && (
@@ -1184,32 +1174,6 @@ export function DocumentsPage() {
                       : translate('trash')}
               </p>
             )}
-            {view.section === 'templates' && (
-              <div className="flex gap-1.5">
-                {templateLock && <PlanTag lock={templateLock} className="self-center" />}
-                <Button
-                  className="cursor-pointer gap-1.5"
-                  disabled={Boolean(templateLock)}
-                  onClick={() => setEditing({ template: null, document: null })}
-                >
-                  <Plus className="size-4" />
-                  {translate('newTemplate')}
-                </Button>
-              </div>
-            )}
-            {view.section === 'signatures' && canWrite && (
-              <div className="flex gap-1.5">
-                {signLock && <PlanTag lock={signLock} className="self-center" />}
-                <Button
-                  className="cursor-pointer gap-1.5"
-                  disabled={Boolean(signLock)}
-                  onClick={() => setSignFrom(null)}
-                >
-                  <Plus className="size-4" />
-                  {translate('pdfForSignature3')}
-                </Button>
-              </div>
-            )}
             {listing && (
               <>
                 <ListSearch
@@ -1247,15 +1211,9 @@ export function DocumentsPage() {
           </div>
 
           {view.section === 'templates' ? (
-            <TemplatesView
-              onEdit={(template) => setEditing({ template, document: null })}
-              onCreate={() => setEditing({ template: null, document: null })}
-            />
+            <TemplatesView onEdit={(template) => setEditing({ template, document: null })} />
           ) : view.section === 'signatures' ? (
-            <SignaturesView
-              onOpen={(id) => navigate({ request: id })}
-              onCreate={() => setSignFrom(null)}
-            />
+            <SignaturesView onOpen={(id) => navigate({ request: id })} />
           ) : view.section === 'trash' ? (
             <TrashView
               items={trash.data}
@@ -1382,11 +1340,9 @@ export function DocumentsPage() {
                       desc={view.desc}
                       onSort={(field, desc) => navigate({ sort: field, desc })}
                       onClick={onItemClick}
-                      onToggle={(key) => {
+                      onToggle={(key, modifiers) => {
                         setFocused(key)
-                        setSelection(
-                          clickSelect(selection, key, order, { shift: false, toggle: true }),
-                        )
+                        setSelection(clickSelect(selection, key, order, modifiers))
                       }}
                       onToggleAll={(all) =>
                         setSelection({ keys: new Set(all ? order : []), anchor: order[0] ?? null })
@@ -1520,7 +1476,7 @@ export function DocumentsPage() {
           )}
         </div>
 
-        {canWrite && desktopDrag && view.section !== 'trash' && (
+        {desktopDrag && (
           <div className="pointer-events-none fixed inset-0 z-30 flex items-end justify-center p-8 md:pl-[calc(var(--sidebar-width,16rem)+1rem)]">
             <div className="absolute inset-2 animate-in drop-zone duration-150 fade-in" />
             <div className="relative flex animate-in items-center gap-3 rounded-xl bg-zinc-900 px-5 py-3 text-[15px] text-white shadow-elevation-2 duration-200 slide-in-from-bottom-2 dark:bg-zinc-800">

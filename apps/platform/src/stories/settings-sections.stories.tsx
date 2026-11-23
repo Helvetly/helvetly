@@ -201,6 +201,7 @@ export const CustomNumberFormat: Story = {
     const preview = await within(document.body).findByRole('dialog')
     await waitFor(() => expect(preview).toHaveTextContent(`FV-INV-${year}-042`))
     await expect(preview).toHaveTextContent(`FV-Q-${year}-007`)
+    await expect(preview).toHaveTextContent(`FV-C-${year}-002`)
     await expect(preview).toHaveTextContent(`FV-CN-${year}-003`)
     await expect(preview).toHaveTextContent(
       /Debit note.*Prepayment.*Proforma.*Corrected invoice.*Self-billed/s,
@@ -220,7 +221,7 @@ async function openNextNumbers(numbering: ReturnType<typeof within>) {
 /** Every type is listed on one row, label left and the whole number right, never cut off. */
 async function expectFullRows() {
   const popover = within(await within(document.body).findByRole('dialog'))
-  await waitFor(() => expect(popover.getAllByRole('listitem')).toHaveLength(8))
+  await waitFor(() => expect(popover.getAllByRole('listitem')).toHaveLength(9))
   const rows = popover.getAllByRole('listitem')
   await waitFor(() => expect(popover.getAllByText(/042/).length).toBeGreaterThan(0))
   for (const row of rows) {
@@ -231,7 +232,7 @@ async function expectFullRows() {
     expect(value?.scrollWidth).toBeLessThanOrEqual(value?.clientWidth ?? 0)
   }
   const tops = rows.map((row) => Math.round(row.getBoundingClientRect().top))
-  await expect(new Set(tops).size).toBe(8)
+  await expect(new Set(tops).size).toBe(9)
 }
 
 export const NextNumbersHover: Story = {

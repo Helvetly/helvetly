@@ -3,6 +3,7 @@ package documents
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -10,7 +11,8 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// Record paths: AI filing and organizing put a client's records into Clients/<client>/<record type>/<year> and
+// Record paths: AI filing and organizing put a client's records into Clients/<client>/<record type>/<year> (contracts
+// into Clients/<client>/Documents/<year>/Contracts) and
 // expenses into Expenses/<year>/<category>, the system folders, instead of folders of their own.
 
 const (
@@ -22,7 +24,10 @@ const (
 const recordRules = "Documents of one of the listed clients (issued to them or received from them) that are an " +
 	"invoice, credit or debit note, quote, engagement report or contract, signed document or other client document go " +
 	"to the path Clients/<the client's name exactly as listed>/<Invoices, Quotes, Engagements, Signatures or " +
-	"Documents>/<the year of the document's date>. Receipts, supplier bills and other expenses go to Expenses/<the " +
+	"Documents>/<the year of the document's date>; a completed contract or agreement of a client (parties, dates " +
+	"and key terms filled in, no blanks or placeholders, not a template, sample or draft) goes to " +
+	"Clients/<the client's name exactly as listed>/Documents/<the year it was signed or starts, else the year of the " +
+	"upload>/" + store.ContractsFolderName + ", any other contract-like file to Clients/<the client>/Documents/<year>. Receipts, supplier bills and other expenses go to Expenses/<the " +
 	"listed expense category that fits, exactly as listed, or " + store.UncategorisedFolder + ">/<the year of their " +
 	"date>. Never make other folders inside Clients or Expenses."
 
@@ -47,6 +52,7 @@ type recordPlace struct {
 	clientID, kind string
 	year           int
 	categoryID     *string
+	contracts      bool // Clients/<client>/Documents/<year>/Contracts
 }
 
 // recordPath reads a path into the system folders; ok false when it does not start with Clients or Expenses, and
@@ -77,7 +83,9 @@ func recordPath(path []string, names recordNames) (place *recordPlace, ok bool) 
 		}
 		return nil, true
 	}
-	if len(path) != 4 {
+	contracts := len(path) == 5 && strings.EqualFold(path[4], store.ContractsFolderName) &&
+		strings.EqualFold(path[2], store.RecordFolders["documents"])
+	if len(path) != 4 && !contracts {
 		return nil, true
 	}
 	kind := ""
@@ -102,7 +110,7 @@ func recordPath(path []string, names recordNames) (place *recordPlace, ok bool) 
 	if match == "" {
 		return nil, true
 	}
-	return &recordPlace{clientID: match, kind: kind, year: year}, true
+	return &recordPlace{clientID: match, kind: kind, year: year, contracts: contracts}, true
 }
 
 func yearOf(s string) (int, bool) {
@@ -112,6 +120,9 @@ func yearOf(s string) (int, bool) {
 
 // folder: the system folder of the place, made where missing. Run it in a transaction.
 func (p recordPlace) folder(ctx context.Context, q store.Q, workspaceID, userID string, now time.Time) (string, error) {
+	if p.contracts {
+		return q.ContractsFolder(ctx, workspaceID, p.clientID, p.year, userID, now)
+	}
 	if p.clientID != "" {
 		return q.ClientRecordFolder(ctx, workspaceID, p.clientID, p.kind, p.year, userID, now)
 	}
@@ -157,4 +168,32 @@ func inSystemTree(folders []store.Folder, f store.Folder) bool {
 		f = folders[i]
 	}
 	return false
+}
+
+// templateWords: words that mark a file as a template, sample or draft (en, de, fr, it), as whole words of its name
+// or text.
+var templateWords = regexp.MustCompile(`(?i)(^|[^\p{L}])(template|sample|draft|specimen|vorlage|muster|mustervertrag|` +
+	`entwurf|modèle|modele|exemple|brouillon|modello|bozza|esempio|fac-simile|facsimile)([^\p{L}]|$)`)
+
+// placeholders: blanks left to fill: "[Name]", "{{name}}", "<<Name>>", "______", "........".
+var placeholders = regexp.MustCompile(`\[[^\]\n]{1,40}\]|\{\{[^}\n]{0,40}\}\}|<<[^>\n]{0,40}>>|_{5,}|\.{8,}|…{3,}`)
+
+// completedContract: whether a file the model calls a client's contract may go to its Contracts folder: the model
+// must say it is a completed contract, and neither its name nor its text may look like a template (a template word,
+// or a blank or placeholder in the text). The reason is recorded with the filing.
+func completedContract(name, text string, model bool, modelReason string) (bool, string) {
+	switch {
+	case templateWords.MatchString(name):
+		return false, "The file name marks it as a template, sample or draft."
+	case templateWords.MatchString(text):
+		return false, "Its text marks it as a template, sample or draft."
+	case placeholders.MatchString(text):
+		return false, "Its text has blanks or placeholders to fill in."
+	case !model:
+		if r := strings.TrimSpace(modelReason); r != "" {
+			return false, r
+		}
+		return false, "It is not a completed contract."
+	}
+	return true, strings.TrimSpace(modelReason)
 }

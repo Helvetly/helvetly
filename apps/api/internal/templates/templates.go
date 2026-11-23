@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/signatures"
@@ -70,11 +71,26 @@ type Service struct {
 	sign  Signatures
 	log   *slog.Logger
 	now   func() time.Time
+	// model and budget fill contract drafts (SetAI); limit spaces a person's drafts that ask the model.
+	model  aimodel.Provider
+	budget aimodel.Budget
+	limit  *auth.RateLimiter
+	// contractNumber formats a contract's number in the workspace's format (SetContractNumbers).
+	contractNumber func(ctx context.Context, q store.Q, workspaceID, date string, seq int64) (string, error)
 }
 
 func New(db *store.Store, a Auth, files Storage, mailer Mailer, sign Signatures, log *slog.Logger) *Service {
-	return &Service{db: db, auth: a, files: files, mail: mailer, sign: sign, log: log,
-		now: func() time.Time { return time.Now().UTC().Truncate(time.Microsecond) }}
+	return &Service{db: db, auth: a, files: files, mail: mailer, sign: sign, log: log, limit: auth.NewRateLimiter(20, time.Minute),
+		now: func() time.Time { return time.Now().UTC().Truncate(time.Microsecond) },
+		contractNumber: func(_ context.Context, _ store.Q, _, date string, seq int64) (string, error) {
+			return fmt.Sprintf("C-%s-%03d", date[:4], seq), nil
+		}}
+}
+
+// SetContractNumbers numbers contracts in the workspace's number format (invoices.Service.ContractNumber); without
+// it they are C-<year>-<seq>.
+func (s *Service) SetContractNumbers(f func(ctx context.Context, q store.Q, workspaceID, date string, seq int64) (string, error)) {
+	s.contractNumber = f
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.Session) error
@@ -96,6 +112,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("PUT /api/v1/templates/{id}", s.update)
 	handle("DELETE /api/v1/templates/{id}", s.remove)
 	handle("POST /api/v1/templates/{id}/documents", s.generate)
+	handle("POST /api/v1/quotes/{id}/contract-draft", s.contractDraft)
+	handle("GET /api/v1/quotes/{id}/contracts", s.quoteContracts)
+	handle("GET /api/v1/quotes/contract-counts", s.quoteContractCounts)
 }
 
 func data(v any) map[string]any { return map[string]any{"data": v} }

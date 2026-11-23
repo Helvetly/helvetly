@@ -141,6 +141,20 @@ func (s *Service) QuoteNumber(ctx context.Context, q store.Q, workspaceID, issue
 	return formatNumber(format, "quote", issueDate, seq), nil
 }
 
+// ContractNumber: a contract's number (templates, a contract made from a quote), as QuoteNumber with the type C:
+// C-{YYYY}-{NNN}, or the workspace's format when it prints the type and a year (2026/C/001).
+func (s *Service) ContractNumber(ctx context.Context, q store.Q, workspaceID, date string, seq int64) (string, error) {
+	set, err := loadSettings(ctx, q, workspaceID)
+	if err != nil {
+		return "", err
+	}
+	format := "C-{YYYY}-{NNN}"
+	if strings.Contains(set.NumberFormat, "{TYPE}") && counterYear(set.NumberFormat, date) != 0 {
+		format = set.NumberFormat
+	}
+	return formatNumber(format, "contract", date, seq), nil
+}
+
 // QuotePDF renders a quote (kind "quote", valid-until in DueDate) with the current seller settings, logo and client;
 // draft watermarks it. A quote has no QR bill.
 func (s *Service) QuotePDF(ctx context.Context, q store.Q, workspaceID string, inv store.Invoice, draft bool) ([]byte, error) {
