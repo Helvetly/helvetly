@@ -65,10 +65,11 @@ export function MonthView({
               )}
             >
               <span
+                data-today={day === today || undefined}
                 className={cn(
                   'inline-flex size-6 items-center justify-center rounded-full text-body-sm tabular-nums',
                   day === today
-                    ? 'text-brand-foreground bg-brand font-semibold'
+                    ? 'bg-primary font-semibold text-primary-foreground'
                     : !inMonth && 'text-muted-foreground',
                 )}
               >

@@ -1,7 +1,5 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
-import { Combobox } from '@helvetly/ui/components/combobox'
-import { Segmented } from '@helvetly/ui/components/segmented'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { CalendarCheck2, CalendarDays, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
@@ -34,40 +32,33 @@ import {
 import { getWorkspaceTimezone } from '@/lib/timezone'
 import { setUrlQuery } from '@/lib/url-query'
 
-import { HostDot, useSessionChange } from './bits'
-import {
-  FULL_DAY,
-  HoursMenu,
-  saveHours,
-  storedHours,
-  workingHours,
-  type HoursChoice,
-} from './hours-menu'
+import { useSessionChange } from './bits'
+import { FULL_DAY, saveHours, storedHours, workingHours, type HoursChoice } from './hours-menu'
 import { ListView } from './list-view'
 import { MonthView } from './month-view'
+import { PeopleMenu, type HostMode } from './people-menu'
 import { RequestsDrawer } from './requests'
 import { SessionDrawer, type DrawerTarget } from './session-drawer'
 import { TimeGrid } from './time-grid'
+import { ViewMenu, type Layout } from './view-menu'
 
-const VIEW_LABEL: Record<View, string> = {
-  day: translate('schedDay'),
-  week: translate('schedWeek'),
-  month: translate('schedMonth'),
-  list: translate('schedList'),
-}
 const isView = (value: string | null): value is View => VIEWS.some((view) => view === value)
 const VIEW_KEY = 'helvetly.scheduling.view'
-// The last chosen view is a per-browser convenience; storage may be unavailable.
-const storedView = () => {
+const LAYOUT_KEY = 'helvetly.scheduling.layout'
+// The last chosen view and layout are a per-browser convenience; storage may be unavailable.
+const stored = (key: string) => {
   try {
-    const saved = localStorage.getItem(VIEW_KEY)
-    return isView(saved) ? saved : null
+    return localStorage.getItem(key)
   } catch {
     return null
   }
 }
+const store = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value)
+  } catch {}
+}
 
-type HostMode = 'me' | 'all' | 'pick'
 const MAX_LANES = 4
 
 /** The calendar: Day, Week, Month and List of the workspace's sessions, with requests and sessions to mark on top. */
@@ -86,12 +77,19 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
   const [view, setView] = useState<View>(() => {
     const asked = params.get('view')
     if (isView(asked)) return asked
-    const saved = storedView()
-    if (saved) return saved
+    const saved = stored(VIEW_KEY)
+    return isView(saved) ? saved : 'week'
+  })
+  // "list" was once a view of its own: an old link or saved choice opens the list.
+  const [layout, setLayout] = useState<Layout>(() => {
+    const asked = params.get('layout') ?? (params.get('view') === 'list' ? 'list' : null)
+    if (asked === 'list' || asked === 'calendar') return asked
+    const saved = stored(LAYOUT_KEY) ?? (stored(VIEW_KEY) === 'list' ? 'list' : null)
+    if (saved === 'list' || saved === 'calendar') return saved
     // Phones get the list: a week of columns does not fit.
     return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 639px)').matches
       ? 'list'
-      : 'week'
+      : 'calendar'
   })
   const [date, setDate] = useState(() => {
     const asked = params.get('date')
@@ -113,9 +111,15 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
     saveHours(next)
   }
 
-  const remember = (next: { view?: View; date?: string; session?: string | null }) => {
+  const remember = (next: {
+    view?: View
+    layout?: Layout
+    date?: string
+    session?: string | null
+  }) => {
     const query = new URLSearchParams(params.toString())
     if (next.view) query.set('view', next.view)
+    if (next.layout) query.set('layout', next.layout)
     if (next.date) query.set('date', next.date)
     if (next.session === null) query.delete('session')
     else if (next.session) query.set('session', next.session)
@@ -126,11 +130,16 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
     remember({ date: next })
   }
   const choose = (next: View) => {
+    setToMark(false)
     setView(next)
     remember({ view: next })
-    try {
-      localStorage.setItem(VIEW_KEY, next)
-    } catch {}
+    store(VIEW_KEY, next)
+  }
+  const chooseLayout = (next: Layout) => {
+    setToMark(false)
+    setLayout(next)
+    remember({ layout: next })
+    store(LAYOUT_KEY, next)
   }
   const openSession = (id: string) => {
     setDrawer({ kind: 'view', id })
@@ -146,7 +155,10 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
     hostMode === 'me' ? 'me' : hostMode === 'pick' && picked.length ? picked.join(',') : 'all'
   const range = rangeOf(view, date, zone)
   const occurrences = useOccurrences({ ...range, host: hostParam })
-  const busy = useBusy({ ...range, host: hostParam }, view === 'day' || view === 'week')
+  const busy = useBusy(
+    { ...range, host: hostParam },
+    layout === 'calendar' && (view === 'day' || view === 'week'),
+  )
   const requests = useRequests()
   const markRange = {
     from: new Date(now.getTime() - 100 * 86_400_000).toISOString(),
@@ -175,12 +187,7 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
       : hostMode === 'all'
         ? [...seen.values()].toSorted((a, b) => a.name.localeCompare(b.name))
         : []
-  const lanes =
-    view === 'week' || view === 'day'
-      ? laneHosts.length > 1 && laneHosts.length <= MAX_LANES
-        ? laneHosts
-        : null
-      : null
+  const lanes = laneHosts.length > 1 && laneHosts.length <= MAX_LANES ? laneHosts : null
 
   const today = zoned(now, zone).date
   const newAt = (day: string, minutes?: number, hostId?: string) => {
@@ -205,49 +212,12 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
         savedViews={false}
         primary={canWrite ? translate('schedNewSession') : undefined}
         onPrimary={canWrite ? () => newAt(date) : undefined}
-      />
-      {/* The toolbar keeps the page padding; the calendar runs to the left, right and bottom edges. */}
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="grid gap-3 px-4 py-3 sm:px-6">
-          <FeatureLockNotice lock={lock} kept={translate('schedLockedKept')} />
-          {(waiting > 0 || toMarkCount > 0) && (
-            <div className="flex flex-wrap gap-2">
-              {waiting > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setRequestsOpen(true)}
-                  className="flex items-center gap-2 rounded-lg bg-warning-surface px-3 py-2 text-body-sm text-warning underline-offset-2 hover:underline"
-                >
-                  <Inbox className="size-4" />
-                  {translate('schedRequestsWaiting', { count: waiting })}
-                </button>
-              )}
-              {toMarkCount > 0 && (
-                <button
-                  type="button"
-                  aria-pressed={toMark}
-                  onClick={() => {
-                    setToMark(!toMark)
-                    // Shows the list without saving it as the chosen view.
-                    if (!toMark) {
-                      setView('list')
-                      remember({ view: 'list' })
-                    }
-                  }}
-                  className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-body-sm transition-colors hover:bg-muted/70 aria-pressed:bg-brand/10 aria-pressed:text-brand"
-                >
-                  <CalendarCheck2 className="size-4" />
-                  {translate('schedToMark', { count: toMarkCount })}
-                </button>
-              )}
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2">
+        start={
+          <>
             <Button type="button" variant="outline" size="sm" onClick={() => go(today)}>
               {translate('today')}
             </Button>
-            <div className="flex items-center">
+            <div className="flex shrink-0 items-center">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -277,74 +247,77 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
                 <TooltipContent>{translate('schedNext')}</TooltipContent>
               </Tooltip>
             </div>
-            <h2 className="text-title font-semibold" aria-live="polite">
+            <h2 className="truncate text-title-sm font-semibold" aria-live="polite">
               {toMark ? translate('schedToMarkTitle') : periodLabel(view, date)}
             </h2>
             {zone !== workspaceZone && (
-              <span className="text-body-sm text-muted-foreground">
+              <span className="truncate text-body-sm text-muted-foreground max-lg:hidden">
                 {translate('schedTimesIn', {
                   zone: zoneName(zone),
                   workspace: zoneName(workspaceZone),
                 })}
               </span>
             )}
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              <Segmented
-                label={translate('schedView')}
-                size="sm"
-                value={toMark ? null : view}
-                options={VIEWS.map((entry) => ({ value: entry, label: VIEW_LABEL[entry] }))}
-                onChange={(next) => {
-                  setToMark(false)
-                  choose(next)
-                }}
-              />
-              {(view === 'day' || view === 'week') && !toMark && (
-                <HoursMenu choice={hoursChoice} onChange={chooseHours} />
-              )}
-              <Segmented
-                label={translate('schedHosts')}
-                size="sm"
-                value={hostMode === 'pick' ? null : hostMode}
-                options={[
-                  { value: 'me', label: translate('schedMine') },
-                  { value: 'all', label: translate('schedEveryone') },
-                ]}
-                onChange={(mode) => {
-                  setHostMode(mode)
-                  setPicked([])
-                }}
-              />
-              <Combobox
-                label={translate('schedPickHosts')}
-                placeholder={translate('schedPickHosts')}
-                value=""
-                values={picked}
-                options={hostOptions}
-                renderValue={(option) => (
-                  <span className="flex items-center gap-1.5">
-                    <HostDot id={option.value} />
-                    {option.label}
-                  </span>
+          </>
+        }
+        actions={
+          <>
+            <ViewMenu
+              view={view}
+              layout={layout}
+              hours={hoursChoice}
+              onView={choose}
+              onLayout={chooseLayout}
+              onHours={chooseHours}
+            />
+            <PeopleMenu
+              mode={hostMode}
+              picked={picked}
+              options={hostOptions}
+              onMode={(mode) => {
+                setHostMode(mode)
+                setPicked([])
+              }}
+              onPicked={(next) => {
+                setPicked(next)
+                setHostMode(next.length ? 'pick' : 'me')
+              }}
+            />
+          </>
+        }
+      />
+      {/* The calendar runs to the panel's left, right and bottom edges; notices keep the page padding. */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {(lock || waiting > 0 || toMarkCount > 0) && (
+          <div className="grid gap-3 px-4 py-3 sm:px-6">
+            <FeatureLockNotice lock={lock} kept={translate('schedLockedKept')} />
+            {(waiting > 0 || toMarkCount > 0) && (
+              <div className="flex flex-wrap gap-2">
+                {waiting > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setRequestsOpen(true)}
+                    className="flex items-center gap-2 rounded-lg bg-warning-surface px-3 py-2 text-body-sm text-warning underline-offset-2 hover:underline"
+                  >
+                    <Inbox className="size-4" />
+                    {translate('schedRequestsWaiting', { count: waiting })}
+                  </button>
                 )}
-                onChange={(id) => {
-                  const next = picked.includes(id)
-                    ? picked.filter((entry) => entry !== id)
-                    : [...picked, id]
-                  setPicked(next)
-                  setHostMode(next.length ? 'pick' : 'me')
-                }}
-                onClear={() => {
-                  setPicked([])
-                  setHostMode('me')
-                }}
-                clearLabel={translate('schedClearHosts')}
-                disabled={hostOptions.length === 0}
-                className="w-56"
-              />
-            </div>
+                {toMarkCount > 0 && (
+                  <button
+                    type="button"
+                    aria-pressed={toMark}
+                    onClick={() => setToMark(!toMark)}
+                    className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-body-sm transition-colors hover:bg-muted/70 aria-pressed:bg-brand/10 aria-pressed:text-brand"
+                  >
+                    <CalendarCheck2 className="size-4" />
+                    {translate('schedToMark', { count: toMarkCount })}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         {occurrences.error ? (
           <LoadProblem
@@ -352,7 +325,7 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
             what={translate('schedSessions')}
             onRetry={() => void occurrences.refetch()}
           />
-        ) : view === 'list' || toMark ? (
+        ) : layout === 'list' || toMark ? (
           <ListView
             zone={zone}
             occurrences={list}
