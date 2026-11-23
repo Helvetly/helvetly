@@ -5676,7 +5676,7 @@
   "groupingWordClient": "client",
   "groupingPreviewNone": "Aucun regroupement : les fichiers sont affichés dans les dossiers.",
   "groupingPreviewOne": "Fichiers regroupés par {first}.",
-  "groupingPreviewTwo": "Fichiers regroupés par {first}, puis par {second} dans chaque groupe.",
+  "groupingPreviewTwo": "Fichiers regroupés par {first}, puis par {second} dans chaque {first}.",
   "groupingPreviewThree": "Fichiers regroupés par {first}, puis par {second}, puis par {third}.",
   "downloadAsZip": "Télécharger en ZIP",
   "zipQueued": "Votre ZIP est en préparation. Nous vous préviendrons dès qu’il sera prêt.",

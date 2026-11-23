@@ -5676,7 +5676,7 @@
   "groupingWordClient": "Kunde",
   "groupingPreviewNone": "Keine Gruppierung: Dateien werden in Ordnern angezeigt.",
   "groupingPreviewOne": "Dateien nach {first} gruppiert.",
-  "groupingPreviewTwo": "Dateien nach {first} gruppiert, darin jeweils nach {second}.",
+  "groupingPreviewTwo": "Dateien nach {first} gruppiert, darin pro {first} nach {second}.",
   "groupingPreviewThree": "Dateien nach {first} gruppiert, dann nach {second}, dann nach {third}.",
   "downloadAsZip": "Als ZIP herunterladen",
   "zipQueued": "Ihr ZIP wird vorbereitet. Wir benachrichtigen Sie, sobald es bereit ist.",
