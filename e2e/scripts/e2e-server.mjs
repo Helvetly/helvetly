@@ -50,6 +50,8 @@ const env = {
   CLOUDFLARE_ZONE_ID: cloudflareZone,
   CUSTOM_DOMAIN_TARGET: 'portal.helvetly.com',
   HELVETLY_E2E_FAKE_DOMAINS: 'true',
+  // Google and Microsoft calendars served by the API itself (calsync's fake providers): connect, push, outside moves.
+  HELVETLY_E2E_FAKE_CALENDARS: 'true',
   NEXT_TELEMETRY_DISABLED: '1',
   HELVETLY_E2E_NEXT_DIST: 'true',
 }
