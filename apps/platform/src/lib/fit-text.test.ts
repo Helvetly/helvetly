@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { fitFontSize } from './fit-text'
+import { fitFontSize, printedSize } from './fit-text'
 
 describe('fitFontSize', () => {
   it.each([
@@ -13,5 +13,28 @@ describe('fitFontSize', () => {
     ['an empty value keeps the height size', 200, 20, 1, 0, 15],
   ])('%s', (_, width, height, lines, widest, want) => {
     expect(fitFontSize(width, height, lines, widest)).toBe(want)
+  })
+})
+
+/** A box `w` × `h` px on a page shown `pagePx` wide whose width is 500 pt. */
+const box = (w: number, h: number, pagePx = 1000) => {
+  const page = document.createElement('div')
+  page.dataset.pagePoints = '500'
+  Object.defineProperty(page, 'clientWidth', { value: pagePx })
+  const field = document.createElement('div')
+  Object.defineProperties(field, { clientWidth: { value: w }, clientHeight: { value: h } })
+  page.append(field)
+  return field
+}
+
+describe('printedSize', () => {
+  it('prints the points at the page scale, whatever the box', () => {
+    expect(printedSize(box(400, 200), 10, false, 1, 3)).toBe(20)
+    expect(printedSize(box(40, 10), 10, false, 1, 3)).toBe(20)
+    expect(printedSize(box(400, 200, 500), 12, false, 1, 3)).toBe(12)
+  })
+  it('auto-fit shrinks to the box but never grows', () => {
+    expect(printedSize(box(400, 200), 10, true, 1, 3)).toBe(20)
+    expect(printedSize(box(400, 20), 10, true, 1, 3)).toBe(15)
   })
 })

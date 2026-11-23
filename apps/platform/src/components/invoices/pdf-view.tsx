@@ -321,7 +321,12 @@ function PdfPage({
           drawn ? 'opacity-100' : 'opacity-0',
         )}
       />
-      {overlay && page && <div className="absolute inset-0">{overlay(number)}</div>}
+      {overlay && page && (
+        // The page's width in points, so an overlay can print text at a size in points.
+        <div className="absolute inset-0" data-page-points={size?.width}>
+          {overlay(number)}
+        </div>
+      )}
     </div>
   )
 }

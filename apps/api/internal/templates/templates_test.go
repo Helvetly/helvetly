@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -437,6 +438,9 @@ func TestTemplateValidation(t *testing.T) {
 		{"page past the end", setField(0, "page", 3), "fields.0"},
 		{"off the page", setField(0, "x", 0.9), "fields.0"},
 		{"custom without a label", setField(2, "label", " "), "fields.2.label"},
+		{"font too small", setField(0, "font_size", 7), "fields.0.font_size"},
+		{"font too large", setField(0, "font_size", 25), "fields.0.font_size"},
+		{"unknown alignment", setField(0, "align", "justify"), "fields.0.align"},
 		{"text label too long", setField(4, "label", strings.Repeat("x", 101)), "fields.4.label"},
 		{"role without a signature", setField(3, "kind", "date"), "signers.0"},
 		{"role without a label", with(func(b obj) { b["signers"].([]obj)[0]["label"] = "" }), "signers.0.label"},
@@ -462,6 +466,17 @@ func TestTemplateValidation(t *testing.T) {
 	tpl := e.create(b, with(func(b obj) { b["description"] = "  For new clients " }))
 	if tpl.Description == nil || *tpl.Description != "For new clients" {
 		t.Fatalf("description: %v", tpl.Description)
+	}
+	// A data field keeps its print settings; one without any prints at the default size.
+	sized := e.create(b, with(func(b obj) {
+		f := b["fields"].([]obj)
+		f[0]["font_size"], f[0]["auto_fit"], f[0]["align"] = 12, true, "right"
+	}))
+	if f := sized.Fields[0]; f.FontSize == nil || *f.FontSize != 12 || !f.AutoFit || f.Align != "right" {
+		t.Fatalf("print settings: %+v", f)
+	}
+	if f := sized.Fields[1]; f.FontSize != nil || f.AutoFit || f.Align != "" {
+		t.Fatalf("defaults: %+v", f)
 	}
 }
 
@@ -625,13 +640,43 @@ func TestGenerateEmail(t *testing.T) {
 		t.Fatalf("email: %+v", m)
 	}
 
+	// From the send step: several recipients, copies, the subject and message as written, in the client's language.
+	out = e.generate(b, tpl, generate(client, tpl, obj{"type": "email", "to": "ana@example.com, Ben@example.com", "cc": []string{"ben@example.com", "cy@example.com"},
+		"bcc": []string{"di@example.com"}, "subject": "Ihr Vertrag", "message": "Guten Tag\n\nAnbei der Vertrag.", "language": "de"}))
+	m = e.mail.sent[1]
+	if *out.EmailedTo != "ana@example.com, ben@example.com" || !slices.Equal(m.To, []string{"ana@example.com", "ben@example.com"}) ||
+		!slices.Equal(m.Cc, []string{"cy@example.com"}) || !slices.Equal(m.Bcc, []string{"di@example.com"}) || m.Subject != "Ihr Vertrag" ||
+		m.Language != "de" || !strings.Contains(m.HTML, "<p>Guten Tag</p>") || !strings.Contains(m.HTML, "<p>Anbei der Vertrag.</p>") {
+		t.Fatalf("email from the send step: %+v", m)
+	}
+	// A language alone: the workspace's document template fills the subject and the message.
+	e.generate(b, tpl, generate(client, tpl, obj{"type": "email", "to": "ana@example.com", "language": "fr"}))
+	if m = e.mail.sent[2]; !strings.Contains(m.Text, "en pièce jointe") || m.Language != "fr" {
+		t.Fatalf("document template: %+v", m)
+	}
+	for _, d := range []obj{{"type": "email", "to": "ana@example.com", "cc": []string{"nope"}}, {"type": "email", "to": "ana@example.com", "language": "pl"},
+		{"type": "email", "to": "ana@example.com", "subject": "two\nlines"}} {
+		if f := e.fail(b, "POST", "/api/v1/templates/"+tpl.ID+"/documents", generate(client, tpl, d), http.StatusUnprocessableEntity).Details.Fields; len(f) != 1 {
+			t.Fatalf("%v: %v", d, f)
+		}
+	}
+
+	// The preview: the email the send step would send, as HTML.
+	var preview struct {
+		Data struct{ Subject, HTML string }
+	}
+	e.do(b, "POST", "/api/v1/templates/email-preview", obj{"title": "Vertrag", "language": "de", "message": "Hallo <b>"}, http.StatusOK, &preview)
+	if !strings.Contains(preview.Data.Subject, "Vertrag") || !strings.Contains(preview.Data.HTML, "Hallo &lt;b&gt;") || !strings.Contains(preview.Data.HTML, `lang="de"`) {
+		t.Fatalf("preview: %+v", preview.Data)
+	}
+
 	// A failing mail server: the document stays.
 	e.mail.fail = true
 	if code := e.fail(b, "POST", "/api/v1/templates/"+tpl.ID+"/documents", generate(client, tpl, obj{"type": "email", "to": "ana@example.com"}),
 		http.StatusServiceUnavailable).Code; code != "mail_failed" {
 		t.Fatal(code)
 	}
-	if n := e.count(`SELECT count(*) FROM document_links WHERE target_type = 'client' AND target_id = $1`, client); n != 2 {
+	if n := e.count(`SELECT count(*) FROM document_links WHERE target_type = 'client' AND target_id = $1`, client); n != 4 {
 		t.Fatalf("%d documents for the client", n)
 	}
 }

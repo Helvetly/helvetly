@@ -42,6 +42,9 @@ const KIND_LABELS: Record<EmailKind, string> = {
   credit_note: translate('emailTemplatesKindCreditNote'),
   proforma: translate('emailTemplatesKindProforma'),
   quote: translate('emailTemplatesKindQuote'),
+  document: translate('emailTemplatesKindDocument'),
+  signature_request: translate('emailTemplatesKindSignatureRequest'),
+  signature_reminder: translate('emailTemplatesKindSignatureReminder'),
 }
 
 /** What each email is, under its name in the list. */
@@ -50,6 +53,9 @@ const KIND_ABOUT: Record<EmailKind, string> = {
   credit_note: translate('emailTemplatesAboutCreditNote'),
   proforma: translate('emailTemplatesAboutProforma'),
   quote: translate('emailTemplatesAboutQuote'),
+  document: translate('emailTemplatesAboutDocument'),
+  signature_request: translate('emailTemplatesAboutSignatureRequest'),
+  signature_reminder: translate('emailTemplatesAboutSignatureReminder'),
 }
 
 const LANGUAGE_NAMES: Record<EmailLanguage, string> = {
@@ -67,6 +73,7 @@ const VARIABLE_HINTS: Record<string, string> = {
   company: translate('emailTemplatesVarCompany'),
   due_date: translate('emailTemplatesVarDueDate'),
   valid_until: translate('emailTemplatesVarValidUntil'),
+  sender: translate('emailTemplatesVarSender'),
 }
 
 type Fields = { subject?: string; body?: string }

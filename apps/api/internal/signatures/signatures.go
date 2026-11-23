@@ -15,6 +15,7 @@ import (
 	"math"
 	"mime"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -22,6 +23,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/retention"
 	"helvetly.com/api/internal/signpdf"
@@ -54,7 +56,7 @@ const (
 	defaultExpiry  = 30
 	remindPerHour  = 5
 	publicPerMin   = 60
-	maxMessageLen  = 2000
+	maxMessageLen  = emailtemplate.MaxMessage
 	maxTitleLen    = 200
 	maxReasonLen   = 500
 	maxTextLen     = 200
@@ -84,6 +86,12 @@ type Service struct {
 	log       *slog.Logger
 	now       func() time.Time
 	limit     *auth.RateLimiter
+	brands    func(ctx context.Context, workspaceID string) (mail.Brand, error) // for the email preview
+}
+
+// SetBrands lets the email preview show the business's header and footer, as mail.Branded sends them.
+func (s *Service) SetBrands(brands func(ctx context.Context, workspaceID string) (mail.Brand, error)) {
+	s.brands = brands
 }
 
 func New(db *store.Store, a Auth, files Storage, mailer Mailer, publicURL string, log *slog.Logger) *Service {
@@ -103,6 +111,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	}
 	handle("GET /api/v1/signatures", s.list)
 	handle("POST /api/v1/signatures", s.create)
+	handle("POST /api/v1/signatures/email-preview", s.preview)
 	handle("GET /api/v1/signatures/{id}", s.get)
 	handle("GET /api/v1/signatures/{id}/original", s.original)
 	handle("POST /api/v1/signatures/{id}/remind", s.remind)
@@ -268,6 +277,7 @@ type CreateBody struct {
 	DocumentID    string        `json:"document_id"`
 	Title         string        `json:"title"`
 	Message       *string       `json:"message"`
+	Language      *string       `json:"language"` // of the emails; none: the English email of before templates
 	SigningOrder  string        `json:"signing_order"`
 	ExpiresInDays *int          `json:"expires_in_days"`
 	Signers       []SignerInput `json:"signers"`
@@ -353,6 +363,9 @@ func prepare(body CreateBody, workspaceID string, now time.Time) (store.Signatur
 		}
 		message = &v
 	}
+	if body.Language != nil && !slices.Contains(emailtemplate.Languages, *body.Language) {
+		bad["language"] = "Use de, fr, it or en."
+	}
 	if body.SigningOrder != "parallel" && body.SigningOrder != "sequential" {
 		bad["signing_order"] = "Use parallel or sequential."
 	}
@@ -367,7 +380,7 @@ func prepare(body CreateBody, workspaceID string, now time.Time) (store.Signatur
 		bad["signers"] = fmt.Sprintf("Add 1 to %d signers.", maxSigners)
 	}
 	req := store.SignatureRequest{ID: auth.NewID("sig"), WorkspaceID: workspaceID, Title: title, Message: message,
-		SigningOrder: body.SigningOrder, ExpiresAt: now.AddDate(0, 0, days), CreatedAt: now}
+		Language: body.Language, SigningOrder: body.SigningOrder, ExpiresAt: now.AddDate(0, 0, days), CreatedAt: now}
 	seen := map[string]bool{}
 	for i, in := range body.Signers {
 		key := fmt.Sprintf("signers.%d", i)
@@ -573,10 +586,15 @@ func (s *Service) signLink(token string) string { return s.publicURL + "/sign#" 
 // invite emails each signer a fresh link, then records it (the previous link stops working). A failed email changes
 // nothing for that signer; the first failure is returned once all were tried.
 func (s *Service) invite(ctx context.Context, req store.SignatureRequest, signers []store.Signer, eventType string) error {
+	reminder := eventType == "reminded"
+	text, err := s.emailText(ctx, req, reminder)
+	if err != nil {
+		return err
+	}
 	var first error
 	for _, sg := range signers {
 		token := rand.Text()
-		if err := s.mail.Send(ctx, inviteMessage(req, sg, s.signLink(token), eventType == "reminded")); err != nil {
+		if err := s.mail.Send(ctx, inviteMessage(req, sg, s.signLink(token), reminder, text)); err != nil {
 			s.log.ErrorContext(ctx, "send signing link", "request", req.ID, "signer", sg.ID, "error", err)
 			if first == nil {
 				first = err

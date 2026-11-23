@@ -10,7 +10,16 @@ export type AIWriteField =
   | 'quote_intro'
   | 'email_message'
 
-export type AIWriteAction = 'draft' | 'improve' | 'shorten' | 'formal' | 'custom'
+export type AIWriteAction =
+  | 'draft'
+  | 'improve'
+  | 'shorten'
+  | 'formal'
+  | 'friendly'
+  | 'translate'
+  | 'custom'
+
+export type AIWriteLanguage = 'de' | 'fr' | 'it' | 'en'
 
 export type AIWriteInput = {
   field: AIWriteField
@@ -19,8 +28,8 @@ export type AIWriteInput = {
   text: string
   /** Required for `custom`, at most 300 characters. */
   instruction?: string
-  /** Defaults to the workspace's document language, else English. */
-  language?: 'de' | 'fr' | 'it' | 'en'
+  /** Defaults to the workspace's document language, else English; `translate` writes into it. */
+  language?: AIWriteLanguage
   /** The field's limit, 1..4000 (default 1000); the answer never exceeds it. */
   max_length?: number
   /** Other form values (name, price, unit, client, period…): at most 20 keys, values up to 300 characters. */
