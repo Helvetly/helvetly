@@ -46,6 +46,16 @@ export function clickSelect(
   return { keys: new Set([key]), anchor: key }
 }
 
+/** A checkbox click: toggles its item, Shift selects the range from the anchor (⌘/Ctrl+Shift adds it). */
+export const checkModifiers = (event: {
+  shiftKey: boolean
+  metaKey: boolean
+  ctrlKey: boolean
+}) => ({
+  shift: event.shiftKey,
+  toggle: !event.shiftKey || event.metaKey || event.ctrlKey,
+})
+
 /** Arrow-key movement through a grid of `columns` (1 for the list): the index to focus next. */
 export function moveFocus(
   index: number,

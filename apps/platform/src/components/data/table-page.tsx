@@ -101,7 +101,8 @@ export function State({
   icon: ReactNode
   title: string
   text: string
-  action: ReactNode
+  /** Left out where the page header already holds the action. */
+  action?: ReactNode
 }) {
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-16">
@@ -116,7 +117,7 @@ export function State({
         </div>
         <p className="text-[17px] font-medium tracking-[-0.01em] text-balance">{title}</p>
         <p className="mt-1.5 text-sm text-pretty text-muted-foreground">{text}</p>
-        <div className="mt-5">{action}</div>
+        {action && <div className="mt-5">{action}</div>}
       </div>
     </div>
   )

@@ -1024,6 +1024,26 @@ export function DocumentsPage() {
   const surfaceDrop = useDropTarget(dropHere)
   const loading = listing && dim === null && !list.data && !list.error
 
+  // The header's solid button: Upload for files, "New" in Templates and Signatures (locked: says why).
+  const sectionLock =
+    view.section === 'templates' ? templateLock : view.section === 'signatures' ? signLock : null
+  const sectionPrimary = listing
+    ? { label: translate('upload2'), run: () => picker$.current?.click() }
+    : view.section === 'templates'
+      ? {
+          label: translate('newTemplate'),
+          run: () =>
+            templateLock
+              ? toastLocked(templateLock)
+              : setEditing({ template: null, document: null }),
+        }
+      : view.section === 'signatures' && canWrite
+        ? {
+            label: translate('pdfForSignature3'),
+            run: () => (signLock ? toastLocked(signLock) : setSignFrom(null)),
+          }
+        : undefined
+
   return (
     <DropProvider value={canWrite ? dropActions : null}>
       <input
@@ -1056,11 +1076,11 @@ export function DocumentsPage() {
         }}
         savedViews={false}
         keepTab
-        // Upload, Create, Organize and "…" act on files: the Templates, Signatures and Trash views
-        // have their own controls under the tabs instead.
+        // Upload, Create, Organize and "…" act on files; Templates and Signatures put their own
+        // "New" here instead, and Trash has its controls under the tabs.
         actions={
-          canWrite &&
-          listing && (
+          (sectionLock && <PlanTag lock={sectionLock} className="self-center" />) ||
+          (canWrite && listing && (
             <>
               <Button
                 variant="ai"
@@ -1079,10 +1099,10 @@ export function DocumentsPage() {
                 onFolder={() => setNewFolderIn(current)}
               />
             </>
-          )
+          ))
         }
-        primary={listing ? translate('upload2') : undefined}
-        onPrimary={() => picker$.current?.click()}
+        primary={sectionPrimary?.label}
+        onPrimary={sectionPrimary?.run}
         menu={listing && pageItems(dropdownKit, true)}
       />
       {organizing && (
@@ -1159,32 +1179,6 @@ export function DocumentsPage() {
                       : translate('trash')}
               </p>
             )}
-            {view.section === 'templates' && (
-              <div className="flex gap-1.5">
-                {templateLock && <PlanTag lock={templateLock} className="self-center" />}
-                <Button
-                  className="cursor-pointer gap-1.5"
-                  disabled={Boolean(templateLock)}
-                  onClick={() => setEditing({ template: null, document: null })}
-                >
-                  <Plus className="size-4" />
-                  {translate('newTemplate')}
-                </Button>
-              </div>
-            )}
-            {view.section === 'signatures' && canWrite && (
-              <div className="flex gap-1.5">
-                {signLock && <PlanTag lock={signLock} className="self-center" />}
-                <Button
-                  className="cursor-pointer gap-1.5"
-                  disabled={Boolean(signLock)}
-                  onClick={() => setSignFrom(null)}
-                >
-                  <Plus className="size-4" />
-                  {translate('pdfForSignature3')}
-                </Button>
-              </div>
-            )}
             {listing && (
               <>
                 <ListSearch
@@ -1222,15 +1216,9 @@ export function DocumentsPage() {
           </div>
 
           {view.section === 'templates' ? (
-            <TemplatesView
-              onEdit={(template) => setEditing({ template, document: null })}
-              onCreate={() => setEditing({ template: null, document: null })}
-            />
+            <TemplatesView onEdit={(template) => setEditing({ template, document: null })} />
           ) : view.section === 'signatures' ? (
-            <SignaturesView
-              onOpen={(id) => navigate({ request: id })}
-              onCreate={() => setSignFrom(null)}
-            />
+            <SignaturesView onOpen={(id) => navigate({ request: id })} />
           ) : view.section === 'trash' ? (
             <TrashView
               items={trash.data}
@@ -1357,11 +1345,9 @@ export function DocumentsPage() {
                       desc={view.desc}
                       onSort={(field, desc) => navigate({ sort: field, desc })}
                       onClick={onItemClick}
-                      onToggle={(key) => {
+                      onToggle={(key, modifiers) => {
                         setFocused(key)
-                        setSelection(
-                          clickSelect(selection, key, order, { shift: false, toggle: true }),
-                        )
+                        setSelection(clickSelect(selection, key, order, modifiers))
                       }}
                       onToggleAll={(all) =>
                         setSelection({ keys: new Set(all ? order : []), anchor: order[0] ?? null })

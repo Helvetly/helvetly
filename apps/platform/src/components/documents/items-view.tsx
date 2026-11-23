@@ -46,6 +46,7 @@ import { MenuButton } from './menu-button'
 import { Section, type SectionId } from './section'
 import {
   bandRect,
+  checkModifiers,
   fileKey,
   folderKey,
   intersects,
@@ -74,7 +75,8 @@ export type ItemsProps = {
   onSort: (field: SortField, desc: boolean) => void
   onClick: (key: ItemKey, event: MouseEvent) => void
   /** A checkbox adds the item to the selection or takes it out, as ⌘-click does. */
-  onToggle: (key: ItemKey) => void
+  /** A checkbox click: Shift selects the range from the anchor, otherwise it toggles the item. */
+  onToggle: (key: ItemKey, modifiers: { shift: boolean; toggle: boolean }) => void
   onToggleAll: (all: boolean) => void
   onRenameDone: (key: ItemKey, name: string | null) => void
   /** Before a context menu opens: make sure the item is part of the selection. */
@@ -342,9 +344,13 @@ function ItemCheck({
     <Checkbox
       aria-label={translate('select', { name: name })}
       checked={checked}
-      onCheckedChange={() => props.onToggle(item)}
+      // Handled here, not in onCheckedChange, which loses Shift; Space on the box clicks it too.
       // Not the card's click (which opens it), and never the start of a drag.
-      onClick={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation()
+        event.preventDefault()
+        props.onToggle(item, checkModifiers(event))
+      }}
       onDoubleClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.preventDefault()}
       className={cn(

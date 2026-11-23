@@ -92,8 +92,10 @@ export const Signatures: Story = {
     await expect(
       await body.findByText('Nothing out for signature', {}, { timeout: 8000 }),
     ).toBeVisible()
-    // The page's own action, and the empty list's.
-    await expect(body.getAllByRole('button', { name: 'PDF for signature' })).toHaveLength(2)
+    // Its one action sits in the page's header; the empty list repeats none.
+    const [action, ...more] = body.getAllByRole('button', { name: 'PDF for signature' })
+    await expect(more).toHaveLength(0)
+    await expect(action?.closest('header')).not.toBeNull()
     for (const name of ['Upload', 'Create', 'Organize with AI'])
       expect(within(body.getByRole('main')).queryByRole('button', { name })).toBeNull()
   },
@@ -101,13 +103,15 @@ export const Signatures: Story = {
 
 const noTemplates = http.get('/api/v1/templates', () => HttpResponse.json({ data: [] }))
 
-/** No templates yet: the empty state offers New template, still without the page's actions. */
+/** No templates yet: New template stays in the header, the empty state only explains. */
 export const TemplatesEmpty: Story = {
   parameters: pageParameters('/documents', { view: 'templates' }, [noTemplates]),
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await waitFor(() => expect(body.getByText('No templates yet')).toBeVisible(), { timeout: 8000 })
-    await expect(body.getAllByRole('button', { name: 'New template' }).length).toBeGreaterThan(0)
+    const [action, ...more] = body.getAllByRole('button', { name: 'New template' })
+    await expect(more).toHaveLength(0)
+    await expect(action?.closest('header')).not.toBeNull()
     for (const name of ['Upload', 'Create', 'Organize with AI'])
       expect(within(body.getByRole('main')).queryByRole('button', { name })).toBeNull()
   },
@@ -345,6 +349,48 @@ export const FolderDoubleClickOpensOnce: Story = {
 /** In the list a folder row's click opens it too. */
 export const FolderRowClickOpens: Story = {
   ...FolderClickOpens,
+  parameters: pageParameters('/documents', { layout: 'list' }),
+}
+
+/**
+ * Shift on a checkbox selects the range from the last one clicked, across folders and files as
+ * shown; another Shift-click from the same anchor shrinks it; ⌘ toggles one; nothing opens.
+ */
+export const CheckboxShiftRange: Story = {
+  play: async ({ canvasElement }) => {
+    const doc = canvasElement.ownerDocument
+    await within(doc.body).findAllByText('Contracts', {}, { timeout: 8000 })
+    // Each item's checkbox, in the order shown (not the list's "Select all").
+    const boxes = () =>
+      [...doc.querySelectorAll<HTMLElement>('[role=checkbox][aria-label^="Select "]')].filter(
+        (box) => box.getAttribute('aria-label') !== 'Select all',
+      )
+    const checked = () =>
+      boxes().flatMap((box, index) => (box.getAttribute('aria-checked') === 'true' ? [index] : []))
+    const folders = doc.querySelectorAll('[data-key^="folder:"]').length
+    const end = folders + 1 // a folder to the second file
+    await expect(boxes().length).toBeGreaterThan(end + 1)
+    const click = (index: number, modifiers: { shiftKey?: boolean; metaKey?: boolean } = {}) => {
+      const box = boxes()[index]
+      if (!box) throw new Error(`no checkbox ${index}`)
+      fireEvent.click(box, modifiers)
+    }
+    click(0)
+    await waitFor(() => expect(checked()).toEqual([0]))
+    click(end, { shiftKey: true })
+    await waitFor(() => expect(checked()).toEqual(Array.from({ length: end + 1 }, (_, i) => i)))
+    click(1, { shiftKey: true })
+    await waitFor(() => expect(checked()).toEqual([0, 1]))
+    click(end + 1, { metaKey: true })
+    await waitFor(() => expect(checked()).toEqual([0, 1, end + 1]))
+    await expect(url(canvasElement).get('folder')).toBeNull()
+    await expect(url(canvasElement).get('file')).toBeNull()
+  },
+}
+
+/** The same in the list's rows. */
+export const CheckboxShiftRangeList: Story = {
+  ...CheckboxShiftRange,
   parameters: pageParameters('/documents', { layout: 'list' }),
 }
 

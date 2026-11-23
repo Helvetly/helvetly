@@ -58,9 +58,7 @@ function Harness({ layout }: { layout: 'grid' | 'list' }) {
       onSort={() => {}}
       // A plain click replaces the selection: the checkboxes must not reach it.
       onClick={(key) => setSelection({ keys: new Set([key]), anchor: key })}
-      onToggle={(key) =>
-        setSelection(clickSelect(selection, key, order, { shift: false, toggle: true }))
-      }
+      onToggle={(key, modifiers) => setSelection(clickSelect(selection, key, order, modifiers))}
       onToggleAll={() => {}}
       onRenameDone={() => {}}
       onContext={() => {}}
