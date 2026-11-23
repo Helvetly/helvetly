@@ -1,43 +1,42 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@helvetly/ui/components/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
-import { ChevronRight, Ellipsis, Layers } from 'lucide-react'
+import { cn } from '@helvetly/ui/lib/utils'
+import { ArrowDown, ArrowUp, Check, ChevronRight, Ellipsis, Layers, Plus, X } from 'lucide-react'
 
 import {
   GROUP_DIM_LABELS,
-  GROUPINGS,
+  GROUP_DIMS,
   groupValue,
+  MAX_GROUP_LEVELS,
   type DocType,
   type GroupDim,
   type ViewParams,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 
-/** A grouping's name in the Group by menu. */
-export function groupingLabel(dims: readonly GroupDim[]) {
-  const key = dims.join()
-  if (key === '') return translate('groupingFolders')
-  if (key === 'type,year') return translate('groupingTypeYear')
-  if (key === 'year,type') return translate('groupingYearType')
-  return translate(key === 'type' ? 'type' : key === 'year' ? 'year' : 'client')
+const DIM_NAMES: Record<GroupDim, string> = {
+  type: translate('type'),
+  year: translate('year'),
+  client: translate('client'),
 }
 
-/** The sidebar's Views: a grouping with its first group chosen, e.g. invoices by year. */
+/** A grouping's name on the Group by button: Folders, or its levels in order (Client → Year). */
+export function groupingLabel(dims: readonly GroupDim[]) {
+  if (dims.length === 0) return translate('groupingFolders')
+  return dims.map((dim) => DIM_NAMES[dim]).join(' → ')
+}
+
+/** Ready-made views at the top of Group by: a grouping with its first group chosen, e.g. invoices by year. */
 export type ViewPreset = {
-  id: 'invoices' | 'quotes' | 'receipts' | 'clients'
+  id: 'folders' | 'invoices' | 'quotes' | 'receipts' | 'clients'
   label: string
   group: GroupDim[]
   type: DocType | null
 }
 export const VIEW_PRESETS: ViewPreset[] = [
+  { id: 'folders', label: translate('groupingFolders'), group: [], type: null },
   {
     id: 'invoices',
     label: translate('viewInvoicesByYear'),
@@ -58,84 +57,177 @@ export const VIEW_PRESETS: ViewPreset[] = [
 export const inPreset = (view: ViewParams, preset: ViewPreset) =>
   view.section === 'files' && view.group.join() === preset.group.join() && view.type === preset.type
 
-function GroupingItems({
-  group,
-  onChange,
-}: {
-  group: readonly GroupDim[]
+/** One level moved by step (-1 up, 1 down) in the grouping. */
+export function moveLevel(group: readonly GroupDim[], index: number, step: -1 | 1): GroupDim[] {
+  const next = [...group]
+  const target = index + step
+  if (target < 0 || target >= next.length) return next
+  ;[next[index], next[target]] = [next[target]!, next[index]!]
+  return next
+}
+
+type PanelProps = {
+  view: ViewParams
+  /** Each preset's file count (a client preset: its clients), when known. */
+  counts: Partial<Record<ViewPreset['id'], number>>
+  onPreset: (preset: ViewPreset) => void
+  /** The grouping's levels changed (the chosen groups stay as filters). */
   onChange: (group: GroupDim[]) => void
+}
+
+function LevelButton({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
 }) {
   return (
-    <DropdownMenuRadioGroup
-      value={group.join()}
-      onValueChange={(value) =>
-        onChange(GROUPINGS.find((grouping) => grouping.join() === value)?.slice() ?? [])
-      }
-    >
-      {GROUPINGS.map((grouping) => (
-        <DropdownMenuRadioItem key={grouping.join()} value={grouping.join()}>
-          {groupingLabel(grouping)}
-        </DropdownMenuRadioItem>
-      ))}
-    </DropdownMenuRadioGroup>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label={label}
+          disabled={disabled}
+          onClick={onClick}
+          className="cursor-pointer text-muted-foreground"
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
 
-/** "Group by" beside Filters and sort; on phones it moves into the toolbar's "…" menu. */
-export function GroupByMenu({
-  group,
-  onChange,
-}: {
-  group: readonly GroupDim[]
-  onChange: (group: GroupDim[]) => void
-}) {
+/** Group by's popover: the presets, then the levels to combine in any order (Client → Year). */
+export function GroupByPanel({ view, counts, onPreset, onChange }: PanelProps) {
+  const group = view.group
+  const free = GROUP_DIMS.filter((dim) => !group.includes(dim))
   return (
-    <>
-      <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
+    <div className="grid gap-2">
+      <div className="grid gap-0.5">
+        <p className="px-2 pt-0.5 pb-1 text-xs font-medium text-muted-foreground">
+          {translate('groupingViews')}
+        </p>
+        {VIEW_PRESETS.map((preset) => {
+          const current = inPreset(view, preset)
+          const count = counts[preset.id]
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              aria-pressed={current}
+              onClick={() => onPreset(preset)}
+              className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-2 text-left text-sm text-foreground/80 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 aria-pressed:font-medium aria-pressed:text-foreground"
+            >
+              <Check className={cn('size-4 shrink-0', !current && 'invisible')} />
+              <span className="min-w-0 flex-1 truncate">{preset.label}</span>
+              {count !== undefined && count > 0 && (
+                <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+      <div className="grid gap-1 border-t pt-2">
+        <p className="px-2 pb-0.5 text-xs font-medium text-muted-foreground">
+          {translate('groupingLevels')}
+        </p>
+        {group.length === 0 && (
+          <p className="px-2 text-xs text-muted-foreground">{translate('groupingLevelsEmpty')}</p>
+        )}
+        <ol aria-label={translate('groupingLevels')} className="grid gap-0.5">
+          {group.map((dim, index) => (
+            <li key={dim} className="flex h-8 items-center gap-1 rounded-lg pr-0.5 pl-2 text-sm">
+              <span className="w-4 text-xs text-muted-foreground tabular-nums">{index + 1}</span>
+              <span className="min-w-0 flex-1 truncate">{DIM_NAMES[dim]}</span>
+              <LevelButton
+                label={translate('groupingMoveUp', { level: DIM_NAMES[dim] })}
+                disabled={index === 0}
+                onClick={() => onChange(moveLevel(group, index, -1))}
+              >
+                <ArrowUp />
+              </LevelButton>
+              <LevelButton
+                label={translate('groupingMoveDown', { level: DIM_NAMES[dim] })}
+                disabled={index === group.length - 1}
+                onClick={() => onChange(moveLevel(group, index, 1))}
+              >
+                <ArrowDown />
+              </LevelButton>
+              <LevelButton
+                label={translate('groupingRemove', { level: DIM_NAMES[dim] })}
+                onClick={() => onChange(group.filter((other) => other !== dim))}
+              >
+                <X />
+              </LevelButton>
+            </li>
+          ))}
+        </ol>
+        {group.length < MAX_GROUP_LEVELS && (
+          <div className="flex flex-wrap gap-1 px-1 pt-0.5">
+            {free.map((dim) => (
               <Button
+                key={dim}
                 variant="outline"
-                size="sm"
-                aria-label={`${translate('groupBy')}: ${groupingLabel(group)}`}
-                className="cursor-pointer gap-1.5 font-normal text-foreground/80 max-sm:hidden"
+                size="xs"
+                onClick={() => onChange([...group, dim])}
+                className="cursor-pointer gap-1 font-normal"
               >
-                <Layers className="stroke-[1.5]" />
-                <span className="max-lg:sr-only">{groupingLabel(group)}</span>
+                <Plus />
+                {DIM_NAMES[dim]}
               </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{translate('groupBy')}</TooltipContent>
-        </Tooltip>
-        <DropdownMenuContent align="end" className="min-w-48">
-          <DropdownMenuLabel>{translate('groupBy')}</DropdownMenuLabel>
-          <GroupingItems group={group} onChange={onChange} />
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={translate('moreActions')}
-                className="cursor-pointer text-muted-foreground sm:hidden"
-              >
-                <Ellipsis />
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{translate('moreActions')}</TooltipContent>
-        </Tooltip>
-        <DropdownMenuContent align="end" className="min-w-48">
-          <DropdownMenuLabel>{translate('groupBy')}</DropdownMenuLabel>
-          <GroupingItems group={group} onChange={onChange} />
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   )
+}
+
+/** "Group by" beside Filters and sort; on phones its button is a "…". */
+export function GroupByMenu(props: PanelProps) {
+  const label = groupingLabel(props.view.group)
+  const triggers = [
+    <Button
+      key="wide"
+      variant="outline"
+      size="sm"
+      aria-label={`${translate('groupBy')}: ${label}`}
+      className="cursor-pointer gap-1.5 font-normal text-foreground/80 max-sm:hidden"
+    >
+      <Layers className="stroke-[1.5]" />
+      <span className="max-lg:sr-only">{label}</span>
+    </Button>,
+    <Button
+      key="phone"
+      variant="ghost"
+      size="icon-sm"
+      aria-label={`${translate('groupBy')}: ${label}`}
+      className="cursor-pointer text-muted-foreground sm:hidden"
+    >
+      <Ellipsis />
+    </Button>,
+  ]
+  return triggers.map((trigger) => (
+    <Popover key={trigger.key}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{translate('groupBy')}</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="end" aria-label={translate('groupBy')} className="w-64 p-1.5">
+        <GroupByPanel {...props} />
+      </PopoverContent>
+    </Popover>
+  ))
 }
 
 /** The breadcrumb of a grouped view: All documents › By type › Invoices › 2026. */

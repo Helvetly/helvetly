@@ -143,6 +143,7 @@ export const EVENT_LABELS: Record<string, { label: string; hint: string }> = {
   'signature.signed': { label: translate('someoneSigned'), hint: YOURS },
   'signature.completed': { label: translate('documentSigned'), hint: YOURS },
   'signature.declined': { label: translate('signatureDeclined'), hint: YOURS },
+  'documents.zip_ready': { label: translate('notifyZipReady'), hint: translate('zipsYouAsked') },
   'expense.reimbursed': {
     label: translate('expenseReimbursed'),
     hint: translate('expensesYouPaid'),

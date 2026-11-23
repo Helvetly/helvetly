@@ -13,6 +13,7 @@ import {
   storedGrouping,
   storeGrouping,
   viewToQuery,
+  zipQuery,
   zipUrl,
 } from './documents'
 
@@ -37,9 +38,11 @@ describe('grouped views', () => {
     )
   })
 
-  it('keeps only the offered groupings and valid groups', () => {
-    expect(parseGrouping('client,type')).toEqual([])
+  it('keeps any order of known levels, each once, and only valid groups', () => {
+    expect(parseGrouping('client,type')).toEqual(['client', 'type'])
     expect(parseGrouping('year,type')).toEqual(['year', 'type'])
+    expect(parseGrouping('client,year,client,kind,type')).toEqual(['client', 'year', 'type'])
+    expect(parseGrouping(null)).toEqual([])
     expect(parseView(new URLSearchParams('type=memo&year=26'))).toMatchObject({
       type: null,
       year: null,
@@ -71,10 +74,21 @@ describe('grouped views', () => {
       'group=client&search=bill&uploaded_by=usr_1&client=none',
     )
     expect(zipUrl(view, 'usr_1')).toBe(
-      '/api/v1/documents/groups/zip?group=client&search=bill&uploaded_by=usr_1&client=none',
+      '/api/v1/documents/groups/zip?search=bill&uploaded_by=usr_1&client=none&group=client',
     )
     // a folder without groups stays in its folder
     expect(listQuery({ ...DEFAULT_VIEW, folder: 'fld_1' }, 'usr_1').get('folder_id')).toBe('fld_1')
+  })
+
+  it('zips what the view shows: chips combined, the grouping, a plain folder', () => {
+    const chips = { ...DEFAULT_VIEW, client: 'cli_1', year: 2026, type: 'invoices' as const }
+    expect(zipQuery(chips, undefined).toString()).toBe('type=invoices&year=2026&client=cli_1')
+    expect(zipQuery({ ...chips, group: ['client', 'year'] }, undefined).toString()).toBe(
+      'type=invoices&year=2026&client=cli_1&group=client%2Cyear',
+    )
+    expect(zipQuery({ ...DEFAULT_VIEW, folder: 'fld_1' }, undefined).toString()).toBe(
+      'folder_id=fld_1',
+    )
   })
 
   it('names groups', () => {

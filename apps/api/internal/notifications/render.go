@@ -33,6 +33,7 @@ var actions = map[string]string{
 	"scheduling.cancel_requested": "Review the request", "scheduling.reschedule_requested": "Review the request",
 	"scheduling.cancelled_by_client": "Open the session", "scheduling.proposal_answered": "Open the session",
 	"scheduling.calendar_disconnected": "Connect it again", "scheduling.event_detached": "Open the session",
+	"documents.zip_ready": "Download the ZIP",
 }
 
 // data is a notification's stored fields; numbers read as their text.
@@ -229,6 +230,14 @@ func words(event string, d data) message {
 		return message{title: "Your " + or(d.s("kind"), "file") + " import is ready to review",
 			body: fmt.Sprintf("%s records found in %s.", or(d.s("records"), "0"), plural(d.s("files"), "file")),
 			href: importHref(d.s("path"))}
+	case "documents.zip_ready":
+		href := "/documents?" + url.Values{"zip": {d.s("export_id")}}.Encode()
+		if d.s("failed") == "true" {
+			return message{title: "Your ZIP could not be prepared", body: "Download it again from Documents.", href: "/documents",
+				action: "Open Documents"}
+		}
+		return message{title: "Your ZIP is ready", body: or(d.s("name"), "documents.zip") + ", " + plural(d.s("files"), "file") +
+			". The link works for 7 days.", href: href}
 	case "import.failed":
 		return message{title: "Your " + or(d.s("kind"), "file") + " import could not be read", body: or(d.s("reason"), "Upload the files again."),
 			href: importHref(d.s("path"))}

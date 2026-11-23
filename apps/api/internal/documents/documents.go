@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -47,14 +48,16 @@ type Service struct {
 	filer   aimodel.Provider // nil: AI filing is off
 	budget  aimodel.Budget
 	text    func([]byte, int) string
-	// A group's ZIP holds at most zipFiles files and zipBytes bytes (groups.go).
-	zipFiles int
-	zipBytes int64
+	// A group's ZIP holds at most zipFiles files and zipBytes bytes (groups.go); above zipStream bytes it is built in
+	// the background (zip_exports.go).
+	zipFiles  int
+	zipBytes  int64
+	zipStream int64
 }
 
 func New(db *store.Store, a Auth, files Storage, maxSize int64, log *slog.Logger) *Service {
 	return &Service{db: db, auth: a, files: files, log: log, maxSize: maxSize, now: func() time.Time { return time.Now().UTC() },
-		zipFiles: maxZipFiles, zipBytes: maxZipBytes}
+		zipFiles: maxZipFiles, zipBytes: maxZipBytes, zipStream: maxStreamBytes}
 }
 
 type handler func(http.ResponseWriter, *http.Request, store.Session) error
@@ -81,6 +84,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/documents/usage", s.usage)
 	handle("GET /api/v1/documents/groups", s.groups)
 	handle("GET /api/v1/documents/groups/zip", s.groupZip)
+	handle("POST /api/v1/documents/groups/zip", s.queueZip)
+	handle("GET /api/v1/documents/exports", s.zipExports)
+	handle("GET /api/v1/documents/exports/{id}/download", s.downloadZip)
 	handle("GET /api/v1/documents/trash", s.trash)
 	handle("POST /api/v1/documents/trash/empty", s.emptyTrash)
 	handle("GET /api/v1/documents/{id}", s.get)
@@ -394,9 +400,13 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 
 // listFilter: the list's filters from the query, the virtual groups' keys (type, year, client) included.
 func listFilter(r *http.Request, sess store.Session) (store.DocumentFilter, error) {
-	v := r.URL.Query()
+	return parseFilter(r.URL.Query(), sess.Workspace.Zone())
+}
+
+// parseFilter: listFilter of query v, read in the workspace's time zone.
+func parseFilter(v url.Values, zone string) (store.DocumentFilter, error) {
 	f := store.DocumentFilter{Folder: v.Get("folder_id"), Search: strings.TrimSpace(v.Get("search")),
-		UploadedBy: v.Get("uploaded_by"), ClientID: v.Get("client_id"), From: v.Get("from"), To: v.Get("to"), Zone: sess.Workspace.Zone(),
+		UploadedBy: v.Get("uploaded_by"), ClientID: v.Get("client_id"), From: v.Get("from"), To: v.Get("to"), Zone: zone,
 		Tag: strings.ToLower(strings.TrimSpace(v.Get("tag"))), Type: v.Get("type"), Client: v.Get("client")}
 	for _, k := range v["kind"] {
 		if !slices.Contains(kinds, k) {

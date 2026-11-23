@@ -36,6 +36,7 @@ import {
   HardDrive,
   Copy,
   Download,
+  Loader2,
   Eye,
   FileSignature,
   Layers,
@@ -95,6 +96,7 @@ import {
   ACCEPT,
   canDeleteForever,
   childrenOf,
+  docKeys,
   docsApi,
   downloadUrl,
   KIND_LABELS,
@@ -111,6 +113,9 @@ import {
   storedGrouping,
   storeGrouping,
   useDocGroups,
+  useZipExports,
+  zipExportUrl,
+  zipQuery,
   zipUrl,
   DEFAULT_VIEW,
   parseView,
@@ -125,6 +130,7 @@ import {
   viewToQuery,
   type BulkResult,
   type DocFile,
+  type DocType,
   type Folder,
   type GroupDim,
   type Kind,
@@ -147,7 +153,7 @@ import { DropProvider, useDropTarget, type DropActions } from './drop-target'
 import { extractBlock } from './extract'
 import { FolderMark } from './folder-art'
 import { FolderTree } from './folder-tree'
-import { GroupByMenu, GroupCrumbs, inPreset, VIEW_PRESETS } from './group-controls'
+import { GroupByMenu, GroupCrumbs, type ViewPreset } from './group-controls'
 import { GroupView } from './group-view'
 import { ItemsView } from './items-view'
 import { KIND_STYLE, KindIcon } from './kind'
@@ -284,6 +290,14 @@ export function DocumentsPage() {
     groupsQuery({ ...DEFAULT_VIEW, group: ['client'] }, session?.user.id),
     listing && !!session,
   )
+  const typeCount = (type: DocType) =>
+    typeGroups.data?.groups.find((group) => group.key === type)?.count
+  const presetCounts: Partial<Record<ViewPreset['id'], number>> = {
+    invoices: typeCount('invoices'),
+    quotes: typeCount('quotes'),
+    receipts: typeCount('receipts'),
+    clients: clientGroups.data?.groups.filter((group) => group.key !== NO_CLIENT).length,
+  }
   const searchFields = queryFields(
     (clientGroups.data?.groups ?? []).map((group) => ({
       value: group.key,
@@ -335,6 +349,12 @@ export function DocumentsPage() {
     clearSelection()
     navigate({ section: 'files', folder: null, file: null, group, ...NO_GROUP, ...change }, true)
   }
+  // The builder's levels: the groups chosen so far stay as filters (the search's chips).
+  const changeLevels = (group: GroupDim[]) => {
+    storeGrouping(group)
+    clearSelection()
+    navigate({ section: 'files', folder: null, file: null, group }, true)
+  }
   const openGroup = (by: GroupDim, key: string) => {
     clearSelection()
     navigate({ ...groupChange(by, key), file: null }, true)
@@ -354,17 +374,40 @@ export function DocumentsPage() {
           key,
           label: clientGroups.data?.groups.find((group) => group.key === key)?.label ?? '',
         })
-  // The ZIP of a group: asked first, so a group too big says so instead of a broken download.
+  // The ZIP of what the view (or one of its groups) shows: asked first, so one too big says so instead of a
+  // broken download; one too big to stream is prepared in the background and announced in the bell.
+  const zipExports = useZipExports(view.section === 'files' && !!session)
+  const zipPending = zipExports.data?.some((zip) => zip.status === 'pending') ?? false
   const downloadZip = (change: Partial<ViewParams> = {}) => {
-    const target = { ...view, ...change }
-    docsApi.checkZip(groupsQuery(target, session?.user.id)).then(() => {
-      const link = document.createElement('a')
-      link.href = zipUrl(target, session?.user.id)
-      link.download = ''
-      link.click()
-      toast.success(translate('zipStarted'))
-    }, docError)
+    const target = { ...view, folder: current, ...change }
+    const zip = zipQuery(target, session?.user.id)
+    docsApi
+      .checkZip(zip)
+      .then(async (check) => {
+        if (!check?.data.async) {
+          saveFile(zipUrl(target, session?.user.id))
+          toast.success(translate('zipStarted'))
+          return
+        }
+        await docsApi.queueZip(zip)
+        void queryClient.invalidateQueries({ queryKey: docKeys.zipExports })
+        toast.success(translate('zipQueued'))
+      })
+      .catch(docError)
   }
+  // The bell's "Your ZIP is ready" opens Documents with ?zip=<id>: the download starts, or it says it is gone.
+  const zipLink = query.get('zip')
+  const openZipLink = useEffectEvent((id: string) => {
+    docsApi.zipExports().then(({ data }) => {
+      const zip = data.find((entry) => entry.id === id)
+      if (zip?.status === 'ready') saveFile(zipExportUrl(id))
+      else toast.error(translate('zipGone'))
+      navigate({})
+    }, docError)
+  })
+  useEffect(() => {
+    if (zipLink) openZipLink(zipLink)
+  }, [zipLink])
   // The last Group by choice comes back when Documents opens plainly (nothing chosen in the link).
   const restoreGrouping = useEffectEvent(() => {
     if (query.toString() !== '') return
@@ -895,33 +938,63 @@ export function DocumentsPage() {
   // The page's own actions: the header's "…" menu and a right-click on the empty surface.
   // The header's "…" leaves New folder to the Create menu beside it.
   // The header has its own Upload and "New" buttons, so its "…" menu keeps Import and Paste.
-  const pageItems = ({ Item, Shortcut }: MenuKit, inHeader = false) =>
-    canWrite && (
-      <>
-        {!inHeader && (
-          <>
-            <Item onSelect={() => setNewFolderIn(current)}>
-              <FolderPlus />
-              {translate('newFolder2')}
+  const pageItems = ({ Item, Shortcut }: MenuKit, inHeader = false) => (
+    <>
+      {canWrite && (
+        <>
+          {!inHeader && (
+            <>
+              <Item onSelect={() => setNewFolderIn(current)}>
+                <FolderPlus />
+                {translate('newFolder2')}
+              </Item>
+              <Item onSelect={() => picker$.current?.click()}>
+                <UploadIcon />
+                {translate('uploadFiles2')}
+              </Item>
+            </>
+          )}
+          <ImportItem Item={Item} onSelect={importDrawer.open}>
+            {translate('importInvoicesContracts')}
+          </ImportItem>
+          {clipboard && view.section === 'files' && (
+            <Item onSelect={paste}>
+              <ClipboardPaste />
+              {translate('paste')}{' '}
+              {plural(clipboard.files.length + clipboard.folders.length, 'item')}
+              <Shortcut>{translate('v')}</Shortcut>
             </Item>
-            <Item onSelect={() => picker$.current?.click()}>
-              <UploadIcon />
-              {translate('uploadFiles2')}
-            </Item>
-          </>
-        )}
-        <ImportItem Item={Item} onSelect={importDrawer.open}>
-          {translate('importInvoicesContracts')}
-        </ImportItem>
-        {clipboard && view.section === 'files' && (
-          <Item onSelect={paste}>
-            <ClipboardPaste />
-            {translate('paste')} {plural(clipboard.files.length + clipboard.folders.length, 'item')}
-            <Shortcut>{translate('v')}</Shortcut>
-          </Item>
-        )}
-      </>
+          )}
+        </>
+      )}
+      {view.section === 'files' && zipItem(Item)}
+    </>
+  )
+  // Download as ZIP: what the view shows; off while there is nothing, or while a ZIP is being prepared.
+  const zipEmpty =
+    dim === null ? list.data?.data.length === 0 : groupsLevel.data?.groups.length === 0
+  const zipItem = (Item: MenuKit['Item']) => {
+    const why = zipPending
+      ? translate('zipPreparingHint')
+      : zipEmpty
+        ? translate('zipNothingHere')
+        : null
+    const item = (
+      <Item disabled={why !== null} onSelect={() => downloadZip()}>
+        {zipPending ? <Loader2 className="animate-spin" /> : <Download />}
+        {zipPending ? translate('zipPreparing') : translate('downloadAsZip')}
+      </Item>
     )
+    if (why === null) return item
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div>{item}</div>
+        </TooltipTrigger>
+        <TooltipContent side="left">{why}</TooltipContent>
+      </Tooltip>
+    )
+  }
 
   const crumbs = pathTo(allFolders, current)
   // ---- header tabs: the fixed "All files" and the views the person pinned. Browsing never opens a
@@ -966,7 +1039,6 @@ export function DocumentsPage() {
     )
   }
   const showLocation = searching || view.section === 'recent' || grouping || byGroup
-  const inGroup = grouping && view.group.some((by) => groupValue(view, by) !== null)
   const dropHere = view.section === 'trash' ? null : current
   const surfaceDrop = useDropTarget(dropHere)
   const loading = listing && dim === null && !list.data && !list.error
@@ -1049,17 +1121,6 @@ export function DocumentsPage() {
                 trashCount={trashItemsList.length}
                 kind={view.kinds.length === 1 ? (view.kinds[0] ?? null) : null}
                 pinned={pinned}
-                views={VIEW_PRESETS.map((preset) => ({
-                  id: preset.id,
-                  label: preset.label,
-                  count: preset.type
-                    ? (typeGroups.data?.groups.find((group) => group.key === preset.type)?.count ??
-                      null)
-                    : (clientGroups.data?.groups.filter((group) => group.key !== NO_CLIENT)
-                        .length ?? null),
-                  current: inPreset(view, preset),
-                  onSelect: () => setGrouping(preset.group, { type: preset.type }),
-                }))}
                 actions={{
                   create: (name) =>
                     void docsApi.createFolder(name, null).then(({ data }) => {
@@ -1147,23 +1208,6 @@ export function DocumentsPage() {
                 </Button>
               </div>
             )}
-            {inGroup && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    aria-label={translate('downloadAllZip')}
-                    className="mr-1 cursor-pointer gap-1.5 font-normal text-foreground/80"
-                    onClick={() => downloadZip()}
-                  >
-                    <Download className="stroke-[1.5]" />
-                    <span className="max-lg:sr-only">{translate('downloadAllZip')}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{translate('downloadAllZip')}</TooltipContent>
-              </Tooltip>
-            )}
             {listing && (
               <>
                 <ListSearch
@@ -1185,7 +1229,12 @@ export function DocumentsPage() {
                   onChange={(change) => navigate(change)}
                 />
                 {view.section === 'files' && (
-                  <GroupByMenu group={view.group} onChange={(group) => setGrouping(group)} />
+                  <GroupByMenu
+                    view={view}
+                    counts={presetCounts}
+                    onPreset={(preset) => setGrouping(preset.group, { type: preset.type })}
+                    onChange={changeLevels}
+                  />
                 )}
                 {view.section === 'files' && dim === null && (
                   <SortMenu view={view} onChange={(change) => navigate(change)} />
@@ -1815,6 +1864,14 @@ function SortMenu({
 }
 
 /** No group chosen: what leaving a grouped view (or clearing the filters) resets. */
+/** Starts a download of href in the page (the API answers it as an attachment). */
+function saveFile(href: string) {
+  const link = document.createElement('a')
+  link.href = href
+  link.download = ''
+  link.click()
+}
+
 const NO_GROUP = { type: null, year: null, client: null } satisfies Partial<ViewParams>
 
 /**

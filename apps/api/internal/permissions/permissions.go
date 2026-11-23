@@ -169,6 +169,8 @@ var instead = []struct {
 	{false, "/api/v1/employees/*/protected", []string{"write:payroll"}},
 	{false, "/api/v1/employment/settings", []string{"read:employees|read:payroll"}},
 	{true, "/api/v1/employment/settings", []string{"write:employees", "write:payroll"}},
+	// asking for a big ZIP of documents is a download, built in the background
+	{true, "/api/v1/documents/groups/zip", []string{"read:documents"}},
 	// approvers decide on documents they can see; their approver group, not invoice editing, lets them
 	{true, "/api/v1/invoices/*/approval/approve", []string{"read:invoices"}},
 	{true, "/api/v1/invoices/*/approval/reject", []string{"read:invoices"}},

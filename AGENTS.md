@@ -107,9 +107,16 @@ are the reference.
   quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder, its tags, its
   name, else Other; year: the record's, the year folder's, else the upload's in the workspace's zone; client: the
   record's, the `Clients/<client>` folder's, a client link, else none. A group is the list's `type`, `year` and
-  `client` filters (the search's chips); `GET /api/v1/documents/groups` answers a level's groups with counts or, once
-  every level is chosen, the page of files; `…/groups/zip` streams a group as one ZIP (at most 1000 files and 500 MB,
-  refused before reading; `check=1` only asks), audited as `documents.exported`, never counted as storage. Session-only.
+  `client` filters (the search's chips, combined with AND, with or without a grouping); the levels come in any order,
+  each once, up to three (Group by's presets and builder; the last choice in localStorage); `GET /api/v1/documents/groups`
+  answers a level's groups with counts or, once every level is chosen, the page of files; `…/groups/zip` makes what the
+  view shows (its filters, its folder outside a grouping) one ZIP (at most 1000 files and 500 MB, refused before reading;
+  `check=1` only asks): up to 5 MB it streams; above, `POST …/groups/zip` queues it (`document_zip_exports`, one pending
+  per member) and `RunZipExports` builds it (claimed for a lease with `FOR UPDATE SKIP LOCKED`, one at a time per
+  workspace) to `workspaces/<id>/exports/`, tells the member in the bell (`documents.zip_ready`, `/documents?zip=<id>`)
+  and serves it only to them (`…/exports/{id}/download`, `storage.Serve`) for 7 days, then deletes object and row, as
+  at once for a deleted workspace or a former member. Every ZIP is audited as `documents.exported`, never counted as
+  storage, never a document and not in the workspace export. Session-only.
 - **Approvals** (`internal/approvals`, Business feature `document_approvals`): an optional approval before a draft is
   issued, sent or booked, per document type (`invoice` for every invoice kind without its own, `credit_note`,
   `debit_note`, `corrected`: before issuing; `quote`: before a draft or revision is first sent, a revision resets it;
