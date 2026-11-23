@@ -270,6 +270,8 @@ export type SchedulingState = {
   eventTypes: EventType[]
   /** Providers the host has connected (`GET /scheduling/calendars`). */
   connected: ('google' | 'microsoft')[]
+  /** The workspace's days off (`GET /scheduling/holidays`). */
+  holidays?: { date: string; name: string }[]
 }
 
 export const sampleState = (over: Partial<SchedulingState> = {}): SchedulingState => ({
@@ -426,6 +428,11 @@ export function schedulingHandlers(state: SchedulingState = sampleState(), now =
         fields.duration_minutes = 'Between 5 and 720 minutes.'
       if (Object.keys(fields).length > 0)
         return fail(422, 'validation_failed', 'Check the fields.', { fields })
+      const offDay = (state.holidays ?? []).find(
+        (day) => day.date === input.starts_local.slice(0, 10),
+      )
+      if (offDay && !input.recurrence && !input.allow_day_off)
+        return fail(409, 'day_off', `This day is a day off (${offDay.name}).`, offDay)
       const id = `sev_${state.events.length + 1}`
       const host = TEAM.find((entry) => entry.user_id === input.host_id)
       const created = event({
@@ -613,6 +620,9 @@ export function schedulingHandlers(state: SchedulingState = sampleState(), now =
       ),
     ),
     http.get('/api/v1/scheduling/settings', () => HttpResponse.json({ data: state.settings })),
+    http.get('/api/v1/scheduling/holidays', () =>
+      HttpResponse.json({ data: { days: state.holidays ?? [] } }),
+    ),
     http.get('/api/v1/scheduling/event-types', () => HttpResponse.json({ data: state.eventTypes })),
     http.get<{ id: string }>('/api/v1/scheduling/hosts/:id', () =>
       HttpResponse.json({

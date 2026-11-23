@@ -55,6 +55,7 @@ import {
 
 import { MapLink } from './address-input'
 import { HostDot, StatusBadge, useSessionChange } from './bits'
+import { DayOffWarning, useDaysOff } from './day-off'
 import { whenLabel, RequestCard } from './requests'
 import { SessionFields } from './session-form'
 import {
@@ -198,9 +199,15 @@ function CreateSession({
 }) {
   const form = useForm(blankValues(start), onDirty)
   const create = useSchedulingWrite(schedulingApi.createEvent)
+  // A series skips days off by its own rule; a one-off there is a special request, confirmed for that date.
+  const daysOff = useDaysOff()
+  const dayOff = form.values.repeat === 'none' ? daysOff.get(form.values.date) : undefined
+  const [specialDate, setSpecialDate] = useState('')
+  const blocked = dayOff !== undefined && specialDate !== form.values.date
   const submit = () => {
-    if (create.isPending || !form.check()) return
-    create.mutate(toInput(form.values, zone), {
+    if (create.isPending || blocked || !form.check()) return
+    const input = toInput(form.values, zone)
+    create.mutate(dayOff ? { ...input, allow_day_off: true } : input, {
       onSuccess: ({ occurrences, conflicts }) => {
         toast.success(
           conflicts.length
@@ -223,9 +230,18 @@ function CreateSession({
       subtitle={translate('schedNewSessionText')}
       pending={create.isPending}
       submitLabel={translate('schedSchedule')}
+      blocked={blocked}
       onSubmit={submit}
       onCancel={onCancel}
     >
+      {dayOff && (
+        <DayOffWarning
+          date={form.values.date}
+          name={dayOff}
+          confirmed={!blocked}
+          onConfirm={(yes) => setSpecialDate(yes ? form.values.date : '')}
+        />
+      )}
       <SessionFields
         values={form.values}
         errors={form.errors}
@@ -242,6 +258,7 @@ function FormShell({
   subtitle,
   pending,
   submitLabel,
+  blocked = false,
   onSubmit,
   onCancel,
   children,
@@ -250,6 +267,8 @@ function FormShell({
   subtitle: string
   pending: boolean
   submitLabel: string
+  /** Something above the fields still needs a yes before saving. */
+  blocked?: boolean
   onSubmit: () => void
   onCancel: () => void
   children: ReactNode
@@ -300,7 +319,7 @@ function FormShell({
         <Button type="button" variant="ghost" className="ml-auto" onClick={onCancel}>
           {translate('cancel')}
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || blocked}>
           {pending ? translate('saving') : submitLabel}
         </Button>
       </div>

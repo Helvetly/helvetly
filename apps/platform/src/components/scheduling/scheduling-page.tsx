@@ -23,6 +23,8 @@ import {
   useRequests,
   useSchedSettings,
   VIEWS,
+  minutesOf,
+  weekdayOf,
   zoned,
   zoneName,
   type Occurrence,
@@ -33,6 +35,7 @@ import { getWorkspaceTimezone } from '@/lib/timezone'
 import { setUrlQuery } from '@/lib/url-query'
 
 import { useSessionChange } from './bits'
+import { useDayOffMove, useDaysOff } from './day-off'
 import { FULL_DAY, saveHours, storedHours, workingHours, type HoursChoice } from './hours-menu'
 import { ListView } from './list-view'
 import { MonthView } from './month-view'
@@ -166,7 +169,11 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
   }
   const unmarked = useOccurrences({ ...markRange, host: hostParam, to_mark: true })
   useSchedSettings()
-  const { move, dialog } = useSessionChange()
+  const change = useSessionChange()
+  const daysOff = useDaysOff()
+  const dayOffMove = useDayOffMove(daysOff, zone, change.move)
+  const shownDays = daysOf(view, date)
+  const daysOffShown = new Map([...daysOff].filter(([day]) => shownDays.includes(day)))
 
   const list: Occurrence[] = toMark ? (unmarked.data ?? []) : (occurrences.data ?? [])
   const waiting = requests.data?.length ?? 0
@@ -193,11 +200,17 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
   const newAt = (day: string, minutes?: number, hostId?: string) => {
     if (!me) return
     const nextHour = Math.min(23, Math.ceil(zoned(now, zone).minutes / 60)) * 60
+    // Another day starts when the host's hours that weekday do, else at 09:00.
+    const workStarts = (profile?.weekly ?? [])
+      .filter((entry) => entry.day === weekdayOf(day))
+      .map((entry) => minutesOf(entry.start))
     setDrawer({
       kind: 'create',
       start: {
         date: day,
-        minutes: minutes ?? (day === today ? nextHour : 9 * 60),
+        minutes:
+          minutes ??
+          (day === today ? nextHour : workStarts.length ? Math.min(...workStarts) : 9 * 60),
         hostId: hostId ?? me,
         location: null,
       },
@@ -330,6 +343,7 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
           <ListView
             zone={zone}
             occurrences={list}
+            daysOff={toMark ? undefined : daysOffShown}
             now={now}
             onOpen={(entry) => openSession(entry.id)}
             onNew={canWrite && !toMark ? () => newAt(date) : undefined}
@@ -342,14 +356,18 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
             zone={zone}
             today={today}
             occurrences={list}
+            daysOff={daysOff}
+            canWrite={canWrite}
             onOpen={(entry) => openSession(entry.id)}
+            onCreate={(day) => newAt(day)}
           />
         ) : (
           <TimeGrid
             key={range.from}
-            days={daysOf(view, date)}
+            days={shownDays}
             zone={zone}
             occurrences={list}
+            daysOff={daysOff}
             busy={busy.data ?? []}
             lanes={lanes}
             now={now}
@@ -358,7 +376,7 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
             onOpen={(entry) => openSession(entry.id)}
             onShowAll={() => chooseHours({ ...hoursChoice, mode: 'full' })}
             onCreate={(day, minutes, hostId) => newAt(day, minutes, hostId)}
-            onMove={(entry, startsAt, endsAt) => void move(entry, startsAt, endsAt)}
+            onMove={dayOffMove.move}
           />
         )}
       </div>
@@ -382,7 +400,8 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
           }}
         />
       )}
-      {dialog}
+      {change.dialog}
+      {dayOffMove.dialog}
     </>
   )
 }

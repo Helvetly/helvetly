@@ -26,6 +26,7 @@ import {
 } from '@/lib/scheduling'
 
 import { StatusBadge } from './bits'
+import { DayOffLine, withDaysOff, type DaysOff } from './day-off'
 
 type Filter = { statuses: Status[]; client: string[]; engagement: string[] }
 const NO_FILTER: Filter = { statuses: [], client: [], engagement: [] }
@@ -108,6 +109,7 @@ const matches = (entry: Occurrence, text: string) =>
 export function ListView({
   zone,
   occurrences,
+  daysOff,
   now,
   onOpen,
   onNew,
@@ -115,6 +117,8 @@ export function ListView({
 }: {
   zone: string
   occurrences: Occurrence[]
+  /** The range's days off, each shown on its date. */
+  daysOff?: DaysOff
   now: Date
   onOpen: (occurrence: Occurrence) => void
   /** Offered in an empty period when the person may schedule. */
@@ -138,7 +142,7 @@ export function ListView({
     const date = zoned(row.starts_at, zone).date
     groups.set(date, [...(groups.get(date) ?? []), row])
   }
-  const days = [...groups.keys()]
+  const days = withDaysOff(groups, daysOff).map(([date]) => date)
   const crossesMonths = new Set(days.map((day) => day.slice(0, 7))).size > 1
   const today = zoned(now, zone).date
   const download = () => {
@@ -222,6 +226,11 @@ export function ListView({
                     </span>
                   </h3>
                   <ul className="grid min-w-0 flex-1 gap-0.5">
+                    {daysOff?.has(date) && (
+                      <li className="py-2">
+                        <DayOffLine name={daysOff.get(date) ?? ''} />
+                      </li>
+                    )}
                     {(groups.get(date) ?? []).map((occurrence) => (
                       <li key={occurrence.id}>
                         <SessionRow
