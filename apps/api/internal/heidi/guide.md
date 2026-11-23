@@ -636,3 +636,14 @@ Pages: /settings/employment
 2. The **Company employment profile** pre-fills the employing company and country of work for new employees. Each employee keeps their own place of work.
 3. Turn on **Require a second person to approve payroll** so whoever entered an entry cannot approve it.
    Only people with Employees and Payroll edit access can change this.
+
+## Schedule client sessions (scheduling)
+
+Keywords: scheduling, calendar, session, appointment, booking, termin, termine, kalender, recurring, no-show, cancellation, reschedule
+Pages: /scheduling
+
+1. Go to **Scheduling** and pick **Day**, **Week**, **Month** or **List**. **Hosts…** shows other members' sessions next to yours.
+2. Click **New session**, or click an empty time in the calendar. Choose the client, host and time; **Repeat** makes it weekly or monthly.
+3. Open a session to move, cancel or mark it. After it has passed, mark it **Attended** or **No-show**; the calendar counts the past sessions still to mark.
+4. **Requests** lists clients' requests to book, move or cancel a session. **Approve** or **Decline** each one; the client is told.
+   Times show in your time zone, with the workspace's time zone named when it differs.
