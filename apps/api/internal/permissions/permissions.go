@@ -170,6 +170,11 @@ var instead = []struct {
 	{false, "/api/v1/employees/*/protected", []string{"write:payroll"}},
 	{false, "/api/v1/employment/settings", []string{"read:employees|read:payroll"}},
 	{true, "/api/v1/employment/settings", []string{"write:employees", "write:payroll"}},
+	// a contract draft reads the quote; the document it starts is made under templates (write:documents)
+	{true, "/api/v1/quotes/*/contract-draft", []string{"read:invoices", "write:documents"}},
+	// a quote's contracts are documents: listing them needs both
+	{false, "/api/v1/quotes/*/contracts", []string{"read:invoices", "read:documents"}},
+	{false, "/api/v1/quotes/contract-counts", []string{"read:invoices", "read:documents"}},
 	// asking for a big ZIP of documents is a download, built in the background
 	{true, "/api/v1/documents/groups/zip", []string{"read:documents"}},
 	// approvers decide on documents they can see; their approver group, not invoice editing, lets them

@@ -86,13 +86,13 @@ are the reference.
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
 - **Documents system folders** (`store/queries_system_folders.go`, `documents/system.go`): every workspace has the
   top-level `Clients` and `Expenses` folders, and below them `Clients/<client>/<Invoices|Quotes|Engagements|Signatures|Documents>/<year>`
-  and `Expenses/<year>/<category>` (`document_folders.system_kind`, `system_ref` = the client or the expense category;
-  none for `Uncategorised`). The app makes them on demand (`ClientRecordFolder`, `ExpenseYearFolder`, missing roots on
+  (and `Clients/<client>/Documents/<year>/Contracts`, kind `contracts`) and `Expenses/<year>/<category>`
+  (`document_folders.system_kind`, `system_ref` = the client or the expense category; none for `Uncategorised`). The app makes them on demand (`ClientRecordFolder`, `ExpenseYearFolder`, missing roots on
   the folder list), adopts a plain folder of the same name, renames a client's folder or a category's folders (one per year) with it, moves a
   draft's files that still sit in its folder when its category or year changes, and refuses to rename, move or trash any of them (`409
   system_folder`); people still file into them and make plain folders inside. Typed ones are stored by their English
   name and answered in the asker's language (`?lang`, `Accept-Language`; the platform translates by `system_kind`).
-  Issuing an invoice and sending a quote file their PDF there as a document sharing the record's object (kept while
+  A contract made from a quote goes to its `Contracts` folder. Issuing an invoice and sending a quote file their PDF there as a document sharing the record's object (kept while
   `pdf_key` or a sent revision in `quote_revisions` points at it), client uploads go to the client's `Documents/<year>`, receipts to `Expenses/<year>/<category>`;
   `BackfillSystemFolders` (once per start, idempotent) files what came before and turns the earlier
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
@@ -100,7 +100,10 @@ are the reference.
   client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
   Before the model is asked, a file that is one of the workspace's invoices or quotes (by the PDF it shares, the
   imported invoice it is the original of, or a record number in its name or text, separators ignored) goes straight to
-  its client's folder (`documents/record_match.go`); several records found leave it to the model. An invoice or quote
+  its client's folder (`documents/record_match.go`); several records found leave it to the model. A client's contract
+  goes to its `Contracts` folder only when the model says it is a completed contract (`is_completed_contract`) and
+  neither its name nor its text looks like a template, sample, draft or blanks (`completedContract`); else to the
+  client's `Documents/<year>`; the reason is kept (`document_filings.contract_reason`). Imported contracts keep their name. An invoice or quote
   the model files outside Clients goes to the client's folder when the file names one client (whole name or UID).
 - **Documents grouped views** (`store/queries_document_groups.go`, `documents/groups.go`): Group by type, year or
   client is computed from each file, never stored, and moves nothing. Type: the record it belongs to (an invoice's or
@@ -117,6 +120,12 @@ are the reference.
   and serves it only to them (`…/exports/{id}/download`, `storage.Serve`) for 7 days, then deletes object and row, as
   at once for a deleted workspace or a former member. Every ZIP is audited as `documents.exported`, never counted as
   storage, never a document and not in the workspace export. Session-only.
+- **Contracts from quotes** (`templates/contract.go`, feature `document_templates`): "Create contract with AI" on a
+  quote fills a template's custom fields from the quote, by name first, the rest by the model in the automation pool
+  after the person's AI approval (without a model: by name only); `POST /api/v1/quotes/{id}/contract-draft`, audited,
+  session-only. Generating with `quote_id` numbers the contract `<year>/C/<seq>` (`contract_counters`, in the filing
+  transaction, the workspace's format when it prints `{TYPE}` and a year, else `C-{YYYY}-{NNN}`), names its file after
+  the number and links it (`quote_contracts`: several per quote, newest first, gone with the document).
 - **Approvals** (`internal/approvals`, Business feature `document_approvals`): an optional approval before a draft is
   issued, sent or booked, per document type (`invoice` for every invoice kind without its own, `credit_note`,
   `debit_note`, `corrected`: before issuing; `quote`: before a draft or revision is first sent, a revision resets it;

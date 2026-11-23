@@ -292,6 +292,13 @@ func run() error {
 	// "Write with AI" is counted in Heidi's pool, never the automation pool; the fake model answers in development.
 	aiWriteSvc := aiwrite.New(db, authSvc, importModel, aimodel.Budget{DB: db, Pool: aimodel.PoolHeidi,
 		Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, Now: func() time.Time { return time.Now().UTC() }})
+	templatesSvc.SetContractNumbers(invoicesSvc.ContractNumber)
+	if importModel != nil {
+		// contract drafts from a quote: counted in the automation pool with AI import and filing
+		templatesSvc.SetAI(importModel, aimodel.Budget{DB: db, Pool: aimodel.PoolAutomation,
+			Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost,
+			Now: func() time.Time { return time.Now().UTC() }})
+	}
 	emailTemplatesSvc := emailtemplate.New(db, authSvc)
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())

@@ -216,6 +216,7 @@ test('each kind takes the next number of its own counter', () => {
       self_billed: { year: 1, ever: 1 },
     },
     quote: 7,
+    contract: 4,
   }
   const next = (format: string, kind: Parameters<typeof nextNumberOf>[2]) =>
     nextNumberOf(format, '2026-03-05', kind, counters)
@@ -230,6 +231,9 @@ test('each kind takes the next number of its own counter', () => {
   // quotes count per year, so a format without one keeps the default
   expect(next('{TYPE}-{NNN}', 'quote')).toBe('Q-2026-007')
   expect(next('{YYYY}-{NNN}', 'quote')).toBe('Q-2026-007')
+  // contracts likewise, with the type C
+  expect(next('{YYYY}/{TYPE}/{NNN}', 'contract')).toBe('2026/C/004')
+  expect(next('{YYYY}-{NNN}', 'contract')).toBe('C-2026-004')
 })
 
 test('number formats are checked as the API checks them', () => {

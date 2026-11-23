@@ -2,7 +2,13 @@
 // templates kept in localStorage, generating files nothing in Documents and sends nothing.
 import { bypass, delay, http, HttpResponse } from 'msw'
 
-import type { GenerateRequest, Template, TemplateInput } from '@/lib/templates'
+import type {
+  ContractDraft,
+  GenerateRequest,
+  QuoteContract,
+  Template,
+  TemplateInput,
+} from '@/lib/templates'
 
 const STORAGE_KEY = 'helvetly:mock-templates'
 
@@ -76,7 +82,50 @@ async function documentName(request: Request, documentId: string) {
 const named = (template: Template, name: string | null) =>
   name && template.document ? { ...template, document: { ...template.document, name } } : template
 
+// Contracts made from quotes, newest first, numbered <year>/C/<seq> as with the default quote format.
+const contracts = new Map<string, QuoteContract[]>()
+let contractSeq = 0
+
+/**
+ * A contract draft as the API answers it: the first custom field matched by name ("quote"), the
+ * others written by the model ("ai"); a quote without a template is refused.
+ */
+function contractDraft(template: Template, quoteId: string, useAI: boolean): ContractDraft {
+  const custom = template.fields.filter((field) => field.kind === 'custom')
+  const out: ContractDraft = {
+    fields: {},
+    sources: {},
+    ai: useAI ? 'used' : 'skipped',
+    quote: { id: quoteId, number: '2026/Q/001' },
+  }
+  custom.forEach((field, index) => {
+    if (index > 0 && !useAI) return
+    out.fields[field.id] = index === 0 ? 'CHF 4’000.00' : `${field.label ?? 'Field'} from the quote`
+    out.sources[field.id] = index === 0 ? 'quote' : 'ai'
+  })
+  if (custom.length <= 1) out.ai = 'not_needed'
+  return out
+}
+
 export const templateHandlers = [
+  http.post<{ id: string }, { template_id: string; use_ai: boolean }>(
+    '/api/v1/quotes/:id/contract-draft',
+    async ({ params, request }) => {
+      await delay()
+      const body = await request.json()
+      const template = all().find((entry) => entry.id === body.template_id)
+      if (!template) return invalid({ template_id: 'Choose a template.' })
+      return HttpResponse.json({ data: contractDraft(template, params.id, body.use_ai) })
+    },
+  ),
+  http.get('/api/v1/quotes/contract-counts', () =>
+    HttpResponse.json({
+      data: Object.fromEntries([...contracts].map(([quote, list]) => [quote, list.length])),
+    }),
+  ),
+  http.get<{ id: string }>('/api/v1/quotes/:id/contracts', ({ params }) =>
+    HttpResponse.json({ data: contracts.get(params.id) ?? [] }),
+  ),
   http.get('/api/v1/templates', async () => {
     await delay()
     return HttpResponse.json({
@@ -131,10 +180,25 @@ export const templateHandlers = [
           last_used_at: now,
         }),
       )
+      const document = { id: id('doc'), name: `${body.title.trim()}.pdf` }
+      let number: string | null = null
+      if (body.quote_id) {
+        number = `${now.slice(0, 4)}/C/${String(++contractSeq).padStart(3, '0')}`
+        document.name = `${number.replaceAll('/', '-')}.pdf`
+        const made: QuoteContract = {
+          document_id: document.id,
+          number,
+          name: document.name,
+          created_at: now,
+          signature: null,
+        }
+        contracts.set(body.quote_id, [made, ...(contracts.get(body.quote_id) ?? [])])
+      }
       return HttpResponse.json(
         {
           data: {
-            document: { id: id('doc'), name: `${body.title.trim()}.pdf` },
+            contract_number: number,
+            document,
             signature_request_id: body.delivery.type === 'signature' ? id('sig') : null,
             emailed_to: body.delivery.type === 'email' ? body.delivery.to : null,
           },
