@@ -210,7 +210,9 @@ function PeriodFilter({
           <CalendarDays className="stroke-[1.5] text-muted-foreground" />
           <span className="sr-only">{translate('period2')}</span>
           <span className="truncate">{label}</span>
-          {range && <span className="truncate text-muted-foreground max-sm:hidden">{range}</span>}
+          {range && (
+            <span className="truncate text-muted-foreground @max-[40rem]:hidden">{range}</span>
+          )}
           <ChevronDown className="text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
@@ -372,7 +374,7 @@ function NeedsAttention() {
                   currency={row.currency}
                   className="ml-auto text-right"
                 />
-                <span className="w-[76px] shrink-0 text-right max-sm:hidden">
+                <span className="w-[76px] shrink-0 text-right @max-sm:hidden">
                   <RowStatus invoice={row} />
                 </span>
               </RecordLink>
