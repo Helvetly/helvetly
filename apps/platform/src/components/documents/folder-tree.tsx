@@ -1,5 +1,4 @@
 'use client'
-import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
   ContextMenu,
@@ -34,6 +33,7 @@ import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import { folderLabel, isSystemFolder, withoutEmptySystem } from '@/lib/system-folders'
 
+import { Count } from './count'
 import { endDrag, startDrag, useDropTarget } from './drop-target'
 import { FolderMark } from './folder-art'
 import { InlineRename } from './inline-rename'
@@ -368,18 +368,6 @@ function Label({ children, action }: { children: string; action?: ReactNode }) {
       <span className="text-[12px] font-medium text-muted-foreground">{children}</span>
       {action}
     </div>
-  )
-}
-
-/** A count as a quiet pill right after a name; a bit stronger on the open row so it stays legible. */
-function Count({ children }: { children: number }) {
-  return (
-    <Badge
-      size="sm"
-      className="tabular-nums group-aria-[current=page]/row:bg-foreground/[0.08] group-data-current/row:bg-foreground/[0.08]"
-    >
-      {children}
-    </Badge>
   )
 }
 

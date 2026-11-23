@@ -22,12 +22,8 @@ async function opensOnce(page: Page, path: string, row: string, title: RegExp, c
   // A plain cell of the row: some names open a card of their own instead.
   const target = page.getByText(cell).first()
   await expect(target).toBeVisible()
-  // The file manager opens on dblclick; two explicit single clicks do not send that event.
-  if (path === '/documents') await target.dblclick()
-  else {
-    await target.click()
-    await target.click({ force: true, noWaitAfter: true }).catch(() => {})
-  }
+  await target.click()
+  await target.click({ force: true, noWaitAfter: true }).catch(() => {})
   const dialog = page.locator('[data-slot=sheet-content]')
   await expect(dialog).toHaveCount(1, { timeout: 1000 })
   await expect(dialog.getByText(title).first()).toBeVisible()

@@ -62,7 +62,6 @@ function Harness({ layout }: { layout: 'grid' | 'list' }) {
         setSelection(clickSelect(selection, key, order, { shift: false, toggle: true }))
       }
       onToggleAll={() => {}}
-      onOpen={() => {}}
       onRenameDone={() => {}}
       onContext={() => {}}
       menu={() => null}

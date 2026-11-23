@@ -145,8 +145,8 @@ export function SessionFields({
           maxLength={200}
           onChange={(event) => set(typedTitle(event.target.value))}
           placeholder={translate('schedAddTitle')}
-          // The drawer is its box, as the invoice paper is (`field-quiet`): a heading one types into, underlined on hover and focus.
-          className="field-quiet h-10 w-full border-b border-transparent bg-transparent text-xl leading-7 font-semibold transition-colors outline-none placeholder:font-normal placeholder:text-placeholder hover:border-border focus-visible:border-ring aria-invalid:border-destructive"
+          // The drawer is its box, as the invoice paper is (`field-quiet`): a heading one types into, always underlined so it reads as a field, darker on hover and focus.
+          className="field-quiet h-10 w-full border-b border-border bg-transparent text-xl leading-7 font-semibold transition-colors outline-none placeholder:font-normal placeholder:text-muted-foreground hover:border-foreground/30 focus-visible:border-ring aria-invalid:border-destructive"
         />
         {errors.title && <FieldError id={`${fieldId('title')}-error`}>{errors.title}</FieldError>}
       </Line>

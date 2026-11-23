@@ -132,19 +132,17 @@ export function Dashboard() {
         tabIcons={[LayoutGrid]}
         primary={canInvoice ? translate('newInvoice') : undefined}
         onPrimary={() => drawers.open({ kind: 'invoice', mode: 'new' })}
+        actions={canReadInvoices && <PeriodFilter value={period} onChange={setPeriod} />}
       />
       <div className="grid flex-1 content-start gap-4 p-4 md:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-          <div className="grid min-w-0 gap-1">
-            {/* The page's heading is the bar's "Dashboard"; the greeting is its welcome. */}
-            <p className="truncate text-page leading-tight font-medium tracking-[-0.01em]">
-              {greeting(session.data.user.name)}
-            </p>
-            <p className="text-body-sm text-muted-foreground">
-              {translate('heresWhatSHappeningWithYourBusiness')}
-            </p>
-          </div>
-          {canReadInvoices && <PeriodFilter value={period} onChange={setPeriod} />}
+        <div className="grid min-w-0 gap-1">
+          {/* The page's heading is the bar's "Dashboard"; the greeting is its welcome. */}
+          <p className="truncate text-page leading-tight font-medium tracking-[-0.01em]">
+            {greeting(session.data.user.name)}
+          </p>
+          <p className="text-body-sm text-muted-foreground">
+            {translate('heresWhatSHappeningWithYourBusiness')}
+          </p>
         </div>
         <DashboardKpis period={period} />
         {(showCashFlow || showAttention) && (
