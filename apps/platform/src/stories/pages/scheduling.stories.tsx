@@ -668,7 +668,7 @@ export const PastSessionLocked: Story = {
     const page = body()
     const block = await page.findByRole('button', { name: /Kick-off/ })
     await expect(block).toHaveAttribute('data-locked', 'true')
-    await expect(block).toHaveClass('cursor-default')
+    await expect(block).toHaveClass('cursor-pointer')
     await expect(
       within(block).getByLabelText("This session has started; its time can't change."),
     ).toBeVisible()
