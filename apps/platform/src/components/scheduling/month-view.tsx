@@ -91,7 +91,7 @@ export function MonthView({
                     aria-label={dayOff ? `${addLabel}. ${dayOffHint(dayOff)}` : addLabel}
                     title={dayOff ? dayOffHint(dayOff) : undefined}
                     onClick={() => onCreate(day)}
-                    className="absolute inset-0 cursor-pointer transition-colors group-hover/day:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring/60"
+                    className="absolute inset-0 cursor-pointer rounded-md transition-shadow group-hover/day:ring-1 group-hover/day:ring-primary/40 group-hover/day:ring-inset focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring/60"
                   />
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -101,7 +101,7 @@ export function MonthView({
                         aria-hidden
                         data-add-day={day}
                         onClick={() => onCreate(day)}
-                        className="absolute top-1.5 right-1.5 z-10 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity group-focus-within/day:opacity-100 group-hover/day:opacity-100 hover:bg-background hover:text-foreground"
+                        className="absolute top-1.5 right-1.5 z-10 inline-flex size-6 items-center justify-center rounded-md text-primary/60 opacity-0 transition-opacity group-focus-within/day:opacity-100 group-hover/day:opacity-100 hover:text-primary"
                       >
                         <Plus className="size-3.5" />
                       </button>
