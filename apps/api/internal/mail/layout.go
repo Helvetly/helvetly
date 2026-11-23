@@ -16,42 +16,7 @@ const (
 
 // Only what every client in caniemail supports fully (Mailpit's HTML Check at 100%): tags, cellpadding, align and
 // inline colour, font family, size and style. No margin, padding, border, background, width or <style>: so no card,
-// no filled button and a fluid width.
-
-// Button is the call to action: a bold link on its own line, as a filled button needs a background.
-func Button(label, url string) string {
-	return `<p style="font-size:16px"><strong><a style="color:` + brand + `" href="` + html.EscapeString(url) + `">` +
-		html.EscapeString(label) + "</a></strong></p>\n"
-}
-
-// Details is a summary of label and value rows (a document, who sent it, by when): a table, as rows need no CSS.
-// Rows with an empty value are left out.
-func Details(rows ...[2]string) string {
-	var b strings.Builder
-	for _, r := range rows {
-		if strings.TrimSpace(r[1]) == "" {
-			continue
-		}
-		b.WriteString(`<tr><td valign="top" style="font-family:` + fonts + `;font-size:13px;color:` + muted + `">` + html.EscapeString(r[0]) +
-			`</td><td valign="top" style="font-family:` + fonts + `;font-size:14px;color:` + ink + `">` +
-			strings.ReplaceAll(html.EscapeString(r[1]), "\n", "<br>") + "</td></tr>\n")
-	}
-	if b.Len() == 0 {
-		return ""
-	}
-	return `<table role="presentation" cellpadding="4" cellspacing="0">` + "\n" + b.String() + "</table>\n"
-}
-
-// DetailsText is Details for the text part: "Label: value" lines.
-func DetailsText(rows ...[2]string) string {
-	var b strings.Builder
-	for _, r := range rows {
-		if strings.TrimSpace(r[1]) != "" {
-			b.WriteString(r[0] + ": " + r[1] + "\n")
-		}
-	}
-	return b.String()
-}
+// no filled button and a fluid width. The blocks of a client email are in letter.go.
 
 // linkColour gives a fragment's links the brand colour inline: there is no <style> block to do it.
 var linkColour = strings.NewReplacer(`<a href=`, `<a style="color:`+brand+`" href=`)

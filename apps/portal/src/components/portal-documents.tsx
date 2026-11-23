@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { civilToday, sharedText } from '@/lib/dates'
 import { translate } from '@/lib/i18n'
 import { listPortalDocuments, portalDocumentUrl, portalKeys } from '@/lib/portal'
+import { documentTitle } from '@/lib/quotes'
 
 import {
   cardClass,
@@ -46,7 +47,7 @@ export function PortalDocuments() {
         </div>
       )
     const needle = search.trim().toLowerCase()
-    const shown = query.data.filter((doc) => doc.name.toLowerCase().includes(needle))
+    const shown = query.data.filter((doc) => documentTitle(doc).toLowerCase().includes(needle))
     return (
       <>
         {query.data.length >= SEARCH_FROM && (
@@ -77,7 +78,7 @@ export function PortalDocuments() {
               <li key={doc.id} className={rowClass}>
                 <FileTile contentType={doc.content_type} />
                 <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
-                  <span className="truncate text-body font-medium">{doc.name}</span>
+                  <span className="truncate text-body font-medium">{documentTitle(doc)}</span>
                   <span className="truncate text-body-sm text-muted-foreground">
                     <span className="max-sm:hidden">{formatSize(doc.size)} · </span>
                     {sharedText(doc.shared_at, today)}
@@ -85,7 +86,7 @@ export function PortalDocuments() {
                 </span>
                 <DownloadLink
                   href={portalDocumentUrl(doc.id)}
-                  label={translate('download2', { name: doc.name })}
+                  label={translate('download2', { name: documentTitle(doc) })}
                   text={translate('download')}
                 />
               </li>

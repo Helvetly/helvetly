@@ -302,15 +302,16 @@ func categoryErr(err error) error {
 	return err
 }
 
-func (q Q) CreateExpenseCategory(ctx context.Context, workspaceID, id, name, code string, now time.Time) error {
-	_, err := q.db.Exec(ctx, `INSERT INTO expense_categories (id, workspace_id, name, account_code, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $5)`, id, workspaceID, name, code, now)
+// CreateExpenseCategory: vat is the treatment it suggests (nil: none).
+func (q Q) CreateExpenseCategory(ctx context.Context, workspaceID, id, name, code string, vat *string, now time.Time) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO expense_categories (id, workspace_id, name, account_code, vat_treatment, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $6)`, id, workspaceID, name, code, vat, now)
 	return categoryErr(err)
 }
 
 // UpdateExpenseCategory runs in a transaction; booked categories keep their name and account. A new name ends the preset.
 // Nil leaves a field alone; false means there is no such category.
-func (q Q) UpdateExpenseCategory(ctx context.Context, workspaceID, id string, name, code *string, archived *bool, now time.Time) (bool, error) {
+func (q Q) UpdateExpenseCategory(ctx context.Context, workspaceID, id string, name, code, vat *string, archived *bool, now time.Time) (bool, error) {
 	var currentName, currentCode string
 	if err := q.db.QueryRow(ctx, `SELECT name, account_code FROM expense_categories
 		WHERE workspace_id = $1 AND id = $2 FOR UPDATE`, workspaceID, id).Scan(&currentName, &currentCode); err != nil {
@@ -332,8 +333,9 @@ func (q Q) UpdateExpenseCategory(ctx context.Context, workspaceID, id string, na
 	}
 	tag, err := q.db.Exec(ctx, `UPDATE expense_categories SET name = COALESCE($3, name), account_code = COALESCE($4, account_code),
 		preset = CASE WHEN $3::text IS NULL OR $3 = name THEN preset END,
-		archived_at = CASE WHEN $5::boolean IS NULL THEN archived_at WHEN $5 THEN COALESCE(archived_at, $6) END, updated_at = $6
-		WHERE workspace_id = $1 AND id = $2`, workspaceID, id, name, code, archived, now)
+		archived_at = CASE WHEN $5::boolean IS NULL THEN archived_at WHEN $5 THEN COALESCE(archived_at, $6) END, updated_at = $6,
+		vat_treatment = COALESCE($7, vat_treatment)
+		WHERE workspace_id = $1 AND id = $2`, workspaceID, id, name, code, archived, now, vat)
 	return tag.RowsAffected() == 1, categoryErr(err)
 }
 

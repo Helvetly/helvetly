@@ -476,13 +476,12 @@ export type ContractWarning = {
 }
 
 export type ContractWriteRequest = {
-  mode: 'ai' | 'example' | 'improve'
+  mode: 'ai' | 'example'
   /** Your interface language: the contract's, unless the instructions ask for another. */
   language: Language
   governing_law: string
   instructions: string
   example_document_id?: string
-  clause?: ContractClause
 }
 
 export type WrittenContract = ContractSections & { warnings: ContractWarning[] }

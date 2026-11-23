@@ -4,21 +4,39 @@ import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Sheet, SheetContent, SheetTitle } from '@helvetly/ui/components/sheet'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate, formatRelative } from '@helvetly/ui/lib/format'
-import { cn } from '@helvetly/ui/lib/utils'
-import { BellRing, Ban, Download, FileSignature, ShieldCheck, X } from 'lucide-react'
+import {
+  Ban,
+  BadgeCheck,
+  BellRing,
+  Clock,
+  Copy,
+  Download,
+  Eye,
+  FilePlus,
+  FileSignature,
+  Mail,
+  PenLine,
+  ShieldCheck,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordPageButton } from '@/components/record-link'
+import { TimelineItem, type TimelineTone } from '@/components/timeline'
 import { errorMessage } from '@/lib/api'
 import { contentUrl, downloadUrl } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import {
+  ipLabel,
   originalUrl,
   progressOf,
+  remindTargets,
   signaturesApi,
   signerColor,
   useSignatureMutation,
@@ -30,15 +48,19 @@ import {
 
 import { RequestBadge, SignerBadge } from './parts'
 
-const EVENT_LABELS: Record<SignatureEvent['type'], string> = {
-  created: translate('created3'),
-  sent: translate('linkEmailed'),
-  viewed: translate('openedTheDocument'),
-  signed: translate('signed'),
-  declined: translate('declined'),
-  reminded: translate('reminderEmailed'),
-  revoked: translate('revoked'),
-  completed: translate('completedSignedPDFFiled'),
+type TrailType = SignatureEvent['type'] | 'expired'
+
+/** Each step of the audit trail: its words, and its colour and icon in the app's timeline language. */
+const EVENTS: Record<TrailType, { label: string; tone: TimelineTone; icon: LucideIcon }> = {
+  created: { label: translate('created3'), tone: 'neutral', icon: FilePlus },
+  sent: { label: translate('linkEmailed'), tone: 'info', icon: Mail },
+  reminded: { label: translate('reminderEmailed'), tone: 'info', icon: Mail },
+  viewed: { label: translate('openedTheDocument'), tone: 'violet', icon: Eye },
+  signed: { label: translate('signed'), tone: 'success', icon: PenLine },
+  declined: { label: translate('declined'), tone: 'danger', icon: X },
+  revoked: { label: translate('revoked'), tone: 'danger', icon: Ban },
+  expired: { label: translate('expired'), tone: 'warning', icon: Clock },
+  completed: { label: translate('completedSignedPDFFiled'), tone: 'success', icon: BadgeCheck },
 }
 
 const SIGNER_VERBS: Record<Signer['status'], string> = {
@@ -65,6 +87,8 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
   const revoke = useSignatureMutation(signaturesApi.revoke)
   const [confirmRevoke, setConfirmRevoke] = useState(false)
   const pending = request?.status === 'pending'
+  // Shown only while someone is still waiting for it: the signer whose turn it is, or everyone who hasn't signed.
+  const targets = request ? remindTargets(request) : []
   // The finished PDF once there is one, the frozen original before.
   const src = request?.signed_document ? contentUrl(request.signed_document.id) : originalUrl(id)
 
@@ -75,7 +99,7 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
         showCloseButton={false}
         aria-describedby={undefined}
         onOpenAutoFocus={(event) => event.preventDefault()}
-        className="w-full! max-w-none! gap-0 overflow-hidden bg-card p-0 sm:w-[min(1120px,calc(100vw-2rem))]!"
+        className="w-full! max-w-none! gap-0 overflow-hidden bg-card p-0 sm:w-[min(1680px,calc(100vw-3.5rem))]!"
       >
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-3 md:px-4">
           <span className="flex size-7 items-center justify-center rounded-md bg-section-icon-surface text-section-icon">
@@ -105,22 +129,33 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
               </a>
             </Button>
           )}
+          {targets.length > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="cursor-pointer gap-1.5"
+                  disabled={remind.isPending}
+                  onClick={() =>
+                    remind.mutate(id, {
+                      onSuccess: () => toast.success(translate('reminderSentWithAFreshLink')),
+                      onError: toastError,
+                    })
+                  }
+                >
+                  <BellRing className="size-4" />
+                  <span className="max-sm:sr-only">{translate('sendReminder')}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {translate('remindsSigners', {
+                  names: targets.map((signer) => signer.name).join(', '),
+                })}
+              </TooltipContent>
+            </Tooltip>
+          )}
           {pending && (
             <>
-              <Button
-                variant="outline"
-                className="cursor-pointer gap-1.5"
-                disabled={remind.isPending}
-                onClick={() =>
-                  remind.mutate(id, {
-                    onSuccess: () => toast.success(translate('reminderSentWithAFreshLink')),
-                    onError: toastError,
-                  })
-                }
-              >
-                <BellRing className="size-4" />
-                <span className="max-sm:sr-only">{translate('remind')}</span>
-              </Button>
               <Button
                 variant="destructive-ghost"
                 className="cursor-pointer gap-1.5"
@@ -143,13 +178,17 @@ export function RequestDrawer({ id, onClose }: { id: string; onClose: () => void
             <X />
           </Button>
         </header>
-        <div className="flex min-h-0 flex-1">
-          <div className="relative hidden min-w-0 flex-1 md:block">
+        {/* Phones and tablets: the preview, then the details under it, scrolled together. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+          <div className="relative h-[60svh] shrink-0 md:h-auto md:min-w-0 md:flex-1">
             {request && (
               <PdfView key={src} src={src} title={request.title} className="absolute inset-0" />
             )}
           </div>
-          <aside className="w-full shrink-0 overflow-y-auto md:w-[360px] md:border-l">
+          <aside
+            aria-label={translate('details')}
+            className="w-full min-w-0 border-t md:w-[380px] md:shrink-0 md:overflow-x-hidden md:overflow-y-auto md:border-t-0 md:border-l"
+          >
             {request ? (
               <Details request={request} />
             ) : query.error ? (
@@ -189,10 +228,23 @@ function Heading({ children }: { children: string }) {
   )
 }
 
+type TrailEvent = Omit<SignatureEvent, 'type'> & { type: TrailType }
+
 function Details({ request }: { request: SignatureRequest }) {
+  // An expiry is no event of its own: it closes the trail at the request's expiry date.
+  const expiry: TrailEvent = {
+    type: 'expired',
+    signer: null,
+    at: request.expires_at,
+    ip: null,
+    user_agent: null,
+    hash: 'expired',
+  }
+  const events: TrailEvent[] = request.events ?? []
+  const trail = request.status === 'expired' && events.length ? [...events, expiry] : events
   return (
-    <div className="grid gap-6 p-5">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="grid min-w-0 gap-6 p-5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <RequestBadge status={request.status} />
         <span className="text-[12.5px] text-muted-foreground">
           {request.signing_order === 'sequential'
@@ -205,19 +257,19 @@ function Details({ request }: { request: SignatureRequest }) {
           {request.message}
         </p>
       )}
-      <section className="grid gap-2">
+      <section className="grid min-w-0 gap-2">
         <Heading>{translate('signers')}</Heading>
-        <ol className="grid gap-1.5">
+        <ol className="grid min-w-0 gap-1.5">
           {request.signers.map((signer, index) => (
             <SignerRow key={signer.id} signer={signer} index={index} />
           ))}
         </ol>
       </section>
-      <section className="grid gap-2">
+      <section className="grid min-w-0 gap-2">
         <Heading>{translate('files')}</Heading>
-        <dl className="grid grid-cols-[88px_1fr] gap-x-3 gap-y-2 text-[13.5px]">
+        <dl className="grid grid-cols-[88px_minmax(0,1fr)] gap-x-3 gap-y-2 text-[13.5px]">
           <dt className="text-muted-foreground">{translate('original')}</dt>
-          <dd className="min-w-0 truncate">
+          <dd className="min-w-0 truncate" title={request.document?.name}>
             <a
               href={localizedHref(originalUrl(request.id))}
               target="_blank"
@@ -228,7 +280,7 @@ function Details({ request }: { request: SignatureRequest }) {
             </a>
           </dd>
           <dt className="text-muted-foreground">{translate('signed')}</dt>
-          <dd className="min-w-0 truncate">
+          <dd className="min-w-0 truncate" title={request.signed_document?.name}>
             {request.signed_document ? (
               <a
                 href={localizedHref(downloadUrl(request.signed_document.id))}
@@ -245,7 +297,7 @@ function Details({ request }: { request: SignatureRequest }) {
             )}
           </dd>
           <dt className="text-muted-foreground">{translate('sentBy')}</dt>
-          <dd className="min-w-0 truncate">
+          <dd className="min-w-0 truncate" title={request.created_by?.name ?? undefined}>
             {request.created_by?.name ?? translate('someone')} · {formatDate(request.created_at)}
           </dd>
         </dl>
@@ -254,36 +306,51 @@ function Details({ request }: { request: SignatureRequest }) {
           <Hash label={translate('signedSHA256')} value={request.final_sha256} />
         )}
       </section>
-      {request.events && request.events.length > 0 && (
-        <section className="grid gap-2">
+      {trail.length > 0 && (
+        <section className="grid min-w-0 gap-3">
           <Heading>{translate('auditTrail')}</Heading>
-          <ol className="relative grid gap-3 border-l pl-4">
-            {request.events.map((event) => (
-              <li key={event.hash} className="relative text-[13px]">
-                <span
-                  className={cn(
-                    'absolute top-1.5 -left-[21px] size-2 rounded-full ring-4 ring-card',
-                    event.type === 'declined' || event.type === 'revoked'
-                      ? 'bg-[#d64545]'
-                      : event.type === 'signed' || event.type === 'completed'
-                        ? 'bg-success-solid'
-                        : 'bg-border',
-                  )}
-                />
-                <p>
-                  <span className="font-medium">{EVENT_LABELS[event.type]}</span>
+          <ol aria-label={translate('auditTrail')} className="grid min-w-0">
+            {trail.map((event, index) => (
+              <TimelineItem
+                key={event.hash}
+                tone={EVENTS[event.type].tone}
+                icon={EVENTS[event.type].icon}
+                last={index === trail.length - 1}
+              >
+                <p className="text-[13px] leading-snug break-words">
+                  {EVENTS[event.type].label}
                   {event.signer && (
-                    <span className="text-muted-foreground"> · {event.signer.name}</span>
+                    <>
+                      {' · '}
+                      <span className="font-medium" title={event.signer.email}>
+                        {event.signer.name}
+                      </span>
+                    </>
                   )}
                 </p>
                 <p
-                  className="text-[12px] text-muted-foreground"
+                  className="text-[12px] break-all text-muted-foreground"
                   title={event.user_agent ?? undefined}
                 >
                   {time.format(new Date(event.at))}
-                  {event.ip && ` · ${event.ip}`}
+                  {event.ip && (
+                    <>
+                      {' · '}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="cursor-default rounded-sm underline decoration-dotted underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                          >
+                            {ipLabel(event.ip)}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{translate('ipAddressHint')}</TooltipContent>
+                      </Tooltip>
+                    </>
+                  )}
                 </p>
-              </li>
+              </TimelineItem>
             ))}
           </ol>
           <p className="flex gap-2 text-[12px] leading-snug text-muted-foreground">
@@ -299,8 +366,8 @@ function Details({ request }: { request: SignatureRequest }) {
 function SignerRow({ signer, index }: { signer: Signer; index: number }) {
   const when = signer.signed_at ?? signer.declined_at ?? signer.viewed_at ?? signer.sent_at ?? null
   return (
-    <li className="grid gap-1 rounded-xl border px-3 py-2.5">
-      <div className="flex items-center gap-2.5">
+    <li className="grid min-w-0 gap-1 rounded-xl border px-3 py-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
         <span
           className="flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
           style={{ backgroundColor: signerColor(index) }}
@@ -308,10 +375,16 @@ function SignerRow({ signer, index }: { signer: Signer; index: number }) {
           {signer.position}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px]">{signer.name}</span>
-          <span className="block truncate text-[12px] text-muted-foreground">{signer.email}</span>
+          <span className="block truncate text-[14px]" title={signer.name}>
+            {signer.name}
+          </span>
+          <span className="block truncate text-[12px] text-muted-foreground" title={signer.email}>
+            {signer.email}
+          </span>
         </span>
-        <SignerBadge status={signer.status} />
+        <span className="shrink-0">
+          <SignerBadge status={signer.status} />
+        </span>
       </div>
       {when && signer.status !== 'waiting' && (
         <p
@@ -330,18 +403,42 @@ function SignerRow({ signer, index }: { signer: Signer; index: number }) {
   )
 }
 
+/** A hash as a short mono pill (first 12…last 6), the whole of it in a tooltip, with a copy button. */
 function Hash({ label, value }: { label: string; value: string }) {
+  const short = value.length > 20 ? `${value.slice(0, 12)}…${value.slice(-6)}` : value
   return (
-    <button
-      type="button"
-      title={translate('copy2', { label: label })}
-      onClick={() => {
-        void navigator.clipboard.writeText(value)
-        toast.success(translate('copied', { label: label }))
-      }}
-      className="font-code cursor-pointer truncate rounded-lg bg-muted/60 px-2.5 py-2 text-left text-[11.5px] text-muted-foreground hover:text-foreground"
-    >
-      {label} {value}
-    </button>
+    <div className="flex min-w-0 items-center gap-2 text-caption">
+      <span className="min-w-0 truncate text-muted-foreground">{label}</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* Named by its visible short hash; the tooltip describes it with the whole one. */}
+          <button
+            type="button"
+            className="font-code shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11.5px] text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            {short}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="font-code max-w-80 break-all">{value}</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={translate('copy2', { label })}
+            className="shrink-0 text-muted-foreground"
+            onClick={() => {
+              void navigator.clipboard.writeText(value)
+              toast.success(translate('copied', { label }))
+            }}
+          >
+            <Copy />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{translate('copy2', { label })}</TooltipContent>
+      </Tooltip>
+    </div>
   )
 }

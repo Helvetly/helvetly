@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
 )
@@ -19,8 +20,11 @@ type Auth interface {
 }
 
 type Service struct {
-	db   *store.Store
-	auth Auth
+	db     *store.Store
+	auth   Auth
+	model  aimodel.Provider // nil: no "Write with AI"
+	budget aimodel.Budget
+	limit  *auth.RateLimiter
 }
 
 func New(db *store.Store, a Auth) *Service { return &Service{db: db, auth: a} }
@@ -85,6 +89,12 @@ func (s *Service) Register(mux *http.ServeMux) {
 			return
 		}
 		auth.WriteJSON(w, http.StatusOK, map[string]any{"data": newItem(kind, language, &own)})
+	}))
+	// session-only (not a public operation): writes nothing, counted in the automation pool
+	mux.HandleFunc("POST /api/v1/email-templates/{kind}/ai-write", s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
+		if err := s.aiWrite(w, r, sess); err != nil {
+			s.auth.WriteError(w, r, err)
+		}
 	}))
 	mux.HandleFunc("DELETE /api/v1/email-templates/{kind}/{language}", s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
 		kind, language := r.PathValue("kind"), r.PathValue("language")

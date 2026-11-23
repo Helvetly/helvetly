@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"html"
 	"net/http"
 	"slices"
 	"strings"
@@ -375,30 +374,29 @@ func (s *Service) emailMessage(ctx context.Context, sess store.Session, language
 		if message != nil {
 			r.Body = *message
 		}
-		m := documentEmail(sess.Workspace.ID, *language, r)
+		m := documentEmail(sess.Workspace.ID, *language, r, title, name)
 		m.ReplyTo, m.Attachments = sess.User.Email, attachments
 		return m, nil
 	}
-	lead := fmt.Sprintf("%s (%s) sent you “%s”. The PDF is attached.", from, sess.Workspace.Name, title)
-	text := "Hello,\n\n" + lead + "\n"
-	body := "<p>Hello,</p>\n<p>" + html.EscapeString(lead) + "</p>\n"
+	l := mail.NewLetter("en").Greeting("").Lead(fmt.Sprintf("%s (%s) sent you “%s”. The PDF is attached.", from, sess.Workspace.Name, title))
 	if message != nil {
-		text += "\n" + *message + "\n"
-		body += "<p>" + strings.ReplaceAll(html.EscapeString(*message), "\n", "<br>") + "</p>\n"
+		l.Note(*message)
 	}
+	l.Summary(mail.Row{Label: documentWord["en"], Value: title}).Attached(name)
 	return mail.Message{Workspace: sess.Workspace.ID, Language: "en", ReplyTo: sess.User.Email, Subject: fmt.Sprintf("%s sent you “%s”", from, title),
-		Text: text, HTML: body, Attachments: attachments}, nil
+		Text: l.Text(), HTML: l.HTML(), Attachments: attachments}, nil
 }
 
-// documentEmail is a document email's subject and message as a message: one paragraph per blank-line block.
-func documentEmail(workspaceID, language string, t emailtemplate.Template) mail.Message {
-	var body strings.Builder
-	for _, p := range strings.Split(strings.TrimSpace(t.Body), "\n\n") {
-		if p = strings.TrimSpace(p); p != "" {
-			body.WriteString("<p>" + strings.ReplaceAll(html.EscapeString(p), "\n", "<br>") + "</p>\n")
-		}
+var documentWord = map[string]string{"de": "Dokument", "fr": "Document", "it": "Documento", "en": "Document"}
+
+// documentEmail is a document email: its message (a paragraph per blank-line block), the document and its file.
+func documentEmail(workspaceID, language string, t emailtemplate.Template, title, file string) mail.Message {
+	word, ok := documentWord[language]
+	if !ok {
+		word = documentWord["en"]
 	}
-	return mail.Message{Workspace: workspaceID, Language: language, Subject: t.Subject, Text: t.Body + "\n", HTML: body.String()}
+	l := mail.NewLetter(language).Message(t.Body).Summary(mail.Row{Label: word, Value: title}).Attached(file)
+	return mail.Message{Workspace: workspaceID, Language: language, Subject: t.Subject, Text: l.Text(), HTML: l.HTML()}
 }
 
 // previewBody is POST /templates/email-preview: the email as the send step has it so far.

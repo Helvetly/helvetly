@@ -243,7 +243,7 @@ describe('offer helvetly public projection', () => {
       '500 emails to clients / month',
     ])
     expect(text(2)).toEqual([
-      'Client portal: clients view and pay invoices, accept quotes and download documents',
+      'Client portal: clients view and pay invoices and download quotes and documents',
       'Your portal on your own domain (portal.yourcompany.ch)',
       'Approvals before invoices go out',
       'E-invoices as XML: XRechnung, ZUGFeRD and more',

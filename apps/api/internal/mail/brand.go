@@ -149,9 +149,19 @@ func brandText(b Brand, language, publicURL string) string {
 
 // Preview is the HTML a workspace's client would get for m, as Branded and Sender build it, without sending.
 func Preview(m Message, brand Brand, publicURL string) string {
+	h, _ := Render(m, brand, publicURL)
+	return h
+}
+
+// Render is the HTML and text parts a workspace's client gets for m, as Branded and Sender build them; with a brand
+// without a name, Helvetly's own email.
+func Render(m Message, brand Brand, publicURL string) (htmlPart, textPart string) {
+	if brand.Name == "" {
+		return layout(m, publicURL), plainText(m, publicURL)
+	}
 	m.Brand = &brand
 	if m.Language == "" {
 		m.Language = brand.Language
 	}
-	return layout(m, publicURL)
+	return layout(m, publicURL), plainText(m, publicURL)
 }

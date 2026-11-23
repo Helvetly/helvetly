@@ -56,7 +56,7 @@ async function signInToPortal(context: BrowserContext, path: string, email: stri
   return portal
 }
 
-test('a quote is sent, accepted by the client in the portal and becomes one invoice draft', async ({
+test('a sent quote is a document in the portal, accepted by staff and made one invoice draft', async ({
   api,
   browser,
   page,
@@ -65,36 +65,31 @@ test('a quote is sent, accepted by the client in the portal and becomes one invo
   const w = await portalPath(api.request)
   const number = text(quote.number)
 
-  // The client: its own browser, the portal's Quotes page, accept with a note.
+  // The client: its own browser, the quote among its documents with its PDF, and nothing to answer.
   const context = await browser.newContext({ baseURL: portalURL })
   try {
     const portal = await signInToPortal(context, w, email)
-    await portal.getByRole('link', { name: 'Quotes' }).first().click()
-    await expect(portal.getByText(number)).toBeVisible()
-    const pdf = await context.request.get(`${w}api/v1/public/portal/quotes/${text(quote.id)}/pdf`)
+    await expect(portal.getByRole('link', { name: 'Quotes' })).toHaveCount(0)
+    await portal.getByRole('link', { name: 'Documents' }).first().click()
+    const download = portal.getByRole('link', { name: `Download Quote ${number}` })
+    await expect(download).toBeVisible()
+    const pdf = await context.request.get(text(await download.getAttribute('href')))
     await expect(pdf).toBeOK()
     expect((await pdf.body()).subarray(0, 4).toString()).toBe('%PDF')
-    await portal.getByRole('button', { name: `Accept quote ${number}` }).click()
-    const dialog = portal.getByRole('dialog')
-    await dialog.getByRole('textbox').fill('Please start in January.')
-    await dialog.getByRole('button', { name: 'Accept quote' }).click()
-    await expect(dialog).toBeHidden()
-    await expect(portal.getByText('Please start in January.')).toBeVisible()
-    await portal.reload()
-    await expect(portal.getByText('Please start in January.')).toBeVisible()
+    await expect(portal.getByRole('button', { name: /Accept|Decline/ })).toHaveCount(0)
   } finally {
     await context.close()
   }
 
-  // Staff: the answer is recorded and the owner is told.
-  const accepted = await api.read(`/quotes/${text(quote.id)}`)
+  // Staff records the client's answer.
+  const accepted = await api.save(`/quotes/${text(quote.id)}/accept`, {
+    note: 'Please start in January.',
+  })
   expect(accepted).toMatchObject({
     status: 'accepted',
-    decided_by: 'client',
+    decided_by: 'staff',
     decision_note: 'Please start in January.',
   })
-  const bell = object(await (await api.request.get('/api/v1/notifications')).json())
-  expect(JSON.stringify(bell.data)).toContain(`accepted quote ${number}`)
 
   // Staff converts it in the platform: the invoice draft opens in a drawer over the quotes page.
   await page.goto(`/quotes?id=${text(quote.id)}`)
@@ -150,7 +145,7 @@ test('quotes stay inside their workspace and with their client', async ({
     await otherRequest.dispose()
   }
 
-  // Another client of the same workspace cannot see or answer it in the portal.
+  // Another client of the same workspace does not see it among its documents.
   const stranger = await api.client()
   const strangerEmail = `quote-stranger-${randomUUID()}@example.test`
   await api.save(
@@ -168,15 +163,8 @@ test('quotes stay inside their workspace and with their client', async ({
       data: { email: strangerEmail, code: text(object(await dev.json()).code) },
     })
     expect(verified.status()).toBe(201)
-    const csrf = text(object(await verified.json()).csrf_token)
-    expect(object(await (await portal.get(`${w}api/v1/public/portal/quotes`)).json()).data).toEqual(
-      [],
-    )
-    const answer = await portal.post(`${w}api/v1/public/portal/quotes/${id}/accept`, {
-      data: {},
-      headers: { 'X-CSRF-Token': csrf },
-    })
-    expect(answer.status()).toBe(404)
+    const documents = await portal.get(`${w}api/v1/public/portal/documents`)
+    expect(object(await documents.json()).data).toEqual([])
   } finally {
     await portal.dispose()
   }
@@ -278,14 +266,11 @@ const inDays = (days: number) => {
   return date.toISOString().slice(0, 10)
 }
 
-test('a quote’s payment schedule is accepted in the portal and carried to the invoice draft', async ({
+test('a quote’s payment schedule is accepted with it and carried to the invoice draft', async ({
   api,
-  browser,
 }) => {
   await api.settings()
   const client = await api.client()
-  const email = `quote-schedule-${randomUUID()}@example.test`
-  await api.save(`/clients/${text(client.id)}`, { email, portal_enabled: true }, 'PATCH')
   const rows = [
     { due_date: inDays(20), amount: '945.80' },
     { due_date: inDays(50), amount: '1000.00' },
@@ -319,24 +304,9 @@ test('a quote’s payment schedule is accepted in the portal and carried to the 
     'PATCH',
   )
   const quote = await api.save(`/quotes/${text(draft.id)}/send`, { email: false })
-  const number = text(quote.number)
-
-  // The client sees the schedule with the quote and accepts it.
-  const w = await portalPath(api.request)
-  const context = await browser.newContext({ baseURL: portalURL })
-  try {
-    const portal = await signInToPortal(context, w, email)
-    await portal.getByRole('link', { name: 'Quotes' }).first().click()
-    const schedule = portal.getByRole('region', { name: 'Payment schedule' })
-    await expect(schedule.getByRole('listitem')).toHaveCount(2)
-    await expect(schedule.getByRole('listitem').nth(1)).toContainText('1’000.00')
-    await portal.getByRole('button', { name: `Accept quote ${number}` }).click()
-    const dialog = portal.getByRole('dialog')
-    await dialog.getByRole('button', { name: 'Accept quote' }).click()
-    await expect(dialog).toBeHidden()
-  } finally {
-    await context.close()
-  }
+  expect(await api.save(`/quotes/${text(quote.id)}/accept`, {})).toMatchObject({
+    status: 'accepted',
+  })
 
   // The invoice draft takes the schedule over and falls due with its last instalment; the quote keeps its own.
   const converted = await api.save(`/quotes/${text(quote.id)}/invoice`, {})

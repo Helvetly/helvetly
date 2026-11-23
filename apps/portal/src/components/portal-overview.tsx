@@ -15,11 +15,9 @@ import { formatDate, formatMoney, formatSize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Check,
   CircleAlert,
   CircleCheck,
   Download,
-  FilePenLine,
   FileText,
   Gauge,
   Wallet,
@@ -43,23 +41,15 @@ import {
   type PortalEngagement,
   type PortalInvoice,
 } from '@/lib/portal'
-import {
-  isAwaiting,
-  listPortalQuotes,
-  portalQuotePdfUrl,
-  quoteName,
-  type PortalQuote,
-} from '@/lib/quotes'
+import { documentTitle } from '@/lib/quotes'
 import { shorten } from '@/lib/text'
 import { amountOf } from '@/lib/units'
 
 import { cardClass, DownloadLink, FileTile, RetryAlert, SectionTitle } from './portal-bits'
 import { UsageBar } from './portal-engagements'
-import { DecisionDialog, type Asking } from './portal-quotes'
 import { NextSessionCard } from './portal-sessions'
-import { PreviewLock } from './portal-shell'
 
-/** Days before a due date (or a quote's last day) that move it into "Due soon". */
+/** Days before a due date that move it into "Due soon". */
 const SOON_DAYS = 14
 
 const moneyLines = (sums: [string, string][]) =>
@@ -105,15 +95,13 @@ type Tile = {
 
 const TILE_COLUMNS = ['', '', 'lg:grid-cols-2', 'lg:grid-cols-3', 'lg:grid-cols-4']
 
-/** 2–4 tiles of the same height: what is due, overdue, quotes to answer, engagement usage. */
+/** 2–3 tiles of the same height: what is due, overdue, engagement usage. */
 function Summary({
   invoices,
-  quotes,
   engagements,
   today,
 }: {
   invoices: PortalInvoice[]
-  quotes: PortalQuote[]
   engagements: PortalEngagement[]
   today: string
 }) {
@@ -121,7 +109,6 @@ function Summary({
   const due = sumByCurrency(open, (i) => i.amount_due)
   const overdue = open.filter((i) => i.is_overdue)
   const next = open.find((i) => !i.is_overdue && i.due_date)?.due_date
-  const awaiting = quotes.filter(isAwaiting)
   const active = engagements.filter(isActive)
   const shown = mostRelevant(active)
 
@@ -152,17 +139,6 @@ function Summary({
       alert: overdue.length > 0,
     },
   ]
-  if (awaiting.length > 0)
-    tiles.push({
-      key: 'quotes',
-      icon: FilePenLine,
-      tone: 'blue',
-      label: translate('quotesToAnswer'),
-      value: awaiting.length,
-      meta: translate('validUntil2', {
-        value1: formatDate(awaiting.map((q) => q.valid_until).toSorted()[0] ?? ''),
-      }),
-    })
   const period = shown?.current_period
   if (shown && period)
     tiles.push({
@@ -244,12 +220,11 @@ function Summary({
   )
 }
 
-const GROUPS = ['overdue', 'soon', 'review', 'later'] as const
+const GROUPS = ['overdue', 'soon', 'later'] as const
 type Group = (typeof GROUPS)[number]
 const GROUP_LABEL: Record<Group, string> = {
   overdue: translate('overdue'),
   soon: translate('dueSoon'),
-  review: translate('toReview'),
   later: translate('later'),
 }
 
@@ -276,82 +251,43 @@ const invoiceGroup = (invoice: PortalInvoice, today: string): Group => {
 /** Every thing waiting for the client, one row each with one action, overdue first. */
 function Attention({
   invoices,
-  quotes,
   today,
   onPay,
-  onAsk,
 }: {
   invoices: PortalInvoice[]
-  quotes: PortalQuote[]
   today: string
   onPay: (invoice: PortalInvoice) => void
-  onAsk: (asking: Asking) => void
 }) {
-  const items: Item[] = [
-    ...byUrgency(invoices).map((invoice): Item => {
-      const group = invoiceGroup(invoice, today)
-      return {
-        key: invoice.id,
-        group,
-        icon: FileText,
-        tone: group === 'later' ? 'blue' : 'amber',
-        title: translate('invoiceNumber', { number: invoice.number }),
-        meta: invoice.due_date ? dueText(invoice.due_date, today) : translate('noDueDate'),
-        date: invoice.due_date ? formatDate(invoice.due_date) : undefined,
-        overdue: invoice.is_overdue,
-        amount: formatMoney(invoice.amount_due, invoice.currency),
-        action: (
-          <Button
-            variant="outline"
-            aria-label={translate('payInvoice', { number: invoice.number })}
-            onClick={() => onPay(invoice)}
-          >
-            <Wallet aria-hidden />
-            {translate('pay')}
-          </Button>
-        ),
-        pdf: invoice.has_pdf !== false && (
-          <DownloadLink
-            href={portalInvoicePdfUrl(invoice.id)}
-            label={translate('downloadPDFOfInvoice', { number: invoice.number })}
-          />
-        ),
-      }
-    }),
-    ...quotes
-      .filter(isAwaiting)
-      .toSorted((a, b) => a.valid_until.localeCompare(b.valid_until))
-      .map((quote): Item => {
-        const soon = daysBetween(today, quote.valid_until) <= SOON_DAYS
-        return {
-          key: quote.id,
-          group: soon ? 'soon' : 'review',
-          icon: FilePenLine,
-          tone: soon ? 'amber' : 'blue',
-          title: translate('quoteTitle', { name: quoteName(quote) }),
-          meta: translate('validUntil2', { value1: formatDate(quote.valid_until) }),
-          amount: formatMoney(quote.total, quote.currency),
-          action: (
-            <PreviewLock>
-              <Button
-                variant="outline"
-                aria-label={translate('acceptQuote', { value1: quoteName(quote) })}
-                onClick={() => onAsk({ quote, decision: 'accept' })}
-              >
-                <Check aria-hidden />
-                {translate('accept')}
-              </Button>
-            </PreviewLock>
-          ),
-          pdf: (
-            <DownloadLink
-              href={portalQuotePdfUrl(quote.id)}
-              label={translate('downloadPDFOfQuote', { value1: quoteName(quote) })}
-            />
-          ),
-        }
-      }),
-  ]
+  const items = byUrgency(invoices).map((invoice): Item => {
+    const group = invoiceGroup(invoice, today)
+    return {
+      key: invoice.id,
+      group,
+      icon: FileText,
+      tone: group === 'later' ? 'blue' : 'amber',
+      title: translate('invoiceNumber', { number: invoice.number }),
+      meta: invoice.due_date ? dueText(invoice.due_date, today) : translate('noDueDate'),
+      date: invoice.due_date ? formatDate(invoice.due_date) : undefined,
+      overdue: invoice.is_overdue,
+      amount: formatMoney(invoice.amount_due, invoice.currency),
+      action: (
+        <Button
+          variant="outline"
+          aria-label={translate('payInvoice', { number: invoice.number })}
+          onClick={() => onPay(invoice)}
+        >
+          <Wallet aria-hidden />
+          {translate('pay')}
+        </Button>
+      ),
+      pdf: invoice.has_pdf !== false && (
+        <DownloadLink
+          href={portalInvoicePdfUrl(invoice.id)}
+          label={translate('downloadPDFOfInvoice', { number: invoice.number })}
+        />
+      ),
+    }
+  })
 
   if (items.length === 0)
     return (
@@ -520,7 +456,7 @@ function RecentDocuments({ today }: { today: string }) {
             <li key={doc.id} className="flex items-center gap-3 px-2 py-3">
               <FileTile contentType={doc.content_type} />
               <span className="grid min-w-0 flex-1 leading-tight">
-                <span className="truncate text-body">{doc.name}</span>
+                <span className="truncate text-body">{documentTitle(doc)}</span>
                 <span className="text-body-sm text-muted-foreground">
                   <span className="max-sm:hidden">{formatSize(doc.size)} · </span>
                   {sharedText(doc.shared_at, today)}
@@ -528,7 +464,7 @@ function RecentDocuments({ today }: { today: string }) {
               </span>
               <DownloadLink
                 href={portalDocumentUrl(doc.id)}
-                label={translate('download2', { name: doc.name })}
+                label={translate('download2', { name: documentTitle(doc) })}
               />
             </li>
           ))}
@@ -546,7 +482,6 @@ export function PortalOverview() {
   const today = civilToday()
   const [hour] = useState(() => new Date().getHours())
   const [payingID, setPayingID] = useState<string | null>(null)
-  const [asking, setAsking] = useState<Asking | null>(null)
   const session = useQuery({
     queryKey: portalKeys.session,
     queryFn: getPortalSession,
@@ -554,8 +489,7 @@ export function PortalOverview() {
   })
   const invoices = useQuery({ queryKey: portalKeys.invoices, queryFn: listPortalInvoices })
   const paying = invoices.data?.data.find((invoice) => invoice.id === payingID)
-  // Quotes and engagements add tiles and rows; a failure there leaves them out, their pages say why.
-  const quotes = useQuery({ queryKey: portalKeys.quotes, queryFn: listPortalQuotes })
+  // Engagements add a tile; a failure there leaves it out, its page says why.
   const engagements = useQuery({
     queryKey: portalKeys.engagements,
     queryFn: listPortalEngagements,
@@ -586,12 +520,7 @@ export function PortalOverview() {
           <RetryAlert what={translate('yourInvoices')} onRetry={() => void invoices.refetch()} />
         </section>
       ) : (
-        <Summary
-          invoices={invoices.data.data}
-          quotes={quotes.data ?? []}
-          engagements={engagements.data ?? []}
-          today={today}
-        />
+        <Summary invoices={invoices.data.data} engagements={engagements.data ?? []} today={today} />
       )}
 
       {/* Phones: one column in priority order. Wide screens: the to-do list with new files beside it, or alone. */}
@@ -610,13 +539,11 @@ export function PortalOverview() {
             {invoices.data ? (
               <Attention
                 invoices={invoices.data.data}
-                quotes={quotes.data ?? []}
                 today={today}
                 onPay={(invoice) => {
                   setPayingID(invoice.id)
                   void invoices.refetch()
                 }}
-                onAsk={setAsking}
               />
             ) : (
               <Loader className="min-h-24" />
@@ -637,9 +564,6 @@ export function PortalOverview() {
           retry={invoices.isError ? () => void invoices.refetch() : undefined}
           onClose={() => setPayingID(null)}
         />
-      )}
-      {asking && (
-        <DecisionDialog key={asking.quote.id} {...asking} onClose={() => setAsking(null)} />
       )}
     </div>
   )

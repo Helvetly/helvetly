@@ -11,7 +11,6 @@ import type {
   PortalScope,
   PortalSession,
 } from '@/lib/portal'
-import type { PortalQuote } from '@/lib/quotes'
 
 import { schedulingOffHandlers } from './scheduling'
 
@@ -191,6 +190,14 @@ export const portalDocuments: PortalDocument[] = [
     shared_at: sharedAt(-2),
   },
   {
+    id: 'doc_5',
+    name: `Offerte-Q-${year}-002-r2.pdf`,
+    size: 86000,
+    content_type: 'application/pdf',
+    shared_at: sharedAt(-5),
+    quote: { number: `Q-${year}-002`, revision: 2 },
+  },
+  {
     id: 'doc_2',
     name: 'Timesheet October.xlsx',
     size: 48200,
@@ -234,48 +241,6 @@ export const portalProfile: PortalProfile = {
   pending: null,
   last_decision: null,
 }
-
-const quote = (fields: Partial<PortalQuote> & Pick<PortalQuote, 'id' | 'number'>): PortalQuote => ({
-  revision: 1,
-  status: 'sent',
-  issue_date: day(-3),
-  valid_until: day(27),
-  currency: 'CHF',
-  total: '0.00',
-  decided_at: null,
-  decision_note: null,
-  instalments: [],
-  ...fields,
-})
-
-export const portalQuotes: PortalQuote[] = [
-  quote({ id: 'quo_1', number: `Q-${year}-001`, total: '1234.50' }),
-  quote({
-    id: 'quo_2',
-    number: `Q-${year}-002`,
-    revision: 2,
-    total: '8600.00',
-    valid_until: day(9),
-  }),
-  quote({
-    id: 'quo_3',
-    number: `Q-${year}-003`,
-    status: 'accepted',
-    issue_date: day(-30),
-    valid_until: day(0),
-    total: '2400.00',
-    decided_at: `${day(-20)}T10:15:00Z`,
-    decision_note: 'Please start in the first week of the month.',
-  }),
-  quote({
-    id: 'quo_4',
-    number: `Q-${year}-004`,
-    status: 'expired',
-    issue_date: day(-60),
-    valid_until: day(-30),
-    total: '540.00',
-  }),
-]
 
 const unauthenticated = () =>
   HttpResponse.json(
@@ -327,46 +292,6 @@ export const portalHandlers = [
   ),
   http.get(`${P}/documents`, () => HttpResponse.json({ data: portalDocuments })),
   http.get(`${P}/profile`, () => HttpResponse.json(portalProfile)),
-  http.get(`${P}/quotes`, () => HttpResponse.json({ data: portalQuotes })),
-  http.post<{ id: string; decision: string }>(
-    `${P}/quotes/:id/:decision`,
-    async ({ request, params }) => {
-      if (!csrfOk(request))
-        return HttpResponse.json(
-          { error: { code: 'csrf_failed', message: 'Reload the page.' } },
-          { status: 403 },
-        )
-      const found = portalQuotes.find((q) => q.id === params.id)
-      if (!found)
-        return HttpResponse.json(
-          { error: { code: 'not_found', message: 'Not found.' } },
-          { status: 404 },
-        )
-      if (found.status !== 'sent')
-        return HttpResponse.json(
-          {
-            error: {
-              code: 'invalid_state',
-              message: 'This quote has expired or was already answered.',
-            },
-          },
-          { status: 409 },
-        )
-      const body: unknown = await request.json()
-      const note =
-        typeof body === 'object' && body !== null && 'note' in body && typeof body.note === 'string'
-          ? body.note
-          : null
-      return HttpResponse.json({
-        data: {
-          ...found,
-          status: params.decision === 'accept' ? 'accepted' : 'declined',
-          decided_at: new Date().toISOString(),
-          decision_note: note,
-        },
-      })
-    },
-  ),
   http.put(`${P}/avatar`, async ({ request }) => {
     if (!csrfOk(request))
       return HttpResponse.json(

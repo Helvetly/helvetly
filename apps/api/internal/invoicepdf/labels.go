@@ -168,3 +168,14 @@ func TitleFor(inv store.Invoice) string {
 	}
 	return Title(inv.Language, inv.Kind)
 }
+
+// EmailWords are the printed labels a document's email summary repeats, so the email and its PDF agree.
+type EmailWords struct{ DueDate, ValidUntil, Payable, Credited, Total string }
+
+func EmailWordsFor(language string) EmailWords {
+	l, ok := languages[language]
+	if !ok {
+		l = languages["en"]
+	}
+	return EmailWords{DueDate: l.DueDate, ValidUntil: l.ValidUntil, Payable: l.Payable, Credited: l.Credited, Total: l.TotalNoVAT}
+}

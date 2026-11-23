@@ -18,11 +18,11 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// writerModel answers a contract's text or one section with the fixed answers given, recording what it was asked.
+// writerModel answers a contract's text with the fixed answer given, recording what it was asked.
 type writerModel struct {
-	mu            sync.Mutex
-	reqs          []aimodel.Request
-	text, section string
+	mu   sync.Mutex
+	reqs []aimodel.Request
+	text string
 }
 
 func (f *writerModel) Card() aimodel.RateCard                                      { return aimodel.Cards[aimodel.DefaultModel] }
@@ -31,12 +31,8 @@ func (f *writerModel) Answer(_ context.Context, r aimodel.Request) (aimodel.Repl
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.reqs = append(f.reqs, r)
-	answer := f.text
-	if r.Schema.Name == "contract_clause" {
-		answer = f.section
-	}
 	tokens := int64(300)
-	return aimodel.Reply{Text: answer, Tokens: &tokens, Usage: &aimodel.Usage{Input: 100, Output: 200, Model: aimodel.DefaultModel, Tier: "default"}}, nil
+	return aimodel.Reply{Text: f.text, Tokens: &tokens, Usage: &aimodel.Usage{Input: 100, Output: 200, Model: aimodel.DefaultModel, Tier: "default"}}, nil
 }
 
 func (f *writerModel) last() aimodel.Request {
@@ -67,7 +63,7 @@ var leakyAnswer = answer("Dienstleistungsvertrag", "Zwischen Muster Beratung und
 	[2]string{"Kontakt", "Fragen an hans.muster@example.ch oder +41 79 123 45 67, IBAN CH93 0076 2011 6238 5295 7, UID CHE-111.222.333."})
 
 func (e *env) withWriter(allowance aimodel.Allowance, text string) *writerModel {
-	m := &writerModel{text: text, section: `{"heading":"Vergütung","body":"Das Honorar beträgt CHF 5'405.00."}`}
+	m := &writerModel{text: text}
 	e.svc.SetAI(m, aimodel.Budget{DB: e.st, Pool: aimodel.PoolAutomation, Allowance: allowance, Now: func() time.Time { return time.Now().UTC() }})
 	return m
 }
@@ -96,7 +92,8 @@ func TestContractWriteModes(t *testing.T) {
 			return obj{"mode": "ai", "instructions": "6-month private course, monthly instalments"}
 		}, "de", func(t *testing.T, r aimodel.Request) {
 			for _, want := range []string{"quote.number: 2026/Q/001", "quote.total: CHF 5'405.00", "client.name: Müller AG",
-				"client.uid: CHE-123.456.789 MWST", "Website", "contract.date: ", "<wishes>\n6-month private course, monthly instalments\n</wishes>"} {
+				"client.uid: CHE-123.456.789 MWST", "Website", "contract.date: ", "<wishes>\n6-month private course, monthly instalments\n</wishes>",
+				"<law>\ngoverning law:", "required outline, in this order", "statutes you may cite"} {
 				if !strings.Contains(r.Message, want) {
 					t.Errorf("message lacks %q:\n%s", want, r.Message)
 				}
@@ -106,6 +103,12 @@ func TestContractWriteModes(t *testing.T) {
 			}
 			if strings.Contains(r.Message, "cancellation.") {
 				t.Error("a quote without sessions gets no cancellation policy")
+			}
+			for _, want := range []string{"the app adds none", "Follow the required outline in <law>: one clause per item, in its order",
+				"Cite a statute only when the outline's points cite it, and only as written in <law>"} {
+				if !strings.Contains(r.Instructions, want) {
+					t.Errorf("instructions lack %q:\n%s", want, r.Instructions)
+				}
 			}
 		}},
 		{"after an example, in French", func(e *env, b *browser) obj {
@@ -118,13 +121,6 @@ func TestContractWriteModes(t *testing.T) {
 				!strings.Contains(r.Instructions, "Replace only what must come from this client and this quote") ||
 				!strings.Contains(r.Message, "<example>") {
 				t.Errorf("example request: %s\n%s", r.Instructions, r.Message)
-			}
-		}},
-		{"one section improved", func(*env, *browser) obj {
-			return obj{"mode": "improve", "clause": obj{"heading": "Honorar", "body": "Zahlen."}, "instructions": "formeller"}
-		}, "de", func(t *testing.T, r aimodel.Request) {
-			if r.Schema.Name != "contract_clause" || !strings.Contains(r.Message, "<section>\nHonorar\n\nZahlen.\n</section>") {
-				t.Errorf("improve request: %s", r.Message)
 			}
 		}},
 		{"the person's text cannot close its block", func(*env, *browser) obj {
@@ -254,10 +250,9 @@ func TestContractWriteRefusals(t *testing.T) {
 	}
 	e.consent(b, true)
 	for name, body := range map[string]obj{
-		"mode":                {"mode": "rewrite"},
+		"mode":                {"mode": "improve"},
 		"language":            {"mode": "ai", "language": "pl"},
 		"example_document_id": {"mode": "example", "example_document_id": e.document(e.workspace(), samplePDF(t, 1), "application/pdf")},
-		"clause":              {"mode": "improve"},
 	} {
 		if got := e.fail(b, "POST", path, body, http.StatusUnprocessableEntity); got.Details.Fields[name] == "" {
 			t.Fatalf("%s: %+v", name, got)
@@ -412,23 +407,35 @@ func utf16be(s string) []byte {
 
 // A clean draft answers its warnings as [] (never null): the platform reads them as a list.
 func TestContractWriteEncodesEmptyWarningsAsList(t *testing.T) {
-	t.Parallel()
-	for _, body := range []obj{
-		{"mode": "ai", "language": "en"},
-		{"mode": "improve", "language": "en", "clause": obj{"heading": "Honorar", "body": "Zahlen."}},
-	} {
-		t.Run(body["mode"].(string), func(t *testing.T) {
-			e := newEnv(t, false)
-			b := e.workspace()
-			e.consent(b, true)
-			e.withWriter(nil, answer("Vertrag", "", [2]string{"Gegenstand", "Website."}))
-			quoteID, _ := e.quote(b)
-			var out struct{ Data map[string]json.RawMessage }
-			e.do(b, "POST", "/api/v1/quotes/"+quoteID+"/contract-drafts", body, http.StatusOK, &out)
-			if got := string(out.Data["warnings"]); got != "[]" {
-				t.Fatalf("warnings = %s, want []", got)
-			}
-		})
+	e := newEnv(t, false)
+	b := e.workspace()
+	e.consent(b, true)
+	e.withWriter(nil, answer("Vertrag", "", [2]string{"Gegenstand", "Website."}))
+	quoteID, _ := e.quote(b)
+	var out struct{ Data map[string]json.RawMessage }
+	e.do(b, "POST", "/api/v1/quotes/"+quoteID+"/contract-drafts", obj{"mode": "ai", "language": "en"}, http.StatusOK, &out)
+	if got := string(out.Data["warnings"]); got != "[]" {
+		t.Fatalf("warnings = %s, want []", got)
+	}
+}
+
+// The model's clauses are the contract's, as many as it wrote and in its order: none is added or fixed.
+func TestContractWriteKeepsTheModelsClauses(t *testing.T) {
+	e := newEnv(t, false)
+	b := e.workspace()
+	e.consent(b, true)
+	clauses := [][2]string{{"Grundlage", "Das Angebot."}, {"Leistungen", "Website."}, {"Abnahme", "Nach Lieferung."},
+		{"Haftung", "Nach Gesetz."}, {"Recht", "Schweizer Recht."}}
+	e.withWriter(nil, answer("Vertrag", "Einleitung.", clauses...))
+	quoteID, _ := e.quote(b)
+	got := e.write(b, quoteID, obj{"mode": "ai"})
+	if len(got.Clauses) != len(clauses) {
+		t.Fatalf("clauses: %+v", got.Clauses)
+	}
+	for i, c := range clauses {
+		if got.Clauses[i].Heading != c[0] || got.Clauses[i].Body != c[1] {
+			t.Errorf("clause %d = %+v, want %v", i, got.Clauses[i], c)
+		}
 	}
 }
 

@@ -21,7 +21,7 @@ describe('portal scope', () => {
   it('strips the prefix for matching routes', () => {
     expect(unscoped('/w/acme/invoices/')).toBe('/invoices/')
     expect(unscoped('/w/acme')).toBe('/')
-    expect(unscoped('/quotes')).toBe('/quotes')
+    expect(unscoped('/documents')).toBe('/documents')
   })
 
   it('keeps links and API calls inside the scope', () => {

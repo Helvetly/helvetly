@@ -81,7 +81,7 @@
   "planLineCorrections": "Kreditnotor och fakturarättelser",
   "planLineLedger": "Bokföring: huvudbok, momsdeklarationer och bokföringsexporter",
   "planLineAPI": "API-åtkomst",
-  "planLinePortal": "Kundportal: kunder ser och betalar fakturor, godkänner offerter och laddar ner dokument",
+  "planLinePortal": "Kundportal: kunder ser och betalar fakturor och laddar ner offerter och dokument",
   "planLineDomain": "Din portal på din egen domän (portal.dittforetag.ch)",
   "planLineApprovals": "Godkännande innan fakturor skickas",
   "planLineEInvoice": "E-fakturor som XML: XRechnung, ZUGFeRD med flera",

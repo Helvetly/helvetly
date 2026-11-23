@@ -17,6 +17,13 @@ type SharedDocument struct {
 	Size        int64     `json:"size"`
 	ContentType string    `json:"content_type"`
 	SharedAt    time.Time `json:"shared_at"`
+	// Quote names the quote revision whose PDF this is; nil for a file shared by hand.
+	Quote *SharedQuote `json:"quote"`
+}
+
+type SharedQuote struct {
+	Number   string `json:"number"`
+	Revision int    `json:"revision"`
 }
 
 type ChangeRequest struct {
@@ -73,12 +80,25 @@ func (q Q) DocumentShares(ctx context.Context, workspaceID, documentID string) (
 	return out, rows.Err()
 }
 
-// SharedDocuments: the client's shared documents that are not in the Trash, newest share first.
+// sentQuotePDFs: the documents holding the PDF of a quote revision as sent to client $2 of workspace $1. A revision
+// keeps the client it went to in its snapshot (a later revision may go to another).
+const sentQuotePDFs = `SELECT d.id, coalesce(qr.sent_at, qr.created_at) AS at, t.number, qr.revision
+	FROM quote_revisions qr JOIN quotes t ON t.id = qr.quote_id
+	JOIN documents d ON d.workspace_id = qr.workspace_id AND d.object_key = qr.pdf_key
+	WHERE qr.workspace_id = $1 AND coalesce(qr.snapshot->>'client_id', t.client_id) = $2`
+
+// SharedDocuments: the documents shared with the client and the PDFs of the quotes sent to it, not in the Trash,
+// newest first.
 func (q Q) SharedDocuments(ctx context.Context, workspaceID, clientID string) ([]SharedDocument, error) {
-	rows, err := q.db.Query(ctx, `SELECT d.id, d.name, d.size, d.content_type, s.created_at
-		FROM document_shares s JOIN documents d ON d.id = s.document_id
-		WHERE s.workspace_id = $1 AND s.client_id = $2 AND d.workspace_id = $1 AND d.deleted_at IS NULL
-		ORDER BY s.created_at DESC, d.id`, workspaceID, clientID)
+	rows, err := q.db.Query(ctx, `SELECT * FROM (
+		SELECT DISTINCT ON (d.id) d.id, d.name, d.size, d.content_type, x.at, x.number, x.revision
+		FROM (SELECT document_id AS id, created_at AS at, NULL AS number, NULL::integer AS revision
+			FROM document_shares WHERE workspace_id = $1 AND client_id = $2
+			UNION ALL `+sentQuotePDFs+`) x
+		JOIN documents d ON d.id = x.id
+		WHERE d.workspace_id = $1 AND d.deleted_at IS NULL
+		ORDER BY d.id, x.revision IS NULL, x.at DESC) o
+		ORDER BY at DESC, id`, workspaceID, clientID)
 	if err != nil {
 		return nil, err
 	}
@@ -86,24 +106,33 @@ func (q Q) SharedDocuments(ctx context.Context, workspaceID, clientID string) ([
 	out := []SharedDocument{}
 	for rows.Next() {
 		var d SharedDocument
-		if err := rows.Scan(&d.ID, &d.Name, &d.Size, &d.ContentType, &d.SharedAt); err != nil {
+		var number *string
+		var revision *int
+		if err := rows.Scan(&d.ID, &d.Name, &d.Size, &d.ContentType, &d.SharedAt, &number, &revision); err != nil {
 			return nil, err
+		}
+		if number != nil && revision != nil {
+			d.Quote = &SharedQuote{*number, *revision}
 		}
 		out = append(out, d)
 	}
 	return out, rows.Err()
 }
 
-// SharedDocument: one document shared with the client (for the download); ErrNotFound when not shared or trashed.
+// SharedDocument: one document of SharedDocuments (for the download); ErrNotFound when neither shared nor a quote
+// sent to the client, or trashed.
 func (q Q) SharedDocument(ctx context.Context, workspaceID, clientID, documentID string) (Document, error) {
-	return scanDocument(q.db.QueryRow(ctx, documentSelect+`JOIN document_shares s ON s.document_id = d.id AND s.client_id = $3
-		WHERE d.workspace_id = $1 AND s.workspace_id = $1 AND d.id = $2 AND d.deleted_at IS NULL`, workspaceID, documentID, clientID))
+	return scanDocument(q.db.QueryRow(ctx, documentSelect+`WHERE d.workspace_id = $1 AND d.id = $3 AND d.deleted_at IS NULL
+		AND (EXISTS (SELECT 1 FROM document_shares s WHERE s.document_id = d.id AND s.workspace_id = $1 AND s.client_id = $2)
+			OR d.id IN (SELECT id FROM (`+sentQuotePDFs+`) p))`, workspaceID, clientID, documentID))
 }
 
-// DocumentSharer: who shared the document with the client, "" when unknown (they left, or it predates the column).
+// DocumentSharer: who shared the document with the client, "" when unknown (they left, it predates the column, or
+// it is a sent quote's PDF, which nobody shared).
 func (q Q) DocumentSharer(ctx context.Context, documentID, clientID string) (string, error) {
 	var by *string
-	err := q.db.QueryRow(ctx, `SELECT shared_by FROM document_shares WHERE document_id = $1 AND client_id = $2`, documentID, clientID).Scan(&by)
+	err := q.db.QueryRow(ctx, `SELECT (SELECT shared_by FROM document_shares WHERE document_id = $1 AND client_id = $2)`,
+		documentID, clientID).Scan(&by)
 	if by == nil {
 		return "", err
 	}
