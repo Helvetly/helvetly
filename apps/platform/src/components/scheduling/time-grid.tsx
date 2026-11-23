@@ -1,7 +1,7 @@
 'use client'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, ChevronDown, ChevronUp, Plus } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Lock, Plus } from 'lucide-react'
 import {
   useId,
   useLayoutEffect,
@@ -27,7 +27,7 @@ import {
   type Person,
 } from '@/lib/scheduling'
 
-import { HostDot, PAST_HATCH } from './bits'
+import { hasStarted, HostDot, PAST_HATCH } from './bits'
 import { DAY_OFF_TINT, dayOffHint, type DaysOff } from './day-off'
 import type { Hours } from './hours-menu'
 import { clipToDay, layoutDay, snapMinutes } from './layout'
@@ -146,12 +146,16 @@ export function TimeGrid({
     onMove(target.occurrence, startsAt, new Date(startsAt.getTime() + length * 60_000))
   }
 
+  /** Open sessions that have not started move; a started one keeps its time. */
+  const movable = (occurrence: Occurrence) =>
+    canWrite && isOpen(occurrence.status) && !hasStarted(occurrence, now)
+
   const pointerDown = (
     event: PointerEvent<HTMLElement>,
     occurrence: Occurrence,
     mode: Drag['mode'],
   ) => {
-    if (!canWrite || !isOpen(occurrence.status) || event.button !== 0) return
+    if (!movable(occurrence) || event.button !== 0) return
     event.stopPropagation()
     setDrag({
       occurrence,
@@ -185,7 +189,7 @@ export function TimeGrid({
   }
 
   const keyDown = (event: KeyboardEvent<HTMLElement>, occurrence: Occurrence) => {
-    if (!event.altKey || !canWrite || !isOpen(occurrence.status)) return
+    if (!event.altKey || !movable(occurrence)) return
     const vertical = { ArrowUp: -SNAP, ArrowDown: SNAP }[event.key]
     const horizontal = { ArrowLeft: -1, ArrowRight: 1 }[event.key]
     if (vertical === undefined && horizontal === undefined) return
@@ -359,6 +363,8 @@ export function TimeGrid({
                   )}
                   busy={busy.filter((block) => !lanes || laneOf(block.host_id) === laneIndex)}
                   canWrite={canWrite}
+                  movable={movable}
+                  now={now}
                   pastUntil={pastUntil(day)}
                   hintId={hintId}
                   shifted={shifted}
@@ -404,6 +410,8 @@ function DayColumn({
   occurrences,
   busy,
   canWrite,
+  movable,
+  now,
   pastUntil,
   hintId,
   shifted,
@@ -422,6 +430,8 @@ function DayColumn({
   occurrences: Occurrence[]
   busy: Busy[]
   canWrite: boolean
+  movable: (occurrence: Occurrence) => boolean
+  now: Date
   pastUntil: number
   hintId: string
   shifted: (
@@ -505,7 +515,8 @@ function DayColumn({
         const occurrence = spans.find((span) => span.id === block.id)?.occurrence
         if (!occurrence) return null
         const color = hostColor(occurrence.host?.id)
-        const open = isOpen(occurrence.status)
+        const canMove = movable(occurrence)
+        const started = hasStarted(occurrence, now)
         const closed = occurrence.status.startsWith('cancelled') || occurrence.status === 'declined'
         const height = Math.max(((block.end - block.start) / 60) * HOUR, 20)
         return (
@@ -521,18 +532,23 @@ function DayColumn({
           >
             <button
               type="button"
-              aria-describedby={canWrite && open ? hintId : undefined}
+              aria-describedby={canMove ? hintId : undefined}
+              data-locked={started || undefined}
               onPointerDown={(event) => onPointerDown(event, occurrence, 'move')}
               onClick={(event) => {
                 // A movable block opens on pointer-up (a drag must not open it); Enter, Space and fixed blocks here.
-                if (event.detail === 0 || !(canWrite && open)) onOpen(occurrence)
+                if (event.detail === 0 || !canMove) onOpen(occurrence)
               }}
               onKeyDown={(event) => onKeyDown(event, occurrence)}
               className={cn(
                 'flex size-full touch-none flex-col items-start overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-left text-caption outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset',
                 // A title-only block centres its one line at the caption's paired line height; two lines stack tight.
                 height >= 34 ? 'leading-tight' : 'justify-center',
-                canWrite && open ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
+                canMove
+                  ? 'cursor-grab active:cursor-grabbing'
+                  : started
+                    ? 'cursor-default'
+                    : 'cursor-pointer',
                 occurrence.status === 'requested' && 'border border-l-[3px] border-dashed',
                 closed && 'opacity-60',
               )}
@@ -554,6 +570,12 @@ function DayColumn({
                   />
                 )}
                 <span className="truncate">{occurrence.title}</span>
+                {started && (
+                  <Lock
+                    aria-label={translate('schedTimeLocked')}
+                    className="ml-auto size-3 shrink-0 opacity-70"
+                  />
+                )}
               </span>
               {height >= 34 && (
                 <span className="w-full truncate text-muted-foreground">
@@ -561,7 +583,7 @@ function DayColumn({
                 </span>
               )}
             </button>
-            {canWrite && open && (
+            {canMove && (
               <span
                 aria-hidden
                 onPointerDown={(event) => onPointerDown(event, occurrence, 'resize')}

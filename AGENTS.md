@@ -170,7 +170,8 @@ are the reference.
   `internal/ical`; Pro and Business feature `scheduling`, monthly limit `scheduled_events_per_month`): sessions with
   clients, one-off or a series (an event with its RRULE, our own subset) whose occurrences are stored rows up to 400
   days ahead (at most 520), extended by a daily job and expanded in the series' zone from its wall-clock start. Edits
-  take a scope (`this` = an exception row, `following` = a split that keeps the rows' ids, `all`). Hosts are members,
+  take a scope (`this` = an exception row, `following` = a split that keeps the rows' ids, `all`). A session that has started (start <= now, still open) keeps its time: a move or a new length answers 409
+  `occurrence_started`, series edits skip it, a move from a calendar is pushed back. Hosts are members,
   never employees. A counting status (attended; a late cancellation or no-show per the settings, unless waived) adds
   an engagement entry through `engagements.AddEntry` in the same transaction; without an engagement, `unit_price`
   makes it invoiceable once. Lateness is fixed when the client asks. Every client email (invitation, update,

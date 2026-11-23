@@ -74,6 +74,9 @@ func lockRequest(ctx context.Context, q store.Q, workspaceID, id string) (store.
 // moveTo moves the occurrence to start (its length kept): same row and UID, rescheduled, sequence + 1. A late
 // reschedule counts the original slot first when the settings say so.
 func (s *Service) moveTo(ctx context.Context, q store.Q, a actor, e store.SchedEvent, o *store.SchedOccurrence, start time.Time, late bool) error {
+	if s.timeLocked(*o) {
+		return errTimeLocked
+	}
 	set, err := q.SchedulingSettings(ctx, a.ws.ID)
 	if err != nil {
 		return err

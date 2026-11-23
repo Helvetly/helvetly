@@ -504,6 +504,9 @@ export function schedulingHandlers(state: SchedulingState = sampleState(), now =
             is_exception: body.scope === 'this' || found.is_exception,
           }
         }
+        const retimed = next.starts_at !== found.starts_at || next.ends_at !== found.ends_at
+        if (retimed && Date.parse(found.starts_at) <= STORY_NOW.getTime())
+          return fail(409, 'occurrence_started', "This session has started; its time can't change.")
         if (body.host_id) {
           const host = TEAM.find((entry) => entry.user_id === body.host_id)
           if (host) next.host = { id: host.user_id, name: host.name }

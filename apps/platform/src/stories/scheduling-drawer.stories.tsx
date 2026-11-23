@@ -395,6 +395,26 @@ export const OpenEngagementInPlace: Story = {
   },
 }
 
+/** A session that has started: its time shows a lock, and the edit form keeps date, start and length read-only. */
+export const StartedSessionTimeLocked: Story = {
+  render: () => <Drawer start={{ kind: 'view', id: 'soc_mark' }} />,
+  play: async () => {
+    const sheet = await drawer()
+    const reason = "This session has started; its time can't change."
+    await expect(await sheet.findByLabelText(reason)).toBeVisible()
+    await userEvent.click(sheet.getByRole('button', { name: 'More actions' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit session' }))
+    await expect(await sheet.findByRole('heading', { name: 'Edit session' })).toBeVisible()
+    await expect(field('date')).toHaveAttribute('readonly')
+    await expect(field('time')).toHaveAttribute('readonly')
+    await expect(sheet.queryByRole('button', { name: '45 min' })).not.toBeInTheDocument()
+    await expect(sheet.queryByRole('button', { name: 'Change duration' })).not.toBeInTheDocument()
+    const lock = sheet.getByLabelText(reason)
+    await userEvent.hover(lock)
+    await expect(await screen.findByRole('tooltip')).toHaveTextContent(reason)
+  },
+}
+
 /** Attended is green, No-show amber, Cancel red, all soft tints; one the session cannot take yet is muted and says why. */
 export const StatusActionColours: Story = {
   render: () => <Drawer start={{ kind: 'view', id: 'soc_mark' }} />,

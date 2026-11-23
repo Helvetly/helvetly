@@ -5364,6 +5364,7 @@
   "schedWaiveText": "Er verbraucht keine Einheit mehr und sein Eintrag im Mandat wird entfernt. Das wird protokolliert.",
   "schedNeedsEngagementWrite": "Dafür braucht es das Recht, Mandate zu ändern: Der Termin wird im Mandat erfasst.",
   "schedNotStartedYet": "Möglich, sobald der Termin begonnen hat.",
+  "schedTimeLocked": "Dieser Termin hat begonnen; seine Zeit lässt sich nicht mehr ändern.",
   "schedCancelThisSession": "Diesen Termin absagen?",
   "schedCancelText": "Die Regelung schlägt vor, ob es kurzfristig ist; Sie entscheiden.",
   "schedCancelledAs": "Abgesagt",

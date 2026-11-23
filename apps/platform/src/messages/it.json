@@ -5364,6 +5364,7 @@
   "schedWaiveText": "Non consuma più una sessione e la sua voce sull’incarico viene rimossa. Viene registrato.",
   "schedNeedsEngagementWrite": "Serve il permesso di modificare gli incarichi: la sessione viene registrata sull’incarico.",
   "schedNotStartedYet": "Possibile una volta iniziata la sessione.",
+  "schedTimeLocked": "Questa sessione è iniziata; il suo orario non può cambiare.",
   "schedCancelThisSession": "Annullare questa sessione?",
   "schedCancelText": "La regola suggerisce se è in ritardo; decidi tu.",
   "schedCancelledAs": "Annullata",
