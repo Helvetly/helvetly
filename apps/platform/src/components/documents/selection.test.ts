@@ -18,6 +18,8 @@ import {
 
 const order: ItemKey[] = [folderKey('f1'), fileKey('a'), fileKey('b'), fileKey('c'), fileKey('d')]
 const plain = { shift: false, toggle: false }
+const check = (shiftKey: boolean, metaKey = false) =>
+  checkModifiers({ shiftKey, metaKey, ctrlKey: false })
 
 describe('clickSelect', () => {
   it('selects one, toggles with ⌘ and extends with shift', () => {
@@ -38,8 +40,6 @@ describe('clickSelect', () => {
   })
 
   it('extends and shrinks a checkbox range across folders and files', () => {
-    const check = (shiftKey: boolean, metaKey = false) =>
-      checkModifiers({ shiftKey, metaKey, ctrlKey: false })
     let s = clickSelect(EMPTY_SELECTION, folderKey('f1'), order, check(false))
     s = clickSelect(s, fileKey('c'), order, check(true))
     expect([...s.keys]).toEqual([folderKey('f1'), fileKey('a'), fileKey('b'), fileKey('c')])

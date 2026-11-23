@@ -48,7 +48,6 @@ import {
   MousePointer2,
   List as ListIcon,
   Pencil,
-  Plus,
   RotateCcw,
   Scissors,
   SearchX,
@@ -1027,21 +1026,12 @@ export function DocumentsPage() {
   // The header's solid button: Upload for files, "New" in Templates and Signatures (locked: says why).
   const sectionLock =
     view.section === 'templates' ? templateLock : view.section === 'signatures' ? signLock : null
-  const sectionPrimary = listing
-    ? { label: translate('upload2'), run: () => picker$.current?.click() }
+  const primaryLabel = listing
+    ? translate('upload2')
     : view.section === 'templates'
-      ? {
-          label: translate('newTemplate'),
-          run: () =>
-            templateLock
-              ? toastLocked(templateLock)
-              : setEditing({ template: null, document: null }),
-        }
+      ? translate('newTemplate')
       : view.section === 'signatures' && canWrite
-        ? {
-            label: translate('pdfForSignature3'),
-            run: () => (signLock ? toastLocked(signLock) : setSignFrom(null)),
-          }
+        ? translate('pdfForSignature3')
         : undefined
 
   return (
@@ -1101,8 +1091,13 @@ export function DocumentsPage() {
             </>
           ))
         }
-        primary={sectionPrimary?.label}
-        onPrimary={sectionPrimary?.run}
+        primary={primaryLabel}
+        onPrimary={() => {
+          if (listing) picker$.current?.click()
+          else if (sectionLock) toastLocked(sectionLock)
+          else if (view.section === 'templates') setEditing({ template: null, document: null })
+          else setSignFrom(null)
+        }}
         menu={listing && pageItems(dropdownKit, true)}
       />
       {organizing && (

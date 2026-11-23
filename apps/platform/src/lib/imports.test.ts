@@ -4,6 +4,7 @@ import { translate } from '@/lib/i18n'
 import {
   commitSummary,
   defaultSelection,
+  expiryText,
   fileErrorText,
   importKindByLabel,
   importProblem,
@@ -279,5 +280,18 @@ describe('fileErrorText', () => {
       ),
     ).toBe(translate('importAiNoAnswer'))
     expect(fileErrorText('The uploaded file is missing.')).toBe('The uploaded file is missing.')
+  })
+})
+
+describe('expiryText', () => {
+  const now = Date.parse('2026-11-23T12:00:00Z')
+  const at = (hours: number) => new Date(now + hours * 3_600_000).toISOString()
+  it.each([
+    [31.5, 'Expires in 31 h.'],
+    [2, 'Expires in 2 h.'],
+    [1.99, 'Expires soon.'],
+    [-1, 'Expires soon.'],
+  ])('%s hours left: %s', (hours, text) => {
+    expect(expiryText(at(hours), now)).toBe(text)
   })
 })

@@ -21,6 +21,7 @@ import {
   commitSummary,
   conflictsOf,
   defaultSelection,
+  expiryText,
   foundSummary,
   IMPORT_KINDS,
   importFileUrl,
@@ -219,6 +220,9 @@ export function ImportDrawer({
               date: formatDate(resume.created_at),
               count: resume.pending,
             })}
+            {resume.expires_at && (
+              <span className="text-muted-foreground"> {expiryText(resume.expires_at)}</span>
+            )}
           </Callout>
         )}
         <FeatureLockNotice lock={lock} kept={translate('importsAlreadyReadStayOpenForReview')} />
