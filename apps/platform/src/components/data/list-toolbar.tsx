@@ -397,7 +397,7 @@ function FilterChip<P>({
   return (
     <span
       className={cn(
-        'flex h-6 max-w-72 shrink-0 items-center rounded-md text-body-sm',
+        'flex h-5 max-w-72 shrink-0 items-center rounded-md text-caption',
         TONES[chipTone(field, values)],
       )}
     >
@@ -425,7 +425,7 @@ function FilterChip<P>({
         aria-label={translate('removeFilter', { label: full })}
         onMouseDown={keepFocus}
         onClick={onRemove}
-        className="flex size-6 shrink-0 items-center justify-center rounded-r-md opacity-70 hover:opacity-100"
+        className="flex size-5 shrink-0 items-center justify-center rounded-r-md opacity-70 hover:opacity-100"
       >
         <X className="size-3" />
       </button>
@@ -475,7 +475,9 @@ function CollapsibleSearch<P>(props: SearchProps<P>) {
       <div
         className={cn(
           'flex h-8 max-w-full items-center',
-          expanded ? 'w-[clamp(180px,26vw,320px)]' : 'w-8',
+          expanded
+            ? 'w-[clamp(180px,26vw,320px)] sm:w-full sm:max-w-[40rem] sm:min-w-[22rem]'
+            : 'w-8',
         )}
       >
         {expanded ? (
