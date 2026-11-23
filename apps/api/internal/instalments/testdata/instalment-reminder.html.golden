@@ -1,0 +1,16 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>Zahlungserinnerung: Rate 2 von 3 der Rechnung 2026-007</title></head>
+<table role="presentation" cellpadding="16" cellspacing="0" align="left">
+<tr><td align="left" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;color:#18181b"><a href="https://app.helvetly.example" style="color:#18181b;font-size:20px"><strong>Helvetly</strong></a></td></tr>
+<tr><td align="left" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#3f3f46"><p>Guten Tag Kunde AG,</p>
+<p>Wir erinnern Sie an die Zahlung für Rate 2 von 3 der Rechnung 2026-007, fällig am 01.12.2026.</p>
+<table role="presentation" cellpadding="6" cellspacing="0">
+<tr><td valign="top" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#71717a">Rechnung</td><td valign="top" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#18181b">2026-007</td></tr>
+<tr><td valign="top" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#71717a">Offener Betrag</td><td valign="top" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#18181b">CHF 360.35</td></tr>
+<tr><td valign="top" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#71717a">Zahlbar bis</td><td valign="top" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#18181b">01.12.2026</td></tr>
+<tr><td valign="top" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#71717a">Zahlungsreferenz</td><td valign="top" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#18181b">210000000003139471430009017</td></tr>
+</table>
+<p>Freundliche Grüsse<br>Muster GmbH</p>
+<p style="font-size:13px;color:#71717a">Angehängt: Rechnung-2026-007.pdf</p>
+</td></tr>
+<tr><td align="left" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#71717a">Sent by <a href="https://app.helvetly.example" style="color:#71717a">Helvetly</a></td></tr>
+</table></html>

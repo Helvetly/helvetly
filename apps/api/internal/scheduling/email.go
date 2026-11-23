@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"net/url"
 	"slices"
 	"strings"
@@ -71,6 +70,7 @@ func (e *Emails) changed(ctx context.Context, c Change) error {
 
 // letter is what one email says, before the words of its language are put in.
 type letter struct {
+	title        string // the session's
 	lead         string // the first sentence, already in the email's language
 	sessions     []store.SchedOccurrence
 	where, join  string
@@ -88,6 +88,8 @@ type mailCtx struct {
 	lang     string
 	zone     *time.Location
 	hostMail string
+	host     string // the host's name
+	greet    string // the client's name in the greeting; empty for a host
 	portal   string
 	members  bool // a member's own email (the host's reminder): sent as Helvetly, not as the business
 }
@@ -111,6 +113,7 @@ func (e *Emails) load(ctx context.Context, q store.Q, workspaceID, eventID strin
 	if err != nil {
 		return m, err
 	}
+	m.greet = client.GreetingName()
 	m.to = slices.Clone(ev.Attendees)
 	if len(m.to) == 0 {
 		for _, a := range []*string{client.Email, client.BillingEmail} {
@@ -131,7 +134,7 @@ func (e *Emails) load(ctx context.Context, q store.Q, workspaceID, eventID strin
 		if err != nil {
 			return m, err
 		}
-		m.hostMail = deref(members[*ev.HostUserID].Email)
+		m.hostMail, m.host = deref(members[*ev.HostUserID].Email), members[*ev.HostUserID].Name
 	}
 	if e.portal != nil {
 		if u, err := e.portal.CanonicalURL(ctx, ws); err == nil && u != "" {
@@ -182,7 +185,7 @@ func (e *Emails) event(ctx context.Context, kind, workspaceID, eventID string, o
 	}
 	w := wordsOf(m.lang)
 	title := sessionTitle(m.event, occs[0])
-	l := letter{sessions: occs, note: deref(m.event.ClientNote)}
+	l := letter{title: title, sessions: occs, note: deref(m.event.ClientNote)}
 	l.where, l.join = place(m.event, occs[0])
 	subject := w.invitation
 	switch kind {
@@ -211,7 +214,7 @@ func (e *Emails) ended(ctx context.Context, workspaceID, eventID string) error {
 		return err
 	}
 	w := wordsOf(m.lang)
-	l := letter{lead: fmt.Sprintf(w.updated, m.brand.Name, m.event.Title)}
+	l := letter{title: m.event.Title, lead: fmt.Sprintf(w.updated, m.brand.Name, m.event.Title)}
 	return e.send(ctx, m, w.update+": "+m.event.Title, l, &ical.Calendar{Method: ical.Request, Stamp: e.s.now(), Events: []ical.Event{master}})
 }
 
@@ -370,7 +373,7 @@ func (e *Emails) answer(ctx context.Context, c Change) error {
 	}
 	w := wordsOf(m.lang)
 	title := sessionTitle(m.event, o)
-	l := letter{sessions: []store.SchedOccurrence{o}, reason: deref(req.Reason)}
+	l := letter{title: title, sessions: []store.SchedOccurrence{o}, reason: deref(req.Reason)}
 	subject := w.declined
 	var cal *ical.Calendar
 	switch {
@@ -391,7 +394,11 @@ func (e *Emails) send(ctx context.Context, m mailCtx, subject string, l letter, 
 	if e.mail == nil {
 		return nil
 	}
-	text, body := e.compose(m, l)
+	var method ical.Method
+	if cal != nil {
+		method = cal.Method
+	}
+	text, body := compose(m, l, method)
 	msg := mail.Message{Workspace: m.ws.ID, To: m.to, Subject: subject, Text: text, HTML: body, Language: m.lang, Members: m.members}
 	if !m.members {
 		msg.ReplyTo = m.hostMail
@@ -404,64 +411,102 @@ func (e *Emails) send(ctx context.Context, m mailCtx, subject string, l letter, 
 	return e.mail.Send(ctx, msg)
 }
 
-// maxListed sessions are named in an email; more read "and N more sessions".
-const maxListed = 5
+// listed sessions are named one by one; a series of more is summed up ("Every Tuesday, … · 57 sessions") with the
+// next ones.
+const listed = 3
 
-// compose is the letter as text and as the HTML fragment of the shared layout. Every value from a record is escaped.
-func (e *Emails) compose(m mailCtx, l letter) (text, body string) {
+// compose is the letter on the shared blocks: greeting, lead, the session's card, the calls to join and to open the
+// portal, the business's note and the calendar line. method is the attached .ics's ("" for none).
+func compose(m mailCtx, l letter, method ical.Method) (text, body string) {
 	w := wordsOf(m.lang)
-	esc := html.EscapeString
-	var t, h strings.Builder
-	t.WriteString(l.lead + "\n")
-	h.WriteString("<p>" + esc(l.lead) + "</p>\n")
-	section := func(label string, lines []string, link string) {
-		if len(lines) == 0 {
-			return
-		}
-		t.WriteString("\n" + label + ":\n" + strings.Join(lines, "\n") + "\n")
-		escaped := make([]string, len(lines))
-		for i, line := range lines {
-			escaped[i] = esc(line)
-		}
-		if link != "" {
-			escaped = []string{`<a href="` + esc(link) + `">` + esc(lines[0]) + "</a>"}
-		}
-		h.WriteString("<p><strong>" + esc(label) + "</strong><br>" + strings.Join(escaped, "<br>") + "</p>\n")
-	}
 	sessions := slices.SortedFunc(slices.Values(l.sessions), func(a, b store.SchedOccurrence) int { return a.StartsAt.Compare(b.StartsAt) })
-	var when []string
-	for i, o := range sessions {
-		if i == maxListed {
-			when = append(when, fmt.Sprintf(w.more, len(sessions)-maxListed))
-			break
-		}
-		when = append(when, formatWhen(m.lang, o.StartsAt, o.EndsAt, m.zone, m.ws.Location()))
-	}
-	section(w.when, when, "")
+	rows := append([]mail.Row{{Label: w.session, Value: l.title}}, whenRows(m, w, sessions)...)
 	if l.proposal != nil {
-		section(w.newTime, []string{formatWhen(m.lang, *l.proposal, l.proposal.Add(duration(m.event)), m.zone, m.ws.Location())}, "")
+		rows = append(rows, mail.Row{Label: w.newTime, Value: formatWhen(m.lang, *l.proposal, l.proposal.Add(duration(m.event)), m.zone, m.ws.Location())})
 	}
-	if l.where != "" {
-		section(w.where, []string{l.where}, mapsLink(l.where))
+	switch {
+	case l.where != "":
+		rows = append(rows, mail.Row{Label: w.where, Value: l.where, Link: mapsLink(l.where), LinkText: w.maps})
+	case l.join != "":
+		rows = append(rows, mail.Row{Label: w.where, Value: "Online"})
 	}
-	if l.join != "" {
-		section(w.join, []string{l.join}, l.join)
-	}
-	if l.note != "" {
-		section(w.note, []string{l.note}, "")
-	}
-	if l.reason != "" {
-		section(w.reason, []string{l.reason}, "")
-	}
+	rows = append(rows, mail.Row{Label: w.host, Value: m.host}, mail.Row{Label: w.price, Value: price(m.event)}, mail.Row{Label: w.reason, Value: l.reason})
+	lt := mail.NewLetter(m.lang).Greeting(m.greet).Lead(l.lead).Summary(rows...).Note(l.note)
 	if l.portalLine {
-		t.WriteString("\n" + w.answerInPortal + "\n")
-		h.WriteString("<p>" + esc(w.answerInPortal) + "</p>\n")
+		lt.Lead(w.answerInPortal)
 	}
-	if m.portal != "" {
-		t.WriteString("\n" + w.open + ": " + m.portal + "\n")
-		h.WriteString(mail.Button(w.open, m.portal))
+	lt.Action(w.join, l.join).Action(w.open, m.portal)
+	switch method {
+	case ical.Request:
+		lt.FinePrint(w.calendarAdd)
+	case ical.Cancel:
+		lt.FinePrint(w.calendarRemove)
 	}
-	return t.String(), h.String()
+	return lt.Text(), lt.HTML()
+}
+
+// whenRows say when: up to listed sessions one by one; a longer series as its rhythm, first date and count, and the
+// next sessions.
+func whenRows(m mailCtx, w words, sessions []store.SchedOccurrence) []mail.Row {
+	rule := ruleOf(m.event)
+	if len(sessions) <= listed || rule == nil {
+		var when []string
+		for i, o := range sessions {
+			if i == listed {
+				when = append(when, fmt.Sprintf(w.more, len(sessions)-listed))
+				break
+			}
+			when = append(when, formatWhen(m.lang, o.StartsAt, o.EndsAt, m.zone, m.ws.Location()))
+		}
+		return []mail.Row{{Label: w.when, Value: strings.Join(when, "\n")}}
+	}
+	first := sessions[0]
+	start := first.StartsAt.In(m.zone)
+	series := formatTimes(m.lang, first.StartsAt, first.EndsAt, m.zone, m.ws.Location())
+	if c := cadence(w, *rule, start.Weekday()); c != "" {
+		series = c + ", " + series
+	}
+	series += " · " + fmt.Sprintf(w.from, fmt.Sprintf(w.day, start.Day(), w.months[start.Month()-1], start.Year())) +
+		" · " + fmt.Sprintf(w.count, len(sessions))
+	next := make([]string, listed)
+	for i, o := range sessions[:listed] {
+		t := o.StartsAt.In(m.zone)
+		next[i] = fmt.Sprintf(w.short, w.days[t.Weekday()], t.Day(), w.months[t.Month()-1])
+	}
+	return []mail.Row{{Label: w.when, Value: series}, {Label: w.next, Value: strings.Join(next, " · ")}}
+}
+
+// cadence is a rule's rhythm in words ("Every Tuesday", "Every 2 weeks on Monday, Thursday", "Monthly").
+func cadence(w words, r recur.Rule, firstDay time.Weekday) string {
+	switch r.Freq {
+	case recur.Weekly:
+		days := r.ByDay
+		if len(days) == 0 {
+			days = []time.Weekday{firstDay}
+		}
+		names := make([]string, len(days))
+		for i, d := range days {
+			names[i] = w.weekdays[d]
+		}
+		if r.Interval > 1 {
+			return fmt.Sprintf(w.everyWeeks, r.Interval, strings.Join(names, ", "))
+		}
+		return fmt.Sprintf(w.everyWeek, strings.Join(names, ", "))
+	case recur.Monthly:
+		if r.Interval > 1 {
+			return fmt.Sprintf(w.everyMonths, r.Interval)
+		}
+		return w.monthly
+	}
+	return ""
+}
+
+// price is a session's own price, as on the invoice; empty without one.
+func price(e store.SchedEvent) string {
+	if e.UnitPrice == nil {
+		return ""
+	}
+	return strings.TrimSpace(deref(e.Currency) + " " + e.UnitPrice.Swiss("'"))
 }
 
 // notifyHost tells the session's host (owners and admins when it has none, or they left) what the client did.
@@ -544,20 +589,33 @@ func language(choices ...string) string {
 	return "en"
 }
 
-// formatWhen is a session's date and time in zone ("Tue, 1 Dec 2026, 09:00–10:00"), its zone named, and the
-// business's time added when the zones differ.
+// formatWhen is a session's date and time in zone ("Tue, 1 Dec 2026, 09:00–10:00 (Zurich time)"), the business's
+// time added when the zones differ.
 func formatWhen(lang string, start, end time.Time, zone, business *time.Location) string {
 	w := wordsOf(lang)
-	at := func(z *time.Location) string {
-		s, e := start.In(z), end.In(z)
-		return s.Format("15:04") + "–" + e.Format("15:04")
-	}
 	s := start.In(zone)
-	out := fmt.Sprintf(w.date, w.days[s.Weekday()], s.Day(), w.months[s.Month()-1], s.Year()) + ", " + at(zone) + " (" + zone.String() + ")"
-	if business.String() != zone.String() {
-		out += " · " + at(business) + " (" + business.String() + ")"
+	return fmt.Sprintf(w.date, w.days[s.Weekday()], s.Day(), w.months[s.Month()-1], s.Year()) + ", " + formatTimes(lang, start, end, zone, business)
+}
+
+// formatTimes is a session's times in zone, its zone named, and in the business's zone when they differ.
+func formatTimes(lang string, start, end time.Time, zone, business *time.Location) string {
+	at := func(z *time.Location) string {
+		return start.In(z).Format("15:04") + "–" + end.In(z).Format("15:04") + " (" + zoneName(lang, z) + ")"
 	}
-	return out
+	if business.String() != zone.String() {
+		return at(zone) + " · " + at(business)
+	}
+	return at(zone)
+}
+
+// zoneName names a zone by its city ("Zurich time"); UTC and the like stay as they are.
+func zoneName(lang string, z *time.Location) string {
+	name := z.String()
+	i := strings.LastIndex(name, "/")
+	if i < 0 {
+		return name
+	}
+	return fmt.Sprintf(wordsOf(lang).zone, strings.ReplaceAll(name[i+1:], "_", " "))
 }
 
 // words is one language's wording of the scheduling emails; %s are filled in the order the comments name them.
@@ -568,9 +626,18 @@ type words struct {
 	hostReminded                                                   string // title, client
 	declinedLead, bookingDeclined, proposedLead                    string // company, title
 	when, newTime, where, join, note, reason, open, answerInPortal string
-	more                                                           string // %d further sessions
+	session, host, price, maps, next, calendarAdd, calendarRemove  string
+	more, count                                                    string // %d further sessions; %d sessions
+	from                                                           string // the first date
+	zone                                                           string // the zone's city
+	everyWeek, monthly                                             string // weekday names; -
+	everyWeeks                                                     string // interval, weekday names
+	everyMonths                                                    string // interval
 	date                                                           string // weekday, day, month, year
+	day                                                            string // day, month, year
+	short                                                          string // weekday, day, month
 	days                                                           [7]string
+	weekdays                                                       [7]string // in full
 	months                                                         [12]string
 }
 
@@ -583,6 +650,11 @@ func wordsOf(lang string) words {
 
 var allWords = map[string]words{
 	"en": {
+		session: "Session", host: "Host", price: "Price", maps: "Open in Maps", next: "Next",
+		calendarAdd: "Add to your calendar: the invitation is attached.", calendarRemove: "The attached cancellation removes it from your calendar.",
+		count: "%d sessions", from: "from %s", zone: "%s time", everyWeek: "Every %s", monthly: "Monthly", everyWeeks: "Every %d weeks on %s",
+		everyMonths: "Every %d months", day: "%d %s %d", short: "%s %d %s",
+		weekdays:   [7]string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"},
 		invitation: "Invitation", update: "Updated", cancellation: "Cancelled", reminder: "Reminder", declined: "Request declined",
 		proposed: "New time proposed",
 		invited:  "%s invites you to %s.", updated: "%s changed %s.", cancelled: "%s cancelled %s.",
@@ -596,6 +668,11 @@ var allWords = map[string]words{
 		months: [12]string{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"},
 	},
 	"de": {
+		session: "Termin", host: "Leitung", price: "Preis", maps: "In Karten öffnen", next: "Nächste",
+		calendarAdd: "Für Ihren Kalender: Die Einladung ist angehängt.", calendarRemove: "Die angehängte Absage entfernt ihn aus Ihrem Kalender.",
+		count: "%d Termine", from: "ab %s", zone: "Zeitzone %s", everyWeek: "Jeden %s", monthly: "Monatlich", everyWeeks: "Alle %d Wochen am %s",
+		everyMonths: "Alle %d Monate", day: "%d. %s %d", short: "%s %d. %s",
+		weekdays:   [7]string{"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"},
 		invitation: "Einladung", update: "Geändert", cancellation: "Abgesagt", reminder: "Erinnerung", declined: "Anfrage abgelehnt",
 		proposed: "Neuer Termin vorgeschlagen",
 		invited:  "%s lädt Sie zu %s ein.", updated: "%s hat %s geändert.", cancelled: "%s hat %s abgesagt.",
@@ -609,6 +686,11 @@ var allWords = map[string]words{
 		months: [12]string{"Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."},
 	},
 	"fr": {
+		session: "Rendez-vous", host: "Animé par", price: "Prix", maps: "Ouvrir dans Plans", next: "Prochains",
+		calendarAdd: "Pour votre agenda : l’invitation est jointe.", calendarRemove: "L’annulation jointe le retire de votre agenda.",
+		count: "%d rendez-vous", from: "à partir du %s", zone: "heure de %s", everyWeek: "Chaque %s", monthly: "Chaque mois",
+		everyWeeks: "Toutes les %d semaines le %s", everyMonths: "Tous les %d mois", day: "%d %s %d", short: "%s %d %s",
+		weekdays:   [7]string{"dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"},
 		invitation: "Invitation", update: "Modifié", cancellation: "Annulé", reminder: "Rappel", declined: "Demande refusée",
 		proposed: "Nouvel horaire proposé",
 		invited:  "%s vous invite à %s.", updated: "%s a modifié %s.", cancelled: "%s a annulé %s.",
@@ -622,6 +704,11 @@ var allWords = map[string]words{
 		months: [12]string{"janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."},
 	},
 	"it": {
+		session: "Appuntamento", host: "Con", price: "Prezzo", maps: "Apri in Mappe", next: "Prossimi",
+		calendarAdd: "Per il suo calendario: l’invito è allegato.", calendarRemove: "L’annullamento allegato lo rimuove dal suo calendario.",
+		count: "%d appuntamenti", from: "dal %s", zone: "ora di %s", everyWeek: "Ogni %s", monthly: "Ogni mese", everyWeeks: "Ogni %d settimane il %s",
+		everyMonths: "Ogni %d mesi", day: "%d %s %d", short: "%s %d %s",
+		weekdays:   [7]string{"domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"},
 		invitation: "Invito", update: "Modificato", cancellation: "Annullato", reminder: "Promemoria", declined: "Richiesta rifiutata",
 		proposed: "Nuovo orario proposto",
 		invited:  "%s la invita a %s.", updated: "%s ha modificato %s.", cancelled: "%s ha annullato %s.",

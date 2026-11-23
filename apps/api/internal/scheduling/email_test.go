@@ -85,10 +85,10 @@ func TestInvitationInTheClientsLanguageAndZone(t *testing.T) {
 	box, _ := e.withEmails()
 	b := e.workspace()
 	for _, c := range []struct{ lang, subject, lead, date string }{
-		{"", "Einladung: Coaching", "Muster AG lädt Sie zu Coaching ein.", "Di, 1. Dez. 2026, 09:00–10:00 (Europe/Zurich)"},
-		{"en", "Invitation: Coaching", "Muster AG invites you to Coaching.", "Tue, 1 Dec 2026, 09:00–10:00 (Europe/Zurich)"},
-		{"fr", "Invitation: Coaching", "Muster AG vous invite à Coaching.", "mar. 1 déc. 2026, 09:00–10:00 (Europe/Zurich)"},
-		{"it", "Invito: Coaching", "Muster AG la invita a Coaching.", "mar 1 dic 2026, 09:00–10:00 (Europe/Zurich)"},
+		{"", "Einladung: Coaching", "Muster AG lädt Sie zu Coaching ein.", "Di, 1. Dez. 2026, 09:00–10:00 (Zeitzone Zurich)"},
+		{"en", "Invitation: Coaching", "Muster AG invites you to Coaching.", "Tue, 1 Dec 2026, 09:00–10:00 (Zurich time)"},
+		{"fr", "Invitation: Coaching", "Muster AG vous invite à Coaching.", "mar. 1 déc. 2026, 09:00–10:00 (heure de Zurich)"},
+		{"it", "Invito: Coaching", "Muster AG la invita a Coaching.", "mar 1 dic 2026, 09:00–10:00 (ora di Zurich)"},
 	} {
 		client := e.clientIn(b, "anna@mueller.example", c.lang)
 		out := e.create(b, map[string]any{"client_id": client, "title": "Coaching", "starts_local": "2026-12-01T09:00", "duration_minutes": 60,
@@ -99,7 +99,7 @@ func TestInvitationInTheClientsLanguageAndZone(t *testing.T) {
 		}
 		contains(t, c.lang+" text", m.Text, c.lead, c.date, "Bahnhofstrasse 1, Zürich", "Bring the contract", "https://portal.example.com/w/muster/sessions")
 		contains(t, c.lang+" html", m.HTML, "<p>"+c.lead+"</p>", "https://portal.example.com/w/muster/sessions",
-			`<a href="https://maps.google.com/?q=Bahnhofstrasse+1%2C+Z%C3%BCrich">Bahnhofstrasse 1, Zürich</a>`)
+			`href="https://maps.google.com/?q=Bahnhofstrasse+1%2C+Z%C3%BCrich"`)
 		occ := out.Data.Occurrences[0]
 		if m.CalendarMethod != "REQUEST" || len(m.Attachments) != 1 || m.Attachments[0].Name != "invite.ics" ||
 			string(m.Attachments[0].Data) != string(m.Calendar) {
@@ -115,7 +115,7 @@ func TestInvitationInTheClientsLanguageAndZone(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.create(b, map[string]any{"client_id": london, "title": "Call", "starts_local": "2026-12-01T09:00", "duration_minutes": 30})
-	contains(t, "zones", one(t, box).Text, "Tue, 1 Dec 2026, 08:00–08:30 (Europe/London) · 09:00–09:30 (Europe/Zurich)")
+	contains(t, "zones", one(t, box).Text, "Tue, 1 Dec 2026, 08:00–08:30 (London time) · 09:00–09:30 (Zurich time)")
 }
 
 func ptr[T any](v T) *T { return &v }
@@ -155,7 +155,8 @@ func TestSeriesEmails(t *testing.T) {
 	if strings.Contains(ics, "COUNT=") || strings.Contains(ics, "RECURRENCE-ID") {
 		t.Fatalf("series invitation: %s", ics)
 	}
-	contains(t, "series text", inv.Text, "Tue, 1 Dec 2026", "Tue, 15 Dec 2026", "Tue, 29 Dec 2026")
+	contains(t, "series text", inv.Text, "Every Tuesday, 09:00–10:00 (Zurich time) · from 1 Dec 2026 · 4 sessions",
+		"Next: Tue 1 Dec · Tue 15 Dec · Tue 22 Dec")
 
 	// "this": only that session, by the series' UID and its RECURRENCE-ID, sequence up.
 	e.do(b, "PATCH", "/api/v1/scheduling/occurrences/"+occs[1].ID, map[string]any{"scope": "this", "starts_local": "2026-12-15T11:00"},

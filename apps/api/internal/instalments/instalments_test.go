@@ -26,6 +26,7 @@ import (
 	"helvetly.com/api/internal/engagements"
 	"helvetly.com/api/internal/invoices"
 	"helvetly.com/api/internal/mail"
+	"helvetly.com/api/internal/mail/mailtest"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/store/storetest"
 )
@@ -418,7 +419,9 @@ func TestReminderSkipsClientWithoutEmail(t *testing.T) {
 
 func TestReminderLanguage(t *testing.T) {
 	ref, email := "210000000003139471430009017", "billing@muster.ch"
-	inv := store.Invoice{Currency: "CHF", Seller: &store.Party{Name: "Muster GmbH", Email: &email}, PDFKey: nil}
+	number := "2026-007"
+	inv := store.Invoice{Kind: "invoice", Number: &number, Language: "de", Currency: "CHF", Buyer: &store.Party{Name: "Kunde AG"},
+		Seller: &store.Party{Name: "Muster GmbH", Email: &email}}
 	inv.Payment.Reference = &ref
 	for _, c := range []struct{ lang, kind, subject, sentence string }{
 		{"de", "before", "Zahlungserinnerung: Rate 2 von 3 der Rechnung 2026-007", "fällig am 01.12.2026"},
@@ -430,8 +433,11 @@ func TestReminderLanguage(t *testing.T) {
 		m := reminderMessage(inv, store.ReminderTarget{Seq: 2, Count: 3, Kind: c.kind, DueDate: "2026-12-01", Open: 36035,
 			ClientEmail: "ap@kunde.ch", Language: c.lang, Number: "2026-007"}, []byte("%PDF"))
 		if m.Subject != c.subject || !strings.Contains(m.Text, c.sentence) || !strings.Contains(m.Text, "360.35") ||
-			!strings.Contains(m.Text, ref) || !strings.HasSuffix(m.Text, "Muster GmbH") || m.ReplyTo != email {
+			!strings.Contains(m.Text, ref) || !strings.Contains(m.Text, "\nMuster GmbH\n") || m.ReplyTo != email {
 			t.Errorf("%s: %q\n%s", c.lang, m.Subject, m.Text)
+		}
+		if c.lang == "de" {
+			mailtest.Golden(t, "instalment-reminder", m)
 		}
 	}
 }

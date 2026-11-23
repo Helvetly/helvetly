@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"mime"
 	"net/http"
 	"slices"
@@ -171,6 +170,14 @@ func (s *Service) report(w http.ResponseWriter, r *http.Request, sess store.Sess
 	return nil
 }
 
+// email is the report's email: the message, the engagement and period, and the PDF attached.
+func (rep report) email(workspaceID, subject, message string) mail.Message {
+	l := mail.NewLetter(rep.language).Message(message).
+		Summary(mail.Row{Label: reportTexts[rep.language].title, Value: rep.e.Title + "\n" + rep.period}).Attached(rep.name)
+	return mail.Message{Workspace: workspaceID, Language: rep.language, Subject: subject, Text: l.Text(), HTML: l.HTML(),
+		Attachments: []mail.Attachment{{Name: rep.name, ContentType: "application/pdf", Data: rep.pdf}}}
+}
+
 var reportTexts = map[string]struct{ title, greeting, body, signOff string }{
 	"de": {"Leistungsnachweis", "Guten Tag", "Im Anhang finden Sie den Leistungsnachweis «%s» für %s.", "Freundliche Grüsse"},
 	"fr": {"Rapport de prestations", "Bonjour", "Veuillez trouver ci-joint le rapport de prestations « %s » pour %s.", "Meilleures salutations"},
@@ -247,9 +254,8 @@ func (s *Service) sendReport(w http.ResponseWriter, r *http.Request, sess store.
 	if len(fields) > 0 {
 		return validationFailed(fields)
 	}
-	m := mail.Message{Workspace: sess.Workspace.ID, To: to, Cc: cc, Bcc: bcc, Subject: subject, Text: message,
-		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
-		Attachments: []mail.Attachment{{Name: rep.name, ContentType: "application/pdf", Data: rep.pdf}}}
+	m := rep.email(sess.Workspace.ID, subject, message)
+	m.To, m.Cc, m.Bcc = to, cc, bcc
 	if err := s.mailer.Send(r.Context(), m); err != nil {
 		return fmt.Errorf("send service report %s: %w", rep.e.ID, err)
 	}

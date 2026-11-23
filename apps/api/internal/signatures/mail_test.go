@@ -1,43 +1,20 @@
 package signatures
 
 import (
-	"flag"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"helvetly.com/api/internal/emailtemplate"
-	"helvetly.com/api/internal/mail"
+	"helvetly.com/api/internal/mail/mailtest"
 	"helvetly.com/api/internal/store"
 )
-
-var update = flag.Bool("update", false, "rewrite the golden emails in testdata")
 
 func mailRequest(language *string) store.SignatureRequest {
 	message := "Please sign by Friday."
 	return store.SignatureRequest{WorkspaceID: "wsp_1", WorkspaceName: "Muster AG", Title: "Services Agreement", Message: &message,
 		Language: language, Timezone: "Europe/Zurich", ExpiresAt: time.Date(2026, 12, 23, 12, 0, 0, 0, time.UTC),
 		CreatedBy: &store.Uploader{Name: "Anna Owner"}, SenderEmail: "anna@muster.ch"}
-}
-
-// golden compares got with testdata/<name>, or rewrites it with -update.
-func golden(t *testing.T, name, got string) {
-	t.Helper()
-	path := filepath.Join("testdata", name)
-	if *update {
-		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != string(want) {
-		t.Errorf("%s changed (go test -run %s -update to accept):\n%s", name, t.Name(), got)
-	}
 }
 
 func TestInviteMessage(t *testing.T) {
@@ -48,7 +25,7 @@ func TestInviteMessage(t *testing.T) {
 	}
 	for _, part := range []string{m.HTML, m.Text} {
 		for _, want := range []string{"Hello Beat Kunde,", "Muster AG asks you to review and sign “Services Agreement”.",
-			"Sent by", "Anna Owner", "23 December 2026", "Review and sign →", "https://app.example/sign#T", "ZertES"} {
+			"Sent by", "Anna Owner", "23 December 2026", "Review and sign", "https://app.example/sign#T", "ZertES"} {
 			if !strings.Contains(part, want) {
 				t.Errorf("%q missing in %s", want, part)
 			}
@@ -57,9 +34,7 @@ func TestInviteMessage(t *testing.T) {
 			t.Errorf("the business is named more than once: %s", part)
 		}
 	}
-	brand := mail.Brand{Name: "Muster AG", LogoPath: "/api/v1/public/email-logo/wsp_1/f", Address: []string{"Lerchenstrasse 21", "8000 Zürich"}}
-	golden(t, "invite.html.golden", mail.Preview(m, brand, "https://app.example"))
-	golden(t, "invite.txt.golden", m.Text)
+	mailtest.Golden(t, "invite", m)
 
 	reminder := inviteMessage(mailRequest(nil), signer, "https://app.example/sign#T", true, emailtemplate.Template{})
 	if reminder.Subject != "Reminder: Muster AG asks you to sign “Services Agreement”" {
@@ -74,7 +49,7 @@ func TestInviteMessageInALanguage(t *testing.T) {
 	if m.Subject != "Erinnerung: Muster AG bittet Sie, «Services Agreement» zu unterschreiben" {
 		t.Errorf("subject %q", m.Subject)
 	}
-	for _, want := range []string{"Gesendet von", "Unterschreiben bis", "23.12.2026", "Prüfen und unterschreiben →"} {
+	for _, want := range []string{"Gesendet von", "Unterschreiben bis", "23.12.2026", "Prüfen und unterschreiben"} {
 		if !strings.Contains(m.HTML, want) || !strings.Contains(m.Text, want) {
 			t.Errorf("%q missing in %s\n%s", want, m.HTML, m.Text)
 		}
@@ -95,16 +70,20 @@ func TestInviteMessageNamesStayShort(t *testing.T) {
 }
 
 func TestCompletedAndDeclinedMessages(t *testing.T) {
-	req := mailRequest(nil)
+	req, de := mailRequest(nil), "de"
 	reason := "Wrong start date"
 	declined := declinedMessage(req, store.Signer{Name: "Beat Kunde", Email: "beat@example.com", DeclineReason: &reason})
 	if declined.Subject != "Beat Kunde declined to sign “Services Agreement”" || !strings.Contains(declined.HTML, "Declined by") ||
 		!strings.Contains(declined.Text, "Reason: Wrong start date") {
 		t.Errorf("declined %+v", declined)
 	}
-	done := completedMessage(completed{req: req, name: "Services Agreement (signed).pdf", sum: "abc"}, "beat@example.com")
+	req.OriginalSHA256 = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+	done := completedMessage(completed{req: req, name: "Services Agreement (signed).pdf", sum: "3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b"}, "beat@example.com")
 	if !strings.Contains(done.HTML, "Signed copy") || !strings.Contains(done.Text, "Signed copy: Services Agreement (signed).pdf (attached)") ||
 		!strings.Contains(done.Text, "Sent by: Anna Owner") {
 		t.Errorf("completed %+v", done)
 	}
+	mailtest.Golden(t, "invite-reminder-de", inviteMessage(mailRequest(&de), store.Signer{Email: "beat@example.com"}, "https://app.example/sign#T", true,
+		emailtemplate.Default("signature_reminder", "de")))
+	mailtest.Golden(t, "completed", done)
 }
