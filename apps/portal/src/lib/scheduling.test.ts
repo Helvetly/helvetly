@@ -4,21 +4,35 @@ import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import { portalHandlers, portalSession } from '@/mocks/portal'
-import { bookingInfo, schedulingHandlers, upcomingSessions } from '@/mocks/scheduling'
+import {
+  bookingInfo,
+  germanSeries,
+  germanUpcoming,
+  oneOffSessions,
+  request as sessionRequest,
+  schedulingHandlers,
+  upcomingSessions,
+} from '@/mocks/scheduling'
 
 import {
   book,
+  cancelRuleText,
   civilDay,
   deadlineText,
   formatClock,
   getBooking,
+  groupSessions,
   isLateNow,
   isOpen,
   isSlotTaken,
   lateCounts,
   listSessions,
   requestCancel,
+  relativeDay,
   requestReschedule,
+  ruleText,
+  seriesIcsUrl,
+  sessionAttention,
   sessionIcsUrl,
   slotsByDay,
   uniqueStarts,
@@ -34,7 +48,7 @@ afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
 const session = (fields: Partial<ClientSession>): ClientSession => ({
-  ...upcomingSessions[1]!,
+  ...oneOffSessions[1]!,
   ...fields,
 })
 
@@ -145,5 +159,75 @@ describe('session helpers', () => {
     const { from, to } = weekRange(1, base)
     expect(from).toEqual(new Date(2026, 11, 7))
     expect(to).toEqual(new Date(2026, 11, 14))
+  })
+})
+
+describe('series', () => {
+  it('collapses a series into one group where its first session is', () => {
+    const groups = groupSessions(upcomingSessions)
+    const series = groups.filter((g) => g.kind === 'series')
+    expect(series).toHaveLength(1)
+    expect(series[0]!.kind === 'series' && series[0]!.sessions).toHaveLength(53)
+    expect(groups).toHaveLength(oneOffSessions.length + 1)
+    expect(groups[0]).toEqual({ kind: 'one', session: oneOffSessions[0] })
+    expect(groups[1]!.kind).toBe('series')
+  })
+
+  it('says the rule, the cancellation and the day in words', () => {
+    const tuesday = {
+      ...germanUpcoming[0]!,
+      starts_at: '2026-11-24T19:30:00Z',
+      ends_at: '2026-11-24T22:00:00Z',
+      deadline: '2026-11-23T19:30:00Z',
+    }
+    const rule = { ...germanSeries.recurrence!, by_day: ['TU'] }
+    expect(ruleText({ ...germanSeries, recurrence: rule }, tuesday)).toBe(
+      'Every Tuesday, 20:30–23:00',
+    )
+    expect(
+      ruleText(
+        { ...germanSeries, recurrence: { ...rule, by_day: ['TH', 'TU'], interval: 2 } },
+        tuesday,
+      ),
+    ).toBe('Every 2 weeks on Tuesday and Thursday, 20:30–23:00')
+    expect(ruleText({ ...germanSeries, recurrence: { ...rule, by_day: [] } }, tuesday)).toMatch(
+      /^Every Tuesday/,
+    )
+    expect(ruleText({ ...germanSeries, recurrence: { ...rule, freq: 'monthly' } }, tuesday)).toBe(
+      'Every month, 20:30–23:00',
+    )
+    expect(cancelRuleText(tuesday)).toBe('Free cancellation up to 24 hours before each session')
+    expect(cancelRuleText({ ...tuesday, deadline: null })).toBe('')
+    const now = new Date('2026-11-23T10:00:00Z')
+    expect(relativeDay('2026-11-23T20:00:00Z', 'Europe/Zurich', now)).toBe('Today')
+    expect(relativeDay('2026-11-24T19:30:00Z', 'Europe/Zurich', now)).toBe('Tomorrow')
+    expect(relativeDay('2026-11-26T19:30:00Z', 'Europe/Zurich', now)).toBe('Thu, 26 Nov 2026')
+    expect(seriesIcsUrl('sev_1')).toBe(`${S}/series/sev_1/ics`)
+  })
+
+  it('lists sessions waiting for the client once each', () => {
+    const now = new Date('2026-11-23T10:00:00Z')
+    const h = (n: number) => new Date(now.getTime() + n * 3_600_000).toISOString()
+    const at = (id: string, start: number, over: Partial<ClientSession> = {}) =>
+      session({ id, starts_at: h(start), ends_at: h(start + 1), deadline: h(start - 24), ...over })
+    const next = at('next', 30)
+    const closing = at('closing', 40)
+    const proposed = at('proposed', 200, {
+      request: sessionRequest({ id: 'r', kind: 'reschedule', status: 'proposed' }),
+    })
+    const cancelled = at('gone', 2, { status: 'cancelled_on_time' })
+    const far = at('far', 300)
+    expect(
+      sessionAttention([cancelled, next, closing, proposed, far], now).map((a) => [
+        a.session.id,
+        a.reason,
+      ]),
+    ).toEqual([
+      ['next', 'deadline'],
+      ['closing', 'deadline'],
+      ['proposed', 'proposal'],
+    ])
+    expect(sessionAttention([at('soon', 100), far], now).map((a) => a.reason)).toEqual(['next'])
+    expect(sessionAttention([at('later', 200)], now)).toEqual([])
   })
 })
