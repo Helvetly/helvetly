@@ -685,12 +685,18 @@ export function DocumentsPage() {
   }
 
   // ---- selection and keyboard ----
+  // A plain click opens the item (a file's preview, a folder); ⌘/Ctrl and Shift select, as does its checkbox.
   const onItemClick = (key: ItemKey, event: MouseEvent) => {
     setFocused(key)
+    // The second click of a double-click would land on whatever the opened folder shows there.
+    if (event.detail > 1) return
+    const shift = event.shiftKey
+    const toggle = event.metaKey || event.ctrlKey
+    if (!shift && !toggle) return openItem(key)
     setSelection(
       clickSelect(selection, key, order, {
-        shift: event.shiftKey,
-        toggle: event.metaKey || event.ctrlKey,
+        shift,
+        toggle,
       }),
     )
   }
@@ -1385,7 +1391,6 @@ export function DocumentsPage() {
                       onToggleAll={(all) =>
                         setSelection({ keys: new Set(all ? order : []), anchor: order[0] ?? null })
                       }
-                      onOpen={openItem}
                       onRenameDone={(key, name) => {
                         setRenaming(null)
                         surface.current?.focus()

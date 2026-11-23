@@ -131,7 +131,7 @@ export const KeyFiguresPeriod: Story = {
   render: () => <Dashboard />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // One view: no tabs, no "+" and no visible title; the greeting and the period filter lead the page.
+    // One view: no tabs, no "+" and no visible title; the greeting leads the page.
     await expect(await canvas.findByRole('heading', { name: 'Dashboard' })).toHaveClass('sr-only')
     await expect(canvas.queryByRole('navigation', { name: 'Views' })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('button', { name: 'Save a view' })).not.toBeInTheDocument()
@@ -142,6 +142,11 @@ export const KeyFiguresPeriod: Story = {
     // The button names the period and the dates the API resolved for it.
     const trigger = canvas.getByRole('button', { name: /^Period: This month/ })
     await waitFor(() => expect(trigger).toHaveTextContent('1 Oct – 8 Nov 2026'))
+    // It sits in the page's header, left of New invoice and as tall as it; not in the content.
+    const header = trigger.closest('header')
+    const newInvoice = within(header ?? canvasElement).getByRole('button', { name: 'New invoice' })
+    await expect(trigger.compareDocumentPosition(newInvoice)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    await expect(trigger.offsetHeight).toBe(newInvoice.offsetHeight)
 
     await userEvent.click(trigger)
     const body = within(canvasElement.ownerDocument.body)

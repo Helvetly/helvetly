@@ -269,6 +269,40 @@ async function selectTile(canvasElement: HTMLElement) {
   await expect(check).toBeChecked()
 }
 
+/** Sidebar counts are quiet figures in the document-number font, never pills. */
+export const SidebarCounts: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const nav = await body.findByRole('navigation', { name: 'Folders' }, { timeout: 8000 })
+    await waitFor(() => expect(nav.querySelectorAll('.font-code').length).toBeGreaterThan(0))
+    await expect(nav.querySelector('[data-slot=badge]')).toBeNull()
+  },
+}
+
+/** A plain click on a file opens its preview and selects nothing; its checkbox selects. */
+export const CardClickOpens: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const [name] = await body.findAllByText('Budget 2027.xlsx', {}, { timeout: 8000 })
+    if (!name) throw new Error('Budget 2027.xlsx is not shown')
+    await userEvent.click(name)
+    // The preview is the address's ?file=, as everywhere a file opens.
+    await waitFor(() => expect(url(canvasElement).get('file')).toBe('doc_3'))
+    await expect(body.queryAllByRole('checkbox', { checked: true })).toHaveLength(0)
+
+    const check = body.getByRole('checkbox', { name: 'Select Budget 2027.xlsx' })
+    await userEvent.click(check)
+    await expect(check).toBeChecked()
+    await expect(body.queryAllByRole('checkbox', { checked: true })).toHaveLength(1)
+  },
+}
+
+/** In the list a row's click opens the file too; the row's checkbox selects. */
+export const RowClickOpens: Story = {
+  ...CardClickOpens,
+  parameters: pageParameters('/documents', { layout: 'list' }),
+}
+
 const lockTip = "Managed by Helvetly: can't be renamed, moved or deleted"
 
 /** Helvetly's own folders carry a quiet lock, and their menu offers no rename, move or trash. */
@@ -984,11 +1018,12 @@ export const ViewsPresets: Story = {
       expect(panel.getByRole('button', { name: /Invoices by year/ })).toHaveTextContent('12'),
     )
     await expect(panel.getByRole('button', { name: /Receipts by year/ })).toHaveTextContent('6')
-    await expect(panel.getByRole('button', { name: /By client/ })).toHaveTextContent(
-      'Client · 2 clients',
-    )
-    await expect(panel.getByRole('button', { name: /Invoices by year/ })).toHaveTextContent(
-      'Type › Year · 12 files',
+    // A count is small figures in the document-number font; screen readers hear what it counts.
+    const byClient = panel.getByRole('button', { name: /By client/ })
+    await expect(byClient).toHaveAccessibleName(/2 clients/)
+    await expect(byClient.querySelector('.font-code')).toHaveTextContent('2')
+    await expect(panel.getByRole('button', { name: /Invoices by year/ })).toHaveAccessibleName(
+      /Type › Year.*12 files/,
     )
     await userEvent.click(panel.getByRole('button', { name: /Invoices by year/ }))
     await waitFor(() => expect(url(canvasElement).get('group')).toBe('type,year'))

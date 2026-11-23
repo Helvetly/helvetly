@@ -701,6 +701,7 @@ export const shellHandlers = [
   }),
   http.get('/api/v1/documents/:id/content', () => new HttpResponse(null, { status: 204 })),
   http.get('/api/v1/documents', () => HttpResponse.json(page(files))),
+  http.get('/api/v1/documents/:id', one(files)),
   http.get('/api/v1/templates', () => HttpResponse.json({ data: templates })),
   http.get('/api/v1/members/invitations', () => HttpResponse.json({ data: invitations })),
   http.get('/api/v1/members', () => HttpResponse.json({ data: members })),

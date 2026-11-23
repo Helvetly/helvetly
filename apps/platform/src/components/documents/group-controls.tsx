@@ -27,6 +27,8 @@ import {
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 
+import { Count } from './count'
+
 const DIM_NAMES: Record<GroupDim, string> = {
   type: translate('type'),
   year: translate('year'),
@@ -145,11 +147,15 @@ function SectionTitle({ id, children }: { id: string; children: React.ReactNode 
 function ViewRow({
   title,
   detail,
+  count,
+  countLabel,
   current,
   onClick,
 }: {
   title: string
   detail: string
+  count?: number
+  countLabel?: string
   current: boolean
   onClick: () => void
 }) {
@@ -165,18 +171,16 @@ function ViewRow({
         <span className="truncate text-sm text-foreground">{title}</span>
         <span className="truncate text-xs text-muted-foreground">{detail}</span>
       </span>
+      {!!count && <Count label={countLabel}>{count}</Count>}
     </button>
   )
 }
 
-function presetDetail(preset: ViewPreset, count: number | undefined) {
-  const path = groupingLabel(preset.group)
-  if (count === undefined || count === 0) return path
-  const amount =
-    preset.id === 'clients'
-      ? translate('groupingClients', { count })
-      : translate('groupFiles', { count })
-  return `${path} · ${amount}`
+/** A preset's count as words for screen readers: files, or clients for the client preset. */
+function presetCount(preset: ViewPreset, count: number) {
+  return preset.id === 'clients'
+    ? translate('groupingClients', { count })
+    : translate('groupFiles', { count })
 }
 
 /** Group by's popover: Folders (the default) or a ready grouping, a custom grouping's levels, and the reset. */
@@ -216,7 +220,9 @@ export function GroupByPanel({ view, counts, onPreset, onChange }: PanelProps) {
           <ViewRow
             key={preset.id}
             title={preset.label}
-            detail={presetDetail(preset, counts[preset.id])}
+            detail={groupingLabel(preset.group)}
+            count={counts[preset.id]}
+            countLabel={presetCount(preset, counts[preset.id] ?? 0)}
             current={inPreset(view, preset)}
             onClick={() => onPreset(preset)}
           />

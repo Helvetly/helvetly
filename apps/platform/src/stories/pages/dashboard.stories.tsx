@@ -61,6 +61,17 @@ export const WithData: Story = {
 }
 export const WithDataDark = dark(WithData)
 export const WithDataPhone = phone(WithData)
+/** On a phone the header's period button names only the period, without its dates. */
+export const PeriodPhone: Story = {
+  ...phone(WithData),
+  beforeEach: () => localStorage.removeItem('helvetly.dashboard.period'),
+  play: async () => {
+    const trigger = await body().findByRole('button', { name: /^Period:/ }, { timeout: 8000 })
+    await expect(trigger.closest('header')).not.toBeNull()
+    await waitFor(() => expect(trigger.innerText).toMatch(/This month/))
+    await expect(trigger.innerText).not.toMatch(/\d{4}/)
+  },
+}
 
 /** While the figures load each card holds its place; nothing jumps in later. */
 export const Loading: Story = {

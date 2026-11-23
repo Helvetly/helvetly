@@ -76,7 +76,6 @@ export type ItemsProps = {
   /** A checkbox adds the item to the selection or takes it out, as ⌘-click does. */
   onToggle: (key: ItemKey) => void
   onToggleAll: (all: boolean) => void
-  onOpen: (key: ItemKey) => void
   onRenameDone: (key: ItemKey, name: string | null) => void
   /** Before a context menu opens: make sure the item is part of the selection. */
   onContext: (key: ItemKey) => void
@@ -207,7 +206,6 @@ function useItem(
       },
       onDragEnd: endDrag,
       onClick: (event: MouseEvent) => props.onClick(key, event),
-      onDoubleClick: () => props.onOpen(key),
       onContextMenu: () => props.onContext(key),
       onPointerEnter: isFolder ? undefined : () => prefetch(key.slice('file:'.length)),
     },
@@ -345,7 +343,7 @@ function ItemCheck({
       aria-label={translate('select', { name: name })}
       checked={checked}
       onCheckedChange={() => props.onToggle(item)}
-      // Not the card's click (which replaces the selection), and never the start of a drag.
+      // Not the card's click (which opens it), and never the start of a drag.
       onClick={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.preventDefault()}
