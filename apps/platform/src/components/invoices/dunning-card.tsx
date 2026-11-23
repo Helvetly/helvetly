@@ -106,6 +106,11 @@ export function DunningCard({ invoice, canManage }: { invoice: Invoice; canManag
                     ? translate('by', { sent_by: notice.sent_by })
                     : translate('sentAutomatically')}
                 </span>
+                {!notice.confirmed && (
+                  <span className="text-xs break-words text-muted-foreground">
+                    {translate('reminderDeliveryUnconfirmed')}
+                  </span>
+                )}
               </span>
               <span className="shrink-0 text-right text-body-sm tabular-nums">
                 {formatMoney(notice.total, invoice.currency)}

@@ -1061,22 +1061,24 @@ export const ZipEmptyView: Story = {
   },
 }
 
-/** The bell's link (?zip=) downloads a ready ZIP, through the member's own download route. */
+/**
+ * The bell's link (?zip=) downloads a ready ZIP, through the member's own download route: found by its id, also
+ * when ten newer ones push it out of the list.
+ */
 export const ZipFromNotification: Story = {
   parameters: pageParameters('/documents', { zip: 'zip_1' }, [
-    http.get('/api/v1/documents/exports', () =>
+    http.get('/api/v1/documents/exports', () => HttpResponse.json({ data: [] })),
+    http.get('/api/v1/documents/exports/zip_1/status', () =>
       HttpResponse.json({
-        data: [
-          {
-            id: 'zip_1',
-            name: 'documents-invoices.zip',
-            status: 'ready',
-            files: 12,
-            bytes: 9_000_000,
-            created_at: '2026-11-23T10:00:00Z',
-            expires_at: '2026-11-30T10:00:00Z',
-          },
-        ],
+        data: {
+          id: 'zip_1',
+          name: 'documents-invoices.zip',
+          status: 'ready',
+          files: 12,
+          bytes: 9_000_000,
+          created_at: '2026-11-23T10:00:00Z',
+          expires_at: '2026-11-30T10:00:00Z',
+        },
       }),
     ),
   ]),
@@ -1087,6 +1089,29 @@ export const ZipFromNotification: Story = {
     await expect(link instanceof HTMLAnchorElement ? link.getAttribute('href') : '').toBe(
       '/api/v1/documents/exports/zip_1/download',
     )
+    clicks.mockRestore()
+    await waitFor(() => expect(url(canvasElement).has('zip')).toBe(false))
+  },
+}
+
+/** A link to a ZIP that is no longer kept says so, and downloads nothing. */
+export const ZipFromNotificationGone: Story = {
+  parameters: pageParameters('/documents', { zip: 'zip_old' }, [
+    http.get('/api/v1/documents/exports/zip_old/status', () =>
+      HttpResponse.json({ error: { code: 'not_found', message: 'Not found.' } }, { status: 404 }),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const clicks = catchDownloads()
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(
+      await body.findByText(
+        'This ZIP is no longer available. Download it again from Documents.',
+        {},
+        { timeout: 8000 },
+      ),
+    ).toBeInTheDocument()
+    await expect(clicks).not.toHaveBeenCalled()
     clicks.mockRestore()
     await waitFor(() => expect(url(canvasElement).has('zip')).toBe(false))
   },

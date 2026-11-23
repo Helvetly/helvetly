@@ -86,6 +86,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/documents/groups/zip", s.groupZip)
 	handle("POST /api/v1/documents/groups/zip", s.queueZip)
 	handle("GET /api/v1/documents/exports", s.zipExports)
+	handle("GET /api/v1/documents/exports/{id}/status", s.zipExport)
 	handle("GET /api/v1/documents/exports/{id}/download", s.downloadZip)
 	handle("GET /api/v1/documents/trash", s.trash)
 	handle("POST /api/v1/documents/trash/empty", s.emptyTrash)

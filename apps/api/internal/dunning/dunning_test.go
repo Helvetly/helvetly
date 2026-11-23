@@ -80,6 +80,8 @@ type fakeMailer struct {
 	sent  []mail.Message
 	fail  bool
 	delay time.Duration
+	// uncertain: the server took the message, then the connection dropped before it answered
+	uncertain bool
 }
 
 func (m *fakeMailer) Send(_ context.Context, msg mail.Message) error {
@@ -90,6 +92,9 @@ func (m *fakeMailer) Send(_ context.Context, msg mail.Message) error {
 		return errors.New("smtp down")
 	}
 	m.sent = append(m.sent, msg)
+	if m.uncertain {
+		return fmt.Errorf("smtp: %w: EOF", mail.ErrUncertain)
+	}
 	return nil
 }
 
@@ -353,8 +358,52 @@ func TestFailedSendIsRetried(t *testing.T) {
 	}
 	e.mail.fail = false
 	e.tickAt(11)
-	if st := e.status(b, id); len(st.Notices) != 1 {
+	if st := e.status(b, id); len(st.Notices) != 1 || !st.Notices[0].Confirmed {
 		t.Fatalf("the retry: %+v", st.Notices)
+	}
+	if n := e.sentNotifications(b.workspace); n != 1 {
+		t.Fatalf("announced %d times", n)
+	}
+}
+
+func (e *env) sentNotifications(ws string) int {
+	e.t.Helper()
+	var n int
+	if err := e.pool.QueryRow(context.Background(), `SELECT count(DISTINCT data->>'level') FROM notifications
+		WHERE workspace_id = $1 AND event = 'dunning.sent'`, ws).Scan(&n); err != nil {
+		e.t.Fatal(err)
+	}
+	return n
+}
+
+// TestUncertainSendIsNeverRepeated: a reminder the mail server may have taken (the connection dropped after the
+// message) stays recorded, unconfirmed and unannounced, and no run or "Send now" sends that step again (audit F07).
+func TestUncertainSendIsNeverRepeated(t *testing.T) {
+	e := newEnv(t)
+	b := e.ready(nil)
+	id := e.invoice(b, nil)
+	e.mail.uncertain = true
+	e.tickAt(10)
+	e.mail.uncertain = false
+	st := e.status(b, id)
+	if len(st.Notices) != 1 || st.Notices[0].Confirmed || len(e.mail.subjects()) != 1 {
+		t.Fatalf("after an unknown outcome: %+v, %d sent", st.Notices, len(e.mail.subjects()))
+	}
+	if n := e.sentNotifications(b.workspace); n != 0 {
+		t.Fatalf("announced %d times", n)
+	}
+	e.tickAt(10)
+	e.tickAt(11)
+	if got := e.status(b, id); len(got.Notices) != 1 || got.Notices[0].Level != 1 || len(e.mail.subjects()) != 1 {
+		t.Fatalf("the step went again: %+v, %d sent", got.Notices, len(e.mail.subjects()))
+	}
+
+	// by hand the next step goes; an unknown outcome says so
+	e.mail.uncertain = true
+	var out struct{ Error struct{ Code string } }
+	e.do(b, "POST", "/api/v1/invoices/"+id+"/dunning/send", nil, http.StatusBadGateway, &out)
+	if out.Error.Code != "delivery_uncertain" {
+		t.Fatalf("send now: %+v", out)
 	}
 }
 

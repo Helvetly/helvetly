@@ -195,6 +195,7 @@ func run() error {
 		return err
 	}
 	db.SetAdmission(billingSvc.AllowResource)
+	authSvc.APIRate = billingSvc.APIRate // the plan's API requests a minute, the catalogue's values
 	if businessMail != nil {
 		businessMail.Meter = billingSvc
 	}

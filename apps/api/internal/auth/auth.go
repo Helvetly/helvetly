@@ -46,7 +46,6 @@ type Service struct {
 	codeLimit    *rateLimiter // codes sent per client address
 	passkeyLimit *rateLimiter // passkey sign-in ceremonies per client address
 	factorLimit  *rateLimiter
-	tokenLimit   *rateLimiter // requests per API token
 
 	// BearerRoutes tells whether an API token may call the request's route, the resource its scopes must cover
 	// ("" for none) and whether the route writes (main sets it from the public catalogue). Nil: no route accepts a
@@ -55,6 +54,9 @@ type Service struct {
 	// BearerMember tells whether a token's person may still use the API in its workspace (main sets it from the
 	// members' "api" area), checked on every call. Nil: every member may.
 	BearerMember func(store.Session) bool
+	// APIRate is the workspace's plan's API token requests a minute, of writes or of reads (negative: unlimited); main
+	// sets it from the plan catalogue (billing). Nil: no limit.
+	APIRate func(ctx context.Context, workspaceID string, write bool) (int64, error)
 	// TokenResources are the resources an API token's scopes may name (the catalogue's tags in lower case).
 	TokenResources []string
 
@@ -82,7 +84,6 @@ func New(cfg config.Config, db *store.Store, log *slog.Logger) (*Service, error)
 		googleIssuer: "https://accounts.google.com",
 		codeLimit:    newRateLimiter(20, time.Hour), passkeyLimit: newRateLimiter(30, 10*time.Minute)}
 	s.factorLimit = newRateLimiter(10, 10*time.Minute)
-	s.tokenLimit = newRateLimiter(600, time.Minute)
 	if cfg.MailConfigured() {
 		s.mail = mail.NewSender(cfg.SMTP, cfg.PublicURL)
 	}

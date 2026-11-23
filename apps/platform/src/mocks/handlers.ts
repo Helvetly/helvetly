@@ -84,6 +84,7 @@ function dunningAction(id: string, action: DunningAction) {
         title: next.title,
         sent_at: new Date().toISOString(),
         sent_on: new Date().toISOString().slice(0, 10),
+        confirmed: true,
         open_amount: '1081.00',
         fee,
         interest: '0.00',

@@ -7,10 +7,15 @@ import (
 
 // TestSchedulingMigrations: 00051 gives every published offer scheduling (Pro and Business) and
 // scheduled_events_per_month (Basic 0, Pro 100, Business unlimited), publishes helvetly-v1.5 with both records last,
-// and 00052 adds the calendar tables; Down takes all of it back and Up works again.
+// and 00052 adds the calendar tables; Down takes all of it back and Up works again. Only this schema counts: a
+// neighbour on the same database (another test run's) has its own calendar tables (audit A05).
 func TestSchedulingMigrations(t *testing.T) {
 	ctx := context.Background()
 	p, pool := migrationProvider(t)
+	neighbour, _ := migrationProvider(t)
+	if _, err := neighbour.UpTo(ctx, 52); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := p.UpTo(ctx, 52); err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +42,7 @@ func TestSchedulingMigrations(t *testing.T) {
 		AND (document->'records'->-1->'values'->'pro'->>'value')::int = 100 AND jsonb_array_length(document->'records') = 72`); n != 1 {
 		t.Fatal("helvetly-v1.5 is not published with both records last")
 	}
-	if n := count(`SELECT count(*) FROM information_schema.tables WHERE table_name LIKE 'calendar\_%'`); n != 7 {
+	if n := count(`SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name LIKE 'calendar\_%'`); n != 7 {
 		t.Fatalf("%d calendar tables", n)
 	}
 	if _, err := p.DownTo(ctx, 50); err != nil {
@@ -46,8 +51,10 @@ func TestSchedulingMigrations(t *testing.T) {
 	if n := count(`SELECT count(*) FROM limits WHERE key IN ('scheduling', 'scheduled_events_per_month')`) +
 		count(`SELECT count(*) FROM limit_plans WHERE limit_key IN ('scheduling', 'scheduled_events_per_month')`) +
 		count(`SELECT count(*) FROM offer_versions WHERE id = 'helvetly-v1.5'`) +
-		count(`SELECT count(*) FROM information_schema.tables WHERE table_name LIKE 'scheduling\_%' OR table_name LIKE 'calendar\_%'`) +
-		count(`SELECT count(*) FROM information_schema.columns WHERE table_name = 'clients' AND column_name = 'time_zone'`); n != 0 {
+		count(`SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema()
+			AND (table_name LIKE 'scheduling\_%' OR table_name LIKE 'calendar\_%')`) +
+		count(`SELECT count(*) FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'clients'
+			AND column_name = 'time_zone'`); n != 0 {
 		t.Fatalf("%d left after Down", n)
 	}
 	if _, err := p.UpTo(ctx, 52); err != nil {

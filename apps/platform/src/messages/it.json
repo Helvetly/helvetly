@@ -2758,6 +2758,7 @@
   "sendFinalReminder": "Invia promemoria finale",
   "reminderSentTo": "A {email}",
   "sentAutomatically": " · automaticamente",
+  "reminderDeliveryUnconfirmed": "Invio non confermato: il server di posta potrebbe averlo accettato, quindi non viene inviato di nuovo.",
   "noAutomaticRemindersToPause": "Per questa fattura non partono promemoria automatici, quindi non c’è nulla da mettere in pausa. Puoi comunque inviarne uno a mano.",
   "pauseAutomaticReminders": "Ferma i promemoria automatici di questa fattura finché non riprendi.",
   "resumeAutomaticReminders": "Invia di nuovo i promemoria automatici di questa fattura.",

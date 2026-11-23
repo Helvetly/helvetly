@@ -50,27 +50,44 @@ const classCTE = `WITH RECURSIVE fwalk AS (
 // classJoins joins g (type, year, client) to documents d, after classCTE; zone is the parameter of the workspace's
 // time zone, in which a timestamp's year is read. The record a file belongs to decides first (an invoice or quote
 // whose PDF it is, an imported invoice's original, a receipt's expense, a signature's PDF), then its system folder,
-// then its tags (AI filing's), then its name; the year is the record's, the year folder's, else the upload's.
+// then its tags (AI filing's), then its name; the year is the record's, the year folder's, else the upload's. Each
+// way a record matches is its own branch, so every one is an index lookup per file, never a scan of the table (audit
+// A06; indexes of 00060).
 func classJoins(zone string) string {
 	return `LEFT JOIN fctx fx ON fx.id = d.folder_id
 	LEFT JOIN LATERAL (
 		SELECT c.kind, c.year, c.client FROM (
 			SELECT 1 AS p, CASE WHEN i.kind = 'credit_note' THEN 'credit_notes' ELSE 'invoices' END AS kind,
 				extract(year FROM i.issue_date)::int AS year, i.client_id AS client
-			FROM invoices i WHERE i.workspace_id = d.workspace_id AND (i.pdf_key = d.object_key OR i.source_document_id = d.id
-				OR i.id IN (SELECT l.target_id FROM document_links l WHERE l.document_id = d.id AND l.target_type = 'invoice'))
+			FROM invoices i WHERE i.workspace_id = d.workspace_id AND i.pdf_key = d.object_key
+			UNION ALL
+			SELECT 1, CASE WHEN i.kind = 'credit_note' THEN 'credit_notes' ELSE 'invoices' END, extract(year FROM i.issue_date)::int, i.client_id
+			FROM invoices i WHERE i.workspace_id = d.workspace_id AND i.source_document_id = d.id
+			UNION ALL
+			SELECT 1, CASE WHEN i.kind = 'credit_note' THEN 'credit_notes' ELSE 'invoices' END, extract(year FROM i.issue_date)::int, i.client_id
+			FROM document_links l JOIN invoices i ON i.id = l.target_id AND i.workspace_id = d.workspace_id
+			WHERE l.document_id = d.id AND l.target_type = 'invoice'
 			UNION ALL
 			SELECT 2, 'quotes', extract(year FROM t.issue_date)::int, t.client_id
-			FROM quotes t WHERE t.workspace_id = d.workspace_id AND (t.pdf_key = d.object_key
-				OR EXISTS (SELECT 1 FROM quote_revisions qr WHERE qr.quote_id = t.id AND qr.pdf_key = d.object_key))
+			FROM quotes t WHERE t.workspace_id = d.workspace_id AND t.pdf_key = d.object_key
+			UNION ALL
+			SELECT 2, 'quotes', extract(year FROM t.issue_date)::int, t.client_id
+			FROM quote_revisions qr JOIN quotes t ON t.id = qr.quote_id AND t.workspace_id = d.workspace_id
+			WHERE qr.pdf_key = d.object_key
 			UNION ALL
 			SELECT 3, 'receipts', extract(year FROM coalesce(e.document_date, (e.created_at AT TIME ZONE ` + zone + `::text)::date))::int, NULL
 			FROM document_links l JOIN expenses e ON e.id = l.target_id AND e.workspace_id = d.workspace_id
 			WHERE l.document_id = d.id AND l.target_type = 'expense'
 			UNION ALL
 			SELECT 4, 'contracts', extract(year FROM coalesce(s.completed_at, s.created_at) AT TIME ZONE ` + zone + `::text)::int, NULL
-			FROM signature_requests s WHERE s.workspace_id = d.workspace_id AND (s.document_id = d.id OR s.signed_document_id = d.id
-				OR s.id IN (SELECT l.target_id FROM document_links l WHERE l.document_id = d.id AND l.target_type = 'signature'))
+			FROM signature_requests s WHERE s.workspace_id = d.workspace_id AND s.document_id = d.id
+			UNION ALL
+			SELECT 4, 'contracts', extract(year FROM coalesce(s.completed_at, s.created_at) AT TIME ZONE ` + zone + `::text)::int, NULL
+			FROM signature_requests s WHERE s.workspace_id = d.workspace_id AND s.signed_document_id = d.id
+			UNION ALL
+			SELECT 4, 'contracts', extract(year FROM coalesce(s.completed_at, s.created_at) AT TIME ZONE ` + zone + `::text)::int, NULL
+			FROM document_links l JOIN signature_requests s ON s.id = l.target_id AND s.workspace_id = d.workspace_id
+			WHERE l.document_id = d.id AND l.target_type = 'signature'
 		) c ORDER BY c.p, c.year DESC NULLS LAST LIMIT 1) rec ON true
 	CROSS JOIN LATERAL (SELECT
 		coalesce(rec.kind, CASE fx.kind WHEN 'invoices' THEN 'invoices' WHEN 'quotes' THEN 'quotes' WHEN 'engagements' THEN 'engagements'
