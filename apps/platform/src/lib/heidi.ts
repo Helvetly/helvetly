@@ -5,11 +5,13 @@ import { request, respond } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { IMPORT_ACCEPT } from '@/lib/imports'
 import { STATUS_LABELS, type DisplayStatus } from '@/lib/invoices'
+import { STATUSES as SESSION_STATUSES, type Status as SessionStatus } from '@/lib/scheduling'
 
 export type HeidiAction =
   | { id: 'open_client'; client_id: string; label: string }
   | { id: 'open_engagement'; engagement_id: string; label: string }
   | { id: 'open_invoice'; invoice_id: string; label: string }
+  | { id: 'open_session'; occurrence_id: string; label: string }
   | { id: 'create_invoice'; label: string }
   | { id: 'list_overdue_invoices'; label: string }
   | { id: 'send_invoice'; invoice_id: string; label: string; subject: string }
@@ -38,6 +40,13 @@ export type HeidiRecord =
       title: string
       detail?: string
       progress?: { used: string; available: string; unit: string }
+    }
+  | {
+      kind: 'session'
+      id: string
+      title: string
+      detail?: string
+      status: SessionStatus
     }
 
 export const MAX_RECORDS = 20
@@ -201,6 +210,8 @@ function isAction(value: unknown): value is HeidiAction {
       return isString(value.engagement_id)
     case 'open_invoice':
       return isString(value.invoice_id)
+    case 'open_session':
+      return isString(value.occurrence_id)
     case 'send_invoice':
       return isString(value.invoice_id) && isString(value.subject)
     case 'create_invoice':
@@ -217,6 +228,8 @@ const isClientStatus = (value: unknown): value is (typeof CLIENT_STATUSES)[numbe
 const isDisplayStatus = (value: unknown): value is DisplayStatus =>
   isString(value) && Object.hasOwn(STATUS_LABELS, value)
 const isOptionalString = (value: unknown) => value === undefined || isString(value)
+const isSessionStatus = (value: unknown): value is SessionStatus =>
+  SESSION_STATUSES.some((status) => status === value)
 
 function toRecord(value: unknown): HeidiRecord | null {
   if (!isRecord(value) || !isString(value.id) || !isString(value.title)) return null
@@ -258,6 +271,10 @@ function toRecord(value: unknown): HeidiRecord | null {
         progress: { used: progress.used, available: progress.available, unit: progress.unit },
       }
     }
+    case 'session':
+      return isSessionStatus(value.status)
+        ? { kind: 'session', id, title, detail, status: value.status }
+        : null
     default:
       return null
   }
