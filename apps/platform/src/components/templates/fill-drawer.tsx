@@ -19,7 +19,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
@@ -99,11 +99,14 @@ export function FillTemplateDrawer({
   template: initialTemplate,
   client: initialClient,
   contract,
+  start = false,
   onClose,
 }: {
   template: Template | null
   client: Client | null
   contract?: ContractSource
+  /** The template was chosen already (the contract's first step): fill it straight away. */
+  start?: boolean
   onClose: () => void
 }) {
   const [step, setStep] = useState(0)
@@ -226,6 +229,16 @@ export function FillTemplateDrawer({
     }
     setStep(step + 1)
   }
+  // Chosen before this drawer opened: its first step is done, the fields are filled once.
+  const started = useRef(false)
+  const begin = useEffectEvent(() => {
+    if (started.current) return
+    started.current = true
+    void next()
+  })
+  useEffect(() => {
+    if (start) begin()
+  }, [start])
 
   const send = () => {
     setTried(true)
@@ -315,14 +328,12 @@ export function FillTemplateDrawer({
   if (placing) return <ContractSignDrawer documentId={placing} onClose={onClose} />
   return (
     <WizardSheet
-      icon={contract ? <Sparkles /> : <LayoutTemplate />}
+      icon={contract && ai.available ? <Sparkles /> : <LayoutTemplate />}
       title={
         step > 0 && title.trim()
           ? title.trim()
           : contract
-            ? ai.available
-              ? translate('createContractWithAI')
-              : translate('createContract')
+            ? translate('createContract')
             : translate('newDocumentFromATemplate')
       }
       steps={steps}

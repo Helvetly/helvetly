@@ -362,6 +362,11 @@ func (r *renderer) header(title string, meta [][2]string) float64 {
 // parties draws who bills (left) and who is billed (right, where a right-window envelope shows it) from y, each
 // under its bold heading; it returns the y below the longer column.
 func (r *renderer) parties(y float64, issuer, recipient store.Party) float64 {
+	return r.partiesUnder(y, r.l.BilledBy, r.l.BilledTo, issuer, recipient)
+}
+
+// partiesUnder: parties with its own two headings (a contract's "Contractor" and "Client").
+func (r *renderer) partiesUnder(y float64, leftHeading, rightHeading string, issuer, recipient store.Party) float64 {
 	const colW, rightX = 80.0, 110.0
 	column := func(x float64, heading string, p store.Party, extra []string) float64 {
 		r.set("B", 10.5)
@@ -395,7 +400,7 @@ func (r *renderer) parties(y float64, issuer, recipient store.Party) float64 {
 	if v := r.vatNumber(recipient.VATNumber); v != "" {
 		buyerInfo = append(buyerInfo, v)
 	}
-	return max(column(left, r.l.BilledBy, issuer, info), column(rightX, r.l.BilledTo, recipient, buyerInfo))
+	return max(column(left, leftHeading, issuer, info), column(rightX, rightHeading, recipient, buyerInfo))
 }
 
 // contactLine joins the issuer's email and phone for the footer: "info@muster.ch · +41 44 123 45 67".

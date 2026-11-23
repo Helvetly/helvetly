@@ -272,7 +272,7 @@ export function quoteActions({
       id: 'contract',
       group: 'create',
       ...(contract.ai
-        ? { tone: 'ai' as const, icon: <HeidiSparkle />, label: translate('createContractWithAI') }
+        ? { tone: 'ai' as const, icon: <HeidiSparkle />, label: translate('createContract') }
         : { icon: <ScrollText />, label: translate('createContract') }),
       disabledReason: contract.lock?.hint,
       extra: contract.lock && <PlanTag lock={contract.lock} />,

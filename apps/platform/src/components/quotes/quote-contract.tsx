@@ -16,14 +16,14 @@ import { useAI } from '@/lib/ai'
 import { useClient } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import type { Quote } from '@/lib/quotes'
-import { useQuoteContracts, type Generated } from '@/lib/templates'
+import { useQuoteContracts, type Generated, type Template } from '@/lib/templates'
 
 const documentHref = (id: string) => `/documents?${new URLSearchParams({ file: id })}`
 
 /**
- * "Create contract with AI": written by the AI from the quote (alone or after an example contract), or a template
- * filled from it; then the numbered contract is filed in the client's Contracts folder. The toast offers sending it
- * for signature and opening it.
+ * "Create contract": written by the AI from the quote (alone or after an example contract), an example used as it
+ * is, or a template filled from it; then the numbered contract is filed in the client's Contracts folder. The toast
+ * offers sending it for signature and opening it.
  */
 export function ContractFlow({
   quote,
@@ -39,7 +39,7 @@ export function ContractFlow({
   const client = useClient(quote.client.id).data ?? null
   // Without AI on the installation "Create contract" fills a template.
   const ai = useAI()
-  const [fromTemplate, setFromTemplate] = useState(false)
+  const [template, setTemplate] = useState<Template | null>(null)
 
   const made = (data: Generated) => {
     const number = data.contract_number ?? data.document.name
@@ -58,19 +58,24 @@ export function ContractFlow({
   }
 
   if (!client) return null
-  if (!fromTemplate && ai.available)
+  if (!template && ai.available)
     return (
       <ContractWriter
         quote={quote}
         client={client}
-        onTemplate={() => setFromTemplate(true)}
+        onTemplate={setTemplate}
         onMade={made}
+        onPlace={(data) => {
+          toast.success(translate('savedToDocuments', { name: data.document.name }))
+          onSign(data.document.id)
+        }}
         onClose={onClose}
       />
     )
   return (
     <FillTemplateDrawer
-      template={null}
+      template={template}
+      start={template !== null}
       client={client}
       contract={{ quoteId: quote.id, quoteNumber: quote.number, onMade: made }}
       onClose={onClose}

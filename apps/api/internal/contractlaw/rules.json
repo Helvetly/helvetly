@@ -1,0 +1,364 @@
+{
+  "disclaimer": "Common contract standards for drafting, not legal advice. Statutes are cited only from this file; re-check each source before relying on it.",
+  "checked_at": "2026-11-23",
+  "families": {
+    "CH": {
+      "page": "A4",
+      "party_id": "UID",
+      "formats": {
+        "de": { "date": "02.01.2006", "group": "'", "decimal": "." },
+        "fr": { "date": "02.01.2006", "group": "'", "decimal": "." },
+        "it": { "date": "02.01.2006", "group": "'", "decimal": "." },
+        "en": { "date": "02.01.2006", "group": "'", "decimal": "." }
+      }
+    },
+    "EU": {
+      "page": "A4",
+      "party_id": "VAT ID",
+      "formats": {
+        "de": { "date": "02.01.2006", "group": ".", "decimal": "," },
+        "fr": { "date": "02/01/2006", "group": " ", "decimal": "," },
+        "it": { "date": "02/01/2006", "group": ".", "decimal": "," },
+        "en": { "date": "02/01/2006", "group": ",", "decimal": "." }
+      }
+    },
+    "US": {
+      "page": "Letter",
+      "party_id": "EIN",
+      "formats": {
+        "de": { "date": "01/02/2006", "group": ",", "decimal": "." },
+        "fr": { "date": "01/02/2006", "group": ",", "decimal": "." },
+        "it": { "date": "01/02/2006", "group": ",", "decimal": "." },
+        "en": { "date": "01/02/2006", "group": ",", "decimal": "." }
+      }
+    }
+  },
+  "statutes": [
+    {
+      "id": "ch_or",
+      "family": "CH",
+      "acts": ["OR", "CO", "Swiss Code of Obligations"],
+      "refs": []
+    },
+    { "id": "ch_or_14", "family": "CH", "refs": ["Art. 14 OR", "Art. 14 CO"] },
+    { "id": "ch_or_40a", "family": "CH", "refs": ["Art. 40a OR", "Art. 40a CO"] },
+    { "id": "ch_or_100", "family": "CH", "refs": ["Art. 100 OR", "Art. 100 CO"] },
+    { "id": "ch_or_104", "family": "CH", "refs": ["Art. 104 OR", "Art. 104 CO"] },
+    { "id": "ch_or_404", "family": "CH", "refs": ["Art. 404 OR", "Art. 404 CO"] },
+    {
+      "id": "ch_zpo_32",
+      "family": "CH",
+      "acts": ["ZPO", "CPC"],
+      "refs": ["Art. 32 ZPO", "Art. 32 CPC"]
+    },
+    {
+      "id": "ch_dsg",
+      "family": "CH",
+      "acts": [
+        "DSG",
+        "revDSG",
+        "nDSG",
+        "FADP",
+        "revFADP",
+        "LPD",
+        "nLPD",
+        "Federal Act on Data Protection"
+      ],
+      "refs": []
+    },
+    { "id": "ch_zertes", "family": "CH", "acts": ["ZertES", "SCSE"], "refs": [] },
+    { "id": "ch_mwstg", "family": "CH", "acts": ["MWSTG", "LTVA", "LIVA", "VAT Act"], "refs": [] },
+    { "id": "eu_late_payment", "family": "EU", "refs": ["Directive 2011/7/EU"] },
+    { "id": "eu_consumer_rights", "family": "EU", "refs": ["Directive 2011/83/EU"] },
+    {
+      "id": "eu_vat",
+      "family": "EU",
+      "refs": ["Directive 2006/112/EC", "Art. 196 Directive 2006/112/EC"]
+    },
+    {
+      "id": "eu_gdpr",
+      "family": "EU",
+      "acts": ["GDPR", "DSGVO", "RGPD", "General Data Protection Regulation"],
+      "refs": ["Regulation (EU) 2016/679"]
+    },
+    {
+      "id": "eu_eidas",
+      "family": "EU",
+      "acts": ["eIDAS"],
+      "refs": ["Regulation (EU) No 910/2014", "Regulation (EU) 910/2014"]
+    },
+    {
+      "id": "eu_rome_i",
+      "family": "EU",
+      "acts": ["Rome I"],
+      "refs": ["Regulation (EC) No 593/2008", "Regulation (EC) 593/2008", "Art. 6 Rome I"]
+    },
+    {
+      "id": "eu_brussels_i",
+      "family": "EU",
+      "acts": ["Brussels I bis", "Brussels Ia"],
+      "refs": [
+        "Regulation (EU) No 1215/2012",
+        "Regulation (EU) 1215/2012",
+        "Art. 18 Brussels I bis"
+      ]
+    },
+    {
+      "id": "us_esign",
+      "family": "US",
+      "acts": ["ESIGN", "E-SIGN", "ESIGN Act"],
+      "refs": ["15 U.S.C. § 7001"]
+    },
+    {
+      "id": "us_ueta",
+      "family": "US",
+      "acts": ["UETA", "Uniform Electronic Transactions Act"],
+      "refs": []
+    },
+    {
+      "id": "us_ccpa",
+      "family": "US",
+      "acts": ["CCPA", "CPRA", "California Consumer Privacy Act"],
+      "refs": []
+    }
+  ],
+  "clauses": [
+    {
+      "id": "parties",
+      "heading": { "en": "Parties", "de": "Vertragsparteien", "fr": "Parties", "it": "Parti" },
+      "points": {
+        "CH": "Name both parties as the app prints them (the contractor and the client, with UID CHE-… where they have one) and call them Contractor and Client from then on.",
+        "EU": "Name both parties as the app prints them (with VAT ID or registration number where they have one) and call them Contractor and Client from then on.",
+        "US": "Name both parties as the app prints them (an EIN is optional) and call them Contractor and Client from then on."
+      }
+    },
+    {
+      "id": "subject",
+      "heading": {
+        "en": "Subject and scope",
+        "de": "Gegenstand und Umfang",
+        "fr": "Objet et étendue",
+        "it": "Oggetto e portata"
+      },
+      "points": {
+        "*": "What the contractor delivers, by reference to the table of services and prices; what is not included."
+      }
+    },
+    {
+      "id": "price",
+      "heading": {
+        "en": "Fees, currency and taxes",
+        "de": "Vergütung, Währung und Steuern",
+        "fr": "Rémunération, monnaie et taxes",
+        "it": "Compenso, valuta e imposte"
+      },
+      "points": {
+        "CH": "Fees in the quote's currency as in the table; Swiss VAT (MWST) as shown there when the contractor is registered for VAT, else no VAT is charged.",
+        "EU": "Fees in the quote's currency as in the table; VAT as shown there under the law of the contractor's member state.",
+        "US": "Fees in the quote's currency as in the table; sales tax, where it applies to the services, is added as required by state law and paid by the client."
+      }
+    },
+    {
+      "id": "price",
+      "when": { "b2b": true, "cross_border_eu": true },
+      "statutes": { "EU": ["eu_vat"] },
+      "points": {
+        "EU": "Cross-border B2B services within the EU: the invoice carries no VAT, the client accounts for it under the reverse charge (Art. 196 Directive 2006/112/EC); both parties' VAT IDs are named."
+      }
+    },
+    {
+      "id": "payment",
+      "heading": {
+        "en": "Payment terms and late payment",
+        "de": "Zahlungsbedingungen und Verzug",
+        "fr": "Conditions de paiement et retard",
+        "it": "Condizioni di pagamento e ritardo"
+      },
+      "statutes": { "CH": ["ch_or_104"], "EU": ["eu_late_payment"] },
+      "points": {
+        "CH": "Payment within the quote's terms or the payment schedule. A client in default owes default interest of 5% a year (Art. 104 OR) unless another rate is agreed.",
+        "EU": "Payment within the quote's terms or the payment schedule. Late payment: interest at the statutory rate of the member state.",
+        "US": "Payment within the quote's terms or the payment schedule. Late payments bear interest only as agreed and as permitted by state law."
+      }
+    },
+    {
+      "id": "payment",
+      "when": { "b2b": true },
+      "points": {
+        "EU": "Between businesses (Directive 2011/7/EU): statutory interest of at least the central bank's reference rate plus eight percentage points and a fixed compensation of EUR 40 for recovery costs."
+      }
+    },
+    {
+      "id": "term",
+      "heading": {
+        "en": "Term and termination",
+        "de": "Dauer und Beendigung",
+        "fr": "Durée et résiliation",
+        "it": "Durata e risoluzione"
+      },
+      "points": {
+        "CH": "Start and end of the contract (until the services are delivered, or the schedule's dates); termination for cause.",
+        "EU": "Start and end of the contract; termination for cause and, where the services run over time, a notice period stated in the facts or the wishes.",
+        "US": "Start and end of the contract; termination for material breach with a cure period, and termination for convenience only where the wishes say so."
+      }
+    },
+    {
+      "id": "term",
+      "when": { "sessions": true },
+      "statutes": { "CH": ["ch_or_404"] },
+      "points": {
+        "CH": "Coaching, lessons and similar mandates: either party may terminate at any time (Art. 404 OR); a party terminating at an inopportune time compensates the other's resulting damage. Sessions held are paid."
+      }
+    },
+    {
+      "id": "cancellation",
+      "when": { "sessions": true },
+      "heading": {
+        "en": "Cancellation of sessions",
+        "de": "Absage von Terminen",
+        "fr": "Annulation des séances",
+        "it": "Annullamento delle sedute"
+      },
+      "points": {
+        "*": "The cancellation policy exactly as the facts give it: the notice in hours, whether late cancellations and no-shows are charged."
+      }
+    },
+    {
+      "id": "duties",
+      "heading": {
+        "en": "Duties of the parties",
+        "de": "Pflichten der Parteien",
+        "fr": "Obligations des parties",
+        "it": "Obblighi delle parti"
+      },
+      "points": {
+        "*": "The contractor's care and diligence; the client's cooperation, information and access the services need."
+      }
+    },
+    {
+      "id": "liability",
+      "heading": {
+        "en": "Liability",
+        "de": "Haftung",
+        "fr": "Responsabilité",
+        "it": "Responsabilità"
+      },
+      "statutes": { "CH": ["ch_or_100"] },
+      "points": {
+        "CH": "Liability limited as far as the law allows: liability for intent and gross negligence cannot be excluded (Art. 100 OR); limit liability for slight negligence and exclude indirect damage.",
+        "EU": "Liability limited as far as the applicable law allows: never for intent, gross negligence or injury to life, body or health; limit liability for slight negligence to foreseeable damage.",
+        "US": "Liability capped at the fees paid under the contract and consequential damages excluded, to the extent permitted by applicable law; no limitation for fraud or wilful misconduct."
+      }
+    },
+    {
+      "id": "data",
+      "heading": {
+        "en": "Confidentiality and data protection",
+        "de": "Vertraulichkeit und Datenschutz",
+        "fr": "Confidentialité et protection des données",
+        "it": "Riservatezza e protezione dei dati"
+      },
+      "statutes": { "CH": ["ch_dsg"], "EU": ["eu_gdpr"], "US": ["us_ccpa"] },
+      "points": {
+        "CH": "Confidentiality of what the parties learn; personal data processed only for the contract under the Swiss Federal Act on Data Protection (revDSG / FADP).",
+        "EU": "Confidentiality of what the parties learn; personal data processed only for the contract under the GDPR (Regulation (EU) 2016/679).",
+        "US": "Confidentiality of what the parties learn; personal information handled under the applicable state privacy laws (such as the CCPA where it applies)."
+      }
+    },
+    {
+      "id": "withdrawal",
+      "when": { "b2c": true, "distance": true },
+      "heading": {
+        "en": "Right of withdrawal",
+        "de": "Widerrufsrecht",
+        "fr": "Droit de rétractation",
+        "it": "Diritto di recesso"
+      },
+      "statutes": { "EU": ["eu_consumer_rights"] },
+      "points": {
+        "EU": "The consumer may withdraw within 14 days of the contract's conclusion without giving reasons (Directive 2011/83/EU), with the model withdrawal information: how to declare it (a clear statement to the contractor's address or email) and its effects (payments refunded within 14 days). When the client expressly asks that the services start within the withdrawal period, the client acknowledges losing the right once the services are fully performed and pays a proportionate amount for what was provided until withdrawal."
+      }
+    },
+    {
+      "id": "withdrawal",
+      "when": { "b2c": true },
+      "heading": {
+        "en": "Right of withdrawal",
+        "de": "Widerrufsrecht",
+        "fr": "Droit de révocation",
+        "it": "Diritto di revoca"
+      },
+      "statutes": { "CH": ["ch_or_40a"] },
+      "points": {
+        "CH": "Swiss law grants no general right of withdrawal; only a contract concluded at the client's home or workplace, in public transport or similar (door-to-door, Art. 40a OR) may be revoked within 14 days. Say so plainly."
+      }
+    },
+    {
+      "id": "law",
+      "heading": {
+        "en": "Governing law and jurisdiction",
+        "de": "Anwendbares Recht und Gerichtsstand",
+        "fr": "Droit applicable et for",
+        "it": "Diritto applicabile e foro"
+      },
+      "points": {
+        "CH": "Swiss law applies. Place of jurisdiction: the contractor's seat.",
+        "EU": "The law of {law} applies. Place of jurisdiction: the contractor's seat.",
+        "US": "The laws of the State of {law} govern, without regard to conflict-of-laws rules. Venue: the courts of the contractor's county."
+      }
+    },
+    {
+      "id": "law",
+      "when": { "b2c": true },
+      "statutes": { "CH": ["ch_zpo_32"], "EU": ["eu_rome_i", "eu_brussels_i"] },
+      "points": {
+        "CH": "For a consumer: the consumer may sue at their own domicile or the contractor's seat, and is sued only at their domicile (Art. 32 ZPO).",
+        "EU": "For a consumer: the choice of law does not take away the protection of the mandatory law of the consumer's habitual residence (Art. 6 Rome I), and the consumer is sued only at their domicile (Brussels I bis).",
+        "US": "For a consumer: venue in the consumer's county of residence where state law requires it."
+      }
+    },
+    {
+      "id": "language",
+      "heading": {
+        "en": "Contract language",
+        "de": "Vertragssprache",
+        "fr": "Langue du contrat",
+        "it": "Lingua del contratto"
+      },
+      "points": {
+        "*": "The contract is concluded in {language}; a translation is for convenience only and this version prevails."
+      }
+    },
+    {
+      "id": "esign",
+      "heading": {
+        "en": "Form and electronic signature",
+        "de": "Form und elektronische Unterschrift",
+        "fr": "Forme et signature électronique",
+        "it": "Forma e firma elettronica"
+      },
+      "statutes": {
+        "CH": ["ch_or_14", "ch_zertes"],
+        "EU": ["eu_eidas"],
+        "US": ["us_esign", "us_ueta"]
+      },
+      "points": {
+        "CH": "Amendments and additions need text form (email suffices) unless the law requires written form. The parties accept a simple electronic signature; where the law requires written form, only a qualified electronic signature under ZertES equals a handwritten one (Art. 14 OR).",
+        "EU": "Amendments and additions need text form (email suffices). An electronic signature is not denied legal effect for being electronic (eIDAS, Regulation (EU) No 910/2014).",
+        "US": "Amendments must be in writing signed by both parties. Electronic signatures and records are valid and enforceable under the ESIGN Act (15 U.S.C. § 7001) and the UETA as adopted by the state."
+      }
+    },
+    {
+      "id": "final",
+      "heading": {
+        "en": "Final provisions",
+        "de": "Schlussbestimmungen",
+        "fr": "Dispositions finales",
+        "it": "Disposizioni finali"
+      },
+      "points": {
+        "*": "Entire agreement (this contract with the quote is the whole agreement and replaces earlier ones); severability (an invalid provision is replaced by a valid one closest to its purpose, the rest stays valid)."
+      }
+    }
+  ]
+}

@@ -92,7 +92,8 @@ func TestContractWriteModes(t *testing.T) {
 			return obj{"mode": "ai", "instructions": "6-month private course, monthly instalments"}
 		}, "de", func(t *testing.T, r aimodel.Request) {
 			for _, want := range []string{"quote.number: 2026/Q/001", "quote.total: CHF 5'405.00", "client.name: Müller AG",
-				"client.uid: CHE-123.456.789 MWST", "Website", "contract.date: ", "<wishes>\n6-month private course, monthly instalments\n</wishes>"} {
+				"client.uid: CHE-123.456.789 MWST", "Website", "contract.date: ", "<wishes>\n6-month private course, monthly instalments\n</wishes>",
+				"<law>\ngoverning law:", "required outline, in this order", "statutes you may cite"} {
 				if !strings.Contains(r.Message, want) {
 					t.Errorf("message lacks %q:\n%s", want, r.Message)
 				}
@@ -103,8 +104,8 @@ func TestContractWriteModes(t *testing.T) {
 			if strings.Contains(r.Message, "cancellation.") {
 				t.Error("a quote without sessions gets no cancellation policy")
 			}
-			for _, want := range []string{"the app adds none. Decide which clauses it needs, how many and in what order",
-				"As guidance, a services agreement usually covers"} {
+			for _, want := range []string{"the app adds none", "Follow the required outline in <law>: one clause per item, in its order",
+				"Cite a statute only when the outline's points cite it, and only as written in <law>"} {
 				if !strings.Contains(r.Instructions, want) {
 					t.Errorf("instructions lack %q:\n%s", want, r.Instructions)
 				}
@@ -116,7 +117,8 @@ func TestContractWriteModes(t *testing.T) {
 			if len(r.Files) != 1 || r.Files[0].ContentType != "application/pdf" || !bytes.HasPrefix(r.Files[0].Bytes, []byte("%PDF")) {
 				t.Errorf("the example is attached: %+v", r.Files)
 			}
-			if !strings.Contains(r.Instructions, "Write in French") || !strings.Contains(r.Instructions, "never copy any of them from the example") ||
+			if !strings.Contains(r.Instructions, "Write in French") || !strings.Contains(r.Instructions, "keep its content, structure") ||
+				!strings.Contains(r.Instructions, "Replace only what must come from this client and this quote") ||
 				!strings.Contains(r.Message, "<example>") {
 				t.Errorf("example request: %s\n%s", r.Instructions, r.Message)
 			}
@@ -344,7 +346,7 @@ func TestContractCreate(t *testing.T) {
 	// printed with its number, the quote's total and the reviewed text
 	doc := e.mustDoc(b, first.Data.Document.ID)
 	pdf := e.files.objects[doc.ObjectKey]
-	for _, want := range []string{"Vertragsnummer: " + want1, "CHF 5'405.00", "1. Gegenstand", "Unterschriften", "Müller AG"} {
+	for _, want := range []string{"Vertrag " + want1, "CHF 5'405.00", "Gegenstand", "Unterschriften", "Müller AG"} {
 		if !bytes.Contains(pdf, utf16be(want)) {
 			t.Errorf("the PDF lacks %q", want)
 		}
@@ -364,10 +366,14 @@ func TestContractCreate(t *testing.T) {
 		strings.Contains(strings.ToLower(string(sections)), `"logo"`) {
 		t.Fatalf("sections: %s", sections)
 	}
-	// each party signs in its box of the signature block, on the last page
+	// each party signs in its box of the signature block, on the last page, and the client dates it
 	if n := e.count(`SELECT count(*) FROM signature_fields f JOIN signature_requests r ON r.id = f.request_id
 		WHERE r.id = $1 AND f.kind = 'signature' AND f.page = 1 AND f.y > 0.3`, *second.Data.SignatureRequestID); n != 2 {
 		t.Fatalf("signature fields: %d", n)
+	}
+	if n := e.count(`SELECT count(*) FROM signature_fields f JOIN signature_requests r ON r.id = f.request_id
+		WHERE r.id = $1 AND f.kind = 'date' AND f.x > 0.5`, *second.Data.SignatureRequestID); n != 1 {
+		t.Fatalf("client date fields: %d", n)
 	}
 
 	// refused before a number is taken

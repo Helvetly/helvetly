@@ -1,15 +1,17 @@
-import { sendProblem, toSections, warningText } from './contract-writer'
+import { sendProblem, stagesFor, toSections, warningText } from './contract-writer'
 
 test('the draft goes to the API without its row keys', () => {
   const draft = {
     title: 'Werkvertrag',
     language: 'de' as const,
+    governing_law: 'CH',
     intro: '',
     clauses: [{ heading: 'Gegenstand', body: 'Holzbau.', key: 'section-1' }],
   }
   expect(toSections(draft)).toEqual({
     title: 'Werkvertrag',
     language: 'de',
+    governing_law: 'CH',
     intro: '',
     clauses: [{ heading: 'Gegenstand', body: 'Holzbau.' }],
   })
@@ -49,4 +51,16 @@ test('warnings name what to check', () => {
     '01.01.2031 is not a date of the quote.',
   )
   expect(warningText({ clause: 2, kind: 'personal_data', text: 'a@b.ch' })).toMatch(/a@b\.ch/)
+  expect(warningText({ clause: 3, kind: 'statute', text: '§ 280 BGB' })).toMatch(
+    /§ 280 BGB is not a statute/,
+  )
+})
+
+test.each([
+  ['ai', false, ['way', 'instructions', 'review', 'send']],
+  ['example', false, ['way', 'instructions', 'review', 'send']],
+  ['example', true, ['way', 'instructions', 'send']],
+  ['template', false, ['way']],
+] as const)('%s (as is: %s) takes the steps %j', (mode, asIs, stages) => {
+  expect(stagesFor(mode, asIs)).toEqual(stages)
 })

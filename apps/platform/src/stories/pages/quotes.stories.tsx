@@ -890,7 +890,7 @@ export const Filters: Story = {
 
 /**
  * A sent quote's "…" in groups (view · send · status · edit · create), separated; Accept reads green, Decline red, and
- * "Create contract with AI" sits with Create invoice under Create.
+ * "Create contract" sits with Create invoice under Create.
  */
 export const RowMenuGroups: Story = {
   play: async (context) => {
@@ -906,7 +906,7 @@ export const RowMenuGroups: Story = {
       node.getAttribute('role') === 'separator' ? '|' : (node.textContent ?? '').trim(),
     )
     await expect(order.join(', ')).toContain(
-      'Open details, Download PDF, |, Send again, |, Accept, Decline, |, Revise, Duplicate, |, Create contract with AI',
+      'Open details, Download PDF, |, Send again, |, Accept, Decline, |, Revise, Duplicate, |, Create contract',
     )
     const accept = within(menu).getByRole('menuitem', { name: 'Accept' })
     const decline = within(menu).getByRole('menuitem', { name: 'Decline' })
@@ -1007,7 +1007,32 @@ const written = {
 }
 /** The modes the AI was asked in, e.g. "ai" or "example:doc_example". */
 let writes: string[] = []
+/** The last contract made, as sent. */
+let created: Record<string, unknown> | null = null
+/** Whether you have a stored signature for contracts. */
+let signatureStored = false
 const contractHandlers: RequestHandler[] = [
+  http.get('/api/v1/quotes/quo_sent/contract-law', () =>
+    HttpResponse.json({
+      data: {
+        default: { code: 'CH', name: 'Switzerland', family: 'CH' },
+        options: [
+          { code: 'CH', name: 'Switzerland', family: 'CH' },
+          { code: 'DE', name: 'Germany', family: 'EU' },
+          { code: 'US-CA', name: 'California', family: 'US' },
+        ],
+        b2c: false,
+      },
+    }),
+  ),
+  http.get('/api/v1/account/contract-signature', () =>
+    HttpResponse.json({
+      data: { has_image: signatureStored, place: '', default_place: 'Zürich' },
+    }),
+  ),
+  http.get('/api/v1/account/contract-signature/image', () =>
+    HttpResponse.text('', { status: 404 }),
+  ),
   http.get('/api/v1/templates', () =>
     HttpResponse.json({ data: [otherTemplate, contractTemplate] }),
   ),
@@ -1070,8 +1095,15 @@ const contractHandlers: RequestHandler[] = [
     }),
   ),
   http.post('/api/v1/quotes/quo_sent/contracts', async ({ request }) => {
-    const sent = (await request.json()) as { title: string; clauses: { heading: string }[] }
-    if (sent.title !== 'Werkvertrag Holzbau' || sent.clauses.length !== 2)
+    const sent = (await request.json()) as {
+      title: string
+      as_is?: boolean
+      clauses?: { heading: string }[]
+    }
+    created = sent
+    if (!sent.as_is && sent.title !== 'Werkvertrag Holzbau' && sent.title !== 'Werkvertrag')
+      return HttpResponse.json({ error: { code: 'bad', message: 'Wrong body.' } }, { status: 400 })
+    if (!sent.as_is && sent.clauses?.length !== 2)
       return HttpResponse.json({ error: { code: 'bad', message: 'Wrong body.' } }, { status: 400 })
     return HttpResponse.json(
       {
@@ -1102,7 +1134,7 @@ const contractHandlers: RequestHandler[] = [
 ]
 
 /**
- * "Create contract with AI" from a row: the most recently used template first, the quote fills its fields (the
+ * "Create contract" from a row: the most recently used template first, the quote fills its fields (the
  * AI's marked), then the numbered contract is saved and the toast names its number.
  */
 export const ContractFromQuote: Story = {
@@ -1115,17 +1147,18 @@ export const ContractFromQuote: Story = {
     await userEvent.click(
       body.getByRole('button', { name: 'Actions for Q-2026-004 · Keller Holzbau AG' }),
     )
-    await userEvent.click(await body.findByRole('menuitem', { name: 'Create contract with AI' }))
-    const writer = await body.findByRole('dialog', { name: /Create contract with AI/ }, wait)
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Create contract' }))
+    const writer = await body.findByRole('dialog', { name: /Create contract/ }, wait)
+    // the template is picked in the first step, right under its option
     await userEvent.click(within(writer).getByRole('button', { name: /Fill a template/ }))
-    await userEvent.click(within(writer).getByRole('button', { name: 'Next' }))
-    const drawer = await body.findByRole('dialog', { name: /Create contract with AI/ }, wait)
-    const list = await within(drawer).findByLabelText('Templates', {}, wait)
+    const list = await within(writer).findByLabelText('Templates', {}, wait)
     const rows = await within(list).findAllByRole('button')
     await expect(rows[0]).toHaveTextContent('Service contract')
-    await expect(within(drawer).queryByRole('searchbox', { name: 'Search clients' })).toBeNull()
+    await expect(within(writer).queryByRole('searchbox', { name: 'Search clients' })).toBeNull()
     await userEvent.click(rows[0] as HTMLElement)
-    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await userEvent.click(within(writer).getByRole('button', { name: 'Next' }))
+    // filled from the quote at once: the drawer is titled after the contract
+    const drawer = await body.findByRole('dialog', { name: /Keller Holzbau AG/ }, wait)
 
     const start = await within(drawer).findByRole('textbox', { name: /Start of work/ }, wait)
     await expect(start).toHaveValue('01.12.2026')
@@ -1150,8 +1183,8 @@ const openWriter = async (context: Parameters<NonNullable<Story['play']>>[0]) =>
   await userEvent.click(
     body.getByRole('button', { name: 'Actions for Q-2026-004 · Keller Holzbau AG' }),
   )
-  await userEvent.click(await body.findByRole('menuitem', { name: 'Create contract with AI' }))
-  return body.findByRole('dialog', { name: /Create contract with AI/ }, wait)
+  await userEvent.click(await body.findByRole('menuitem', { name: 'Create contract' }))
+  return body.findByRole('dialog', { name: /Create contract/ }, wait)
 }
 
 /**
@@ -1174,10 +1207,14 @@ export const ContractWrittenWithAI: Story = {
       within(drawer).getByRole('button', { name: /Based on an example document/ }),
     ).toBeEnabled()
     await expect(within(drawer).getByRole('button', { name: /Fill a template/ })).toBeEnabled()
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    // Instructions: the prompt and the governing law (the seller's by default); no language select
     await userEvent.type(
-      within(drawer).getByRole('textbox', { name: 'Instructions for the AI' }),
+      await within(drawer).findByRole('textbox', { name: 'Instructions for the AI' }, wait),
       '6-month course',
     )
+    await expect(within(drawer).getByRole('combobox', { name: 'Governing law' })).toHaveValue('CH')
+    await expect(within(drawer).queryByRole('combobox', { name: 'Contract language' })).toBeNull()
     await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
 
     const title = await within(drawer).findByRole('textbox', { name: 'Title' }, wait)
@@ -1203,6 +1240,7 @@ export const ContractWrittenWithAI: Story = {
     )
     await expect(within(drawer).queryByRole('textbox', { name: 'Heading of section 3' })).toBeNull()
     await expect(writes).toEqual(['ai'])
+    await expect(within(drawer).getByText(/it is not legal advice/)).toBeVisible()
 
     await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
     await userEvent.click(await within(drawer).findByRole('button', { name: 'Save to Documents' }))
@@ -1218,6 +1256,8 @@ export const ContractRegenerate: Story = {
   },
   play: async (context) => {
     const drawer = await openWriter(context)
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await within(drawer).findByRole('textbox', { name: 'Instructions for the AI' }, wait)
     await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
     const title = await within(drawer).findByRole('textbox', { name: 'Title' }, wait)
     await userEvent.clear(title)
@@ -1246,6 +1286,13 @@ export const ContractFromExample: Story = {
       await within(drawer).findByText('Vertrag Vorlage Deutsch V1.0.pdf', {}, wait),
     )
     await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    // Instructions: adapt it with the AI (the default), or skip the AI
+    const adapt = await within(drawer).findByRole('button', { name: /Adapt it with AI/ }, wait)
+    await expect(adapt).toHaveAttribute('aria-pressed', 'true')
+    await expect(
+      within(drawer).getByRole('button', { name: /Skip AI – use this document as it is/ }),
+    ).toBeVisible()
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
     await expect(await within(drawer).findByRole('textbox', { name: 'Title' }, wait)).toHaveValue(
       'Werkvertrag',
     )
@@ -1253,6 +1300,112 @@ export const ContractFromExample: Story = {
     const body = page(canvasElement)
     await expect(body.queryByText('What is the template built on?')).toBeNull()
     await expect(body.queryByRole('button', { name: /Place fields/ })).toBeNull()
+  },
+}
+
+/** "Skip AI": the example is the contract as it is, straight to "What should happen with it?". */
+export const ContractExampleAsIs: Story = {
+  parameters: quotes({}, contractHandlers),
+  beforeEach: () => {
+    writes = []
+    created = null
+  },
+  play: async (context) => {
+    const drawer = await openWriter(context)
+    await userEvent.click(
+      within(drawer).getByRole('button', { name: /Based on an example document/ }),
+    )
+    await userEvent.click(
+      await within(drawer).findByText('Vertrag Vorlage Deutsch V1.0.pdf', {}, wait),
+    )
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await userEvent.click(
+      await within(drawer).findByRole(
+        'button',
+        { name: /Skip AI – use this document as it is/ },
+        wait,
+      ),
+    )
+    await expect(
+      within(drawer).queryByRole('textbox', { name: 'Instructions for the AI' }),
+    ).toBeNull()
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await expect(
+      await within(drawer).findByText('What should happen with it?', {}, wait),
+    ).toBeVisible()
+    // no signature block on someone else's document: its fields are placed by hand
+    await expect(
+      within(drawer).getByRole('button', { name: /Send for signature/ }),
+    ).toHaveTextContent('you place the fields yourself')
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Save to Documents' }))
+    await toasted(context.canvasElement, 'Contract 2026/C/002 created')
+    await expect(writes).toEqual([])
+    await expect(created).toMatchObject({ as_is: true, example_document_id: 'doc_example' })
+  },
+}
+
+const toSend = async (context: Parameters<NonNullable<Story['play']>>[0]) => {
+  const drawer = await openWriter(context)
+  await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+  await within(drawer).findByRole('textbox', { name: 'Instructions for the AI' }, wait)
+  await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+  const title = await within(drawer).findByRole('textbox', { name: 'Title' }, wait)
+  await userEvent.type(title, ' Holzbau')
+  await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+  await within(drawer).findByText('What should happen with it?', {}, wait)
+  return drawer
+}
+
+/** Without a stored signature the last step asks for one, inline, or goes on unsigned: you then sign first. */
+export const ContractAsksForYourSignature: Story = {
+  parameters: quotes({}, contractHandlers),
+  beforeEach: () => {
+    signatureStored = false
+    created = null
+  },
+  play: async (context) => {
+    const drawer = await toSend(context)
+    await expect(await within(drawer).findByText('Add your signature', {}, wait)).toBeVisible()
+    await expect(within(drawer).getByRole('button', { name: 'Draw or type' })).toBeVisible()
+    await expect(within(drawer).getByRole('button', { name: 'Upload image' })).toBeVisible()
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Continue unsigned' }))
+    await expect(within(drawer).getByText('Your side stays unsigned.')).toBeVisible()
+    await userEvent.click(within(drawer).getByRole('button', { name: /Send for signature/ }))
+    await expect(within(drawer).getByText('You, as the contractor')).toBeVisible()
+    await expect(within(drawer).getByRole('switch', { name: /Place fields myself/ })).toBeVisible()
+  },
+}
+
+/** With a stored signature your side is signed with place and date; the client alone signs, a date and a signature. */
+export const ContractSignedByYou: Story = {
+  parameters: quotes({}, contractHandlers),
+  beforeEach: () => {
+    signatureStored = true
+    created = null
+    return () => {
+      signatureStored = false
+    }
+  },
+  play: async (context) => {
+    const drawer = await toSend(context)
+    const sign = await within(drawer).findByRole(
+      'switch',
+      { name: /Sign it as the contractor/ },
+      wait,
+    )
+    await expect(sign).toBeChecked()
+    await expect(within(drawer).getByText(/Your signature, Zürich, /)).toBeVisible()
+    await userEvent.click(within(drawer).getByRole('button', { name: /Send for signature/ }))
+    await expect(
+      within(drawer).getByText(/the client dates and signs in their column/),
+    ).toBeVisible()
+    await expect(within(drawer).queryByText('You, as the contractor')).toBeNull()
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Send for signature' }))
+    await waitFor(() =>
+      expect(created).toMatchObject({ delivery: { type: 'signature', signed: true } }),
+    )
+    const delivery = created?.delivery as { signers: unknown[] }
+    await expect(delivery.signers).toHaveLength(1)
   },
 }
 
@@ -1295,10 +1448,7 @@ export const ContractEmailRetry: Story = {
     contractSends.length = 0
   },
   play: async (context) => {
-    const drawer = await openWriter(context)
-    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
-    await within(drawer).findByRole('textbox', { name: 'Title' }, wait)
-    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    const drawer = await toSend(context)
     await userEvent.click(
       await within(drawer).findByRole('button', { name: /Email it to the client/ }, wait),
     )
@@ -1353,7 +1503,6 @@ export const ContractWithoutAI: Story = {
       body.getByRole('button', { name: 'Actions for Q-2026-004 · Keller Holzbau AG' }),
     )
     await expect(await body.findByRole('menuitem', { name: 'Create contract' })).toBeVisible()
-    await expect(body.queryByRole('menuitem', { name: 'Create contract with AI' })).toBeNull()
     await userEvent.click(body.getByRole('menuitem', { name: 'Create contract' }))
     const drawer = await body.findByRole('dialog', { name: /Create contract/ }, wait)
     await expect(await within(drawer).findByLabelText('Templates', {}, wait)).toBeVisible()
@@ -1403,9 +1552,13 @@ export const ContractWriteFails: Story = {
   play: async (context) => {
     const drawer = await openWriter(context)
     await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
+    await within(drawer).findByRole('textbox', { name: 'Instructions for the AI' }, wait)
+    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
     await toasted(context.canvasElement, 'Couldn’t write the contract')
     await toasted(context.canvasElement, 'AI is paused for a moment.')
-    await expect(within(drawer).getByRole('button', { name: /Write it with AI/ })).toBeVisible()
+    await expect(
+      within(drawer).getByRole('textbox', { name: 'Instructions for the AI' }),
+    ).toBeVisible()
   },
 }
 
@@ -1441,15 +1594,14 @@ export const ContractTemplateSignatures: Story = {
   play: async (context) => {
     const writer = await openWriter(context)
     await userEvent.click(within(writer).getByRole('button', { name: /Fill a template/ }))
+    const list = await within(writer).findByLabelText('Templates', {}, wait)
+    await userEvent.click((await within(list).findAllByRole('button'))[0] as HTMLElement)
     await userEvent.click(within(writer).getByRole('button', { name: 'Next' }))
     const drawer = await page(context.canvasElement).findByRole(
       'dialog',
-      { name: /Create contract with AI/ },
+      { name: /Keller Holzbau AG/ },
       wait,
     )
-    const list = await within(drawer).findByLabelText('Templates', {}, wait)
-    await userEvent.click((await within(list).findAllByRole('button'))[0] as HTMLElement)
-    await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
     await within(drawer).findByRole('textbox', { name: /Start of work/ }, wait)
     await userEvent.click(within(drawer).getByRole('button', { name: 'Next' }))
 

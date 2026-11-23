@@ -132,6 +132,12 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/quotes/{id}/contracts", s.contractCreate)
 	handle("GET /api/v1/quotes/{id}/contracts", s.quoteContracts)
 	handle("GET /api/v1/quotes/contract-counts", s.quoteContractCounts)
+	handle("GET /api/v1/quotes/{id}/contract-law", s.contractLaw)
+	handle("GET /api/v1/account/contract-signature", s.getSignature)
+	handle("PUT /api/v1/account/contract-signature", s.putSignaturePlace)
+	handle("GET /api/v1/account/contract-signature/image", s.signatureImage)
+	handle("PUT /api/v1/account/contract-signature/image", s.putSignatureImage)
+	handle("DELETE /api/v1/account/contract-signature/image", s.deleteSignatureImage)
 }
 
 func data(v any) map[string]any { return map[string]any{"data": v} }

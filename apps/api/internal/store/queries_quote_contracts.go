@@ -124,7 +124,7 @@ func (q Q) QuoteContractCounts(ctx context.Context, workspaceID string) (map[str
 func (q Q) QuoteContractFile(ctx context.Context, workspaceID, quoteID, documentID string) (number, key, name string, sections []byte, err error) {
 	err = q.db.QueryRow(ctx, `SELECT qc.number, d.object_key, d.name, qc.sections
 		FROM quote_contracts qc JOIN documents d ON d.id = qc.document_id AND d.workspace_id = qc.workspace_id
-		WHERE qc.workspace_id = $1 AND qc.quote_id = $2 AND qc.document_id = $3 AND d.deleted_at IS NULL AND qc.sections IS NOT NULL`,
+		WHERE qc.workspace_id = $1 AND qc.quote_id = $2 AND qc.document_id = $3 AND d.deleted_at IS NULL`,
 		workspaceID, quoteID, documentID).Scan(&number, &key, &name, &sections)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = ErrNotFound

@@ -130,20 +130,33 @@ are the reference.
   and serves it only to them (`…/exports/{id}/download`, `storage.Serve`) for 7 days, then deletes object and row, as
   at once for a deleted workspace or a former member. Every ZIP is audited as `documents.exported`, never counted as
   storage, never a document and not in the workspace export. Session-only.
-- **Contracts from quotes** (`templates/contract.go`, `contract_write.go`, feature `document_templates`): "Create
-  contract with AI" on a quote offers three ways. Written with AI (the default) or after an example PDF from Documents
-  (attached to the model, never a template): `POST /api/v1/quotes/{id}/contract-drafts` (`mode` ai or example) returns
-  the prose only (title, intro and every clause, as many and in the order the model decides; no fixed or per-clause
-  text) in the client's language; parties, the quote's lines
-  and totals, its instalments and the signature block come from the data and are printed by `internal/contractpdf`.
-  Every amount and date in the prose not in the quote is flagged, contact data neither party has is removed; quote
-  notes, wishes and examples are fenced data. Automation pool, AI approval, audited (`quote.contract_written`),
-  session-only; without a model only templates. `…/contract-preview` prints the reviewed sections as a draft;
-  `POST …/contracts` numbers, prints and files them, keeps them (`quote_contracts.sections`) and saves, emails or
-  sends them for signature (the contractor's and the client's box in the signature block). A template is filled from
-  the quote's fields, by name first, the rest by the model (`POST /api/v1/quotes/{id}/contract-draft`). Generating with `quote_id` numbers the contract `<year>/C/<seq>` (`contract_counters`, in the filing
-  transaction, the workspace's format when it prints `{TYPE}` and a year, else `C-{YYYY}-{NNN}`), names its file after
-  the number and links it (`quote_contracts`: several per quote, newest first, gone with the document).
+- **Contracts from quotes** (`templates/contract.go`, `contract_write.go`, `signature.go`, feature `document_templates`):
+  "Create contract" on a quote (the sparkle only with AI) offers three ways in its first step. Written with AI (the
+  default) or based on an example PDF from Documents (picked right under its option): an Instructions step takes the
+  optional prompt and the governing law, then `POST /api/v1/quotes/{id}/contract-drafts` (`mode` ai or example)
+  returns the prose only (title, intro and every clause; the app adds none, no per-clause AI) in the person's
+  interface language unless the prompt asks for another; an example keeps its content and wording, only the parties, services, prices, dates
+  and number come from the quote, and "Skip AI" uses it as it is (`as_is`: copied, numbered and filed, no model, its
+  signature fields placed by hand). The governing law (`internal/contractlaw`, data in `rules.json`, never prose in
+  Go: Switzerland, the seller's or client's EU member state, a US state; the seller's by default,
+  `GET …/contract-law`) gives the required clause outline per B2B/B2C, distance and sessions (EU withdrawal only for
+  consumers at a distance, CH Art. 404 OR only for mandates), the only statutes the model may cite (any other is a
+  `statute` warning), date and amount formats and A4 or US Letter. Parties, the quote's lines and totals, its
+  instalments and the signature block come from the data and are printed by `internal/contractpdf` in the quotes'
+  and invoices' format (`invoicepdf.Frame`: logo, parties, footer). Every amount and date in the prose not in the
+  quote is flagged, contact data neither party has is removed; quote notes, wishes and examples are fenced data.
+  Automation pool, AI approval, audited (`quote.contract_written`), session-only; without a model only templates and
+  examples as they are. `…/contract-preview` prints the reviewed sections as a draft; `POST …/contracts` numbers,
+  prints and files them, keeps them (`quote_contracts.sections`) and saves, emails or sends them for signature. A
+  member's own signature (`member_signatures`, a private workspace object never a document, drawn or uploaded in
+  Settings → Account, with a place defaulting to the workspace's city; `/api/v1/account/contract-signature`) is printed
+  on the contractor's side with place and today's date when `delivery.signed` (audited `contract.signature_applied`);
+  the client then signs alone, a date and a signature field in its column, else the contractor signs first. A
+  template is picked in the first step and filled from the quote's fields, by name first, the rest by the model
+  (`POST /api/v1/quotes/{id}/contract-draft`). Generating with `quote_id` numbers the contract `<year>/C/<seq>`
+  (`contract_counters`, in the filing transaction, the workspace's format when it prints `{TYPE}` and a year, else
+  `C-{YYYY}-{NNN}`), names its file after the number and links it (`quote_contracts`: several per quote, newest
+  first, gone with the document).
 - **Approvals** (`internal/approvals`, Business feature `document_approvals`): an optional approval before a draft is
   issued, sent or booked, per document type (`invoice` for every invoice kind without its own, `credit_note`,
   `debit_note`, `corrected`: before issuing; `quote`: before a draft or revision is first sent, a revision resets it;

@@ -13,7 +13,7 @@ import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { LanguageDialogButton, useCurrentLanguage } from '@helvetly/ui/components/language-switcher'
 import { Loader } from '@helvetly/ui/components/loader'
-import { Download, Languages, UserRound, Trash2 } from 'lucide-react'
+import { Download, FileSignature, Languages, UserRound, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
@@ -37,6 +37,7 @@ import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 import { Calendars } from './calendars'
+import { ContractSignatureEditor } from './contract-signature'
 import { DeletedWorkspaces } from './deleted-workspaces'
 import { ProfilePhoto } from './profile-photo'
 import { Sessions } from './sessions'
@@ -58,6 +59,14 @@ export function AccountSettings() {
         {user ? (
           <>
             <Profile user={user} />
+            <SettingsSection
+              id="contract-signature"
+              icon={FileSignature}
+              title={translate('yourSignatureForContracts')}
+              description={translate('yourSignatureForContractsText')}
+            >
+              <ContractSignatureEditor name={user.name || user.email} />
+            </SettingsSection>
             <Language />
             <SignInMethods email={user.email} />
             <Calendars userId={user.id} />
