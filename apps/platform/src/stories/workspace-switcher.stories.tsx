@@ -50,12 +50,12 @@ const open = (plan: 'basic' | 'pro' | 'business'): Story => ({
     await waitFor(() => expect(badge).toHaveAttribute('data-plan', plan))
     // The trial lives in the plan card, never in the badge.
     await expect(badge).not.toHaveTextContent('Trial')
+    await expect(badge.getBoundingClientRect().height).toBe(16)
     await userEvent.click(trigger)
     const row = await screen.findByRole('menuitem', { name: /Business AG/ })
-    await expect(row.querySelector('[data-slot="plan-badge"]')).toHaveAttribute(
-      'data-plan',
-      'business',
-    )
+    const rowBadge = row.querySelector('[data-slot="plan-badge"]')
+    await expect(rowBadge).toHaveAttribute('data-plan', 'business')
+    await expect(rowBadge?.getBoundingClientRect().height).toBe(16)
     // Close the menu again so the accessibility check sees the page, not Radix's aria-hidden siblings.
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
