@@ -50,7 +50,7 @@
   "arePricesPerPerson": "Zijn de prijzen per persoon?",
   "arePricesPerUser": "Zijn de prijzen per gebruiker?",
   "aSimpleInvoicingAndBookkeepingAppForTheSwiss": "Een eenvoudige facturatie- en boekhoudapp voor Zwitserse zelfstandigen.",
-  "askHeidi": "Vraag het Heidi",
+  "heidiAiAssistant": "Heidi · AI-assistent",
   "askHeidiAboutYourRecordsAndLetHerDo": "Vraag Heidi naar je administratie en laat haar het routinewerk doen.",
   "askInEnglishGermanFrenchItalianOrPolishShe": "Stel je vragen in het Engels, Duits, Frans, Italiaans of Pools. Ze beperkt zich tot je bedrijf en Helvetly.",
   "askYourBooks": "Vraag het je boekhouding ",
@@ -1003,5 +1003,14 @@
   "bonsaiDataExport": "Gegevensexport vermeld; omvang niet aangegeven",
   "bonsaiApps": "Webapp, iOS, Android, macOS en Chrome",
   "featureApprovals": "Goedkeuring voordat facturen de deur uitgaan",
-  "featureCustomPortalDomain": "Eigen portaaldomein"
+  "featureCustomPortalDomain": "Eigen portaaldomein",
+  "scheduling": "Planning",
+  "sales": "Verkoop",
+  "team": "Team",
+  "quotes": "Offertes",
+  "productsServices": "Producten en diensten",
+  "books": "Boekhouding",
+  "members": "Leden",
+  "employees": "Medewerkers",
+  "nextSession1400StudioLumen": "Volgende sessie 14:00 · Studio Lumen"
 }

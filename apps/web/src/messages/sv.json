@@ -50,7 +50,7 @@
   "arePricesPerPerson": "Är priserna per person?",
   "arePricesPerUser": "Är priserna per användare?",
   "aSimpleInvoicingAndBookkeepingAppForTheSwiss": "En enkel fakturerings- och bokföringsapp för egenföretagare i Schweiz.",
-  "askHeidi": "Fråga Heidi",
+  "heidiAiAssistant": "Heidi · AI-assistent",
   "askHeidiAboutYourRecordsAndLetHerDo": "Fråga Heidi om dina uppgifter och låt henne sköta rutinarbetet.",
   "askInEnglishGermanFrenchItalianOrPolishShe": "Fråga på engelska, tyska, franska, italienska eller polska. Hon håller sig till ditt företag och Helvetly.",
   "askYourBooks": "Fråga din bokföring ",
@@ -1003,5 +1003,14 @@
   "bonsaiDataExport": "Dataexport anges; omfattning anges inte",
   "bonsaiApps": "Webbapp, iOS, Android, macOS och Chrome",
   "featureApprovals": "Godkännande innan fakturor skickas",
-  "featureCustomPortalDomain": "Egen portaldomän"
+  "featureCustomPortalDomain": "Egen portaldomän",
+  "scheduling": "Bokningar",
+  "sales": "Försäljning",
+  "team": "Team",
+  "quotes": "Offerter",
+  "productsServices": "Produkter och tjänster",
+  "books": "Bokföring",
+  "members": "Medlemmar",
+  "employees": "Anställda",
+  "nextSession1400StudioLumen": "Nästa session 14:00 · Studio Lumen"
 }

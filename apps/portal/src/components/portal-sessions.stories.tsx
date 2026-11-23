@@ -239,7 +239,8 @@ export const Empty: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('No upcoming sessions')).toBeVisible()
-    await expect(canvas.getByText('No past sessions in the last 12 months.')).toBeVisible()
+    // The past list is its own request: wait for it too.
+    await expect(await canvas.findByText('No past sessions in the last 12 months.')).toBeVisible()
   },
 }
 

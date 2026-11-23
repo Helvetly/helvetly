@@ -1,12 +1,5 @@
 'use client'
-import { Button } from '@helvetly/ui/components/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
-import { Segmented } from '@helvetly/ui/components/segmented'
-import { Clock } from 'lucide-react'
-
-import { NativeSelect } from '@/components/clients/fields'
-import { translate } from '@/lib/i18n'
-import { clock, minutesOf, type HostProfile } from '@/lib/scheduling'
+import { minutesOf, type HostProfile } from '@/lib/scheduling'
 
 /** The hours a day or week grid shows, as whole hours: from 0 to 24 is the full day. */
 export type Hours = { from: number; to: number }
@@ -52,72 +45,4 @@ export function saveHours(choice: HoursChoice) {
   try {
     localStorage.setItem(HOURS_KEY, JSON.stringify(choice))
   } catch {}
-}
-
-/** The toolbar's "Show hours" control: the full day or a range of whole hours. */
-export function HoursMenu({
-  choice,
-  onChange,
-}: {
-  choice: HoursChoice
-  onChange: (choice: HoursChoice) => void
-}) {
-  const { from, to } = choice.work
-  const range = `${clock(from * 60)}–${clock(to * 60)}`
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
-          <Clock />
-          <span className="sr-only">{translate('schedShowHours')}: </span>
-          {choice.mode === 'full' ? translate('schedFullDay') : range}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" aria-label={translate('schedShowHours')} className="w-64 gap-3">
-        <p className="text-body-sm font-medium">{translate('schedShowHours')}</p>
-        <Segmented
-          label={translate('schedShowHours')}
-          size="sm"
-          fill
-          value={choice.mode}
-          options={[
-            { value: 'full', label: translate('schedFullDay') },
-            { value: 'work', label: translate('schedWorkingHours') },
-          ]}
-          onChange={(mode) => onChange({ ...choice, mode })}
-        />
-        {choice.mode === 'work' && (
-          <div className="grid grid-cols-2 gap-2">
-            <NativeSelect
-              aria-label={translate('schedHoursFrom')}
-              value={from}
-              onChange={(event) => {
-                const next = Number(event.target.value)
-                onChange({ ...choice, work: { from: next, to: Math.max(to, next + 1) } })
-              }}
-            >
-              {Array.from({ length: 24 }, (_, hour) => (
-                <option key={hour} value={hour}>
-                  {clock(hour * 60)}
-                </option>
-              ))}
-            </NativeSelect>
-            <NativeSelect
-              aria-label={translate('schedHoursTo')}
-              value={to}
-              onChange={(event) =>
-                onChange({ ...choice, work: { from, to: Number(event.target.value) } })
-              }
-            >
-              {Array.from({ length: 24 - from }, (_, i) => from + 1 + i).map((hour) => (
-                <option key={hour} value={hour}>
-                  {clock(hour * 60)}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
-  )
 }
