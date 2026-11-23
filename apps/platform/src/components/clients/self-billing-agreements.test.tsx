@@ -27,6 +27,17 @@ function wrap(role: string, clientId: string) {
 }
 
 describe('SelfBillingAgreements', () => {
+  it('explains self-billing behind the (?) and links the help article', async () => {
+    wrap('member', 'cli_sba_test')
+    await userEvent.click(screen.getByRole('button', { name: 'About self-billing' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog.textContent).toContain('What is a self-billing agreement?')
+    expect(dialog.textContent).toContain('The supplier must agree beforehand')
+    expect(screen.getByRole('link', { name: 'Learn more' }).getAttribute('href')).toMatch(
+      /\/help\/invoice-document-types$/,
+    )
+  })
+
   it('adds an agreement and deletes it before use', async () => {
     wrap('owner', 'cli_sba_test')
     expect(await screen.findByText(/Marco Bernasconi/)).toBeTruthy()
