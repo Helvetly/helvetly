@@ -327,14 +327,16 @@ export const TemplateMenus: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'More for Old offer' }))
     const more = within(await body().findByRole('menu'))
-    await expect(more.getByRole('menuitem', { name: /Use template/ })).toHaveAttribute(
-      'aria-disabled',
-      'true',
+    const use = more.getByRole('menuitem', { name: 'Use template' })
+    await expect(use).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.hover(use)
+    await expect(await body().findByRole('tooltip')).toHaveTextContent(
+      'Its PDF was deleted: choose another in the editor.',
     )
-    await expect(
-      more.getAllByText('Its PDF was deleted: choose another in the editor.')[0],
-    ).toBeVisible()
+    // choosing it does nothing, and closes the tooltip so Escape reaches the menu
+    await userEvent.click(use)
     await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body().queryByRole('menu')).toBeNull())
   },
 }
 

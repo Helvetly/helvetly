@@ -48,21 +48,6 @@ function keepNativeMenu(event: MouseEvent<Element>) {
     event.stopPropagation()
 }
 
-/**
- * A menu item's label, with why it is unavailable on a line under it: a disabled item takes no pointer, so it
- * could show no tooltip.
- */
-export function MenuText({ label, why }: { label: string; why?: string }) {
-  return why ? (
-    <span className="grid">
-      <span>{label}</span>
-      <span className="text-xs text-muted-foreground">{why}</span>
-    </span>
-  ) : (
-    label
-  )
-}
-
 /** The "…" button at the end of a row. */
 export function RowMenuButton({ label, menu }: { label: string; menu: RowMenuSpec }) {
   return (
