@@ -174,38 +174,50 @@ const storyDocument: DocFile = {
   purge_at: null,
 }
 
+/** Signers keep their rows through removals and moves; a moved row keeps the keyboard on its handle. */
 export const SignerRowIdentity: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/clients', () =>
+          HttpResponse.json({
+            data: [],
+            meta: { page: 1, page_size: 8, total: 0, total_pages: 0 },
+          }),
+        ),
+        ...screenHandlers,
+      ],
+    },
+  },
   render: () => (
     <CreateSignatureDrawer initial={storyDocument} folderId={null} onClose={fn()} onSent={fn()} />
   ),
   play: async () => {
     const body = within(document.body)
-    const addSigner = async (number: number, name: string) => {
-      if (number > 1) await userEvent.click(body.getByRole('button', { name: 'Add signer' }))
+    const search = await body.findByRole('combobox', { name: 'Add signer' })
+    const add = async (number: number, name: string) => {
+      await userEvent.type(search, `${name.toLowerCase()}@example.org{Enter}`)
       await userEvent.type(
         await body.findByRole('textbox', { name: `Signer ${number} name` }),
-        name,
+        `${name}{Enter}`,
       )
     }
-    await addSigner(1, 'Anna')
-    await addSigner(2, 'Beat')
-    await addSigner(3, 'Cora')
-    await addSigner(4, 'Dario')
-    // Removing a row keeps the rows after it: Cora's input is the same element, one place up.
-    const cora = body.getByRole('textbox', { name: 'Signer 3 name' })
-    await userEvent.click(body.getByRole('button', { name: 'Remove signer 2' }))
-    await expect(body.getByRole('textbox', { name: 'Signer 2 name' })).toBe(cora)
-    await expect(cora).toHaveValue('Cora')
-    // Moving a row by keyboard keeps focus on that row's Move down.
-    const anna = body.getByRole('textbox', { name: 'Signer 1 name' })
-    await userEvent.click(anna)
-    await userEvent.tab()
-    await userEvent.tab()
-    await expect(document.activeElement).toHaveAccessibleName('Move down')
-    await userEvent.keyboard('{Enter}')
-    await expect(body.getByRole('textbox', { name: 'Signer 2 name' })).toBe(anna)
-    await expect(document.activeElement).toHaveAccessibleName('Move down')
-    await expect(document.activeElement?.closest('li')).toBe(anna.closest('li'))
+    await add(1, 'Anna')
+    await add(2, 'Beat')
+    await add(3, 'Cora')
+    await add(4, 'Dario')
+    const list = within(body.getByRole('region', { name: 'Signers' }))
+    // Removing a row keeps the rows after it: Cora's row is the same element, one place up.
+    const cora = list.getByText('Cora').closest('li')
+    await userEvent.click(list.getByRole('button', { name: 'Remove signer 2' }))
+    await expect(list.getAllByRole('listitem')[1]).toBe(cora)
+    // One after another: the handle moves its row, and keeps the focus.
+    await userEvent.click(body.getByRole('button', { name: /One after another/ }))
+    const handle = list.getByRole('button', { name: 'Reorder Anna' })
+    handle.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(list.getAllByRole('listitem')[1]).toHaveTextContent('Anna')
+    await expect(document.activeElement).toBe(handle)
   },
 }
 

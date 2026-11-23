@@ -335,7 +335,14 @@ function CategoryRow({
           />
           <div className="grid min-w-0 flex-1 gap-1">
             <span className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-body-sm font-medium">{label}</span>
+              <span
+                className={cn(
+                  'truncate text-body-sm font-medium',
+                  archived && 'text-muted-foreground',
+                )}
+              >
+                {label}
+              </span>
               {archived && (
                 <Badge size="sm" variant="outline">
                   {translate('archived')}

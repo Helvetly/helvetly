@@ -1,10 +1,12 @@
 import { Button } from '@helvetly/ui/components/button'
 import { SidebarMenu, SidebarMenuItem, SidebarProvider } from '@helvetly/ui/components/sidebar'
+import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { focusManager } from '@tanstack/react-query'
 import { delay, http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { NotificationsBell } from '@/components/notifications/notifications-bell'
 import { NotificationsPage } from '@/components/notifications/notifications-page'
 import { NotificationPrefsDrawer } from '@/components/notifications/prefs-drawer'
@@ -17,6 +19,8 @@ import {
   sampleNotifications,
   settleNotificationMock,
 } from '@/mocks/notifications'
+
+import { sessionHandler } from './screen-fixtures'
 
 const meta = {
   title: 'Notifications',
@@ -693,5 +697,117 @@ export const UnsubscribeInvalid: Story = {
     await expect(
       await within(canvasElement).findByText('This unsubscribe link is not valid.'),
     ).toBeVisible()
+  },
+}
+
+const digestWith = ({
+  role = 'owner',
+  plan = 'pro',
+  digest = false,
+  saved = [] as boolean[],
+  fail = false,
+}: {
+  role?: 'owner' | 'member'
+  plan?: 'basic' | 'pro'
+  digest?: boolean
+  saved?: boolean[]
+  fail?: boolean
+}) => {
+  let current = digest
+  return {
+    msw: {
+      handlers: [
+        sessionHandler({ role }),
+        http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture({ plan }) })),
+        http.get('/api/v1/engagement-settings', () =>
+          HttpResponse.json({ data: { digest: current } }),
+        ),
+        http.put('/api/v1/engagement-settings', async ({ request }) => {
+          const body = (await request.json()) as { digest: boolean }
+          if (fail)
+            return HttpResponse.json({ error: { code: 'boom', message: 'No.' } }, { status: 500 })
+          saved.push(body.digest)
+          current = body.digest
+          return HttpResponse.json({ data: body })
+        }),
+        ...notificationHandlers,
+      ],
+    },
+  }
+}
+
+/** The daily digest is a switch in the preferences, saved at once; its explanation sits behind a (?). */
+const savedDigest: boolean[] = []
+export const DigestSwitch: Story = {
+  render: prefsDrawer,
+  beforeEach: () => {
+    savedDigest.length = 0
+  },
+  parameters: digestWith({ saved: savedDigest }),
+  play: async () => {
+    const canvas = within(document.body)
+    const digest = await canvas.findByRole('switch', { name: 'Daily e-mail digest' })
+    await waitFor(() => expect(digest).toBeEnabled())
+    await userEvent.hover(canvas.getByRole('button', { name: 'About Daily e-mail digest' }))
+    await waitFor(() => expect(canvas.getByRole('tooltip')).toHaveTextContent('after 07:00'))
+    await userEvent.click(digest)
+    await waitFor(() => expect(savedDigest).toEqual([true]))
+    await expect(digest).toBeChecked()
+  },
+}
+
+/** A plan without engagement automation cannot switch it on: the lock says which plan has it. */
+export const DigestPlanLock: Story = {
+  render: prefsDrawer,
+  parameters: digestWith({ plan: 'basic' }),
+  play: async () => {
+    const canvas = within(document.body)
+    const digest = await canvas.findByRole('switch', { name: 'Daily e-mail digest' })
+    await expect(digest).toBeDisabled()
+    await expect(await canvas.findByText(/Your plan doesn.t include/)).toBeVisible()
+    await expect(canvas.getByRole('link', { name: /See/ })).toBeVisible()
+  },
+}
+
+/** Switching it off stays possible after a downgrade. */
+export const DigestOffAfterDowngrade: Story = {
+  render: prefsDrawer,
+  parameters: digestWith({ plan: 'basic', digest: true }),
+  play: async () => {
+    const digest = await within(document.body).findByRole('switch', { name: 'Daily e-mail digest' })
+    await waitFor(() => expect(digest).toBeEnabled())
+    await expect(digest).toBeChecked()
+  },
+}
+
+/** A failed save puts the switch back and says so. */
+export const DigestSaveFails: Story = {
+  render: () => (
+    <>
+      {prefsDrawer()}
+      <Toaster />
+    </>
+  ),
+  parameters: digestWith({ fail: true }),
+  play: async () => {
+    const canvas = within(document.body)
+    const digest = await canvas.findByRole('switch', { name: 'Daily e-mail digest' })
+    await waitFor(() => expect(digest).toBeEnabled())
+    await userEvent.click(digest)
+    const error = await canvas.findByText('Could not change the daily digest.')
+    // The toast slides in.
+    await waitFor(() => expect(error).toBeVisible())
+    await waitFor(() => expect(digest).not.toBeChecked())
+  },
+}
+
+/** A plain member has no digest: it is the owners' and admins'. */
+export const DigestHiddenForMembers: Story = {
+  render: prefsDrawer,
+  parameters: digestWith({ role: 'member' }),
+  play: async () => {
+    const canvas = within(document.body)
+    await canvas.findByRole('switch', { name: 'Invoice paid: email' })
+    await expect(canvas.queryByRole('switch', { name: 'Daily e-mail digest' })).toBeNull()
   },
 }

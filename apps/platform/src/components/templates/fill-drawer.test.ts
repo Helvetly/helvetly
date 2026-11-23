@@ -1,6 +1,6 @@
 import type { Template } from '@/lib/templates'
 
-import { pickableTemplates } from './fill-drawer'
+import { pickableTemplates } from './fill-parts'
 
 const template = (
   name: string,

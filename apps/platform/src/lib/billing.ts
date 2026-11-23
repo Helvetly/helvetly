@@ -36,6 +36,7 @@ export type FeatureKey =
   | 'ledger_exports'
   | 'data_export'
   | 'automations'
+  | 'engagement_automation'
   | 'client_portal'
   | 'custom_portal_domain'
   | 'document_approvals'
@@ -349,6 +350,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   ledger_exports: translate('theLedger'),
   data_export: translate('dataExports'),
   automations: translate('automations'),
+  engagement_automation: translate('automations'),
   client_portal: translate('theClientPortal'),
   custom_portal_domain: translate('aCustomPortalDomain'),
   document_approvals: translate('documentApprovals'),

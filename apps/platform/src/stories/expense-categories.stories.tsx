@@ -124,7 +124,7 @@ export const Search: Story = {
   },
 }
 
-/** Archived categories wait behind the toggle and have a badge in their group. */
+/** Archived categories wait behind the toggle, dimmed in their group with a badge. */
 export const ShowArchived: Story = {
   play: async () => {
     await body().findByText('Materials')
@@ -176,19 +176,20 @@ export const RowMenus: Story = {
     await waitFor(() =>
       expect(writes[1]).toEqual({ method: 'PATCH', body: { is_archived: false } }),
     )
+    await waitFor(() => expect(within(row('Rent')).queryByText('Archived')).toBeNull())
   },
 }
 
 /** Edit opens the same form in place; only what changed is sent. */
 export const EditInPlace: Story = {
   play: async () => {
-    const actions = await waitFor(() =>
-      within(row('Books')).getByRole('button', { name: 'More actions' }),
-    )
-    await userEvent.click(actions)
+    await body().findByText('Books')
+    await userEvent.click(await within(row('Books')).findByRole('button', { name: 'More actions' }))
     await userEvent.click(await body().findByRole('menuitem', { name: 'Edit' }))
-    const form = body().getByRole('form', { name: 'Edit' })
-    await expect(within(form).getByRole('textbox', { name: /Category name/ })).toHaveFocus()
+    const form = await body().findByRole('form', { name: 'Edit' })
+    await waitFor(() =>
+      expect(within(form).getByRole('textbox', { name: /Category name/ })).toHaveFocus(),
+    )
     await expect(within(form).getByRole('button', { name: /Group/ })).toHaveTextContent(
       'Administration & IT',
     )

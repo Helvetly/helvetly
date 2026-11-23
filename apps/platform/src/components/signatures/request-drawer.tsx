@@ -252,11 +252,6 @@ function Details({ request }: { request: SignatureRequest }) {
             : translate('everyoneAtOnce')}
         </span>
       </div>
-      {request.message && (
-        <p className="rounded-xl bg-muted/60 px-3 py-2.5 text-[13px] whitespace-pre-line text-muted-foreground">
-          {request.message}
-        </p>
-      )}
       <section className="grid min-w-0 gap-2">
         <Heading>{translate('signers')}</Heading>
         <ol className="grid min-w-0 gap-1.5">
@@ -300,6 +295,7 @@ function Details({ request }: { request: SignatureRequest }) {
           <dd className="min-w-0 truncate" title={request.created_by?.name ?? undefined}>
             {request.created_by?.name ?? translate('someone')} · {formatDate(request.created_at)}
           </dd>
+          {request.message?.trim() && <MessageRow message={request.message.trim()} />}
         </dl>
         <Hash label={translate('originalSHA256')} value={request.original_sha256} />
         {request.final_sha256 && (
@@ -360,6 +356,31 @@ function Details({ request }: { request: SignatureRequest }) {
         </section>
       )}
     </div>
+  )
+}
+
+/** The sent message as one truncated line that opens in place. */
+function MessageRow({ message }: { message: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <dt className="text-muted-foreground">{translate('message')}</dt>
+      <dd className="grid min-w-0 gap-1">
+        {open ? (
+          <p className="whitespace-pre-line">{message}</p>
+        ) : (
+          <p className="truncate">{message.split('\n')[0]}</p>
+        )}
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          className="w-fit cursor-pointer text-[12.5px] text-muted-foreground underline underline-offset-2 hover:no-underline"
+        >
+          {open ? translate('hideMessage') : translate('showMessage')}
+        </button>
+      </dd>
+    </>
   )
 }
 

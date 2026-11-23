@@ -108,7 +108,7 @@
 3 text-px apps/platform/src/components/documents/upload-tray.tsx
 2 text-px apps/platform/src/components/engagements/engagement-form.tsx
 7 text-px apps/platform/src/components/engagements/engagement-summary.tsx
-2 text-px apps/platform/src/components/engagements/engagements-page.tsx
+1 text-px apps/platform/src/components/engagements/engagements-page.tsx
 2 text-px apps/platform/src/components/engagements/send-report-dialog.tsx
 1 text-px apps/platform/src/components/expenses/duplicate-warning.tsx
 11 text-px apps/platform/src/components/expenses/expense-detail.tsx
@@ -159,14 +159,14 @@
 3 text-px apps/platform/src/components/shell/mobile-tab-bar.tsx
 9 text-px apps/platform/src/components/shell/plan-gate.tsx
 4 text-px apps/platform/src/components/signatures/adopt-dialog.tsx
-11 text-px apps/platform/src/components/signatures/create-drawer.tsx
+7 text-px apps/platform/src/components/signatures/create-drawer.tsx
 1 text-px apps/platform/src/components/signatures/parts.tsx
 7 text-px apps/platform/src/components/signatures/pdf-parts.tsx
-15 text-px apps/platform/src/components/signatures/placement.tsx
+12 text-px apps/platform/src/components/signatures/placement.tsx
 16 text-px apps/platform/src/components/signatures/request-drawer.tsx
 6 text-px apps/platform/src/components/signatures/signatures-view.tsx
 6 text-px apps/platform/src/components/signatures/signing-page.tsx
-14 text-px apps/platform/src/components/templates/fill-drawer.tsx
+2 text-px apps/platform/src/components/templates/fill-drawer.tsx
 3 text-px apps/platform/src/components/templates/template-editor.tsx
 3 text-px apps/platform/src/components/templates/templates-view.tsx
 5 text-px apps/platform/src/components/wizard-sheet.tsx

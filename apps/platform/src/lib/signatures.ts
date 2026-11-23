@@ -223,6 +223,51 @@ export const resizeField = <T extends Placed>(fields: T[], key: string, dw: numb
       : field,
   )
 
+/** Where a snapped box lines up: x and y positions on the page (0..1), null when not snapped. */
+export type Guides = { x: number | null; y: number | null }
+
+/** The edges and middle of a span [start, start + size]. */
+const lines = (start: number, size: number) => [start, start + size / 2, start + size]
+
+/** The smallest shift that puts one of `own` within `reach` of one of `targets`, or null. */
+function nearest(own: number[], targets: number[], reach: number) {
+  let best: { shift: number; at: number } | null = null
+  for (const line of own)
+    for (const target of targets) {
+      const shift = target - line
+      if (Math.abs(shift) <= reach && (!best || Math.abs(shift) < Math.abs(best.shift)))
+        best = { shift, at: target }
+    }
+  return best
+}
+
+/**
+ * Snap a moved or resized box to the other boxes on its page and to the page's centre: a move lines up
+ * its left, centre or right (top, middle or bottom) with theirs, a resize only its right and bottom
+ * edges. `reach` is the snap distance per axis, in page fractions.
+ */
+export function snapBox<T extends Box>(
+  box: T,
+  others: Box[],
+  mode: 'move' | 'resize',
+  reach: { x: number; y: number },
+): { box: T; guides: Guides } {
+  const peers = others.filter((other) => other.page === box.page)
+  const xs = [0.5, ...peers.flatMap((other) => lines(other.x, other.w))]
+  const ys = [0.5, ...peers.flatMap((other) => lines(other.y, other.h))]
+  const ownX = mode === 'move' ? lines(box.x, box.w) : [box.x + box.w]
+  const ownY = mode === 'move' ? lines(box.y, box.h) : [box.y + box.h]
+  const sx = nearest(ownX, xs, reach.x)
+  const sy = nearest(ownY, ys, reach.y)
+  const dx = sx?.shift ?? 0
+  const dy = sy?.shift ?? 0
+  const snapped =
+    mode === 'move'
+      ? { ...box, x: box.x + dx, y: box.y + dy }
+      : { ...box, w: box.w + dx, h: box.h + dy }
+  return { box: snapped, guides: { x: sx?.at ?? null, y: sy?.at ?? null } }
+}
+
 export const deleteField = <T extends Placed>(fields: T[], key: string) =>
   fields.filter((field) => field.key !== key)
 
@@ -257,7 +302,7 @@ export const signersWithoutSignature = (fields: DraftField[], signerCount: numbe
 
 export type DraftSigner = { name: string; email: string }
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** Problems with the signers, by row, plus a list-level one (empty when fine). */
 export function checkSigners(signers: DraftSigner[]) {

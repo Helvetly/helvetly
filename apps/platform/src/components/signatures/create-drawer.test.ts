@@ -1,8 +1,10 @@
 import type { DocFile } from '@/lib/documents'
 import type { DraftField } from '@/lib/signatures'
+import type { Template } from '@/lib/templates'
 
-import { stepProblem } from './create-drawer'
+import { stepProblem, stepsFor, type StepId } from './create-drawer'
 import { inkBounds } from './ink'
+import { moveSigner } from './signers-step'
 
 vi.mock('./script-fonts', () => ({ SCRIPT_FONTS: [] }))
 
@@ -39,8 +41,12 @@ const sig = (signer: number, change: Partial<DraftField> = {}): DraftField => ({
   label: null,
   ...change,
 })
-const base = {
+const base: Parameters<typeof stepProblem>[1] = {
+  source: 'pdf',
   document,
+  template: null,
+  client: null,
+  values: {},
   title: 'Offer',
   signers: [
     { name: 'Anna', email: 'anna@example.com' },
@@ -49,27 +55,52 @@ const base = {
   fields: [sig(0), sig(1)],
 }
 
-test.each([
-  [0, { document: null }, 'Choose a PDF to send.'],
-  [0, { title: ' ' }, null],
-  [1, { signers: [] }, 'Add at least one signer.'],
+test.each<[StepId, Partial<typeof base>, string | null]>([
+  ['document', { document: null }, 'Choose a PDF to send.'],
+  ['document', { title: ' ' }, null],
+  ['signers', { signers: [] }, 'Add at least one signer.'],
   [
-    1,
+    'signers',
     { signers: [{ name: '', email: 'x@y.ch' }] },
     'Check the signers’ names and email addresses.',
   ],
-  [2, { fields: [sig(0)] }, 'Add a signature field for Ben.'],
+  ['place', { fields: [sig(0)] }, 'Add a signature field for Ben.'],
   [
-    2,
+    'place',
     { fields: [sig(0), sig(1), sig(1, { kind: 'text' })] },
     'Say what to enter in each text field.',
   ],
-  [2, {}, null],
-  [3, { title: ' ' }, 'Give the request a title.'],
-  [3, {}, null],
-  [4, {}, null],
-])('step %i: %o', (step, change, problem) => {
+  ['place', {}, null],
+  ['message', { title: ' ' }, 'Give the request a title.'],
+  ['message', {}, null],
+  ['review', {}, null],
+])('step %s: %o', (step, change, problem) => {
   expect(stepProblem(step, { ...base, ...change })).toBe(problem)
+})
+
+test('a template path needs a template and a client, and adds Fill in', () => {
+  const template = { signers: [{ label: 'Client', fill: 'client' }] } as unknown as Template
+  expect(stepProblem('document', { ...base, source: 'template' })).toBe('Choose a template.')
+  expect(stepsFor('pdf', null)).toEqual(['document', 'signers', 'place', 'message', 'review'])
+  expect(stepsFor('template', template)).toEqual([
+    'document',
+    'fill',
+    'signers',
+    'message',
+    'review',
+  ])
+  expect(stepsFor('template', { ...template, signers: [] })).toContain('place')
+})
+
+test('moveSigner moves one row by adjacent swaps', () => {
+  expect(moveSigner(['a', 'b', 'c'], 0, 2)).toEqual({
+    list: ['b', 'c', 'a'],
+    swaps: [
+      [0, 1],
+      [1, 2],
+    ],
+  })
+  expect(moveSigner(['a', 'b', 'c'], 2, 1).list).toEqual(['a', 'c', 'b'])
 })
 
 test('ink bounds find the drawn pixels', () => {

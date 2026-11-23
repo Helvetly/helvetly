@@ -430,7 +430,9 @@ func (s *Service) sendCompleted(ctx context.Context, done completed) {
 		to = append(to, done.req.SenderEmail)
 	}
 	for i, addr := range to {
-		if err := s.mail.Send(ctx, completedMessage(done, addr)); err != nil {
+		// The last copy is the sender's: a member of the workspace.
+		member := done.req.SenderEmail != "" && i == len(to)-1
+		if err := s.mail.Send(ctx, completedMessage(done, addr, member)); err != nil {
 			// the recipient's position, not the address: logs must not carry personal data
 			s.log.ErrorContext(ctx, "send signed PDF", "request", done.req.ID, "recipient", i, "error", err)
 		}

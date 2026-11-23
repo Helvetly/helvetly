@@ -249,7 +249,7 @@ export function templateProblem(
 export const primaryContact = (client: Client) =>
   client.contacts.find((contact) => contact.is_primary) ?? client.contacts[0] ?? null
 
-const civil = (date: Date) =>
+export const civil = (date: Date) =>
   `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`
 
 /** The client's value for a data kind, as it is stamped (empty when the client has none). */

@@ -79,8 +79,44 @@ func TestBrandedReplyTo(t *testing.T) {
 	failed := errors.New("db down")
 	sent := &fakeSending{}
 	b := &Branded{Sender: sent, Brands: func(context.Context, string) (Brand, error) { return Brand{}, failed }}
+	b.IsMember = func(context.Context, string, string) (bool, error) { return false, failed }
+	if err := b.Send(context.Background(), Message{Workspace: "w", To: []string{"a@x.ch"}}); !errors.Is(err, failed) || len(sent.sent) != 0 {
+		t.Fatalf("members that cannot load: %v, %d sent", err, len(sent.sent))
+	}
+	b.IsMember = nil
 	if err := b.Send(context.Background(), Message{Workspace: "w"}); !errors.Is(err, failed) || len(sent.sent) != 0 {
 		t.Fatalf("a brand that cannot load: %v, %d sent", err, len(sent.sent))
+	}
+}
+
+// The look follows the recipients: email only to the workspace's members is Helvetly's, any client among them makes it the business's.
+func TestBrandedByRecipient(t *testing.T) {
+	members := map[string]bool{"owner@muster.ch": true, "ana@muster.ch": true}
+	for _, c := range []struct {
+		name    string
+		msg     Message
+		branded bool
+	}{
+		{"a member", Message{Workspace: "w", To: []string{"Owner@Muster.ch"}}, false},
+		{"members in To and Cc", Message{Workspace: "w", To: []string{"owner@muster.ch"}, Cc: []string{"ana@muster.ch"}}, false},
+		{"a client", Message{Workspace: "w", To: []string{"client@kunde.ch"}}, true},
+		{"a client in Cc", Message{Workspace: "w", To: []string{"owner@muster.ch"}, Cc: []string{"client@kunde.ch"}}, true},
+		{"a member only in Bcc", Message{Workspace: "w", To: []string{"client@kunde.ch"}, Bcc: []string{"owner@muster.ch"}}, true},
+		{"marked for members", Message{Workspace: "w", Members: true, To: []string{"client@kunde.ch"}}, false},
+	} {
+		sent := &fakeSending{}
+		b := &Branded{Sender: sent,
+			Brands: func(context.Context, string) (Brand, error) { return Brand{Name: "Muster GmbH"}, nil },
+			IsMember: func(_ context.Context, workspace, email string) (bool, error) {
+				return workspace == "w" && members[strings.ToLower(email)], nil
+			}}
+		if err := b.Send(context.Background(), c.msg); err != nil {
+			t.Fatal(err)
+		}
+		got := sent.sent[0]
+		if (got.Brand != nil) != c.branded || got.Members == c.branded {
+			t.Errorf("%s: brand %v members %v", c.name, got.Brand, got.Members)
+		}
 	}
 }
 

@@ -78,10 +78,21 @@ func TestCompletedAndDeclinedMessages(t *testing.T) {
 		t.Errorf("declined %+v", declined)
 	}
 	req.OriginalSHA256 = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
-	done := completedMessage(completed{req: req, name: "Services Agreement (signed).pdf", sum: "3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b"}, "beat@example.com")
-	if !strings.Contains(done.HTML, "Signed copy") || !strings.Contains(done.Text, "Signed copy: Services Agreement (signed).pdf (attached)") ||
-		!strings.Contains(done.Text, "Sent by: Anna Owner") {
+	signed := completed{req: req, name: "Services Agreement (signed).pdf", sum: "3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b"}
+	done := completedMessage(signed, "beat@example.com", false)
+
+	if !strings.Contains(done.Text, "Sent by: Anna Owner") || done.Members || strings.Contains(done.Text, "Signed SHA-256:") {
 		t.Errorf("completed %+v", done)
+	}
+	own := completedMessage(signed, "anna@example.com", true)
+	if !own.Members || !strings.Contains(own.HTML, "3a7bd3e2…42dd4f1b") ||
+		!strings.Contains(own.Text, "Original SHA-256: "+shortHash(req.OriginalSHA256)) ||
+		!strings.Contains(own.Text, "SHA-256 of the signed PDF: "+groups(signed.sum)) ||
+		!strings.Contains(own.Text, "SHA-256 of the original: "+groups(req.OriginalSHA256)) {
+		t.Errorf("sender completed %+v", own)
+	}
+	if shortHash("abc") != "abc" {
+		t.Error("a short value stays whole")
 	}
 	mailtest.Golden(t, "invite-reminder-de", inviteMessage(mailRequest(&de), store.Signer{Email: "beat@example.com"}, "https://app.example/sign#T", true,
 		emailtemplate.Default("signature_reminder", "de")))
