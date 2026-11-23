@@ -77,6 +77,8 @@ type Service struct {
 	limit  *auth.RateLimiter
 	// contractNumber formats a contract's number in the workspace's format (SetContractNumbers).
 	contractNumber func(ctx context.Context, q store.Q, workspaceID, date string, seq int64) (string, error)
+	// logo: the workspace's logo for written contracts (SetLogo).
+	logo func(ctx context.Context, workspaceID string) ([]byte, error)
 }
 
 func New(db *store.Store, a Auth, files Storage, mailer Mailer, sign Signatures, log *slog.Logger) *Service {
@@ -113,6 +115,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("DELETE /api/v1/templates/{id}", s.remove)
 	handle("POST /api/v1/templates/{id}/documents", s.generate)
 	handle("POST /api/v1/quotes/{id}/contract-draft", s.contractDraft)
+	handle("POST /api/v1/quotes/{id}/contract-drafts", s.contractWrite)
+	handle("POST /api/v1/quotes/{id}/contract-preview", s.contractPreview)
+	handle("POST /api/v1/quotes/{id}/contracts", s.contractCreate)
 	handle("GET /api/v1/quotes/{id}/contracts", s.quoteContracts)
 	handle("GET /api/v1/quotes/contract-counts", s.quoteContractCounts)
 }

@@ -174,6 +174,10 @@ var instead = []struct {
 	{true, "/api/v1/employment/settings", []string{"write:employees", "write:payroll"}},
 	// a contract draft reads the quote; the document it starts is made under templates (write:documents)
 	{true, "/api/v1/quotes/*/contract-draft", []string{"read:invoices", "write:documents"}},
+	// writing a contract with AI, previewing it and filing it (templates/contract_write.go): the same
+	{true, "/api/v1/quotes/*/contract-drafts", []string{"read:invoices", "write:documents"}},
+	{true, "/api/v1/quotes/*/contract-preview", []string{"read:invoices", "write:documents"}},
+	{true, "/api/v1/quotes/*/contracts", []string{"read:invoices", "write:documents"}},
 	// a quote's contracts are documents: listing them needs both
 	{false, "/api/v1/quotes/*/contracts", []string{"read:invoices", "read:documents"}},
 	{false, "/api/v1/quotes/contract-counts", []string{"read:invoices", "read:documents"}},

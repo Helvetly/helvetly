@@ -121,10 +121,17 @@ are the reference.
   and serves it only to them (`…/exports/{id}/download`, `storage.Serve`) for 7 days, then deletes object and row, as
   at once for a deleted workspace or a former member. Every ZIP is audited as `documents.exported`, never counted as
   storage, never a document and not in the workspace export. Session-only.
-- **Contracts from quotes** (`templates/contract.go`, feature `document_templates`): "Create contract with AI" on a
-  quote fills a template's custom fields from the quote, by name first, the rest by the model in the automation pool
-  after the person's AI approval (without a model: by name only); `POST /api/v1/quotes/{id}/contract-draft`, audited,
-  session-only. Generating with `quote_id` numbers the contract `<year>/C/<seq>` (`contract_counters`, in the filing
+- **Contracts from quotes** (`templates/contract.go`, `contract_write.go`, feature `document_templates`): "Create
+  contract with AI" on a quote offers three ways. Written with AI (the default) or after an example PDF from Documents
+  (attached to the model, never a template): `POST /api/v1/quotes/{id}/contract-drafts` (`mode` ai, example or improve
+  for one section) returns the prose only (title, intro, clauses) in the client's language; parties, the quote's lines
+  and totals, its instalments and the signature block come from the data and are printed by `internal/contractpdf`.
+  Every amount and date in the prose not in the quote is flagged, contact data neither party has is removed; quote
+  notes, wishes and examples are fenced data. Automation pool, AI approval, audited (`quote.contract_written`),
+  session-only; without a model only templates. `…/contract-preview` prints the reviewed sections as a draft;
+  `POST …/contracts` numbers, prints and files them, keeps them (`quote_contracts.sections`) and saves, emails or
+  sends them for signature (the contractor's and the client's box in the signature block). A template is filled from
+  the quote's fields, by name first, the rest by the model (`POST /api/v1/quotes/{id}/contract-draft`). Generating with `quote_id` numbers the contract `<year>/C/<seq>` (`contract_counters`, in the filing
   transaction, the workspace's format when it prints `{TYPE}` and a year, else `C-{YYYY}-{NNN}`), names its file after
   the number and links it (`quote_contracts`: several per quote, newest first, gone with the document).
 - **Approvals** (`internal/approvals`, Business feature `document_approvals`): an optional approval before a draft is

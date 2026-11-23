@@ -294,6 +294,10 @@ func run() error {
 	aiWriteSvc := aiwrite.New(db, authSvc, importModel, aimodel.Budget{DB: db, Pool: aimodel.PoolHeidi,
 		Allowance: billingSvc.AITokens, CostAllowance: billingSvc.AICost, Now: func() time.Time { return time.Now().UTC() }})
 	templatesSvc.SetContractNumbers(invoicesSvc.ContractNumber)
+	templatesSvc.SetLogo(func(ctx context.Context, ws string) ([]byte, error) {
+		_, logo, _, err := invoicesSvc.Seller(ctx, db.Q, ws)
+		return logo, err
+	})
 	if importModel != nil {
 		// contract drafts from a quote: counted in the automation pool with AI import and filing
 		templatesSvc.SetAI(importModel, aimodel.Budget{DB: db, Pool: aimodel.PoolAutomation,

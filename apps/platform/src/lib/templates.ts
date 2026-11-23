@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError } from '@/lib/api'
-import { streetLine, type Client } from '@/lib/clients'
+import { LANGUAGES, streetLine, type Client, type Language } from '@/lib/clients'
 import { refreshDocuments } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
@@ -336,6 +336,21 @@ export const templatesApi = {
       method: 'POST',
       json: body,
     }),
+  contractWrite: (quoteId: string, body: ContractWriteRequest) =>
+    request<{ data: WrittenContract }>(`/quotes/${encodeURIComponent(quoteId)}/contract-drafts`, {
+      method: 'POST',
+      json: body,
+    }),
+  contractPreview: (quoteId: string, body: ContractSections) =>
+    request<{ data: ContractPreview }>(`/quotes/${encodeURIComponent(quoteId)}/contract-preview`, {
+      method: 'POST',
+      json: body,
+    }),
+  createContract: (quoteId: string, body: ContractSections & { delivery: Delivery }) =>
+    request<{ data: Generated }>(`/quotes/${encodeURIComponent(quoteId)}/contracts`, {
+      method: 'POST',
+      json: body,
+    }),
   quoteContracts: (quoteId: string) =>
     request<{ data: QuoteContract[] }>(`/quotes/${encodeURIComponent(quoteId)}/contracts`),
   contractCounts: () => request<{ data: Record<string, number> }>('/quotes/contract-counts'),
@@ -350,6 +365,57 @@ export type ContractDraft = {
   sources: Record<string, 'quote' | 'ai'>
   ai: 'used' | 'not_needed' | 'skipped' | 'unavailable' | 'quota_exceeded' | 'failed'
   quote: { id: string; number: string | null }
+}
+
+export type ContractClause = { heading: string; body: string }
+
+/** A written contract's text as reviewed; the parties, the quote's tables and the signatures come from the data. */
+export type ContractSections = {
+  title: string
+  language: Language
+  intro: string
+  clauses: ContractClause[]
+}
+
+/**
+ * Something to check in the text: an amount or date the quote does not have, or contact data removed from the
+ * AI's text. `clause` -1 is the title or introduction.
+ */
+export type ContractWarning = {
+  clause: number
+  kind: 'amount' | 'date' | 'personal_data'
+  text: string
+}
+
+export type ContractWriteRequest = {
+  mode: 'ai' | 'example' | 'improve'
+  language: Language
+  instructions: string
+  example_document_id?: string
+  clause?: ContractClause
+}
+
+export type WrittenContract = ContractSections & { warnings: ContractWarning[] }
+
+/** The contract as it prints, numbered "Draft": a base64 PDF. */
+export type ContractPreview = { pdf: string; pages: number; warnings: ContractWarning[] }
+
+/** The language a contract for this client is written in: the client's, else the quote's, else German. */
+const isLanguage = (value: string | null | undefined): value is Language =>
+  LANGUAGES.some((language) => language === value)
+
+export function contractLanguage(client: string | null | undefined, quote: string): Language {
+  if (isLanguage(client)) return client
+  return isLanguage(quote) ? quote : 'de'
+}
+
+/** What the review step needs before it lets you on, or null. */
+export function sectionsProblem(sections: ContractSections): string | null {
+  if (!sections.title.trim()) return translate('giveTheContractATitle')
+  if (sections.clauses.length === 0) return translate('addAtLeastOneSection')
+  if (sections.clauses.some((clause) => !clause.heading.trim() || !clause.body.trim()))
+    return translate('everySectionNeedsAHeadingAndText')
+  return null
 }
 
 /** A contract made from a quote, newest first, with its latest signature request. */
