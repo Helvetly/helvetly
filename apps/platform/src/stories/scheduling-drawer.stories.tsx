@@ -338,9 +338,9 @@ export const OpenEngagementInPlace: Story = {
     await expect(item).not.toHaveAttribute('href')
     await userEvent.click(item)
     await expect(openRecord).toHaveBeenLastCalledWith({ kind: 'engagement', id: 'eng_1' })
-    await userEvent.click(sheet.getByRole('link', { name: '#7 Coaching package' }))
+    await userEvent.click(await sheet.findByRole('link', { name: '#7 Coaching package' }))
     await expect(openRecord).toHaveBeenLastCalledWith({ kind: 'engagement', id: 'eng_1' })
-    await userEvent.click(sheet.getByRole('link', { name: 'Keller Holzbau AG' }))
+    await userEvent.click(await sheet.findByRole('link', { name: 'Keller Holzbau AG' }))
     await expect(openRecord).toHaveBeenLastCalledWith({ kind: 'client', id: 'cli_02' })
     // The session stays open underneath.
     await expect(sheet.getByRole('heading', { name: 'Coaching' })).toBeVisible()
