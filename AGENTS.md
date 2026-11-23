@@ -194,7 +194,9 @@ are the reference.
   clients, one-off or a series (an event with its RRULE, our own subset) whose occurrences are stored rows up to 400
   days ahead (at most 520), extended by a daily job and expanded in the series' zone from its wall-clock start. Edits
   take a scope (`this` = an exception row, `following` = a split that keeps the rows' ids, `all`); moving a series'
-  session to another day moves the series by as many days, its weekdays with it. A session that has started (start <= now, still open) keeps its time: a move or a new length answers 409
+  session to another day moves the series by as many days, its weekdays with it. Such a move (following or all) is previewed first (`dry_run`: run and rolled
+  back, each session that does not simply go along with its reason) and saved with the person's `keep`, `cancel` and
+  `include` choices in one transaction. A session that has started (start <= now, still open) keeps its time: a move or a new length answers 409
   `occurrence_started`, series edits skip it, a move from a calendar is pushed back. Hosts are members,
   never employees. A counting status (attended; a late cancellation or no-show per the settings, unless waived) adds
   an engagement entry through `engagements.AddEntry` in the same transaction; without an engagement, `unit_price`

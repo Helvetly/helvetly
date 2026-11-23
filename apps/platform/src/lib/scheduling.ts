@@ -208,6 +208,32 @@ export type EventInput = {
 
 export type Scope = 'this' | 'following' | 'all'
 
+/** Why a session of a series does not simply go along when the series moves (the API's preview). */
+export type MoveReason =
+  | 'started'
+  | 'closed'
+  | 'exception'
+  | 'day_off'
+  | 'outside_series'
+  | 'request_pending'
+  | 'conflict'
+  | 'monthly_rule'
+export type MoveItem = {
+  occurrence_id: string
+  starts_at: string
+  ends_at: string
+  moves_to: string | null
+  status: Status
+  reason: MoveReason
+  /** A warning only: it moves unless kept. */
+  moves: boolean
+  day_off?: string
+}
+export type MovePreview = { moving: number; sample: MoveItem[]; items: MoveItem[] }
+/** What happens to the sessions a series move lists: kept where they are, cancelled, or (changed on their own) moved too. */
+export type MoveChoices = { keep?: string[]; cancel?: string[]; include?: string[] }
+type OccurrencePatch = Partial<EventInput> & { scope: Scope } & MoveChoices
+
 export type OccurrenceQuery = {
   from: string
   to: string
@@ -257,11 +283,19 @@ export const schedulingApi = {
         send('POST', input),
       )
     ).data,
-  patchOccurrence: (id: string, body: Partial<EventInput> & { scope: Scope }) =>
+  patchOccurrence: (id: string, body: OccurrencePatch) =>
     request<One<Occurrence> & { details?: { kept?: number } }>(
       `/scheduling/occurrences/${enc(id)}`,
       send('PATCH', body),
     ),
+  /** What a change to this and following, or all sessions would do; changes nothing. */
+  previewMove: async (id: string, body: OccurrencePatch) =>
+    (
+      await request<One<MovePreview>>(
+        `/scheduling/occurrences/${enc(id)}`,
+        send('PATCH', { ...body, dry_run: true }),
+      )
+    ).data,
   cancel: async (
     id: string,
     body: { scope: Scope; as: 'on_time' | 'late'; reason?: string; notify?: boolean },

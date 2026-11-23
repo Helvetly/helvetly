@@ -4809,7 +4809,7 @@
         "operationId": "update_session",
         "tags": ["Scheduling"],
         "summary": "Change a session or its series",
-        "description": "Partial change. For a series, scope says how far it reaches: this session (it becomes an exception; a new time makes it rescheduled), this and the following (the series is split into a new event; the sessions keep their ids), or all upcoming sessions (changed ones keep their own time; details.kept counts them; a rule change cancels slots that no longer exist). Closed sessions refuse: 409 occurrence_closed. A session that has started keeps its time: moving it or changing its length answers 409 occurrence_started (series edits skip started sessions). Conflicts come back as warnings.",
+        "description": "Partial change. For a series, scope says how far it reaches: this session (it becomes an exception; a new time makes it rescheduled), this and the following (the series is split into a new event; the sessions keep their ids), or all upcoming sessions (changed ones keep their own time; details.kept counts them; a rule change cancels slots that no longer exist). Closed sessions refuse: 409 occurrence_closed. A session that has started keeps its time: moving it or changing its length answers 409 occurrence_started (series edits skip started sessions). Conflicts come back as warnings. With dry_run true the answer is { data: SchedulingMovePreview } and nothing changes; keep, cancel and include then say what happens to the sessions it lists.",
         "parameters": [
           {
             "name": "id",
@@ -14949,6 +14949,28 @@
             "type": "string",
             "enum": ["this", "following", "all"],
             "description": "For a series: this session, this and the following (the series is split, ids kept), or all upcoming ones. A one-off ignores it. Default this."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Scope following or all of a series only: answer what the change would do (SchedulingMovePreview: how many sessions move, the first few, and each session that does not simply go along, with its reason) and change nothing."
+          },
+          "keep": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxItems": 1000,
+            "description": "Series edits: sessions (ids) that stay where they are, off the rule."
+          },
+          "cancel": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxItems": 1000,
+            "description": "Series edits: sessions (ids) cancelled on time instead of moved."
+          },
+          "include": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxItems": 1000,
+            "description": "Series edits: sessions (ids) changed on their own that move with the others all the same."
           }
         },
         "additionalProperties": false,
@@ -15091,6 +15113,62 @@
               }
             }
           }
+        }
+      },
+      "SchedulingMovePreview": {
+        "type": "object",
+        "required": ["moving", "sample", "items"],
+        "properties": {
+          "moving": { "type": "integer", "description": "Sessions the change moves." },
+          "sample": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchedulingMoveItem" },
+            "description": "The first few of them."
+          },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchedulingMoveItem" },
+            "description": "Sessions that do not simply go along."
+          }
+        }
+      },
+      "SchedulingMoveItem": {
+        "type": "object",
+        "required": [
+          "occurrence_id",
+          "starts_at",
+          "ends_at",
+          "moves_to",
+          "status",
+          "reason",
+          "moves"
+        ],
+        "properties": {
+          "occurrence_id": { "type": "string" },
+          "starts_at": { "type": "string", "format": "date-time" },
+          "ends_at": { "type": "string", "format": "date-time" },
+          "moves_to": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Its new start when it moves."
+          },
+          "status": { "type": "string" },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "started",
+              "closed",
+              "exception",
+              "day_off",
+              "outside_series",
+              "request_pending",
+              "conflict",
+              "monthly_rule"
+            ],
+            "description": "started: has started, keeps its time. closed: attended, no-show or invoiced. exception: changed on its own, keeps its time (include moves it). day_off: its new day is a day off (moved there, or cancelled when the series skips days off). outside_series: past the series' end, cancelled. request_pending: the client's request is open. conflict: the host is busy then. monthly_rule: the rule repeats on a day of the month, which cannot move by days; nothing moves."
+          },
+          "moves": { "type": "boolean", "description": "A warning only: it moves unless kept." },
+          "day_off": { "type": "string", "description": "The day off's name." }
         }
       },
       "SchedulingOccurrencePatched": {

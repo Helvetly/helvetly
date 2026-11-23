@@ -12,22 +12,14 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useQueryClient } from '@tanstack/react-query'
 import { Lock } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { toast } from 'sonner'
 
 import { translate } from '@/lib/i18n'
 import {
-  changeErrorMessage,
   hostColor,
-  localOf,
-  schedulingApi,
-  schedulingKeys,
   STATUS_LABEL,
   STATUS_TONE,
-  useSchedulingWrite,
-  type EventInput,
   type Occurrence,
   type Scope,
   type Status,
@@ -189,91 +181,4 @@ export function SeriesDialog({
       </DialogContent>
     </Dialog>
   )
-}
-
-/** After a change to a series: how many changed sessions kept their own time. */
-export function toastSaved(kept: number | undefined) {
-  toast.success(
-    kept ? translate('schedSavedKept', { count: kept }) : translate('schedSessionSaved'),
-  )
-}
-
-/**
- * Saves a change to one session, asking for the scope first when it belongs to a series. `dialog` is the series
- * dialog while it is open; render it.
- */
-export function useSessionChange() {
-  const queryClient = useQueryClient()
-  const [asking, setAsking] = useState<{
-    occurrence: Occurrence
-    body: Partial<EventInput>
-    onlySeries: boolean
-    done?: () => void
-  } | null>(null)
-  const patch = useSchedulingWrite(
-    ({ id, body }: { id: string; body: Partial<EventInput> & { scope: Scope } }) =>
-      schedulingApi.patchOccurrence(id, body),
-  )
-  const save = (
-    occurrence: Occurrence,
-    body: Partial<EventInput>,
-    scope: Scope,
-    done?: () => void,
-  ) =>
-    patch.mutate(
-      { id: occurrence.id, body: { ...body, scope } },
-      {
-        onSuccess: (answer) => {
-          setAsking(null)
-          toastSaved(answer.details?.kept)
-          done?.()
-        },
-        onError: (error) => {
-          setAsking(null)
-          toast.error(changeErrorMessage(error))
-        },
-      },
-    )
-  const change = async (
-    occurrence: Occurrence,
-    body: Partial<EventInput>,
-    { onlySeries = false, done }: { onlySeries?: boolean; done?: () => void } = {},
-  ) => {
-    const event = await queryClient.fetchQuery({
-      queryKey: schedulingKeys.event(occurrence.event_id),
-      queryFn: () => schedulingApi.event(occurrence.event_id),
-    })
-    if (event.recurrence) setAsking({ occurrence, body, onlySeries, done })
-    else save(occurrence, body, 'this', done)
-  }
-  /** Moves a session to new instants, written as the series' wall clock. */
-  const move = async (
-    occurrence: Occurrence,
-    startsAt: Date,
-    endsAt: Date,
-    extra: Partial<EventInput> = {},
-  ) => {
-    try {
-      const event = await queryClient.fetchQuery({
-        queryKey: schedulingKeys.event(occurrence.event_id),
-        queryFn: () => schedulingApi.event(occurrence.event_id),
-      })
-      await change(occurrence, {
-        starts_local: localOf(startsAt, event.time_zone),
-        duration_minutes: Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000),
-        ...extra,
-      })
-    } catch (error) {
-      toast.error(changeErrorMessage(error))
-    }
-  }
-  const dialog = asking && (
-    <SeriesDialog
-      onlySeries={asking.onlySeries}
-      pending={patch.isPending}
-      onCancel={() => setAsking(null)}
-      onChoose={(scope) => save(asking.occurrence, asking.body, scope, asking.done)}
-    />
-  )
-  return { change, move, dialog, pending: patch.isPending }
 }

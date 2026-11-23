@@ -481,7 +481,12 @@ export function schedulingHandlers(state: SchedulingState = sampleState(), now =
         const found = find(params.id)
         if (!found) return notFound()
         if (!isOpen(found.status)) return fail(409, 'occurrence_closed', 'This session is closed.')
-        const body = (await request.json()) as Partial<EventInput> & { scope: string }
+        const body = (await request.json()) as Partial<EventInput> & {
+          scope: string
+          dry_run?: boolean
+        }
+        // The preview of a series move: every session goes along (stories that list some override this).
+        if (body.dry_run) return HttpResponse.json({ data: { moving: 1, sample: [], items: [] } })
         const zone = body.time_zone ?? eventOf(found)?.time_zone ?? ZONE
         let next: Occurrence = {
           ...found,

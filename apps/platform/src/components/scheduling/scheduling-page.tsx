@@ -41,13 +41,13 @@ import {
 import { getWorkspaceTimezone } from '@/lib/timezone'
 import { setUrlQuery } from '@/lib/url-query'
 
-import { useSessionChange } from './bits'
 import { useDayOffMove, useDaysOff } from './day-off'
 import { FULL_DAY, saveHours, storedHours, workingHours, type HoursChoice } from './hours-menu'
 import { downloadCsv, filterOccurrences, ListView, NO_FILTER, type Filter } from './list-view'
 import { MonthView } from './month-view'
 import { PeopleMenu, type HostMode } from './people-menu'
 import { RequestsDrawer } from './requests'
+import { useSessionChange } from './session-change'
 import { SessionDrawer, type DrawerTarget } from './session-drawer'
 import { TimeGrid } from './time-grid'
 import { ViewMenu, type Layout } from './view-menu'
@@ -178,7 +178,10 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
   }
   const unmarked = useOccurrences({ ...markRange, host: hostParam, to_mark: true })
   useSchedSettings()
-  const change = useSessionChange()
+  // "Change the repeat rule…" after a move the series' rule cannot make: the session's form, in the drawer.
+  const change = useSessionChange({
+    onEditRule: (occurrence) => setDrawer({ kind: 'view', id: occurrence.id, edit: true }),
+  })
   const daysOff = useDaysOff()
   const dayOffMove = useDayOffMove(daysOff, zone, change.move)
   const shownDays = daysOf(view, date)
