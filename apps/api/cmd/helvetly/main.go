@@ -287,6 +287,7 @@ func run() error {
 	calendarSvc := wireCalendars(ctx, bg, cfg, db, authSvc)
 	portalSvc := portal.New(db, authSvc, files, portalScopes, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure}, slog.Default())
 	portalSvc.SetMailer(portalLinksMailer)
+	portalSvc.SetScheduling(schedulingSvc)
 	mcpSvc := mcp.New(authSvc, openapi.Operations)
 	api := func(mux *http.ServeMux) {
 		mux.Handle("GET /api/ready", server.Ready(db.Ping))
