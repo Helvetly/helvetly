@@ -200,7 +200,7 @@ export const EditInPlace: Story = {
       expect(writes).toEqual([{ method: 'PATCH', body: { vat_treatment: 'standard' } }]),
     )
     await waitFor(() => expect(body().queryByRole('form')).toBeNull())
-    await expect(within(row('Books')).getByText('Standard 8.1%')).toBeVisible()
+    await waitFor(() => expect(within(row('Books')).getByText('Standard 8.1%')).toBeVisible())
   },
 }
 
