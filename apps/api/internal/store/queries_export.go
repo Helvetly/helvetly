@@ -206,6 +206,7 @@ func eachJSON(ctx context.Context, tx pgx.Tx, t ExportTable, id string, row func
 var ExportExcluded = map[string]string{
 	"account_login_challenges": "sign-in secret (token hash), minutes long",
 	"account_recovery_codes":   "sign-in secret (code hashes)",
+	"api_request_windows":      "API request counts of the last two minutes, a rate limit's state",
 	"email_codes":              "sign-in secret (code hashes), minutes long",
 	"passkey_challenges":       "sign-in secret, minutes long",
 	"transmission_credentials": "sealed e-invoice channel credentials",

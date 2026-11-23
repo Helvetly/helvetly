@@ -705,7 +705,10 @@ type createBody struct {
 	// AsIs: the example document is the contract as it is, without the model: copied, numbered and filed.
 	AsIs              bool   `json:"as_is"`
 	ExampleDocumentID string `json:"example_document_id"`
-	Delivery          struct {
+	// DocumentID: the contract an earlier attempt filed before its delivery failed; this one delivers it again
+	// under its number instead of making another.
+	DocumentID string `json:"document_id"`
+	Delivery   struct {
 		Type          string                   `json:"type"` // save | email | signature
 		To            string                   `json:"to"`
 		Message       *string                  `json:"message"`
@@ -819,21 +822,71 @@ func (s *Service) contractCreate(w http.ResponseWriter, r *http.Request, sess st
 	if err != nil {
 		return err
 	}
+	var file store.ClientFile
+	var number string
+	var printed contractpdf.Result
+	if in.DocumentID != "" {
+		if file, number, printed, err = s.filedContract(ctx, ws, src.quote.ID, in.DocumentID, logo, &sec.Title); err != nil {
+			return err
+		}
+	} else if file, number, printed, err = s.fileContract(ctx, sess, src, in, sec, logo, example); err != nil {
+		return err
+	}
+
+	out := generated{Document: store.FolderRef{ID: file.ID, Name: file.Name}, ContractNumber: &number}
+	title := sec.Title
+	switch d.Type {
+	case "email":
+		if s.mail == nil {
+			return errMailUnavailable // the contract stays in Documents
+		}
+		m, err := s.emailMessage(ctx, sess, nil, nil, d.Message, title, file.Name, printed.PDF)
+		if err != nil {
+			return err
+		}
+		m.To = []string{to}
+		if err := s.mail.Send(ctx, m); err != nil {
+			s.log.ErrorContext(ctx, "email written contract", "document", file.ID, "error", err)
+			return auth.Error(http.StatusServiceUnavailable, "mail_failed",
+				"The contract is in Documents, but the email could not be sent. Try again in a minute.", map[string]any{"document_id": file.ID})
+		}
+		out.EmailedTo = &to
+	case "signature":
+		id, err := s.sign.Create(r, sess, contractSigning(in, title, file.ID, printed))
+		if err != nil { // the contract stays in Documents: a retry names it (document_id) to send it again
+			s.log.ErrorContext(ctx, "send written contract for signature", "document", file.ID, "error", err)
+			status, code, message, ok := auth.Describe(err)
+			if !ok {
+				status, code, message = http.StatusServiceUnavailable, "signature_failed",
+					"The contract is in Documents, but it could not be sent for signature. Try again in a minute."
+			}
+			return auth.Error(status, code, message, map[string]any{"document_id": file.ID})
+		}
+		out.SignatureRequestID = &id
+	}
+	auth.WriteJSON(w, http.StatusCreated, data(out))
+	return nil
+}
+
+// fileContract numbers the reviewed contract (or the example as it is), prints it and files it in the client's
+// Contracts folder linked to the quote with its sections.
+func (s *Service) fileContract(ctx context.Context, sess store.Session, src contractSource, in createBody, sec sections,
+	logo, example []byte) (file store.ClientFile, number string, printed contractpdf.Result, err error) {
+	ws, d := sess.Workspace.ID, in.Delivery
 	var signed *contractpdf.Signed
 	if d.Signed && !in.AsIs {
 		if signed, err = s.contractorSignature(ctx, sess); err != nil {
-			return err
+			return file, "", printed, err
 		}
 		if signed == nil {
-			return errSignatureMissing
+			return file, "", printed, errSignatureMissing
 		}
 	}
 
 	now := s.now()
-	file := store.ClientFile{ID: auth.NewID("doc"), ContentType: "application/pdf", CreatedAt: now, Contract: true}
+	file = store.ClientFile{ID: auth.NewID("doc"), ContentType: "application/pdf", CreatedAt: now, Contract: true}
 	file.ObjectKey = "workspaces/" + ws + "/documents/" + file.ID + "/contract.pdf"
-	var number string
-	printed := contractpdf.Result{PDF: example}
+	printed = contractpdf.Result{PDF: example}
 	// The number is printed on the contract, so it is taken, printed and stored in the transaction that files it:
 	// a failed contract leaves no gap, and other contracts of the workspace wait for the upload.
 	err = s.db.Tx(ctx, func(q store.Q) error {
@@ -903,36 +956,37 @@ func (s *Service) contractCreate(w http.ResponseWriter, r *http.Request, sess st
 				s.log.ErrorContext(ctx, "remove written contract", "key", file.ObjectKey, "error", err)
 			}
 		}
-		return err
 	}
+	return file, number, printed, err
+}
 
-	out := generated{Document: store.FolderRef{ID: file.ID, Name: file.Name}, ContractNumber: &number}
-	title := sec.Title
-	switch d.Type {
-	case "email":
-		if s.mail == nil {
-			return errMailUnavailable // the contract stays in Documents
-		}
-		m, err := s.emailMessage(ctx, sess, nil, nil, d.Message, title, file.Name, printed.PDF)
-		if err != nil {
-			return err
-		}
-		m.To = []string{to}
-		if err := s.mail.Send(ctx, m); err != nil {
-			s.log.ErrorContext(ctx, "email written contract", "document", file.ID, "error", err)
-			return auth.Error(http.StatusServiceUnavailable, "mail_failed",
-				"The contract is in Documents, but the email could not be sent. Try again in a minute.", map[string]any{"document_id": file.ID})
-		}
-		out.EmailedTo = &to
-	case "signature":
-		id, err := s.sign.Create(r, sess, contractSigning(in, title, file.ID, printed))
-		if err != nil {
-			return err // the contract stays in Documents
-		}
-		out.SignatureRequestID = &id
+// filedContract: the contract an earlier attempt filed for the quote (its number, title and stored PDF, with the
+// signature boxes printed again from its stored document), to deliver again without taking another number. An
+// example filed as it is keeps no document: its title stays the one asked for.
+func (s *Service) filedContract(ctx context.Context, ws, quoteID, documentID string, logo []byte, title *string) (
+	file store.ClientFile, number string, printed contractpdf.Result, err error) {
+	number, key, name, stored, err := s.db.QuoteContractFile(ctx, ws, quoteID, documentID)
+	if errors.Is(err, store.ErrNotFound) {
+		err = validationFailed(map[string]string{"document_id": "This contract is no longer in Documents. Create it again."})
 	}
-	auth.WriteJSON(w, http.StatusCreated, data(out))
-	return nil
+	if err != nil {
+		return file, "", printed, err
+	}
+	if stored != nil {
+		var doc contractpdf.Document
+		if err := json.Unmarshal(stored, &doc); err != nil {
+			return file, "", printed, err
+		}
+		doc.Logo = logo
+		if printed, err = contractpdf.Render(doc); err != nil {
+			return file, "", printed, err
+		}
+		*title = doc.Title
+	}
+	if printed.PDF, err = s.files.Get(ctx, key); err != nil {
+		return file, "", printed, err
+	}
+	return store.ClientFile{ID: documentID, Name: name, ObjectKey: key}, number, printed, nil
 }
 
 // contractSigning: the signature request of a written contract. The client signs in its column, a date on its

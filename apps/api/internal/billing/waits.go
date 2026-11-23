@@ -55,3 +55,20 @@ func (s *Service) AutomationWaits(ctx context.Context, workspaceID string, limit
 	}
 	return false, nil
 }
+
+// APIRate is the workspace's API token requests a minute, of writes or of reads, from its plan (Unlimited
+// self-hosted). Without a plan the workspace is read-only and the operation's own checks refuse its writes, so the
+// rate does not.
+func (s *Service) APIRate(ctx context.Context, workspaceID string, write bool) (int64, error) {
+	r, err := s.Entitlements(ctx, s.db.Q, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	if r.Plan == "" && !r.SelfHosted {
+		return Unlimited, nil
+	}
+	if write {
+		return r.Cap(APIWrites)
+	}
+	return r.Cap(APIReads)
+}

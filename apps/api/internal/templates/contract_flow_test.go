@@ -86,6 +86,14 @@ func TestContractAsIsCopiesTheExample(t *testing.T) {
 	if got := e.fail(b, "POST", path, body, http.StatusUnprocessableEntity); got.Details.Fields["delivery.type"] == "" {
 		t.Fatalf("signature for an example as it is: %+v", got)
 	}
+	// an email that failed is sent again with the contract already filed, though it keeps no sections
+	body["delivery"] = obj{"type": "email", "to": "peter@mueller.ch"}
+	body["document_id"] = out.Data.Document.ID
+	e.do(b, "POST", path, body, http.StatusCreated, &out)
+	if out.Data.Document.ID != doc.ID || len(e.mail.sent) != 1 || !bytes.Equal(e.mail.sent[0].Attachments[0].Data, example) {
+		t.Fatalf("retry of an example as it is: %+v", out.Data)
+	}
+	delete(body, "document_id")
 	body["delivery"], body["example_document_id"] = obj{"type": "save"}, "doc_missing"
 	if got := e.fail(b, "POST", path, body, http.StatusUnprocessableEntity); got.Details.Fields["example_document_id"] == "" {
 		t.Fatalf("missing example: %+v", got)

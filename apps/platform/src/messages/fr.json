@@ -2756,6 +2756,7 @@
   "sendFinalReminder": "Envoyer le dernier rappel",
   "reminderSentTo": "À {email}",
   "sentAutomatically": " · automatiquement",
+  "reminderDeliveryUnconfirmed": "Envoi non confirmé : le serveur de messagerie l’a peut-être accepté, il n’est donc pas renvoyé.",
   "noAutomaticRemindersToPause": "Aucun rappel automatique ne part pour cette facture, il n’y a donc rien à mettre en pause. Vous pouvez toujours en envoyer un à la main.",
   "pauseAutomaticReminders": "Arrêter les rappels automatiques de cette facture jusqu’à la reprise.",
   "resumeAutomaticReminders": "Envoyer à nouveau les rappels automatiques de cette facture.",

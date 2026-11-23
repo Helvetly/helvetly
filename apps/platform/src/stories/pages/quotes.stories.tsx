@@ -1420,6 +1420,67 @@ export const ContractSignedByYou: Story = {
   },
 }
 
+/**
+ * The email fails after the contract is filed: the retry sends that contract (its document_id) instead of
+ * numbering another one.
+ */
+const contractSends: { document_id?: string }[] = []
+export const ContractEmailRetry: Story = {
+  parameters: quotes({}, [
+    http.post('/api/v1/quotes/quo_sent/contracts', async ({ request }) => {
+      const sent = (await request.json()) as { document_id?: string }
+      contractSends.push(sent)
+      if (contractSends.length === 1)
+        return HttpResponse.json(
+          {
+            error: {
+              code: 'mail_failed',
+              message: 'The contract is in Documents, but the email could not be sent.',
+              details: { document_id: 'doc_contract2' },
+            },
+          },
+          { status: 503 },
+        )
+      return HttpResponse.json(
+        {
+          data: {
+            contract_number: '2026/C/002',
+            document: { id: 'doc_contract2', name: '2026-C-002.pdf' },
+            signature_request_id: null,
+            emailed_to: 'anna@keller.ch',
+          },
+        },
+        { status: 201 },
+      )
+    }),
+    ...contractHandlers,
+  ]),
+  beforeEach: () => {
+    contractSends.length = 0
+  },
+  play: async (context) => {
+    const drawer = await toSend(context)
+    await userEvent.click(
+      await within(drawer).findByRole('button', { name: /Email it to the client/ }, wait),
+    )
+    const to = within(drawer).getByRole('textbox', { name: /To/ })
+    await userEvent.clear(to)
+    await userEvent.type(to, 'anna@keller.ch')
+    const send = within(drawer).getByRole('button', { name: 'Send email' })
+    await userEvent.click(send)
+    await toasted(
+      context.canvasElement,
+      'The contract is in Documents, but the email could not be sent.',
+    )
+    await userEvent.click(send)
+    await toasted(context.canvasElement, 'Contract 2026/C/002 created')
+    await expect(contractSends.map((sent) => sent.document_id)).toEqual([
+      undefined,
+      'doc_contract2',
+    ])
+  },
+}
+
 /** The quote's details list its contracts: number, signature status, Open. */
 export const ContractSection: Story = {
   parameters: quotes({ id: 'quo_sent' }, contractHandlers),

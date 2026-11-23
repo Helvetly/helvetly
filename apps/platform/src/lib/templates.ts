@@ -440,7 +440,7 @@ export type ContractCreateRequest = (
       language: Language
       governing_law: string
     }
-) & { delivery: ContractDelivery }
+) & { delivery: ContractDelivery; document_id?: string }
 
 /**
  * A contract's custom fields filled from a quote (`POST /quotes/{id}/contract-draft`): `sources` says

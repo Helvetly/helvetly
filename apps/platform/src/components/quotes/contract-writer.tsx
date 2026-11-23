@@ -34,6 +34,7 @@ import { DocPreview, PdfPicker } from '@/components/signatures/pdf-parts'
 import { Choice, TemplatePicker } from '@/components/templates/fill-drawer'
 import { failed, Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { useAI } from '@/lib/ai'
+import { ApiError } from '@/lib/api'
 import { type Client } from '@/lib/clients'
 import { signatureImageUrl, useContractSignature } from '@/lib/contract-signature'
 import { translate } from '@/lib/i18n'
@@ -218,6 +219,8 @@ export function ContractWriter({
   ])
   const [message, setMessage] = useState('')
   const [tried, setTried] = useState(false)
+  // The contract an attempt filed before its delivery failed: the retry sends that one, under its number.
+  const [filed, setFiled] = useState<string | null>(null)
   const create = useTemplateMutation((body: ContractCreateRequest) =>
     templatesApi.createContract(quote.id, body),
   )
@@ -353,24 +356,30 @@ export function ContractWriter({
               expires_in_days: 30,
               signed: signs,
             }
-    const request: ContractCreateRequest =
-      asIs && example
+    const request: ContractCreateRequest = {
+      ...(asIs && example
         ? {
             as_is: true,
             example_document_id: example.id,
             title: example.name.replace(/\.pdf$/i, ''),
             language: contractLanguage(locale),
             governing_law: governingLaw,
-            delivery: body,
           }
-        : { ...toSections(sections as Draft), delivery: body }
+        : toSections(sections as Draft)),
+      delivery: body,
+      ...(filed && { document_id: filed }),
+    }
     create.mutate(request, {
       onSuccess: ({ data }) => {
         if (placing) return onPlace(data)
         onMade(data)
         onClose()
       },
-      onError: (error) => failed(translate('couldNotCreateTheContract'), error),
+      onError: (error) => {
+        const saved = error instanceof ApiError ? error.details.document_id : undefined
+        if (typeof saved === 'string') setFiled(saved)
+        failed(translate('couldNotCreateTheContract'), error)
+      },
     })
   }
 

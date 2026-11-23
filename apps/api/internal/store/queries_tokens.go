@@ -90,3 +90,20 @@ func (q Q) TouchAPIToken(ctx context.Context, id string, now time.Time) error {
 	_, err := q.db.Exec(ctx, `UPDATE api_tokens SET last_used_at = $2 WHERE id = $1`, id, now)
 	return err
 }
+
+// CountAPIRequest counts one API token request of the workspace in pool (read or write) and answers the requests of
+// now's minute (this one included) and of the minute before, for a rolling minute's estimate. Every instance counts
+// in the same rows.
+func (q Q) CountAPIRequest(ctx context.Context, workspaceID, pool string, now time.Time) (current, previous int64, err error) {
+	minute := now.UTC().Truncate(time.Minute)
+	err = q.db.QueryRow(ctx, `WITH gone AS (
+			DELETE FROM api_request_windows WHERE workspace_id = $1 AND pool = $2 AND window_start < $3::timestamptz - interval '1 minute'),
+		cur AS (
+			INSERT INTO api_request_windows (workspace_id, pool, window_start, requests) VALUES ($1, $2, $3::timestamptz, 1)
+			ON CONFLICT (workspace_id, pool, window_start) DO UPDATE SET requests = api_request_windows.requests + 1
+			RETURNING requests)
+		SELECT cur.requests, coalesce((SELECT requests FROM api_request_windows
+			WHERE workspace_id = $1 AND pool = $2 AND window_start = $3::timestamptz - interval '1 minute'), 0) FROM cur`,
+		workspaceID, pool, minute).Scan(&current, &previous)
+	return current, previous, err
+}
