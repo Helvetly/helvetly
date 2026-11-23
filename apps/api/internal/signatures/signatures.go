@@ -86,10 +86,10 @@ type Service struct {
 	log       *slog.Logger
 	now       func() time.Time
 	limit     *auth.RateLimiter
-	brands    func(ctx context.Context, workspaceID string) (mail.Brand, error) // for the email preview
+	brands    func(ctx context.Context, workspaceID string) (mail.Brand, error) // the email preview and the signing page
 }
 
-// SetBrands lets the email preview show the business's header and footer, as mail.Branded sends them.
+// SetBrands lets the email preview and the signing page show the business as mail.Branded sends it.
 func (s *Service) SetBrands(brands func(ctx context.Context, workspaceID string) (mail.Brand, error)) {
 	s.brands = brands
 }

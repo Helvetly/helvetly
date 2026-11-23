@@ -544,11 +544,7 @@ function DayColumn({
                 'flex size-full touch-none flex-col items-start overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-left text-caption outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset',
                 // A title-only block centres its one line at the caption's paired line height; two lines stack tight.
                 height >= 34 ? 'leading-tight' : 'justify-center',
-                canMove
-                  ? 'cursor-grab active:cursor-grabbing'
-                  : started
-                    ? 'cursor-default'
-                    : 'cursor-pointer',
+                canMove ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer',
                 occurrence.status === 'requested' && 'border border-l-[3px] border-dashed',
                 closed && 'opacity-60',
               )}

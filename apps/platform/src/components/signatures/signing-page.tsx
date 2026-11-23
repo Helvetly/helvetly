@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
 import { InlineError } from '@helvetly/ui/components/inline-error'
-import { LogoMark } from '@helvetly/ui/components/logo'
+import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -26,16 +26,19 @@ import {
   type LucideIcon,
   MailCheck,
   OctagonX,
+  ShieldCheck,
 } from 'lucide-react'
+import Image from 'next/image'
 import { useEffect, useState, type ReactNode } from 'react'
 
+import { DisabledTip } from '@/components/employees/hr-access'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { signaturesApi, signingDocumentUrl, type Field, type SigningView } from '@/lib/signatures'
 
 import { AdoptDialog, type Adopted } from './adopt-dialog'
-import { FIELD_ICONS, FieldBox, SesNote } from './parts'
+import { FIELD_ICONS, FieldBox } from './parts'
 
 const SIGNER_COLOR = '#2f6fdf'
 // Public page for an external signer: their own zone, not a workspace's, is right.
@@ -112,21 +115,23 @@ export function SigningPage() {
 
 function Signing({ token, view }: { token: string; view: SigningView }) {
   const { request, signer } = view
-  const sender = translate('dynamicFrom4', {
-    name: request.sender.name,
-    workspace: request.workspace,
-  })
+  const brand = { name: request.workspace, logo: request.logo }
   if (request.status === 'revoked')
     return (
       <Notice
+        brand={brand}
         icon={Ban}
         title={translate('thisRequestWasWithdrawn')}
-        text={translate('withdrewThereIsNothingToSign', { sender: sender, title: request.title })}
+        text={translate('withdrewThereIsNothingToSign', {
+          sender: request.workspace,
+          title: request.title,
+        })}
       />
     )
   if (signer.status === 'signed')
     return (
       <Notice
+        brand={brand}
         tone="green"
         icon={CircleCheck}
         title={
@@ -149,6 +154,7 @@ function Signing({ token, view }: { token: string; view: SigningView }) {
   if (signer.status === 'declined')
     return (
       <Notice
+        brand={brand}
         icon={OctagonX}
         title={translate('youDeclinedToSign')}
         text={translate('hasBeenToldNothingMoreToDoHere', { name: request.sender.name })}
@@ -157,6 +163,7 @@ function Signing({ token, view }: { token: string; view: SigningView }) {
   if (request.status === 'declined')
     return (
       <Notice
+        brand={brand}
         icon={OctagonX}
         title={translate('signingWasStopped')}
         text={translate('anotherSignerDeclinedSoItCanTBeSigned', {
@@ -168,6 +175,7 @@ function Signing({ token, view }: { token: string; view: SigningView }) {
   if (request.status === 'expired')
     return (
       <Notice
+        brand={brand}
         icon={Hourglass}
         title={translate('thisRequestHasExpired')}
         text={translate('itRanUntilAskToSendItAgain', {
@@ -179,6 +187,7 @@ function Signing({ token, view }: { token: string; view: SigningView }) {
   if (request.status === 'completed')
     return (
       <Notice
+        brand={brand}
         tone="green"
         icon={CircleCheck}
         title={translate('thisDocumentIsComplete')}
@@ -188,6 +197,7 @@ function Signing({ token, view }: { token: string; view: SigningView }) {
   if (signer.status === 'waiting')
     return (
       <Notice
+        brand={brand}
         icon={Clock}
         title={translate('itSNotYourTurnYet')}
         text={translate('isSignedInOrderYouLlGetAnEmail', { title: request.title })}
@@ -273,27 +283,40 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
     </div>
   )
 
+  const from = request.sender.email ? request.sender : null // nobody when the member who sent it is gone
+  const progress = translate('signingFieldsProgress', { done, total: fields.length })
+  const blocked =
+    done < fields.length && !consent
+      ? translate('signingFinishNeedsBoth')
+      : done < fields.length
+        ? translate('signingFinishNeedsFields')
+        : !consent
+          ? translate('signingFinishNeedsConsent')
+          : null
+
   return (
     <div className="flex min-h-svh flex-col bg-muted/50 dark:bg-background">
       <header className="sticky top-0 z-20 border-b bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[960px] items-center gap-3 px-4">
-          <LogoMark className="size-6 shrink-0" />
+        <div className="mx-auto flex h-16 max-w-[960px] items-center gap-3 px-4 sm:px-10">
+          <BrandMark name={request.workspace} logo={request.logo} />
+          <p className="sr-only max-w-48 truncate text-sm font-medium sm:not-sr-only">
+            {request.workspace}
+          </p>
+          <span aria-hidden className="hidden h-6 w-px shrink-0 bg-border sm:block" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14.5px] font-medium">{request.title}</p>
-            <p className="truncate text-[12px] text-muted-foreground">
-              {translate('from3')}
-              {request.sender.name} · {request.workspace}
-            </p>
+            <h1 className="truncate text-sm font-medium">{request.title}</h1>
+            {from && (
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                {translate('signingSentBy', { name: from.name })}
+              </p>
+            )}
           </div>
-          <span className="hidden text-[12.5px] text-muted-foreground tabular-nums sm:block">
-            {done}
-            {translate('of5')}
-            {fields.length}
-            {translate('fields')}
+          <span className="hidden shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground tabular-nums sm:inline">
+            {progress}
           </span>
           <Button
             variant="ghost"
-            className="cursor-pointer text-muted-foreground"
+            className="shrink-0 cursor-pointer text-muted-foreground"
             onClick={() => setDeclining(true)}
           >
             {translate('decline')}
@@ -308,21 +331,36 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
       </header>
 
       <main className="mx-auto grid w-full max-w-[960px] gap-4 px-0 pt-5 pb-48 sm:px-4">
-        <section className="mx-4 grid gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/[0.06] sm:mx-6 sm:p-5">
-          <p className="text-[14px]">
-            <span className="font-medium">{request.sender.name}</span>
-            <span className="text-muted-foreground">
-              {' '}
-              ({request.sender.email}
-              {translate('asksYou')}
-              {signer.name}
-              {translate('toSignThisDocument')}
-            </span>
+        <section className="mx-4 grid gap-2.5 rounded-2xl bg-card p-4 ring-1 ring-foreground/[0.06] sm:mx-6 sm:p-5">
+          <p className="text-base font-medium text-balance">
+            {translate('signingAsksYou', { company: request.workspace, title: request.title })}
           </p>
-          {request.message && (
-            <p className="text-[14px] text-pretty whitespace-pre-line">{request.message}</p>
+          {from && (
+            <p className="min-w-0 truncate text-sm text-muted-foreground">
+              {translate('signingSentBy', { name: from.name })}
+              <span> · {from.email}</span>
+            </p>
           )}
-          <SesNote />
+          {request.message && (
+            <p className="text-sm text-pretty whitespace-pre-line">{request.message}</p>
+          )}
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+            <ShieldCheck className="size-3.5 shrink-0 stroke-[1.75]" />
+            {translate('signingSesShort')}
+            <span aria-hidden>·</span>
+            <Popover>
+              <PopoverTrigger className="cursor-pointer underline underline-offset-2 hover:text-foreground">
+                {translate('signingWhatDoesThisMean')}
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                collisionPadding={12}
+                className="w-80 max-w-[calc(100vw-24px)] p-4 text-body-sm"
+              >
+                {translate('aSimpleElectronicSignatureSESUnderSwissZertESAnd')}
+              </PopoverContent>
+            </Popover>
+          </p>
         </section>
         <PdfView
           src={signingDocumentUrl(token)}
@@ -333,17 +371,34 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
       </main>
 
       <footer className="fixed inset-x-0 bottom-0 z-20 border-t bg-card/95 backdrop-blur">
-        <div className="mx-auto grid max-w-[960px] gap-3 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
-          <label className="flex cursor-pointer items-start gap-2.5 text-[12.5px] leading-snug text-muted-foreground">
+        <div className="mx-auto grid max-w-[960px] gap-3 px-4 py-3 sm:flex sm:items-center sm:px-10">
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
             <Checkbox
+              id="signing-consent"
               checked={consent}
               onCheckedChange={(on) => setConsent(on === true)}
-              className="mt-0.5"
-              aria-label={translate('iAgreeToSignElectronically')}
             />
-            <span>{view.consent_text}</span>
-          </label>
-          <div className="flex items-center gap-2 sm:justify-end">
+            <label htmlFor="signing-consent" className="cursor-pointer">
+              {translate('iAgreeToSignElectronically')}
+            </label>
+            <Popover>
+              <PopoverTrigger className="cursor-pointer text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                {translate('signingConsentDetails')}
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                side="top"
+                collisionPadding={12}
+                className="w-96 max-w-[calc(100vw-24px)] p-4 text-body-sm"
+              >
+                {view.consent_text}
+              </PopoverContent>
+            </Popover>
+            <span className="ml-auto text-xs text-muted-foreground tabular-nums sm:hidden">
+              {progress}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
             {nextField ? (
               <Button
                 size="xl"
@@ -355,17 +410,19 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
                 {translate('nextField')}
               </Button>
             ) : null}
-            <Button
-              size="xl"
-              className="flex-1 cursor-pointer sm:flex-none"
-              disabled={!ready || busy}
-              onClick={() => void finish()}
-            >
-              {busy && <Loader2 className="size-4 animate-spin" />}
-              {translate('finish')}
-            </Button>
+            <DisabledTip reason={busy ? null : blocked}>
+              <Button
+                size="xl"
+                className="flex-1 cursor-pointer sm:flex-none"
+                disabled={!ready || busy}
+                onClick={() => void finish()}
+              >
+                {busy && <Loader2 className="size-4 animate-spin" />}
+                {translate('finish')}
+              </Button>
+            </DisabledTip>
           </div>
-          {error && <InlineError className="sm:col-span-2">{error}</InlineError>}
+          {error && <InlineError className="sm:basis-full">{error}</InlineError>}
         </div>
       </footer>
 
@@ -527,19 +584,23 @@ function DeclineDialog({ token, onClose }: { token: string; onClose: () => void 
   )
 }
 
+type Brand = { name: string; logo: string }
+
 function Notice({
   icon: Icon,
   title,
   text,
   tone = 'neutral',
+  brand,
 }: {
   icon: LucideIcon
   title: string
   text: string
   tone?: Tone
+  brand?: Brand
 }) {
   return (
-    <Shell>
+    <Shell brand={brand}>
       <span className={cn('flex size-12 items-center justify-center rounded-full', TONES[tone])}>
         <Icon className="size-5 stroke-[1.75]" />
       </span>
@@ -561,11 +622,17 @@ function Loading() {
   )
 }
 
-function Shell({ children }: { children: ReactNode }) {
+function Shell({ children, brand }: { children: ReactNode; brand?: Brand }) {
   return (
     <div className="flex min-h-svh flex-col items-center bg-muted/50 px-4 dark:bg-background">
       <div className="flex flex-1 items-center">
         <div className="grid max-w-sm justify-items-center rounded-2xl bg-card px-8 py-10 text-center ring-1 ring-foreground/[0.06]">
+          {brand && (
+            <div className="mb-8 flex max-w-full min-w-0 items-center gap-2.5">
+              <BrandMark name={brand.name} logo={brand.logo} />
+              <p className="truncate text-sm font-medium">{brand.name}</p>
+            </div>
+          )}
           {children}
         </div>
       </div>
@@ -574,5 +641,41 @@ function Shell({ children }: { children: ReactNode }) {
         {translate('electronicSignaturesByHelvetly')}
       </p>
     </div>
+  )
+}
+
+/** Up to two initials of a company name, for a workspace without a logo. */
+export const monogram = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join('')
+
+/** The sending business's logo, as its emails show it; a neutral monogram tile without one (or when it fails). */
+function BrandMark({ name, logo }: { name: string; logo: string }) {
+  const [broken, setBroken] = useState(false)
+  if (logo && !broken)
+    return (
+      // The email copy of the logo, already scaled to 36 px high; a static export has no image optimiser. Its width
+      // is unknown, so both sizes come from CSS (0 x 0 keeps next/image from warning about one changed size).
+      <Image
+        src={logo}
+        alt=""
+        width={0}
+        height={0}
+        unoptimized
+        onError={() => setBroken(true)}
+        className="h-9 w-auto max-w-32 shrink-0 object-contain"
+      />
+    )
+  return (
+    <span
+      aria-hidden
+      className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-medium text-muted-foreground"
+    >
+      {monogram(name) || '·'}
+    </span>
   )
 }

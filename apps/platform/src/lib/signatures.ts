@@ -96,7 +96,10 @@ export type SigningView = {
     message: string | null
     status: RequestStatus
     sender: { name: string; email: string }
+    /** The business as its emails name it. */
     workspace: string
+    /** Its email logo (a public path), empty for none. */
+    logo: string
     expires_at: string
     page_count: number
   }

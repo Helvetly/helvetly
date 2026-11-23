@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"slices"
 	"strings"
 
 	"helvetly.com/api/internal/auth"
@@ -37,15 +38,37 @@ func quoted(message *string) string {
 	return "“" + *message + "”"
 }
 
-// signWords are the fixed parts of a signing email in its language: the button, the link's expiry and the SES note.
-var signWords = map[string]struct{ button, expiry, ses, date string }{
-	"de": {"Prüfen und unterschreiben", "Der Link ist persönlich, bitte leiten Sie ihn nicht weiter. Er gilt bis %s.",
+// signWords are the fixed parts of a signing email in its language: the button, the summary's labels, the personal
+// link and the SES note.
+var signWords = map[string]struct{ button, document, sentBy, signBy, personal, ses, date string }{
+	"de": {"Prüfen und unterschreiben →", "Dokument", "Gesendet von", "Unterschreiben bis",
+		"Der Link ist persönlich, bitte leiten Sie ihn nicht weiter.",
 		"Dies ist eine einfache elektronische Signatur (EES) nach dem Schweizer ZertES und der EU-Verordnung eIDAS.", "02.01.2006"},
-	"fr": {"Vérifier et signer", "Ce lien est personnel, merci de ne pas le transférer. Il est valable jusqu’au %s.",
+	"fr": {"Vérifier et signer →", "Document", "Envoyé par", "À signer avant le",
+		"Ce lien est personnel, merci de ne pas le transférer.",
 		"Il s’agit d’une signature électronique simple (SES) au sens de la SCSE suisse et du règlement européen eIDAS.", "02.01.2006"},
-	"it": {"Verifica e firma", "Il link è personale, la preghiamo di non inoltrarlo. È valido fino al %s.",
+	"it": {"Verifica e firma →", "Documento", "Inviato da", "Da firmare entro il",
+		"Il link è personale, la preghiamo di non inoltrarlo.",
 		"Si tratta di una firma elettronica semplice (FES) ai sensi della FiEle svizzera e del regolamento UE eIDAS.", "02.01.2006"},
-	"en": {"Review and sign", "The link is personal, so please don't forward it. It works until %s.", sesNote, "2 January 2006"},
+	"en": {"Review and sign →", "Document", "Sent by", "Sign by", "The link is personal, so please don't forward it.", sesNote,
+		"2 January 2006"},
+}
+
+// short keeps a name to one line: a long company name never fills a subject or a sentence.
+func short(name string) string {
+	name = strings.Join(strings.Fields(name), " ")
+	if r := []rune(name); len(r) > 60 {
+		return strings.TrimSpace(string(r[:59])) + "…"
+	}
+	return name
+}
+
+// sentBy is the member who sent the request; empty when they are gone (the business itself is named already).
+func sentBy(req store.SignatureRequest) string {
+	if req.CreatedBy == nil {
+		return ""
+	}
+	return short(req.CreatedBy.Name)
 }
 
 // emailText is the template of a request's invitation or reminder in its language (the workspace's own, else the
@@ -61,37 +84,38 @@ func (s *Service) emailText(ctx context.Context, req store.SignatureRequest, rem
 	return emailtemplate.Lookup(ctx, s.db.Q, req.WorkspaceID, kind, *req.Language)
 }
 
-// inviteMessage is a signer's email with their personal link. With a language, its subject (and a reminder's message)
-// come from text and the invitation's message is the one the sender wrote; without, it is the English email of before.
+// inviteMessage is a signer's email with their personal link: a lead, the document's summary, the button and the small
+// print. With a language, its subject and lead (and a reminder's message) come from text and the invitation's lead is
+// the message the sender wrote; without, it is the English email.
 func inviteMessage(req store.SignatureRequest, to store.Signer, link string, reminder bool, text emailtemplate.Template) mail.Message {
-	from := senderOf(req).Name
+	language, company := "en", short(req.WorkspaceName)
 	if req.Language != nil {
-		w, ok := signWords[*req.Language]
-		if !ok {
-			w = signWords["en"]
-		}
-		r := emailtemplate.Render(text, map[string]string{"document": req.Title, "sender": from, "company": req.WorkspaceName})
-		body := r.Body
+		language = *req.Language
+	}
+	w, ok := signWords[language]
+	if !ok {
+		w = signWords["en"]
+	}
+	var subject string
+	var lead []string
+	if req.Language != nil {
+		r := emailtemplate.Render(text, map[string]string{"document": req.Title, "sender": short(senderOf(req).Name), "company": company})
+		subject, lead = r.Subject, strings.Split(r.Body, "\n\n")
 		if !reminder && req.Message != nil {
-			body = *req.Message
+			lead = strings.Split(*req.Message, "\n\n")
 		}
-		expiry := fmt.Sprintf(w.expiry, req.ExpiresAt.In(zone(req)).Format(w.date))
-		return mail.Message{Workspace: req.WorkspaceID, Language: *req.Language, To: []string{to.Email}, Subject: r.Subject,
-			ReplyTo: req.SenderEmail, Text: fmt.Sprintf("%s\n\n%s:\n%s\n\n%s\n%s\n", body, w.button, link, expiry, w.ses),
-			HTML: paragraphs(strings.Split(body, "\n\n")...) + mail.Button(w.button, link) + fine(expiry, w.ses)}
+	} else {
+		subject = fmt.Sprintf("%s asks you to sign “%s”", company, req.Title)
+		if reminder {
+			subject = "Reminder: " + subject
+		}
+		lead = []string{"Hello " + short(to.Name) + ",", fmt.Sprintf("%s asks you to review and sign “%s”.", company, req.Title), quoted(req.Message)}
 	}
-	lead := fmt.Sprintf("%s (%s) asks you to review and sign “%s”.", from, req.WorkspaceName, req.Title)
-	subject := fmt.Sprintf("%s sent you “%s” to sign", from, req.Title)
-	if reminder {
-		subject = "Reminder: " + subject
-	}
-	expiry := fmt.Sprintf("The link is personal, so please don't forward it. It works until %s.",
-		req.ExpiresAt.In(zone(req)).Format("2 January 2006"))
-	m := mail.Message{Workspace: req.WorkspaceID, Language: "en", To: []string{to.Email}, Subject: subject, ReplyTo: req.SenderEmail,
-		Text: fmt.Sprintf("Hello %s,\n\n%s\n\n%s\n\nReview and sign:\n%s\n\n%s\n%s\n", to.Name, lead, quoted(req.Message), link,
-			expiry, sesNote),
-		HTML: paragraphs("Hello "+to.Name+",", lead, quoted(req.Message)) + mail.Button("Review and sign", link) + fine(expiry, sesNote)}
-	return m
+	rows := [][2]string{{w.document, req.Title}, {w.sentBy, sentBy(req)}, {w.signBy, req.ExpiresAt.In(zone(req)).Format(w.date)}}
+	return mail.Message{Workspace: req.WorkspaceID, Language: language, To: []string{to.Email}, Subject: subject, ReplyTo: req.SenderEmail,
+		Text: strings.Join(slices.DeleteFunc(lead, func(l string) bool { return l == "" }), "\n\n") + "\n\n" + mail.DetailsText(rows...) +
+			fmt.Sprintf("\n%s\n%s\n\n%s\n%s\n", w.button, link, w.personal, w.ses),
+		HTML: paragraphs(lead...) + mail.Details(rows...) + mail.Button(w.button, link) + fine(w.personal, w.ses)}
 }
 
 // previewBody is POST /signatures/email-preview: the request as the send drawer has it so far.
@@ -135,19 +159,22 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request, sess store.Ses
 	return nil
 }
 func declinedMessage(req store.SignatureRequest, who store.Signer) mail.Message {
-	lead := fmt.Sprintf("%s (%s) declined to sign “%s”, so the request has stopped.", who.Name, who.Email, req.Title)
-	reason := "Reason: " + deref(who.DeclineReason)
-	return mail.Message{Workspace: req.WorkspaceID, Members: true, To: []string{req.SenderEmail}, ReplyTo: who.Email, Subject: fmt.Sprintf("%s declined to sign “%s”", who.Name, req.Title),
-		Text: fmt.Sprintf("Hello,\n\n%s\n\n%s\n", lead, reason), HTML: paragraphs("Hello,", lead, reason)}
+	lead := fmt.Sprintf("%s declined to sign “%s”, so the request has stopped.", short(who.Name), req.Title)
+	rows := [][2]string{{"Document", req.Title}, {"Declined by", short(who.Name) + " (" + who.Email + ")"}, {"Reason", deref(who.DeclineReason)}}
+	return mail.Message{Workspace: req.WorkspaceID, Members: true, To: []string{req.SenderEmail}, ReplyTo: who.Email,
+		Subject: fmt.Sprintf("%s declined to sign “%s”", short(who.Name), req.Title),
+		Text:    fmt.Sprintf("Hello,\n\n%s\n\n%s", lead, mail.DetailsText(rows...)), HTML: paragraphs("Hello,", lead) + mail.Details(rows...)}
 }
 
 func completedMessage(done completed, to string) mail.Message {
 	req := done.req
 	lead := fmt.Sprintf("Everyone has signed “%s”. The signed PDF is attached, with a certificate of completion on its last page.", req.Title)
+	rows := [][2]string{{"Document", req.Title}, {"Sent by", sentBy(req)}, {"Signed copy", done.name + " (attached)"}}
 	hashes := fmt.Sprintf("SHA-256 of the signed PDF: %s\nSHA-256 of the original: %s", done.sum, req.OriginalSHA256)
-	return mail.Message{Workspace: req.WorkspaceID, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail, Subject: fmt.Sprintf("Signed: “%s”", req.Title),
-		Text: fmt.Sprintf("Hello,\n\n%s\n\n%s\n\n%s\n", lead, hashes, sesNote),
-		HTML: paragraphs("Hello,", lead) +
+	return mail.Message{Workspace: req.WorkspaceID, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail,
+		Subject: fmt.Sprintf("Signed: “%s”", req.Title),
+		Text:    fmt.Sprintf("Hello,\n\n%s\n\n%s\n%s\n\n%s\n", lead, mail.DetailsText(rows...), hashes, sesNote),
+		HTML: paragraphs("Hello,", lead) + mail.Details(rows...) +
 			`<p style="font-size:12px;color:#78716c;font-family:ui-monospace,Menlo,Consolas,monospace">` +
 			strings.ReplaceAll(html.EscapeString(hashes), "\n", "<br>") + "</p>" + fine(sesNote),
 		Attachments: []mail.Attachment{{Name: done.name, ContentType: "application/pdf", Data: done.pdf}}}

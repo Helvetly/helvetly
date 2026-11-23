@@ -29,11 +29,11 @@ const FILE_DEFAULTS: Partial<Record<EmailKind, { subject: string; body: string }
     body: 'Hello\n\nPlease find “{document}” attached. If you have any questions, simply reply to this email.\n\nKind regards\n{sender}\n{company}',
   },
   signature_request: {
-    subject: '{sender} sent you “{document}” to sign',
+    subject: '{company} asks you to sign “{document}”',
     body: 'Hello\n\nPlease review and sign “{document}” using the link below. If you have any questions, simply reply to this email.\n\nKind regards\n{sender}\n{company}',
   },
   signature_reminder: {
-    subject: 'Reminder: {sender} sent you “{document}” to sign',
+    subject: 'Reminder: {company} asks you to sign “{document}”',
     body: 'Hello\n\nThis is a friendly reminder that “{document}” is still waiting for your signature. The link below takes you straight to it.\n\nKind regards\n{sender}\n{company}',
   },
 }
@@ -159,9 +159,9 @@ export const emailTemplateHandlers = [
       const { title = '', message = '' } = await request.json()
       return HttpResponse.json({
         data: previewOf(
-          `Ana Muster sent you “${title}” to sign`,
+          `Muster AG asks you to sign “${title}”`,
           message,
-          '<p><strong><a href="#">Review and sign</a></strong></p>',
+          '<p><strong><a href="#">Review and sign →</a></strong></p>',
         ),
       })
     },
