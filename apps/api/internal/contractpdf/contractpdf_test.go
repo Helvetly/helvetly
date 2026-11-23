@@ -100,3 +100,17 @@ func TestRenderIsDeterministic(t *testing.T) {
 		t.Fatal("the same sections print differently")
 	}
 }
+
+// The client's street line prints its house number once, whether it was typed into the street, the number or both.
+func TestPartyLinesPrintTheNumberOnce(t *testing.T) {
+	apt := "21"
+	for _, p := range []store.Party{
+		{Name: "Muster AG", Street: "Lerchenstrasse", StreetNumber: "21", Apt: &apt, Zip: "8000", City: "Zürich", Country: "CH"},
+		{Name: "Muster AG", Street: "Lerchenstrasse 21", StreetNumber: "21", Zip: "8000", City: "Zürich", Country: "CH"},
+		{Name: "Muster AG", Street: "Lerchenstrasse", StreetNumber: "21", Zip: "8000", City: "Zürich", Country: "CH"},
+	} {
+		if got := partyLines(p); got[1] != "Lerchenstrasse 21" {
+			t.Errorf("%+v: %q", p, got)
+		}
+	}
+}

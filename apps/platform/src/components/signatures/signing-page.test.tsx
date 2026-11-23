@@ -1,3 +1,4 @@
+import { TooltipProvider } from '@helvetly/ui/components/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,7 +8,7 @@ import type { ReactNode } from 'react'
 
 import type { Field, SigningView } from '@/lib/signatures'
 
-import { SigningPage } from './signing-page'
+import { monogram, SigningPage } from './signing-page'
 
 // No pdf.js in jsdom: the document is its overlay of page 1.
 vi.mock('@/components/invoices/pdf-view', () => ({
@@ -47,6 +48,7 @@ const view = (change: {
     status: 'pending',
     sender: { name: 'Pete K.', email: 'pete@example.com' },
     workspace: 'Muster GmbH',
+    logo: '',
     expires_at: '2026-12-06T00:00:00Z',
     page_count: 2,
     ...change.request,
@@ -97,7 +99,9 @@ const renderPage = () =>
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <SigningPage />
+      <TooltipProvider>
+        <SigningPage />
+      </TooltipProvider>
     </QueryClientProvider>,
   )
 
@@ -133,7 +137,7 @@ test('signing needs the signature, the text fields and consent, then posts them'
   const user = userEvent.setup()
   renderPage()
   const finish = await screen.findByRole('button', { name: 'Finish' })
-  expect(screen.getByText(/simple electronic signature \(SES\)/)).toBeInTheDocument()
+  expect(screen.getByText('Simple electronic signature (SES)')).toBeInTheDocument()
   expect(finish).toBeDisabled()
 
   // The empty field's pulse stops for people who ask for reduced motion.
@@ -145,7 +149,8 @@ test('signing needs the signature, the text fields and consent, then posts them'
   await user.type(screen.getByRole('textbox', { name: 'Job title' }), 'CEO')
   expect(finish).toBeDisabled()
   await user.click(screen.getByRole('checkbox', { name: 'I agree to sign electronically' }))
-  await user.click(finish)
+  // Out of its tooltip's wrapper once nothing blocks it: a new element.
+  await user.click(screen.getByRole('button', { name: 'Finish' }))
 
   expect(await screen.findByRole('heading', { name: 'You’ve signed' })).toBeInTheDocument()
   expect(signed).toEqual({
@@ -213,4 +218,40 @@ test('declining needs a reason', async () => {
   if (confirm) await user.click(confirm)
   await waitFor(() => expect(reason).toEqual({ reason: 'Wrong date' }))
   expect(await screen.findByRole('heading', { name: 'You declined to sign' })).toBeInTheDocument()
+})
+
+test('the business asks, the member is named once as the sender', async () => {
+  renderPage()
+  expect(
+    await screen.findByText('Muster GmbH asks you to sign “Service agreement”'),
+  ).toBeInTheDocument()
+  expect(screen.getAllByText('Sent by Pete K.').length).toBeGreaterThan(0)
+  expect(screen.queryByText(/Pete K\. from/)).not.toBeInTheDocument()
+  expect(screen.getAllByText('MG').length).toBeGreaterThan(0) // no logo: the monogram
+})
+
+test('a request whose sender is gone names only the business', async () => {
+  current = view({ request: { sender: { name: 'Muster GmbH', email: '' } } })
+  renderPage()
+  await screen.findByText('Muster GmbH asks you to sign “Service agreement”')
+  expect(screen.queryByText(/Sent by/)).not.toBeInTheDocument()
+})
+
+test('a closed request still shows who it is from', async () => {
+  current = view({ request: { status: 'revoked', logo: '/api/v1/public/email-logo/w/l' } })
+  renderPage()
+  await screen.findByRole('heading', { name: 'This request was withdrawn' })
+  expect(screen.getByText('Muster GmbH')).toBeInTheDocument()
+  expect(document.querySelector('img')?.getAttribute('src')).toMatch(
+    /\/api\/v1\/public\/email-logo\/w\/l$/,
+  )
+})
+
+test.each([
+  ['A', 'A'],
+  ['Muster GmbH', 'MG'],
+  ['  acme   tools  ag ', 'AT'],
+  ['', ''],
+])('monogram of %j', (name, initials) => {
+  expect(monogram(name)).toBe(initials)
 })

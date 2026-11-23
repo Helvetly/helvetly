@@ -42,8 +42,12 @@ type Party struct {
 
 // StreetLine is the street line as printed: "street number", with the apartment on the same line: "number/apt" in Poland,
 // ", apt" elsewhere. Stored fields stay separate; structured exports (XML, QR) do not use it.
+// A number typed into the street as well, or again as the apartment, is printed once ("Lerchenstrasse 21").
 func (p Party) StreetLine() string {
-	street := strings.TrimSpace(p.Street + " " + p.StreetNumber)
+	street, number := strings.TrimSpace(p.Street), strings.TrimSpace(p.StreetNumber)
+	if number != "" && !strings.HasSuffix(street, " "+number) && street != number {
+		street = strings.TrimSpace(street + " " + number)
+	}
 	apt := ""
 	if p.Apt != nil {
 		apt = strings.TrimSpace(*p.Apt)
@@ -53,8 +57,10 @@ func (p Party) StreetLine() string {
 		return street
 	case street == "":
 		return apt
-	case p.Country == "PL" && strings.TrimSpace(p.StreetNumber) != "":
+	case p.Country == "PL" && number != "":
 		return street + "/" + apt
+	case apt == number:
+		return street
 	}
 	return street + ", " + apt
 }

@@ -17,6 +17,10 @@ func TestPartyStreetLine(t *testing.T) {
 		{"no apt", Party{Street: "Bahnhofstrasse", StreetNumber: "1", Country: "CH"}, "Bahnhofstrasse 1"},
 		{"blank apt", Party{Street: "Marszałkowska", StreetNumber: "3", Apt: apt("  "), Country: "PL"}, "Marszałkowska 3"},
 		{"apt only", Party{Apt: apt("12")}, "12"},
+		{"number in the street too", Party{Street: "Lerchenstrasse 21", StreetNumber: "21", Country: "CH"}, "Lerchenstrasse 21"},
+		{"number again as apt", Party{Street: "Lerchenstrasse", StreetNumber: "21", Apt: apt("21"), Country: "CH"}, "Lerchenstrasse 21"},
+		{"number in street and apt", Party{Street: "Lerchenstrasse 21", StreetNumber: "21", Apt: apt("21"), Country: "CH"}, "Lerchenstrasse 21"},
+		{"number only", Party{StreetNumber: "21"}, "21"},
 		{"empty", Party{}, ""},
 	}
 	for _, tc := range tests {
