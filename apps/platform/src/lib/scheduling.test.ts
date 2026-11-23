@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
+import { ApiError } from '@/lib/api'
 import { occurrence } from '@/mocks/scheduling'
 
 import {
+  changeErrorMessage,
   daysOf,
   defaultCancelAs,
   defaultUnits,
@@ -225,5 +227,20 @@ describe('occurrencesCsv', () => {
       'Date,Start,End,Title,Client,Host,Status,Engagement',
       '2026-12-02,10:00,11:00,"Review, part 1",Alpenglow Studio GmbH,Anna Muster,Scheduled,',
     ])
+  })
+})
+
+describe('changeErrorMessage', () => {
+  it('says what the server found wrong with each field, since no form shows them', () => {
+    const error = new ApiError(422, 'validation_failed', 'Check the highlighted fields.', {
+      fields: { starts_local: 'The series cannot move there.' },
+    })
+    expect(changeErrorMessage(error)).toBe('The series cannot move there.')
+  })
+  it('falls back to the message', () => {
+    expect(changeErrorMessage(new ApiError(409, 'day_off', 'This time is on a day off.'))).toBe(
+      'This time is on a day off.',
+    )
+    expect(changeErrorMessage(new Error('Offline'))).toBe('Offline')
   })
 })

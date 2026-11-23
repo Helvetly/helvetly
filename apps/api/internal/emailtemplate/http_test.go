@@ -30,6 +30,7 @@ type env struct {
 	st  *store.Store
 	raw *pgxpool.Pool
 	srv *httptest.Server
+	svc *Service
 }
 
 func newEnv(t *testing.T) *env {
@@ -43,10 +44,11 @@ func newEnv(t *testing.T) *env {
 	}
 	mux := http.NewServeMux()
 	a.Register(mux)
-	New(st, a).Register(mux)
+	svc := New(st, a)
+	svc.Register(mux)
 	srv := httptest.NewServer(permissions.Guard(a, mux))
 	t.Cleanup(srv.Close)
-	return &env{t: t, st: st, raw: raw, srv: srv}
+	return &env{t: t, st: st, raw: raw, srv: srv, svc: svc}
 }
 
 type browser struct{ token, csrf, workspace string }

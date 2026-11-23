@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html"
 	"net/http"
 	"slices"
 	"strings"
@@ -528,11 +527,11 @@ func (s *Service) SendIssued(ctx context.Context, ws store.Workspace, inv store.
 		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
 	}
 	m := mail.Message{Workspace: ws.ID, Language: inv.Language, To: []string{*to}, Subject: subject, Text: message,
-		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: fileName(inv), ContentType: "application/pdf", Data: pdf}}}
 	if inv.Seller != nil && inv.Seller.Email != nil {
 		m.ReplyTo = *inv.Seller.Email
 	}
+	m = withLetter(m, inv)
 	if err := s.mail.Send(ctx, m); err != nil {
 		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
 	}

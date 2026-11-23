@@ -189,14 +189,32 @@ export const emailTemplateHandlers = [
       const line = typeof subject === 'string' ? subject.trim() : ''
       if (!line || [...line].length > 200 || /[\r\n]/.test(line))
         fields.subject = 'Enter a subject of at most 200 characters, on one line.'
-      if (typeof body !== 'string' || !body.trim() || [...body].length > 2500)
-        fields.body = 'Enter a message of at most 2500 characters.'
+      if (typeof body !== 'string' || !body.trim() || [...body].length > 1000)
+        fields.body = 'Enter a message of at most 1000 characters.'
       if (Object.keys(fields).length)
         return fail(400, 'invalid_request', 'Check the fields.', { fields })
       Object.assign(current, { subject: line, body, custom: true })
       return HttpResponse.json({ data: current })
     },
   ),
+  // Heidi's texts for every language: the current one with a friendlier opening, its variables kept.
+  http.post<
+    { kind: string },
+    { instruction?: string; current?: Record<string, { subject: string; body: string }> }
+  >('/api/v1/email-templates/:kind/ai-write', async ({ params, request }) => {
+    const { current = {} } = await request.json()
+    await delay()
+    const data = Object.fromEntries(
+      EMAIL_LANGUAGES.map((language) => {
+        const text = current[language] ?? find(params.kind, language) ?? defaultOf('quote')
+        return [
+          language,
+          { subject: text.subject, body: text.body.replace(/^[^\n]*/, 'Dear {client}') },
+        ]
+      }),
+    )
+    return HttpResponse.json({ data })
+  }),
   http.delete<{ kind: string; language: string }>(
     '/api/v1/email-templates/:kind/:language',
     ({ params }) => {

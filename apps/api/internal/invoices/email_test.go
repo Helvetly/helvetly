@@ -124,7 +124,7 @@ func TestSendWithoutSubjectUsesTemplate(t *testing.T) {
 	inv := e.issued(b, client, map[string]any{"language": "en"})
 	e.do(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{}, http.StatusOK, nil)
 	m := e.mail.sent[0]
-	if m.Subject != "Bill "+*inv.Number || m.Text != "Dear "+inv.Buyer.Name {
+	if m.Subject != "Bill "+*inv.Number || !strings.HasPrefix(m.Text, "Dear "+inv.Buyer.Name+"\n") {
 		t.Fatalf("mail %q / %q", m.Subject, m.Text)
 	}
 }
@@ -141,7 +141,7 @@ func TestInstalmentMailUsesTemplate(t *testing.T) {
 	if err := e.svc.SendIssued(context.Background(), store.Workspace{ID: b.workspace, Timezone: zone.String()}, inv); err != nil {
 		t.Fatal(err)
 	}
-	if m := e.mail.sent[0]; m.Subject != "Bill "+*inv.Number || m.Text != "Dear "+inv.Buyer.Name {
+	if m := e.mail.sent[0]; m.Subject != "Bill "+*inv.Number || !strings.HasPrefix(m.Text, "Dear "+inv.Buyer.Name+"\n") {
 		t.Fatalf("mail %q / %q", m.Subject, m.Text)
 	}
 }
@@ -157,7 +157,7 @@ func TestSendAcceptsTheRenderedDraftOverTheLimit(t *testing.T) {
 		t.Fatalf("draft is %d / %d runes, want over the limits", utf8.RuneCountInString(d.Subject), utf8.RuneCountInString(d.Message))
 	}
 	e.do(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{"subject": d.Subject, "message": d.Message}, http.StatusOK, nil)
-	if m := e.mail.sent[0]; m.Subject != d.Subject || m.Text != d.Message {
+	if m := e.mail.sent[0]; m.Subject != d.Subject || !strings.HasPrefix(m.Text, strings.TrimSpace(d.Message)+"\n") {
 		t.Fatalf("mail %q / %q, want the draft", m.Subject, m.Text)
 	}
 	e.fails(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{"subject": strings.Repeat("s", 201)}, http.StatusUnprocessableEntity, "validation_failed", "subject")

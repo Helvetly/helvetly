@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html"
 	"net/http"
 	"slices"
 	"strings"
@@ -85,7 +84,6 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		return err
 	}
 	m := mail.Message{Workspace: sess.Workspace.ID, Language: inv.Language, To: to, Cc: cc, Bcc: bcc, Subject: subject, Text: message,
-		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(message), "\n", "<br>\n") + "</p>",
 		Attachments: []mail.Attachment{{Name: fileName(inv), ContentType: "application/pdf", Data: pdf}}}
 	if inv.Seller != nil && inv.Seller.Email != nil {
 		m.ReplyTo = *inv.Seller.Email
@@ -108,6 +106,7 @@ func (s *Service) send(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			m.Attachments = append(m.Attachments, mail.Attachment{Name: name, ContentType: "application/xml", Data: file})
 		}
 	}
+	m = withLetter(m, inv)
 	// a double-click must not email the client twice: an overlapping send of the same document is refused
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		if free, err := q.TryLockInvoiceSend(ctx, inv.ID); err != nil {

@@ -3,7 +3,6 @@ package dunning
 import (
 	"context"
 	"fmt"
-	"html"
 	"net/url"
 	"strings"
 	"time"
@@ -129,23 +128,22 @@ func (st state) message(n store.DunningNotice, letter, invoicePDF []byte) mail.M
 	if text := st.text(n.Level); text != nil {
 		sentence = *text
 	}
-	amount := func(label string, m store.Money) string { return label + ": " + inv.Currency + " " + m.Swiss("'") }
-	lines := []string{amount(fmt.Sprintf(w.Open, number), n.Open)}
+	amount := func(label string, m store.Money) mail.Row {
+		return mail.Row{Label: label, Value: inv.Currency + " " + m.Swiss("'")}
+	}
+	rows := []mail.Row{amount(fmt.Sprintf(w.Open, number), n.Open)}
 	if n.Fee != 0 {
-		lines = append(lines, amount(w.Fee, n.Fee))
+		rows = append(rows, amount(w.Fee, n.Fee))
 	}
 	if n.Interest != 0 && n.InterestFrom != nil {
-		lines = append(lines, amount(fmt.Sprintf(w.Interest, n.InterestRate, invoicepdf.SwissDate(*n.InterestFrom),
+		rows = append(rows, amount(fmt.Sprintf(w.Interest, n.InterestRate, invoicepdf.SwissDate(*n.InterestFrom),
 			invoicepdf.SwissDate(n.SentOn), dunningcalc.Days(*n.InterestFrom, n.SentOn)), n.Interest))
 	}
-	lines = append(lines, amount(w.Total, n.Total))
-	body := w.Greeting + "\n\n" + sentence + "\n\n" + strings.Join(lines, "\n") + "\n\n" + w.PayWithin + " " + w.Settled +
-		"\n\n" + w.SignOff
+	signOff := w.SignOff
 	if inv.Seller != nil {
-		body += "\n" + inv.Seller.Name
+		signOff += "\n" + inv.Seller.Name
 	}
-	m := mail.Message{Language: inv.Language, To: []string{n.Email}, Subject: title + ": " + strings.TrimSpace(invoices.Title(inv)+" "+number), Text: body,
-		HTML:        "<p>" + strings.ReplaceAll(html.EscapeString(body), "\n", "<br>\n") + "</p>",
+	m := mail.Message{Language: inv.Language, To: []string{n.Email}, Subject: title + ": " + strings.TrimSpace(invoices.Title(inv)+" "+number),
 		Attachments: []mail.Attachment{{Name: st.letterName(n), ContentType: "application/pdf", Data: letter}}}
 	if invoicePDF != nil {
 		m.Attachments = append(m.Attachments, mail.Attachment{Name: invoiceName(inv), ContentType: "application/pdf", Data: invoicePDF})
@@ -153,6 +151,13 @@ func (st state) message(n store.DunningNotice, letter, invoicePDF []byte) mail.M
 	if inv.Seller != nil && inv.Seller.Email != nil {
 		m.ReplyTo = *inv.Seller.Email
 	}
+	names := []string{}
+	for _, a := range m.Attachments {
+		names = append(names, a.Name)
+	}
+	l := mail.NewLetter(inv.Language).Lead(w.Greeting).Message(sentence).Summary(append(rows, amount(w.Total, n.Total))...).
+		Lead(w.PayWithin + " " + w.Settled).Lead(signOff).Attached(names...)
+	m.Text, m.HTML = l.Text(), l.HTML()
 	return m
 }
 

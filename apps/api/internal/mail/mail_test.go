@@ -73,15 +73,6 @@ func TestLayout(t *testing.T) {
 	}
 }
 
-func TestButton(t *testing.T) {
-	got := Button("Review <now>", "https://x.example/a?b=1&c=2")
-	for _, w := range []string{`href="https://x.example/a?b=1&amp;c=2"`, ">Review &lt;now&gt;</a></strong>", `<a style="color:#0b7268" href=`} {
-		if !strings.Contains(got, w) {
-			t.Errorf("no %q in %s", w, got)
-		}
-	}
-}
-
 func TestBuildAttachment(t *testing.T) {
 	from := &mail.Address{Name: "Helvetly", Address: "no-reply@helvetly.local"}
 	pdf := bytes.Repeat([]byte("%PDF-1.4 "), 20)

@@ -119,6 +119,33 @@ func Expand(r Rule, start DateTime, zone *time.Location, skip func(Date) bool, f
 	return out
 }
 
+// Shift is the rule after its sessions move by days: weekly days turn with them, a day of the month moves along
+// and UNTIL moves along. ok is false when the month's day would leave 1–31, or for the last day or the Nth weekday
+// of a month, which no fixed number of days maps onto.
+func (r Rule) Shift(days int) (Rule, bool) {
+	if days == 0 {
+		return r, true
+	}
+	r.ByDay = slices.Clone(r.ByDay)
+	for i, d := range r.ByDay {
+		r.ByDay[i] = time.Weekday(((int(d)+days)%7 + 7) % 7)
+	}
+	if r.BySetPos != nil || r.ByMonthDay == -1 {
+		return r, false
+	}
+	if r.ByMonthDay != 0 {
+		r.ByMonthDay += days
+		if r.ByMonthDay < 1 || r.ByMonthDay > 31 {
+			return r, false
+		}
+	}
+	if r.Until != nil {
+		u := r.Until.AddDays(days)
+		r.Until = &u
+	}
+	return r, true
+}
+
 // eachDate calls yield with the rule's dates on or after first, in order, until it answers false. A month
 // without the rule's day yields its first day as not real, so the caller's bounds still end the loop.
 func (r Rule) eachDate(first Date, yield func(d Date, real bool) bool) {
