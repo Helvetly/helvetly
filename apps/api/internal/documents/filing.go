@@ -431,11 +431,10 @@ func cleanTags(raw []string) ([]string, string) {
 			out = append(out, t)
 		}
 	}
-	if len(out) > maxTags {
-		return nil, "Use at most 10 tags."
-	}
 	return out, ""
 }
+
+const tooManyTags = "Use at most 10 tags."
 
 // restoredTags: the tags an undo puts back as they were, also ones from before the tags' shape (never new input).
 func restoredTags(raw []string) ([]string, string) {

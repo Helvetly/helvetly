@@ -401,7 +401,10 @@ export const templatesApi = {
       `/quotes/${encodeURIComponent(quoteId)}/contract-preview`,
       { method: 'POST', json: body },
     ).then(({ data }) => ({ data: { ...data, warnings: data.warnings ?? [] } })),
-  createContract: (quoteId: string, body: ContractSections & { delivery: Delivery }) =>
+  createContract: (
+    quoteId: string,
+    body: ContractSections & { delivery: Delivery; document_id?: string },
+  ) =>
     request<{ data: Generated }>(`/quotes/${encodeURIComponent(quoteId)}/contracts`, {
       method: 'POST',
       json: body,

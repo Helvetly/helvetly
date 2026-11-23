@@ -22,6 +22,8 @@ export type DunningNotice = {
   email: string
   /** The person's name when sent by hand; null for the hourly job. */
   sent_by: string | null
+  /** The mail server took it; false while it goes out, or when it may have gone (never sent again by itself). */
+  confirmed: boolean
 }
 
 export type Dunning = {

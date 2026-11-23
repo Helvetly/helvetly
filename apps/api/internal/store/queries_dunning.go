@@ -27,6 +27,9 @@ type DunningNotice struct {
 	SentBy       *string   `json:"sent_by"` // the person's name for a notice sent by hand, null for the hourly job
 	StoredTitle  *string   `json:"-"`       // the title sent; nil for a notice sent before titles were stored
 	QRBill       bool      `json:"qr_bill"`
+	// Confirmed: the mail server took the email; false while it is being sent, or when it may have gone (never sent
+	// again by itself).
+	Confirmed bool `json:"confirmed"`
 }
 
 // dunningTarget: the invoices dunning applies to: issued, open, receivable, without instalments of either kind.
@@ -101,7 +104,7 @@ func (q Q) DunningFlags(ctx context.Context, workspaceID, invoiceID string) (app
 func (q Q) DunningNotices(ctx context.Context, workspaceID, invoiceID string) ([]DunningNotice, error) {
 	rows, err := q.db.Query(ctx, `SELECT n.invoice_id, n.level, n.levels, n.sent_at, n.sent_on::text, n.open_amount, n.fee, n.interest,
 			n.interest_rate, n.interest_from::text, n.total, n.email, NULLIF(COALESCE(NULLIF(u.name, ''), u.email), ''),
-			n.title, n.qr_bill
+			n.title, n.qr_bill, n.confirmed
 		FROM dunning_notices n LEFT JOIN users u ON u.id = n.sent_by
 		WHERE n.workspace_id = $1 AND n.invoice_id = $2 ORDER BY n.level`, workspaceID, invoiceID)
 	if err != nil {
@@ -110,7 +113,7 @@ func (q Q) DunningNotices(ctx context.Context, workspaceID, invoiceID string) ([
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (DunningNotice, error) {
 		var n DunningNotice
 		err := r.Scan(&n.InvoiceID, &n.Level, &n.Levels, &n.SentAt, &n.SentOn, &n.Open, &n.Fee, &n.Interest, &n.InterestRate,
-			&n.InterestFrom, &n.Total, &n.Email, &n.SentBy, &n.StoredTitle, &n.QRBill)
+			&n.InterestFrom, &n.Total, &n.Email, &n.SentBy, &n.StoredTitle, &n.QRBill, &n.Confirmed)
 		return n, err
 	})
 }
@@ -119,11 +122,25 @@ func (q Q) DunningNotices(ctx context.Context, workspaceID, invoiceID string) ([
 // invoice was recorded before (it went out, or another run is sending it and this insert waited for it).
 func (q Q) LogDunningNotice(ctx context.Context, workspaceID string, n DunningNotice, sentBy *string) (bool, error) {
 	tag, err := q.db.Exec(ctx, `INSERT INTO dunning_notices (workspace_id, invoice_id, level, levels, sent_at, sent_on, open_amount,
-			fee, interest, interest_rate, interest_from, total, email, sent_by, title, qr_bill)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) ON CONFLICT DO NOTHING`,
+			fee, interest, interest_rate, interest_from, total, email, sent_by, title, qr_bill, confirmed)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, false) ON CONFLICT DO NOTHING`,
 		workspaceID, n.InvoiceID, n.Level, n.Levels, n.SentAt, n.SentOn, n.Open, n.Fee, n.Interest, n.InterestRate, n.InterestFrom,
 		n.Total, n.Email, sentBy, n.StoredTitle, n.QRBill)
 	return tag.RowsAffected() == 1, err
+}
+
+// ConfirmDunningNotice records that the mail server took the notice's email.
+func (q Q) ConfirmDunningNotice(ctx context.Context, workspaceID, invoiceID string, level int) error {
+	_, err := q.db.Exec(ctx, `UPDATE dunning_notices SET confirmed = true WHERE workspace_id = $1 AND invoice_id = $2 AND level = $3`,
+		workspaceID, invoiceID, level)
+	return err
+}
+
+// DropUnsentDunningNotice removes a notice whose email was refused, so the next run sends it again.
+func (q Q) DropUnsentDunningNotice(ctx context.Context, workspaceID, invoiceID string, level int) error {
+	_, err := q.db.Exec(ctx, `DELETE FROM dunning_notices WHERE workspace_id = $1 AND invoice_id = $2 AND level = $3 AND NOT confirmed`,
+		workspaceID, invoiceID, level)
+	return err
 }
 
 // SetDunningPaused pauses or resumes the dunning of an invoice.
