@@ -32,6 +32,7 @@ const meta = {
     closeHeidi()
     Object.assign(shared, sampleState())
     localStorage.removeItem(VIEW_KEY)
+    localStorage.removeItem(LAYOUT_KEY)
     localStorage.removeItem(HOURS_KEY)
   },
   parameters: withState(shared),
@@ -46,10 +47,34 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const VIEW_KEY = 'helvetly.scheduling.view'
+const LAYOUT_KEY = 'helvetly.scheduling.layout'
 const body = () => within(document.body)
 const pastCount = () => document.querySelectorAll('[data-past]').length
+/** Opens the one view menu, named by the current view. */
+const viewMenu = async () => {
+  await userEvent.click(await body().findByRole('button', { name: /^Calendar view:/ }))
+  return within(await body().findByRole('menu'))
+}
+const pickView = async (name: string) => {
+  await userEvent.click((await viewMenu()).getByRole('menuitemradio', { name }))
+}
+const peopleMenu = async () => {
+  await userEvent.click(await body().findByRole('button', { name: /^Hosts:/ }))
+  return within(await body().findByRole('menu'))
+}
+const closeMenu = async () => {
+  await userEvent.keyboard('{Escape}')
+  await waitFor(() => expect(body().queryByRole('menu')).not.toBeInTheDocument())
+}
 const everyone = async () => {
-  await userEvent.click(await body().findByRole('radio', { name: 'Everyone' }))
+  await userEvent.click((await peopleMenu()).getByRole('menuitemradio', { name: 'Everyone' }))
+}
+/** Text on the primary fill uses its foreground token, so it reads in light and dark. */
+const readsOnPrimary = (element: Element | null) => {
+  if (!element) throw new Error('No element on the primary fill')
+  expect(element).toHaveClass('bg-primary', 'text-primary-foreground')
+  const style = getComputedStyle(element)
+  expect(style.color).not.toBe(style.backgroundColor)
 }
 
 /** My week: my sessions by colour, a busy block from my calendar, the requests and "to mark" strips on top. */
@@ -62,9 +87,14 @@ export const Week: Story = {
     await expect(await page.findByRole('button', { name: /Strategy session/ })).toBeVisible()
     // Another host's session is not mine.
     await expect(page.queryByRole('button', { name: /Design review/ })).not.toBeInTheDocument()
-    await expect(page.getByText('Busy')).toBeInTheDocument()
-    await expect(page.getByRole('button', { name: '2 requests waiting' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '1 session to mark' })).toBeVisible()
+    // Busy times, requests and sessions to mark are requests of their own: wait for each.
+    await expect(await page.findByText('Busy')).toBeInTheDocument()
+    await expect(await page.findByRole('button', { name: '2 requests waiting' })).toBeVisible()
+    await expect(await page.findByRole('button', { name: '1 session to mark' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Calendar view:/ })).toHaveTextContent('Week')
+    await expect(page.getByRole('button', { name: /^Hosts:/ })).toHaveTextContent('My sessions')
+    // The now pill on the blue line: white text on the primary fill.
+    readsOnPrimary(document.querySelector('[data-now-pill]'))
     // Monday, Tuesday and the morning of Wednesday (09:30 in Zurich) are past and hatched.
     await expect(pastCount()).toBe(3)
     // A past slot is no place for a new session: 09:00 is offered Thursday to Sunday, 09:30 from Wednesday.
@@ -99,7 +129,7 @@ export const HeadingsAlignWithColumns: Story = {
     await everyone()
     await page.findByRole('button', { name: /Design review/ })
     await expect(aligned()).toEqual(Array(7).fill(true))
-    await userEvent.click(page.getByRole('radio', { name: 'Day' }))
+    await pickView('Day')
     await page.findByRole('heading', { name: 'Wednesday, 2 December 2026' })
     await expect(aligned()).toEqual([true])
   },
@@ -112,9 +142,12 @@ export const WorkingHours: Story = {
   },
   play: async () => {
     const page = body()
-    await expect(await page.findByRole('button', { name: /^Show hours:/ })).toHaveTextContent(
+    const menu = await viewMenu()
+    await expect(menu.getByRole('menuitemradio', { name: /^Working hours/ })).toHaveTextContent(
       '11:00–14:00',
     )
+    await expect(menu.getByRole('menuitemradio', { name: /^Working hours/ })).toBeChecked()
+    await closeMenu()
     await waitFor(() => expect(page.getAllByRole('button', { name: '1 earlier' })).toHaveLength(3))
     // Monday's 14:00 kick-off and Thursday's 15:00 intro call.
     await expect(page.getAllByRole('button', { name: '1 later' })).toHaveLength(2)
@@ -127,7 +160,8 @@ export const WorkingHours: Story = {
     ).toHaveLength(5)
     await userEvent.click(page.getAllByRole('button', { name: '1 earlier' })[0]!)
     await expect(await page.findByRole('button', { name: /Strategy session/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Show hours:/ })).toHaveTextContent('Full day')
+    await expect((await viewMenu()).getByRole('menuitemradio', { name: 'Full day' })).toBeChecked()
+    await closeMenu()
     await expect(page.queryByRole('button', { name: '1 earlier' })).not.toBeInTheDocument()
     await expect(JSON.parse(localStorage.getItem(HOURS_KEY) ?? '{}')).toMatchObject({
       mode: 'full',
@@ -136,31 +170,93 @@ export const WorkingHours: Story = {
   },
 }
 
-/** The full day by default; Working hours suggests 06:00–22:00 and keeps the range whole hours, end after start. */
+/** The view menu holds the hours: the full day by default; Working hours suggests 06:00–22:00, whole hours, end after start. */
 export const ChooseHours: Story = {
   parameters: withState(sampleState(), { view: 'day' }),
   play: async () => {
     const page = body()
-    const trigger = await page.findByRole('button', { name: /^Show hours:/ })
-    await expect(trigger).toHaveTextContent('Full day')
-    await expect(page.getByRole('button', { name: /^New session on .* at 23:30$/ })).toBeVisible()
-    await userEvent.click(trigger)
-    await userEvent.click(await page.findByRole('radio', { name: 'Working hours' }))
-    await expect(trigger).toHaveTextContent('06:00–22:00')
-    await userEvent.selectOptions(page.getByRole('combobox', { name: 'From' }), '08:00')
-    await userEvent.selectOptions(page.getByRole('combobox', { name: 'To' }), '18:00')
-    await expect(trigger).toHaveTextContent('08:00–18:00')
+    await expect(
+      await page.findByRole('button', { name: /^New session on .* at 23:30$/ }),
+    ).toBeVisible()
+    let menu = await viewMenu()
+    await expect(menu.getByRole('menuitemradio', { name: 'Full day' })).toBeChecked()
+    const work = menu.getByRole('menuitemradio', { name: /^Working hours/ })
+    await userEvent.click(work)
+    // The menu stays open for the range.
+    await expect(work).toBeChecked()
+    await expect(work).toHaveTextContent('06:00–22:00')
+    await userEvent.selectOptions(menu.getByRole('combobox', { name: 'From' }), '08:00')
+    await userEvent.selectOptions(menu.getByRole('combobox', { name: 'To' }), '18:00')
+    await expect(work).toHaveTextContent('08:00–18:00')
+    await closeMenu()
     await expect(
       page.queryByRole('button', { name: /^New session on .* at 18:00$/ }),
     ).not.toBeInTheDocument()
     await expect(page.getByRole('button', { name: /^New session on .* at 17:30$/ })).toBeVisible()
     // A start at or after the end moves the end one hour past it.
-    await userEvent.selectOptions(page.getByRole('combobox', { name: 'From' }), '20:00')
-    await expect(trigger).toHaveTextContent('20:00–21:00')
+    menu = await viewMenu()
+    await userEvent.selectOptions(menu.getByRole('combobox', { name: 'From' }), '20:00')
+    await expect(menu.getByRole('menuitemradio', { name: /^Working hours/ })).toHaveTextContent(
+      '20:00–21:00',
+    )
     await expect(JSON.parse(localStorage.getItem(HOURS_KEY) ?? '{}')).toEqual({
       mode: 'work',
       work: { from: 20, to: 21 },
     })
+    await closeMenu()
+  },
+}
+
+/** One menu switches the period and the layout; the choice goes into the URL and is remembered. Month has no hours. */
+export const ViewMenuSwitches: Story = {
+  play: async () => {
+    const page = body()
+    await page.findByRole('button', { name: /Strategy session/ })
+    await pickView('Month')
+    await expect(await page.findByRole('heading', { name: 'December 2026' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Calendar view:/ })).toHaveTextContent('Month')
+    const menu = await viewMenu()
+    await expect(menu.queryByRole('menuitemradio', { name: 'Full day' })).not.toBeInTheDocument()
+    await userEvent.click(menu.getByRole('menuitemradio', { name: 'List' }))
+    await expect(await page.findByRole('button', { name: 'Export CSV' })).toBeVisible()
+    await expect(localStorage.getItem(LAYOUT_KEY)).toBe('list')
+    await expect(new URLSearchParams(window.location.search).get('layout')).toBe('list')
+    await pickView('Day')
+    await expect(
+      await page.findByRole('heading', { name: 'Wednesday, 2 December 2026', level: 2 }),
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible()
+    await userEvent.click((await viewMenu()).getByRole('menuitemradio', { name: 'Calendar' }))
+    await expect(await page.findByRole('button', { name: /Strategy session/ })).toBeVisible()
+    await expect(page.queryByRole('button', { name: 'Export CSV' })).not.toBeInTheDocument()
+    await expect(localStorage.getItem(VIEW_KEY)).toBe('day')
+  },
+}
+
+/** One people filter: my sessions by default, everyone, or the hosts ticked (two side by side). */
+export const PeopleFilter: Story = {
+  play: async () => {
+    const page = body()
+    await page.findByRole('button', { name: /Strategy session/ })
+    let menu = await peopleMenu()
+    await expect(menu.getByRole('menuitemradio', { name: 'My sessions' })).toBeChecked()
+    await userEvent.click(menu.getByRole('menuitemcheckbox', { name: 'Luca Rossi' }))
+    await expect(menu.getByRole('menuitemcheckbox', { name: 'Luca Rossi' })).toBeChecked()
+    await closeMenu()
+    await expect(page.getByRole('button', { name: /^Hosts:/ })).toHaveTextContent('Luca Rossi')
+    await expect(await page.findByRole('button', { name: /Design review/ })).toBeVisible()
+    await waitFor(() =>
+      expect(page.queryByRole('button', { name: /Strategy session/ })).not.toBeInTheDocument(),
+    )
+    menu = await peopleMenu()
+    await userEvent.click(menu.getByRole('menuitemcheckbox', { name: 'Mia Keller' }))
+    await closeMenu()
+    await expect(page.getByRole('button', { name: /^Hosts:/ })).toHaveTextContent('2 hosts')
+    await expect(await page.findByRole('button', { name: /Quick check-in/ })).toBeVisible()
+    await expect(page.getAllByText('Luca')).toHaveLength(7)
+    await userEvent.click((await peopleMenu()).getByRole('menuitemradio', { name: 'My sessions' }))
+    await expect(page.getByRole('button', { name: /^Hosts:/ })).toHaveTextContent('My sessions')
+    await expect(await page.findByRole('button', { name: /Strategy session/ })).toBeVisible()
   },
 }
 
@@ -225,7 +321,7 @@ export const ViewRemembered: Story = {
     await expect(
       await page.findByRole('heading', { name: 'Wednesday, 2 December 2026' }),
     ).toBeVisible()
-    await userEvent.click(page.getByRole('radio', { name: 'Month' }))
+    await pickView('Month')
     await expect(await page.findByRole('heading', { name: 'December 2026' })).toBeVisible()
     await expect(localStorage.getItem(VIEW_KEY)).toBe('month')
   },
@@ -263,6 +359,8 @@ export const Month: Story = {
     await expect(await page.findByRole('heading', { name: 'December 2026' })).toBeVisible()
     // 30 November and 1 December are past.
     await expect(pastCount()).toBe(2)
+    // Today's number on its blue circle: white text on the primary fill.
+    readsOnPrimary(document.querySelector('[data-today]'))
     await userEvent.click(
       (await page.findAllByRole('button', { name: '1 session' }))[0] ?? document.body,
     )
@@ -271,7 +369,9 @@ export const Month: Story = {
   },
 }
 
-/** The list by day with its filters; a status filter narrows it, a CSV of what is shown. */
+export const MonthDark = dark(Month)
+
+/** The list by day with its filters (an old ?view=list link opens it); a status filter narrows it, a CSV of what is shown. */
 export const List: Story = {
   parameters: withState(shared, { view: 'list' }),
   play: async () => {

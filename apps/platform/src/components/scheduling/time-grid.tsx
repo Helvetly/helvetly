@@ -268,7 +268,8 @@ export function TimeGrid({
             )}
             {nowShown && (
               <span
-                className="text-brand-foreground absolute right-1 z-10 -translate-y-1/2 rounded-full bg-brand px-1.5 py-0.5 text-caption leading-none font-semibold tabular-nums"
+                data-now-pill
+                className="absolute right-1 z-10 -translate-y-1/2 rounded-full bg-primary px-1.5 py-0.5 text-caption leading-none font-semibold text-primary-foreground tabular-nums"
                 style={{ top: y(today.minutes) }}
               >
                 {clock(today.minutes)}
@@ -328,7 +329,7 @@ export function TimeGrid({
               {day === today.date && nowShown && (
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute inset-x-0 z-20 h-0.5 -translate-y-px bg-brand"
+                  className="pointer-events-none absolute inset-x-0 z-20 h-0.5 -translate-y-px bg-primary"
                   style={{ top: y(today.minutes) }}
                 />
               )}
