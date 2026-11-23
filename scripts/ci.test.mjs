@@ -236,7 +236,7 @@ test('workflow keeps event transitions, shards, permissions and expensive jobs b
   assert.equal(workflow.match(/shard: \['1\/2', '2\/2'\]/g)?.length, 1)
   assert.equal(workflow.match(/shard: \['1\/3', '2\/3', '3\/3'\]/g)?.length, 1)
   assert.equal(workflow.match(/shard: \['1\/5', '2\/5', '3\/5', '4\/5', '5\/5'\]/g)?.length, 1)
-  assert.equal(workflow.match(/shard: \['1\/8', [^\]]*'8\/8'\]/g)?.length, 1)
+  assert.equal(workflow.match(/shard: \['1\/10', [^\]]*'10\/10'\]/g)?.length, 1)
   const api = JSON.parse(readFileSync(new URL('../apps/api/package.json', import.meta.url), 'utf8'))
   assert.ok(
     workflow.includes(`run: ${api.scripts['test:xsd']}`),
