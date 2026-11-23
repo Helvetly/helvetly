@@ -703,6 +703,59 @@ export const KeyboardMoveInSeries: Story = {
   },
 }
 
+const moveSent: unknown[] = []
+const coachingAt9 = async () => {
+  const block = (await body().findAllByRole('button', { name: /^Coaching/ })).find((entry) =>
+    entry.textContent?.includes('09:00'),
+  )
+  if (!block) throw new Error('No coaching session at 09:00')
+  return block
+}
+
+/**
+ * Moving a series session to another day sends its new wall clock and length with the scope; when the server
+ * refuses, the toast says why in words and the session stays where it was.
+ */
+export const SeriesMoveRefused: Story = {
+  parameters: pageParameters('/scheduling', { date: '2026-12-04' }, [
+    team,
+    http.patch('/api/v1/scheduling/occurrences/:id', async ({ request }) => {
+      moveSent.push(await request.json())
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_failed',
+            message: 'Check the highlighted fields.',
+            details: { fields: { starts_local: 'This series cannot move by days.' } },
+          },
+        },
+        { status: 422 },
+      )
+    }),
+    ...schedulingHandlers(shared),
+  ]),
+  play: async () => {
+    moveSent.length = 0
+    const page = body()
+    ;(await coachingAt9()).focus()
+    await userEvent.keyboard('{Alt>}{ArrowLeft}{/Alt}')
+    const dialog = within(await page.findByRole('dialog', { name: 'Change a recurring session' }))
+    await userEvent.click(dialog.getByRole('radio', { name: /This and following/ }))
+    await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
+    await toastShows('This series cannot move by days.')
+    await expect(moveSent).toEqual([
+      { starts_local: '2026-12-03T09:00', duration_minutes: 60, scope: 'following' },
+    ])
+    await expect(page.queryByText(/highlighted fields/)).not.toBeInTheDocument()
+    await waitFor(async () =>
+      expect((await coachingAt9()).closest('[data-day-column]')).toHaveAttribute(
+        'data-day-column',
+        '2026-12-04',
+      ),
+    )
+  },
+}
+
 /** The requests strip opens the requests: a late cancellation, and a move with the client's times. */
 export const Requests: Story = {
   play: async () => {

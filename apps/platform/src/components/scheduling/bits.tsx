@@ -17,9 +17,9 @@ import { Lock } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
+  changeErrorMessage,
   hostColor,
   localOf,
   schedulingApi,
@@ -230,7 +230,7 @@ export function useSessionChange() {
         },
         onError: (error) => {
           setAsking(null)
-          toast.error(errorMessage(error))
+          toast.error(changeErrorMessage(error))
         },
       },
     )
@@ -264,7 +264,7 @@ export function useSessionChange() {
         ...extra,
       })
     } catch (error) {
-      toast.error(errorMessage(error))
+      toast.error(changeErrorMessage(error))
     }
   }
   const dialog = asking && (

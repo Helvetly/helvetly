@@ -34,30 +34,31 @@ type FolderRef struct {
 }
 
 type Document struct {
-	EmployeeID    *string        `json:"-"` // set only on create: an employee's file, private like HRPrivate
-	HRPrivate     bool           `json:"-"` // set only on create: an HR file outside the general document system
-	ID            string         `json:"id"`
-	Name          string         `json:"name"`
-	FolderID      *string        `json:"folder_id"`
-	Folder        *FolderRef     `json:"folder"`
-	Size          int64          `json:"size"`
-	ContentType   string         `json:"content_type"`
-	Kind          string         `json:"kind"`        // set by internal/documents
-	Previewable   bool           `json:"previewable"` // set by internal/documents
-	SHA256        *string        `json:"sha256"`
-	Tags          []string       `json:"tags"`
-	AutoTags      []string       `json:"auto_tags"` // those of Tags the app set (tags.Auto)
-	AIFiling      *Filing        `json:"ai_filing"`
-	Links         []DocumentLink `json:"links"`
-	RetainedUntil *string        `json:"retained_until"`
-	UploadedBy    *Uploader      `json:"uploaded_by"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-	DeletedAt     *time.Time     `json:"deleted_at"`
-	DeletedBy     *Uploader      `json:"deleted_by"`
-	PurgeAt       *time.Time     `json:"purge_at"`
-	TrashedWith   *string        `json:"-"`
-	ObjectKey     string         `json:"-"`
+	EmployeeID    *string         `json:"-"` // set only on create: an employee's file, private like HRPrivate
+	HRPrivate     bool            `json:"-"` // set only on create: an HR file outside the general document system
+	ID            string          `json:"id"`
+	Name          string          `json:"name"`
+	FolderID      *string         `json:"folder_id"`
+	Folder        *FolderRef      `json:"folder"`
+	Size          int64           `json:"size"`
+	ContentType   string          `json:"content_type"`
+	Kind          string          `json:"kind"`        // set by internal/documents
+	Previewable   bool            `json:"previewable"` // set by internal/documents
+	SHA256        *string         `json:"sha256"`
+	Tags          []string        `json:"tags"`
+	AutoTags      []string        `json:"auto_tags"` // those of Tags the app set (tags.Auto)
+	AIFiling      *Filing         `json:"ai_filing"`
+	Links         []DocumentLink  `json:"links"`
+	SharedWith    []DocumentShare `json:"shared_with"` // clients that see it in portal, newest first
+	RetainedUntil *string         `json:"retained_until"`
+	UploadedBy    *Uploader       `json:"uploaded_by"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+	DeletedAt     *time.Time      `json:"deleted_at"`
+	DeletedBy     *Uploader       `json:"deleted_by"`
+	PurgeAt       *time.Time      `json:"purge_at"`
+	TrashedWith   *string         `json:"-"`
+	ObjectKey     string          `json:"-"`
 }
 
 type DocumentLink struct {
@@ -419,7 +420,7 @@ func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, 
 		purge := d.DeletedAt.AddDate(0, 0, TrashDays)
 		d.PurgeAt = &purge
 	}
-	d.Links = []DocumentLink{}
+	d.Links, d.SharedWith = []DocumentLink{}, []DocumentShare{}
 	if d.Tags == nil {
 		d.Tags = []string{}
 	}
@@ -484,7 +485,25 @@ func (q Q) addLinks(ctx context.Context, docs []Document) error {
 		}
 		docs[at[docID]].Links = append(docs[at[docID]].Links, l)
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	rows.Close()
+	shares, err := q.db.Query(ctx, `SELECT s.document_id, c.id, c.name, s.created_at FROM document_shares s JOIN clients c ON c.id = s.client_id
+		WHERE s.document_id = ANY($1) AND c.deleted_at IS NULL ORDER BY s.created_at DESC, c.id`, ids)
+	if err != nil {
+		return err
+	}
+	defer shares.Close()
+	for shares.Next() {
+		var docID string
+		var sh DocumentShare
+		if err := shares.Scan(&docID, &sh.ClientID, &sh.ClientName, &sh.SharedAt); err != nil {
+			return err
+		}
+		docs[at[docID]].SharedWith = append(docs[at[docID]].SharedWith, sh)
+	}
+	return shares.Err()
 }
 
 func (q Q) createDocument(ctx context.Context, workspaceID, userID string, d Document) error {

@@ -3,7 +3,6 @@ package clients
 import (
 	"context"
 	"fmt"
-	"html"
 	"net/http"
 	"strings"
 
@@ -92,17 +91,21 @@ func (s *Service) sendPortalInvite(ctx context.Context, sess store.Session, c st
 	if err != nil {
 		return fmt.Errorf("portal address: %w", err)
 	}
-	text := fmt.Sprintf("Hello %s,\n\n%s now gives you access to their client portal, where you can see your invoices, "+
-		"engagements and shared documents:\n\n%s\n\nEnter this email address and we send you a code to sign in: there is no password.\n",
-		c.Name, sess.Workspace.Name, link)
-	body := fmt.Sprintf(`<p>Hello %s,</p><p><strong>%s</strong> now gives you access to their client portal, where you can see your invoices, engagements and shared documents:</p>
-<p><a href="%s">%s</a></p><p>Enter this email address and we send you a code to sign in: there is no password.</p>`,
-		html.EscapeString(c.Name), html.EscapeString(sess.Workspace.Name), html.EscapeString(link), html.EscapeString(link))
-	if err := s.mail.Send(ctx, mailer.Message{Workspace: sess.Workspace.ID, Language: "en", To: []string{to}, Subject: sess.Workspace.Name + " invited you to their client portal", Text: text, HTML: body}); err != nil {
+	if err := s.mail.Send(ctx, portalInvite(sess.Workspace, c, to, link)); err != nil {
 		return fmt.Errorf("send portal invitation: %w", err)
 	}
 	if err := s.db.Q.MarkPortalInvited(ctx, c.ID, s.now()); err != nil {
 		return fmt.Errorf("record portal invitation: %w", err)
 	}
 	return nil
+}
+
+// portalInvite is the client's invitation to the workspace's portal at link.
+func portalInvite(ws store.Workspace, c store.Client, to, link string) mailer.Message {
+	l := mailer.NewLetter("en").Greeting(c.GreetingName()).
+		Lead(ws.Name+" now gives you access to their client portal, where you can see your invoices, engagements and shared documents.").
+		Action("Open the client portal", link).
+		FinePrint("Enter this email address there and we send you a code to sign in: there is no password.")
+	return mailer.Message{Workspace: ws.ID, Language: "en", To: []string{to}, Subject: ws.Name + " invited you to their client portal",
+		Text: l.Text(), HTML: l.HTML()}
 }

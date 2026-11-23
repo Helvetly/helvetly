@@ -78,7 +78,7 @@ export const listTable = {
   table: 'table-fixed text-body-sm [&_.font-code]:text-[length:1em]',
   head: 'h-11 text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase',
   th: 'sticky top-0 z-10 border-b bg-card bg-linear-to-b from-muted/50 to-muted/50 px-3 font-medium whitespace-nowrap first:pl-5 last:pr-5',
-  row: 'h-[58px] border-b border-border/50 transition-colors duration-150 last:border-0 hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-brand-surface/60 data-attention:not-data-selected:bg-warning-surface/50',
+  row: 'h-[58px] border-b border-border/50 transition-colors duration-150 last:border-0 not-data-selected:hover:bg-muted/40 data-open:bg-muted/50 data-selected:bg-brand-surface/60 data-attention:not-data-selected:bg-warning-surface/50',
   // A badge in a cell is the small one (Badge `size="sm"`), whichever component draws it.
   td: 'truncate px-3 first:pl-5 last:pr-5 [&_[data-slot=badge]]:h-5 [&_[data-slot=badge]]:gap-1 [&_[data-slot=badge]]:px-1.5 [&_[data-slot=badge]]:text-caption [&_[data-slot=badge]>svg]:size-3',
   /** The checkbox column: never clipped, its focus ring included (`SELECT_SIZE`). */

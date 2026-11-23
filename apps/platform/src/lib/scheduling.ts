@@ -6,7 +6,7 @@ import { languageTag } from '@helvetly/i18n'
 import { apiUrl } from '@helvetly/ui/lib/http'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { request } from '@/lib/api'
+import { ApiError, errorMessage, request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import type { Decimal } from '@/lib/invoices'
 
@@ -737,4 +737,17 @@ export function occurrencesCsv(rows: Occurrence[], zone: string) {
       .join(',')
   })
   return [header.map(csvCell).join(','), ...lines].join('\n')
+}
+
+/**
+ * What a refused change of a session says where no form shows its fields (a drag, Alt+arrows, the series dialog):
+ * the server's words for each field rather than "check the highlighted fields".
+ */
+export function changeErrorMessage(error: unknown) {
+  const fields = error instanceof ApiError ? error.details.fields : undefined
+  const words =
+    fields && typeof fields === 'object'
+      ? Object.values(fields).filter((text): text is string => typeof text === 'string')
+      : []
+  return words.length > 0 ? words.join(' ') : errorMessage(error)
 }

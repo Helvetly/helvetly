@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>Dein Deutsch Coach invited you to their client portal</title></head>
+<table role="presentation" cellpadding="16" cellspacing="0" align="left">
+<tr><td align="left" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;color:#18181b"><img src="https://app.helvetly.example/api/v1/public/email-logo/ws/logo" alt="" style="vertical-align:middle"> &nbsp;<strong style="vertical-align:middle;color:#18181b">Dein Deutsch Coach</strong></td></tr>
+<tr><td align="left" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;color:#3f3f46"><p>Hello Lea Frei,</p>
+<p>Dein Deutsch Coach now gives you access to their client portal, where you can see your invoices, engagements and shared documents.</p>
+<table role="presentation" cellpadding="6" cellspacing="0"><tr><td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px"><a style="color:#0b7268" href="https://portal.helvetly.example/w/deutsch/"><strong>Open the client portal →</strong></a></td></tr></table>
+<p style="font-size:13px;color:#71717a">Enter this email address there and we send you a code to sign in: there is no password.</p>
+</td></tr>
+<tr><td align="left" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#71717a"><strong style="color:#3f3f46">Dein Deutsch Coach</strong><br>Bahnhofstrasse 1, 8001 Zürich<br>+41 44 000 00 00 · hallo@deutsch.example · <a href="https://www.deutsch.example/" style="color:#71717a">deutsch.example</a><br>CHE-123.456.789 VAT<br><br><span style="font-size:11px">Sent with <a href="https://app.helvetly.example" style="color:#71717a">Helvetly</a></span></td></tr>
+</table></html>

@@ -61,6 +61,22 @@ type Client struct {
 	UpdatedAt          time.Time         `json:"updated_at"`
 }
 
+// GreetingName is how an email greets the client: its preferred name, a company's primary contact, else its name.
+// Whole names: a first name alone would turn a company saved without the company flag into "Hello Müller".
+func (c Client) GreetingName() string {
+	if c.PreferredName != nil && strings.TrimSpace(*c.PreferredName) != "" {
+		return strings.TrimSpace(*c.PreferredName)
+	}
+	if c.IsCompany {
+		for _, p := range c.Contacts {
+			if p.IsPrimary && strings.TrimSpace(p.Name) != "" {
+				return strings.TrimSpace(p.Name)
+			}
+		}
+	}
+	return strings.TrimSpace(c.Name)
+}
+
 type Contact struct {
 	ID        string  `json:"id"`
 	Name      string  `json:"name"`

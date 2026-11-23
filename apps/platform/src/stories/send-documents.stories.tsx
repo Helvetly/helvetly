@@ -376,7 +376,8 @@ const request = (change: Partial<SignatureRequest> = {}): SignatureRequest => ({
 
 let reminded: string[] = []
 
-/** A request's menu: reminding and revoking only while it waits; a finished one downloads the signed PDF. */
+/** A request's menu: reminding only while someone waits, revoking only while it waits; a finished one downloads the
+ * signed PDF. */
 export const SignatureMenus: Story = {
   beforeEach: () => {
     reminded = []
@@ -427,10 +428,8 @@ export const SignatureMenus: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'More for NDA' }))
     menu = within(await body().findByRole('menu'))
-    await expect(menu.getByRole('menuitem', { name: /^Send reminder/ })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    // Nobody is waiting on a completed request: no reminder to send.
+    await expect(menu.queryByRole('menuitem', { name: /^Send reminder/ })).toBeNull()
     await expect(menu.getByRole('menuitem', { name: /^Revoke/ })).toHaveAttribute(
       'aria-disabled',
       'true',

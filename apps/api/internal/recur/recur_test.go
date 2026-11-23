@@ -1,6 +1,7 @@
 package recur
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -301,5 +302,39 @@ func TestValidate(t *testing.T) {
 		if err := c.rule.Validate(); err == nil {
 			t.Errorf("%s: no error", c.name)
 		}
+	}
+}
+
+func TestShift(t *testing.T) {
+	until := Date{2027, time.January, 5}
+	tests := []struct {
+		name string
+		rule Rule
+		days int
+		want Rule
+		ok   bool
+	}{
+		{"weekly turns its days", Rule{Freq: Weekly, ByDay: []time.Weekday{time.Monday, time.Saturday}, Until: &until}, 2,
+			Rule{Freq: Weekly, ByDay: []time.Weekday{time.Wednesday, time.Monday}, Until: &Date{2027, time.January, 7}}, true},
+		{"weekly back over Sunday", Rule{Freq: Weekly, ByDay: []time.Weekday{time.Monday}}, -2,
+			Rule{Freq: Weekly, ByDay: []time.Weekday{time.Saturday}}, true},
+		{"month day", Rule{Freq: Monthly, ByMonthDay: 15, Count: 3}, -3, Rule{Freq: Monthly, ByMonthDay: 12, Count: 3}, true},
+		{"month day past 31", Rule{Freq: Monthly, ByMonthDay: 30}, 2, Rule{}, false},
+		{"last day", Rule{Freq: Monthly, ByMonthDay: -1}, 1, Rule{}, false},
+		{"nth weekday", Rule{Freq: Monthly, BySetPos: &SetPos{1, time.Monday}}, 1, Rule{}, false},
+		{"nothing to do", Rule{Freq: Monthly, ByMonthDay: -1}, 0, Rule{Freq: Monthly, ByMonthDay: -1}, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := tc.rule.Shift(tc.days)
+			if ok != tc.ok || ok && !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("got %+v %v, want %+v %v", got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+	days := []time.Weekday{time.Monday}
+	Rule{Freq: Weekly, ByDay: days}.Shift(1)
+	if days[0] != time.Monday {
+		t.Fatal("Shift changed the rule it was given")
 	}
 }

@@ -180,7 +180,8 @@ are the reference.
   `internal/ical`; Pro and Business feature `scheduling`, monthly limit `scheduled_events_per_month`): sessions with
   clients, one-off or a series (an event with its RRULE, our own subset) whose occurrences are stored rows up to 400
   days ahead (at most 520), extended by a daily job and expanded in the series' zone from its wall-clock start. Edits
-  take a scope (`this` = an exception row, `following` = a split that keeps the rows' ids, `all`). A session that has started (start <= now, still open) keeps its time: a move or a new length answers 409
+  take a scope (`this` = an exception row, `following` = a split that keeps the rows' ids, `all`); moving a series'
+  session to another day moves the series by as many days, its weekdays with it. A session that has started (start <= now, still open) keeps its time: a move or a new length answers 409
   `occurrence_started`, series edits skip it, a move from a calendar is pushed back. Hosts are members,
   never employees. A counting status (attended; a late cancellation or no-show per the settings, unless waived) adds
   an engagement entry through `engagements.AddEntry` in the same transaction; without an engagement, `unit_price`
@@ -212,7 +213,10 @@ are the reference.
   capped by `max_email_attachment_bytes`) and goes out as the business through `mail.Branded`: the company name as
   From's display name (the address stays `MAIL_FROM`'s), Reply-To the workspace's reply-to email (`workspaces.reply_to_email`,
   Settings → Workspace), else the company email, else the member who sends, else the owner, never no-reply; its workspace
-  logo (never the document logo; none: the name alone) and name head the email, its seller details (with its website as a link) sign it. Sign-in, security and invitation email never does either and stays Helvetly's.
+  logo (never the document logo; none: the name alone) and name head the email, its seller details (with its website as a link) sign it. Its body
+  is built from the `mail.Letter` blocks (greeting, lead, typed message, summary card, call to action, note, fine print,
+  attachments), which write the HTML and the text part together; every client email kind has a golden test through
+  `mail/mailtest` (`go test -update` rewrites `testdata/*.golden`), which also holds it to the supported HTML and to words that wrap. Sign-in, security and invitation email never does either and stays Helvetly's.
   Email HTML keeps to what caniemail lists as supported everywhere (Mailpit's HTML Check): no `<body>`, `<style>`,
   margin, padding, border, background, width or height; tags, `cellpadding` and inline colour and font only (the
   business logo has no size attributes: its email URL serves a copy scaled to 36 px high; `mail.TestEmailSourcesKeepToSupportedHTML`
