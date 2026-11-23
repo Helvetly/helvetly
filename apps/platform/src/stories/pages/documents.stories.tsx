@@ -505,48 +505,118 @@ export const GroupedByTypePhone: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await groupList(canvasElement)
-    const triggers = body.getAllByRole('button', { name: 'Group by: Type' })
+    const triggers = body.getAllByRole('button', { name: 'Group: Type' })
     await userEvent.click(triggers.find((button) => button.checkVisibility()) ?? triggers[0]!)
     const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
     await expect(
       within(panel.getByRole('list', { name: 'Group levels' })).getByText('Type'),
     ).toBeVisible()
-    await userEvent.click(panel.getByRole('button', { name: 'Year' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Add level' }))
     await waitFor(() => expect(url(canvasElement).get('group')).toBe('type,year'))
   },
 }
+
+/** By default the button says Folders, with no dot, and the popover says so: nothing to reset. */
+export const GroupDefault: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = await body.findByRole('button', { name: 'Group: Folders' }, { timeout: 8000 })
+    await expect(trigger.querySelector('[data-grouped-dot]')).toBeNull()
+    await userEvent.click(trigger)
+    const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
+    await expect(panel.getByRole('button', { name: /Folders \(default\)/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(panel.getByText('No grouping: files are shown in folders.')).toBeVisible()
+    await expect(panel.getByRole('button', { name: 'Reset to folders' })).toBeDisabled()
+  },
+}
+export const GroupDefaultDark = dark(GroupDefault)
 
 /** Group by's builder from Folders: a first level, remembered for next time. */
 export const SwitchGrouping: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(
-      await body.findByRole('button', { name: 'Group by: Folders' }, { timeout: 8000 }),
+      await body.findByRole('button', { name: 'Group: Folders' }, { timeout: 8000 }),
     )
     const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
-    await expect(panel.getByRole('button', { name: 'Folders' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    await expect(panel.getByText(/Add a level to group files/)).toBeVisible()
-    await userEvent.click(panel.getByRole('button', { name: 'Client' }))
-    await waitFor(() => expect(url(canvasElement).get('group')).toBe('client'))
-    await expect(localStorage.getItem('helvetly.documents.group')).toBe('client')
+    await userEvent.click(panel.getByRole('button', { name: 'Add level' }))
+    await waitFor(() => expect(url(canvasElement).get('group')).toBe('type'))
+    await expect(localStorage.getItem('helvetly.documents.group')).toBe('type')
   },
 }
 
-/** Levels in any order: Client → Year gets a second level after it. */
+/** A level's select picks what it groups by: Client › Type becomes Client › Year. */
+export const BuildClientYear: Story = {
+  parameters: pageParameters('/documents', { group: 'client,type' }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = await body.findByRole(
+      'button',
+      { name: 'Group: Client › Type' },
+      { timeout: 8000 },
+    )
+    await expect(trigger.querySelector('[data-grouped-dot]')).not.toBeNull()
+    await userEvent.click(trigger)
+    const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
+    // a level offers only what no other level uses
+    const second = panel.getByRole('combobox', { name: 'Level 2' })
+    await expect(within(second).queryByRole('option', { name: 'Client' })).toBeNull()
+    await userEvent.selectOptions(second, 'year')
+    await waitFor(() => expect(url(canvasElement).get('group')).toBe('client,year'))
+  },
+}
+
+/** Client › Year in plain words. */
+export const GroupedClientYear: Story = {
+  parameters: pageParameters('/documents', { group: 'client,year' }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Group: Client › Year' }, { timeout: 8000 }),
+    )
+    const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
+    await expect(
+      panel.getByText('Files grouped by client, then by year inside each client.'),
+    ).toBeVisible()
+    await expect(panel.getByRole('button', { name: /Folders \(default\)/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  },
+}
+export const GroupedClientYearDark = dark(GroupedClientYear)
+
+/** Reset to folders: the explicit way back to the default. */
+export const ResetToFolders: Story = {
+  parameters: pageParameters('/documents', { group: 'type,year', type: 'invoices' }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Group: Type › Year' }, { timeout: 8000 }),
+    )
+    const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Reset to folders' }))
+    await waitFor(() => expect(url(canvasElement).get('group')).toBeNull())
+    await expect(url(canvasElement).get('type')).toBeNull()
+    await expect(localStorage.getItem('helvetly.documents.group')).toBe('')
+  },
+}
+
+/** Levels in any order: Client › Year gets a second level after it. */
 export const AddALevel: Story = {
   parameters: pageParameters('/documents', { group: 'client,year' }),
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(
-      await body.findByRole('button', { name: 'Group by: Client → Year' }, { timeout: 8000 }),
+      await body.findByRole('button', { name: 'Group: Client › Year' }, { timeout: 8000 }),
     )
     const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
     await expect(panel.getByRole('button', { name: 'Move Client up' })).toBeDisabled()
     await expect(panel.getByRole('button', { name: 'Move Year down' })).toBeDisabled()
-    await userEvent.click(panel.getByRole('button', { name: 'Type' }))
+    await userEvent.click(panel.getByRole('button', { name: 'Add level' }))
     await waitFor(() => expect(url(canvasElement).get('group')).toBe('client,year,type'))
     await expect(localStorage.getItem('helvetly.documents.group')).toBe('client,year,type')
   },
@@ -558,14 +628,13 @@ export const ReorderLevels: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(
-      await body.findByRole(
-        'button',
-        { name: 'Group by: Client → Year → Type' },
-        { timeout: 8000 },
-      ),
+      await body.findByRole('button', { name: 'Group: Client › Year › Type' }, { timeout: 8000 }),
     )
     const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
-    await expect(panel.queryByRole('button', { name: 'Type' })).toBeNull()
+    await expect(panel.getByRole('button', { name: 'Add level' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     await userEvent.click(panel.getByRole('button', { name: 'Move Client down' }))
     await waitFor(() => expect(url(canvasElement).get('group')).toBe('year,client,type'))
   },
@@ -577,7 +646,7 @@ export const RemoveALevel: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(
-      await body.findByRole('button', { name: 'Group by: Client → Year' }, { timeout: 8000 }),
+      await body.findByRole('button', { name: 'Group: Client › Year' }, { timeout: 8000 }),
     )
     const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
     await userEvent.click(panel.getByRole('button', { name: 'Remove Client' }))
@@ -827,13 +896,13 @@ export const ChipsCombine: Story = {
         ),
       ).toBe(true),
     )
-    await userEvent.click(body.getByRole('button', { name: 'Group by: Folders' }))
+    await userEvent.click(body.getByRole('button', { name: 'Group: Folders' }))
     await userEvent.click(
       within(await body.findByRole('dialog', { name: 'Group by' })).getByRole('button', {
-        name: 'Client',
+        name: 'Add level',
       }),
     )
-    await waitFor(() => expect(url(canvasElement).get('group')).toBe('client'))
+    await waitFor(() => expect(url(canvasElement).get('group')).toBe('type'))
     await expect(url(canvasElement).get('client')).toBe('cli_acme')
     await expect(url(canvasElement).get('year')).toBe('2026')
     await expect(url(canvasElement).get('type')).toBe('invoices')
@@ -844,11 +913,7 @@ export const ChipsCombine: Story = {
 export const ViewsPresets: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    const trigger = await body.findByRole(
-      'button',
-      { name: 'Group by: Folders' },
-      { timeout: 8000 },
-    )
+    const trigger = await body.findByRole('button', { name: 'Group: Folders' }, { timeout: 8000 })
     await expect(body.queryByRole('navigation', { name: 'Grouped views' })).toBeNull()
     await expect(body.queryByText('Invoices by year')).toBeNull()
     await userEvent.click(trigger)
@@ -857,7 +922,12 @@ export const ViewsPresets: Story = {
       expect(panel.getByRole('button', { name: /Invoices by year/ })).toHaveTextContent('12'),
     )
     await expect(panel.getByRole('button', { name: /Receipts by year/ })).toHaveTextContent('6')
-    await expect(panel.getByRole('button', { name: /By client/ })).toHaveTextContent('2')
+    await expect(panel.getByRole('button', { name: /By client/ })).toHaveTextContent(
+      'Client · 2 clients',
+    )
+    await expect(panel.getByRole('button', { name: /Invoices by year/ })).toHaveTextContent(
+      'Type › Year · 12 files',
+    )
     await userEvent.click(panel.getByRole('button', { name: /Invoices by year/ }))
     await waitFor(() => expect(url(canvasElement).get('group')).toBe('type,year'))
     await expect(url(canvasElement).get('type')).toBe('invoices')
@@ -872,7 +942,7 @@ export const ViewsPresetOpen: Story = {
     const groups = await groupList(canvasElement)
     await expect(groups.getByRole('button', { name: /^Acme AG/ })).toBeVisible()
     await expect(groups.getByRole('button', { name: /^No client/ })).toBeVisible()
-    await userEvent.click(body.getByRole('button', { name: 'Group by: Client' }))
+    await userEvent.click(body.getByRole('button', { name: 'Group: Client' }))
     const panel = within(await body.findByRole('dialog', { name: 'Group by' }))
     await expect(panel.getByRole('button', { name: /By client/ })).toHaveAttribute(
       'aria-pressed',
