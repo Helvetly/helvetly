@@ -5828,5 +5828,8 @@
   "signingConsentDetails": "Details",
   "signingFinishNeedsFields": "Fill in every field first.",
   "signingFinishNeedsConsent": "Agree to sign electronically first.",
-  "signingFinishNeedsBoth": "Fill in every field and agree to sign electronically first."
+  "signingFinishNeedsBoth": "Fill in every field and agree to sign electronically first.",
+  "emailDigestSettings": "Email digest settings",
+  "dailyEMailDigestHelp": "Each morning after 07:00 in the workspace’s time zone, an email to you (never to your clients) with what needs invoicing, what is ending soon and the dunning notices sent in the last day. Only sent when there is something to report. Owners and admins; needs engagement automation on your plan.",
+  "dailyEMailDigestKept": "You can still switch it off."
 }

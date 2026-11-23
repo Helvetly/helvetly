@@ -58,6 +58,7 @@ const PRO_FEATURES: (FeatureKey | 'invoice_instalments')[] = [
   'ledger_exports',
   'data_export',
   'automations',
+  'engagement_automation',
   'scheduling',
 ]
 // The gated features of offer helvetly per plan; the ones every plan has are left out.
