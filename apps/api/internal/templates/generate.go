@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -16,6 +17,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/clients"
+	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/signatures"
 	"helvetly.com/api/internal/signpdf"
@@ -29,8 +31,12 @@ type generateBody struct {
 	Values   map[string]string `json:"values"`
 	Delivery struct {
 		Type          string                   `json:"type"`
-		To            string                   `json:"to"`
+		To            string                   `json:"to"` // one address, or several separated by commas
+		Cc            []string                 `json:"cc"`
+		Bcc           []string                 `json:"bcc"`
+		Subject       *string                  `json:"subject"`
 		Message       *string                  `json:"message"`
+		Language      *string                  `json:"language"` // of the email; none: the English email of before templates
 		Signers       []signatures.SignerInput `json:"signers"`
 		SigningOrder  string                   `json:"signing_order"`
 		ExpiresInDays *int                     `json:"expires_in_days"`
@@ -120,7 +126,11 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 		case v == "" && f.Kind == "custom":
 			bad[key] = "Fill in " + deref(f.Label) + "."
 		}
-		texts = append(texts, signpdf.Text{Page: f.Page, X: f.X, Y: f.Y, W: f.W, H: f.H, Value: v})
+		text := signpdf.Text{Page: f.Page, X: f.X, Y: f.Y, W: f.W, H: f.H, Value: v, AutoFit: f.AutoFit, Align: f.Align}
+		if f.FontSize != nil {
+			text.Size = *f.FontSize
+		}
+		texts = append(texts, text)
 	}
 	for id := range b.Values {
 		if !known[id] {
@@ -129,12 +139,37 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 
 	d := b.Delivery
-	var to string
+	var to, cc, bcc []string
 	switch d.Type {
 	case "save":
 	case "email":
-		if to, msg = clients.NormaliseEmail(strings.TrimSpace(d.To)); msg != "" {
+		for _, list := range []struct {
+			key  string
+			in   []string
+			into *[]string
+		}{{"delivery.to", strings.FieldsFunc(d.To, func(r rune) bool { return r == ',' || r == ';' }), &to},
+			{"delivery.cc", d.Cc, &cc}, {"delivery.bcc", d.Bcc, &bcc}} {
+			if msg := addresses(list.in, list.into); msg != "" {
+				bad[list.key] = msg
+			}
+		}
+		if len(to) == 0 && bad["delivery.to"] == "" {
 			bad["delivery.to"] = "Enter an email address such as ana@example.com."
+		}
+		if d.Language != nil && !slices.Contains(emailtemplate.Languages, *d.Language) {
+			bad["delivery.language"] = "Use de, fr, it or en."
+		}
+		if d.Subject != nil && strings.TrimSpace(*d.Subject) != "" {
+			v, msg := signatures.PlainText(*d.Subject, maxNameLen)
+			if msg == "" && strings.Contains(v, "\n") {
+				msg = "Keep the subject on one line."
+			}
+			if msg != "" {
+				bad["delivery.subject"] = msg
+			}
+			d.Subject = &v
+		} else {
+			d.Subject = nil
 		}
 		if d.Message != nil && strings.TrimSpace(*d.Message) != "" {
 			v, msg := signatures.PlainText(*d.Message, maxMessageLen)
@@ -249,12 +284,19 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 		if s.mail == nil {
 			return errMailUnavailable // the document stays in Documents
 		}
-		if err := s.mail.Send(ctx, emailMessage(sess, to, title, d.Message, file.Name, filled)); err != nil {
+		m, err := s.emailMessage(ctx, sess, d.Language, d.Subject, d.Message, title, file.Name, filled)
+		if err != nil {
+			return err
+		}
+		m.To = to
+		m.Cc, m.Bcc = mail.Copies(to, cc, bcc)
+		if err := s.mail.Send(ctx, m); err != nil {
 			s.log.ErrorContext(ctx, "email filled template", "template", t.ID, "document", file.ID, "error", err)
 			return auth.Error(http.StatusServiceUnavailable, "mail_failed",
 				"The document is in Documents, but the email could not be sent. Try again in a minute.", map[string]any{"document_id": file.ID})
 		}
-		out.EmailedTo = &to
+		list := strings.Join(to, ", ")
+		out.EmailedTo = &list
 	case "signature":
 		id, err := s.sign.Create(r, sess, signing(t, b, title, file.ID))
 		if err != nil {
@@ -271,10 +313,49 @@ func fileName(title string) string {
 	return strings.NewReplacer("/", "-", `\`, "-").Replace(title)
 }
 
-func emailMessage(sess store.Session, to, title string, message *string, name string, pdf []byte) mail.Message {
+// addresses normalises a list of email addresses into into (at most 10); the message says what is wrong.
+func addresses(in []string, into *[]string) string {
+	for _, a := range in {
+		if strings.TrimSpace(a) == "" {
+			continue
+		}
+		v, msg := clients.NormaliseEmail(strings.TrimSpace(a))
+		if msg != "" {
+			return "Enter email addresses such as ana@example.com."
+		}
+		if !slices.Contains(*into, v) {
+			*into = append(*into, v)
+		}
+	}
+	if len(*into) > 10 {
+		return "Use at most 10 addresses."
+	}
+	return ""
+}
+
+// emailMessage is the email that sends a filled template. With a language, the subject and message the sender wrote
+// (else the workspace's "document" template) go out as they are; without, the English email of before templates.
+func (s *Service) emailMessage(ctx context.Context, sess store.Session, language, subject, message *string, title, name string, pdf []byte) (mail.Message, error) {
 	from := strings.TrimSpace(sess.User.Name)
 	if from == "" {
 		from = sess.User.Email
+	}
+	attachments := []mail.Attachment{{Name: name, ContentType: "application/pdf", Data: pdf}}
+	if language != nil {
+		t, err := emailtemplate.Lookup(ctx, s.db.Q, sess.Workspace.ID, "document", *language)
+		if err != nil {
+			return mail.Message{}, err
+		}
+		r := emailtemplate.Render(t, map[string]string{"document": title, "sender": from, "company": sess.Workspace.Name})
+		if subject != nil {
+			r.Subject = *subject
+		}
+		if message != nil {
+			r.Body = *message
+		}
+		m := documentEmail(sess.Workspace.ID, *language, r)
+		m.ReplyTo, m.Attachments = sess.User.Email, attachments
+		return m, nil
 	}
 	lead := fmt.Sprintf("%s (%s) sent you “%s”. The PDF is attached.", from, sess.Workspace.Name, title)
 	text := "Hello,\n\n" + lead + "\n"
@@ -283,6 +364,54 @@ func emailMessage(sess store.Session, to, title string, message *string, name st
 		text += "\n" + *message + "\n"
 		body += "<p>" + strings.ReplaceAll(html.EscapeString(*message), "\n", "<br>") + "</p>\n"
 	}
-	return mail.Message{Workspace: sess.Workspace.ID, Language: "en", To: []string{to}, ReplyTo: sess.User.Email, Subject: fmt.Sprintf("%s sent you “%s”", from, title),
-		Text: text, HTML: body, Attachments: []mail.Attachment{{Name: name, ContentType: "application/pdf", Data: pdf}}}
+	return mail.Message{Workspace: sess.Workspace.ID, Language: "en", ReplyTo: sess.User.Email, Subject: fmt.Sprintf("%s sent you “%s”", from, title),
+		Text: text, HTML: body, Attachments: attachments}, nil
+}
+
+// documentEmail is a document email's subject and message as a message: one paragraph per blank-line block.
+func documentEmail(workspaceID, language string, t emailtemplate.Template) mail.Message {
+	var body strings.Builder
+	for _, p := range strings.Split(strings.TrimSpace(t.Body), "\n\n") {
+		if p = strings.TrimSpace(p); p != "" {
+			body.WriteString("<p>" + strings.ReplaceAll(html.EscapeString(p), "\n", "<br>") + "</p>\n")
+		}
+	}
+	return mail.Message{Workspace: workspaceID, Language: language, Subject: t.Subject, Text: t.Body + "\n", HTML: body.String()}
+}
+
+// previewBody is POST /templates/email-preview: the email as the send step has it so far.
+type previewBody struct {
+	Title    string `json:"title"`
+	Subject  string `json:"subject"`
+	Message  string `json:"message"`
+	Language string `json:"language"`
+}
+
+// preview answers the HTML a client would get for the email being written, without sending it.
+func (s *Service) preview(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	var b previewBody
+	if !s.auth.Decode(w, r, &b) {
+		return nil
+	}
+	if !slices.Contains(emailtemplate.Languages, b.Language) {
+		return validationFailed(map[string]string{"language": "Use de, fr, it or en."})
+	}
+	given := func(v string) *string {
+		if strings.TrimSpace(v) == "" {
+			return nil
+		}
+		return &v
+	}
+	m, err := s.emailMessage(r.Context(), sess, &b.Language, given(b.Subject), given(b.Message), strings.TrimSpace(b.Title), "", nil)
+	if err != nil {
+		return err
+	}
+	var brand mail.Brand
+	if s.brands != nil {
+		if brand, err = s.brands(r.Context(), sess.Workspace.ID); err != nil {
+			return err
+		}
+	}
+	auth.WriteJSON(w, http.StatusOK, data(map[string]string{"subject": m.Subject, "html": mail.Preview(m, brand, s.publicURL)}))
+	return nil
 }

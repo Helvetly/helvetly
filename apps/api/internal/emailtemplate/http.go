@@ -1,6 +1,8 @@
 package emailtemplate
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -100,4 +102,16 @@ func (s *Service) Register(mux *http.ServeMux) {
 
 func known(kind, language string) bool {
 	return slices.Contains(Kinds, kind) && slices.Contains(Languages, language)
+}
+
+// Lookup is the text of a kind's emails in a language: the workspace's own, else the built-in one.
+func Lookup(ctx context.Context, q store.Q, workspaceID, kind, language string) (Template, error) {
+	own, err := q.EmailTemplate(ctx, workspaceID, kind, language)
+	switch {
+	case err == nil:
+		return Template{Subject: own.Subject, Body: own.Body}, nil
+	case errors.Is(err, store.ErrNotFound):
+		return Default(kind, language), nil
+	}
+	return Template{}, err
 }

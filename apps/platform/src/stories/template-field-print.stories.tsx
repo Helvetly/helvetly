@@ -63,8 +63,11 @@ export const OutputWithoutChrome: Story = {
   },
 }
 
-// The text fills the box height: a larger box prints larger text.
-export const ResizeChangesFontSize: Story = {
+/** 10 pt on this 420 px A4 page (595.28 pt wide). */
+const TEN_POINTS = (10 * 420) / 595.28
+
+// Every value prints at its field's size in points, 10 by default, whatever its box: a larger box changes nothing.
+export const SizeIsTheFieldsNotTheBoxes: Story = {
   render: function Render() {
     const [h, setH] = useState(0.03)
     return (
@@ -76,34 +79,106 @@ export const ResizeChangesFontSize: Story = {
           <FieldBox box={boxAt(0.1, h, 0.6)} kind="client.email" color={BLUE} mode="output">
             ana@example.com
           </FieldBox>
+          <FieldBox box={boxAt(0.2, 0.08, 0.6)} kind="client.name" color={BLUE} mode="output">
+            Müller AG
+          </FieldBox>
+          <FieldBox
+            box={boxAt(0.3, 0.03, 0.6)}
+            kind="today"
+            color={BLUE}
+            mode="output"
+            print={{ font_size: 14 }}
+          >
+            23.11.2026
+          </FieldBox>
         </Page>
       </div>
     )
   },
   play: async ({ canvasElement }) => {
-    const { span, box } = printed(canvasElement, 'ana@example.com')
-    const at = (height: number) => expect(fontSize(span)).toBeCloseTo(height * 0.75, 0)
-    await at(box.clientHeight)
-    const small = fontSize(span)
-
+    const email = printed(canvasElement, 'ana@example.com').span
+    const name = printed(canvasElement, 'Müller AG').span
+    await expect(fontSize(email)).toBeCloseTo(TEN_POINTS, 1)
+    await expect(fontSize(name)).toBeCloseTo(TEN_POINTS, 1)
+    await expect(fontSize(printed(canvasElement, '23.11.2026').span)).toBeCloseTo(
+      TEN_POINTS * 1.4,
+      1,
+    )
     await userEvent.click(within(canvasElement).getByRole('button', { name: 'Larger box' }))
-    await waitFor(() => expect(fontSize(span)).toBeGreaterThan(small * 1.8))
-    await at(box.clientHeight)
+    await waitFor(() =>
+      expect(printed(canvasElement, 'ana@example.com').box.style.height).toBe('6%'),
+    )
+    await expect(fontSize(email)).toBeCloseTo(TEN_POINTS, 1)
   },
 }
 
-// A value wider than its box shrinks to the box width instead of running over or being cut.
-export const LongValueShrinks: Story = {
+// Auto-fit shrinks a value wider than its box to the box, never above the field's size; without it the size holds.
+export const AutoFitShrinksLongValues: Story = {
   render: () => (
     <Page>
-      <FieldBox box={boxAt(0.1, 0.04, 0.3)} kind="client.name" color={BLUE} mode="output">
+      <FieldBox
+        box={boxAt(0.1, 0.04, 0.3)}
+        kind="client.name"
+        color={BLUE}
+        mode="output"
+        print={{ font_size: 24, auto_fit: true }}
+      >
         Müller Schreinerei und Innenausbau AG
+      </FieldBox>
+      <FieldBox
+        box={boxAt(0.2, 0.04, 0.6)}
+        kind="client.city"
+        color={BLUE}
+        mode="output"
+        print={{ font_size: 12, auto_fit: true }}
+      >
+        Bern
       </FieldBox>
     </Page>
   ),
   play: async ({ canvasElement }) => {
     const { span, box } = printed(canvasElement, 'Müller Schreinerei und Innenausbau AG')
-    await expect(fontSize(span)).toBeLessThan(box.clientHeight * 0.75)
+    await expect(fontSize(span)).toBeLessThan(TEN_POINTS * 2.4)
     await expect(span.offsetWidth).toBeLessThanOrEqual(box.clientWidth + 0.5)
+    // a short value keeps its size: auto-fit never grows it to the box
+    await expect(fontSize(printed(canvasElement, 'Bern').span)).toBeCloseTo(TEN_POINTS * 1.2, 1)
+  },
+}
+
+// Centred and right-aligned values sit in the middle and at the right edge of their boxes.
+export const Alignment: Story = {
+  render: () => (
+    <Page>
+      <FieldBox
+        box={boxAt(0.1, 0.03, 0.6)}
+        kind="client.name"
+        color={BLUE}
+        mode="output"
+        print={{ align: 'center' }}
+      >
+        Centred AG
+      </FieldBox>
+      <FieldBox
+        box={boxAt(0.2, 0.03, 0.6)}
+        kind="client.name"
+        color={BLUE}
+        mode="output"
+        print={{ align: 'right' }}
+      >
+        Right AG
+      </FieldBox>
+    </Page>
+  ),
+  play: async ({ canvasElement }) => {
+    const centred = printed(canvasElement, 'Centred AG')
+    const [outer, inner] = [
+      centred.box.getBoundingClientRect(),
+      centred.span.getBoundingClientRect(),
+    ]
+    await expect(Math.abs(inner.left - outer.left - (outer.right - inner.right))).toBeLessThan(1.5)
+    const right = printed(canvasElement, 'Right AG')
+    await expect(
+      Math.abs(right.box.getBoundingClientRect().right - right.span.getBoundingClientRect().right),
+    ).toBeLessThan(1)
   },
 }

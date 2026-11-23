@@ -85,8 +85,16 @@ const field = (name: string) =>
 test('lists one row per document type; the language is chosen in the dialog', async () => {
   const user = setup()
   const list = await screen.findByRole('list', { name: 'Email templates' })
-  expect(within(list).getAllByRole('listitem')).toHaveLength(4)
-  for (const kind of ['Invoice', 'Credit note', 'Proforma', 'Quote'])
+  expect(within(list).getAllByRole('listitem')).toHaveLength(7)
+  for (const kind of [
+    'Invoice',
+    'Credit note',
+    'Proforma',
+    'Quote',
+    'Document',
+    'Request to sign',
+    'Signing reminder',
+  ])
     expect(within(list).getByRole('button', { name: `Edit the ${kind} email` })).toBeVisible()
   expect(within(list).queryByRole('radio')).toBeNull()
   expect(

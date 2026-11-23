@@ -21,6 +21,7 @@ import {
 import { translate } from '@/lib/i18n'
 import { signerColor, type DraftField } from '@/lib/signatures'
 import { folderLabel } from '@/lib/system-folders'
+import type { PrintSettings } from '@/lib/templates'
 
 import { KindIcon } from '../documents/kind'
 import { FieldBox } from './parts'
@@ -188,7 +189,8 @@ export function DocPreview<K extends string>({
   empty = translate('chooseAPDFToSeeItHere'),
 }: {
   document: { id: string; name: string } | null
-  fields: DraftField<K>[]
+  /** A template's data fields carry how their values are printed. */
+  fields: (DraftField<K> & PrintSettings)[]
   /** What a field's box says: its kind or label. */
   caption: (field: DraftField<K>) => ReactNode
   /** A filled field's value, shown printed instead of a box ("" prints nothing); null keeps the box. */
@@ -228,6 +230,7 @@ export function DocPreview<K extends string>({
                     box={field}
                     kind={field.kind}
                     color={signerColor(field.signer)}
+                    print={field}
                     mode="output"
                   >
                     {value}

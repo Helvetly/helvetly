@@ -597,6 +597,44 @@ func TestReminderReplacesTheLinkAndRevokeStopsIt(t *testing.T) {
 	}
 }
 
+// TestEmailsFromTemplates: with a language, the invitation carries the sender's message under the template's subject,
+// and the reminder the workspace's own reminder template; the button, expiry and SES note follow the language.
+func TestEmailsFromTemplates(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	doc, _ := e.pdfDocument(b, samplePDF(t, 2), "application/pdf")
+	if _, err := e.raw.Exec(context.Background(), `INSERT INTO email_templates (workspace_id, kind, language, subject, body, updated_at)
+		SELECT workspace_id, 'signature_reminder', 'de', 'Bitte {document} unterschreiben', 'Noch offen: {document}', now()
+		FROM documents WHERE id = $1`, doc); err != nil {
+		t.Fatal(err)
+	}
+	body := newRequest(doc, "parallel", "one@example.com")
+	body["title"], body["message"], body["language"] = "Vertrag", "Guten Tag\n\nBitte unterschreiben.", "de"
+	req := e.create(b, body)
+	invite := e.mail.to("one@example.com")[0]
+	if invite.Language != "de" || !strings.Contains(invite.Subject, "«Vertrag» zur Unterschrift") ||
+		!strings.Contains(invite.HTML, "<p>Guten Tag</p>") || !strings.Contains(invite.HTML, "Prüfen und unterschreiben") ||
+		!strings.Contains(invite.HTML, "ZertES") || !strings.Contains(invite.Text, "Bitte unterschreiben.") {
+		t.Fatalf("invitation: %+v", invite)
+	}
+	e.do(b, "POST", "/api/v1/signatures/"+req.ID+"/remind", nil, http.StatusOK, nil)
+	reminder := e.mail.to("one@example.com")[1]
+	if reminder.Subject != "Bitte Vertrag unterschreiben" || !strings.Contains(reminder.Text, "Noch offen: Vertrag") ||
+		strings.Contains(reminder.Text, "Bitte unterschreiben.") {
+		t.Fatalf("reminder: %+v", reminder)
+	}
+
+	var preview struct {
+		Data struct{ Subject, HTML string }
+	}
+	e.do(b, "POST", "/api/v1/signatures/email-preview", map[string]any{"title": "Offerte", "message": "Hallo", "language": "fr"}, http.StatusOK, &preview)
+	if !strings.Contains(preview.Data.Subject, "« Offerte »") || !strings.Contains(preview.Data.HTML, "Vérifier et signer") ||
+		!strings.Contains(preview.Data.HTML, "<p>Hallo</p>") {
+		t.Fatalf("preview: %+v", preview.Data)
+	}
+	e.code(b, "POST", "/api/v1/signatures/email-preview", map[string]any{"title": "x", "language": "pl"}, http.StatusUnprocessableEntity)
+}
+
 func TestWorkspaceIsolation(t *testing.T) {
 	e := newEnv(t)
 	a, other := e.workspace(), e.workspace()
@@ -639,6 +677,8 @@ func TestCreateValidation(t *testing.T) {
 	}{
 		{"no title", with(func(b requestBody) { b["title"] = " " }), "title"},
 		{"bad order", with(func(b requestBody) { b["signing_order"] = "random" }), "signing_order"},
+		{"unknown language", with(func(b requestBody) { b["language"] = "pl" }), "language"},
+		{"long message", with(func(b requestBody) { b["message"] = strings.Repeat("x", 2501) }), "message"},
 		{"expiry", with(func(b requestBody) { b["expires_in_days"] = 400 }), "expires_in_days"},
 		{"broken pdf", with(func(b requestBody) { b["document_id"] = notPDF }), "document_id"},
 		{"not a pdf", with(func(b requestBody) { b["document_id"] = image }), "document_id"},

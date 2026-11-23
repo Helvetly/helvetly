@@ -16,25 +16,49 @@ const NAMES: Record<EmailKind, string> = {
   credit_note: 'credit note',
   proforma: 'proforma invoice',
   quote: 'quote',
+  document: 'document',
+  signature_request: 'signature request',
+  signature_reminder: 'signature reminder',
 }
 const COMMON = ['document', 'number', 'client', 'amount', 'company']
 
-const defaultOf = (kind: EmailKind) => ({
-  subject: '{document} {number} from {company}',
-  body:
-    kind === 'quote'
-      ? 'Hello\n\nPlease find attached our quote {number} for {amount}, valid until {valid_until}.\n\nKind regards\n{company}'
-      : kind === 'invoice'
-        ? 'Hello\n\nPlease find attached our invoice {number} for {amount}, payable by {due_date}.\n\nKind regards\n{company}'
-        : `Hello\n\nPlease find attached our ${NAMES[kind]} {number} for {amount}.\n\nKind regards\n{company}`,
-})
+/** The built-in English texts of the emails that send a file or ask for a signature (emailtemplate.go). */
+const FILE_DEFAULTS: Partial<Record<EmailKind, { subject: string; body: string }>> = {
+  document: {
+    subject: '{document} from {company}',
+    body: 'Hello\n\nPlease find “{document}” attached. If you have any questions, simply reply to this email.\n\nKind regards\n{sender}\n{company}',
+  },
+  signature_request: {
+    subject: '{sender} sent you “{document}” to sign',
+    body: 'Hello\n\nPlease review and sign “{document}” using the link below. If you have any questions, simply reply to this email.\n\nKind regards\n{sender}\n{company}',
+  },
+  signature_reminder: {
+    subject: 'Reminder: {sender} sent you “{document}” to sign',
+    body: 'Hello\n\nThis is a friendly reminder that “{document}” is still waiting for your signature. The link below takes you straight to it.\n\nKind regards\n{sender}\n{company}',
+  },
+}
+
+const defaultOf = (kind: EmailKind) =>
+  FILE_DEFAULTS[kind] ?? {
+    subject: '{document} {number} from {company}',
+    body:
+      kind === 'quote'
+        ? 'Hello\n\nPlease find attached our quote {number} for {amount}, valid until {valid_until}.\n\nKind regards\n{company}'
+        : kind === 'invoice'
+          ? 'Hello\n\nPlease find attached our invoice {number} for {amount}, payable by {due_date}.\n\nKind regards\n{company}'
+          : `Hello\n\nPlease find attached our ${NAMES[kind]} {number} for {amount}.\n\nKind regards\n{company}`,
+  }
 
 const variablesOf = (kind: EmailKind) =>
   kind === 'invoice'
     ? [...COMMON, 'due_date']
     : kind === 'quote'
       ? [...COMMON, 'valid_until']
-      : COMMON
+      : kind === 'document'
+        ? ['document', 'client', 'sender', 'company']
+        : kind.startsWith('signature')
+          ? ['document', 'sender', 'company']
+          : COMMON
 
 const sampleTemplates = (): EmailTemplate[] =>
   EMAIL_KINDS.flatMap((kind) =>
@@ -116,7 +140,41 @@ const notFound = () => fail(404, 'not_found', 'Not found.')
 const find = (kind: string, language: string) =>
   templates.find((entry) => entry.kind === kind && entry.language === language)
 
+/** The preview routes' answer: the message as paragraphs in a plain letter, like the branded email. */
+const previewOf = (subject: string, message: string, extra = '') => ({
+  subject,
+  html: `<!doctype html><html lang="en"><body><p><strong>Muster GmbH</strong></p>${message
+    .split(/\n\n+/)
+    .map(
+      (part) =>
+        `<p>${part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>')}</p>`,
+    )
+    .join('')}${extra}</body></html>`,
+})
+
 export const emailTemplateHandlers = [
+  http.post<never, { title?: string; message?: string; language?: string }>(
+    '/api/v1/signatures/email-preview',
+    async ({ request }) => {
+      const { title = '', message = '' } = await request.json()
+      return HttpResponse.json({
+        data: previewOf(
+          `Ana Muster sent you “${title}” to sign`,
+          message,
+          '<p><strong><a href="#">Review and sign</a></strong></p>',
+        ),
+      })
+    },
+  ),
+  http.post<never, { title?: string; subject?: string; message?: string }>(
+    '/api/v1/templates/email-preview',
+    async ({ request }) => {
+      const { title = '', subject, message = '' } = await request.json()
+      return HttpResponse.json({
+        data: previewOf(subject || `${title} from Muster GmbH`, message),
+      })
+    },
+  ),
   http.get('/api/v1/email-templates', async () => {
     await delay()
     return HttpResponse.json({ data: templates })
