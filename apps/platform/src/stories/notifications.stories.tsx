@@ -1,5 +1,6 @@
 import { Button } from '@helvetly/ui/components/button'
 import { SidebarMenu, SidebarMenuItem, SidebarProvider } from '@helvetly/ui/components/sidebar'
+import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { focusManager } from '@tanstack/react-query'
 import { delay, http, HttpResponse } from 'msw'
@@ -781,14 +782,21 @@ export const DigestOffAfterDowngrade: Story = {
 
 /** A failed save puts the switch back and says so. */
 export const DigestSaveFails: Story = {
-  render: prefsDrawer,
+  render: () => (
+    <>
+      {prefsDrawer()}
+      <Toaster />
+    </>
+  ),
   parameters: digestWith({ fail: true }),
   play: async () => {
     const canvas = within(document.body)
     const digest = await canvas.findByRole('switch', { name: 'Daily e-mail digest' })
     await waitFor(() => expect(digest).toBeEnabled())
     await userEvent.click(digest)
-    await expect(await canvas.findByText('Could not change the daily digest.')).toBeVisible()
+    const error = await canvas.findByText('Could not change the daily digest.')
+    // The toast slides in.
+    await waitFor(() => expect(error).toBeVisible())
     await waitFor(() => expect(digest).not.toBeChecked())
   },
 }
