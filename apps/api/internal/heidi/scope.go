@@ -57,14 +57,23 @@ func localVerdict(message string) verdict {
 }
 
 var languageHints = map[string][]string{
-	"de": {"der", "die", "das", "und", "ist", "ich", "wie", "nicht", "mir", "bitte", "ein", "eine", "zeig", "was", "welche", "schreib", "schreibe", "mein", "meine", "sie", "du", "wer", "war", "warum", "wann", "wo"},
-	"fr": {"le", "la", "les", "est", "je", "comment", "une", "des", "pour", "quelle", "quel", "moi", "du", "écris", "mon", "ma", "vous", "tu"},
-	"it": {"il", "che", "di", "come", "una", "per", "scrivi", "quale", "sono", "della", "mio", "mia", "puoi", "qual", "gli"},
-	"pl": {"jak", "czy", "jest", "mi", "nie", "się", "podaj", "napisz", "co", "dla", "proszę", "pokaż", "ile", "który", "jaka", "jaki", "mój", "moje", "ciąg", "kod"},
+	"de": {"danke", "hallo", "der", "die", "das", "und", "ist", "ich", "wie", "nicht", "mir", "bitte", "ein", "eine", "zeig", "was", "welche", "schreib", "schreibe", "mein", "meine", "sie", "du", "wer", "war", "warum", "wann", "wo"},
+	"fr": {"merci", "bonjour", "oui", "le", "la", "les", "est", "je", "comment", "une", "des", "pour", "quelle", "quel", "moi", "du", "écris", "mon", "ma", "vous", "tu"},
+	"it": {"grazie", "ciao", "il", "che", "di", "come", "una", "per", "scrivi", "quale", "sono", "della", "mio", "mia", "puoi", "qual", "gli"},
+	"pl": {"jak", "czy", "jest", "mi", "nie", "się", "podaj", "napisz", "co", "dla", "proszę", "pokaż", "ile", "który", "jaka", "jaki", "mój", "moje", "ciąg", "kod", "tak", "dzięki", "cześć"},
+	"en": {"the", "is", "what", "how", "show", "my", "which", "please", "can", "you", "are", "when", "who", "why", "of", "and", "for", "this", "with", "write", "thanks", "thank", "hello", "yes"},
 }
 
 // language guesses the message's language among those Heidi refuses in; English when nothing points elsewhere.
 func language(message string) string {
+	if lang := guessLanguage(message); lang != "" {
+		return lang
+	}
+	return "en"
+}
+
+// guessLanguage is the language the message's letters and words point to; empty when none does.
+func guessLanguage(message string) string {
 	lower := strings.ToLower(message)
 	score := map[string]int{}
 	for _, r := range lower {
@@ -86,8 +95,8 @@ func language(message string) string {
 			}
 		}
 	}
-	best, top := "en", 0
-	for _, lang := range []string{"de", "fr", "it", "pl"} {
+	best, top := "", 0
+	for _, lang := range []string{"de", "fr", "it", "pl", "en"} {
 		if score[lang] > top {
 			best, top = lang, score[lang]
 		}

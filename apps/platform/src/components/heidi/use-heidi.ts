@@ -1,4 +1,5 @@
 'use client'
+import { locale } from '@helvetly/i18n'
 import { useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -299,6 +300,8 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
         form.set('page', page)
         // The screen it is asked from, so "what is this page?" has an answer.
         form.set('path', window.location.pathname)
+        // Heidi answers in the message's language; the interface's is its fallback for one too short to tell.
+        form.set('lang', locale)
         if (goesToImport(text, files)) {
           // The files go to an import that works out what they are; the answer then follows it.
           update(assistantId, () => ({
