@@ -1,7 +1,14 @@
 'use client'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { Check, ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react'
 
 import { translate } from '@/lib/i18n'
 import {
@@ -18,12 +25,15 @@ import {
   type Person,
 } from '@/lib/scheduling'
 
-import { HostDot } from './bits'
+import { HostDot, PAST_HATCH } from './bits'
+import type { Hours } from './hours-menu'
 import { clipToDay, layoutDay, snapMinutes } from './layout'
 
-const HOUR = 48
+const HOUR = 80
 const SNAP = 15
 const MIN_LENGTH = 15
+/** The hour axis' width; the heading row and the body share one column template with it. */
+const AXIS = '3.5rem'
 
 type Drag = {
   occurrence: Occurrence
@@ -46,10 +56,12 @@ export function TimeGrid({
   busy,
   lanes,
   now,
+  hours,
   canWrite,
   onOpen,
   onCreate,
   onMove,
+  onShowAll,
 }: {
   days: string[]
   zone: string
@@ -58,21 +70,38 @@ export function TimeGrid({
   /** Hosts shown side by side in each day; null shows everyone in one column. */
   lanes: Person[] | null
   now: Date
+  /** The hours shown; sessions outside them are counted at the column's top or bottom edge. */
+  hours: Hours
   canWrite: boolean
   onOpen: (occurrence: Occurrence) => void
   onCreate: (date: string, minutes: number, hostId?: string) => void
   onMove: (occurrence: Occurrence, startsAt: Date, endsAt: Date) => void
+  /** Shows the full day, from an edge's count of hidden sessions. */
+  onShowAll: () => void
 }) {
   const scroller = useRef<HTMLDivElement>(null)
-  const columns = useRef<HTMLDivElement>(null)
+  const firstDay = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
   const hintId = useId()
   const today = zoned(now, zone)
 
-  useEffect(() => {
-    // Opens on the working day, not at midnight.
-    if (scroller.current) scroller.current.scrollTop = 7 * HOUR
-  }, [])
+  const first = hours.from * 60
+  const last = hours.to * 60
+  /** A wall-clock minute's offset from the top of the grid. */
+  const y = (minutes: number) => ((minutes - first) / 60) * HOUR
+  const template = `${AXIS} repeat(${days.length}, minmax(0, 1fr))`
+  const showsToday = days.includes(today.date)
+  const nowShown = showsToday && today.minutes >= first && today.minutes <= last
+  // Now (today on show) or 08:00, a third of the way down.
+  const openAt = y(Math.min(last, Math.max(first, showsToday ? today.minutes : 8 * 60)))
+  // The page gives each range its own grid (key), so this runs on open and on another range.
+  useLayoutEffect(() => {
+    const element = scroller.current
+    if (element) element.scrollTop = Math.max(0, openAt - element.clientHeight / 3)
+  }, [openAt])
+  /** Minutes of `day` that have passed: no new session starts there, and none is moved there. */
+  const pastUntil = (day: string) =>
+    day < today.date ? 1440 : day === today.date ? today.minutes : 0
 
   const laneList = lanes ?? [null]
   const laneOf = (hostId: string | null | undefined) =>
@@ -107,6 +136,7 @@ export function TimeGrid({
       target.mode === 'move' || target.dDays !== 0
         ? instantOf(startDate, startMinutes, zone)
         : new Date(target.occurrence.starts_at)
+    if (startsAt.getTime() !== Date.parse(target.occurrence.starts_at) && startsAt < now) return
     onMove(target.occurrence, startsAt, new Date(startsAt.getTime() + length * 60_000))
   }
 
@@ -131,7 +161,7 @@ export function TimeGrid({
   }
   const pointerMove = (event: PointerEvent<HTMLElement>) => {
     if (!drag) return
-    const width = (columns.current?.clientWidth ?? 0) / days.length
+    const width = firstDay.current?.clientWidth ?? 0
     const dMinutes = snapMinutes(event.clientY - drag.y, HOUR, SNAP)
     const dDays =
       drag.mode === 'move' && width > 0 ? Math.round((event.clientX - drag.x) / width) : 0
@@ -166,25 +196,28 @@ export function TimeGrid({
     const index = days.indexOf(local.date)
     const date = horizontal ? (days[index + horizontal] ?? local.date) : local.date
     const startsAt = instantOf(date, local.minutes + (vertical ?? 0), zone)
+    if (startsAt < now) return
     onMove(occurrence, startsAt, new Date(startsAt.getTime() + lengthOf(occurrence) * 60_000))
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+    <div className="flex min-h-80 flex-1 flex-col overflow-hidden border-t bg-card">
       <p id={hintId} className="sr-only">
         {translate('schedKeyboardHint')}
       </p>
-      {/* Day (and host) headings, aligned with the columns under them. */}
-      <div className="flex [scrollbar-gutter:stable] overflow-hidden border-b">
-        <div className="w-14 shrink-0" />
+      {/* The inset on the right keeps the last column's focus rings inside the scroller; headings share it. */}
+      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto pr-1">
+        {/* Day (and host) headings stick in the same scroller and share the body's column template. */}
         <div
-          className="grid flex-1"
-          style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+          className="sticky top-0 z-40 grid border-b bg-card"
+          style={{ gridTemplateColumns: template }}
         >
+          <div />
           {days.map((day) => (
             <div
               key={day}
-              className="grid min-w-0 border-l px-1 py-1.5 text-center first:border-l-0"
+              data-day-heading={day}
+              className="grid min-w-0 border-l px-1 py-1.5 text-center"
             >
               <span
                 className={cn(
@@ -213,72 +246,101 @@ export function TimeGrid({
             </div>
           ))}
         </div>
-      </div>
 
-      <div ref={scroller} className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto">
-        <div className="relative flex" style={{ height: 24 * HOUR }}>
-          <div className="relative w-14 shrink-0" aria-hidden>
-            {Array.from({ length: 23 }, (_, i) => (
+        <div
+          className="relative grid"
+          style={{ gridTemplateColumns: template, height: y(last) }}
+          onPointerMove={pointerMove}
+          onPointerUp={pointerUp}
+          onPointerCancel={() => setDrag(null)}
+        >
+          <div className="relative" aria-hidden>
+            {Array.from({ length: hours.to - hours.from - 1 }, (_, i) => hours.from + 1 + i).map(
+              (hour) => (
+                <span
+                  key={hour}
+                  className="absolute right-2 -translate-y-1/2 text-caption text-muted-foreground tabular-nums"
+                  style={{ top: y(hour * 60) }}
+                >
+                  {clock(hour * 60)}
+                </span>
+              ),
+            )}
+            {nowShown && (
               <span
-                key={i}
-                className="absolute right-2 -translate-y-1/2 text-caption text-muted-foreground tabular-nums"
-                style={{ top: (i + 1) * HOUR }}
+                className="text-brand-foreground absolute right-1 z-10 -translate-y-1/2 rounded-full bg-brand px-1.5 py-0.5 text-caption leading-none font-semibold tabular-nums"
+                style={{ top: y(today.minutes) }}
               >
-                {clock((i + 1) * 60)}
+                {clock(today.minutes)}
               </span>
-            ))}
+            )}
           </div>
+          {/* Hour lines across the day columns. */}
           <div
-            ref={columns}
-            className="relative grid flex-1 pr-1"
-            style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
-            onPointerMove={pointerMove}
-            onPointerUp={pointerUp}
-            onPointerCancel={() => setDrag(null)}
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{ gridColumn: '2 / -1' }}
           >
-            {/* Hour lines. */}
-            <div aria-hidden className="pointer-events-none absolute inset-0">
-              {Array.from({ length: 24 }, (_, i) => (
-                <div key={i} className="border-t border-border/60" style={{ height: HOUR }} />
-              ))}
-            </div>
-            {days.map((day) => (
-              <div
-                key={day}
-                className="relative grid border-l first:border-l-0"
-                style={{ gridTemplateColumns: `repeat(${laneList.length}, minmax(0, 1fr))` }}
-              >
-                {laneList.map((lane, laneIndex) => (
-                  <DayColumn
-                    key={lane?.id ?? 'all'}
-                    day={day}
-                    zone={zone}
-                    lane={lane}
-                    divided={laneIndex > 0}
-                    occurrences={occurrences.filter(
-                      (entry) => !lanes || laneOf(entry.host?.id) === laneIndex,
-                    )}
-                    busy={busy.filter((block) => !lanes || laneOf(block.host_id) === laneIndex)}
-                    canWrite={canWrite}
-                    hintId={hintId}
-                    shifted={shifted}
-                    dragging={drag?.moved ? drag.occurrence.id : null}
-                    onCreate={onCreate}
-                    onOpen={onOpen}
-                    onPointerDown={pointerDown}
-                    onKeyDown={keyDown}
-                  />
-                ))}
-                {day === today.date && (
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 z-20 h-0.5 bg-destructive/70"
-                    style={{ top: (today.minutes / 60) * HOUR }}
-                  />
-                )}
-              </div>
+            {Array.from({ length: hours.to - hours.from }, (_, i) => (
+              <div key={i} className="border-t border-border/60" style={{ height: HOUR }} />
             ))}
           </div>
+          {days.map((day, index) => (
+            <div
+              key={day}
+              ref={index === 0 ? firstDay : undefined}
+              data-day-column={day}
+              className={cn('relative grid border-l', day === today.date && 'bg-brand/5')}
+              style={{ gridTemplateColumns: `repeat(${laneList.length}, minmax(0, 1fr))` }}
+            >
+              {pastUntil(day) > first && (
+                <div
+                  aria-hidden
+                  data-past
+                  className={cn('pointer-events-none absolute inset-x-0 top-0', PAST_HATCH)}
+                  style={{ height: y(Math.min(last, pastUntil(day))) }}
+                />
+              )}
+              {laneList.map((lane, laneIndex) => (
+                <DayColumn
+                  key={lane?.id ?? 'all'}
+                  day={day}
+                  zone={zone}
+                  lane={lane}
+                  hours={hours}
+                  divided={laneIndex > 0}
+                  occurrences={occurrences.filter(
+                    (entry) => !lanes || laneOf(entry.host?.id) === laneIndex,
+                  )}
+                  busy={busy.filter((block) => !lanes || laneOf(block.host_id) === laneIndex)}
+                  canWrite={canWrite}
+                  pastUntil={pastUntil(day)}
+                  hintId={hintId}
+                  shifted={shifted}
+                  dragging={drag?.moved ? drag.occurrence.id : null}
+                  onCreate={onCreate}
+                  onOpen={onOpen}
+                  onPointerDown={pointerDown}
+                  onKeyDown={keyDown}
+                  onShowAll={onShowAll}
+                />
+              ))}
+              {day === today.date && nowShown && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 z-20 h-0.5 -translate-y-px bg-brand"
+                  style={{ top: y(today.minutes) }}
+                />
+              )}
+            </div>
+          ))}
+          {nowShown && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 z-20 h-px bg-brand/50"
+              style={{ gridColumn: '2 / -1', top: y(today.minutes) }}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -292,10 +354,12 @@ function DayColumn({
   day,
   zone,
   lane,
+  hours,
   divided,
   occurrences,
   busy,
   canWrite,
+  pastUntil,
   hintId,
   shifted,
   dragging,
@@ -303,14 +367,17 @@ function DayColumn({
   onOpen,
   onPointerDown,
   onKeyDown,
+  onShowAll,
 }: {
   day: string
   zone: string
   lane: Person | null
+  hours: Hours
   divided: boolean
   occurrences: Occurrence[]
   busy: Busy[]
   canWrite: boolean
+  pastUntil: number
   hintId: string
   shifted: (
     occurrence: Occurrence,
@@ -324,8 +391,18 @@ function DayColumn({
     mode: 'move' | 'resize',
   ) => void
   onKeyDown: (event: KeyboardEvent<HTMLElement>, occurrence: Occurrence) => void
+  onShowAll: () => void
 }) {
-  const spans = occurrences.flatMap((occurrence) => {
+  const first = hours.from * 60
+  const last = hours.to * 60
+  const y = (minutes: number) => ((minutes - first) / 60) * HOUR
+  /** A block clipped to the shown hours; null when it lies wholly outside them. */
+  const shown = <T extends { start: number; end: number }>(block: T) => {
+    const start = Math.max(first, block.start)
+    const end = Math.min(last, block.end)
+    return end > start ? { ...block, start, end } : null
+  }
+  const inDay = occurrences.flatMap((occurrence) => {
     const moved = shifted(occurrence)
     const start = zoned(occurrence.starts_at, zone)
     const end = zoned(occurrence.ends_at, zone)
@@ -336,34 +413,43 @@ function DayColumn({
       : clipToDay(start.date, start.minutes, end.date, end.minutes, day)
     return clipped ? [{ id: occurrence.id, occurrence, ...clipped }] : []
   })
+  const earlier = inDay.filter((span) => span.end <= first).length
+  const later = inDay.filter((span) => span.start >= last).length
+  const spans = inDay.flatMap((span) => shown(span) ?? [])
   const placed = layoutDay(spans)
   const busyBlocks = busy.flatMap((block) => {
     const start = zoned(block.starts_at, zone)
     const end = zoned(block.ends_at, zone)
     const clipped = clipToDay(start.date, start.minutes, end.date, end.minutes, day)
-    return clipped ? [{ ...clipped, key: `${block.host_id}-${block.starts_at}` }] : []
+    const visible = clipped && shown(clipped)
+    return visible ? [{ ...visible, key: `${block.host_id}-${block.starts_at}` }] : []
   })
 
   return (
     <div className={cn('relative', divided && 'border-l border-dashed border-border/60')}>
       {canWrite &&
-        Array.from({ length: 48 }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            tabIndex={-1}
-            aria-label={translate('schedNewSessionAt', { day: dayLabel(day), time: clock(i * 30) })}
-            onClick={() => onCreate(day, i * 30, lane?.id)}
-            className="absolute inset-x-0 cursor-cell hover:bg-muted/50"
-            style={{ top: (i * HOUR) / 2, height: HOUR / 2 }}
-          />
-        ))}
+        Array.from({ length: (hours.to - hours.from) * 2 }, (_, i) => hours.from * 2 + i)
+          .filter((i) => (i + 1) * 30 > pastUntil)
+          .map((i) => (
+            <button
+              key={i}
+              type="button"
+              tabIndex={-1}
+              aria-label={translate('schedNewSessionAt', {
+                day: dayLabel(day),
+                time: clock(i * 30),
+              })}
+              onClick={() => onCreate(day, i * 30, lane?.id)}
+              className="absolute inset-x-0 cursor-cell hover:bg-muted/50"
+              style={{ top: y(i * 30), height: HOUR / 2 }}
+            />
+          ))}
       {busyBlocks.map((block) => (
         <div
           key={block.key}
           className="pointer-events-none absolute inset-x-0.5 rounded-md bg-[repeating-linear-gradient(135deg,var(--color-muted)_0_6px,transparent_6px_12px)] ring-1 ring-border ring-inset"
           style={{
-            top: (block.start / 60) * HOUR,
+            top: y(block.start),
             height: ((block.end - block.start) / 60) * HOUR,
           }}
         >
@@ -382,7 +468,7 @@ function DayColumn({
             key={block.id}
             className={cn('absolute z-10 px-0.5', dragging === block.id && 'z-30 opacity-90')}
             style={{
-              top: (block.start / 60) * HOUR,
+              top: y(block.start),
               height,
               left: `${(block.col / block.cols) * 100}%`,
               width: `${100 / block.cols}%`,
@@ -440,6 +526,47 @@ function DayColumn({
           </div>
         )
       })}
+      {earlier > 0 && (
+        <EdgeCount
+          edge="top"
+          label={translate('schedEarlier', { count: earlier })}
+          onClick={onShowAll}
+        />
+      )}
+      {later > 0 && (
+        <EdgeCount
+          edge="bottom"
+          label={translate('schedLater', { count: later })}
+          onClick={onShowAll}
+        />
+      )}
     </div>
+  )
+}
+
+/** "2 earlier" or "1 later" at a day column's edge: sessions outside the shown hours, one click from the full day. */
+function EdgeCount({
+  edge,
+  label,
+  onClick,
+}: {
+  edge: 'top' | 'bottom'
+  label: string
+  onClick: () => void
+}) {
+  const Icon = edge === 'top' ? ChevronUp : ChevronDown
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={translate('schedShowFullDay')}
+      className={cn(
+        'absolute inset-x-0.5 z-20 flex items-center justify-center gap-0.5 rounded-sm bg-muted px-1 text-caption text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground',
+        edge === 'top' ? 'top-0.5' : 'bottom-0.5',
+      )}
+    >
+      <Icon aria-hidden className="size-3 shrink-0" />
+      <span className="truncate">{label}</span>
+    </button>
   )
 }

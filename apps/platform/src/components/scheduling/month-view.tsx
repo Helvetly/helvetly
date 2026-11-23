@@ -13,7 +13,7 @@ import {
   type Occurrence,
 } from '@/lib/scheduling'
 
-import { HostDot } from './bits'
+import { HostDot, PAST_HATCH } from './bits'
 
 /** The month's weeks: each day a compact count, its sessions in a popover. */
 export function MonthView({
@@ -38,7 +38,7 @@ export function MonthView({
     byDay.set(date, [...(byDay.get(date) ?? []), occurrence])
   }
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
+    <div className="flex min-h-80 flex-1 flex-col overflow-hidden border-t bg-card">
       <div className="grid grid-cols-7 border-b">
         {WEEKDAYS.map((day, index) => (
           <span key={day} className="px-2 py-1.5 text-caption text-muted-foreground">
@@ -46,18 +46,22 @@ export function MonthView({
           </span>
         ))}
       </div>
-      <div className="grid grid-cols-7">
+      {/* The weeks share the height; a short screen scrolls them. */}
+      <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 overflow-y-auto">
         {days.map((day) => {
           const sessions = byDay.get(day) ?? []
           const open = sessions.filter((entry) => isOpen(entry.status)).length
           const inMonth = day.startsWith(month)
+          const past = day < today
           return (
             <div
               key={day}
+              data-past={past || undefined}
               className={cn(
                 'min-h-20 border-b border-l p-1.5 sm:min-h-24',
                 weekdayOf(day) === 1 && 'border-l-0',
                 !inMonth && 'bg-muted/40',
+                past && PAST_HATCH,
               )}
             >
               <span

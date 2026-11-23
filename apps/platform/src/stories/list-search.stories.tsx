@@ -275,7 +275,8 @@ export const EditsAndRemovesAGroup: Story = {
       canvas.getByRole('button', { name: 'Edit filter Country: Switzerland or Andorra' }),
     ).toBeVisible()
     await userEvent.keyboard('{Escape}')
-    await expect(body.queryByRole('option', { name: 'Algeria' })).toBeNull()
+    // The list closes with an exit animation, so its options leave a moment later.
+    await waitFor(() => expect(body.queryByRole('option', { name: 'Algeria' })).toBeNull())
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(body.queryByRole('dialog', { name: 'Country' })).toBeNull())
     await userEvent.click(

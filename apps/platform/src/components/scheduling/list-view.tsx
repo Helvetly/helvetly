@@ -66,7 +66,7 @@ export function ListView({
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4 sm:px-6">
       <div className="flex flex-wrap items-center gap-2">
         <Combobox
           label={translate('status')}
@@ -120,9 +120,13 @@ export function ListView({
       </div>
 
       {rows.length === 0 ? (
-        <EmptyState icon={CalendarDays} title={empty} className="rounded-xl border bg-card" />
+        <EmptyState
+          icon={CalendarDays}
+          title={empty}
+          className="flex-1 justify-center rounded-xl border bg-card"
+        />
       ) : (
-        <div className="grid gap-4">
+        <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto">
           {[...groups.entries()].map(([date, sessions]) => (
             <section key={date} className="grid gap-1.5">
               <h3 className="px-1 text-body-sm font-medium text-muted-foreground">

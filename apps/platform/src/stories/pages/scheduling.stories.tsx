@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
 
+import { HOURS_KEY } from '@/components/scheduling/hours-menu'
 import { SchedulingPage } from '@/components/scheduling/scheduling-page'
 import { instantOf } from '@/lib/scheduling'
 import {
@@ -30,6 +31,8 @@ const meta = {
   beforeEach: () => {
     closeHeidi()
     Object.assign(shared, sampleState())
+    localStorage.removeItem(VIEW_KEY)
+    localStorage.removeItem(HOURS_KEY)
   },
   parameters: withState(shared),
   render: () => (
@@ -42,7 +45,9 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+const VIEW_KEY = 'helvetly.scheduling.view'
 const body = () => within(document.body)
+const pastCount = () => document.querySelectorAll('[data-past]').length
 const everyone = async () => {
   await userEvent.click(await body().findByRole('radio', { name: 'Everyone' }))
 }
@@ -60,9 +65,104 @@ export const Week: Story = {
     await expect(page.getByText('Busy')).toBeInTheDocument()
     await expect(page.getByRole('button', { name: '2 requests waiting' })).toBeVisible()
     await expect(page.getByRole('button', { name: '1 session to mark' })).toBeVisible()
+    // Monday, Tuesday and the morning of Wednesday (09:30 in Zurich) are past and hatched.
+    await expect(pastCount()).toBe(3)
+    // A past slot is no place for a new session: 09:00 is offered Thursday to Sunday, 09:30 from Wednesday.
+    await expect(
+      page.getAllByRole('button', { name: /^New session on .* at 09:00$/ }),
+    ).toHaveLength(4)
+    await expect(
+      page.getAllByRole('button', { name: /^New session on .* at 09:30$/ }),
+    ).toHaveLength(5)
   },
 }
 export const WeekDark = dark(Week)
+
+/** Per day heading: whether its left and right edges are within 1 px of its column's under it. */
+const aligned = () =>
+  [...document.querySelectorAll<HTMLElement>('[data-day-heading]')].map((heading) => {
+    const top = heading.getBoundingClientRect()
+    const bottom = document
+      .querySelector(`[data-day-column="${heading.dataset.dayHeading}"]`)
+      ?.getBoundingClientRect()
+    return (
+      !!bottom && Math.abs(top.left - bottom.left) <= 1 && Math.abs(top.right - bottom.right) <= 1
+    )
+  })
+
+/** Each day heading sits exactly over its column, scrollbar or not: heading and body share one column template. */
+export const HeadingsAlignWithColumns: Story = {
+  play: async () => {
+    const page = body()
+    await page.findByRole('button', { name: /Strategy session/ })
+    await expect(aligned()).toEqual(Array(7).fill(true))
+    await everyone()
+    await page.findByRole('button', { name: /Design review/ })
+    await expect(aligned()).toEqual(Array(7).fill(true))
+    await userEvent.click(page.getByRole('radio', { name: 'Day' }))
+    await page.findByRole('heading', { name: 'Wednesday, 2 December 2026' })
+    await expect(aligned()).toEqual([true])
+  },
+}
+
+/** Working hours 11:00–14:00: sessions outside them are counted at the column's edge, and a count shows the full day. */
+export const WorkingHours: Story = {
+  beforeEach: () => {
+    localStorage.setItem(HOURS_KEY, JSON.stringify({ mode: 'work', work: { from: 11, to: 14 } }))
+  },
+  play: async () => {
+    const page = body()
+    await expect(await page.findByRole('button', { name: /^Show hours:/ })).toHaveTextContent(
+      '11:00–14:00',
+    )
+    await waitFor(() => expect(page.getAllByRole('button', { name: '1 earlier' })).toHaveLength(3))
+    // Monday's 14:00 kick-off and Thursday's 15:00 intro call.
+    await expect(page.getAllByRole('button', { name: '1 later' })).toHaveLength(2)
+    await expect(page.queryByRole('button', { name: /Strategy session/ })).not.toBeInTheDocument()
+    await expect(
+      page.queryAllByRole('button', { name: /^New session on .* at 10:30$/ }),
+    ).toHaveLength(0)
+    await expect(
+      page.getAllByRole('button', { name: /^New session on .* at 13:30$/ }),
+    ).toHaveLength(5)
+    await userEvent.click(page.getAllByRole('button', { name: '1 earlier' })[0]!)
+    await expect(await page.findByRole('button', { name: /Strategy session/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Show hours:/ })).toHaveTextContent('Full day')
+    await expect(page.queryByRole('button', { name: '1 earlier' })).not.toBeInTheDocument()
+    await expect(JSON.parse(localStorage.getItem(HOURS_KEY) ?? '{}')).toMatchObject({
+      mode: 'full',
+      work: { from: 11, to: 14 },
+    })
+  },
+}
+
+/** The full day by default; Working hours suggests 06:00–22:00 and keeps the range whole hours, end after start. */
+export const ChooseHours: Story = {
+  parameters: withState(sampleState(), { view: 'day' }),
+  play: async () => {
+    const page = body()
+    const trigger = await page.findByRole('button', { name: /^Show hours:/ })
+    await expect(trigger).toHaveTextContent('Full day')
+    await expect(page.getByRole('button', { name: /^New session on .* at 23:30$/ })).toBeVisible()
+    await userEvent.click(trigger)
+    await userEvent.click(await page.findByRole('radio', { name: 'Working hours' }))
+    await expect(trigger).toHaveTextContent('06:00–22:00')
+    await userEvent.selectOptions(page.getByRole('combobox', { name: 'From' }), '08:00')
+    await userEvent.selectOptions(page.getByRole('combobox', { name: 'To' }), '18:00')
+    await expect(trigger).toHaveTextContent('08:00–18:00')
+    await expect(
+      page.queryByRole('button', { name: /^New session on .* at 18:00$/ }),
+    ).not.toBeInTheDocument()
+    await expect(page.getByRole('button', { name: /^New session on .* at 17:30$/ })).toBeVisible()
+    // A start at or after the end moves the end one hour past it.
+    await userEvent.selectOptions(page.getByRole('combobox', { name: 'From' }), '20:00')
+    await expect(trigger).toHaveTextContent('20:00–21:00')
+    await expect(JSON.parse(localStorage.getItem(HOURS_KEY) ?? '{}')).toEqual({
+      mode: 'work',
+      work: { from: 20, to: 21 },
+    })
+  },
+}
 
 /** Everyone with three hosts: each day shows the hosts side by side, overlapping sessions share a lane. */
 export const EveryoneSideBySide: Story = {
@@ -100,15 +200,34 @@ export const ManyOverlaps: Story = {
   },
 }
 
-/** Nothing scheduled: the grid stays, with a sentence and a way to schedule one. */
+/** Nothing scheduled: the empty grid fills the page with no sentence under it; a slot schedules one. */
 export const Empty: Story = {
   parameters: withState(emptyState()),
   play: async () => {
     const page = body()
-    await toastShows('Nothing scheduled here yet.')
+    await expect(
+      await page.findByRole('heading', { name: '30 Nov 2026 – 6 Dec 2026' }),
+    ).toBeVisible()
+    await expect(page.queryByText('Nothing scheduled here yet.')).not.toBeInTheDocument()
     await expect(page.queryByRole('button', { name: /requests waiting/ })).not.toBeInTheDocument()
-    await userEvent.click(page.getByRole('button', { name: 'Schedule a session' }))
+    await userEvent.click(page.getByRole('button', { name: /^New session on .*3.* at 10:00$/ }))
     await expect(await page.findByRole('heading', { name: 'New session' })).toBeVisible()
+  },
+}
+
+/** The chosen view is remembered: Month is saved, and the next visit without ?view opens on it. */
+export const ViewRemembered: Story = {
+  beforeEach: () => {
+    localStorage.setItem(VIEW_KEY, 'day')
+  },
+  play: async () => {
+    const page = body()
+    await expect(
+      await page.findByRole('heading', { name: 'Wednesday, 2 December 2026' }),
+    ).toBeVisible()
+    await userEvent.click(page.getByRole('radio', { name: 'Month' }))
+    await expect(await page.findByRole('heading', { name: 'December 2026' })).toBeVisible()
+    await expect(localStorage.getItem(VIEW_KEY)).toBe('month')
   },
 }
 
@@ -142,6 +261,8 @@ export const Month: Story = {
   play: async () => {
     const page = body()
     await expect(await page.findByRole('heading', { name: 'December 2026' })).toBeVisible()
+    // 30 November and 1 December are past.
+    await expect(pastCount()).toBe(2)
     await userEvent.click(
       (await page.findAllByRole('button', { name: '1 session' }))[0] ?? document.body,
     )
@@ -204,8 +325,8 @@ export const DragToMove: Story = {
     const block = await page.findByRole('button', { name: /Strategy session/ })
     const { left, top } = block.getBoundingClientRect()
     fireEvent.pointerDown(block, { button: 0, clientX: left + 5, clientY: top + 5, pointerId: 1 })
-    fireEvent.pointerMove(block, { clientX: left + 5, clientY: top + 53, pointerId: 1 })
-    fireEvent.pointerUp(block, { clientX: left + 5, clientY: top + 53, pointerId: 1 })
+    fireEvent.pointerMove(block, { clientX: left + 5, clientY: top + 85, pointerId: 1 })
+    fireEvent.pointerUp(block, { clientX: left + 5, clientY: top + 85, pointerId: 1 })
     await toastShows('Session saved.')
     await waitFor(() =>
       expect(page.getByRole('button', { name: /Strategy session/ })).toHaveTextContent('11:00'),
