@@ -67,7 +67,7 @@ function firstPage(file: DocFile) {
           ratio: viewport.height / viewport.width,
         }
       } finally {
-        void task.destroy()
+        void task.destroy().catch(() => undefined)
       }
     }).catch(() => null)
     drawn.set(key, image)
