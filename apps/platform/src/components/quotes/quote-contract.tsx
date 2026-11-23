@@ -7,23 +7,23 @@ import { FileSignature, ScrollText } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { ContractWriter } from '@/components/quotes/contract-writer'
 import { useOpenHref } from '@/components/record-link'
 import { CreateSignatureDrawer } from '@/components/signatures/create-drawer'
 import { RequestBadge } from '@/components/signatures/parts'
 import { FillTemplateDrawer } from '@/components/templates/fill-drawer'
-import { TemplateEditor } from '@/components/templates/template-editor'
 import { useClient } from '@/lib/clients'
 import { useDoc } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import type { Quote } from '@/lib/quotes'
-import { useQuoteContracts, type Generated, type Template } from '@/lib/templates'
+import { useQuoteContracts, type Generated } from '@/lib/templates'
 
 const documentHref = (id: string) => `/documents?${new URLSearchParams({ file: id })}`
 
 /**
- * "Create contract with AI": pick a template (or make one of a file in Documents), the quote fills
- * it, check it, then the numbered contract is filed in the client's Contracts folder. The toast offers
- * sending it for signature and opening it.
+ * "Create contract with AI": written by the AI from the quote (alone or after an example contract), or a template
+ * filled from it; then the numbered contract is filed in the client's Contracts folder. The toast offers sending it
+ * for signature and opening it.
  */
 export function ContractFlow({
   quote,
@@ -37,9 +37,7 @@ export function ContractFlow({
 }) {
   const openHref = useOpenHref()
   const client = useClient(quote.client.id).data ?? null
-  // fromDocument: making a template of a file first; template: the one it made, picked on return.
-  const [fromDocument, setFromDocument] = useState(false)
-  const [template, setTemplate] = useState<Template | null>(null)
+  const [fromTemplate, setFromTemplate] = useState(false)
 
   const made = (data: Generated) => {
     const number = data.contract_number ?? data.document.name
@@ -57,31 +55,22 @@ export function ContractFlow({
     onClose()
   }
 
-  if (fromDocument)
+  if (!client) return null
+  if (!fromTemplate)
     return (
-      <TemplateEditor
-        template={null}
-        initialDocument={null}
-        folderId={null}
-        onClose={() => setFromDocument(false)}
-        onSaved={(saved) => {
-          setTemplate(saved)
-          setFromDocument(false)
-        }}
+      <ContractWriter
+        quote={quote}
+        client={client}
+        onTemplate={() => setFromTemplate(true)}
+        onMade={made}
+        onClose={onClose}
       />
     )
-  if (!client) return null
   return (
     <FillTemplateDrawer
-      key={template?.id ?? 'pick'}
-      template={template}
+      template={null}
       client={client}
-      contract={{
-        quoteId: quote.id,
-        quoteNumber: quote.number,
-        onFromDocument: () => setFromDocument(true),
-        onMade: made,
-      }}
+      contract={{ quoteId: quote.id, quoteNumber: quote.number, onMade: made }}
       onClose={onClose}
     />
   )

@@ -47,10 +47,13 @@ var gated = map[string]Feature{
 	"GET /api/v1/heidi/suggestions":   store.FeatureHeidi,
 	"POST /api/v1/ai/write":           store.FeatureHeidi,
 
-	"POST /api/v1/templates":                  store.FeatureDocumentTemplates,
-	"PUT /api/v1/templates/{id}":              store.FeatureDocumentTemplates,
-	"POST /api/v1/templates/{id}/documents":   store.FeatureDocumentTemplates,
-	"POST /api/v1/quotes/{id}/contract-draft": store.FeatureDocumentTemplates,
+	"POST /api/v1/templates":                    store.FeatureDocumentTemplates,
+	"PUT /api/v1/templates/{id}":                store.FeatureDocumentTemplates,
+	"POST /api/v1/templates/{id}/documents":     store.FeatureDocumentTemplates,
+	"POST /api/v1/quotes/{id}/contract-draft":   store.FeatureDocumentTemplates,
+	"POST /api/v1/quotes/{id}/contract-drafts":  store.FeatureDocumentTemplates,
+	"POST /api/v1/quotes/{id}/contract-preview": store.FeatureDocumentTemplates,
+	"POST /api/v1/quotes/{id}/contracts":        store.FeatureDocumentTemplates,
 
 	"POST /api/v1/signatures": store.FeatureSimpleSignatures,
 

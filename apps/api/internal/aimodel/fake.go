@@ -35,6 +35,15 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 		// Heidi's scope classifier: obvious off-topic messages never reach it, so the fake lets the rest through.
 		return Reply{Text: `{"in_scope":true,"reason":"development model"}`, Tokens: &tokens, Usage: usage}, nil
 	}
+	// A contract written from a quote, or one of its sections improved: fixed text without amounts or dates.
+	switch r.Schema.Name {
+	case "contract_text":
+		return Reply{Text: `{"title":"Service contract","intro":"Written by the development model.","clauses":[` +
+			`{"heading":"Subject","body":"The contractor provides the services in the table of services and prices."},` +
+			`{"heading":"Fees and payment","body":"The client pays the total as in the payment schedule."}]}`, Tokens: &tokens, Usage: usage}, nil
+	case "contract_clause":
+		return Reply{Text: `{"heading":"Improved section","body":"Improved by the development model."}`, Tokens: &tokens, Usage: usage}, nil
+	}
 	// "Write with AI": a fixed short text.
 	if props, _ := r.Schema.JSON["properties"].(map[string]any); props["text"] != nil {
 		return Reply{Text: `{"text":"Written by the development model."}`, Tokens: &tokens, Usage: usage}, nil

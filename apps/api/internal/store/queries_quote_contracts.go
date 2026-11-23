@@ -58,6 +58,13 @@ func (q Q) AddQuoteContract(ctx context.Context, workspaceID, quoteID, documentI
 	return err
 }
 
+// SetQuoteContractSections keeps a written contract's reviewed sections (JSON) with its link to the quote.
+func (q Q) SetQuoteContractSections(ctx context.Context, workspaceID, documentID string, sections []byte) error {
+	_, err := q.db.Exec(ctx, `UPDATE quote_contracts SET sections = $3 WHERE workspace_id = $1 AND document_id = $2`,
+		workspaceID, documentID, sections)
+	return err
+}
+
 // QuoteContracts: the live (not trashed) contracts of a quote, newest first, with their latest signature request.
 func (q Q) QuoteContracts(ctx context.Context, workspaceID, quoteID string) ([]QuoteContract, error) {
 	rows, err := q.db.Query(ctx, `SELECT d.id, qc.number, d.name, qc.created_at, s.id, s.status
