@@ -111,9 +111,12 @@ export const ProposeAndApply: Story = {
     await expect(within(table).getAllByText('New folder')).toHaveLength(1)
 
     // Both changes are ticked; the person renames one folder and drops a tag.
-    const folderInput = within(table).getByRole('textbox', { name: 'Folder for lease-office.pdf' })
-    await userEvent.clear(folderInput)
-    await userEvent.type(folderInput, 'Contracts/Office')
+    await userEvent.click(
+      within(table).getByRole('button', { name: /Folder for lease-office.pdf/ }),
+    )
+    const popup = within(document.body)
+    await userEvent.type(await popup.findByPlaceholderText(/search/i), 'Contracts/Office')
+    await userEvent.click(await popup.findByText(/Add “Contracts\/Office”/))
     await userEvent.click(within(table).getByRole('button', { name: 'Remove tag lessons' }))
 
     await userEvent.click(body().getByRole('switch'))
