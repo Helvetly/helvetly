@@ -99,6 +99,7 @@ func Render(d Document) (Result, error) {
 	}
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetCompression(false) // small documents; keeps the text greppable in tests
+	pdf.SetCatalogSort(true)  // fonts in a fixed order, so the same sections print the same bytes
 	if t, err := time.Parse(time.DateOnly, d.Date); err == nil {
 		pdf.SetCreationDate(t)
 		pdf.SetModificationDate(t)
