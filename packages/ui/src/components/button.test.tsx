@@ -56,3 +56,18 @@ test('asChild keeps the child element its own semantics', () => {
   )
   expect(screen.getByRole('link', { name: 'Helvetly' })).not.toHaveAttribute('type')
 })
+
+test.each([
+  ['success-soft', 'bg-success-surface'],
+  ['warning-soft', 'bg-warning-surface'],
+  ['destructive-soft', 'bg-destructive-surface'],
+] as const)(
+  'the %s variant is a pastel tint that turns muted when aria-disabled',
+  (variant, tint) => {
+    render(<Button variant={variant}>Mark</Button>)
+    const button = screen.getByRole('button', { name: 'Mark' })
+    expect(button.className).toContain(tint)
+    expect(button.className).toContain('aria-disabled:bg-muted')
+    expect(button.className).not.toContain('shadow-button')
+  },
+)

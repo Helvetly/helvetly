@@ -13,7 +13,7 @@ import {
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { Ban, CalendarX2, Check, Undo2, UserX } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
@@ -74,6 +74,7 @@ export function StatusActions({
           <Action
             icon={<Check />}
             label={translate('schedMarkAttended')}
+            variant="success-soft"
             reason={notYet ?? blocked}
             pending={attendance.isPending}
             onClick={() => mark('attended', translate('schedMarkedAttended'))}
@@ -81,6 +82,7 @@ export function StatusActions({
           <Action
             icon={<UserX />}
             label={translate('schedNoShow')}
+            variant="warning-soft"
             reason={notYet ?? blocked}
             pending={attendance.isPending}
             onClick={() => mark('no_show', translate('schedMarkedNoShow'))}
@@ -88,6 +90,7 @@ export function StatusActions({
           <Action
             icon={<CalendarX2 />}
             label={translate('schedCancelSession')}
+            variant="destructive-soft"
             onClick={() => setDialog('cancel')}
           />
         </>
@@ -141,19 +144,21 @@ export function StatusActions({
 function Action({
   icon,
   label,
+  variant = 'outline',
   reason,
   pending,
   onClick,
 }: {
   icon: ReactNode
   label: string
+  variant?: ComponentProps<typeof Button>['variant']
   reason?: string
   pending?: boolean
   onClick: () => void
 }) {
   if (!reason)
     return (
-      <Button type="button" variant="outline" size="sm" disabled={pending} onClick={onClick}>
+      <Button type="button" variant={variant} size="sm" disabled={pending} onClick={onClick}>
         {icon}
         {label}
       </Button>
@@ -164,10 +169,11 @@ function Action({
         {/* Stays focusable while it cannot run, so its tooltip can say why. */}
         <Button
           type="button"
-          variant="outline"
+          variant={variant}
           size="sm"
           aria-disabled
-          className="cursor-not-allowed opacity-50"
+          // The soft variants turn muted themselves; the plain outline fades.
+          className={variant === 'outline' ? 'cursor-not-allowed opacity-50' : undefined}
         >
           {icon}
           {label}

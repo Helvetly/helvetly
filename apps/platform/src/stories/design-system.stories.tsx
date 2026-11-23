@@ -8,7 +8,17 @@ import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/components/tabs'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { ArrowRight, BellRing, DoorOpen, Plus, Sparkles, X } from 'lucide-react'
+import {
+  ArrowRight,
+  BellRing,
+  CalendarX2,
+  Check,
+  DoorOpen,
+  Plus,
+  Sparkles,
+  UserX,
+  X,
+} from 'lucide-react'
 import { useState } from 'react'
 import { expect, fn, userEvent, within } from 'storybook/test'
 
@@ -64,6 +74,9 @@ const variants = [
   'destructive',
   'destructive-outline',
   'destructive-ghost',
+  'success-soft',
+  'warning-soft',
+  'destructive-soft',
   'link',
   'ai',
 ] as const
@@ -138,6 +151,9 @@ const VARIANTS = [
   'destructive',
   'destructive-outline',
   'destructive-ghost',
+  'success-soft',
+  'warning-soft',
+  'destructive-soft',
 ] as const
 const SIZES = ['sm', 'default', 'lg'] as const
 
@@ -186,6 +202,44 @@ export const ButtonMatrix: Story = {
     await expect(canvas.getAllByRole('button', { name: 'Button' })[0]).toHaveFocus()
   },
 }
+
+/** Soft status tints (a session's Attended, No-show, Cancel): pastel, no shadow; aria-disabled ones turn muted. */
+export const SoftStatusVariants: Story = {
+  render: () => (
+    <div className="flex flex-wrap gap-3">
+      <Button variant="success-soft" size="sm">
+        <Check />
+        Attended
+      </Button>
+      <Button variant="warning-soft" size="sm">
+        <UserX />
+        No-show
+      </Button>
+      <Button variant="destructive-soft" size="sm">
+        <CalendarX2 />
+        Cancel session
+      </Button>
+      <Button variant="success-soft" size="sm" aria-disabled>
+        <Check />
+        Not yet
+      </Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const colour = (name: string) =>
+      getComputedStyle(canvas.getByRole('button', { name })).backgroundColor
+    const tints = new Set([colour('Attended'), colour('No-show'), colour('Cancel session')])
+    await expect(tints.size).toBe(3)
+    // Muted while it cannot run, not the green tint at half strength.
+    await expect(colour('Not yet')).not.toBe(colour('Attended'))
+    await expect(getComputedStyle(canvas.getByRole('button', { name: 'Not yet' })).cursor).toBe(
+      'not-allowed',
+    )
+  },
+}
+
+export const SoftStatusVariantsDark: Story = { ...SoftStatusVariants, parameters: { dark: true } }
 
 const onDisabledClick = fn()
 export const DisabledAndLoading: Story = {
