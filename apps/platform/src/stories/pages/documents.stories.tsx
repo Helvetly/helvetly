@@ -1,7 +1,7 @@
 import { createTranslators } from '@helvetly/i18n'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fireEvent, spyOn, userEvent, waitFor, within } from 'storybook/test'
 
 import { DocumentsPage } from '@/components/documents/documents-page'
 import { FolderName } from '@/components/documents/system-mark'
@@ -17,7 +17,11 @@ import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from '
 
 const meta = {
   title: 'Pages/Documents',
-  beforeEach: closeHeidi,
+  // The last Group by choice is kept per browser; each story starts in Folders unless its URL says.
+  beforeEach: () => {
+    closeHeidi()
+    localStorage.removeItem('helvetly.documents.group')
+  },
   parameters: pageParameters('/documents'),
   render: () => (
     <Frame>
@@ -449,4 +453,191 @@ export const Filters: Story = {
     pick: { control: /^Kind/, option: 'PDF', key: 'kind', value: 'pdf' },
     cleared: ['date', 'kind'],
   }),
+}
+
+// ---- grouped views: virtual folders computed from what each file is ----
+
+const url = (canvas: HTMLElement) => new URL(canvas.ownerDocument.location.href).searchParams
+/** The virtual folders of the open level. */
+const groupList = async (canvas: HTMLElement) =>
+  within(
+    await within(canvas.ownerDocument.body).findByRole(
+      'list',
+      { name: /A view, not a folder/ },
+      { timeout: 8000 },
+    ),
+  )
+/** Anchor clicks (downloads) are caught, so the story stays on its page. */
+const catchDownloads = () =>
+  spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+/** Group by Type: the groups as folders, each marked as a view, the breadcrumb says where. */
+export const GroupedByType: Story = {
+  parameters: pageParameters('/documents', { group: 'type' }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const groups = await groupList(canvasElement)
+    await expect(groups.getByRole('button', { name: /^Invoices/ })).toBeVisible()
+    await expect(groups.getByRole('button', { name: /^Contracts and signatures/ })).toBeVisible()
+    // every one carries the view mark, and the list says once that these are views, not folders
+    await expect(
+      groups.getAllByRole('listitem').filter((item) => item.querySelector('[data-view-glyph]')),
+    ).toHaveLength(5)
+    const crumbs = within(body.getByRole('navigation', { name: 'Breadcrumbs' }))
+    await expect(crumbs.getByRole('button', { name: 'By type' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    // no ZIP of everything from the top: only inside a group
+    await expect(body.queryByRole('button', { name: 'Download all (ZIP)' })).toBeNull()
+    await userEvent.click(groups.getByRole('button', { name: /^Invoices/ }))
+    await waitFor(() => expect(url(canvasElement).get('type')).toBe('invoices'))
+  },
+}
+export const GroupedByTypeDark = dark(GroupedByType)
+
+/** On a phone, Group by sits in the toolbar's "…" menu. */
+export const GroupedByTypePhone: Story = {
+  ...phone(GroupedByType),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await groupList(canvasElement)
+    await expect(body.queryByRole('button', { name: /^Group by/ })).toBeNull()
+    const more = body
+      .getAllByRole('button', { name: 'More actions' })
+      .find((button) => button.checkVisibility())
+    await userEvent.click(more ?? body.getByRole('button', { name: 'More actions' }))
+    const menu = within(await body.findByRole('menu'))
+    await expect(menu.getByRole('menuitemradio', { name: 'Type' })).toBeChecked()
+    await userEvent.click(menu.getByRole('menuitemradio', { name: 'Year → Type' }))
+    await waitFor(() => expect(url(canvasElement).get('group')).toBe('year,type'))
+  },
+}
+
+/** Group by from the toolbar: the choice goes to the URL and is remembered for next time. */
+export const SwitchGrouping: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Group by: Folders' }, { timeout: 8000 }),
+    )
+    const menu = within(await body.findByRole('menu'))
+    await expect(menu.getByRole('menuitemradio', { name: 'Folders' })).toBeChecked()
+    await userEvent.click(menu.getByRole('menuitemradio', { name: 'Type → Year' }))
+    await waitFor(() => expect(url(canvasElement).get('group')).toBe('type,year'))
+    await expect(localStorage.getItem('helvetly.documents.group')).toBe('type,year')
+  },
+}
+
+/** Inside Invoices of Type → Year: the years, the path, and the ZIP of the whole group. */
+export const InsideAGroup: Story = {
+  parameters: pageParameters('/documents', { group: 'type,year', type: 'invoices' }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const groups = await groupList(canvasElement)
+    await expect(groups.getByRole('button', { name: /^2026/ })).toBeVisible()
+    const crumbs = within(body.getByRole('navigation', { name: 'Breadcrumbs' }))
+    await Promise.all(
+      ['All documents', 'By type', 'Invoices'].map((name) =>
+        expect(crumbs.getByRole('button', { name })).toBeVisible(),
+      ),
+    )
+    await expect(crumbs.getByRole('button', { name: 'Invoices' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+
+    const clicks = catchDownloads()
+    await userEvent.click(body.getByRole('button', { name: 'Download all (ZIP)' }))
+    await expect(
+      await body.findByText('Your ZIP is downloading.', {}, { timeout: 8000 }),
+    ).toBeInTheDocument()
+    const link = clicks.mock.contexts[0]
+    await expect(link instanceof HTMLAnchorElement ? link.getAttribute('href') : '').toBe(
+      '/api/v1/documents/groups/zip?group=type%2Cyear&type=invoices',
+    )
+    clicks.mockRestore()
+
+    // a crumb goes back a level, keeping the grouping
+    await userEvent.click(crumbs.getByRole('button', { name: 'By type' }))
+    await waitFor(() => expect(url(canvasElement).has('type')).toBe(false))
+    await expect(url(canvasElement).get('group')).toBe('type,year')
+  },
+}
+export const InsideAGroupDark = dark(InsideAGroup)
+
+/** A group's own menu downloads it, and a group too big says why instead of a broken file. */
+export const GroupMenuDownload: Story = {
+  parameters: pageParameters('/documents', { group: 'type' }, [
+    http.get('/api/v1/documents/groups/zip', ({ request }) =>
+      new URL(request.url).searchParams.get('type') === 'invoices'
+        ? HttpResponse.json(
+            {
+              error: {
+                code: 'zip_too_large',
+                message:
+                  'A ZIP holds at most 1000 files and 500 MB. Open a smaller group (a year or a client) and download that.',
+              },
+            },
+            { status: 413 },
+          )
+        : new HttpResponse(null, { status: 204 }),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const clicks = catchDownloads()
+    const groups = await groupList(canvasElement)
+    fireEvent.contextMenu(groups.getByRole('button', { name: /^Quotes/ }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Download all (ZIP)' }))
+    await waitFor(() => expect(clicks).toHaveBeenCalledTimes(1))
+    const link = clicks.mock.contexts[0]
+    await expect(link instanceof HTMLAnchorElement ? link.getAttribute('href') : '').toContain(
+      'type=quotes',
+    )
+
+    fireEvent.contextMenu(groups.getByRole('button', { name: /^Invoices/ }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Download all (ZIP)' }))
+    await expect(
+      await body.findByText(/A ZIP holds at most 1000 files/, {}, { timeout: 8000 }),
+    ).toBeInTheDocument()
+    await expect(clicks).toHaveBeenCalledTimes(1)
+    clicks.mockRestore()
+  },
+}
+
+/** The sidebar's Views: presets with their counts; one click applies the grouping. */
+export const ViewsPresets: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const views = within(
+      await body.findByRole('navigation', { name: 'Grouped views' }, { timeout: 8000 }),
+    )
+    await waitFor(() =>
+      expect(views.getByRole('button', { name: /Invoices by year/ })).toHaveTextContent('12'),
+    )
+    await expect(views.getByRole('button', { name: /Receipts by year/ })).toHaveTextContent('6')
+    await expect(views.getByRole('button', { name: /By client/ })).toHaveTextContent('2')
+    await userEvent.click(views.getByRole('button', { name: /Invoices by year/ }))
+    await waitFor(() => expect(url(canvasElement).get('group')).toBe('type,year'))
+    await expect(url(canvasElement).get('type')).toBe('invoices')
+  },
+}
+
+/** A preset that is open is marked in the sidebar. */
+export const ViewsPresetOpen: Story = {
+  parameters: pageParameters('/documents', { group: 'client' }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const views = within(
+      await body.findByRole('navigation', { name: 'Grouped views' }, { timeout: 8000 }),
+    )
+    await expect(views.getByRole('button', { name: /By client/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    const groups = await groupList(canvasElement)
+    await expect(groups.getByRole('button', { name: /^Acme AG/ })).toBeVisible()
+    await expect(groups.getByRole('button', { name: /^No client/ })).toBeVisible()
+  },
 }

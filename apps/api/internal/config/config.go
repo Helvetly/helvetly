@@ -67,7 +67,29 @@ type Config struct {
 	GoogleAnalyticsID string
 	// CustomDomains: workspaces' own portal hosts through Cloudflare for SaaS; off when its settings are empty.
 	CustomDomains CustomDomains
+	// Calendars: members' Google and Microsoft calendar sync (Scheduling); each provider off without its client.
+	Calendars Calendars
 }
+
+// Calendars are the OAuth clients of calendar sync. Google's is its own Google Cloud client, never the sign-in one
+// (calendar scopes need Google's verification, which must not touch sign-in). Secrets are never logged.
+type Calendars struct {
+	GoogleClientID     string // GOOGLE_CALENDAR_CLIENT_ID
+	GoogleClientSecret string // GOOGLE_CALENDAR_CLIENT_SECRET
+	MicrosoftClientID  string // MICROSOFT_CLIENT_ID
+	MicrosoftSecret    string // MICROSOFT_CLIENT_SECRET
+	MicrosoftTenant    string // MICROSOFT_TENANT: common (work, school and personal accounts) by default
+	// GoogleAPIURL and MicrosoftGraphURL replace every endpoint of a provider (sign-in, token and API) with one root:
+	// tests only (GOOGLE_CALENDAR_API_URL, MICROSOFT_GRAPH_URL). Empty = the providers' own.
+	GoogleAPIURL      string
+	MicrosoftGraphURL string
+	// Fake (HELVETLY_E2E_FAKE_CALENDARS) serves fake Google and Microsoft APIs from this binary and connects to them:
+	// end-to-end tests only.
+	Fake bool
+}
+
+func (c Calendars) Google() bool    { return c.GoogleClientID != "" }
+func (c Calendars) Microsoft() bool { return c.MicrosoftClientID != "" }
 
 // CustomDomains are the Cloudflare for SaaS custom hostnames a workspace's portal may be served on (portal.firma.ch):
 // the zone they are added to and the CNAME target its customers point at. The token is never logged.
@@ -170,6 +192,7 @@ var gaID = regexp.MustCompile(`^G-[A-Z0-9]{4,20}$`)
 
 var (
 	zoneID     = regexp.MustCompile(`^[0-9a-f]{32}$`)
+	tenant     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.-]{0,252}$`)
 	targetHost = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$`)
 )
 
@@ -452,6 +475,27 @@ func Load() (Config, error) {
 		if u, err := url.Parse(cd.APIURL); err != nil || u.Host == "" || (u.Scheme != "https" && (u.Scheme != "http" || !localHost(u.Hostname()))) {
 			fail("CLOUDFLARE_API_URL must be an https URL such as https://api.cloudflare.com/client/v4 (http only on a local host), got %q", cd.APIURL)
 		}
+	}
+	c.Calendars = Calendars{GoogleClientID: env("GOOGLE_CALENDAR_CLIENT_ID", ""), GoogleClientSecret: env("GOOGLE_CALENDAR_CLIENT_SECRET", ""),
+		MicrosoftClientID: env("MICROSOFT_CLIENT_ID", ""), MicrosoftSecret: env("MICROSOFT_CLIENT_SECRET", ""),
+		MicrosoftTenant: env("MICROSOFT_TENANT", "common"), GoogleAPIURL: strings.TrimSuffix(env("GOOGLE_CALENDAR_API_URL", ""), "/"),
+		MicrosoftGraphURL: strings.TrimSuffix(env("MICROSOFT_GRAPH_URL", ""), "/"), Fake: boolean("HELVETLY_E2E_FAKE_CALENDARS", false)}
+	if cc := c.Calendars; (cc.GoogleClientID == "") != (cc.GoogleClientSecret == "") {
+		fail("GOOGLE_CALENDAR_CLIENT_ID and GOOGLE_CALENDAR_CLIENT_SECRET: set both or neither")
+	}
+	if cc := c.Calendars; (cc.MicrosoftClientID == "") != (cc.MicrosoftSecret == "") {
+		fail("MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET: set both or neither")
+	}
+	if !tenant.MatchString(c.Calendars.MicrosoftTenant) {
+		fail("MICROSOFT_TENANT must be common, organizations, consumers, a tenant id or a domain, got %q", c.Calendars.MicrosoftTenant)
+	}
+	for key, v := range map[string]string{"GOOGLE_CALENDAR_API_URL": c.Calendars.GoogleAPIURL, "MICROSOFT_GRAPH_URL": c.Calendars.MicrosoftGraphURL} {
+		if u, err := url.Parse(v); v != "" && (err != nil || u.Host == "" || (u.Scheme != "https" && (u.Scheme != "http" || !localHost(u.Hostname())))) {
+			fail("%s must be an https URL (http only on a local host), got %q", key, v)
+		}
+	}
+	if c.Calendars.Fake && !c.DevSignIn {
+		fail("HELVETLY_E2E_FAKE_CALENDARS is for tests only: it needs AUTH_DEV_SIGNIN on a local origin")
 	}
 	if c.CustomDomains.Fake && !c.DevSignIn {
 		fail("HELVETLY_E2E_FAKE_DOMAINS is for tests only: it needs AUTH_DEV_SIGNIN on a local origin")

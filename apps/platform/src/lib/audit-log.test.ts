@@ -119,6 +119,17 @@ describe('eventSentence', () => {
       'Instalment plan of 6 instalments created',
     ],
     [
+      'a ZIP of documents',
+      {
+        kind: 'documents.exported',
+        category: 'settings',
+        subject_type: 'workspace',
+        subject: null,
+        payload: { files: 12 },
+      },
+      '12 documents downloaded as a ZIP',
+    ],
+    [
       'an HR event',
       { kind: 'employee.archived', category: 'employees', subject_type: 'employee', subject: null },
       'Employee archived',

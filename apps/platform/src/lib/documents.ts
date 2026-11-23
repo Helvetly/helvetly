@@ -164,10 +164,134 @@ export type SortField = (typeof SORT_FIELDS)[number]
 export type DatePreset = SincePreset
 export type Section = 'files' | 'recent' | 'trash' | 'signatures' | 'templates'
 
+// ---- virtual groups: files grouped by what they are, computed by the API; nothing moves ----
+
+export const GROUP_DIMS = ['type', 'year', 'client'] as const
+export type GroupDim = (typeof GROUP_DIMS)[number]
+/** The Group by choices, Folders (none) first. */
+export const GROUPINGS: readonly (readonly GroupDim[])[] = [
+  [],
+  ['type'],
+  ['year'],
+  ['client'],
+  ['type', 'year'],
+  ['year', 'type'],
+]
+export const DOC_TYPES = [
+  'invoices',
+  'quotes',
+  'credit_notes',
+  'receipts',
+  'contracts',
+  'engagements',
+  'other',
+] as const
+export type DocType = (typeof DOC_TYPES)[number]
+export const NO_CLIENT = 'none'
+export type DocGroup = { key: string; label: string; count: number; size: number }
+export type GroupLevel = { by: GroupDim; groups: DocGroup[] }
+
+export const DOC_TYPE_LABELS: Record<DocType, string> = {
+  invoices: translate('docTypeInvoices'),
+  quotes: translate('docTypeQuotes'),
+  credit_notes: translate('docTypeCreditNotes'),
+  receipts: translate('docTypeReceipts'),
+  contracts: translate('docTypeContracts'),
+  engagements: translate('docTypeEngagements'),
+  other: translate('docTypeOther'),
+}
+export const GROUP_DIM_LABELS: Record<GroupDim, string> = {
+  type: translate('groupByType'),
+  year: translate('groupByYear'),
+  client: translate('groupByClient'),
+}
+
+const isDocType = (value: string): value is DocType =>
+  (DOC_TYPES as readonly string[]).includes(value)
+const isDim = (value: string): value is GroupDim =>
+  (GROUP_DIMS as readonly string[]).includes(value)
+
+/** A grouping from its URL form ("type,year"); anything not among GROUPINGS is Folders. */
+export function parseGrouping(raw: string | null): GroupDim[] {
+  const dims = (raw ?? '').split(',').filter(isDim)
+  return GROUPINGS.find((grouping) => grouping.join() === dims.join())?.slice() ?? []
+}
+
+const GROUPING_KEY = 'helvetly.documents.group'
+/** The person's last Group by choice on this device ("" = Folders); storage may be off. */
+export function storedGrouping(): GroupDim[] {
+  try {
+    return parseGrouping(localStorage.getItem(GROUPING_KEY))
+  } catch {
+    return []
+  }
+}
+export function storeGrouping(dims: readonly GroupDim[]) {
+  try {
+    localStorage.setItem(GROUPING_KEY, dims.join())
+  } catch {
+    // private mode or storage full: the URL still holds it
+  }
+}
+
+/** The view's group value of one dimension, null while that level is still open. */
+export function groupValue(view: ViewParams, dim: GroupDim): string | null {
+  if (dim === 'type') return view.type
+  if (dim === 'year') return view.year === null ? null : String(view.year)
+  return view.client
+}
+
+/** The change that sets one dimension's value (null clears it). */
+export function groupChange(dim: GroupDim, value: string | null): Partial<ViewParams> {
+  if (dim === 'type') return { type: value && isDocType(value) ? value : null }
+  if (dim === 'year') return { year: value ? Number(value) : null }
+  return { client: value }
+}
+
+/** The first grouping level the view has not chosen a group of, or null at the files of one group. */
+export const openDim = (view: ViewParams) =>
+  view.group.find((dim) => groupValue(view, dim) === null) ?? null
+
+/** A group's name: a type's, a year, a client's (or "No client"). */
+export function groupLabel(dim: GroupDim, group: Pick<DocGroup, 'key' | 'label'>) {
+  if (dim === 'type') return isDocType(group.key) ? DOC_TYPE_LABELS[group.key] : group.key
+  if (dim === 'client')
+    return group.key === NO_CLIENT
+      ? translate('noClient')
+      : group.label || translate('deletedClient')
+  return group.key
+}
+
+/** The filters every list, group and ZIP of the view shares (not the folder: groups look everywhere). */
+function filterQuery(view: ViewParams, userId: string | undefined, query: URLSearchParams) {
+  if (view.search.trim()) query.set('search', view.search.trim())
+  for (const kind of view.kinds) query.append('kind', kind)
+  if (view.mine && userId) query.set('uploaded_by', userId)
+  if (view.date) query.set('from', presetFrom(view.date))
+  if (view.type) query.set('type', view.type)
+  if (view.year !== null) query.set('year', String(view.year))
+  if (view.client) query.set('client', view.client)
+  return query
+}
+
+/** The query of a grouped view's open level (or the counts of a grouping, for the sidebar's Views). */
+export function groupsQuery(view: ViewParams, userId: string | undefined) {
+  return filterQuery(view, userId, new URLSearchParams({ group: view.group.join() }))
+}
+
+/** The download of every file of the view's group, as one ZIP. */
+export const zipUrl = (view: ViewParams, userId: string | undefined) =>
+  `/api/v1/documents/groups/zip?${groupsQuery(view, userId)}`
+
 export type ViewParams = {
   section: Section
   folder: string | null // null = top level
   search: string
+  /** Group by (empty = Folders) and the groups chosen so far, which also filter as the search's chips. */
+  group: GroupDim[]
+  type: DocType | null
+  year: number | null
+  client: string | null
   kinds: Kind[]
   mine: boolean
   date: DatePreset | null
@@ -182,6 +306,10 @@ export const DEFAULT_VIEW: ViewParams = {
   section: 'files',
   folder: null,
   search: '',
+  group: [],
+  type: null,
+  year: null,
+  client: null,
   kinds: [],
   mine: false,
   date: null,
@@ -200,6 +328,7 @@ export function parseView(query: URLSearchParams): ViewParams {
   const section = query.get('view')
   const sort = (query.get('sort') ?? '').replace(/^-/, '')
   const date = query.get('date')
+  const type = query.get('type') ?? ''
   return {
     section:
       section === 'recent' ||
@@ -210,6 +339,10 @@ export function parseView(query: URLSearchParams): ViewParams {
         : 'files',
     folder: query.get('folder') || null,
     search: query.get('q') ?? '',
+    group: parseGrouping(query.get('group')),
+    type: isDocType(type) ? type : null,
+    year: /^\d{4}$/.test(query.get('year') ?? '') ? Number(query.get('year')) : null,
+    client: query.get('client') || null,
     kinds: [...new Set(query.getAll('kind').filter(isKind))],
     mine: query.get('mine') === '1',
     date: date === '7d' || date === '30d' || date === 'year' ? date : null,
@@ -226,6 +359,10 @@ export function viewToQuery(view: ViewParams) {
   if (view.section !== 'files') query.set('view', view.section)
   if (view.folder && view.section === 'files') query.set('folder', view.folder)
   if (view.search) query.set('q', view.search)
+  if (view.group.length > 0 && view.section === 'files') query.set('group', view.group.join())
+  if (view.type) query.set('type', view.type)
+  if (view.year !== null) query.set('year', String(view.year))
+  if (view.client) query.set('client', view.client)
   for (const kind of view.kinds) query.append('kind', kind)
   if (view.mine) query.set('mine', '1')
   if (view.date) query.set('date', view.date)
@@ -241,13 +378,15 @@ export const presetFrom = sinceDate
 
 /** The list query for a view. Search and "Recent" look in every folder. */
 export function listQuery(view: ViewParams, userId: string | undefined) {
-  const query = new URLSearchParams({ page_size: '500' })
-  const everywhere = view.section === 'recent' || view.search.trim().length > 0
+  const query = filterQuery(view, userId, new URLSearchParams({ page_size: '500' }))
+  const everywhere =
+    view.section === 'recent' ||
+    view.search.trim().length > 0 ||
+    view.group.length > 0 ||
+    view.type !== null ||
+    view.year !== null ||
+    view.client !== null
   if (!everywhere) query.set('folder_id', view.folder ?? 'root')
-  if (view.search.trim()) query.set('search', view.search.trim())
-  for (const kind of view.kinds) query.append('kind', kind)
-  if (view.mine && userId) query.set('uploaded_by', userId)
-  if (view.date) query.set('from', presetFrom(view.date))
   query.set(
     'sort',
     view.section === 'recent' ? '-created_at' : `${view.desc ? '-' : ''}${view.sort}`,
@@ -337,6 +476,13 @@ export const docsApi = {
       method: on ? 'PUT' : 'DELETE',
     }),
   list: (query: URLSearchParams) => request<Page<DocFile>>(`/documents?${query}`),
+  groups: (query: URLSearchParams) => request<{ data: GroupLevel }>(`/documents/groups?${query}`),
+  /** Whether the ZIP of a group can be made: resolves, or throws the API's refusal (too big, empty). */
+  checkZip: (query: URLSearchParams) => {
+    const check = new URLSearchParams(query)
+    check.set('check', '1')
+    return request<void>(`/documents/groups/zip?${check}`)
+  },
   get: (id: string) => request<{ data: DocFile }>(path(id)),
   update: (
     id: string,
@@ -448,6 +594,7 @@ export const docKeys = {
   all: queryKeys.documents,
   folders: [...queryKeys.documents, 'folders'] as const,
   list: (query: string) => [...queryKeys.documents, 'list', query] as const,
+  groups: (query: string) => [...queryKeys.documents, 'groups', query] as const,
   detail: (id: string) => [...queryKeys.documents, 'file', id] as const,
   trash: [...queryKeys.documents, 'trash'] as const,
   usage: [...queryKeys.documents, 'usage'] as const,
@@ -469,6 +616,17 @@ export function useFolders() {
 
 export function useDocList(query: URLSearchParams, enabled = true) {
   return useQuery({ ...docListQuery(query), placeholderData: keepPreviousData, enabled })
+}
+
+/** One level of a grouped view: the groups and their counts. */
+export function useDocGroups(query: URLSearchParams, enabled = true) {
+  const text = query.toString()
+  return useQuery({
+    queryKey: docKeys.groups(text),
+    queryFn: async () => (await docsApi.groups(new URLSearchParams(text))).data,
+    placeholderData: keepPreviousData,
+    enabled,
+  })
 }
 
 export const docQuery = (id: string) => ({

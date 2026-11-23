@@ -531,8 +531,12 @@ type DocumentFilter struct {
 	Zone         string // IANA name the days are read in; "" is UTC
 	ClientID     string
 	Tag          string
-	Sort         string // a key of DocumentSorts
-	Desc         bool
+	// The virtual groups' keys (queries_document_groups.go): a DocumentTypes key, a year, a client id or NoClient.
+	Type   string
+	Year   int
+	Client string
+	Sort   string // a key of DocumentSorts
+	Desc   bool
 }
 
 var DocumentSorts = map[string]string{"name": "lower(d.name)", "size": "d.size", "created_at": "d.created_at",
@@ -540,41 +544,12 @@ var DocumentSorts = map[string]string{"name": "lower(d.name)", "size": "d.size",
 
 // ListDocuments: a page of live files and the total matching.
 func (q Q) ListDocuments(ctx context.Context, workspaceID string, f DocumentFilter, limit, offset int) ([]Document, int, error) {
-	where, args := []string{"d.workspace_id = $1", "d.deleted_at IS NULL", "NOT d.hr_private"}, []any{workspaceID}
+	args := []any{workspaceID}
 	arg := func(v any) string {
 		args = append(args, v)
 		return "$" + strconv.Itoa(len(args))
 	}
-	switch f.Folder {
-	case "":
-	case "root":
-		where = append(where, "d.folder_id IS NULL")
-	default:
-		where = append(where, "d.folder_id = "+arg(f.Folder))
-	}
-	if f.Search != "" {
-		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(f.Search)
-		where = append(where, "d.name ILIKE "+arg("%"+escaped+"%"))
-	}
-	if len(f.ContentTypes) > 0 {
-		where = append(where, "d.content_type = ANY("+arg(f.ContentTypes)+")")
-	}
-	if f.UploadedBy != "" {
-		where = append(where, "d.uploaded_by = "+arg(f.UploadedBy))
-	}
-	if f.From != "" {
-		where = append(where, "d.created_at >= "+dayStart(arg(f.From), arg(zoneOr(f.Zone)), 0))
-	}
-	if f.To != "" {
-		where = append(where, "d.created_at < "+dayStart(arg(f.To), arg(zoneOr(f.Zone)), 1))
-	}
-	if f.ClientID != "" {
-		where = append(where, "EXISTS (SELECT 1 FROM document_links l WHERE l.document_id = d.id AND l.target_type = 'client' AND l.target_id = "+
-			arg(f.ClientID)+")")
-	}
-	if f.Tag != "" {
-		where = append(where, arg(f.Tag)+" = ANY(d.tags)")
-	}
+	where := documentWhere(f, arg)
 	order, ok := DocumentSorts[f.Sort]
 	if !ok {
 		order = DocumentSorts["name"]
@@ -582,8 +557,11 @@ func (q Q) ListDocuments(ctx context.Context, workspaceID string, f DocumentFilt
 	if f.Desc {
 		order += " DESC"
 	}
-	sql := fmt.Sprintf(`%s WHERE %s ORDER BY %s, d.id LIMIT %s OFFSET %s`, strings.Replace(documentSelect, "SELECT ",
-		"SELECT count(*) OVER (), ", 1), strings.Join(where, " AND "), order, arg(limit), arg(offset))
+	sel := strings.Replace(documentSelect, "SELECT ", "SELECT count(*) OVER (), ", 1)
+	if f.grouped() {
+		sel = classCTE + sel + classJoins(arg(zoneOr(f.Zone)))
+	}
+	sql := fmt.Sprintf(`%s WHERE %s ORDER BY %s, d.id LIMIT %s OFFSET %s`, sel, strings.Join(where, " AND "), order, arg(limit), arg(offset))
 	rows, err := q.db.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, 0, err

@@ -25,6 +25,7 @@ import (
 	"helvetly.com/api/internal/openapi"
 	"helvetly.com/api/internal/products"
 	"helvetly.com/api/internal/quotes"
+	"helvetly.com/api/internal/scheduling"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/vatreturn"
 )
@@ -57,6 +58,7 @@ func TestDocumentedRoutesAreRegistered(t *testing.T) {
 	ledger.New(nil, stubAuth{}).Register(mux)
 	vatreturn.New(nil, stubAuth{}).Register(mux)
 	einvoice.New(nil, stubAuth{}, nil).Register(mux)
+	scheduling.New(nil, stubAuth{}, inv, nil, "", "", nil).Register(mux)
 	for _, op := range openapi.Operations {
 		path := regexp.MustCompile(`\{[A-Za-z_]+\}`).ReplaceAllString(op.Path, "x1")
 		if _, pattern := mux.Handler(httptest.NewRequest(op.Method, path, nil)); pattern != op.Method+" "+op.Path {

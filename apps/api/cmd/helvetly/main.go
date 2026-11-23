@@ -178,6 +178,7 @@ func run() error {
 	productsSvc := products.New(db, authSvc, slog.Default())
 	engagementsSvc := engagements.New(db, authSvc, invoicesSvc, slog.Default())
 	engagementsSvc.SetMailer(mailer, cfg.PublicURL)
+	schedulingSvc := wireScheduling(db, authSvc, invoicesSvc, cfg)
 	instalmentsSvc := instalments.New(db, authSvc, invoicesSvc, files, slog.Default())
 	instalmentsSvc.SetMailer(mailer)
 	billingSvc, err := billing.New(ctx, db, authSvc, cfg, slog.Default())
@@ -283,6 +284,7 @@ func run() error {
 	feedbackSvc := feedback.New(db, authSvc, files, feedbackMailer, cfg.FeedbackEmail, slog.Default())
 	avatarsSvc := avatars.New(db, authSvc, files, slog.Default())
 	authSvc.OnPhotoRemoved = avatarsSvc.RemoveObject
+	calendarSvc := wireCalendars(ctx, bg, cfg, db, authSvc)
 	portalSvc := portal.New(db, authSvc, files, portalScopes, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure}, slog.Default())
 	portalSvc.SetMailer(portalLinksMailer)
 	mcpSvc := mcp.New(authSvc, openapi.Operations)
@@ -306,6 +308,7 @@ func run() error {
 		invitationsSvc.Register(mux)
 		productsSvc.Register(mux)
 		engagementsSvc.Register(mux)
+		schedulingSvc.Register(mux)
 		instalmentsSvc.Register(mux)
 		booksSvc.Register(mux)
 		vatReturnSvc.Register(mux)
@@ -328,6 +331,7 @@ func run() error {
 		avatarsSvc.Register(mux)
 		importsSvc.Register(mux)
 		notificationsSvc.Register(mux)
+		calendarSvc.Register(mux)
 	}
 
 	guarded := permissions.Guard(authSvc, billingSvc.Guard(server.New(platform.Handler(cfg.PortalURL, strings.HasPrefix(cfg.PublicURL, "https://"), portalscope.OnDomain), api))) // scopes, then plan limits, before the handlers
