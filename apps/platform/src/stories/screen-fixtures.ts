@@ -87,6 +87,15 @@ export const screenHandlers = [
   legalFormsHandler,
   nextNumbersHandler,
   http.get('/api/v1/clients/tags', () => HttpResponse.json({ data: [] })),
+  // Documents' grouped views and the sidebar's Views counts: no groups unless a story gives some.
+  http.get('/api/v1/documents/groups', ({ request }) =>
+    HttpResponse.json({
+      data: {
+        by: new URL(request.url).searchParams.get('group')?.split(',')[0] ?? 'type',
+        groups: [],
+      },
+    }),
+  ),
   http.get('/api/v1/documents/doc_story/content', () => new HttpResponse(null, { status: 204 })),
   http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture() })),
   http.get('/api/v1/public/offers/current', () => HttpResponse.json({ data: publicOffer })),

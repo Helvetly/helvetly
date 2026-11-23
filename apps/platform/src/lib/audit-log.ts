@@ -159,6 +159,13 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
         line: translate('auditSentenceGroupSaved', { name: text(event.payload.name) }),
         amount: null,
       }
+    case 'documents.exported':
+      return {
+        line: translate('auditSentenceDocumentsExported', {
+          count: Number(event.payload.files) || 0,
+        }),
+        amount: null,
+      }
     case 'approvals.group_deleted':
       return { line: translate('auditSentenceGroupDeleted'), amount: null }
     case 'approvals.policy_saved':
