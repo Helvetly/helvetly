@@ -1,8 +1,9 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { EmptyState } from '@helvetly/ui/components/empty-state'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Download, MapPin, Plus, Video } from 'lucide-react'
-import { Fragment, useState } from 'react'
+import { CalendarDays, MapPin, Video } from 'lucide-react'
+import { Fragment } from 'react'
 
 import { ListFilters } from '@/components/data/list-filters'
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
@@ -28,8 +29,8 @@ import {
 import { StatusBadge } from './bits'
 import { DayOffLine, withDaysOff, type DaysOff } from './day-off'
 
-type Filter = { statuses: Status[]; client: string[]; engagement: string[] }
-const NO_FILTER: Filter = { statuses: [], client: [], engagement: [] }
+export type Filter = { statuses: Status[]; client: string[]; engagement: string[] }
+export const NO_FILTER: Filter = { statuses: [], client: [], engagement: [] }
 
 const unique = (pairs: [string, string][]): QueryOption[] =>
   [...new Map(pairs).entries()].map(([value, label]) => ({ value, label }))
@@ -102,9 +103,31 @@ const matches = (entry: Occurrence, text: string) =>
     (value) => value?.toLowerCase().includes(text),
   )
 
+/** The sessions the list's filters and search leave. */
+export function filterOccurrences(occurrences: Occurrence[], filter: Filter, search: string) {
+  const text = search.trim().toLowerCase()
+  return occurrences.filter(
+    (entry) =>
+      (filter.statuses.length === 0 || filter.statuses.includes(entry.status)) &&
+      (filter.client.length === 0 || filter.client.includes(entry.client.id)) &&
+      (filter.engagement.length === 0 || filter.engagement.includes(entry.engagement?.id ?? '')) &&
+      (!text || matches(entry, text)),
+  )
+}
+
+/** Downloads the sessions as sessions.csv. */
+export function downloadCsv(rows: Occurrence[], zone: string) {
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(new Blob([occurrencesCsv(rows, zone)], { type: 'text/csv' }))
+  link.download = 'sessions.csv'
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
 /**
  * The agenda: the period's sessions by day, a date column on the left and the day's sessions on the
- * right, days without sessions left out. Filters, a search and a CSV of what is shown sit on top.
+ * right, days without sessions left out. Filters and a search sit on top; the page owns their state so
+ * its "…" menu exports what is shown.
  */
 export function ListView({
   zone,
@@ -112,8 +135,12 @@ export function ListView({
   daysOff,
   now,
   onOpen,
-  onNew,
+  filter,
+  onFilter,
+  search,
+  onSearch,
   empty,
+  emptyHint,
 }: {
   zone: string
   occurrences: Occurrence[]
@@ -121,22 +148,18 @@ export function ListView({
   daysOff?: DaysOff
   now: Date
   onOpen: (occurrence: Occurrence) => void
-  /** Offered in an empty period when the person may schedule. */
-  onNew?: () => void
+  filter: Filter
+  onFilter: (filter: Filter) => void
+  search: string
+  onSearch: (search: string) => void
   empty: string
+  /** The empty state's line when no filter or search is on. */
+  emptyHint?: string
 }) {
-  const [filter, setFilter] = useState<Filter>(NO_FILTER)
-  const [search, setSearch] = useState('')
   const fields = queryFields(occurrences)
-  const update = (change: Partial<Filter>) => setFilter((current) => ({ ...current, ...change }))
-  const text = search.trim().toLowerCase()
-  const rows = occurrences.filter(
-    (entry) =>
-      (filter.statuses.length === 0 || filter.statuses.includes(entry.status)) &&
-      (filter.client.length === 0 || filter.client.includes(entry.client.id)) &&
-      (filter.engagement.length === 0 || filter.engagement.includes(entry.engagement?.id ?? '')) &&
-      (!text || matches(entry, text)),
-  )
+  const update = (change: Partial<Filter>) => onFilter({ ...filter, ...change })
+  const filtered = search.trim() !== '' || Object.values(filter).some((values) => values.length > 0)
+  const rows = filterOccurrences(occurrences, filter, search)
   const groups = new Map<string, Occurrence[]>()
   for (const row of rows) {
     const date = zoned(row.starts_at, zone).date
@@ -145,13 +168,6 @@ export function ListView({
   const days = withDaysOff(groups, daysOff).map(([date]) => date)
   const crossesMonths = new Set(days.map((day) => day.slice(0, 7))).size > 1
   const today = zoned(now, zone).date
-  const download = () => {
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(new Blob([occurrencesCsv(rows, zone)], { type: 'text/csv' }))
-    link.download = 'sessions.csv'
-    link.click()
-    URL.revokeObjectURL(link.href)
-  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -161,32 +177,33 @@ export function ListView({
           label={translate('schedSearchSessions')}
           placeholder={translate('schedSearchSessionsPlaceholder')}
           value={search}
-          onChange={setSearch}
+          onChange={onSearch}
           query={{ fields, params: filter, onChange: update }}
         />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="shrink-0"
-          disabled={rows.length === 0}
-          onClick={download}
-        >
-          <Download />
-          <span className="max-sm:sr-only">{translate('schedExportCsv')}</span>
-        </Button>
       </ListToolbar>
 
       {rows.length === 0 ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-4 text-body-sm text-muted-foreground sm:px-6">
-          <p>{empty}</p>
-          {onNew && (
-            <Button type="button" variant="ghost" size="sm" onClick={onNew}>
-              <Plus />
-              {translate('schedNewSession')}
-            </Button>
-          )}
-        </div>
+        <EmptyState
+          icon={CalendarDays}
+          title={empty}
+          className="my-auto"
+          description={filtered ? translate('schedNoSessionsFiltered') : emptyHint}
+          action={
+            filtered && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={() => {
+                  onFilter(NO_FILTER)
+                  onSearch('')
+                }}
+              >
+                {translate('clearFilters')}
+              </Button>
+            )
+          }
+        />
       ) : (
         <ol className="min-h-0 flex-1 overflow-y-auto">
           {days.map((date, index) => {
