@@ -371,7 +371,7 @@ export const Month: Story = {
 
 export const MonthDark = dark(Month)
 
-/** The list by day with its filters (an old ?view=list link opens it); a status filter narrows it, a CSV of what is shown. */
+/** The agenda (an old ?view=list link opens it): days with a date column, today circled, a month line where the week crosses one, filters in one popover. */
 export const List: Story = {
   parameters: withState(shared, { view: 'list' }),
   play: async () => {
@@ -379,16 +379,89 @@ export const List: Story = {
     await expect(
       await page.findByRole('heading', { name: 'Wednesday, 2 December 2026' }),
     ).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Calendar view:/ })).toHaveTextContent('List')
+    // Only days with sessions, each once: Monday's kick-off and Wednesday's sessions.
+    const days = [...document.querySelectorAll<HTMLElement>('[data-list-day]')].map(
+      (day) => day.dataset.listDay,
+    )
+    await expect(days).toEqual(expect.arrayContaining(['2026-11-30', '2026-12-02']))
+    await expect(new Set(days).size).toBe(days.length)
+    // The week runs from November into December: a month line before each.
+    await expect(
+      [...document.querySelectorAll<HTMLElement>('[data-month]')].map((line) => line.textContent),
+    ).toEqual(['November 2026', 'December 2026'])
+    readsOnPrimary(document.querySelector('[data-today]'))
+    await expect(document.querySelectorAll('[data-today]')).toHaveLength(1)
+    // A past day's date is muted.
+    await expect(document.querySelector('[data-list-day="2026-11-30"] h3')).toHaveClass(
+      'text-muted-foreground',
+    )
     await expect(page.getByRole('button', { name: /Strategy session/ })).toBeVisible()
-    await userEvent.click(page.getByRole('button', { name: /^Status/ }))
+    await userEvent.click(page.getByRole('button', { name: /^Filters/ }))
+    const filters = within(await page.findByRole('dialog', { name: 'Filters' }))
+    await userEvent.click(filters.getByRole('button', { name: /^Status/ }))
     await userEvent.click(await page.findByRole('option', { name: 'Requested' }))
     await userEvent.keyboard('{Escape}')
     await waitFor(() =>
       expect(page.queryByRole('button', { name: /Strategy session/ })).not.toBeInTheDocument(),
     )
+    await expect(page.getByRole('button', { name: /^Filters/ })).toHaveTextContent('1')
     await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled()
+    // A row opens the session in the drawer, from the keyboard too.
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(page.queryByRole('dialog')).not.toBeInTheDocument())
+    const row = await page.findByRole('button', { name: /Intro call/ })
+    row.focus()
+    await userEvent.keyboard('{Enter}')
+    await expect(await page.findByRole('heading', { name: 'Intro call' })).toBeVisible()
   },
 }
+export const ListDark = dark(List)
+
+/** An empty period in the list: one quiet line and a way to schedule, no big picture. */
+export const ListEmpty: Story = {
+  parameters: withState(emptyState(), { layout: 'list' }),
+  play: async () => {
+    const page = body()
+    await expect(await page.findByText('No sessions in this period.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeDisabled()
+    const actions = page.getAllByRole('button', { name: 'New session' })
+    await userEvent.click(actions.at(-1) ?? document.body)
+    await expect(await page.findByRole('heading', { name: 'New session' })).toBeVisible()
+  },
+}
+
+/** The card under the page header keeps its rounded top corners in every layout: the grid's sticky headings stay inside it. */
+export const CardCorners: Story = {
+  play: async () => {
+    const page = body()
+    await page.findByRole('button', { name: /Strategy session/ })
+    const card = document.querySelector<HTMLElement>('[data-sched-card]')
+    if (!card) throw new Error('No scheduling card')
+    const check = () => {
+      const style = getComputedStyle(card)
+      expect(parseFloat(style.borderTopLeftRadius)).toBeGreaterThan(0)
+      expect(parseFloat(style.borderTopRightRadius)).toBeGreaterThan(0)
+      expect(style.overflow).toBe('hidden')
+      const box = card.getBoundingClientRect()
+      const heading = document.querySelector('[data-day-heading]')?.parentElement
+      if (heading) {
+        const top = heading.getBoundingClientRect()
+        expect(top.top).toBeGreaterThanOrEqual(box.top)
+        expect(top.left).toBeGreaterThanOrEqual(box.left)
+        expect(top.right).toBeLessThanOrEqual(box.right)
+      }
+    }
+    check()
+    await pickView('Month')
+    await page.findByRole('heading', { name: 'December 2026' })
+    check()
+    await userEvent.click((await viewMenu()).getByRole('menuitemradio', { name: 'List' }))
+    await page.findByRole('button', { name: 'Export CSV' })
+    check()
+  },
+}
+export const CardCornersDark = dark(CardCorners)
 
 /** Phones open on the list; the week does not fit. */
 export const Phone = phone({
@@ -397,6 +470,7 @@ export const Phone = phone({
     await expect(
       await page.findByRole('heading', { name: 'Wednesday, 2 December 2026' }),
     ).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Calendar view:/ })).toHaveTextContent('List')
     await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible()
   },
 } satisfies Story)

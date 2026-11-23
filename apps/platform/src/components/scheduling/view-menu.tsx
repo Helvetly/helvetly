@@ -31,7 +31,7 @@ const keepKeys = (event: KeyboardEvent) => event.stopPropagation()
 
 const isMode = (value: string): value is HoursChoice['mode'] => value === 'full' || value === 'work'
 
-/** The one view control: the period, calendar or list, and for a day or week the hours shown. */
+/** The one view control: the period, calendar or list, and for a day or week the hours shown. Named by the layout when it is the list. */
 export function ViewMenu({
   view,
   layout,
@@ -55,7 +55,7 @@ export function ViewMenu({
         <Button type="button" variant="outline" size="sm">
           <Icon />
           <span className="sr-only">{translate('schedView')}: </span>
-          {VIEW_LABEL[view]}
+          {layout === 'list' ? translate('schedList') : VIEW_LABEL[view]}
           <ChevronDown className="opacity-60" />
         </Button>
       </DropdownMenuTrigger>
