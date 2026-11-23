@@ -52,7 +52,7 @@ export function ViewMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
+        <Button type="button" variant="outline">
           <Icon />
           <span className="sr-only">{translate('schedView')}: </span>
           {layout === 'list' ? translate('schedList') : VIEW_LABEL[view]}

@@ -364,7 +364,7 @@ export function PageHeader({
         {menu && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={translate('more')}>
+              <Button variant="ghost" size="icon" aria-label={translate('more')}>
                 <Ellipsis />
               </Button>
             </DropdownMenuTrigger>

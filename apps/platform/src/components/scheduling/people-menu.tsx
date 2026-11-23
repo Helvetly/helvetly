@@ -44,7 +44,7 @@ export function PeopleMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="max-w-56">
+        <Button type="button" variant="outline" className="max-w-56">
           <Users />
           <span className="sr-only">{translate('schedHosts')}: </span>
           <span className="truncate">{label}</span>

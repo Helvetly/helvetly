@@ -1102,7 +1102,7 @@
             "name": "kind",
             "in": "query",
             "required": false,
-            "description": "File kind.",
+            "description": "File kind; repeat the parameter for any of several kinds.",
             "schema": {
               "type": "string",
               "enum": ["pdf", "image", "spreadsheet", "document", "presentation", "text", "archive"]

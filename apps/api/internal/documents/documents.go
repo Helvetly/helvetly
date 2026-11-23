@@ -408,13 +408,18 @@ func parseFilter(v url.Values, zone string) (store.DocumentFilter, error) {
 	f := store.DocumentFilter{Folder: v.Get("folder_id"), Search: strings.TrimSpace(v.Get("search")),
 		UploadedBy: v.Get("uploaded_by"), ClientID: v.Get("client_id"), From: v.Get("from"), To: v.Get("to"), Zone: zone,
 		Tag: strings.ToLower(strings.TrimSpace(v.Get("tag"))), Type: v.Get("type"), Client: v.Get("client")}
+	// kind repeats or lists with commas (kind=pdf,image); kinds are ORed, the other filters ANDed.
+	var want []string
 	for _, k := range v["kind"] {
-		if !slices.Contains(kinds, k) {
-			return f, badRequest("Unknown kind " + strconv.Quote(k) + ".")
+		for k := range strings.SplitSeq(k, ",") {
+			if k = strings.TrimSpace(k); !slices.Contains(kinds, k) {
+				return f, badRequest("Unknown kind " + strconv.Quote(k) + ".")
+			}
+			want = append(want, k)
 		}
 	}
-	if len(v["kind"]) > 0 {
-		f.ContentTypes = contentTypes(v["kind"])
+	if len(want) > 0 {
+		f.ContentTypes = contentTypes(want)
 	}
 	for _, d := range []string{f.From, f.To} {
 		if _, err := time.Parse(time.DateOnly, d); d != "" && err != nil {

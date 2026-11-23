@@ -464,6 +464,10 @@ func TestListUpdateCopy(t *testing.T) {
 		{"search=%25", []string{}},
 		{"kind=image", []string{"Alpha.png"}},
 		{"kind=pdf&sort=-size", []string{"beta.pdf", "zeta.pdf"}},
+		{"kind=pdf&kind=image", []string{"Alpha.png", "beta.pdf", "zeta.pdf"}},
+		{"kind=pdf,image", []string{"Alpha.png", "beta.pdf", "zeta.pdf"}},
+		{"kind=pdf,spreadsheet", []string{"beta.pdf", "zeta.pdf"}},
+		{"kind=image,pdf&folder_id=root", []string{"Alpha.png", "zeta.pdf"}},
 		{"sort=-name", []string{"zeta.pdf", "beta.pdf", "Alpha.png"}},
 		{"client_id=" + cli, []string{"beta.pdf"}},
 		{"uploaded_by=" + b.user + "&folder_id=root", []string{"Alpha.png", "zeta.pdf"}},
@@ -480,7 +484,7 @@ func TestListUpdateCopy(t *testing.T) {
 	if p := e.list(b, "page_size=2"); p.Meta.Total != 3 || p.Meta.TotalPages != 2 {
 		t.Fatalf("meta: %+v", p.Meta)
 	}
-	for _, q := range []string{"kind=movie", "sort=colour", "page=0", "page_size=501", "from=yesterday"} {
+	for _, q := range []string{"kind=movie", "kind=pdf,movie", "kind=pdf,", "sort=colour", "page=0", "page_size=501", "from=yesterday"} {
 		e.fails(b, "GET", "/api/v1/documents?"+q, nil, 400, "invalid_request")
 	}
 
