@@ -124,7 +124,7 @@ export function PdfView({
       })
     return () => {
       controller.abort()
-      for (const task of opened) void task.destroy()
+      for (const task of opened) void task.destroy().catch(() => undefined)
     }
   }, [src, attempt])
 
@@ -270,7 +270,11 @@ function PdfPage({
 
   useEffect(() => {
     let live = true
-    void doc.getPage(number).then((loaded) => live && setPage(loaded))
+    // The document is destroyed when the view closes; a page still loading then rejects, which is expected.
+    void doc.getPage(number).then(
+      (loaded) => live && setPage(loaded),
+      () => undefined,
+    )
     return () => {
       live = false
     }
