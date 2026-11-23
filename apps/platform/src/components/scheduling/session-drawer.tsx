@@ -32,7 +32,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
-import { RecordLink } from '@/components/record-link'
+import { RecordLink, useDrawers } from '@/components/record-link'
 import { apiFieldErrors } from '@/components/section-form'
 import { ApiError } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -446,6 +446,8 @@ function SessionDetails({
   onClose: () => void
 }) {
   const canWrite = useCan('write:scheduling')
+  const drawers = useDrawers()
+  const { engagement } = occurrence
   const start = zoned(occurrence.starts_at, zone)
   const eventZone = event.time_zone !== zone ? event.time_zone : null
   const closed = occurrence.status.startsWith('cancelled') || occurrence.status === 'declined'
@@ -479,17 +481,6 @@ function SessionDetails({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {canWrite && isOpen(occurrence.status) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={translate('schedEditSession')}
-                onClick={onEdit}
-              >
-                <Pencil />
-              </Button>
-            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -502,18 +493,25 @@ function SessionDetails({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {canWrite && isOpen(occurrence.status) && (
+                  <DropdownMenuItem onSelect={onEdit}>
+                    <Pencil />
+                    {translate('schedEditSession')}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                   <a href={icsUrl(occurrence.id)} download>
                     <Download />
                     {translate('schedDownloadIcs')}
                   </a>
                 </DropdownMenuItem>
-                {occurrence.engagement && (
-                  <DropdownMenuItem asChild>
-                    <a href={`/engagements?id=${encodeURIComponent(occurrence.engagement.id)}`}>
-                      <ClipboardCheck />
-                      {translate('schedOpenEngagement')}
-                    </a>
+                {engagement && (
+                  // Stacked over this drawer: closing it comes back to the session.
+                  <DropdownMenuItem
+                    onSelect={() => drawers.open({ kind: 'engagement', id: engagement.id })}
+                  >
+                    <ClipboardCheck />
+                    {translate('schedOpenEngagement')}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

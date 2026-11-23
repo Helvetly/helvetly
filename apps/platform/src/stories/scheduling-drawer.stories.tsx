@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Toaster } from 'sonner'
 import { expect, fireEvent, fn, screen, userEvent, waitFor, within } from 'storybook/test'
 
+import { RecordDrawersContext } from '@/components/record-link'
 import { SeriesDialog } from '@/components/scheduling/bits'
 import { SessionDrawer, type DrawerTarget } from '@/components/scheduling/session-drawer'
 import { SessionsPanel } from '@/components/scheduling/sessions-panel'
@@ -351,7 +352,12 @@ export const EditSeriesSession: Story = {
   play: async () => {
     const sheet = await drawer()
     await expect(await sheet.findByText(/Every week on Tue and Fri, 12 sessions/)).toBeVisible()
-    await userEvent.click(sheet.getByRole('button', { name: 'Edit session' }))
+    // Edit lives in the "…" menu, first: no separate pencil in the header.
+    await expect(sheet.queryByRole('button', { name: 'Edit session' })).not.toBeInTheDocument()
+    await userEvent.click(sheet.getByRole('button', { name: 'More actions' }))
+    const items = await screen.findAllByRole('menuitem')
+    await expect(items[0]).toHaveAccessibleName('Edit session')
+    await userEvent.click(items[0]!)
     await sheet.findByRole('heading', { name: 'Edit session' })
     fireEvent.change(field('time'), { target: { value: '10:00' } })
     await userEvent.click(sheet.getByRole('button', { name: 'Save changes' }))
@@ -359,6 +365,73 @@ export const EditSeriesSession: Story = {
     await userEvent.click(dialog.getByRole('radio', { name: /All sessions/ }))
     await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
     await toastShows('Saved. 1 changed session kept its own time.')
+  },
+}
+
+const openRecord = fn()
+
+/** "Open engagement" and the details' engagement and client open their drawers in place, stacked: no page change. */
+export const OpenEngagementInPlace: Story = {
+  render: () => (
+    <RecordDrawersContext value={openRecord}>
+      <Drawer start={{ kind: 'view', id: 'soc_series_2' }} />
+    </RecordDrawersContext>
+  ),
+  play: async () => {
+    openRecord.mockClear()
+    const sheet = await drawer()
+    await userEvent.click(await sheet.findByRole('button', { name: 'More actions' }))
+    const item = await screen.findByRole('menuitem', { name: 'Open engagement' })
+    // A menu action, not a link to the engagements page.
+    await expect(item).not.toHaveAttribute('href')
+    await userEvent.click(item)
+    await expect(openRecord).toHaveBeenLastCalledWith({ kind: 'engagement', id: 'eng_1' })
+    await userEvent.click(await sheet.findByRole('link', { name: '#7 Coaching package' }))
+    await expect(openRecord).toHaveBeenLastCalledWith({ kind: 'engagement', id: 'eng_1' })
+    await userEvent.click(await sheet.findByRole('link', { name: 'Keller Holzbau AG' }))
+    await expect(openRecord).toHaveBeenLastCalledWith({ kind: 'client', id: 'cli_02' })
+    // The session stays open underneath.
+    await expect(sheet.getByRole('heading', { name: 'Coaching' })).toBeVisible()
+  },
+}
+
+/** Attended is green, No-show amber, Cancel red, all soft tints; one the session cannot take yet is muted and says why. */
+export const StatusActionColours: Story = {
+  render: () => <Drawer start={{ kind: 'view', id: 'soc_mark' }} />,
+  play: async () => {
+    const sheet = await drawer()
+    const attended = await sheet.findByRole('button', { name: 'Attended' })
+    await expect(attended).toHaveAttribute('data-variant', 'success-soft')
+    await expect(attended).toBeEnabled()
+    await expect(sheet.getByRole('button', { name: 'No-show' })).toHaveAttribute(
+      'data-variant',
+      'warning-soft',
+    )
+    const cancel = sheet.getByRole('button', { name: 'Cancel session' })
+    await expect(cancel).toHaveAttribute('data-variant', 'destructive-soft')
+    await expect(getComputedStyle(attended).backgroundColor).not.toBe(
+      getComputedStyle(cancel).backgroundColor,
+    )
+  },
+}
+
+export const StatusActionColoursDark: Story = { ...StatusActionColours, parameters: { dark: true } }
+
+/** Before the session starts, Attended and No-show stay in place, muted, and their tooltip says why. */
+export const StatusActionNotYet: Story = {
+  render: () => <Drawer start={{ kind: 'view', id: 'soc_series_2' }} />,
+  play: async () => {
+    const sheet = await drawer()
+    const attended = await sheet.findByRole('button', { name: 'Attended' })
+    await expect(attended).toHaveAttribute('aria-disabled', 'true')
+    const cancel = sheet.getByRole('button', { name: 'Cancel session' })
+    await expect(getComputedStyle(attended).backgroundColor).not.toBe(
+      getComputedStyle(cancel).backgroundColor,
+    )
+    await userEvent.hover(attended)
+    await expect(
+      await screen.findByRole('tooltip', { name: 'Possible once the session has started.' }),
+    ).toBeInTheDocument()
   },
 }
 

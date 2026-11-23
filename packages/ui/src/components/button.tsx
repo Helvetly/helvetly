@@ -37,6 +37,14 @@ const buttonVariants = cva(
           'border-destructive/45 bg-card text-destructive shadow-button hover:border-destructive/60 hover:bg-destructive/8 hover:text-destructive focus-visible:border-destructive/50 focus-visible:ring-destructive/20 disabled:shadow-none aria-expanded:bg-destructive/8 dark:border-destructive/45 dark:bg-transparent dark:shadow-none dark:hover:bg-destructive/15 dark:focus-visible:ring-destructive/40',
         'destructive-ghost':
           'text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/40 focus-visible:ring-destructive/20 aria-expanded:bg-destructive/10 dark:hover:bg-destructive/20 dark:focus-visible:ring-destructive/40',
+        // Soft status actions (Attended, No-show, Cancel session): a pastel tint of the meaning, never a
+        // loud fill and no shadow. aria-disabled (kept focusable so a tooltip can say why) turns them muted.
+        'success-soft':
+          'border-success/25 bg-success-surface text-success hover:border-success/40 hover:bg-[color-mix(in_oklch,var(--success-surface),var(--success)_10%)] hover:text-success focus-visible:border-success/50 focus-visible:ring-success/20 aria-disabled:cursor-not-allowed aria-disabled:border-border aria-disabled:bg-muted aria-disabled:text-muted-foreground dark:border-success/30',
+        'warning-soft':
+          'border-warning-border bg-warning-surface text-warning hover:border-warning/40 hover:bg-[color-mix(in_oklch,var(--warning-surface),var(--warning)_10%)] hover:text-warning focus-visible:border-warning/50 focus-visible:ring-warning/20 aria-disabled:cursor-not-allowed aria-disabled:border-border aria-disabled:bg-muted aria-disabled:text-muted-foreground',
+        'destructive-soft':
+          'border-destructive/25 bg-destructive-surface text-destructive hover:border-destructive/40 hover:bg-[color-mix(in_oklch,var(--destructive-surface),var(--destructive)_10%)] hover:text-destructive focus-visible:border-destructive/50 focus-visible:ring-destructive/20 aria-disabled:cursor-not-allowed aria-disabled:border-border aria-disabled:bg-muted aria-disabled:text-muted-foreground dark:border-destructive/30',
         link: 'text-link underline underline-offset-4 hover:no-underline',
       },
       size: {
