@@ -153,6 +153,7 @@ export function PageHeader({
   primaryMenu,
   menu,
   actions,
+  start,
   savedViews = true,
   tabMenu,
   tabIcons,
@@ -173,6 +174,8 @@ export function PageHeader({
   menu?: ReactNode
   /** The page's own controls, before the primary button. */
   actions?: ReactNode
+  /** A single-view page's own controls on the left, where tabs would be (the calendar's date navigation). */
+  start?: ReactNode
   /** The "+" that saves a view; off where the tabs are pages, not views (settings). */
   savedViews?: boolean
   /** A tab's right-click menu items (e.g. Close tab); none for tabs that return nothing. */
@@ -226,7 +229,11 @@ export function PageHeader({
       // pb-2 centres the controls, tabs included, in it.
       // The after element keeps the panel's top corners rounded while the content scrolls under the
       // header: a corner-shaped mask in the canvas colour (the shadow paints only outside the radius).
-      className="sticky top-0 z-20 flex h-[52px] shrink-0 items-center gap-2 bg-background px-3 [--tab:var(--card)] after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:hidden after:h-[14px] after:rounded-t-[14px] after:shadow-[0_0_0_14px_var(--background)] after:[clip-path:inset(0)] md:px-5 md:pb-2 md:after:block"
+      className={cn(
+        'sticky top-0 z-20 flex h-[52px] shrink-0 items-center gap-2 bg-background px-3 [--tab:var(--card)] after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:hidden after:h-[14px] after:rounded-t-[14px] after:shadow-[0_0_0_14px_var(--background)] after:[clip-path:inset(0)] md:px-5 md:pb-2 md:after:block',
+        // Own controls on both sides wrap to a second row on phones.
+        start && 'max-sm:h-auto max-sm:flex-wrap max-sm:py-2',
+      )}
     >
       {/* Collapses the sidebar to an icon rail (also ⌘B / Ctrl+B). Hidden where it can't act: phones
           use Menu in the bottom bar, and tablets (the layout's RAIL range, 768–1023px) are always a rail. */}
@@ -350,6 +357,9 @@ export function PageHeader({
         )}
         {canSave && hidden.length === 0 && saveView}
       </nav>
+      {start && !showTabs && (
+        <div className="flex min-w-0 flex-auto items-center gap-2 md:px-2.5">{start}</div>
+      )}
       <div className="ml-auto flex shrink-0 items-center gap-2">
         {menu && (
           <DropdownMenu>
