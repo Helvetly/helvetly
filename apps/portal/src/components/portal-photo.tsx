@@ -20,6 +20,7 @@ import {
 } from '@/lib/portal'
 
 import { cardClass, LoginAvatar } from './portal-bits'
+import { PreviewLock } from './portal-shell'
 
 /** The login's photo on the profile: upload, change or remove it; the account menu follows at once. */
 export function PortalPhoto() {
@@ -94,36 +95,40 @@ export function PortalPhoto() {
         {error && <InlineError>{error}</InlineError>}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={() => input.current?.click()}
-        >
-          {upload.isPending ? (
-            <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
-          ) : (
-            <ImageUp aria-hidden />
-          )}
-          {upload.isPending
-            ? translate('uploading')
-            : session.avatar_url
-              ? translate('changePhoto')
-              : translate('uploadPhoto')}
-        </Button>
-        {session.avatar_url && (
+        <PreviewLock>
           <Button
             type="button"
-            variant="destructive-ghost"
+            variant="outline"
             disabled={busy}
-            onClick={() => {
-              setError('')
-              setConfirming(true)
-            }}
+            onClick={() => input.current?.click()}
           >
-            <Trash2 aria-hidden />
-            {translate('remove')}
+            {upload.isPending ? (
+              <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
+            ) : (
+              <ImageUp aria-hidden />
+            )}
+            {upload.isPending
+              ? translate('uploading')
+              : session.avatar_url
+                ? translate('changePhoto')
+                : translate('uploadPhoto')}
           </Button>
+        </PreviewLock>
+        {session.avatar_url && (
+          <PreviewLock>
+            <Button
+              type="button"
+              variant="destructive-ghost"
+              disabled={busy}
+              onClick={() => {
+                setError('')
+                setConfirming(true)
+              }}
+            >
+              <Trash2 aria-hidden />
+              {translate('remove')}
+            </Button>
+          </PreviewLock>
         )}
       </div>
       {confirming && (

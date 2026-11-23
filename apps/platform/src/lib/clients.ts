@@ -312,6 +312,10 @@ export const clientsApi = {
   remove: (id: string) => request<void>(path(id), { method: 'DELETE' }),
   resendPortalInvite: (id: string) =>
     request<{ data: Client }>(`${path(id)}/portal-invitation`, { method: 'POST' }),
+  startPortalPreview: (id: string) =>
+    request<{ data: { url: string; expires_at: string } }>(`${path(id)}/portal-preview`, {
+      method: 'POST',
+    }),
   bulk: (ids: string[], action: 'activate' | 'deactivate' | 'delete') =>
     request<{ data: { updated: number } }>('/clients/bulk', {
       method: 'POST',
@@ -500,6 +504,13 @@ export function useResendPortalInvite() {
   return useMutation<Client, ApiError, string>({
     mutationFn: async (id) => (await clientsApi.resendPortalInvite(id)).data,
     onSuccess: (client) => refresh(queryClient, client),
+  })
+}
+
+/** Makes a one-use link that opens the client's portal read-only as the member. */
+export function useStartPortalPreview() {
+  return useMutation<string, ApiError, string>({
+    mutationFn: async (id) => (await clientsApi.startPortalPreview(id)).data.url,
   })
 }
 

@@ -340,5 +340,9 @@
   "bookToSessions": "See your sessions",
   "bookManualHint": "{supplier} confirms each booking.",
   "bookLinkGone": "This booking link is no longer valid",
-  "bookLinkGoneText": "Ask for a new link."
+  "bookLinkGoneText": "Ask for a new link.",
+  "previewBanner": "Preview as {client} · read-only · started by {member}",
+  "endPreview": "End preview",
+  "readOnlyPreview": "Read-only preview",
+  "previewLinkExpired": "This preview link has expired or was already used. Start a new preview from Helvetly."
 }

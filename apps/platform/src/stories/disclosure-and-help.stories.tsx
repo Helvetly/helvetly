@@ -1,4 +1,5 @@
 import { Disclosure } from '@helvetly/ui/components/disclosure'
+import { HelpPopover } from '@helvetly/ui/components/help-popover'
 import { SidebarProvider } from '@helvetly/ui/components/sidebar'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { PencilLine } from 'lucide-react'
@@ -141,3 +142,37 @@ export const VatOffDark: Story = {
   ...VatOff,
   parameters: { ...VatOff.parameters, dark: true },
 }
+
+/** A (?) whose explanation needs a few lines opens a popover: by click or keyboard, Escape closes it. */
+export const HelpPopoverOpens: Story = {
+  render: () => (
+    <div className="flex items-center gap-1.5 p-5">
+      <h2 className="text-[14px] font-medium">Self-billing agreements</h2>
+      <HelpPopover label="About self-billing" title="What is a self-billing agreement?">
+        <ul className="grid list-disc gap-1.5 pl-4 text-muted-foreground">
+          <li>You, the customer, write the invoice for this supplier and pay it.</li>
+          <li>The supplier must agree beforehand, best in a signed agreement.</li>
+        </ul>
+        <a href="#learn" className="w-fit underline underline-offset-2">
+          Learn more
+        </a>
+      </HelpPopover>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByRole('button', { name: 'About self-billing' })
+    await userEvent.tab()
+    await expect(trigger).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    const dialog = await body.findByRole('dialog')
+    await expect(within(dialog).getByText('What is a self-billing agreement?')).toBeVisible()
+    await expect(within(dialog).getByRole('link', { name: 'Learn more' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('dialog')).toBeNull())
+    await expect(trigger).toHaveFocus()
+  },
+}
+
+export const HelpPopoverDark: Story = { ...HelpPopoverOpens, parameters: { dark: true } }

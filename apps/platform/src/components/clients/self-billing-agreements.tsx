@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { FormField } from '@helvetly/ui/components/form-field'
+import { HelpPopover } from '@helvetly/ui/components/help-popover'
 import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
 import { formatDate } from '@helvetly/ui/lib/format'
@@ -15,6 +16,15 @@ import { ApiError, errorMessage } from '@/lib/api'
 import { booksApi, type AgreementInput } from '@/lib/books'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
+import { siteUrl } from '@/lib/site'
+
+const HELP = [
+  'selfBillingHelp1',
+  'selfBillingHelp2',
+  'selfBillingHelp3',
+  'selfBillingHelp4',
+  'selfBillingHelp5',
+] as const
 
 const EMPTY = { starts_on: '', ends_on: '', accepted_by: '', note: '' }
 
@@ -85,7 +95,27 @@ export function SelfBillingAgreements({ clientId }: { clientId: string }) {
   return (
     <section className="grid gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-medium">{translate('selfBillingAgreements')}</h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-[14px] font-medium">{translate('selfBillingAgreements')}</h2>
+          <HelpPopover
+            label={translate('selfBillingHelpLabel')}
+            title={translate('selfBillingHelpTitle')}
+          >
+            <ul className="grid list-disc gap-1.5 pl-4 text-muted-foreground">
+              {HELP.map((line) => (
+                <li key={line}>{translate(line)}</li>
+              ))}
+            </ul>
+            <a
+              href={siteUrl('/help/invoice-document-types')}
+              target="_blank"
+              rel="noreferrer"
+              className="w-fit underline underline-offset-2 hover:text-foreground"
+            >
+              {translate('learnMore')}
+            </a>
+          </HelpPopover>
+        </div>
         {manager && !adding && (
           <Button variant="outline" onClick={() => setAdding(true)}>
             <Plus />

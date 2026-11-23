@@ -33,8 +33,11 @@ const john = (change: Partial<Client> = {}) =>
     ...change,
   })
 
-/** `portalOn` false: the workspace turned its whole portal off. */
-const handlers = (client: Client, portalOn = true) => {
+const DOMAIN = 'https://portal.firma.ch/'
+const PREVIEW = `${DOMAIN}api/v1/public/portal/auth/preview?token=one-use`
+
+/** `portalOn` false: the workspace turned its whole portal off; `canonical` is an active custom domain's address. */
+const handlers = (client: Client, portalOn = true, canonical = PORTAL) => {
   let current = client
   return [
     sessionHandler(),
@@ -47,7 +50,20 @@ const handlers = (client: Client, portalOn = true) => {
       }),
     ),
     http.get('/api/v1/workspace/portal', () =>
-      HttpResponse.json({ data: { slug: 'mueller-treuhand', url: PORTAL, enabled: portalOn } }),
+      HttpResponse.json({
+        data: {
+          slug: 'mueller-treuhand',
+          url: PORTAL,
+          canonical_url: canonical,
+          enabled: portalOn,
+        },
+      }),
+    ),
+    http.post('/api/v1/clients/cli_1/portal-preview', () =>
+      HttpResponse.json(
+        { data: { url: PREVIEW, expires_at: '2026-11-11T09:05:00Z' } },
+        { status: 201 },
+      ),
     ),
     http.get('/api/v1/clients/cli_1', () => HttpResponse.json({ data: current })),
     http.patch<never, Partial<ClientInput>>('/api/v1/clients/cli_1', async ({ request }) => {
@@ -251,5 +267,66 @@ export const FormSection: Story = {
     )
     await userEvent.click(section.getByRole('button', { name: 'Add an email' }))
     await expect(body().getByLabelText('Email')).toHaveFocus()
+  },
+}
+
+/** With an active custom domain, the card shows, copies and opens the portal there. */
+export const CustomDomainLink: Story = {
+  parameters: { msw: { handlers: handlers(john({ portal_enabled: true }), true, DOMAIN) } },
+  render: detail,
+  play: async () => {
+    const card = await portalCard()
+    await expect(await card.findByRole('link', { name: 'portal.firma.ch' })).toHaveAttribute(
+      'href',
+      DOMAIN,
+    )
+    const write = fn(async (_text: string) => {})
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: write },
+      configurable: true,
+    })
+    await userEvent.click(card.getByRole('button', { name: 'Copy portal link' }))
+    await expect(write).toHaveBeenCalledWith(DOMAIN)
+  },
+}
+
+/** "View as client" opens a new tab at once and sends it to the one-use preview link the API made. */
+export const ViewAsClient: Story = {
+  parameters: { msw: { handlers: handlers(john({ portal_enabled: true }), true, DOMAIN) } },
+  render: detail,
+  play: async () => {
+    const tab = { opener: {} as unknown, location: { href: '' }, close: fn() }
+    const open = fn(() => tab)
+    const original = window.open
+    Object.defineProperty(window, 'open', { value: open, configurable: true })
+    try {
+      const card = await portalCard()
+      const button = await card.findByRole('button', { name: 'View as client' })
+      await visible(button)
+      await userEvent.hover(button)
+      await expect(
+        await body().findByRole('tooltip', {
+          name: "Open this client's portal read-only to check what they see",
+        }),
+      ).toBeInTheDocument()
+      await userEvent.click(button)
+      await expect(open).toHaveBeenCalledWith('', '_blank')
+      await waitFor(() => expect(tab.location.href).toBe(PREVIEW))
+      await expect(tab.opener).toBeNull()
+      await expect(tab.close).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, 'open', { value: original, configurable: true })
+    }
+  },
+}
+
+/** With the whole portal off there is nothing to preview: the button is off and says why. */
+export const ViewAsClientPortalOff: Story = {
+  parameters: { msw: { handlers: handlers(john({ portal_enabled: true }), false) } },
+  render: detail,
+  play: async () => {
+    const card = await portalCard()
+    await visible(await card.findByText(/The client portal is off for the whole workspace/))
+    await expect(card.getByRole('button', { name: 'View as client' })).toBeDisabled()
   },
 }

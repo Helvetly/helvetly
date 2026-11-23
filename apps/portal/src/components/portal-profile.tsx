@@ -42,6 +42,7 @@ import {
 
 import { cardClass, PageHeader, RetryAlert } from './portal-bits'
 import { PortalPhoto } from './portal-photo'
+import { PreviewLock } from './portal-shell'
 
 type Key = keyof ProfileFields
 type Values = Record<Key, string>
@@ -409,9 +410,11 @@ export function PortalProfile() {
               'sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-10 md:bottom-4',
           )}
         >
-          <Button type="submit" disabled={changed.length === 0 || submit.isPending}>
-            {translate('requestChange')}
-          </Button>
+          <PreviewLock>
+            <Button type="submit" disabled={changed.length === 0 || submit.isPending}>
+              {translate('requestChange')}
+            </Button>
+          </PreviewLock>
           <p className="text-body-sm text-muted-foreground">
             {translate('changesAreAppliedAfterApproval')}
           </p>

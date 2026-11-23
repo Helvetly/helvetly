@@ -2731,6 +2731,13 @@
   "selfBilledInvoice": "self-billed invoice",
   "selfBilledInvoice2": "Self-billed invoice",
   "selfBillingAgreements": "Self-billing agreements",
+  "selfBillingHelp1": "With self-billing, you, the customer, write the invoice for what this supplier delivers and pay it, instead of waiting for their invoice.",
+  "selfBillingHelp2": "The supplier must agree beforehand, best in a signed agreement. Helvetly issues a self-billed invoice only when an agreement here covers its issue date.",
+  "selfBillingHelp3": "The PDF is marked as self-billing (a “Gutschrift” in Switzerland and Germany). It counts as the supplier’s invoice for VAT, so send them a copy to check.",
+  "selfBillingHelp4": "Typical for commissions, royalties, freelancers and platforms that pay many sellers.",
+  "selfBillingHelp5": "Enter the period it covers, who accepted it at the supplier and where the signed agreement is filed. Once an invoice uses it, it can no longer be deleted.",
+  "selfBillingHelpLabel": "About self-billing",
+  "selfBillingHelpTitle": "What is a self-billing agreement?",
   "sellerNotVATRegistered": "Seller not VAT-registered",
   "send": "Send",
   "sendAgain": "Send again",
@@ -5705,5 +5712,10 @@
   "noTemplateMatches": "No template matches",
   "filledByAIFromQuote": "Filled by AI from quote {number}",
   "filledFromQuote": "Filled from quote {number}",
-  "createdFromQuote": "Created from quote {number}"
+  "createdFromQuote": "Created from quote {number}",
+  "viewAsClient": "View as client",
+  "viewAsClientHint": "Open this client's portal read-only to check what they see",
+  "auditPortalPreviewStarted": "Portal preview started",
+  "auditPortalPreviewEnded": "Portal preview ended",
+  "auditSentencePortalPreview": "{action, select, preview_started {Viewed the portal as {client}, read-only} other {Ended the portal preview as {client}}}"
 }

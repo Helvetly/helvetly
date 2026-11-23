@@ -127,6 +127,8 @@ export const EVENT_LABELS: Record<string, string> = {
   'workspace.portal_turned_off': translate('auditPortalTurnedOff'),
   'workspace.portal_turned_on': translate('auditPortalTurnedOn'),
   'workspace.reply_to_changed': translate('auditReplyToChanged'),
+  'portal.preview_started': translate('auditPortalPreviewStarted'),
+  'portal.preview_ended': translate('auditPortalPreviewEnded'),
   'documents.exported': translate('auditDocumentsExported'),
   'approval.submitted': translate('auditApprovalSubmitted'),
   'approval.approved': translate('auditApprovalApproved'),

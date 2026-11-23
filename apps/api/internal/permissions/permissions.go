@@ -163,6 +163,8 @@ var instead = []struct {
 	{false, "/api/v1/workspace/logo", []string{}},
 	// the client portal's address is shown with each client's portal switch
 	{false, "/api/v1/workspace/portal", []string{"read:clients|read:workspace"}},
+	// viewing a client's portal read-only is reading the client
+	{true, "/api/v1/clients/*/portal-preview", []string{"read:clients"}},
 	{false, "/api/v1/employees", []string{"read:employees|read:payroll"}},
 	{false, "/api/v1/employees/*/pay-terms", []string{"read:payroll"}},
 	{true, "/api/v1/employees/*/pay-terms", []string{"write:payroll"}},

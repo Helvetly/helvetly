@@ -188,6 +188,14 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
       }),
       amount: null,
     }
+  if (area === 'portal')
+    return {
+      line: translate('auditSentencePortalPreview', {
+        action,
+        client: text(event.payload.client_name),
+      }),
+      amount: null,
+    }
   if (area === 'employee')
     return { line: translate('auditSentenceEmployee', { action }), amount: null }
   if (area === 'payroll')

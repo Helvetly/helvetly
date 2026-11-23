@@ -236,4 +236,5 @@ var ExportExcluded = map[string]string{
 	"calendar_push_queue":      "sync job bookkeeping: pushes still to make",
 	"calendar_feeds":           "a member's iCal feed secret (token hash and sealed token)",
 	"document_zip_exports":     "a member's download of files the export carries anyway, deleted 7 days after it is ready",
+	"portal_preview_links":     "one-use secrets of a member's portal preview, gone 5 minutes after they are made",
 }

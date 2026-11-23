@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Quote contracts (migration 00054): the contract documents made from a quote, newest first.
+// Quote contracts (migration 00055): the contract documents made from a quote, newest first.
 
 // ContractsFolderName: the stored (English) name of the system folder Clients/<client>/Documents/<year>/Contracts.
 const ContractsFolderName = "Contracts"

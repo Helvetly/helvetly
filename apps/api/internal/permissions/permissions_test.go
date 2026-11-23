@@ -111,6 +111,7 @@ func TestRequired(t *testing.T) {
 		{"GET", "/api/v1/invoices/inv_1/engagement", []string{"read:invoices", "read:engagements"}},
 		{"PATCH", "/api/v1/workspace", []string{"write:workspace"}},
 		{"GET", "/api/v1/workspace/portal", []string{"read:clients|read:workspace"}},
+		{"POST", "/api/v1/clients/cli_1/portal-preview", []string{"read:clients"}},
 		{"PUT", "/api/v1/workspace/portal", []string{"write:workspace"}},
 		{"GET", "/api/v1/workspace/portal/availability", []string{"read:workspace"}},
 		{"GET", "/api/v1/ledger/export", []string{"read:ledger"}},
