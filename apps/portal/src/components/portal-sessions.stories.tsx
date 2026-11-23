@@ -6,7 +6,13 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import type { ClientSession } from '@/lib/scheduling'
 import { portalHandlers, portalSession } from '@/mocks/portal'
-import { request, schedulingHandlers, upcomingSessions } from '@/mocks/scheduling'
+import {
+  germanUpcoming,
+  oneOffSessions,
+  request,
+  schedulingHandlers,
+  upcomingSessions,
+} from '@/mocks/scheduling'
 
 import { NextSessionCard, PortalSessions } from './portal-sessions'
 
@@ -49,7 +55,7 @@ const withUpcoming = (list: ClientSession[], ...more: typeof handlers) => ({
     ],
   },
 })
-const [soon, onTime] = upcomingSessions as [ClientSession, ClientSession, ClientSession]
+const [soon, onTime] = oneOffSessions as [ClientSession, ClientSession, ClientSession]
 const hour = 3_600_000
 
 /** Upcoming with the join link only within 24 h, deadlines in words, and past ones with their attendance. */
@@ -60,14 +66,18 @@ export const Filled: Story = {
     await expect(canvas.getAllByRole('link', { name: /^Join/ })).toHaveLength(1)
     await expect(canvas.getAllByText(/^Free cancellation until/).length).toBeGreaterThan(0)
     await expect(canvas.getByText('The free cancellation period has ended')).toBeVisible()
-    await expect(canvas.getAllByText(/· Zurich$/).length).toBeGreaterThan(0)
+    await expect(canvas.getAllByText(/· Zurich time$/).length).toBeGreaterThan(0)
     await expect(canvas.getByText('Moved')).toBeVisible()
     const past = canvas.getByRole('region', { name: 'Past' })
     await expect(await within(past).findByText('Attended')).toBeVisible()
     await expect(within(past).getByText('Cancelled late')).toBeVisible()
     await expect(within(past).getByText('Missed')).toBeVisible()
-    // Past sessions have nothing to ask.
-    await expect(within(past).queryByRole('button')).toBeNull()
+    // Past sessions have nothing to ask: the only buttons open a series' dates.
+    await expect(
+      within(past)
+        .queryAllByRole('button')
+        .every((button) => button.hasAttribute('aria-expanded')),
+    ).toBe(true)
     await expect(canvas.getAllByRole('link', { name: /^Add to calendar: / })[0]).toHaveAttribute(
       'href',
       `${S}/occurrences/soc_soon/ics`,
@@ -87,6 +97,100 @@ export const Phone: Story = {
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
     )
+  },
+}
+
+const upcomingRegion = () => within(document.body).getByRole('region', { name: 'Upcoming' })
+const seriesCard = async (region: HTMLElement) =>
+  waitFor(() => {
+    const card = region.querySelector<HTMLElement>('[data-series-card="sev_german"]')
+    if (!card) throw new Error('no series card yet')
+    return card
+  })
+
+/** 53 upcoming dates of a weekly series are one card: the rule, its span and counts, the cancellation rule. */
+export const SeriesCollapsed: Story = {
+  play: async () => {
+    const upcoming = upcomingRegion()
+    const card = await seriesCard(upcoming)
+    await expect(upcoming.querySelectorAll('[data-series-card]')).toHaveLength(1)
+    // Three one-off cards and the series' one.
+    await expect(upcoming.querySelector('ul')!.children).toHaveLength(oneOffSessions.length + 1)
+    await expect(within(upcoming).getAllByText('German lessons')).toHaveLength(1)
+    const inCard = within(card)
+    await expect(
+      inCard.getByText(/^Every \p{L}+, \d\d:\d\d–\d\d:\d\d · Zurich time$/u),
+    ).toBeVisible()
+    await expect(inCard.getByText(/^from .+ · 57 sessions \(52 left\)$/)).toBeVisible()
+    await expect(inCard.getByText('with Anna Keller')).toBeVisible()
+    await expect(
+      inCard.getByText('Free cancellation up to 24 hours before each session'),
+    ).toBeVisible()
+    await expect(inCard.getByRole('link', { name: /Limmatquai 4/ })).toHaveAttribute(
+      'href',
+      expect.stringContaining('google.com/maps'),
+    )
+    await expect(
+      inCard.getByRole('link', { name: 'Add series to calendar: German lessons' }),
+    ).toHaveAttribute('href', `${S}/series/sev_german/ics`)
+    await expect(inCard.getByText(/^Next: /)).toBeVisible()
+    // The dates stay folded: no per-date actions until asked.
+    await expect(inCard.queryByRole('button', { name: /^Actions for / })).toBeNull()
+  },
+}
+
+/** Expanded: the next five dates with the cancelled and the moved one marked, then all of them. */
+export const SeriesExpanded: Story = {
+  play: async () => {
+    const card = within(await seriesCard(upcomingRegion()))
+    const toggle = card.getByRole('button', { name: /^Upcoming dates/ })
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(toggle)
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const dates = card.getByRole('list', { name: 'German lessons' })
+    await expect(within(dates).getAllByRole('listitem')).toHaveLength(5)
+    const cancelled = dates.querySelector<HTMLElement>('[data-exception="cancelled"]')!
+    await expect(within(cancelled).getByText('Cancelled')).toBeVisible()
+    await expect(within(cancelled).queryByRole('button')).toBeNull()
+    const moved = dates.querySelector<HTMLElement>('[data-exception="moved"]')!
+    await expect(within(moved).getByText(/^Moved from /)).toBeVisible()
+    await expect(within(moved).getByText('Moved')).toBeVisible()
+    await userEvent.click(card.getByRole('button', { name: 'Show all 53' }))
+    await expect(within(dates).getAllByRole('listitem')).toHaveLength(germanUpcoming.length)
+    await userEvent.click(card.getByRole('button', { name: 'Show fewer' }))
+    await expect(within(dates).getAllByRole('listitem')).toHaveLength(5)
+  },
+}
+
+/** One date of a series is cancelled from its "…" menu; the others are untouched. */
+export const SeriesCancelOneDate: Story = {
+  play: async () => {
+    const card = within(await seriesCard(upcomingRegion()))
+    await userEvent.click(card.getByRole('button', { name: /^Upcoming dates/ }))
+    const [first] = card.getAllByRole('button', { name: /^Actions for / })
+    await userEvent.click(first!)
+    const menu = await body().findByRole('menu')
+    await expect(
+      within(menu).getByRole('menuitem', { name: 'Add this date to calendar' }),
+    ).toHaveAttribute('href', `${S}/occurrences/soc_german_5/ics`)
+    await expect(within(menu).getByRole('menuitem', { name: 'Reschedule' })).toBeVisible()
+    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Cancel this session' }))
+    const dialog = await body().findByRole('dialog', { name: 'Cancel German lessons?' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel session' }))
+    await expect(await body().findByText('German lessons is cancelled.')).toBeInTheDocument()
+  },
+}
+
+/** The past dates of a series are one card too, each date with its attendance and nothing to ask. */
+export const SeriesPast: Story = {
+  play: async () => {
+    const past = within(document.body).getByRole('region', { name: 'Past' })
+    const card = within(await seriesCard(past))
+    await userEvent.click(card.getByRole('button', { name: /^Dates/ }))
+    const dates = card.getByRole('list', { name: 'German lessons' })
+    await expect(within(dates).getAllByText('Attended')).toHaveLength(5)
+    await expect(card.queryByRole('button', { name: /^Actions for / })).toBeNull()
+    await expect(card.queryByRole('link', { name: /^Add series/ })).toBeNull()
   },
 }
 
@@ -290,7 +394,7 @@ export const NextSession: Story = {
   play: async ({ canvasElement }) => {
     const card = await within(canvasElement).findByRole('region', { name: 'Next session' })
     await expect(within(card).getByText('Strategy call')).toBeVisible()
-    await expect(within(card).getByRole('link', { name: 'Join' })).toHaveAttribute(
+    await expect(within(card).getByRole('link', { name: /^Join Strategy call/ })).toHaveAttribute(
       'href',
       soon.meeting_url,
     )

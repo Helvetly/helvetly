@@ -7,7 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@helvetly/ui/component
 import { byDay, formatDay } from '@helvetly/ui/lib/days'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Gauge, History, MessageSquareHeart } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Gauge,
+  History,
+  MessageSquareHeart,
+} from 'lucide-react'
 import { useEffect, useId, useState, useSyncExternalStore } from 'react'
 
 import { civilToday, daysLeftText, formatPeriod } from '@/lib/dates'
@@ -69,7 +76,7 @@ const total = (entries: Entry[]) =>
 
 /**
  * One logged delivery as a compact row: the note (or a calm "Work logged" when there is neither note nor a word for
- * the client), the supplier's word for the client as a quiet quote under it, the quantity on the right.
+ * the client), the supplier's word for the client as a quote chip under it, the quantity on the right.
  */
 function ActivityEntry({ entry, unit }: { entry: Entry; unit: string | null }) {
   const note = entry.note?.trim()
@@ -77,16 +84,16 @@ function ActivityEntry({ entry, unit }: { entry: Entry; unit: string | null }) {
   return (
     <li className="flex items-start justify-between gap-4 py-2.5">
       <div className="grid min-w-0 gap-1.5">
-        {note && <p className="text-body break-words">{note}</p>}
+        {note && <p className="text-body-sm break-words">{note}</p>}
         {!note && !forYou && (
-          <p className="text-body text-muted-foreground">{translate('workLogged')}</p>
+          <p className="text-body-sm text-muted-foreground">{translate('workLogged')}</p>
         )}
         {forYou && (
-          <figure className="flex gap-2 rounded-md bg-brand-surface px-2.5 py-1.5 text-body-sm">
+          <figure className="flex w-fit max-w-full gap-2 rounded-md border-l-2 border-brand bg-brand-surface px-2.5 py-1.5 text-body-sm">
             <MessageSquareHeart aria-hidden className="mt-0.5 size-3.5 shrink-0 text-brand" />
             <figcaption className="min-w-0 break-words">
               <span className="font-medium">{translate('clientPerformance')}</span>
-              <span className="sr-only">:</span> {forYou}
+              <span className="sr-only">:</span> <q className="italic">{forYou}</q>
             </figcaption>
           </figure>
         )}
@@ -98,13 +105,13 @@ function ActivityEntry({ entry, unit }: { entry: Entry; unit: string | null }) {
   )
 }
 
-/** A period's days, newest first: the date once with the day's total, its entries below as compact rows. */
+/** A period's days, newest first: the date with the day's total on the right, its entries in a quiet box below. */
 function Days({ entries, unit }: { entries: Entry[]; unit: string | null }) {
   return (
-    <ol className="grid gap-4">
+    <ol className="grid gap-3">
       {byDay(entries).map((day) => (
-        <li key={day.date} className="grid">
-          <p className="flex items-baseline gap-2 border-b border-border/60 pb-1.5 text-body-sm">
+        <li key={day.date} className="grid gap-1">
+          <p className="flex items-baseline justify-between gap-3 text-body-sm">
             <time dateTime={day.date} className="font-medium">
               {formatDay(day.date)}
             </time>
@@ -112,7 +119,7 @@ function Days({ entries, unit }: { entries: Entry[]; unit: string | null }) {
               {translate('dayTotal', { total: shortAmount(total(day.items), unit) })}
             </span>
           </p>
-          <ul className="grid divide-y divide-border/40">
+          <ul className="grid divide-y divide-border/50 rounded-lg bg-card px-3 ring-1 ring-border/60">
             {day.items.map((entry) => (
               <ActivityEntry key={entry.id} entry={entry} unit={unit} />
             ))}
@@ -123,63 +130,12 @@ function Days({ entries, unit }: { entries: Entry[]; unit: string | null }) {
   )
 }
 
-/** An earlier period, folded to one line with what was used in it; it opens on its own to show its days. */
-function EarlierPeriod({
-  period,
-  engagement,
-}: {
-  period: PortalEngagementPeriod
-  engagement: PortalEngagement
-}) {
-  const [open, setOpen] = useState(false)
-  const id = useId()
-  const range = formatPeriod(period.starts_on, period.ends_on)
-  return (
-    <li className="grid">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen(!open)}
-        className="-mx-2 flex items-center gap-2 rounded-md px-2 py-2 text-left text-body-sm transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
-      >
-        <ChevronDown
-          aria-hidden
-          className={cn(
-            'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
-            !open && '-rotate-90',
-          )}
-        />
-        <span className="min-w-0 flex-1 truncate font-medium tabular-nums">{range}</span>
-        <span className="shrink-0 text-muted-foreground tabular-nums">
-          {shortAmount(total(period.entries), null)} /{' '}
-          {shortAmount(engagement.quantity, engagement.unit)}
-          <span className="max-sm:hidden">
-            {' · '}
-            {translate('entriesCount', { count: period.entries.length })}
-          </span>
-        </span>
-      </button>
-      {open && (
-        <section id={id} aria-label={range} className="pt-1 pb-2 pl-6">
-          {period.entries.length === 0 ? (
-            <p className="py-1 text-body-sm text-muted-foreground">
-              {translate('nothingLoggedInThisPeriod')}
-            </p>
-          ) : (
-            <Days entries={period.entries} unit={engagement.unit} />
-          )}
-        </section>
-      )}
-    </li>
-  )
-}
-
 /**
- * Every logged delivery. The row above already shows the current period's numbers and dates, so its entries follow
- * at once under a quiet "This period"; earlier periods are folded lines with their totals.
+ * Every logged delivery, one period at a time: this period first (the row above has its numbers), the earlier ones
+ * a step back with the arrows, each headed with the engagement's name so the panel says whose it is.
  */
 function Activity({ engagement }: { engagement: PortalEngagement }) {
+  const [chosen, setChosen] = useState<number | null>(null)
   const query = useQuery({
     queryKey: portalKeys.engagementHistory(engagement.id),
     queryFn: () => listPortalEngagementHistory(engagement.id),
@@ -191,46 +147,68 @@ function Activity({ engagement }: { engagement: PortalEngagement }) {
     return (
       <p className="py-2 text-body-sm text-muted-foreground">{translate('nothingLoggedYet')}</p>
     )
+  const periods = query.data.toSorted((a, b) => b.starts_on.localeCompare(a.starts_on))
   const running = isActive(engagement) ? engagement.current_period?.starts_on : undefined
-  const current = query.data.find((period) => period.starts_on === running)
-  const earlier = query.data.filter((period) => period !== current)
+  const at =
+    chosen ??
+    Math.max(
+      0,
+      periods.findIndex((period) => period.starts_on === running),
+    )
+  const period = periods[at]!
+  const label =
+    period.starts_on === running
+      ? translate('engagementThisPeriod', { name: engagement.name })
+      : translate('engagementPeriod', {
+          name: engagement.name,
+          period: formatPeriod(period.starts_on, period.ends_on),
+        })
   return (
-    <div className="grid gap-4">
-      {running && (
-        <section aria-label={translate('thisPeriod')} className="grid gap-2">
-          <h3 className="text-caption font-medium text-muted-foreground">
-            {translate('thisPeriod')}
-          </h3>
-          {current && current.entries.length > 0 ? (
-            <Days entries={current.entries} unit={engagement.unit} />
-          ) : (
-            <p className="text-body-sm text-muted-foreground">
-              {translate('nothingLoggedInThisPeriod')}
-            </p>
-          )}
-        </section>
+    <section aria-label={label} className="grid gap-3">
+      <div className="flex items-center gap-2">
+        <h3 className="min-w-0 flex-1 truncate text-body-sm font-medium">{label}</h3>
+        <span className="shrink-0 text-body-sm text-muted-foreground tabular-nums">
+          {shortAmount(total(period.entries), null)} /{' '}
+          {shortAmount(engagement.quantity, engagement.unit)}
+        </span>
+        {periods.length > 1 && (
+          <span className="flex shrink-0 gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={translate('earlierPeriod')}
+              disabled={at === periods.length - 1}
+              onClick={() => setChosen(at + 1)}
+            >
+              <ChevronLeft aria-hidden />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={translate('laterPeriod')}
+              disabled={at === 0}
+              onClick={() => setChosen(at - 1)}
+            >
+              <ChevronRight aria-hidden />
+            </Button>
+          </span>
+        )}
+      </div>
+      {period.entries.length > 0 ? (
+        <Days entries={period.entries} unit={engagement.unit} />
+      ) : (
+        <p className="text-body-sm text-muted-foreground">
+          {translate('nothingLoggedInThisPeriod')}
+        </p>
       )}
-      {earlier.length > 0 && (
-        <section aria-label={translate('earlierPeriods')} className="grid gap-1">
-          {running && (
-            <h3 className="text-caption font-medium text-muted-foreground">
-              {translate('earlierPeriods')}
-            </h3>
-          )}
-          <ul className="grid">
-            {earlier.map((period) => (
-              <EarlierPeriod key={period.starts_on} period={period} engagement={engagement} />
-            ))}
-          </ul>
-        </section>
-      )}
-    </div>
+    </section>
   )
 }
 
 /**
- * One engagement as a compact row: name (and why it is past), what was agreed with the period and days left, a thin
- * bar, and used / agreed with the share on the right. Details opens the activity below; a deep link opens it at once.
+ * One engagement as its own card: name (and why it is past), what was agreed with the period and days left, a thin
+ * bar, and used / agreed with the share on the right. A click anywhere on the row (or Details, for the keyboard)
+ * opens its activity inside the same card, on a tinted panel under a brand accent; a deep link opens it at once.
  */
 function EngagementRow({
   engagement,
@@ -247,8 +225,13 @@ function EngagementRow({
   const past = engagement.status !== 'active' ? PAST[engagement.status] : null
   const overage = period ? Number(period.overage) : 0
   return (
-    <li id={engagement.id} className="scroll-mt-24">
-      {/* The Details button stretches over the row, so a click anywhere on it opens the activity. */}
+    <li
+      id={engagement.id}
+      data-open={open || undefined}
+      className={cn(cardClass, 'relative scroll-mt-24 overflow-hidden')}
+    >
+      {open && <span aria-hidden className="absolute inset-y-0 left-0 z-20 w-1 bg-brand" />}
+      {/* Details stretches over the whole row, above the usage bar, so a click anywhere on it opens the activity. */}
       <div className="relative grid gap-2 px-4 py-3.5 transition-colors has-[[data-toggle]:hover]:bg-muted/40 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -279,7 +262,7 @@ function EngagementRow({
             aria-expanded={open}
             aria-controls={`${id}-activity`}
             onClick={() => setOpen(!open)}
-            className="-my-1 -mr-2 shrink-0 text-muted-foreground after:absolute after:inset-0"
+            className="-my-1 -mr-2 shrink-0 text-muted-foreground after:absolute after:inset-0 after:z-10"
           >
             <span className="max-sm:sr-only">{translate('details')}</span>
             <ChevronDown
@@ -316,7 +299,8 @@ function EngagementRow({
         <section
           id={`${id}-activity`}
           aria-labelledby={`${id}-title`}
-          className="border-t border-border/60 bg-muted/20 px-4 pt-3 pb-4 sm:px-6"
+          data-engagement-details={engagement.id}
+          className="border-t border-border/60 bg-muted/40 px-4 pt-3 pb-4 duration-200 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 sm:px-6"
         >
           <Activity engagement={engagement} />
         </section>
@@ -397,7 +381,7 @@ export function PortalEngagements() {
               </EmptyState>
             </div>
           ) : (
-            <ul className={cn(cardClass, 'grid divide-y overflow-hidden')}>
+            <ul className="grid gap-3">
               {shown.map((engagement) => (
                 <EngagementRow
                   key={`${engagement.id}-${engagement.id === linked}`}

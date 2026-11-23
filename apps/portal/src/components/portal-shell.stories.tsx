@@ -371,7 +371,7 @@ export const ScrolledHeader: Story = {
     const canvas = within(canvasElement)
     await canvas.findByText('Needs your attention')
     // Every section loaded, so the page has its full height before it scrolls.
-    await canvas.findByText('Quotes to answer')
+    await canvas.findAllByText(/^Quote Q-/)
     await canvas.findByText('Engagement usage')
     await within(await canvas.findByRole('region', { name: 'Recently shared' })).findAllByRole(
       'listitem',

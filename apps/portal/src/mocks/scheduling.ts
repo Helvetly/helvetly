@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 
 import type {
   BookingInfo,
+  ClientSeries,
   Booked,
   ClientSession,
   LinkInfo,
@@ -40,6 +41,8 @@ const session = (over: Partial<ClientSession> & Pick<ClientSession, 'id'>): Clie
     can_reschedule: true,
     late_cancel_counts: true,
     late_reschedule_counts: false,
+    series: null,
+    original_starts_at: null,
     ...over,
   }
 }
@@ -59,8 +62,78 @@ export const request = (over: Partial<SessionRequest> & Pick<SessionRequest, 'id
     ...over,
   }) satisfies SessionRequest
 
+const WEEK = 7 * 24 * HOUR
+const seriesStart = at(30)
+
+/** A weekly series of 57 sessions, 5 of them past: German lessons, 2½ hours, one date cancelled and one moved. */
+export const germanSeries: ClientSeries = {
+  id: 'sev_german',
+  recurrence: {
+    freq: 'weekly',
+    interval: 1,
+    by_day: [
+      new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'Europe/Zurich' })
+        .format(new Date(seriesStart))
+        .slice(0, 2)
+        .toUpperCase(),
+    ],
+    rrule: 'FREQ=WEEKLY;COUNT=58',
+  },
+  starts_at: iso(seriesStart - 5 * WEEK),
+  total: 57,
+  left: 52,
+}
+
+const lesson = (i: number, over: Partial<ClientSession> = {}) => {
+  const start = seriesStart + i * WEEK
+  return session({
+    id: `soc_german_${i + 5}`,
+    title: 'German lessons',
+    starts_at: iso(start),
+    ends_at: iso(start + 2.5 * HOUR),
+    location: 'Limmatquai 4, 8001 Zürich',
+    host_name: 'Anna Keller',
+    client_note: null,
+    deadline: iso(start - 24 * HOUR),
+    series: germanSeries,
+    ...over,
+  })
+}
+
+/** The series' upcoming dates: 52 to come and the cancelled third one, which stays listed among them. */
+export const germanUpcoming: ClientSession[] = Array.from({ length: 53 }, (_, i) => {
+  if (i === 2)
+    return lesson(i, {
+      status: 'cancelled_on_time',
+      deadline: null,
+      can_cancel: false,
+      can_reschedule: false,
+    })
+  if (i === 4) {
+    const moved = seriesStart + i * WEEK + 24 * HOUR
+    return lesson(i, {
+      status: 'rescheduled',
+      starts_at: iso(moved),
+      ends_at: iso(moved + 2.5 * HOUR),
+      deadline: iso(moved - 24 * HOUR),
+      original_starts_at: iso(seriesStart + i * WEEK),
+    })
+  }
+  return lesson(i)
+})
+
+/** The series' five attended dates, newest first. */
+export const germanPast: ClientSession[] = Array.from({ length: 5 }, (_, i) =>
+  lesson(-1 - i, {
+    status: 'attended',
+    deadline: null,
+    can_cancel: false,
+    can_reschedule: false,
+  }),
+)
+
 /** An online session within 24 h (its link shows), a live one on time, and one whose cancellation is late. */
-export const upcomingSessions: ClientSession[] = [
+export const oneOffSessions: ClientSession[] = [
   session({
     id: 'soc_soon',
     title: 'Strategy call',
@@ -84,7 +157,11 @@ export const upcomingSessions: ClientSession[] = [
   }),
 ]
 
-export const pastSessions: ClientSession[] = [
+export const upcomingSessions: ClientSession[] = [...oneOffSessions, ...germanUpcoming].toSorted(
+  (a, b) => a.starts_at.localeCompare(b.starts_at),
+)
+
+const pastOneOffs: ClientSession[] = [
   session({
     id: 'soc_past1',
     status: 'attended',
@@ -114,6 +191,10 @@ export const pastSessions: ClientSession[] = [
     can_reschedule: false,
   }),
 ]
+
+export const pastSessions: ClientSession[] = [...pastOneOffs, ...germanPast].toSorted((a, b) =>
+  b.starts_at.localeCompare(a.starts_at),
+)
 
 export const bookingInfo: BookingInfo = {
   mode: 'clients',

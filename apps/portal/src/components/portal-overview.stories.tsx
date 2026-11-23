@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { portalEngagements, portalHandlers, portalInvoices, portalSession } from '@/mocks/portal'
+import { schedulingHandlers } from '@/mocks/scheduling'
 
 import { PortalOverview } from './portal-overview'
 
@@ -37,7 +38,6 @@ export const Filled: Story = {
     const tiles = within(await canvas.findByLabelText('Summary'))
     await expect(tiles.getByText('CHF 4’800.00')).toBeVisible()
     await expect(tiles.getByText('CHF 860.00')).toBeVisible()
-    await expect(await tiles.findByText('Quotes to answer')).toBeVisible()
     // Usage: the engagement closest to its limit, named and linked to its row, with how many more are active.
     await expect(await tiles.findByText('125% used')).toBeVisible()
     await expect(tiles.getByRole('link', { name: 'Website maintenance' })).toHaveAttribute(
@@ -55,27 +55,30 @@ export const Filled: Story = {
     const heights = [...canvasElement.querySelectorAll('dl[aria-label="Summary"] > div')].map(
       (tile) => Math.round(tile.getBoundingClientRect().height),
     )
-    await expect(heights).toHaveLength(4)
+    await expect(heights).toHaveLength(3)
     await expect(new Set(heights).size).toBe(1)
 
     const attention = canvas.getByRole('region', { name: 'Needs your attention' })
     const groups = within(attention)
       .getAllByRole('list')
       .map((group) => group.getAttribute('aria-labelledby'))
-    await expect(groups).toEqual([
-      'attention-overdue',
-      'attention-soon',
-      'attention-review',
-      'attention-later',
-    ])
+    await expect(groups).toEqual(['attention-overdue', 'attention-week', 'attention-later'])
     const overdue = within(attention).getByRole('list', { name: 'Overdue' })
     await expect(within(overdue).getByText(`Invoice ${year}-009`)).toBeVisible()
     await expect(within(overdue).getByText(/12 days overdue/)).toBeVisible()
-    const soon = within(attention).getByRole('list', { name: 'Due soon' })
-    await expect(within(soon).getByText(`Invoice ${year}-012`)).toBeVisible()
-    await expect(within(soon).getByText(`Quote Q-${year}-002 · Rev. 2`)).toBeVisible()
-    const review = within(attention).getByRole('list', { name: 'To review' })
-    await expect(within(review).getByText(`Quote Q-${year}-001`)).toBeVisible()
+    const week = within(attention).getByRole('list', { name: 'This week' })
+    await expect(within(week).getByText(`Invoice ${year}-012`)).toBeVisible()
+    // Later, soonest first: the quote valid 9 more days, the invoice due in 25, the quote valid 27.
+    const later = within(attention).getByRole('list', { name: 'Later' })
+    await expect(
+      within(later)
+        .getAllByRole('listitem')
+        .map((row) => row.querySelector('.font-medium')?.textContent),
+    ).toEqual([`Quote Q-${year}-002 · Rev. 2`, `Invoice ${year}-014`, `Quote Q-${year}-001`])
+    await expect(within(attention).getByRole('link', { name: 'All invoices' })).toHaveAttribute(
+      'href',
+      '/invoices/',
+    )
     await expect(
       within(attention).getByRole('link', { name: `Download PDF of invoice ${year}-009` }),
     ).toHaveAttribute('href', `${P}/invoices/inv_3/pdf`)
@@ -223,7 +226,7 @@ export const AllClearDark: Story = {
   parameters: { ...AllClear.parameters, dark: true },
 }
 
-/** No engagements: the usage tile and card are gone, three tiles fill the strip. */
+/** No engagements: the usage tile and card are gone, two tiles fill the strip. */
 export const NoEngagements: Story = {
   parameters: {
     msw: {
@@ -235,9 +238,9 @@ export const NoEngagements: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('Quotes to answer')).toBeVisible()
+    await expect(await canvas.findByText('Amount due')).toBeVisible()
     await waitFor(() =>
-      expect(canvasElement.querySelectorAll('dl[aria-label="Summary"] > div')).toHaveLength(3),
+      expect(canvasElement.querySelectorAll('dl[aria-label="Summary"] > div')).toHaveLength(2),
     )
     await expect(canvas.queryByText('Engagement usage')).toBeNull()
     await expect(canvas.queryByRole('region', { name: 'Engagements' })).toBeNull()
@@ -285,8 +288,8 @@ export const OnlyPastEngagements: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText('Quotes to answer')).toBeVisible()
-    await expect(canvas.queryByText('Engagement usage')).toBeNull()
+    await expect(await canvas.findByText('Amount due')).toBeVisible()
+    await waitFor(() => expect(canvas.queryByText('Engagement usage')).toBeNull())
   },
 }
 
@@ -334,6 +337,83 @@ export const Phone: Story = {
     )
     await expect(attention.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       documents.getBoundingClientRect().top,
+    )
+    await waitFor(() =>
+      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
+    )
+  },
+}
+
+const withSessions = { msw: { handlers: [...schedulingHandlers, ...portalHandlers] } }
+
+/**
+ * With Scheduling: the next session (within 7 days) and a free cancellation ending within 24 h join the to-do list
+ * under Today, each with one action, and the side column shows the next session in full.
+ */
+export const WithSessions: Story = {
+  parameters: withSessions,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const attention = canvas.getByRole('region', { name: 'Needs your attention' })
+    // Both are hours away: Today, or This week late in the evening.
+    const next = await waitFor(() => {
+      const row = attention.querySelector<HTMLElement>('[data-attention="soc_soon"]')
+      if (!row) throw new Error('no next-session row yet')
+      return row
+    })
+    await expect(within(next).getByText('Strategy call')).toBeVisible()
+    await expect(
+      within(next).getByText(/^(Today|Tomorrow), \d\d:\d\d–\d\d:\d\d · Zurich$/),
+    ).toBeVisible()
+    await expect(within(next).getAllByRole('link')).toHaveLength(1)
+    await expect(within(next).getByRole('link', { name: 'Join' })).toBeVisible()
+    const closing = attention.querySelector<HTMLElement>('[data-attention="soc_german_5"]')!
+    await expect(
+      within(closing).getByText(/^Free cancellation ends (Today|Tomorrow), /),
+    ).toBeVisible()
+    await expect(within(closing).getByRole('link', { name: 'Manage' })).toHaveAttribute(
+      'href',
+      '/sessions/',
+    )
+    // Groups in order of urgency.
+    const groups = within(attention)
+      .getAllByRole('list')
+      .map((group) => group.getAttribute('aria-labelledby'))
+    await expect(groups[0]).toBe('attention-overdue')
+    await expect(groups.at(-1)).toBe('attention-later')
+
+    const card = canvas.getByRole('region', { name: 'Next session' })
+    await expect(within(card).getByText('Strategy call')).toBeVisible()
+    await expect(within(card).getByRole('link', { name: /^Add to calendar: / })).toBeVisible()
+    await expect(within(card).getByRole('link', { name: 'All sessions' })).toHaveAttribute(
+      'href',
+      '/sessions/',
+    )
+    // Wide screens: the to-do list on the left, the next session on the right.
+    await expect(card.getBoundingClientRect().left).toBeGreaterThan(
+      attention.getBoundingClientRect().right,
+    )
+  },
+}
+
+/** A phone with sessions: numbers, to-dos, the next session and files in one column, nothing wider than the screen. */
+export const PhoneWithSessions: Story = {
+  parameters: { ...phone, ...withSessions },
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const card = await canvas.findByRole('region', { name: 'Next session' })
+    const attention = canvas.getByRole('region', { name: 'Needs your attention' })
+    const documents = await canvas.findByRole('region', { name: 'Recently shared' })
+    await expect(attention.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      card.getBoundingClientRect().top,
+    )
+    await expect(card.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      documents.getBoundingClientRect().top,
+    )
+    const tiles = [...canvasElement.querySelectorAll('dl[aria-label="Summary"] > div')]
+    await expect(tiles[0]!.getBoundingClientRect().height).toBe(
+      tiles[1]!.getBoundingClientRect().height,
     )
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
