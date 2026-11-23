@@ -129,11 +129,11 @@ func TestEveryDefaultPassesCheck(t *testing.T) {
 
 func TestSignatureDefaults(t *testing.T) {
 	v := map[string]string{"document": "Vertrag", "client": "Beta AG", "sender": "Ana Muster", "company": "Muster GmbH"}
-	// The English subjects are the ones the signature emails had before templates.
-	if got := Render(Default("signature_request", "en"), v).Subject; got != "Ana Muster sent you “Vertrag” to sign" {
+	// The English subjects are the ones of the signature emails without a language: the business asks, not the member.
+	if got := Render(Default("signature_request", "en"), v).Subject; got != "Muster GmbH asks you to sign “Vertrag”" {
 		t.Errorf("request subject %q", got)
 	}
-	if got := Render(Default("signature_reminder", "en"), v).Subject; got != "Reminder: Ana Muster sent you “Vertrag” to sign" {
+	if got := Render(Default("signature_reminder", "en"), v).Subject; got != "Reminder: Muster GmbH asks you to sign “Vertrag”" {
 		t.Errorf("reminder subject %q", got)
 	}
 	for _, kind := range []string{"document", "signature_request", "signature_reminder"} {

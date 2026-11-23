@@ -101,7 +101,7 @@ test('fills a kind in a language from the workspace texts; unknown names stay as
     document: 'Lease',
     sender: 'Ana Muster',
   })
-  expect(filled?.subject).toBe('Ana Muster sent you “Lease” to sign')
+  expect(filled?.subject).toBe('{company} asks you to sign “Lease”')
   expect(filled?.body).toContain('Please review and sign “Lease”')
   expect(filled?.body).toMatch(/\{company\}$/)
   expect(emailLanguage('fr')).toBe('fr')

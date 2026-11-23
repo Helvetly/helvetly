@@ -89,21 +89,6 @@ export function SesLine({ className }: { className?: string }) {
   )
 }
 
-/** The plain legal line: what kind of signature this is, and where it is not enough. */
-export function SesNote({ className }: { className?: string }) {
-  return (
-    <p
-      className={cn(
-        'flex gap-2.5 rounded-xl bg-brand-surface/70 px-3 py-2.5 text-[12.5px] leading-snug text-brand',
-        className,
-      )}
-    >
-      <Info className="mt-px size-3.5 shrink-0 stroke-[1.75]" />
-      <span>{translate('aSimpleElectronicSignatureSESUnderSwissZertESAnd')}</span>
-    </p>
-  )
-}
-
 /**
  * A field's box on a page overlay, positioned by its page fractions. `edit` (placing, signing) shows the coloured
  * box; `output` (a filled template's preview) shows only its value, printed like the generated PDF.
