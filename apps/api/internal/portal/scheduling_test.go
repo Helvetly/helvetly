@@ -314,3 +314,63 @@ func TestVerifyKeepsFirstTimeZone(t *testing.T) {
 		t.Fatalf("first zone stays: %v", z)
 	}
 }
+
+// TestPortalSeriesGrouping: each session of a series names it with its rule and counts, a cancelled future date stays
+// among the upcoming ones, a moved one keeps its original slot, and the series' .ics carries the RRULE and EXDATE.
+func TestPortalSeriesGrouping(t *testing.T) {
+	e := newEnv(t)
+	e.host()
+	first := time.Now().UTC().Truncate(time.Hour).Add(-14 * 24 * time.Hour)
+	e.exec(`INSERT INTO scheduling_events (id, workspace_id, client_id, host_user_id, title, mode, location, time_zone, starts_local,
+		duration_minutes, rrule, count, materialised_until, created_at, updated_at)
+		VALUES ('sev_s','wsp_a','cli_1','usr_owner','German','live','Bahnhofstrasse 1','UTC',$1,60,'FREQ=WEEKLY;COUNT=5',5,$2,now(),now())`,
+		first.Format("2006-01-02T15:04"), first.AddDate(0, 0, 60))
+	statuses := []string{"attended", "attended", "scheduled", "cancelled_on_time", "scheduled"}
+	for i, status := range statuses {
+		start := first.AddDate(0, 0, 7*i)
+		moved := start
+		if i == 4 {
+			moved = start.Add(24 * time.Hour)
+		}
+		e.exec(`INSERT INTO scheduling_occurrences (id, workspace_id, event_id, host_user_id, client_id, original_start, starts_at, ends_at,
+			status, timed_at, created_at, updated_at) VALUES ($1,'wsp_a','sev_s','usr_owner','cli_1',$2,$3,$4,$5,now(),now(),now())`,
+			fmt.Sprintf("soc_s%d", i), start, moved, moved.Add(time.Hour), status)
+	}
+	e.session("one", "cli_1", "scheduled", time.Now().UTC().Add(48*time.Hour), "")
+	c, _ := e.signIn("ana@acme.ch")
+
+	res, out := e.do("GET", "/scheduling/occurrences?when=upcoming", nil, c, "")
+	list, _ := out["data"].([]any)
+	byID := map[string]map[string]any{}
+	for _, item := range list {
+		m := item.(map[string]any)
+		byID[m["id"].(string)] = m
+	}
+	if res.StatusCode != 200 || len(list) != 4 || byID["soc_s3"] == nil || byID["soc_one"]["series"] != nil {
+		t.Fatalf("upcoming: %d %v", res.StatusCode, out)
+	}
+	series, _ := byID["soc_s2"]["series"].(map[string]any)
+	if series == nil || series["id"] != "sev_s" || series["total"] != 4.0 || series["left"] != 2.0 ||
+		series["recurrence"].(map[string]any)["freq"] != "weekly" || byID["soc_s2"]["original_starts_at"] != nil {
+		t.Fatalf("series: %v", byID["soc_s2"])
+	}
+	if byID["soc_s4"]["original_starts_at"] == nil || byID["soc_s3"]["status"] != "cancelled_on_time" {
+		t.Fatalf("exceptions: %v %v", byID["soc_s4"], byID["soc_s3"])
+	}
+	if res, out := e.do("GET", "/scheduling/occurrences?when=past", nil, c, ""); res.StatusCode != 200 || len(out["data"].([]any)) != 2 {
+		t.Fatalf("past: %d %v", res.StatusCode, out)
+	}
+
+	res, body := e.get(c, "/scheduling/series/sev_s/ics")
+	if res.StatusCode != 200 || !strings.Contains(body, "RRULE:FREQ=WEEKLY") || !strings.Contains(body, "EXDATE") ||
+		!strings.Contains(body, "RECURRENCE-ID") || !strings.Contains(res.Header.Get("Content-Disposition"), "series.ics") {
+		t.Fatalf("series ics: %d %s", res.StatusCode, body)
+	}
+	if res, _ := e.get(c, "/scheduling/series/sev_one/ics"); res.StatusCode != 404 {
+		t.Fatalf("a one-off is no series: %d", res.StatusCode)
+	}
+	bob, _ := e.signIn("bob@beta.ch")
+	if res, _ := e.get(bob, "/scheduling/series/sev_s/ics"); res.StatusCode != 404 {
+		t.Fatalf("another client's series: %d", res.StatusCode)
+	}
+}

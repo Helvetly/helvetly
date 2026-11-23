@@ -54,6 +54,27 @@ export type ClientSession = {
   can_reschedule: boolean
   late_cancel_counts: boolean
   late_reschedule_counts: boolean
+  /** The series it belongs to; null for a one-off. */
+  series: ClientSeries | null
+  /** A series' session moved off its slot: the slot it had. */
+  original_starts_at: string | null
+}
+
+/** A series as its card summarises it, the same on each of its sessions. */
+export type ClientSeries = {
+  id: string
+  recurrence: {
+    freq: 'weekly' | 'monthly' | ''
+    interval: number
+    /** "MO" … "SU". */
+    by_day?: string[]
+    rrule: string
+  } | null
+  /** The first session's start. */
+  starts_at: string
+  /** Its sessions not cancelled or declined; `left` those still to come. */
+  total: number
+  left: number
 }
 
 export type Ref = { id: string; name: string }
@@ -120,6 +141,8 @@ export const listSessions = async (when: 'upcoming' | 'past') =>
 
 export const sessionIcsUrl = (sessionId: string) =>
   apiUrl(`${base}/occurrences/${id(sessionId)}/ics`)
+
+export const seriesIcsUrl = (seriesId: string) => apiUrl(`${base}/series/${id(seriesId)}/ics`)
 
 /** An on-time cancellation the business approves automatically comes back `approved`: the session is cancelled. */
 export const requestCancel = async (sessionId: string, note: string) =>
@@ -300,4 +323,121 @@ export function useSessionsVisible() {
   return (
     booking.data.mode === 'clients' || Boolean(upcoming.data?.length) || Boolean(past.data?.length)
   )
+}
+
+/** One card on the Sessions page: a one-off session, or a series with its listed sessions in order. */
+export type SessionGroup =
+  | { kind: 'one'; session: ClientSession }
+  | { kind: 'series'; series: ClientSeries; sessions: ClientSession[] }
+
+/** Each series once, where its first listed session is; one-offs as they come. */
+export function groupSessions(sessions: ClientSession[]): SessionGroup[] {
+  const out: SessionGroup[] = []
+  const series = new Map<string, ClientSession[]>()
+  for (const session of sessions) {
+    if (!session.series) {
+      out.push({ kind: 'one', session })
+      continue
+    }
+    const listed = series.get(session.series.id)
+    if (listed) {
+      listed.push(session)
+      continue
+    }
+    const fresh = [session]
+    series.set(session.series.id, fresh)
+    out.push({ kind: 'series', series: session.series, sessions: fresh })
+  }
+  return out
+}
+
+const DAY_CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
+
+/** "Tuesday" for "TU" in the reader's language (5 Jan 2025 is a Sunday). */
+const weekdayName = (code: string) =>
+  new Intl.DateTimeFormat(languageTag, { weekday: 'long', timeZone: 'UTC' }).format(
+    Date.UTC(2025, 0, 5 + DAY_CODES.indexOf(code)),
+  )
+
+/** The day code ("TU") of an instant in zone. */
+const dayCode = (iso: string, zone: string) =>
+  new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: zone })
+    .format(new Date(iso))
+    .slice(0, 2)
+    .toUpperCase()
+
+/** "Every Tuesday, 20:30–23:00", from the series' rule and one of its sessions' times. */
+export function ruleText(series: ClientSeries, session: ClientSession) {
+  const time = `${formatClock(session.starts_at, session.time_zone)}–${formatClock(session.ends_at, session.time_zone)}`
+  const rule = series.recurrence
+  const interval = rule?.interval || 1
+  let every = translate('sessionsRepeats')
+  if (rule?.freq === 'weekly') {
+    const codes = rule.by_day?.length
+      ? rule.by_day.toSorted(
+          (a, b) => ((DAY_CODES.indexOf(a) + 6) % 7) - ((DAY_CODES.indexOf(b) + 6) % 7),
+        )
+      : [dayCode(session.starts_at, session.time_zone)]
+    const days = new Intl.ListFormat(languageTag, { type: 'conjunction' }).format(
+      codes.map(weekdayName),
+    )
+    every = translate('sessionsEveryWeek', { interval, days })
+  } else if (rule?.freq === 'monthly') {
+    every = translate('sessionsEveryMonth', { interval })
+  }
+  return `${every}, ${time}`
+}
+
+/** "Free cancellation up to 24 hours before each session", from a session's deadline; '' without one. */
+export function cancelRuleText(session: ClientSession) {
+  if (!session.deadline) return ''
+  const hours = Math.round(
+    (Date.parse(session.starts_at) - Date.parse(session.deadline)) / 3_600_000,
+  )
+  return hours > 0 ? translate('sessionsFreeCancelRule', { hours }) : ''
+}
+
+/** "Today", "Tomorrow" or the day ("Tue, 1 Dec 2026") of an instant in zone, against the reader's today. */
+export function relativeDay(iso: string, zone: string, now = new Date()) {
+  const today = civilDay(now.toISOString(), zone)
+  const days = Math.round((Date.parse(civilDay(iso, zone)) - Date.parse(today)) / 86_400_000)
+  if (days === 0) return translate('today')
+  if (days === 1) return translate('tomorrow')
+  return formatDay(iso, zone)
+}
+
+const HOUR_MS = 3_600_000
+
+/** Why a session is on the overview's to-do list: a proposal to answer, free cancellation ending, or it is soon. */
+export type SessionAttention = {
+  session: ClientSession
+  reason: 'proposal' | 'deadline' | 'next'
+  /** When it matters: the deadline, else the start. */
+  at: number
+}
+
+/**
+ * The sessions waiting for the client, one entry each: a time the business proposed, a free cancellation that ends
+ * within 24 h, and the next session when it starts within 7 days.
+ */
+export function sessionAttention(sessions: ClientSession[], now = new Date()): SessionAttention[] {
+  const t = now.getTime()
+  const open = sessions.filter((s) => isOpen(s) && Date.parse(s.ends_at) > t)
+  const out: SessionAttention[] = []
+  for (const session of open) {
+    const deadline = session.deadline ? Date.parse(session.deadline) : NaN
+    if (session.request?.status === 'proposed')
+      out.push({ session, reason: 'proposal', at: Date.parse(session.starts_at) })
+    else if (session.can_cancel && deadline > t && deadline - t < 24 * HOUR_MS)
+      out.push({ session, reason: 'deadline', at: deadline })
+  }
+  // The next session once: already listed for a proposal or its deadline, it is not listed again.
+  const next = open[0]
+  if (
+    next &&
+    !out.some((a) => a.session === next) &&
+    Date.parse(next.starts_at) - t < 7 * 24 * HOUR_MS
+  )
+    out.push({ session: next, reason: 'next', at: Date.parse(next.starts_at) })
+  return out
 }

@@ -15,11 +15,14 @@ import { formatDate, formatMoney, formatSize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import {
+  CalendarClock,
+  CalendarDays,
   CircleAlert,
   CircleCheck,
   Download,
   FileText,
   Gauge,
+  Video,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
@@ -42,15 +45,26 @@ import {
   type PortalInvoice,
 } from '@/lib/portal'
 import { documentTitle } from '@/lib/quotes'
+import {
+  civilDay,
+  formatClock,
+  relativeDay,
+  sessionAttention,
+  sessionIcsUrl,
+  zoneName,
+  type ClientSession,
+  type SessionAttention,
+} from '@/lib/scheduling'
+import { scoped } from '@/lib/scope'
 import { shorten } from '@/lib/text'
 import { amountOf } from '@/lib/units'
 
-import { cardClass, DownloadLink, FileTile, RetryAlert, SectionTitle } from './portal-bits'
+import { cardClass, DownloadLink, FileTile, RetryAlert, SectionTitle, ViewAll } from './portal-bits'
 import { UsageBar } from './portal-engagements'
-import { NextSessionCard } from './portal-sessions'
+import { NextSessionCard, useUpcomingSessions } from './portal-sessions'
 
-/** Days before a due date that move it into "Due soon". */
-const SOON_DAYS = 14
+/** Days ahead that count as "This week" on the to-do list. */
+const WEEK_DAYS = 7
 
 const moneyLines = (sums: [string, string][]) =>
   sums.map(([currency, total]) => (
@@ -59,14 +73,7 @@ const moneyLines = (sums: [string, string][]) =>
     </span>
   ))
 
-const viewAll = (href: string, label: string) => (
-  <Link
-    href={href}
-    className="text-body-sm text-link underline underline-offset-2 hover:no-underline"
-  >
-    {label}
-  </Link>
-)
+const viewAll = (href: string, label: string) => <ViewAll href={href} label={label} />
 
 /** A soft tinted tile carrying an icon: the row's or tile's state at a glance. */
 function ToneIcon({ icon: Icon, tone }: { icon: LucideIcon; tone: Tone }) {
@@ -93,9 +100,7 @@ type Tile = {
   alert?: boolean
 }
 
-const TILE_COLUMNS = ['', '', 'lg:grid-cols-2', 'lg:grid-cols-3', 'lg:grid-cols-4']
-
-/** 2–3 tiles of the same height: what is due, overdue, engagement usage. */
+/** 2–3 tiles of the same height: what is due, what is overdue, and the engagement's usage. */
 function Summary({
   invoices,
   engagements,
@@ -156,7 +161,7 @@ function Summary({
         <span className="grid gap-0.5">
           <span className="flex min-w-0 items-center gap-1.5">
             <Link
-              href={`/engagements#${shown.id}`}
+              href={scoped(`/engagements#${shown.id}`)}
               className="truncate font-medium text-foreground underline underline-offset-2 hover:no-underline"
             >
               {shown.name}
@@ -177,21 +182,22 @@ function Summary({
       ),
     })
 
-  const small = tiles.filter((tile) => tile.key !== 'usage').length
   return (
     <dl
       aria-label={translate('summary')}
-      className={cn('grid grid-cols-2 gap-3 sm:gap-4', TILE_COLUMNS[tiles.length])}
+      className={cn(
+        'grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4',
+        tiles.length > 2 && 'lg:grid-cols-3',
+      )}
     >
-      {tiles.map((tile, index) => (
+      {tiles.map((tile) => (
         <div
           key={tile.key}
           className={cn(
             cardClass,
             'grid min-w-0 content-start gap-2 p-4 sm:p-5',
-            // Below lg the usage tile, the fullest, takes a row of its own, and so does an odd last small tile.
-            (tile.key === 'usage' || (index === small - 1 && small % 2 === 1)) &&
-              'max-lg:col-span-2',
+            // Below lg the usage tile, the fullest, takes a row of its own.
+            tile.key === 'usage' && 'max-lg:col-span-2',
           )}
         >
           <dt className="flex items-center gap-2 text-body-sm text-muted-foreground">
@@ -220,17 +226,20 @@ function Summary({
   )
 }
 
-const GROUPS = ['overdue', 'soon', 'later'] as const
+const GROUPS = ['overdue', 'today', 'week', 'later'] as const
 type Group = (typeof GROUPS)[number]
 const GROUP_LABEL: Record<Group, string> = {
   overdue: translate('overdue'),
-  soon: translate('dueSoon'),
+  today: translate('today'),
+  week: translate('thisWeek'),
   later: translate('later'),
 }
 
 type Item = {
   key: string
   group: Group
+  /** Sorts the rows of a group: when it matters, in ms. */
+  at: number
   icon: LucideIcon
   tone: Tone
   title: string
@@ -238,56 +247,126 @@ type Item = {
   /** The exact date beside `meta`, left out on phones. */
   date?: string
   overdue?: boolean
-  amount: string
+  amount?: string
   action: ReactNode
-  pdf: ReactNode
+  pdf?: ReactNode
 }
 
-const invoiceGroup = (invoice: PortalInvoice, today: string): Group => {
-  if (invoice.is_overdue) return 'overdue'
-  return invoice.due_date && daysBetween(today, invoice.due_date) <= SOON_DAYS ? 'soon' : 'later'
+/** Today, this week or later, by whole days from today to a civil date. */
+const groupOf = (day: string, today: string): Group => {
+  const days = daysBetween(today, day)
+  return days <= 0 ? 'today' : days <= WEEK_DAYS ? 'week' : 'later'
 }
 
-/** Every thing waiting for the client, one row each with one action, overdue first. */
+const sessionWhen = (iso: string, zone: string) =>
+  `${relativeDay(iso, zone)}, ${formatClock(iso, zone)}`
+
+const manage = (label: string) => (
+  <Button asChild variant="outline">
+    <Link href={scoped('/sessions')}>
+      <CalendarClock aria-hidden />
+      {label}
+    </Link>
+  </Button>
+)
+
+/** A session row: the next one with Join or Add to calendar, else a link to answer or manage it. */
+function sessionItem({ session, reason, at }: SessionAttention, today: string): Item {
+  const zone = session.time_zone
+  const base = { key: session.id, at, title: session.title, icon: CalendarDays }
+  if (reason === 'proposal')
+    return {
+      ...base,
+      group: 'today',
+      tone: 'blue',
+      meta: translate('attentionProposal', {
+        when: sessionWhen(session.request?.staff_proposal ?? session.starts_at, zone),
+      }),
+      action: manage(translate('attentionRespond')),
+    }
+  if (reason === 'deadline')
+    return {
+      ...base,
+      group: groupOf(civilDay(new Date(at).toISOString(), zone), today),
+      tone: 'amber',
+      meta: translate('attentionDeadline', { when: sessionWhen(new Date(at).toISOString(), zone) }),
+      action: manage(translate('attentionManage')),
+    }
+  return {
+    ...base,
+    group: groupOf(civilDay(session.starts_at, zone), today),
+    tone: 'blue',
+    meta: `${sessionWhen(session.starts_at, zone)}–${formatClock(session.ends_at, zone)} · ${zoneName(zone)}`,
+    action: session.meeting_url ? (
+      <Button asChild>
+        <a href={session.meeting_url} target="_blank" rel="noreferrer">
+          <Video aria-hidden />
+          {translate('sessionsJoin')}
+        </a>
+      </Button>
+    ) : (
+      <DownloadLink
+        href={sessionIcsUrl(session.id)}
+        label={translate('sessionsAddToCalendarLabel', {
+          title: session.title,
+          when: sessionWhen(session.starts_at, zone),
+        })}
+        text={translate('sessionsAddToCalendar')}
+      />
+    ),
+  }
+}
+
+/** Everything waiting for the client, one row each with one action: overdue first, then today, this week, later. */
 function Attention({
   invoices,
+  sessions,
   today,
   onPay,
 }: {
   invoices: PortalInvoice[]
+  sessions: ClientSession[]
   today: string
   onPay: (invoice: PortalInvoice) => void
 }) {
-  const items = byUrgency(invoices).map((invoice): Item => {
-    const group = invoiceGroup(invoice, today)
-    return {
-      key: invoice.id,
-      group,
-      icon: FileText,
-      tone: group === 'later' ? 'blue' : 'amber',
-      title: translate('invoiceNumber', { number: invoice.number }),
-      meta: invoice.due_date ? dueText(invoice.due_date, today) : translate('noDueDate'),
-      date: invoice.due_date ? formatDate(invoice.due_date) : undefined,
-      overdue: invoice.is_overdue,
-      amount: formatMoney(invoice.amount_due, invoice.currency),
-      action: (
-        <Button
-          variant="outline"
-          aria-label={translate('payInvoice', { number: invoice.number })}
-          onClick={() => onPay(invoice)}
-        >
-          <Wallet aria-hidden />
-          {translate('pay')}
-        </Button>
-      ),
-      pdf: invoice.has_pdf !== false && (
-        <DownloadLink
-          href={portalInvoicePdfUrl(invoice.id)}
-          label={translate('downloadPDFOfInvoice', { number: invoice.number })}
-        />
-      ),
-    }
-  })
+  const items: Item[] = [
+    ...byUrgency(invoices).map((invoice): Item => {
+      const group = invoice.is_overdue
+        ? 'overdue'
+        : invoice.due_date
+          ? groupOf(invoice.due_date, today)
+          : 'later'
+      return {
+        key: invoice.id,
+        group,
+        at: invoice.due_date ? Date.parse(invoice.due_date) : Infinity,
+        icon: FileText,
+        tone: group === 'later' ? 'neutral' : 'amber',
+        title: translate('invoiceNumber', { number: invoice.number }),
+        meta: invoice.due_date ? dueText(invoice.due_date, today) : translate('noDueDate'),
+        date: invoice.due_date ? formatDate(invoice.due_date) : undefined,
+        overdue: invoice.is_overdue,
+        amount: formatMoney(invoice.amount_due, invoice.currency),
+        action: (
+          <Button
+            variant="outline"
+            aria-label={translate('payInvoice', { number: invoice.number })}
+            onClick={() => onPay(invoice)}
+          >
+            <Wallet aria-hidden />
+            {translate('pay')}
+          </Button>
+        ),
+        pdf: invoice.has_pdf !== false && (
+          <DownloadLink
+            href={portalInvoicePdfUrl(invoice.id)}
+            label={translate('downloadPDFOfInvoice', { number: invoice.number })}
+          />
+        ),
+      }
+    }),
+    ...sessionAttention(sessions).map((entry) => sessionItem(entry, today)),
+  ]
 
   if (items.length === 0)
     return (
@@ -305,15 +384,15 @@ function Attention({
     )
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-5">
       {GROUPS.map((group) => {
-        const rows = items.filter((item) => item.group === group)
+        const rows = items.filter((item) => item.group === group).toSorted((a, b) => a.at - b.at)
         if (rows.length === 0) return null
         return (
-          <div key={group} className="grid">
+          <div key={group} className="grid gap-1">
             <h3
               id={`attention-${group}`}
-              className="text-caption font-medium text-muted-foreground"
+              className="text-caption font-medium tracking-wide text-muted-foreground uppercase"
             >
               {GROUP_LABEL[group]}
             </h3>
@@ -323,7 +402,11 @@ function Attention({
             >
               {rows.map((item) => (
                 // Phones: the actions go to a line of their own, so the title and date stay readable.
-                <li key={item.key} className="flex flex-wrap items-center gap-3 px-2 py-3">
+                <li
+                  key={item.key}
+                  data-attention={item.key}
+                  className="flex flex-wrap items-center gap-3 px-2 py-3"
+                >
                   <ToneIcon icon={item.icon} tone={item.tone} />
                   <span className="grid min-w-0 flex-1 gap-0.5 leading-tight">
                     <span className="truncate text-body font-medium">{item.title}</span>
@@ -331,14 +414,18 @@ function Attention({
                       // Not cn(): tailwind-merge would drop the type-scale size for the colour.
                       className={`truncate text-body-sm ${item.overdue ? 'text-destructive' : 'text-muted-foreground'}`}
                     >
-                      <span className="tabular-nums sm:hidden">{item.amount} · </span>
+                      {item.amount && (
+                        <span className="tabular-nums sm:hidden">{item.amount} · </span>
+                      )}
                       {item.meta}
                       {item.date && <span className="max-sm:hidden"> · {item.date}</span>}
                     </span>
                   </span>
-                  <span className="shrink-0 text-right text-body font-medium tabular-nums max-sm:hidden">
-                    {item.amount}
-                  </span>
+                  {item.amount && (
+                    <span className="shrink-0 text-right text-body font-medium tabular-nums max-sm:hidden">
+                      {item.amount}
+                    </span>
+                  )}
                   <span className="flex shrink-0 gap-2 max-sm:basis-full max-sm:pl-12">
                     {item.action}
                     {item.pdf}
@@ -494,18 +581,19 @@ export function PortalOverview() {
     queryKey: portalKeys.engagements,
     queryFn: listPortalEngagements,
   })
+  const sessions = useUpcomingSessions()
   const name = session.data?.client.name
   const supplier = session.data?.workspace.name
 
   return (
     <div className="grid gap-6 sm:gap-8">
-      <header className="grid min-w-0 gap-1.5">
+      <header className="grid min-w-0 gap-1">
         <h1 className="truncate text-page font-semibold tracking-tight sm:text-display">
           {greeting(hour)}
           {name && `, ${shorten(name, NAME_MAX)}`}
         </h1>
         {supplier && (
-          <p className="text-body text-muted-foreground sm:text-title-sm" title={supplier}>
+          <p className="truncate text-body text-muted-foreground sm:text-title-sm" title={supplier}>
             {translate('sharesYourInvoicesWorkAndDocumentsHere', {
               name: shorten(supplier, NAME_MAX),
             })}
@@ -523,12 +611,12 @@ export function PortalOverview() {
         <Summary invoices={invoices.data.data} engagements={engagements.data ?? []} today={today} />
       )}
 
-      {/* Phones: one column in priority order. Wide screens: the to-do list with new files beside it, or alone. */}
+      {/* Phones: one column in priority order. Wide screens: the to-do list, the next session and new files beside it. */}
       <div className="flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-start">
         {!invoices.error && (
           <section
             aria-labelledby="overview-attention"
-            className={cn(cardClass, 'grid min-w-0 content-start gap-3 p-4 sm:p-6 lg:flex-1')}
+            className={cn(cardClass, 'grid min-w-0 content-start gap-4 p-4 sm:p-6 lg:flex-1')}
           >
             <SectionTitle
               id="overview-attention"
@@ -539,6 +627,7 @@ export function PortalOverview() {
             {invoices.data ? (
               <Attention
                 invoices={invoices.data.data}
+                sessions={sessions.data ?? []}
                 today={today}
                 onPay={(invoice) => {
                   setPayingID(invoice.id)

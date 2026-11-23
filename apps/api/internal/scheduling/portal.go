@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"helvetly.com/api/internal/engagements"
+	"helvetly.com/api/internal/ical"
 	"helvetly.com/api/internal/schedpolicy"
 	"helvetly.com/api/internal/store"
 )
@@ -38,13 +39,29 @@ type ClientSession struct {
 	// LateCancelCounts and LateRescheduleCounts say whether a late request would use a session (the warning).
 	LateCancelCounts     bool `json:"late_cancel_counts"`
 	LateRescheduleCounts bool `json:"late_reschedule_counts"`
+	// Series is the series the session belongs to (nil for a one-off): the portal shows a series as one card.
+	Series *ClientSeries `json:"series"`
+	// OriginalStartsAt is the session's slot in its series when it was moved off it; nil otherwise.
+	OriginalStartsAt *time.Time `json:"original_starts_at"`
+}
+
+// ClientSeries is what the portal's series card says: the rule, where it starts and how many sessions it has.
+type ClientSeries struct {
+	ID         string          `json:"id"`
+	Recurrence *RecurrenceJSON `json:"recurrence"`
+	// StartsAt is the first session's start.
+	StartsAt time.Time `json:"starts_at"`
+	// Total counts the series' sessions that were not cancelled or declined; Left those still to come.
+	Total int `json:"total"`
+	Left  int `json:"left"`
 }
 
 // meetingLead is how long before the start the client sees the meeting link.
 const meetingLead = 24 * time.Hour
 
-// ClientSessions are the client's sessions: "upcoming" (open, not yet ended, by start) or "past" (ended or closed,
-// the last 12 months, newest first). Without the plan's Scheduling the client still reads them but asks nothing.
+// ClientSessions are the client's sessions: "upcoming" (open, not yet ended, by start, plus a series' cancelled
+// sessions still to come, so its card shows them among its dates) or "past" (ended or closed, the last 12 months,
+// newest first). Without the plan's Scheduling the client still reads them but asks nothing.
 func (s *Service) ClientSessions(ctx context.Context, ws store.Workspace, clientID, zone, when string) ([]ClientSession, error) {
 	now := s.now()
 	from, to := now.Add(-24*time.Hour), now.AddDate(0, 0, horizonDays+1)
@@ -57,14 +74,18 @@ func (s *Service) ClientSessions(ctx context.Context, ws store.Workspace, client
 		if err != nil {
 			return err
 		}
+		r, err := s.resolve(ctx, q, ws.ID, nil, occs)
+		if err != nil {
+			return err
+		}
 		occs = slices.DeleteFunc(occs, func(o store.SchedOccurrence) bool {
-			upcoming := isOpen(o.Status) && o.EndsAt.After(now)
+			upcoming := o.EndsAt.After(now) && (isOpen(o.Status) || r.events[o.EventID].RRule != nil)
 			return upcoming != (when != "past")
 		})
 		if len(occs) == 0 {
 			return nil
 		}
-		r, err := s.resolve(ctx, q, ws.ID, nil, occs)
+		series, err := s.clientSeries(ctx, q, ws.ID, r.events, occs, now)
 		if err != nil {
 			return err
 		}
@@ -82,7 +103,10 @@ func (s *Service) ClientSessions(ctx context.Context, ws store.Workspace, client
 			e := r.events[o.EventID]
 			c := ClientSession{ID: o.ID, Title: v.Title, StartsAt: o.StartsAt, EndsAt: o.EndsAt, TimeZone: cmp.Or(zone, ws.Zone()),
 				Status: o.Status, Late: o.Late, Mode: e.Mode, Location: v.Location, ClientNote: e.ClientNote, Request: v.Request,
-				LateCancelCounts: r.settings.LateCancelCounts, LateRescheduleCounts: r.settings.LateRescheduleCounts}
+				LateCancelCounts: r.settings.LateCancelCounts, LateRescheduleCounts: r.settings.LateRescheduleCounts, Series: series[o.EventID]}
+			if c.Series != nil && !o.StartsAt.Equal(o.OriginalStart) {
+				c.OriginalStartsAt = &o.OriginalStart
+			}
 			if v.Host != nil {
 				c.HostName = &v.Host.Name
 			}
@@ -101,6 +125,71 @@ func (s *Service) ClientSessions(ctx context.Context, ws store.Workspace, client
 		if when == "past" {
 			slices.Reverse(out)
 		}
+		return nil
+	})
+	return out, err
+}
+
+// clientSeries summarises each series among occs from all of its sessions, not only those listed.
+func (s *Service) clientSeries(ctx context.Context, q store.Q, workspaceID string, events map[string]store.SchedEvent,
+	occs []store.SchedOccurrence, now time.Time) (map[string]*ClientSeries, error) {
+	out := map[string]*ClientSeries{}
+	for _, o := range occs {
+		e := events[o.EventID]
+		if e.RRule == nil || out[e.ID] != nil {
+			continue
+		}
+		rows, err := q.SchedOccurrences(ctx, workspaceID, store.SchedOccurrenceFilter{EventID: e.ID})
+		if err != nil {
+			return nil, err
+		}
+		c := &ClientSeries{ID: e.ID, Recurrence: recurrenceOut(e), StartsAt: rows[0].StartsAt}
+		for _, row := range rows {
+			if cancelled(row.Status) {
+				continue
+			}
+			c.Total++
+			if isOpen(row.Status) && row.EndsAt.After(now) {
+				c.Left++
+			}
+		}
+		out[e.ID] = c
+	}
+	return out, nil
+}
+
+func cancelled(status string) bool {
+	return status == store.SchedCancelledOnTime || status == store.SchedCancelledLate || status == store.SchedDeclined
+}
+
+// ClientSeriesICS is the client's own series as a PUBLISH .ics with the emails' UIDs: the series (RRULE, its
+// cancelled and skipped slots as EXDATEs) and each moved or changed session still open; another client's series or a
+// one-off is ErrNotFound.
+func (s *Service) ClientSeriesICS(ctx context.Context, ws store.Workspace, clientID, eventID string) ([]byte, error) {
+	var out []byte
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		e, err := q.SchedEvent(ctx, ws.ID, eventID, false)
+		if err == nil && (e.ClientID != clientID || e.RRule == nil) {
+			err = store.ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		rows, err := q.SchedOccurrences(ctx, ws.ID, store.SchedOccurrenceFilter{EventID: e.ID})
+		if err != nil {
+			return err
+		}
+		master, err := s.seriesVEvent(ctx, q, e, rows)
+		if err != nil {
+			return err
+		}
+		events := []ical.Event{master}
+		for _, o := range rows {
+			if isOpen(o.Status) && ownWay(o) {
+				events = append(events, s.VEvent(e, o))
+			}
+		}
+		out = ical.Calendar{Method: ical.Publish, Stamp: s.now(), Events: events}.Bytes()
 		return nil
 	})
 	return out, err
