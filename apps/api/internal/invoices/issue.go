@@ -217,7 +217,7 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 	}
 	doc := s.document(inv, set, false, credited)
 	doc.Logo = logo
-	if doc.SentWith, err = s.sentWith(ctx, sess.Workspace.ID); err != nil {
+	if doc.SentWith, err = sentWithIn(ctx, q, sess.Workspace.ID); err != nil {
 		return err
 	}
 	body, err := invoicepdf.Render(doc)

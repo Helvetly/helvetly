@@ -117,6 +117,11 @@ func (s *Service) serveEmailLogo(w http.ResponseWriter, r *http.Request, workspa
 // sentWith: the workspace's client email and PDFs carry "Sent with Helvetly" (Free and Basic), unless its plan
 // includes remove_branding; without billing it is allowed, so a self-hosted server never prints it.
 func (s *Service) sentWith(ctx context.Context, workspaceID string) (bool, error) {
-	unbranded, err := s.db.FeatureAllowed(ctx, workspaceID, store.FeatureRemoveBranding)
+	return sentWithIn(ctx, s.db.Q, workspaceID)
+}
+
+// sentWithIn is sentWith read through q, the caller's transaction.
+func sentWithIn(ctx context.Context, q store.Q, workspaceID string) (bool, error) {
+	unbranded, err := q.FeatureAllowed(ctx, workspaceID, store.FeatureRemoveBranding)
 	return !unbranded, err
 }

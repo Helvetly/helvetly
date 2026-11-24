@@ -53,6 +53,17 @@ func TestRepriceKeepsTheLifetimeDiscount(t *testing.T) {
 		t.Fatalf("again: %v %s", err, out.String())
 	}
 
+	legacy(lifetime)
+	e.stripe.mu.Lock()
+	e.stripe.subs["sub_"+ws]["schedule"] = "sub_sched_1" // a downgrade booked for the period's end
+	e.stripe.mu.Unlock()
+	if err := Reprice(ctx, e.st, e.svc.stripe, ws, true, &out); err == nil || !strings.Contains(err.Error(), "scheduled change") {
+		t.Fatalf("a scheduled change: %v", err)
+	}
+	e.stripe.mu.Lock()
+	delete(e.stripe.subs["sub_"+ws], "schedule")
+	e.stripe.mu.Unlock()
+
 	legacy(map[string]any{"id": "pro_only", "percent_off": 50.0, "duration": "forever", "applies_to": map[string]any{"products": []string{"prod_pro"}}})
 	if err := Reprice(ctx, e.st, e.svc.stripe, ws, true, &out); err == nil || !strings.Contains(err.Error(), "would stop applying") {
 		t.Fatalf("a coupon for another product: %v", err)

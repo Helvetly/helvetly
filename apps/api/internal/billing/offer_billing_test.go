@@ -394,7 +394,8 @@ func (e *env) trialing(ws, fp string, start time.Time) string {
 	return id
 }
 
-// TestTrialGivesTheFullLimitsOfPro: a trial has Pro's own limits (the offer has no trial overrides), for two people.
+// TestTrialGivesTheFullLimitsOfPro: a trial has Pro's own limits for its two included people (the offer has no trial
+// overrides), as paid Pro for one or two people has them.
 func TestTrialGivesTheFullLimitsOfPro(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
@@ -404,9 +405,9 @@ func TestTrialGivesTheFullLimitsOfPro(t *testing.T) {
 	if !r.Trial || r.Plan != Pro || !r.Includes(Feature("expenses")) || !r.Includes(Feature("heidi")) {
 		t.Fatalf("trial rights %+v", r)
 	}
-	for l, want := range map[Limit]int64{Clients: 300, Invoices: 100, Quotes: 100, Expenses: 300, Signatures: 50, Storage: 5_000_000_000,
-		AITokens: 5_000_000, AICost: 3_000_000, "automation_actions_per_month": 1500, MaxSeats: 2} {
-		if got := e.cap(owner.workspace, l); got != want { // two people, not pooled
+	for l, want := range map[Limit]int64{Clients: 300, Invoices: 200, Quotes: 200, Expenses: 600, Signatures: 100, Storage: 10_000_000_000,
+		AITokens: 10_000_000, AICost: 6_000_000, "automation_actions_per_month": 3000, MaxSeats: 2} {
+		if got := e.cap(owner.workspace, l); got != want { // Pro's 2 included people
 			t.Errorf("%s: %d, want %d", l, got, want)
 		}
 	}
@@ -432,11 +433,11 @@ func TestTrialAllowancesLastAcrossTheMonth(t *testing.T) {
 	e.exec(`INSERT INTO heidi_usage (workspace_id, pool, period, tokens_used, cost_micros, updated_at) VALUES ($1, 'heidi', $2, 200000, 150000, now())`,
 		owner.workspace, month.AddDate(0, 0, -1).Format("2006-01"))
 	tokens, err := e.svc.AITokens(ctx, e.st.Q, owner.workspace)
-	if err != nil || tokens != 4_800_000 {
+	if err != nil || tokens != 9_800_000 {
 		t.Fatalf("trial tokens left this month: %d %v", tokens, err)
 	}
 	cost, err := e.svc.AICost(ctx, e.st.Q, owner.workspace)
-	if err != nil || cost != 2_850_000 {
+	if err != nil || cost != 5_850_000 {
 		t.Fatalf("trial cost left this month: %d %v", cost, err)
 	}
 	_, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)

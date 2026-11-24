@@ -478,7 +478,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	if !slices.Contains(checkoutLanguages, in.Language) {
 		in.Language = "" // Stripe then picks by the browser
 	}
-	if planNames[in.Plan] == "" || !slices.Contains(intervals, in.Interval) {
+	if !paid(in.Plan) || !slices.Contains(intervals, in.Interval) {
 		return auth.Error(http.StatusBadRequest, "invalid_request", "Choose the Basic, Pro or Business plan, monthly or yearly.",
 			map[string]any{"fields": map[string]string{"plan": "invalid"}})
 	}

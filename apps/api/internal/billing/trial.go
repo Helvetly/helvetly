@@ -65,11 +65,11 @@ func (s *Service) trialRights(ctx context.Context, q store.Q, workspaceID, offer
 	if err != nil {
 		return Rights{}, err
 	}
-	if planNames[t.AccessPlan] == "" || t.Seats < 1 {
+	if !paid(t.AccessPlan) || t.Seats < 1 {
 		s.log.ErrorContext(ctx, "the offer's trial has no plan or seats", "offer", offer)
 		return Rights{}, errEntitlementsUnavailable
 	}
-	r, err := s.rightsOn(ctx, q, workspaceID, offer, t.AccessPlan, 1)
+	r, err := s.rightsOn(ctx, q, workspaceID, offer, t.AccessPlan, IncludedSeats(t.AccessPlan)) // as paying for its included people
 	if err != nil {
 		return Rights{}, err
 	}

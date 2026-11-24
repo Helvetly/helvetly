@@ -34,6 +34,9 @@ func Reprice(ctx context.Context, db *store.Store, stripe *StripeClient, workspa
 	if err := stripe.Call(ctx, http.MethodGet, "/v1/subscriptions/"+url.PathEscape(b.SubscriptionID), url.Values{"expand[]": expand}, "", &sub); err != nil {
 		return fmt.Errorf("reading subscription %s: %w", b.SubscriptionID, err)
 	}
+	if sub.schedule() != "" || sub.PendingUpdate != nil { // the schedule's next phase or the update would undo the move
+		return fmt.Errorf("subscription %s has a scheduled change or a pending update: let it apply or release it first", sub.ID)
+	}
 	plan, interval := sub.price().planAndInterval()
 	if plan == "" || len(sub.Items.Data) != 1 {
 		return fmt.Errorf("subscription %s has %d items and price %s, which is no plan's", sub.ID, len(sub.Items.Data), sub.priceID())
