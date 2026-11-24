@@ -32,7 +32,7 @@ test('shows language flags independently of Swiss regional formatting', async ()
 
 test('opens the alternate page on the current host and keeps the query and anchor', async () => {
   const user = userEvent.setup()
-  const assign = vi.fn()
+  const assign = vi.fn<Location['assign']>()
   const alternate = document.createElement('link')
   alternate.rel = 'alternate'
   alternate.hreflang = 'it'
