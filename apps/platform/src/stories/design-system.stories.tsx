@@ -203,7 +203,7 @@ export const ButtonMatrix: Story = {
   },
 }
 
-/** Soft status tints (a session's Attended, No-show, Cancel): pastel, no shadow; aria-disabled ones turn muted. */
+/** Soft status tints (a session's Attended, No-show, Cancel): pastel, no shadow; aria-disabled ones fade like disabled buttons. */
 export const SoftStatusVariants: Story = {
   render: () => (
     <div className="flex flex-wrap gap-3">

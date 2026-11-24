@@ -62,12 +62,12 @@ test.each([
   ['warning-soft', 'bg-warning-surface'],
   ['destructive-soft', 'bg-destructive-surface'],
 ] as const)(
-  'the %s variant is a pastel tint that turns muted when aria-disabled',
+  'the %s variant is a pastel tint that fades like a disabled button when aria-disabled',
   (variant, tint) => {
     render(<Button variant={variant}>Mark</Button>)
     const button = screen.getByRole('button', { name: 'Mark' })
     expect(button.className).toContain(tint)
-    expect(button.className).toContain('aria-disabled:bg-muted')
+    expect(button.className).toContain('aria-disabled:opacity-50')
     expect(button.className).not.toContain('shadow-button')
   },
 )
