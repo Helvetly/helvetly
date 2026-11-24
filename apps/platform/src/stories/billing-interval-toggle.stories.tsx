@@ -48,7 +48,7 @@ export const Default: Story = {
     const canvas = within(canvasElement)
     const yearly = canvas.getByRole('radio', { name: 'Yearly' })
     const monthly = canvas.getByRole('radio', { name: 'Monthly' })
-    await expect(canvas.getByRole('group', { name: 'Billing interval' })).toBeVisible()
+    await expect(canvas.getByRole('radiogroup', { name: 'Billing interval' })).toBeVisible()
     await expect(yearly).toBeChecked()
     await expect(yearly).toHaveAccessibleDescription('−20%')
     const saved = canvas.getByText('Save CHF 45 a year on Basic')
@@ -70,9 +70,9 @@ export const Default: Story = {
     await expect(yearly).toBeChecked()
     // Focus and choice never move the options.
     await expect(yearly.closest('label')?.getBoundingClientRect()).toEqual(box)
-    await expect(canvas.getByRole('group').getBoundingClientRect().height).toBeGreaterThanOrEqual(
-      44,
-    )
+    await expect(
+      canvas.getByRole('radiogroup').getBoundingClientRect().height,
+    ).toBeGreaterThanOrEqual(44)
 
     await userEvent.click(monthly)
     await expect(canvas.getByLabelText('chosen')).toHaveTextContent('month')

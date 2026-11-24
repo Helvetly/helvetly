@@ -39,8 +39,12 @@ export function BillingIntervalToggle({
 
   return (
     <div className={cn('flex flex-col items-center gap-2', className)} data-slot="billing-interval">
-      <fieldset className="relative grid h-12 grid-cols-2 rounded-full border border-brand-solid/25 bg-card p-1 dark:border-brand-solid/40">
-        <legend className="sr-only">{translate('billingInterval')}</legend>
+      {/* A div, not a fieldset: a fieldset's anonymous content box shifts the absolutely placed thumb. */}
+      <div
+        role="radiogroup"
+        aria-label={translate('billingInterval')}
+        className="relative grid h-12 grid-cols-2 rounded-full border border-brand-solid/25 bg-card p-1 dark:border-brand-solid/40"
+      >
         {/* The thumb: half the track, slid under the chosen option. */}
         <span
           aria-hidden
@@ -86,7 +90,7 @@ export function BillingIntervalToggle({
             </label>
           )
         })}
-      </fieldset>
+      </div>
       {saving && (
         // Its line is kept while monthly is chosen, so switching never moves the cards below.
         <p
