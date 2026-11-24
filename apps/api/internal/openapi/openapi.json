@@ -4809,7 +4809,7 @@
         "operationId": "update_session",
         "tags": ["Scheduling"],
         "summary": "Change a session or its series",
-        "description": "Partial change. For a series, scope says how far it reaches: this session (it becomes an exception; a new time makes it rescheduled), this and the following (the series is split into a new event; the sessions keep their ids), or all upcoming sessions (changed ones keep their own time; details.kept counts them; a rule change cancels slots that no longer exist). Closed sessions refuse: 409 occurrence_closed. A session that has started keeps its time: moving it or changing its length answers 409 occurrence_started (series edits skip started sessions). Conflicts come back as warnings. With dry_run true the answer is { data: SchedulingMovePreview } and nothing changes; keep, cancel and include then say what happens to the sessions it lists.",
+        "description": "Partial change. For a series, scope says how far it reaches: this session (it becomes an exception; a new time makes it rescheduled), this and the following (the series is split into a new event; the sessions keep their ids), or all upcoming sessions (changed ones keep their own time; details.kept counts them; a rule change cancels slots that no longer exist). Closed sessions refuse: 409 occurrence_closed. A session that has started keeps its time: moving it or changing its length answers 409 occurrence_started (series edits skip started sessions). Conflicts come back as warnings. With dry_run true the answer is { data: SchedulingMovePreview } and nothing changes; decisions then say what happens to the sessions it lists.",
         "parameters": [
           {
             "name": "id",
@@ -14202,7 +14202,7 @@
         "properties": {
           "kind": {
             "type": "string",
-            "enum": ["event", "busy", "outside_hours", "holiday"]
+            "enum": ["event", "busy", "outside_hours", "holiday", "client"]
           },
           "starts_at": {
             "type": "string",
@@ -14954,23 +14954,14 @@
             "type": "boolean",
             "description": "Scope following or all of a series only: answer what the change would do (SchedulingMovePreview: how many sessions move, the first few, and each session that does not simply go along, with its reason) and change nothing."
           },
-          "keep": {
-            "type": "array",
-            "items": { "type": "string" },
-            "maxItems": 1000,
-            "description": "Series edits: sessions (ids) that stay where they are, off the rule."
-          },
-          "cancel": {
-            "type": "array",
-            "items": { "type": "string" },
-            "maxItems": 1000,
-            "description": "Series edits: sessions (ids) cancelled on time instead of moved."
-          },
-          "include": {
-            "type": "array",
-            "items": { "type": "string" },
-            "maxItems": 1000,
-            "description": "Series edits: sessions (ids) changed on their own that move with the others all the same."
+          "decisions": {
+            "type": "object",
+            "maxProperties": 1000,
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^(keep|skip|move_anyway|with_series|move_to:.+)$"
+            },
+            "description": "Series edits: what happens to sessions the preview lists, by id. keep: stays where it is, off the rule. skip: cancelled on time. move_anyway: goes to its new time all the same (a day off the series skips, a conflict). with_series: changed on its own, moves with the others. move_to:<RFC 3339 instant>: goes to that time (not in the past). The dragged session goes where it was dropped unless decided otherwise."
           }
         },
         "additionalProperties": false,
@@ -15150,7 +15141,7 @@
           "moves_to": {
             "type": ["string", "null"],
             "format": "date-time",
-            "description": "Its new start when it moves."
+            "description": "Its new start by the series' rule (its date moved by the series' days, at the new time), whether or not it goes there; null for started and closed sessions."
           },
           "status": { "type": "string" },
           "reason": {
@@ -15165,10 +15156,18 @@
               "conflict",
               "monthly_rule"
             ],
-            "description": "started: has started, keeps its time. closed: attended, no-show or invoiced. exception: changed on its own, keeps its time (include moves it). day_off: its new day is a day off (moved there, or cancelled when the series skips days off). outside_series: past the series' end, cancelled. request_pending: the client's request is open. conflict: the host is busy then. monthly_rule: the rule repeats on a day of the month, which cannot move by days; nothing moves."
+            "description": "started: has started, keeps its time. closed: attended, no-show or invoiced. exception: changed on its own, keeps its time (with_series moves it). day_off: its new day is a day off (moved there, or cancelled when the series skips days off). outside_series: past the series' end, cancelled. request_pending: the client's request is open. conflict: someone is busy then (see conflicts). monthly_rule: the rule repeats on a day of the month, which cannot move by days; nothing moves."
           },
-          "moves": { "type": "boolean", "description": "A warning only: it moves unless kept." },
-          "day_off": { "type": "string", "description": "The day off's name." }
+          "moves": {
+            "type": "boolean",
+            "description": "A warning only: it moves unless decided otherwise."
+          },
+          "day_off": { "type": "string", "description": "The day off's name." },
+          "conflicts": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchedulingConflict" },
+            "description": "What its new time overlaps: the host's sessions (event) and calendar busy times (busy), the client's sessions with other members (client)."
+          }
         }
       },
       "SchedulingOccurrencePatched": {

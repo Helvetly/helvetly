@@ -195,8 +195,8 @@ are the reference.
   days ahead (at most 520), extended by a daily job and expanded in the series' zone from its wall-clock start. Edits
   take a scope (`this` = an exception row, `following` = a split that keeps the rows' ids, `all`); moving a series'
   session to another day moves the series by as many days, its weekdays with it. Such a move (following or all) is previewed first (`dry_run`: run and rolled
-  back, each session that does not simply go along with its reason) and saved with the person's `keep`, `cancel` and
-  `include` choices in one transaction. A session that has started (start <= now, still open) keeps its time: a move or a new length answers 409
+  back, each session that does not simply go along with its reason) and saved with the person's `decisions` (per session: `keep`, `skip`, `move_anyway`,
+  `with_series`, `move_to:<instant>`) in one transaction; the dragged session goes where it was dropped, changed on its own or not, and each listed session carries its new time by the rule and what it overlaps (the host's sessions and calendar busy times, the client's sessions with other members). A session that has started (start <= now, still open) keeps its time: a move or a new length answers 409
   `occurrence_started`, series edits skip it, a move from a calendar is pushed back. Hosts are members,
   never employees. A counting status (attended; a late cancellation or no-show per the settings, unless waived) adds
   an engagement entry through `engagements.AddEntry` in the same transaction; without an engagement, `unit_price`

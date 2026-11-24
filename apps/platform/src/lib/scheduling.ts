@@ -100,7 +100,8 @@ export type SchedRequest = {
 }
 
 export type Conflict = {
-  kind: 'event' | 'busy' | 'outside_hours' | 'holiday'
+  /** client: the client has a session with another member then. */
+  kind: 'event' | 'busy' | 'outside_hours' | 'holiday' | 'client'
   starts_at: string
   ends_at: string
   occurrence_id?: string
@@ -222,16 +223,22 @@ export type MoveItem = {
   occurrence_id: string
   starts_at: string
   ends_at: string
+  /** Its new start by the series' rule, whether or not it goes there; null for started and closed sessions. */
   moves_to: string | null
   status: Status
   reason: MoveReason
-  /** A warning only: it moves unless kept. */
+  /** A warning only: it moves unless decided otherwise. */
   moves: boolean
   day_off?: string
+  /** What its new time overlaps. */
+  conflicts?: Conflict[]
 }
 export type MovePreview = { moving: number; sample: MoveItem[]; items: MoveItem[] }
-/** What happens to the sessions a series move lists: kept where they are, cancelled, or (changed on their own) moved too. */
-export type MoveChoices = { keep?: string[]; cancel?: string[]; include?: string[] }
+/**
+ * What happens to the sessions a series move lists, by id: keep, skip, move_anyway, with_series or
+ * `move_to:<instant>`.
+ */
+export type MoveChoices = { decisions?: Record<string, string> }
 type OccurrencePatch = Partial<EventInput> & { scope: Scope } & MoveChoices
 
 export type OccurrenceQuery = {

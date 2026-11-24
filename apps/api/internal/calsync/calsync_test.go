@@ -682,6 +682,10 @@ func TestPurge(t *testing.T) {
 	b := e.workspace(pro, "member")
 	e.connect(b, "microsoft")
 	c := e.connection(b, "microsoft")
+	for e.clock.Weekday() != time.Monday {
+		e.clock = e.clock.Add(24 * time.Hour)
+	}
+
 	if err := e.st.SaveCalendarBusy(context.Background(), c.ID, []store.BusyBlock{
 		{ExternalID: "x|old", StartsAt: e.clock.Add(-72 * time.Hour), EndsAt: e.clock.Add(-71 * time.Hour)},
 		{ExternalID: "x|new", StartsAt: e.clock.Add(time.Hour), EndsAt: e.clock.Add(2 * time.Hour)},
@@ -691,12 +695,9 @@ func TestPurge(t *testing.T) {
 	if _, err := e.raw.Exec(context.Background(), `UPDATE calendar_sources SET full_resync = false, due_at = $1`, e.clock.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	for e.clock.Weekday() != time.Monday {
-		e.clock = e.clock.Add(24 * time.Hour)
-	}
 	e.svc.PurgeTick(context.Background())
-	if e.count(`SELECT count(*) FROM calendar_busy WHERE connection_id = $1`, c.ID) != 1 {
-		t.Fatal("past busy kept")
+	if got := e.count(`SELECT count(*) FROM calendar_busy WHERE connection_id = $1`, c.ID); got != 1 {
+		t.Fatalf("expected one busy block after purge, got %d", got)
 	}
 	if e.count(`SELECT count(*) FROM calendar_sources WHERE connection_id = $1 AND busy AND full_resync`, c.ID) != 1 {
 		t.Fatal("no weekly re-baseline")
