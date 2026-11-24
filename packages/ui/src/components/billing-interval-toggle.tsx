@@ -81,7 +81,7 @@ export function BillingIntervalToggle({
                   data-slot="billing-discount"
                   className={cn(
                     'rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap transition-colors duration-300 motion-reduce:transition-none',
-                    checked ? 'bg-white/20 text-white' : 'bg-success-surface text-success',
+                    checked ? 'bg-white text-primary' : 'bg-success-surface text-success',
                   )}
                 >
                   {translate('billingYearlyDiscount', { percent: discount })}
