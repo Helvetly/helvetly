@@ -200,8 +200,11 @@ const cells = (table: HTMLElement, name: string) =>
     .getAllByRole('cell')
     .map((c) => c.textContent)
 
-/** The plan cards in order: Free, Basic, Pro, Business. */
-const card = (index: number) => screen.getAllByRole('article')[index]!
+/** The plans in order: Free's row under the cards, then the cards Basic, Pro, Business. */
+const card = (index: number) =>
+  index === 0
+    ? document.querySelector<HTMLElement>('[data-slot="free-plan"]')!
+    : screen.getAllByRole('article')[index - 1]!
 
 describe('pricing page', () => {
   beforeEach(() => {
@@ -309,16 +312,40 @@ describe('pricing page', () => {
     await renderPage(await PricingPage(english))
     const pro = card(2)
     expect(within(pro).getByText('39.25')).toBeTruthy()
-    expect(within(pro).getByText('2 people included · +CHF 12 per extra person')).toBeTruthy()
+    expect(
+      within(pro).getByText(
+        '2 people included · +CHF 15 per extra person / month, billed yearly −20%',
+      ),
+    ).toBeTruthy()
     expect(within(pro).getByText('Billed CHF 471 yearly · you save CHF 117')).toBeTruthy()
     expect(screen.getByText('Save 20% — CHF 45 a year on Basic')).toBeTruthy()
 
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
     expect(within(pro).getByText('49')).toBeTruthy()
-    expect(within(pro).getByText('2 people included · +CHF 15 per extra person')).toBeTruthy()
+    expect(
+      within(pro).getByText('2 people included · +CHF 15 per extra person / month'),
+    ).toBeTruthy()
     expect(within(pro).getByText('Billed monthly')).toBeTruthy()
     expect(window.location.search).toBe('?billing=monthly')
-    expect(within(card(0)).getByText('1 person · free forever')).toBeTruthy()
+    // Free is a small row under the three paid cards, with a few facts and no limits block.
+    expect(screen.getAllByRole('article').map((a) => a.dataset.plan)).toEqual([
+      'basic',
+      'pro',
+      'business',
+    ])
+    const free = card(0)
+    expect(within(free).getByText('CHF 0 · 1 person · no card needed')).toBeTruthy()
+    expect(
+      within(within(free).getByRole('list', { name: 'What Free includes' }))
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual([
+      '3 invoices & 3 quotes a month',
+      'Swiss QR bills',
+      '5 clients',
+      '“Sent with Helvetly” footer',
+    ])
+    expect(within(free).queryByRole('definition')).toBeNull()
   })
 
   it('compares every feature by group, with allowances in words', async () => {

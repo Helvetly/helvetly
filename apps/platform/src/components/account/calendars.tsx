@@ -1,6 +1,7 @@
 'use client'
 import { languageTag } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Combobox } from '@helvetly/ui/components/combobox'
 import {
@@ -13,13 +14,15 @@ import {
 } from '@helvetly/ui/components/dialog'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
-import { CalendarSync, RefreshCw, Unplug } from 'lucide-react'
+import { CalendarSync, Lock, RefreshCw, Unplug } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { SettingsEmpty, SettingsRow, SettingsSection } from '@/components/settings/layout'
 import { ApiError, errorMessage } from '@/lib/api'
+import { useLockedFeature } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import {
   useCalendars,
@@ -104,6 +107,8 @@ function Providers({
   providers: Provider[]
   connections: Connection[]
 }) {
+  // Free schedules sessions without Google or Microsoft calendars (the API refuses the connection).
+  const locked = useLockedFeature('calendar_sync')
   if (providers.length === 0 && connections.length === 0)
     return (
       <SettingsEmpty icon={<CalendarSync />} title={translate('schedulingSettingsNoProviders')}>
@@ -115,6 +120,18 @@ function Providers({
   )
   return (
     <div className="grid max-w-[var(--settings-form,44rem)] gap-4">
+      {locked?.plan && open.length > 0 && (
+        <Callout
+          icon={Lock}
+          actions={
+            <Button asChild size="sm" variant="outline">
+              <Link href="/settings/billing/plans">{translate('seePlans')}</Link>
+            </Button>
+          }
+        >
+          {translate('calendarSyncComesWithThePlan', { name: locked.plan.name })}
+        </Callout>
+      )}
       {connections.map((connection) => (
         <ConnectionCard key={connection.id} connection={connection} />
       ))}
@@ -127,10 +144,16 @@ function Providers({
               title={PROVIDER_NAME[provider]()}
               meta={translate('schedulingSettingsNotConnected')}
             >
-              <Button asChild size="sm" variant="outline">
-                {/* A full page load: the provider's consent screen follows. */}
-                <a href={connectHref(provider)}>{translate('schedulingSettingsConnect')}</a>
-              </Button>
+              {locked ? (
+                <Button size="sm" variant="outline" disabled>
+                  {translate('schedulingSettingsConnect')}
+                </Button>
+              ) : (
+                <Button asChild size="sm" variant="outline">
+                  {/* A full page load: the provider's consent screen follows. */}
+                  <a href={connectHref(provider)}>{translate('schedulingSettingsConnect')}</a>
+                </Button>
+              )}
             </SettingsRow>
           ))}
         </ul>

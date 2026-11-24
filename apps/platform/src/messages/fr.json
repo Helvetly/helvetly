@@ -5153,6 +5153,8 @@
   "enterAWebsiteSuchAsMusterCh": "Saisissez un site web tel que muster.ch.",
   "schedScheduling": "Planification",
   "schedFeatureName": "la planification",
+  "calendarSyncFeatureName": "la synchronisation des calendriers",
+  "calendarSyncComesWithThePlan": "La synchronisation avec Google et Microsoft est incluse dans le plan {name}. Les séances et votre flux iCal fonctionnent dans chaque plan.",
   "schedResourceDescription": "Séances avec les clients, leurs demandes et les règles de réservation",
   "schedDay": "Jour",
   "schedWeek": "Semaine",

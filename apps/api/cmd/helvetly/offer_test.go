@@ -63,7 +63,7 @@ func TestOfferCommand(t *testing.T) {
 	if _, err := run("catalog", "-offer", "nope"); err == nil {
 		t.Fatal("catalog of an unknown offer")
 	}
-	if out, err := run("validate", file); err != nil || !strings.HasPrefix(out, "valid: helvetly-v3, 73 records") {
+	if out, err := run("validate", file); err != nil || !strings.HasPrefix(out, "valid: helvetly-v3, 74 records") {
 		t.Fatalf("validate: %q %v", out, err)
 	}
 	broken := o

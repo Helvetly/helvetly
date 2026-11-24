@@ -20,7 +20,7 @@ export const FreeCurrentPlan: Story = {
     const canvas = within(canvasElement)
     const free = canvas.getByRole('region', { name: 'Free' })
     await expect(free).toHaveTextContent('Your current plan')
-    await expect(free).toHaveTextContent('1 person · free forever')
+    await expect(free).toHaveTextContent('CHF 0 · 1 person · no card needed')
     await expect(within(free).queryByRole('button')).toBeNull()
     await expect(canvas.queryByRole('article', { name: 'Free' })).toBeNull()
     await Promise.all(

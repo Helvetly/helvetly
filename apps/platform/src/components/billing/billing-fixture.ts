@@ -61,10 +61,11 @@ const business: Record<LimitKey, number | null> = {
   ai_automation_tokens_per_month: 20_000_000,
 }
 type Gated = FeatureKey | 'invoice_instalments' | 'remove_branding'
-// Gated features every plan has (Free too), then the ones Pro adds and the ones Business adds.
+// Gated features every plan has (Free too), what every paid plan adds, then the ones Pro and Business add.
 const ALL_FEATURES: Gated[] = ['expenses', 'scheduling']
+const PAID_FEATURES: Gated[] = [...ALL_FEATURES, 'calendar_sync']
 const PRO_FEATURES: Gated[] = [
-  ...ALL_FEATURES,
+  ...PAID_FEATURES,
   'api_access',
   'heidi',
   'ai_import',
@@ -81,7 +82,7 @@ const PRO_FEATURES: Gated[] = [
 ]
 const features: Record<PlanId | 'free', Gated[]> = {
   free: ALL_FEATURES,
-  basic: ALL_FEATURES,
+  basic: PAID_FEATURES,
   pro: PRO_FEATURES,
   business: [
     ...PRO_FEATURES,

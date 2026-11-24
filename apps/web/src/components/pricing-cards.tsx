@@ -2,8 +2,8 @@
 import { BillingIntervalToggle } from '@helvetly/ui/components/billing-interval-toggle'
 import { Callout } from '@helvetly/ui/components/callout'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
-import { PlanCard, PlanPrice } from '@helvetly/ui/components/plan-card'
-import { planCards, planFootnote } from '@helvetly/ui/lib/plan-features'
+import { FreePlanRow, PlanCard, PlanPrice } from '@helvetly/ui/components/plan-card'
+import { freePlanFacts, planCards, planFootnote } from '@helvetly/ui/lib/plan-features'
 import { formatPrice, savingOf } from '@helvetly/ui/lib/price'
 import { Ban, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
 
@@ -86,7 +86,10 @@ export function PricingCards() {
   const translate = translatorFor(language)
   const ui = useTranslate()
   const { planById } = plansIn(language)
-  const cards = planCards(planCatalogue(language), language)
+  const catalogue = planCatalogue(language)
+  // Free is the small row under the paid plans, not a fourth card.
+  const cards = planCards(catalogue, language).filter((card) => card.plan !== 'free')
+  const free = publishedPrices('free')
   const [interval, setInterval] = useBillingInterval()
   const currency = useCurrency()
   const offer = useOfferStatus()
@@ -140,7 +143,7 @@ export function PricingCards() {
         </Callout>
       )}
 
-      <div className="mt-10 grid w-full items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-10 grid w-full items-stretch gap-4 lg:grid-cols-3">
         {cards.map((card) => (
           <PlanCard
             key={card.plan}
@@ -155,7 +158,7 @@ export function PricingCards() {
               )
             }
             price={
-              unavailable && card.plan !== 'free' ? (
+              unavailable ? (
                 <Unavailable />
               ) : (
                 <PlanPrice
@@ -169,6 +172,16 @@ export function PricingCards() {
           />
         ))}
       </div>
+      <FreePlanRow
+        className="mt-4"
+        name={planById('free').name}
+        summary={ui('planFreeSummary', {
+          price: formatPrice({ amount: free.month, currency }),
+          count: free.included_people,
+        })}
+        facts={freePlanFacts(catalogue, language)}
+        action={<PlanCta plan="free" className="md:w-auto" />}
+      />
       <p
         data-slot="allowance-legend"
         className="mt-8 max-w-3xl text-center text-body-sm text-pretty text-muted-foreground"

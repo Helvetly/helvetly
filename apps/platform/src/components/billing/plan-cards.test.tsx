@@ -113,15 +113,14 @@ test('a card leads with its bold features, then what it adds over the plan befor
   expect(document.body.textContent).not.toContain('∞')
 })
 
-test('on Free, Free is the current plan as one compact strip with its limits and no way to choose it', () => {
+test('on Free, Free is the current plan as one compact strip with a few facts and no way to choose it', () => {
   renderCards(billing())
   const free = screen.getByRole('region', { name: 'Free' })
   expect(free).toHaveTextContent('Your current plan')
-  expect(free).toHaveTextContent('1 person · free forever')
+  expect(free).toHaveTextContent('CHF 0 · 1 person · no card needed')
   expect(within(free).queryByRole('button')).toBeNull()
-  expect(
-    within(within(free).getByLabelText('Limits')).getByText('Clients').nextSibling,
-  ).toHaveTextContent('5')
+  expect(free).toHaveTextContent('5 clients')
+  expect(within(free).queryByLabelText('Limits')).toBeNull()
   expect(screen.queryByRole('article', { name: 'Free' })).toBeNull()
 })
 

@@ -203,6 +203,12 @@
       "free": false,
       "pro": false
     },
+    "calendar_sync": {
+      "basic": true,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
     "client_portal": {
       "basic": false,
       "business": true,

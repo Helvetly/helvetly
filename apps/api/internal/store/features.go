@@ -27,6 +27,7 @@ const (
 	FeatureDocumentApprovals    = "document_approvals"
 	FeatureScheduling           = "scheduling"
 	FeatureRemoveBranding       = "remove_branding" // no "Sent with Helvetly" on client email and PDFs
+	FeatureCalendarSync         = "calendar_sync"   // Google and Microsoft calendar sync (paid plans)
 )
 
 // ErrFeatureDenied wraps a gate's refusal (the plan lacks the feature, the workspace has none, or its plan cannot be

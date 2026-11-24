@@ -2,9 +2,15 @@ import {
   type BillingInterval,
   BillingIntervalToggle,
 } from '@helvetly/ui/components/billing-interval-toggle'
-import { PlanCard, PlanPrice, type PlanPrices } from '@helvetly/ui/components/plan-card'
+import {
+  FreePlanRow,
+  PlanCard,
+  PlanPrice,
+  type PlanPrices,
+} from '@helvetly/ui/components/plan-card'
 import { PlanComparison } from '@helvetly/ui/components/plan-comparison'
 import {
+  freePlanFacts,
   PLAN_IDS,
   type PlanCatalogue,
   planCards,
@@ -40,6 +46,7 @@ const CHEAPEST: Partial<Record<string, PlanId>> = {
   ledger_exports: 'pro',
   data_export: 'pro',
   remove_branding: 'pro',
+  calendar_sync: 'basic',
   client_portal: 'business',
   custom_portal_domain: 'business',
   einvoice_xml: 'business',
@@ -121,30 +128,46 @@ function CardsView() {
   return (
     <div className="grid gap-8">
       <BillingIntervalToggle value={interval} onValueChange={setInterval} className="mx-auto" />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {planCards(OFFER, 'en').map((card) => (
-          <PlanCard
-            key={card.plan}
-            data={card}
-            featured={card.plan === 'pro'}
-            price={<PlanPrice prices={PRICES[card.plan]} interval={interval} currency="chf" />}
-            cta={button(card.plan === 'free' ? 'Start free' : `Choose ${card.name}`)}
-          />
-        ))}
+      <div className="grid gap-4">
+        <div className="grid gap-4 lg:grid-cols-3">
+          {planCards(OFFER, 'en')
+            .filter((card) => card.plan !== 'free')
+            .map((card) => (
+              <PlanCard
+                key={card.plan}
+                data={card}
+                featured={card.plan === 'pro'}
+                price={<PlanPrice prices={PRICES[card.plan]} interval={interval} currency="chf" />}
+                cta={button(`Choose ${card.name}`)}
+              />
+            ))}
+        </div>
+        <FreePlanRow
+          name="Free"
+          summary="CHF 0 · 1 person · no card needed"
+          facts={freePlanFacts(OFFER, 'en')}
+          action={button('Start free')}
+        />
       </div>
     </div>
   )
 }
 
-/** The four cards: lead features in bold, the rest by group, the limits, and prices that follow the toggle. */
+/** The three paid cards and Free's row under them: lead features in bold, the rest by group, the limits, and prices that follow the toggle. */
 export const Cards: Story = {
   render: () => <CardsView />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const [free, basic, pro, business] = canvas.getAllByRole('article')
-    if (!free || !basic || !pro || !business) throw new Error('four plan cards expected')
-    await expect(within(free).getByText('1 person · free forever')).toBeVisible()
-    await expect(within(free).getByText('No card needed')).toBeVisible()
+    const [basic, pro, business, more] = canvas.getAllByRole('article')
+    if (!basic || !pro || !business || more) throw new Error('three paid plan cards expected')
+    const free = canvas.getByRole('region', { name: 'Free' })
+    await expect(within(free).getByText('CHF 0 · 1 person · no card needed')).toBeVisible()
+    await expect(within(free).getByText('3 invoices & 3 quotes a month')).toBeVisible()
+    await expect(
+      within(pro).getByText(
+        '2 people included · +CHF 15 per extra person / month, billed yearly −20%',
+      ),
+    ).toBeVisible()
     await expect(within(basic).getByText('Everything in Free, with more room:')).toBeVisible()
     await expect(within(pro).getByText('39.25')).toBeVisible()
     await expect(within(pro).getByText('Billed CHF 471 yearly · you save CHF 117')).toBeVisible()
@@ -157,7 +180,7 @@ export const Cards: Story = {
     await userEvent.click(canvas.getByRole('radio', { name: 'Monthly' }))
     await expect(within(pro).getByText('49')).toBeVisible()
     await expect(
-      within(pro).getByText('2 people included · +CHF 15 per extra person'),
+      within(pro).getByText('2 people included · +CHF 15 per extra person / month'),
     ).toBeVisible()
   },
 }

@@ -177,7 +177,7 @@ const ROWS: RowDef[] = [
     group: 'run_your_day',
     label: 'planRowCalendarSync',
     hint: 'planHintCalendarSync',
-    features: ['scheduling'],
+    features: ['scheduling', 'calendar_sync'],
   },
   {
     key: 'expenses',
@@ -597,6 +597,24 @@ export function planComparison(offer: PlanCatalogue, language: Locale): Comparis
       },
     })),
   }))
+}
+
+/**
+ * Free's few facts for its compact row under the paid plans: "3 invoices & 3 quotes a month", "Swiss QR bills",
+ * "5 clients", "“Sent with Helvetly” footer". The full list is the comparison's Free column.
+ */
+export function freePlanFacts(offer: PlanCatalogue, language: Locale): string[] {
+  const translate = translatorFor(language)
+  const value = (limit: PlanLimit) => planAllowance(offer, limit, 'free', language)?.value ?? 0
+  return [
+    translate('planFreeFactInvoicesQuotes', {
+      invoices: value('invoices_per_month'),
+      quotes: value('quotes_per_month'),
+    }),
+    translate('planFreeFactSwissQR'),
+    translate('planFreeFactClients', { count: value('clients') }),
+    translate('planFreeFactBranding'),
+  ]
 }
 
 /** The note under the plans: what the per-person amounts mean, and that clients use the portal for free. */

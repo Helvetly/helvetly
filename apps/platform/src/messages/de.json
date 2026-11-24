@@ -5153,6 +5153,8 @@
   "enterAWebsiteSuchAsMusterCh": "Geben Sie eine Website wie muster.ch ein.",
   "schedScheduling": "Termine",
   "schedFeatureName": "Termine",
+  "calendarSyncFeatureName": "Kalender-Sync",
+  "calendarSyncComesWithThePlan": "Der Kalender-Sync mit Google und Microsoft gehört zum Plan {name}. Termine und dein iCal-Feed funktionieren in jedem Plan.",
   "schedResourceDescription": "Termine mit Kunden, ihre Anfragen und die Buchungsregeln",
   "schedDay": "Tag",
   "schedWeek": "Woche",

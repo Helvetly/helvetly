@@ -114,6 +114,7 @@ export const OFFER_FEATURES = {
   engagement_management: 'free',
   expenses: 'free',
   scheduling: 'free',
+  calendar_sync: 'basic',
   document_library: 'free',
   recipient_document_access: 'free',
   dashboard_reports: 'free',

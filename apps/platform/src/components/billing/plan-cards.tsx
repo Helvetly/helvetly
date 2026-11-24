@@ -8,10 +8,16 @@ import {
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { useTranslate } from '@helvetly/ui/components/language-provider'
-import { PlanCard, PlanPrice, type PlanPrices } from '@helvetly/ui/components/plan-card'
+import {
+  FreePlanRow,
+  PlanCard,
+  PlanPrice,
+  type PlanPrices,
+} from '@helvetly/ui/components/plan-card'
 import { PlanComparison } from '@helvetly/ui/components/plan-comparison'
 import { formatDate } from '@helvetly/ui/lib/format'
 import {
+  freePlanFacts,
   planCards,
   planComparison,
   planFootnote,
@@ -277,7 +283,9 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer: PublicO
 
       {/* The page's heading is an h1 and the cards' names are h3s. */}
       <h2 className="sr-only">{translate('plans')}</h2>
-      {billing.plan === 'free' && free && <FreeStrip card={free} />}
+      {billing.plan === 'free' && free && (
+        <FreeStrip card={free} catalogue={catalogue} currency={billing.currency} />
+      )}
 
       <div className="grid items-stretch gap-4 md:grid-cols-3">
         {billing.plans.map((plan) => {
@@ -399,42 +407,29 @@ function headPrice(id: string, billing: Billing, interval: BillingInterval): str
   return `${formatPrice(interval === 'year' ? monthOf(price) : price)} / ${translate('dynamicMonth')}`
 }
 
-/** Free while the workspace is on it: one compact row with what it includes, no way to choose it. */
-function FreeStrip({ card }: { card: PlanCardData }) {
+/** Free while the workspace is on it: the shared compact row with its few facts, no way to choose it. */
+function FreeStrip({
+  card,
+  catalogue,
+  currency,
+}: {
+  card: PlanCardData
+  catalogue: PlanCatalogue
+  currency: string
+}) {
   const ui = useTranslate()
   return (
-    <section
-      aria-labelledby="plan-free-current"
-      data-slot="free-plan"
-      data-current
-      className="grid gap-4 rounded-2xl border bg-card px-5 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-8"
-    >
-      <div className="grid min-w-0 gap-1">
-        <p className="flex flex-wrap items-center gap-2">
-          <span id="plan-free-current" className="text-title-sm font-semibold">
-            {card.name}
-          </span>
-          <Badge tone="blue" size="sm">
-            <Check className="size-3" aria-hidden />
-            {translate('yourCurrentPlan')}
-          </Badge>
-        </p>
-        <p className="text-body-sm text-pretty text-muted-foreground">
-          {ui('planFreeForever', { count: 1 })} · {translate('upgradeAnyTimeNothingIsLost')}
-        </p>
-      </div>
-      <dl
-        aria-label={ui('planLimitsTitle')}
-        className="grid grid-cols-2 gap-x-5 gap-y-1 text-body-sm sm:grid-cols-4"
-      >
-        {card.limits.map((limit) => (
-          <div key={limit.key} className="flex items-baseline justify-between gap-2">
-            <dt className="text-muted-foreground">{limit.label}</dt>
-            <dd className="font-medium tabular-nums">{limit.amount}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+    <FreePlanRow
+      name={card.name}
+      summary={`${ui('planFreeSummary', { price: formatPrice({ amount: 0, currency }), count: 1 })} · ${translate('upgradeAnyTimeNothingIsLost')}`}
+      facts={freePlanFacts(catalogue, locale)}
+      badge={
+        <Badge tone="blue" size="sm">
+          <Check className="size-3" aria-hidden />
+          {translate('yourCurrentPlan')}
+        </Badge>
+      }
+    />
   )
 }
 

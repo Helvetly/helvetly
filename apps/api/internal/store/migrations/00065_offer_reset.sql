@@ -2,8 +2,9 @@
 -- helvetly-v1 … helvetly-v1.5. It adds the Free plan (no subscription, never expires: a workspace without a paid plan
 -- after its trial is on Free, its additions above Free's limits refused, nothing deleted), tiered prices (a plan's
 -- price covers its included people, each further person costs extra; per-person limits grow with max(paid people,
--- included people)), expenses and scheduling on Basic, a 14-day Pro trial and remove_branding (no "Sent with
--- Helvetly" on client email and PDFs: Pro and Business).
+-- included people)), expenses and scheduling on Basic, a 14-day Pro trial, remove_branding (no "Sent with
+-- Helvetly" on client email and PDFs: Pro and Business) and calendar_sync (Google and Microsoft calendars: every paid
+-- plan, not Free).
 -- Every workspace, checkout and override on an earlier offer moves to helvetly-v1 with its plan and subscription as
 -- they are (a subscription keeps its Stripe price until `helvetly billing reprice` moves it); an override on another
 -- offer than the workspace's own is dropped, as it applied to nothing. Safe to run again: each step converges.
@@ -15,6 +16,12 @@ ALTER TABLE limit_plans ADD CONSTRAINT limit_plans_plan_id_check CHECK (plan_id 
 INSERT INTO limits (key, kind, unit, scope, period, requires_features, allow_unlimited, position, description)
 SELECT 'remove_branding', 'access', 'boolean', 'workspace', NULL, '{}'::text[], true, max(position) + 1,
     'No "Sent with Helvetly" on client email and PDFs'
+FROM limits
+ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO limits (key, kind, unit, scope, period, requires_features, allow_unlimited, position, description)
+SELECT 'calendar_sync', 'access', 'boolean', 'workspace', NULL, '{scheduling}'::text[], true, max(position) + 1,
+    'Google and Microsoft calendar sync'
 FROM limits
 ON CONFLICT (key) DO NOTHING;
 
@@ -33,7 +40,7 @@ DELETE FROM limit_plans;
 DELETE FROM offer_versions WHERE id <> 'helvetly-v1';
 -- Its checksum is Offer.Checksum of this document (billing's TestOfferResetMigration checks it).
 INSERT INTO offer_versions (id, schema_version, checksum, published_at, document) VALUES
-('helvetly-v1', 1, 'af624cd9681b4edb5adf73fff0923e02ce6b419d9efc355775837ca5f6098bdf', now(), '{
+('helvetly-v1', 1, 'ccdbb2c996dafb353d3d6b28b33ca785e22dbf6a63ad01717c55ffab95c477c2', now(), '{
   "schema_version": 1,
   "offer_id": "helvetly-v1",
   "billing": {
@@ -1932,6 +1939,30 @@ INSERT INTO offer_versions (id, schema_version, checksum, published_at, document
           "state": "enabled"
         }
       }
+    },
+    {
+      "key": "calendar_sync",
+      "type": "access",
+      "unit": "boolean",
+      "scope": "workspace",
+      "period": null,
+      "values": {
+        "basic": {
+          "state": "enabled"
+        },
+        "business": {
+          "state": "enabled"
+        },
+        "free": {
+          "state": "disabled"
+        },
+        "pro": {
+          "state": "enabled"
+        }
+      },
+      "requires_features": [
+        "scheduling"
+      ]
     }
   ],
   "usage_policy": {
@@ -2155,12 +2186,12 @@ SELECT 'migration 00065', 'offer.reset', id, NULL, jsonb_build_object('offer_id'
 FROM offer_versions WHERE id = 'helvetly-v1';
 
 -- +goose Down
--- The earlier offers are not brought back (none had a customer); Free's values and remove_branding go, so the
+-- The earlier offers are not brought back (none had a customer); Free's values, remove_branding and calendar_sync go, so the
 -- earlier migrations' Down steps find what they expect.
 ALTER TABLE limit_plans DISABLE TRIGGER limit_plans_immutable;
-DELETE FROM limit_plans WHERE plan_id = 'free' OR limit_key = 'remove_branding';
+DELETE FROM limit_plans WHERE plan_id = 'free' OR limit_key IN ('remove_branding', 'calendar_sync');
 ALTER TABLE limit_plans ENABLE TRIGGER limit_plans_immutable;
-DELETE FROM limit_workspaces WHERE limit_key = 'remove_branding';
-DELETE FROM limits WHERE key = 'remove_branding';
+DELETE FROM limit_workspaces WHERE limit_key IN ('remove_branding', 'calendar_sync');
+DELETE FROM limits WHERE key IN ('remove_branding', 'calendar_sync');
 ALTER TABLE limit_plans DROP CONSTRAINT limit_plans_plan_id_check;
 ALTER TABLE limit_plans ADD CONSTRAINT limit_plans_plan_id_check CHECK (plan_id IN ('basic', 'pro', 'business'));

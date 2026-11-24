@@ -17,8 +17,9 @@ import (
 type Feature string
 
 const (
-	APIAccess  Feature = "api_access"            // creating personal API tokens (the REST API and MCP)
-	Scheduling Feature = store.FeatureScheduling // sessions with clients, calendar sync and portal booking
+	APIAccess    Feature = "api_access"              // creating personal API tokens (the REST API and MCP)
+	Scheduling   Feature = store.FeatureScheduling   // sessions with clients, booking links and the iCal feed
+	CalendarSync Feature = store.FeatureCalendarSync // Google and Microsoft calendar sync
 )
 
 // featureNames name features in messages; one without a name reads as its key.
@@ -42,6 +43,7 @@ var featureNames = map[Feature]string{
 	store.FeatureEmployees:            "the Employees module",
 	store.FeatureCustomPortalDomain:   "the client portal on your own domain",
 	Scheduling:                        "scheduling",
+	CalendarSync:                      "calendar sync",
 }
 
 func featureName(f Feature) string {

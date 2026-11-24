@@ -228,8 +228,9 @@ func (s *Service) own(ctx context.Context, sess store.Session, id string) (store
 	return c, err
 }
 
+// requireFeature: Google and Microsoft calendars are a paid feature; the iCal feed comes with scheduling.
 func (s *Service) requireFeature(ctx context.Context, workspaceID string) error {
-	return s.db.RequireFeature(ctx, workspaceID, store.FeatureScheduling)
+	return s.db.RequireFeature(ctx, workspaceID, store.FeatureCalendarSync)
 }
 
 func (s *Service) patch(w http.ResponseWriter, r *http.Request, sess store.Session) error {

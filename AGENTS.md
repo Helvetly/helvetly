@@ -206,8 +206,8 @@ are the reference.
   get no attendees. Reminders are claimed once per (occurrence, offset, audience) in `scheduling_reminders`. Client
   bookings re-check the slot under a per-host advisory lock (409 `slot_taken`); staff may double-book (conflicts are
   a warning), but a one-off on (or a move onto) a day off needs `allow_day_off` (409 `day_off` naming it; series skip per `skip_holidays`), and the calendar shows days off. Booking links for new clients exist only once a member makes one (expiry or none, revocable); a booking
-  through one creates the client. Calendar sync (Google, Microsoft; each pair of settings both or neither) is per
-  workspace and member: tokens sealed (HKDF of `SECRET_KEY`, AAD workspace + connection + field), each occurrence
+  through one creates the client. Calendar sync (Google, Microsoft; each pair of settings both or neither; feature `calendar_sync`,
+  every paid plan, not Free, whose sessions keep the iCal feed) is per workspace and member: tokens sealed (HKDF of `SECRET_KEY`, AAD workspace + connection + field), each occurrence
   pushed as its own event through `calendar_push_queue`, busy times imported without titles, a move outside applied as
   the host's `this` reschedule (`MoveFromCalendar`), a delete outside only detaches. Webhooks on `PUBLIC_URL` (https
   only; else polling every 15 min). Each member has a private iCal feed (token hashed, rotatable). A deleted client's

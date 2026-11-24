@@ -3,7 +3,13 @@
 import type { BillingInterval } from '@helvetly/ui/components/billing-interval-toggle'
 import { useTranslate } from '@helvetly/ui/components/language-provider'
 import type { PlanCardData } from '@helvetly/ui/lib/plan-features'
-import { formatAmount, formatPrice, monthOf, type Price } from '@helvetly/ui/lib/price'
+import {
+  formatAmount,
+  formatPrice,
+  monthOf,
+  type Price,
+  YEARLY_DISCOUNT_PERCENT,
+} from '@helvetly/ui/lib/price'
 import { cn } from '@helvetly/ui/lib/utils'
 import { Check } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -18,8 +24,9 @@ export type PlanPrices = {
 }
 
 /**
- * A plan's price: "CHF 49 / month", then "2 people included · +CHF 15 per extra person" and how it is billed; yearly
- * shows the month's share of the year and what the year saves. Free: "CHF 0" and "1 person · free forever". The
+ * A plan's price: "CHF 49 / month", then "2 people included · +CHF 15 per extra person / month" and how it is billed;
+ * yearly shows the month's share of the year and what the year saves, the extra person still at its monthly price with
+ * ", billed yearly −20%". Free: "CHF 0" and "1 person · free forever". The
  * figure crossfades when the interval changes (not with reduced motion).
  */
 export function PlanPrice({
@@ -36,7 +43,8 @@ export function PlanPrice({
   const free = prices.month === 0
   const yearly = interval === 'year' && !free
   const month = yearly ? monthOf(price(prices.year)) : price(prices.month)
-  const extra = yearly ? monthOf(price(prices.extra_person_year)) : price(prices.extra_person_month)
+  // An extra person reads as its monthly price either way; yearly adds the discount, never a second figure.
+  const extra = price(prices.extra_person_month)
   return (
     <div data-slot="plan-price">
       <p className="flex items-baseline gap-1.5">
@@ -57,6 +65,8 @@ export function PlanPrice({
           : translate('planPeopleIncluded', {
               count: prices.included_people,
               extra: formatPrice(extra),
+              yearly: String(yearly),
+              percent: YEARLY_DISCOUNT_PERCENT,
             })}
       </p>
       <p className="mt-0.5 min-h-[18px] text-body-sm text-muted-foreground">
@@ -161,5 +171,60 @@ export function PlanCard({
         ))}
       </dl>
     </article>
+  )
+}
+
+/**
+ * Free as one calm row under the paid plans (stacked on phones): its name and "CHF 0 · 1 person · no card needed",
+ * a few facts inline and one action (or a badge such as "Your current plan").
+ */
+export function FreePlanRow({
+  name,
+  summary,
+  facts,
+  badge,
+  action,
+  className,
+}: {
+  name: string
+  summary: string
+  facts: string[]
+  badge?: ReactNode
+  action?: ReactNode
+  className?: string
+}) {
+  const translate = useTranslate()
+  return (
+    <section
+      aria-labelledby="plan-free"
+      data-slot="free-plan"
+      data-plan="free"
+      className={cn(
+        'grid w-full gap-3 rounded-2xl border bg-card px-5 py-4 text-left md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-6',
+        className,
+      )}
+    >
+      <div className="grid gap-0.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 id="plan-free" className="text-title-sm font-semibold">
+            {name}
+          </h3>
+          {badge}
+        </div>
+        <p className="text-body-sm text-muted-foreground tabular-nums">{summary}</p>
+      </div>
+      <ul
+        aria-label={translate('planFreeFactsLabel')}
+        className="flex flex-wrap gap-x-4 gap-y-1.5 text-body-sm text-muted-foreground"
+      >
+        {facts.map((fact) => (
+          <li key={fact} className="flex items-center gap-1.5">
+            <Check aria-hidden className="size-3.5 shrink-0 text-success" />
+            {fact}
+          </li>
+        ))}
+      </ul>
+      {action && <div className="md:justify-self-end">{action}</div>}
+    </section>
   )
 }
