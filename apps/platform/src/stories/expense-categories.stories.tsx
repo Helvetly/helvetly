@@ -227,6 +227,10 @@ export const Create: Story = {
     await userEvent.type(name, 'Coworking')
     await userEvent.click(within(form).getByRole('button', { name: /Group/ }))
     await userEvent.click(await body().findByRole('option', { name: 'Premises & equipment' }))
+    // The group list must be gone first: a click while it is still closing does not open the next one (slow CI).
+    await waitFor(() =>
+      expect(body().queryByRole('option', { name: 'Premises & equipment' })).toBeNull(),
+    )
     await userEvent.click(within(form).getByRole('button', { name: /^Account code/ }))
     await expect(await body().findByRole('option', { name: /6000 · Rent/ })).toBeVisible()
     await expect(body().queryByRole('option', { name: /6640/ })).toBeNull()
