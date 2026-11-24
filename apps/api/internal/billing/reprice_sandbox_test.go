@@ -37,12 +37,16 @@ func TestRepriceInTheStripeSandbox(t *testing.T) {
 	run := fmt.Sprint("reprice-test-", time.Now().Unix())
 	var product obj
 	call(http.MethodPost, "/v1/products", url.Values{"name": {"Helvetly reprice test " + run}}, &product)
-	t.Cleanup(func() { _ = sc.Call(ctx, http.MethodPost, "/v1/products/"+product.ID, url.Values{"active": {"false"}}, "", nil) })
+	t.Cleanup(func() {
+		_ = sc.Call(ctx, http.MethodPost, "/v1/products/"+product.ID, url.Values{"active": {"false"}}, "", nil)
+	})
 	var flat obj
 	call(http.MethodPost, "/v1/prices", url.Values{"product": {product.ID}, "currency": {"chf"}, "unit_amount": {"9900"},
 		"recurring[interval]": {"month"}, "tax_behavior": {"inclusive"}, "metadata[helvetly_plan]": {Business},
 		"metadata[helvetly_interval]": {"month"}, "metadata[" + PricingKey + "]": {PerSeat}}, &flat)
-	t.Cleanup(func() { _ = sc.Call(ctx, http.MethodPost, "/v1/prices/"+flat.ID, url.Values{"active": {"false"}}, "", nil) })
+	t.Cleanup(func() {
+		_ = sc.Call(ctx, http.MethodPost, "/v1/prices/"+flat.ID, url.Values{"active": {"false"}}, "", nil)
+	})
 
 	lookup := LookupKey(currentOffer, Business, "month")
 	var found list[price]
