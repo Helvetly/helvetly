@@ -32,15 +32,17 @@ export function selectChecks(paths) {
 }
 
 export function detectChecks(eventName, event, sha, cwd = process.cwd(), baseVerified = false) {
-  // A push to main is scoped against the previous main commit only when that commit's own CI run
-  // passed: unchanged areas were verified there. Otherwise (a failed, cancelled or still running
-  // predecessor, a force push), and for ready_for_review, dispatch and merge groups, run everything.
+  // A push to main or a merge group is scoped against the main commit it builds on only when that
+  // commit's own CI run passed: unchanged areas were verified there. Otherwise (a failed, cancelled or
+  // still running base, a force push), and for ready_for_review and dispatch, run everything.
   const base =
     eventName === 'pull_request' && event.action !== 'ready_for_review'
       ? event.pull_request?.base?.sha
       : eventName === 'push' && baseVerified && !event.forced
         ? event.before
-        : undefined
+        : eventName === 'merge_group' && baseVerified
+          ? event.merge_group?.base_sha
+          : undefined
   if (![base, sha].every((value) => /^[a-f0-9]{40}$/.test(value ?? ''))) return { ...full }
   if (/^0+$/.test(base)) return { ...full }
   try {
@@ -65,19 +67,25 @@ export function detectChecks(eventName, event, sha, cwd = process.cwd(), baseVer
   }
 }
 
-// Whether the CI run of a previous main commit succeeded. Any doubt (no run, API error) is a no.
-export async function pushRunPassed(repository, sha, token, request = fetch) {
+// Whether the CI run of a main commit succeeded: its push run, or the merge group run that made it
+// (a queued squash fast-forwards main to the group's commit). Any doubt (no run, API error) is a no.
+export async function baseRunPassed(repository, sha, token, request = fetch) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? '') || !/^[a-f0-9]{40}$/.test(sha ?? '') || !token)
     return false
   try {
     const response = await request(
-      `https://api.github.com/repos/${repository}/actions/workflows/ci.yml/runs?event=push&head_sha=${sha}&per_page=20`,
+      `https://api.github.com/repos/${repository}/actions/workflows/ci.yml/runs?head_sha=${sha}&per_page=20`,
       { headers: { accept: 'application/vnd.github+json', authorization: `Bearer ${token}` } },
     )
     if (!response.ok) return false
     const { workflow_runs: runs } = await response.json()
     // A run's conclusion is that of its latest attempt, so a passed run later rerun and failed is no.
-    return Array.isArray(runs) && runs.some((run) => run.conclusion === 'success')
+    return (
+      Array.isArray(runs) &&
+      runs.some(
+        (run) => ['push', 'merge_group'].includes(run.event) && run.conclusion === 'success',
+      )
+    )
   } catch {
     return false
   }
@@ -122,9 +130,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     try {
       const eventName = process.env.GITHUB_EVENT_NAME
       const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'))
+      const baseSha =
+        eventName === 'push'
+          ? event.before
+          : eventName === 'merge_group'
+            ? event.merge_group?.base_sha
+            : undefined
       const baseVerified =
-        eventName === 'push' &&
-        (await pushRunPassed(process.env.GITHUB_REPOSITORY, event.before, process.env.GITHUB_TOKEN))
+        baseSha !== undefined &&
+        (await baseRunPassed(process.env.GITHUB_REPOSITORY, baseSha, process.env.GITHUB_TOKEN))
       checks = detectChecks(eventName, event, process.env.GITHUB_SHA, process.cwd(), baseVerified)
     } catch {
       console.error('Event could not be read; selecting all checks.')
