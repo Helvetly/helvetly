@@ -59,6 +59,8 @@ services:
       - --skip-update
       - --api-key=${STRIPE_SECRET_KEY:-}
       - --forward-to=host.docker.internal:${API_PORT:-3333}/api/webhooks/stripe
+      # The API answers 404 to a host it does not know; send its own.
+      - '--headers=Host: localhost:${API_PORT:-3333}'
     extra_hosts:
       - host.docker.internal:host-gateway
     restart: 'no'
