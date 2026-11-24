@@ -203,7 +203,7 @@ export const ButtonMatrix: Story = {
   },
 }
 
-/** Soft status tints (a session's Attended, No-show, Cancel): pastel, no shadow; aria-disabled ones turn muted. */
+/** Soft status tints (a session's Attended, No-show, Cancel): pastel, no shadow; aria-disabled ones fade like disabled buttons. */
 export const SoftStatusVariants: Story = {
   render: () => (
     <div className="flex flex-wrap gap-3">
@@ -231,11 +231,10 @@ export const SoftStatusVariants: Story = {
       getComputedStyle(canvas.getByRole('button', { name })).backgroundColor
     const tints = new Set([colour('Attended'), colour('No-show'), colour('Cancel session')])
     await expect(tints.size).toBe(3)
-    // Muted while it cannot run, not the green tint at half strength.
-    await expect(colour('Not yet')).not.toBe(colour('Attended'))
-    await expect(getComputedStyle(canvas.getByRole('button', { name: 'Not yet' })).cursor).toBe(
-      'not-allowed',
-    )
+    const disabled = getComputedStyle(canvas.getByRole('button', { name: 'Not yet' }))
+    await expect(disabled.backgroundColor).toBe(colour('Attended'))
+    await expect(disabled.opacity).toBe('0.5')
+    await expect(disabled.cursor).toBe('not-allowed')
   },
 }
 
