@@ -33,6 +33,23 @@ describe('WebMCP tools', () => {
     expect(result).toMatchObject({ plans: expect.any(Array) })
     const pro = projectPlans().plans.find((plan) => plan.id === 'pro')
     expect(JSON.stringify(result)).toContain(`"monthly":${(pro?.prices.CHF?.month ?? 0) / 100}`)
+    expect(result).toMatchObject({
+      plans: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'pro',
+          max_people: 25,
+          prices: expect.objectContaining({
+            CHF: {
+              monthly: 49,
+              yearly: 471,
+              included_people: 2,
+              extra_person_monthly: 15,
+              extra_person_yearly: 144,
+            },
+          }),
+        }),
+      ]),
+    })
   })
 
   it.each([

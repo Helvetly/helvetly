@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { perLanguage } from '@/lib/i18n'
-import { type Plan, type PlanId, plansIn, priceOf } from '@/lib/plans'
+import { type Plan, type PlanId, plansIn, SELF_SERVICE_SEATS, totalOf } from '@/lib/plans'
 import type { Tone } from '@/lib/tones'
 
 // Side-by-side comparisons with other business software used in Switzerland. What each competitor offers comes from its
@@ -70,7 +70,7 @@ export type Competitor = {
   rows: Record<RowKey, Cell>
 }
 
-const year = (p: Plan, people: number) => (priceOf(p, 'year').amount / 100) * people
+const year = (p: Plan, people: number) => totalOf(p, 'year', people).amount / 100
 
 /** The comparisons with other Swiss business software, in one language. */
 export const compareIn = perLanguage((translate, language) => {
@@ -133,13 +133,21 @@ export const compareIn = perLanguage((translate, language) => {
     const p = planById(id)
     return translate('chf', { name: p.name, value2: count(year(p, 1)), value3: count(year(p, 3)) })
   }
-  const monthly = (id: PlanId) =>
-    translate('offerMonthlyPrice', { name: planById(id).name, amount: count(planById(id).monthly) })
+  const monthly = (id: PlanId) => {
+    const p = planById(id)
+    return translate('planMonthlyWithPeopleIncluded', {
+      name: p.name,
+      amount: count(p.monthly),
+      people: p.includedPeople,
+      extra: count(p.extraMonthly),
+    })
+  }
 
   /** Helvetly's side of every comparison. */
   const OURS: Record<RowKey, Cell> = {
     madeFor: translate('swissCompaniesOfAnySizeAloneOrAsA'),
-    price: translate('perPersonMonthInclVATHeidiExpensesAndThe', {
+    price: translate('freeForOnePersonThenPlansInclVAT', {
+      free: planById('free').name,
       value1: monthly('basic'),
       value2: monthly('pro'),
       value3: monthly('business'),
@@ -149,8 +157,11 @@ export const compareIn = perLanguage((translate, language) => {
       value2: yearly('basic'),
       value3: yearly('business'),
     }),
-    pricingModel: translate('threePlansByFeaturesAndAllowancesEveryTeamMember'),
-    teamRoles: translate('ownerAdminsAndMembersInEveryPlanEachOne'),
+    pricingModel: translate('aFreePlanThenThreePlansWithPeopleIncluded'),
+    teamRoles: translate('ownerAdminsAndMembersUpToPeoplePerPlan', {
+      basic: SELF_SERVICE_SEATS.basic,
+      pro: SELF_SERVICE_SEATS.pro,
+    }),
     documentTypes: translate('invoicePartialPrepaymentProformaAndSelfBilledCreditNote', {
       value1: plansWith('corrections_vat'),
     }),
@@ -172,7 +183,7 @@ export const compareIn = perLanguage((translate, language) => {
     einvoices: translate('xrechnungPeppolBISKSeFAndEFacturaXMLFiles', {
       value1: plansWith('einvoice_xml'),
     }),
-    expenses: translate('with', { value1: plansWith('expenses') }),
+    expenses: translate('includedInEveryPlan'),
     vatReturn: translate('withEffectiveAndNetTaxRateAsTheECH', {
       value1: plansWith('corrections_vat'),
     }),
@@ -220,7 +231,6 @@ export const compareIn = perLanguage((translate, language) => {
         translate('wantAnAssistantBuiltInWithNoAIAccount'),
       ],
       theirsIf: [
-        translate('sendOnlyAFewInvoicesAYearAndWant'),
         translate('wantOnePriceHoweverManyPeopleWorkInIt'),
         translate('needNativePhoneAndDesktopApps'),
         translate('wantYourBankFeedMatchedToInvoicesAutomatically'),
@@ -276,7 +286,7 @@ export const compareIn = perLanguage((translate, language) => {
         translate('sendContractsForSignatureAndShareDocumentsInA'),
         translate('billRetainersAndNeedToSeeTheHoursLeft'),
         translate('wantInstalmentPlansWithAQRBillForEach'),
-        translate('preferOnePricePerPersonToTiersWithA'),
+        translate('wantToStartFreeAndAddPeopleOneAtATime'),
       ],
       theirsIf: [
         translate('needFullBookkeepingAndAnnualFinancialStatementsInThe'),
@@ -334,7 +344,7 @@ export const compareIn = perLanguage((translate, language) => {
         translate('sendContractsForSignatureAndShareDocumentsInA'),
         translate('billRetainersAndNeedToSeeTheHoursLeft'),
         translate('wantInstalmentPlansWithAQRBillForEach'),
-        translate('preferOneSimplePricePerPersonToPackagesAnd'),
+        translate('preferFourClearPlansToPackagesAndPerUseAddOns'),
       ],
       theirsIf: [
         translate('wantAccountingPayrollAndInvoicingFromOneSwissVendor'),
@@ -454,7 +464,6 @@ export const compareIn = perLanguage((translate, language) => {
       ],
       theirsIf: [
         translate('wantFullDoubleEntryBookkeepingWithYearEndClosing'),
-        translate('needAFreePlanForASingleUser'),
         translate('runPayrollForAFewEmployeesAlongsideTheBooks'),
         translate('manageSeveralClientCompaniesAsAFiduciary'),
       ],
@@ -508,7 +517,7 @@ export const compareIn = perLanguage((translate, language) => {
         translate('billRetainersAndNeedToSeeTheHoursLeft'),
         translate('wantTheECH0217FileToImportYourVAT'),
         translate('needATamperEvidentAuditLogOfEveryFinancial'),
-        translate('preferOnePricePerPersonToTiersLimitedBy'),
+        translate('preferMonthlyAllowancesToTiersLimitedByDocumentsAYear'),
       ],
       theirsIf: [
         translate('wantAFreePlanThatIncludesAccountingAndPayroll'),
@@ -717,12 +726,7 @@ export const compareIn = perLanguage((translate, language) => {
         translate('wantInstalmentPlansWithAQRBillForEach'),
         translate('cmpWantPricesInCHF'),
       ],
-      theirsIf: [
-        translate('zbOtherZohoApps'),
-        translate('zbFreePlan'),
-        translate('zbInventory'),
-        translate('zbNativeApps'),
-      ],
+      theirsIf: [translate('zbOtherZohoApps'), translate('zbInventory'), translate('zbNativeApps')],
       rows: {
         madeFor: translate('zbMadeFor'),
         price: translate('zbPrice'),

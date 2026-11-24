@@ -8,6 +8,7 @@ import { compareIn } from '@/lib/compare'
 import { readCollection } from '@/lib/content'
 import { translatorFor } from '@/lib/i18n'
 import { llmsTxt } from '@/lib/llms'
+import { TRIAL } from '@/lib/plans'
 
 // apps/web, wherever the tests run (apps/web or the repository root), as lib/content.ts finds it.
 const web = existsSync(join(process.cwd(), 'apps/web'))
@@ -26,6 +27,16 @@ describe('llms.txt', () => {
       expect(text).toContain(`https://www.helvetly.com${localizedHref('/', language)}`)
       expect(text).toContain(translatorFor(language)('metaHomeDescription'))
     }
+  })
+
+  it('states the tiered prices, the Free plan and the trial', () => {
+    expect(text).toContain('Free: free forever for 1 person')
+    expect(text).toContain(
+      'Pro: CHF 49 a month (CHF 471 a year) for 2 people, CHF 15 (CHF 144 a year) per extra person, up to 25 people',
+    )
+    expect(text).toContain('Business: CHF 149 a month')
+    expect(text).toContain(`free for ${TRIAL.days} days`)
+    expect(text).not.toMatch(/per person and month|7-day/)
   })
 
   it('follows llmstxt.org: one H1, a summary quote, then link lists', () => {

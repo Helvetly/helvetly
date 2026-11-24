@@ -1,10 +1,18 @@
-import { formatAmount, formatPrice, monthOf, yearOf } from './price'
+import { formatAmount, formatPrice, monthOf, yearlySaving, yearOf } from './price'
 
 const chf = (amount: number) => ({ amount, currency: 'chf' })
 
 test('a year is twelve months less 20 %, up to a whole franc', () => {
   expect([1900, 4900, 9900].map((m) => yearOf(chf(m)).amount)).toEqual([18300, 47100, 95100])
   expect(yearOf(chf(2500)).amount).toBe(24000)
+  // The tiered plans' bases and extra people (plans.go): Basic, Pro, Business.
+  expect([14900, 1000, 1500, 2000].map((m) => yearOf(chf(m)).amount)).toEqual([
+    143100, 9600, 14400, 19200,
+  ])
+})
+
+test('yearly saves twelve months less the year', () => {
+  expect([1900, 4900, 14900].map((m) => yearlySaving(chf(m)).amount)).toEqual([4500, 11700, 35700])
 })
 
 test('a yearly price a month is exact, so twelve of it are the year', () => {

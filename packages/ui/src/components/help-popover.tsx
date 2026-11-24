@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from '@helvetly/ui/components/popover'
 import { CircleHelp } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { type ReactNode, useId } from 'react'
 
 /** A (?) that opens a short explanation on click or Enter: for more than a tooltip's line, and usable on phones. */
 export function HelpPopover({
@@ -20,6 +20,7 @@ export function HelpPopover({
   title: string
   children: ReactNode
 }) {
+  const titleId = useId()
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -32,11 +33,14 @@ export function HelpPopover({
         </button>
       </PopoverTrigger>
       <PopoverContent
+        aria-labelledby={titleId}
         align="start"
         collisionPadding={12}
         className="w-80 max-w-[calc(100vw-24px)] gap-2 p-4 text-body-sm"
       >
-        <PopoverTitle className="text-sm">{title}</PopoverTitle>
+        <PopoverTitle id={titleId} className="text-sm">
+          {title}
+        </PopoverTitle>
         {children}
       </PopoverContent>
     </Popover>

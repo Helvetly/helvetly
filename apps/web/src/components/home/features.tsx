@@ -324,7 +324,7 @@ export function Features({ lang }: { lang: Locale }) {
       id: 'expenses',
       facts: [
         translate('pdfPhotoOrExcel'),
-        translate('in', { value1: plansWith('expenses', 'conjunction') }),
+        translate('in', { value1: plansWith('ai_import', 'conjunction') }),
       ],
       tone: 'lemon',
       icon: <Receipt />,

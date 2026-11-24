@@ -1,3 +1,4 @@
+import { ROW_FEATURES, UNOFFERED_FEATURES } from '@helvetly/ui/lib/plan-features'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -26,6 +27,19 @@ describe('projectPlans', () => {
   it('is what the API publishes', () => {
     expect(projectPlans()).toEqual(golden)
     expect(sameJSON(projectPlans(), golden)).toBe(true)
+  })
+})
+
+describe('the plan cards and comparison table', () => {
+  // So the table cannot drift from the offer: a new public feature needs a row, or a place among the unoffered.
+  it('name every public feature of the offer, or know no plan has it', () => {
+    expect([...ROW_FEATURES, ...UNOFFERED_FEATURES].toSorted()).toEqual(
+      Object.keys(golden.features).toSorted(),
+    )
+    const offered = Object.entries(golden.features)
+      .filter(([, plans]) => Object.values(plans).includes(true))
+      .map(([key]) => key)
+    expect(offered.filter((key) => UNOFFERED_FEATURES.includes(key))).toEqual([])
   })
 })
 

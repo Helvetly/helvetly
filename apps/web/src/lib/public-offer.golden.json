@@ -3,10 +3,7 @@
     {
       "key": "invoicing",
       "label": "Invoices and quotes",
-      "limit_keys": [
-        "invoices_per_month",
-        "quotes_per_month"
-      ],
+      "limit_keys": ["invoices_per_month", "quotes_per_month"],
       "plans": {
         "basic": true,
         "business": true,
@@ -41,9 +38,7 @@
       "key": "engagements",
       "label": "Engagements and retainers",
       "note": "Manual engagement management in every plan; scheduled workflows require Pro or Business.",
-      "limit_keys": [
-        "engagements"
-      ],
+      "limit_keys": ["engagements"],
       "plans": {
         "basic": true,
         "business": true,
@@ -54,9 +49,7 @@
     {
       "key": "scheduling",
       "label": "Scheduling, booking links and calendar sync",
-      "limit_keys": [
-        "scheduled_events_per_month"
-      ],
+      "limit_keys": ["scheduled_events_per_month"],
       "plans": {
         "basic": true,
         "business": true,
@@ -67,9 +60,7 @@
     {
       "key": "automations",
       "label": "Automations and payment reminders",
-      "limit_keys": [
-        "automation_actions_per_month"
-      ],
+      "limit_keys": ["automation_actions_per_month"],
       "plans": {
         "basic": false,
         "business": true,
@@ -80,9 +71,7 @@
     {
       "key": "heidi",
       "label": "Heidi AI assistant",
-      "limit_keys": [
-        "ai_tokens_per_month"
-      ],
+      "limit_keys": ["ai_tokens_per_month"],
       "plans": {
         "basic": false,
         "business": true,
@@ -104,9 +93,7 @@
     {
       "key": "expenses",
       "label": "Expenses and receipts",
-      "limit_keys": [
-        "expenses_per_month"
-      ],
+      "limit_keys": ["expenses_per_month"],
       "plans": {
         "basic": true,
         "business": true,
@@ -117,9 +104,7 @@
     {
       "key": "ai_import",
       "label": "AI import of receipts, invoices and documents",
-      "limit_keys": [
-        "ai_automation_tokens_per_month"
-      ],
+      "limit_keys": ["ai_automation_tokens_per_month"],
       "plans": {
         "basic": false,
         "business": true,
@@ -130,9 +115,7 @@
     {
       "key": "documents_signatures",
       "label": "Document templates and simple signatures",
-      "limit_keys": [
-        "signatures_per_month"
-      ],
+      "limit_keys": ["signatures_per_month"],
       "plans": {
         "basic": false,
         "business": true,
@@ -199,11 +182,7 @@
       }
     }
   ],
-  "currencies": [
-    "CHF",
-    "EUR",
-    "USD"
-  ],
+  "currencies": ["CHF", "EUR", "USD"],
   "features": {
     "ai_import": {
       "basic": false,

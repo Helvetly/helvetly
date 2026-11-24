@@ -31,3 +31,8 @@ export function formatAmount({ amount }: Price): string {
 export function formatPrice(price: Price): string {
   return `${price.currency.toUpperCase()} ${formatAmount(price)}`
 }
+
+/** What paying a year at once saves on a monthly price: twelve months less the year's price. */
+export function yearlySaving(month: Price): Price {
+  return { ...month, amount: month.amount * 12 - yearOf(month).amount }
+}

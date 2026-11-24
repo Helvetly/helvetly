@@ -1,23 +1,21 @@
 'use client'
-import { Badge } from '@helvetly/ui/components/badge'
+import { BillingIntervalToggle } from '@helvetly/ui/components/billing-interval-toggle'
 import { Callout } from '@helvetly/ui/components/callout'
-import { useLanguage } from '@helvetly/ui/components/language-provider'
-import { PlanFeatureText } from '@helvetly/ui/components/plan-feature-text'
-import { segmentLabels } from '@helvetly/ui/components/segmented'
-import { planFootnote } from '@helvetly/ui/lib/plan-features'
-import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
-import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
-import { Ban, Check, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
-import { useState } from 'react'
+import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
+import { PlanCard, PlanPrice } from '@helvetly/ui/components/plan-card'
+import { planCards, planFootnote } from '@helvetly/ui/lib/plan-features'
+import { formatPrice, yearlySaving } from '@helvetly/ui/lib/price'
+import { Ban, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
 
 import { Cta } from '@/components/cta'
 import { useOfferStatus } from '@/components/offer-provider'
+import { useBillingInterval } from '@/lib/billing-interval'
 import { cn } from '@/lib/cn'
 import { useCurrency } from '@/lib/currency'
 import { translatorFor } from '@/lib/i18n'
-import { planLines } from '@/lib/offer'
+import { planCatalogue, projectPlans } from '@/lib/offer'
 import {
-  type Interval,
+  type PlanId,
   plansIn,
   priceOf,
   RECOMMENDED,
@@ -25,46 +23,89 @@ import {
   YEARLY_DISCOUNT_PERCENT,
 } from '@/lib/plans'
 import { siteIn, SUPPORT_EMAIL } from '@/lib/site'
-import { TONES } from '@/lib/tones'
+import { type Tone, TONES } from '@/lib/tones'
 
-// Basic and Business sit on their own pastel; Pro, the recommended plan, is the night card, as Heidi's band.
-const PLAN_TONE = { basic: TONES.sky, pro: TONES.lilac, business: TONES.mint }
+// Each plan on its own muted pastel, Free plain; Pro, the recommended plan, lilac as Heidi's band.
+const PLAN_TONE: Record<PlanId, Tone | null> = {
+  free: null,
+  basic: 'sky',
+  pro: 'lilac',
+  business: 'mint',
+}
+export const planTone = (plan: PlanId) => {
+  const tone = PLAN_TONE[plan]
+  return tone ? cn(TONES[tone].tile, TONES[tone].border) : 'border-site-line bg-card'
+}
+
+const PUBLISHED = projectPlans().plans
+
+/** A plan's prices as the API publishes them; the figures are the same in every currency. */
+export function publishedPrices(plan: PlanId) {
+  const prices = PUBLISHED.find((p) => p.id === plan)?.prices.CHF
+  if (!prices) throw new Error(`no published price for ${plan}`)
+  return prices
+}
+
+/** The call to action of a plan: Free starts free, Pro starts its trial, the others are chosen. */
+export function PlanCta({ plan, className }: { plan: PlanId; className?: string }) {
+  const language = useLanguage()
+  const translate = useTranslate()
+  const unavailable = useOfferStatus().status === 'unavailable'
+  const name = plansIn(language).planById(plan).name
+  return (
+    <Cta
+      href={siteIn(language).START_URL}
+      disabled={unavailable && plan !== 'free'}
+      variant={plan === RECOMMENDED ? 'primary' : 'outline'}
+      className={cn('w-full', className)}
+    >
+      {plan === 'free'
+        ? translate('planStartFree')
+        : plan === TRIAL.plan
+          ? translate('planTryFree', { plan: name, days: TRIAL.days })
+          : translate('planChoose', { plan: name })}
+    </Cta>
+  )
+}
+
+function Unavailable() {
+  const translate = useTranslate()
+  // Holds the price's height, so the cards keep their rhythm without a figure.
+  return (
+    <p className="flex h-[92px] items-start pt-2">
+      <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-foreground/25 px-3.5 py-1.5 text-body font-medium">
+        <Ban aria-hidden className="size-4" />
+        {translate('planPriceUnavailable')}
+      </span>
+    </p>
+  )
+}
 
 export function PricingCards() {
   const language = useLanguage()
   const translate = translatorFor(language)
-  const { PLANS } = plansIn(language)
-  const lines = planLines(language)
-  const [interval, setInterval] = useState<Interval>('year')
+  const ui = useTranslate()
+  const { planById } = plansIn(language)
+  const cards = planCards(planCatalogue(language), language)
+  const [interval, setInterval] = useBillingInterval()
   const currency = useCurrency()
   const offer = useOfferStatus()
   const unavailable = offer.status === 'unavailable'
+  // What yearly saves on the cheapest paid plan, from the catalogue.
+  const basic = planById('basic')
+  const saving = ui('planYearlySaving', {
+    percent: YEARLY_DISCOUNT_PERCENT,
+    amount: formatPrice(yearlySaving(priceOf(basic, 'month', currency))),
+    plan: basic.name,
+  })
 
   return (
     <div className="flex flex-col items-center">
-      <fieldset className={cn(segmentTrack, 'inline-flex h-10')}>
-        <legend className="sr-only">{translate('billingInterval')}</legend>
-        {(['month', 'year'] as const).map((value) => (
-          <label key={value} className={cn(segmentItem, 'h-8 gap-0 px-4')}>
-            <input
-              type="radio"
-              name="interval"
-              value={value}
-              checked={interval === value}
-              onChange={() => setInterval(value)}
-              className="absolute inset-0 cursor-pointer appearance-none opacity-0"
-            />
-            {segmentLabels(value === 'month' ? translate('monthly') : translate('yearly'))}
-            {/* The space is for the spoken name: "Yearly −20%". */}
-            {value === 'year' && ' '}
-            {value === 'year' && (
-              <Badge tone="green" size="sm" className="ml-1.5">
-                −{YEARLY_DISCOUNT_PERCENT}%
-              </Badge>
-            )}
-          </label>
-        ))}
-      </fieldset>
+      <BillingIntervalToggle
+        value={interval}
+        onValueChange={setInterval}
+        saving={unavailable ? undefined : saving}
+      />
 
       {unavailable && (
         <Callout
@@ -99,125 +140,34 @@ export function PricingCards() {
         </Callout>
       )}
 
-      <div className="mt-12 grid w-full gap-4 lg:grid-cols-3">
-        {PLANS.map((plan, i) => {
-          const featured = plan.id === RECOMMENDED
-          const included = lines[i]
-          return (
-            <article
-              key={plan.id}
-              data-reveal
-              style={{ ['--d' as string]: `${i * 100}ms` }}
-              className={cn(
-                'relative flex flex-col rounded-3xl p-7 text-left',
-                featured
-                  ? 'night ring-gradient text-white shadow-[0_40px_100px_-40px_rgb(85_39_201/0.7)] lg:-my-4 lg:py-11'
-                  : cn('border', PLAN_TONE[plan.id].tile, PLAN_TONE[plan.id].border),
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-title font-semibold">{plan.name}</h3>
-                {featured && (
-                  <span className="rounded-full bg-linear-to-r from-heidi-from to-heidi-to px-2.5 py-0.5 text-caption font-medium text-white">
-                    {translate('recommended')}
-                  </span>
-                )}
-              </div>
-              <p className="mt-2 text-body font-medium">{plan.tagline}</p>
-              <p
-                className={cn(
-                  'mt-1 min-h-12 text-body',
-                  featured ? 'opacity-70' : 'text-muted-foreground',
-                )}
-              >
-                {plan.pitch}
-              </p>
-              {unavailable ? (
-                // Holds the price row's height, so the cards keep their rhythm without a figure.
-                <p className="mt-6 flex h-11 items-center">
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-2 rounded-full border border-dashed px-3.5 py-1.5 text-body font-medium',
-                      featured
-                        ? 'border-white/40 text-white'
-                        : 'border-foreground/25 text-foreground',
-                    )}
-                  >
-                    <Ban aria-hidden className="size-4" />
-                    {translate('priceUnavailable')}
-                  </span>
-                </p>
+      <div className="mt-10 grid w-full items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <PlanCard
+            key={card.plan}
+            data={card}
+            featured={card.plan === RECOMMENDED}
+            className={planTone(card.plan)}
+            badge={
+              card.plan === RECOMMENDED && (
+                <span className="rounded-full bg-linear-to-r from-heidi-from to-heidi-to px-2.5 py-0.5 text-caption font-medium text-white">
+                  {ui('planRecommended')}
+                </span>
+              )
+            }
+            price={
+              unavailable && card.plan !== 'free' ? (
+                <Unavailable />
               ) : (
-                <p className="mt-6 flex items-baseline gap-1.5">
-                  <span
-                    className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
-                  >
-                    {currency.toUpperCase()}
-                  </span>
-                  <span
-                    key={interval}
-                    className="pop text-price font-semibold tracking-tight tabular-nums"
-                  >
-                    {formatAmount(
-                      interval === 'year'
-                        ? monthOf(priceOf(plan, 'year', currency))
-                        : priceOf(plan, 'month', currency),
-                    )}
-                  </span>
-                  <span
-                    className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
-                  >
-                    {translate('personMonth')}
-                  </span>
-                </p>
-              )}
-              <p
-                className={cn(
-                  'mt-2 min-h-5 text-body-sm',
-                  featured ? 'opacity-60' : 'text-muted-foreground',
-                )}
-              >
-                {unavailable ? (
-                  ''
-                ) : interval === 'year' ? (
-                  <>
-                    <strong>{formatPrice(priceOf(plan, 'year', currency))}</strong>
-                    {translate('annualPriceSuffix')}
-                  </>
-                ) : (
-                  translate('billedMonthly')
-                )}
-              </p>
-              <Cta
-                href={siteIn(language).START_URL}
-                disabled={unavailable}
-                variant={featured ? 'light' : 'primary'}
-                className="mt-6 w-full"
-              >
-                {translate('choose3')}
-                {plan.name}
-              </Cta>
-              {included?.basis && <p className="mt-7 text-body font-medium">{included.basis}</p>}
-              <ul className={cn('grid gap-2.5 text-body', included?.basis ? 'mt-3' : 'mt-7')}>
-                {included?.lines.map((line) => (
-                  <li key={line.key} className="flex gap-2.5">
-                    <span
-                      className={cn(
-                        'mt-0.5 inline-flex size-4.5 shrink-0 items-center justify-center rounded-full',
-                        featured
-                          ? 'bg-white/15 text-white'
-                          : cn(PLAN_TONE[plan.id].surface, PLAN_TONE[plan.id].ink),
-                      )}
-                    >
-                      <Check aria-hidden className="size-3" />
-                    </span>
-                    <PlanFeatureText line={line} />
-                  </li>
-                ))}
-              </ul>
-            </article>
-          )
-        })}
+                <PlanPrice
+                  prices={publishedPrices(card.plan)}
+                  interval={interval}
+                  currency={currency}
+                />
+              )
+            }
+            cta={<PlanCta plan={card.plan} />}
+          />
+        ))}
       </div>
       <p
         data-slot="allowance-legend"
@@ -232,11 +182,7 @@ export function PricingCards() {
             tone: TONES.lilac,
             text: translate('stripTrial', { days: TRIAL.days, members: TRIAL.members }),
           },
-          {
-            icon: UsersRound,
-            tone: TONES.sky,
-            text: translate('stripPerPerson'),
-          },
+          { icon: UsersRound, tone: TONES.sky, text: translate('stripPerPerson') },
           { icon: Globe, tone: TONES.mint, text: translate('stripCurrencies') },
           { icon: RefreshCw, tone: TONES.peach, text: translate('stripCancel') },
         ].map(({ icon: Icon, tone, text }) => (

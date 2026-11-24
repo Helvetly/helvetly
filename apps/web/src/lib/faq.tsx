@@ -1,9 +1,10 @@
 import { localizedHref } from '@helvetly/i18n'
+import { formatPrice } from '@helvetly/ui/lib/price'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { type MessageKey, perLanguage } from '@/lib/i18n'
-import { plansIn, SELF_SERVICE_SEATS, TRIAL } from '@/lib/plans'
+import { extraPersonOf, type Plan, plansIn, priceOf, SELF_SERVICE_SEATS, TRIAL } from '@/lib/plans'
 
 /** The topics the FAQ page groups its questions under, in page order, with their headings. */
 export const TOPICS = {
@@ -25,12 +26,19 @@ export type Question = {
   a: ReactNode
 }
 
+const month = (plan: Plan) => formatPrice(priceOf(plan, 'month'))
+const extra = (plan: Plan) => formatPrice(extraPersonOf(plan, 'month'))
+
 /**
  * Every question, in one language. Each one is listed once: `topic` places it on the FAQ page and
  * `teaser` also puts it in the short list on the home or the pricing page.
  */
 export const faqIn = perLanguage((translate, language) => {
-  const { count, plansWith, tokens, value } = plansIn(language)
+  const { count, planById, plansWith, tokens, value } = plansIn(language)
+  const free = planById('free')
+  const basic = planById('basic')
+  const pro = planById('pro')
+  const business = planById('business')
 
   const FAQ: Question[] = [
     {
@@ -79,7 +87,7 @@ export const faqIn = perLanguage((translate, language) => {
       teaser: 'home',
       q: translate('canIMoveMyExistingDataIn'),
       a: translate('yesUploadPDFsImagesSpreadsheetsWordFilesOrA2', {
-        value1: plansWith('expenses'),
+        value1: plansWith('ai_import'),
       }),
     },
     {
@@ -87,7 +95,7 @@ export const faqIn = perLanguage((translate, language) => {
       topic: 'billing',
       teaser: 'home',
       q: translate('whatHappensIfIStopPaying'),
-      a: translate('yourWorkspaceBecomesReadOnlyNothingIsDeletedYou'),
+      a: translate('yourWorkspaceMovesToFreeNothingIsDeleted', { free: free.name }),
     },
     {
       id: 'trial',
@@ -100,12 +108,38 @@ export const faqIn = perLanguage((translate, language) => {
       }),
     },
     {
+      id: 'free-plan',
+      topic: 'billing',
+      teaser: 'pricing',
+      q: translate('isThereAFreePlan'),
+      a: translate('yesFreeIsFreeForeverForOnePerson', {
+        free: free.name,
+        basic: basic.name,
+        aiImport: plansWith('ai_import'),
+        noBranding: plansWith('remove_branding', 'conjunction'),
+      }),
+    },
+    {
       id: 'price-per-person',
       topic: 'billing',
       teaser: 'pricing',
-      q: translate('arePricesPerPerson'),
-      a: translate('yesEveryTeamMemberOwnersAdminsMembersAccountantsAnd', {
-        MAX_SELF_SERVICE_SEATS: SELF_SERVICE_SEATS.pro, // Basic's 5 is written in the answer; a test keeps both in step
+      q: translate('howDoPeopleAffectThePrice'),
+      a: translate('eachPlanIncludesPeopleAndEachFurtherPersonAdds', {
+        free: free.name,
+        basic: basic.name,
+        pro: pro.name,
+        business: business.name,
+        basicPrice: month(basic),
+        proPrice: month(pro),
+        businessPrice: month(business),
+        basicPeople: basic.includedPeople,
+        proPeople: pro.includedPeople,
+        businessPeople: business.includedPeople,
+        basicExtra: extra(basic),
+        proExtra: extra(pro),
+        businessExtra: extra(business),
+        basicMax: SELF_SERVICE_SEATS.basic ?? '',
+        proMax: SELF_SERVICE_SEATS.pro ?? '',
       }),
     },
     {
