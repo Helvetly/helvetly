@@ -1,10 +1,12 @@
 import { defaultLocale, isLocale, locales, localizedHref } from '@helvetly/i18n'
 import { publicHref } from '@helvetly/i18n/public-href'
+import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from 'next/constants'
 import { describe, expect, it } from 'vitest'
 
 import { publicPaths } from '@/lib/public-paths'
 
 import slugs from '../../../../packages/i18n/src/route-slugs.json'
+import webConfig from '../../next.config'
 import { GET } from './%5Fredirects/route'
 import sitemap from './sitemap'
 
@@ -26,6 +28,25 @@ describe('sitemap language links', () => {
       expect(Object.values(entry.alternates?.languages ?? {})).toContain(entry.url)
       expect(Object.keys(entry.alternates?.languages ?? {})).toHaveLength(15)
     }
+  })
+
+  it('redirects old paths before next dev resolves the localized catch-all', async () => {
+    const config = webConfig(PHASE_DEVELOPMENT_SERVER)
+    const redirects = await config.redirects?.()
+    const old = '/it/guides/back-office-software-for-small-businesses'
+    for (const source of [old, old + '/', old + '.html']) {
+      expect(redirects).toContainEqual({
+        source,
+        destination: '/it/guide/software-gestionale-per-piccole-imprese',
+        statusCode: 301,
+      })
+    }
+    expect(redirects).toContainEqual({
+      source: '/de/compare/:brand',
+      destination: '/de/vergleich/:brand',
+      statusCode: 301,
+    })
+    expect(webConfig(PHASE_PRODUCTION_BUILD)).toMatchObject({ output: 'export' })
   })
 
   it('has pinned slugs for every page except the home and competitor brand names', () => {
