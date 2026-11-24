@@ -108,7 +108,6 @@ export function PricingCards() {
   // What yearly saves on the cheapest paid plan, from the catalogue.
   const basic = planById('basic')
   const saving = ui('planYearlySaving', {
-    percent: YEARLY_DISCOUNT_PERCENT,
     amount: formatPrice(savingOf(priceOf(basic, 'month', currency))),
     plan: basic.name,
   })
@@ -118,6 +117,7 @@ export function PricingCards() {
       <BillingIntervalToggle
         value={interval}
         onValueChange={setInterval}
+        discount={YEARLY_DISCOUNT_PERCENT}
         saving={unavailable ? undefined : saving}
       />
 

@@ -136,7 +136,7 @@ test('a paid workspace sees no Free strip', () => {
 test('the toggle starts on yearly with what yearly saves, a subscription on its own interval', async () => {
   const { unmount } = renderCards(billing())
   expect(screen.getByRole('radio', { name: 'Yearly' })).toBeChecked()
-  expect(screen.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
+  expect(screen.getByText('Save CHF 45 a year on Basic')).toBeVisible()
   expect(card('Basic')).toHaveTextContent('15.25')
   expect(card('Basic')).toHaveTextContent('CHF 183 / year · save CHF 45')
   expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 375 / year')

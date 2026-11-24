@@ -42,7 +42,7 @@ export const IntervalByKeyboard: Story = {
     const yearly = canvas.getByRole('radio', { name: 'Yearly' })
     const monthly = canvas.getByRole('radio', { name: 'Monthly' })
     await expect(yearly).toBeChecked()
-    await expect(canvas.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
+    await expect(canvas.getByText('Save CHF 45 a year on Basic')).toBeVisible()
     const basic = canvas.getByRole('article', { name: 'Basic' })
     await expect(basic).toHaveTextContent('CHF 183 / year · save CHF 45')
 

@@ -250,7 +250,6 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer: PublicO
   const saving =
     cheapest?.prices.month && cheapest.prices.year
       ? ui('planYearlySaving', {
-          percent: yearlySaving(cheapest),
           amount: formatPrice({
             amount: cheapest.prices.month.amount * 12 - cheapest.prices.year.amount,
             currency: billing.currency,
@@ -266,7 +265,12 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer: PublicO
   return (
     <div className="grid gap-8">
       <div className="flex flex-col items-center gap-3">
-        <BillingIntervalToggle value={interval} onValueChange={setInterval} saving={saving} />
+        <BillingIntervalToggle
+          value={interval}
+          onValueChange={setInterval}
+          discount={cheapest ? yearlySaving(cheapest) : undefined}
+          saving={saving}
+        />
         {billing.can_manage && billing.enabled && (
           <PromoCodeEntry promo={promo} onChange={setPromo} />
         )}
