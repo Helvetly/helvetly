@@ -315,7 +315,7 @@ describe('pricing page', () => {
     expect(within(pro).getByText('39.25')).toBeTruthy()
     expect(pro).toHaveTextContent('2 people incl. · +CHF 15 / person')
     expect(pro).toHaveTextContent('CHF 471 / year · save CHF 117')
-    expect(screen.getByText('Save CHF 45 a year on Basic')).toBeTruthy()
+    expect(screen.getByText('Pay yearly: over 2 months of Pro free')).toBeTruthy()
 
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
     expect(within(pro).getByText('49')).toBeTruthy()

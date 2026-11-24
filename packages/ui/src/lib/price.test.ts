@@ -1,4 +1,4 @@
-import { formatAmount, formatPrice, monthOf, savingOf, yearOf } from './price'
+import { formatAmount, formatPrice, monthOf, savingOf, yearlyFreeMonths, yearOf } from './price'
 
 const chf = (amount: number) => ({ amount, currency: 'chf' })
 
@@ -36,4 +36,24 @@ test('the yearly saving is twelve months less the year', () => {
 test('a page in another language formats in its own locale', () => {
   expect(formatAmount(chf(1525), 'nl-NL')).toBe('15,25')
   expect(formatPrice(chf(114000), 'sv-SE')).toBe('CHF 1\u00a0140')
+})
+
+test('yearly free months: Pro first, whole months, "over" with a remainder', () => {
+  const basic = { id: 'basic', name: 'Basic', month: 1900, year: 18300 }
+  const pro = { id: 'pro', name: 'Pro', month: 4900, year: 47100 }
+  // 588 − 471 = 117 saved, 2.39 months: over 2, never 3.
+  expect(yearlyFreeMonths([basic, pro])).toEqual({ plan: 'Pro', months: 2, over: true })
+  // Exactly two months.
+  expect(yearlyFreeMonths([{ ...pro, year: 49000 }])).toEqual({
+    plan: 'Pro',
+    months: 2,
+    over: false,
+  })
+  // Without Pro, the plan saving the most.
+  const business = { id: 'business', name: 'Business', month: 14900, year: 143100 }
+  expect(yearlyFreeMonths([basic, business])).toEqual({ plan: 'Business', months: 2, over: true })
+  // Free, or less than a month saved: no line.
+  expect(yearlyFreeMonths([{ id: 'free', name: 'Free', month: 0, year: 0 }])).toBeUndefined()
+  expect(yearlyFreeMonths([{ ...pro, year: 55000 }])).toBeUndefined()
+  expect(yearlyFreeMonths([])).toBeUndefined()
 })

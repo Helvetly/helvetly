@@ -23,7 +23,7 @@ export function BillingIntervalToggle({
   onValueChange: (value: BillingInterval) => void
   /** The yearly discount in percent, shown inside "Yearly"; none: no pill. */
   discount?: number
-  /** What paying yearly saves, e.g. "Save CHF 45 a year on Basic", under the toggle while yearly is chosen. */
+  /** What paying yearly saves, e.g. "Pay yearly: over 2 months of Pro free", under the toggle while yearly is chosen. */
   saving?: ReactNode
   className?: string
 }) {
