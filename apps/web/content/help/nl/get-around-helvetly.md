@@ -3,12 +3,12 @@ title: Wegwijs in Helvetly
 description: Vind je weg met de zijbalk, Quick Actions, de mobiele +-knop en Heidi, de ingebouwde assistent.
 category: Getting started
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Zo navigeer je door Helvetly en bereik je alles snel.
 
-1. De linkerzijbalk heeft twee groepen. **Work** bevat Dashboard, Clients, Invoices, Products & services, Expenses, Engagements en Documents. **Team** bevat Members. Help & feedback, Ask Heidi en Notifications staan onderaan.
+1. Open de agenda en documenten via de zijbalk. Onder **Sales** vind je klanten, offertes, facturen, uitgaven en de boekhouding. Onder **Team** staan leden en werknemers. Je rechten en abonnement bepalen je toegang.
 2. Klik op de knop bovenaan de zijbalk om **Quick Actions** te openen, of druk op ⌘K (Ctrl+K in Windows) of `/`. Begin te typen om een pagina, klant (op naam of nummer) of handeling te vinden.
 3. Quick Actions heeft drie groepen: **Go to** toont pagina's, **Create** biedt New invoice, New expense, New client, New engagement en New product, en **Theme** wisselt tussen Light, Dark en System.
 4. Druk op ⌘J (Ctrl+J) of klik op **Ask Heidi** in de zijbalk om de assistent iets te vragen. Druk opnieuw om het paneel te sluiten.

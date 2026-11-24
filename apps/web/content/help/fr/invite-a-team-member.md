@@ -11,11 +11,11 @@ Faites entrer vos collègues ou votre comptable dans votre espace de travail ave
 
 Free est prévu pour une seule personne : pour inviter quelqu’un, il faut une formule payante. Basic comprend 1 personne, Pro 2 et Business 5 ; chaque membre ayant accepté l’invitation au-delà s’ajoute au prix mensuel. Les invitations en attente, les clients du portail et les signataires sollicités ne sont pas comptés.
 
-1. Ouvrez **Members** et cliquez sur **Invite member**.
+1. Ouvrez **Membres** et cliquez sur **Inviter un membre**.
 2. Saisissez son **Email**.
-3. Sous **How to invite**, choisissez **By email** ou **By link** (vous partagez alors le lien vous-même).
-4. Choisissez un **Role** : Owner, Admin ou Member. Pour un Member, définissez **Access** : Full access, Read only, Accountant ou Custom par domaine.
-5. Cliquez sur **Send invitation** ou **Create link**. Les invitations en attente figurent dans l’onglet **Invited**, où vous pouvez les renvoyer ou les révoquer.
+3. Sous **Comment inviter**, choisissez **Par email** ou **Par lien** (vous partagez alors le lien vous-même).
+4. Choisissez un **Rôle** : Owner, Admin ou Member. Pour un Member, définissez **Accès** : Full access, Read only, Accountant ou Custom par domaine.
+5. Cliquez sur **Envoyer une invitation** ou **Créer un lien**. Les invitations en attente figurent dans l’onglet **Invité**, où vous pouvez les renvoyer ou les révoquer.
 
 ## Bon à savoir
 

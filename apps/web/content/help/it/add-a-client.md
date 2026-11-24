@@ -9,13 +9,13 @@ updated: 2026-11-11
 
 Aggiungi un cliente una sola volta e riutilizza i suoi dati su ogni fattura.
 
-1. Vai a **Clients** e fai clic su **New client**. Puoi anche usare Quick Actions → New client.
-2. Scegli il **Client type** (azienda o persona) e inserisci il nome. Solo il nome è obbligatorio.
-3. In **Address**, compila via, numero, codice postale, città e paese. L’indirizzo è necessario per emettere fatture a questo cliente.
-4. Se vuoi, aggiungi **VAT / UID number** e il numero d’iscrizione al registro di commercio. In **Billing defaults**, imposta lingua del documento, valuta e termini di pagamento.
-5. Fai clic su **Add client**. Per modificarlo in seguito, apri il cliente e fai clic su **Edit**.
+1. Vai a **Clienti** e fai clic su **Nuovo cliente**. Puoi anche usare Quick Actions → New client.
+2. Scegli il **Tipologia cliente** (azienda o persona) e inserisci il nome. Solo il nome è obbligatorio.
+3. In **Indirizzo**, compila via, numero, codice postale, città e paese. L’indirizzo è necessario per emettere fatture a questo cliente.
+4. Se vuoi, aggiungi **Partita IVA/UID** e il numero d’iscrizione al registro di commercio. In **Impostazioni predefinite di fatturazione**, imposta lingua del documento, valuta e termini di pagamento.
+5. Fai clic su **Aggiungi cliente**. Per modificarlo in seguito, apri il cliente e fai clic su **Modifica**.
 
 ## Da sapere
 
 - Un cliente senza indirizzo completo appare come bozza. Puoi preparare bozze di fatture per questo cliente, ma non emetterle.
-- Dal menu **More actions** (…) del cliente puoi disattivarlo, nascondendolo dagli elenchi di selezione. Titolari e amministratori possono anche eliminarlo dallo stesso menu.
+- Dal menu **Altre azioni** (…) del cliente puoi disattivarlo, nascondendolo dagli elenchi di selezione. Titolari e amministratori possono anche eliminarlo dallo stesso menu.

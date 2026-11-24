@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 Vous avez supprimé un fichier par erreur ? Il reste dans la corbeille pendant 30 jours.
 
-1. Ouvrez **Documents** et cliquez sur **Trash** dans le panneau gauche.
-2. Sélectionnez les éléments, puis cliquez sur **Restore** pour les récupérer ou sur **Delete forever**.
-3. **Empty Trash** supprime tout le contenu de la corbeille.
+1. Ouvrez **Documents** et cliquez sur **Corbeille** dans le panneau gauche.
+2. Sélectionnez les éléments, puis cliquez sur **Restaurer** pour les récupérer ou sur **Supprimer définitivement**.
+3. **Vider la corbeille** supprime tout le contenu de la corbeille.
 
 ## Bon à savoir
 

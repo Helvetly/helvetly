@@ -11,10 +11,10 @@ updated: 2026-11-24
 
 Ausgaben sind in jedem Plan enthalten; um Belege mit KI einzulesen, brauchen Sie **Pro** oder **Business**.
 
-1. Gehen Sie zu **Expenses** und klicken Sie auf **Upload receipts** oder legen Sie die Dateien auf der Seite ab.
+1. Gehen Sie zu **Ausgaben** und klicken Sie auf **Belege hochladen** oder legen Sie die Dateien auf der Seite ab.
 2. Klicken Sie auf **Read files**. KI liest jede Quittung in einen Ausgabenentwurf ein.
-3. Überprüfen Sie die Zeilen, bearbeiten Sie alle erforderlichen Zeilen und klicken Sie auf **Import**.
-4. Öffnen Sie jeden Entwurf, überprüfen Sie ihn und klicken Sie auf **Book**.
+3. Überprüfen Sie die Zeilen, bearbeiten Sie alle erforderlichen Zeilen und klicken Sie auf **Importieren**.
+4. Öffnen Sie jeden Entwurf, überprüfen Sie ihn und klicken Sie auf **Verbuchen**.
 
 ## Gut zu wissen
 

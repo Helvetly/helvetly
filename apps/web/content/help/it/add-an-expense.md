@@ -11,14 +11,14 @@ Conserva ogni costo aziendale insieme alla sua ricevuta.
 
 Le spese sono incluse in ogni piano, entro la sua disponibilità mensile.
 
-1. Vai a **Expenses** e fai clic su **New expense**.
-2. In **Receipt**, trascina il file della ricevuta oppure fai clic per sceglierlo. Puoi usare PDF o foto, fino a 25 MB ciascuno.
-3. In **Details**, compila **Supplier**, **Receipt date**, **Category** e **What for**. In **Amounts**, inserisci le righe **Incl. VAT** o **Excl. VAT**.
-4. In **Input tax**, scegli quanta IVA è deducibile: **Full**, **Partial** o **None**.
-5. In **Payment**, scegli **Paid** o **Not paid yet**. Se hai pagato personalmente, attiva **I paid this myself**.
-6. Fai clic su **Save draft**, oppure su **Save and book** quando tutto è completo.
+1. Vai a **Spese** e fai clic su **Nuova spesa**.
+2. In **Giustificativo**, trascina il file della ricevuta oppure fai clic per sceglierlo. Puoi usare PDF o foto, fino a 25 MB ciascuno.
+3. In **Dettagli**, compila **Fornitore**, **Data di ricevimento**, **Categoria** e **Per cosa**. In **Importi**, inserisci le righe **Compreso IVA** o **Escl. IVA**.
+4. In **Imposta sugli acquisti**, scegli quanta IVA è deducibile: **Full**, **Parziale** o **None**.
+5. In **Pagamento**, scegli **Pagata** o **Non ancora pagato**. Se hai pagato personalmente, attiva **L’ho pagato io stesso**.
+6. Fai clic su **Salva bozza**, oppure su **Salva e prenota** quando tutto è completo.
 
 ## Da sapere
 
-- Per contabilizzare servono i campi contrassegnati con un asterisco e una ricevuta.
-- Le spese contabilizzate non possono essere eliminate. Un titolare o amministratore può annullarle con **Void…**, indicando un motivo, e **Duplicate** contabilizza una copia corretta.
+- Per contabilizzare la spesa, compila i campi obbligatori e allega il giustificativo oppure indica perché manca.
+- Proprietari e amministratori possono stornare una spesa contabilizzata specificandone il motivo. La duplicazione crea una bozza che puoi correggere e contabilizzare.

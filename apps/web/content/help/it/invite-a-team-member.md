@@ -11,11 +11,11 @@ Aggiungi colleghi o il tuo contabile allo spazio di lavoro, concedendo solo l’
 
 Free è per una persona, quindi per invitare qualcuno serve un piano a pagamento. Basic include 1 persona, Pro 2 e Business 5; ogni membro che accetta oltre queste si aggiunge al prezzo mensile. Gli inviti aperti, i clienti nel portale e le persone invitate a firmare non vengono contati.
 
-1. Vai a **Members** e fai clic su **Invite member**.
+1. Vai a **Membri** e fai clic su **Invita membro**.
 2. Inserisci la sua **Email**.
-3. In **How to invite**, scegli **By email** oppure **By link** (condividerai il link personalmente).
-4. Scegli un **Role**: Owner, Admin o Member. Per un Member, imposta **Access**: Full access, Read only, Accountant o Custom per area.
-5. Fai clic su **Send invitation** o **Create link**. Gli inviti aperti sono nella scheda **Invited**, dove puoi reinviarli o revocarli.
+3. In **Come invitare**, scegli **Via e-mail** oppure **Tramite collegamento** (condividerai il link personalmente).
+4. Scegli un **Ruolo**: Owner, Admin o Member. Per un Member, imposta **Accesso**: Full access, Read only, Accountant o Custom per area.
+5. Fai clic su **Invia invito** o **Crea collegamento**. Gli inviti aperti sono nella scheda **Invitato**, dove puoi reinviarli o revocarli.
 
 ## Da sapere
 

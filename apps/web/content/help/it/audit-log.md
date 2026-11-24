@@ -9,8 +9,8 @@ updated: 2026-11-11
 
 Il registro di audit è la cronologia completa di ogni modifica finanziaria e rende rilevabili le manomissioni.
 
-1. Vai a **Settings → Audit log**. La scheda è visibile solo a titolari e amministratori.
-2. Scorri tutti gli eventi finanziari in ordine, con l’indicazione di chi li ha eseguiti. Fai clic su **Load more** per le registrazioni precedenti.
+1. Vai a **Impostazioni → Registro di controllo**. La scheda è visibile solo a titolari e amministratori.
+2. Scorri tutti gli eventi finanziari in ordine, con l’indicazione di chi li ha eseguiti. Fai clic su **Carica altro** per le registrazioni precedenti.
 3. Un controllo in alto conferma che la catena è integra oppure indica dove si è interrotta.
 
 ## Da sapere

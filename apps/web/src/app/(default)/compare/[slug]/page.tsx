@@ -119,7 +119,7 @@ export default async function ComparePage({ params }: Props) {
             <TeamCost
               them={{
                 name: them.name,
-                url: them.url,
+                url: them.priceUrl,
                 pricesChecked: them.pricesChecked,
                 price: them.yearly.note,
                 pricingModel: cellOf(them.rows.pricingModel).note ?? '',

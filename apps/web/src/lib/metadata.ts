@@ -2,6 +2,8 @@ import { type Locale, localeDetails, locales, localizedAlternates } from '@helve
 import { publicHref } from '@helvetly/i18n/public-href'
 import type { Metadata } from 'next'
 
+import { translatorFor } from '@/lib/i18n'
+
 export const SITE_URL = 'https://www.helvetly.com'
 export const TITLE_TEMPLATE = '%s · Helvetly'
 const IMAGE = { url: '/og.png', width: 1200, height: 630, alt: 'Helvetly' }
@@ -37,5 +39,17 @@ export function pageMetadata(
       images: [IMAGE],
     },
     twitter: { card: 'summary_large_image', title: fullTitle, description, images: [IMAGE] },
+  }
+}
+
+export function notFoundMetadata(lang: Locale): Metadata {
+  const translate = translatorFor(lang)
+  return {
+    title: { absolute: `404 · ${translate('lostInThe')}${translate('alps')} · Helvetly` },
+    description: translate('thisPageDoesNotExistOrItMovedThe'),
+    robots: { index: false },
+    alternates: null,
+    openGraph: null,
+    twitter: null,
   }
 }

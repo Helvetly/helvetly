@@ -12,7 +12,6 @@ import {
   type Competitor,
   compareIn,
   type Entry,
-  offered,
   NOT_COMPARED,
   PRICE_ROWS,
   type RowKey,
@@ -66,13 +65,12 @@ function CompareValue({
         <span className="sr-only">{translate('yes')}</span>
       </>
     )
-  else if (value === false || value === null)
+  else if (value === null) shown = translate('notFoundOnTheirWebsite')
+  else if (value === false)
     shown = (
       <>
         <Minus aria-hidden className="size-4 text-placeholder" />
-        <span className="sr-only">
-          {translate(value === false ? 'notOffered' : 'notFoundOnTheirWebsite')}
-        </span>
+        <span className="sr-only">{translate('notOffered')}</span>
       </>
     )
   else shown = <span>{value}</span>
@@ -94,7 +92,12 @@ export function PriceBlock({ lang, them }: { lang: Locale; them: Competitor }) {
   const { HELVETLY_YEARLY } = compareIn(lang)
   const cell = 'px-4 py-3 text-right tabular-nums'
   return (
-    <div data-reveal className="border-site-line overflow-x-auto rounded-3xl border">
+    <section
+      data-reveal
+      aria-label={translate('cmpYearByTeamSize')}
+      tabIndex={0}
+      className="border-site-line relative overflow-x-auto rounded-3xl border"
+    >
       <table className="w-full min-w-[520px] border-collapse text-left text-body">
         <caption className="sr-only">{translate('cmpYearByTeamSize')}</caption>
         <thead className="bg-site-tint text-body-sm text-muted-foreground">
@@ -151,11 +154,11 @@ export function PriceBlock({ lang, them }: { lang: Locale; them: Competitor }) {
           </tr>
         </tbody>
       </table>
-    </div>
+    </section>
   )
 }
 
-/** Feature by feature, grouped by section; rows where only Helvetly offers it are tinted. */
+/** Feature by feature, grouped by section. */
 export function CompareTable({
   lang,
   them,
@@ -168,10 +171,6 @@ export function CompareTable({
   const translate = translatorFor(lang)
   const { ROW_GROUPS, OURS } = compareIn(lang)
   const sections = ROW_GROUPS.filter(({ rows }) => PRICE_ROWS.has(rows[0]!.key) === prices)
-  const wins = (key: RowKey) =>
-    offered(cellOf(OURS[key]).value) &&
-    cellOf(them.rows[key]).value !== NOT_COMPARED &&
-    !offered(cellOf(them.rows[key]).value)
   const ours = (key: RowKey, label: string) => (
     <CompareValue lang={lang} entry={OURS[key]} label={label} price={PRICE_ROWS.has(key)} />
   )
@@ -222,11 +221,7 @@ export function CompareTable({
                 </th>
               </tr>
               {rows.map(({ key, label }) => (
-                <tr
-                  key={key}
-                  data-win={wins(key) || undefined}
-                  className={cn('border-site-line border-t', wins(key) && 'bg-mint/15')}
-                >
+                <tr key={key} className="border-site-line border-t">
                   <th scope="row" className="px-4 py-3 text-body font-normal">
                     {label}
                   </th>
@@ -265,10 +260,7 @@ export function CompareTable({
             </div>
             <dl>
               {rows.map(({ key, label }) => (
-                <div
-                  key={key}
-                  className={cn('border-site-line border-t', wins(key) && 'bg-mint/15')}
-                >
+                <div key={key} className="border-site-line border-t">
                   <dt className="px-4 pt-3 text-body-sm text-muted-foreground">{label}</dt>
                   <dd className="grid grid-cols-2 text-body">
                     <span className="px-4 py-2 font-medium">

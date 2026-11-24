@@ -11,12 +11,12 @@ Bei einem Engagement wird die engagierte Arbeit für einen Kunden erfasst, beisp
 
 Free umfasst 1 aktiven Auftrag und Basic bis zu 3, manuell verwaltet; für geplante Entwürfe und Bekanntmachungen ist **Pro** oder **Business** erforderlich.
 
-1. Gehen Sie zu **Aufträge** und klicken Sie auf **New engagement**.
-2. Wählen Sie unter **Client & service** den **Client** aus und geben Sie einen **Title** ein.
-3. Stellen Sie unter **Scope** die Menge pro Periode und den **Unit** ein, beispielsweise 30 Stunden.
-4. Wählen Sie unter **Schedule** **One-off** (ein fester Zeitraum) oder **Recurring** und legen Sie dann **Every** und **Starts** fest.
-5. Wählen Sie unter **Price & VAT** die Option **Billing**: **Advance** (Rechnung für den Zeitraum im Voraus) oder **Arrears** (Rechnung für den gelieferten Betrag im Nachhinein). Anschliessend legen Sie Währung, Preis und Mehrwertsteuer fest.
-6. Unter **Details & automation** können Sie ungenutzte Mengen über und **Create invoice drafts automatically** übertragen. Klicken Sie auf **Create engagement**.
+1. Gehen Sie zu **Aufträge** und klicken Sie auf **Neuer Auftrag**.
+2. Wählen Sie unter **Kunde & Service** den **Kunde** aus und geben Sie einen **Titel** ein.
+3. Stellen Sie unter **Geltungsbereich** die Menge pro Periode und den **Einheit** ein, beispielsweise 30 Stunden.
+4. Wählen Sie unter **Schedule** **Einmalig** (ein fester Zeitraum) oder **Wiederkehrend** und legen Sie dann **Every** und **Startet** fest.
+5. Wählen Sie unter **Preis & MwSt** die Option **Abrechnung**: **Voraus** (Rechnung für den Zeitraum im Voraus) oder **Rückstände** (Rechnung für den gelieferten Betrag im Nachhinein). Anschliessend legen Sie Währung, Preis und Mehrwertsteuer fest.
+6. Unter **Details & Automatisierung** können Sie ungenutzte Mengen über und **Rechnungsentwürfe automatisch erstellen** übertragen. Klicken Sie auf **Auftrag erstellen**.
 
 ## Gut zu wissen
 

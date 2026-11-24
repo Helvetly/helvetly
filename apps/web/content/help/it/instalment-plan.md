@@ -11,11 +11,11 @@ Un piano rateale emette automaticamente una fattura parziale distinta per ogni r
 
 Poiché emette fatture autonomamente, richiede **Pro** o **Business** e utilizza azioni automatiche.
 
-1. Crea una bozza di fattura con cliente e righe. Lascia disattivato **Pay in instalments**.
-2. Fai clic su **Split into instalment invoices**, sotto il documento oppure nel menu **…** della bozza.
-3. Imposta **Instalments** (da 2 a 12), **Every**, **First due date** e **Issue days before due**. Scegli se attivare **Send automatically**.
-4. Fai clic su **Create plan**. Helvetly emette una fattura parziale per ogni rata alle date previste.
-5. Gestisci il piano dalla scheda **Instalment plan** sulla fattura: puoi metterlo in pausa, riprenderlo o annullarlo.
+1. Crea una bozza di fattura con cliente e righe. Lascia disattivato **Paga a rate**.
+2. Fai clic su **Suddivisione in fatture rateali**, sotto il documento oppure nel menu **…** della bozza.
+3. Imposta **Rate** (da 2 a 12), **Ogni**, **Prima data di scadenza** e **Emissione giorni prima della scadenza**. Scegli se attivare **Invia automaticamente**.
+4. Fai clic su **Crea piano**. Helvetly emette una fattura parziale per ogni rata alle date previste.
+5. Gestisci il piano dalla scheda **Piano rateale** sulla fattura: puoi metterlo in pausa, riprenderlo o annullarlo.
 
 ## Da sapere
 

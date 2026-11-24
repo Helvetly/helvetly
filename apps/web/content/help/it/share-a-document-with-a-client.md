@@ -11,12 +11,12 @@ Condividi file con un cliente tramite il portale anziché inviare allegati.
 
 La condivisione tramite il portale clienti richiede **Business**.
 
-1. Vai a **Documents** e trova il file.
-2. Fai clic sull’icona **Share with client** sul file oppure fai clic con il tasto destro e scegli **Share with client…**.
-3. Scegli il cliente e fai clic su **Share**. Per interrompere la condivisione, rimuovi il cliente nello stesso pannello.
+1. Vai a **Documenti** e trova il file.
+2. Fai clic sull’icona **Condividi con il cliente** sul file oppure fai clic con il tasto destro e scegli **Condividi con il cliente…**.
+3. Scegli il cliente e fai clic su **Condividi**. Per interrompere la condivisione, rimuovi il cliente nello stesso pannello.
 4. Il documento appare quindi nel portale del cliente.
 
 ## Da sapere
 
-- Il cliente deve anche avere **Client portal** attivo e un indirizzo email.
+- Il cliente deve anche avere **Portale clienti** attivo e un indirizzo email.
 - I documenti nel cestino non vengono mostrati nel portale.

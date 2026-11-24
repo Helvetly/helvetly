@@ -11,11 +11,11 @@ Bei einem Ratenzahlungsplan wird für jede Rate automatisch eine separate Teilre
 
 Ein Ratenzahlungsplan stellt Rechnungen selbstständig aus, benötigt also **Pro** oder **Business** und nutzt automatisierte Aktionen.
 
-1. Erstellen Sie einen Rechnungsentwurf mit seinem Kunden und seinen Zeilen. Lassen Sie **Pay in instalments** ausgeschaltet.
-2. Klicken Sie entweder unter dem Dokument oder im Menü **Split into instalment invoices** des Entwurfs auf **…**.
-3. Stellen Sie **Instalments** (2 bis 12), **Every**, **First due date** und **Issue days before due** ein. Wählen Sie, ob **Send automatically** verwendet werden soll.
-4. Klicken Sie auf **Create plan**. Helvetly stellt termingerecht eine Teilrechnung pro Rate aus.
-5. Verwalten Sie den Plan über die **Instalment plan**-Karte auf der Rechnung: pausieren, fortsetzen oder stornieren.
+1. Erstellen Sie einen Rechnungsentwurf mit seinem Kunden und seinen Zeilen. Lassen Sie **Zahlen Sie in Raten** ausgeschaltet.
+2. Klicken Sie entweder unter dem Dokument oder im Menü **Aufteilung in Ratenrechnungen** des Entwurfs auf **…**.
+3. Stellen Sie **Instalments** (2 bis 12), **Every**, **Erstes Fälligkeitsdatum** und **Ausgabetage vor Fälligkeit** ein. Wählen Sie, ob **Automatisch senden** verwendet werden soll.
+4. Klicken Sie auf **Plan erstellen**. Helvetly stellt termingerecht eine Teilrechnung pro Rate aus.
+5. Verwalten Sie den Plan über die **Ratenzahlungsplan**-Karte auf der Rechnung: pausieren, fortsetzen oder stornieren.
 
 ## Gut zu wissen
 

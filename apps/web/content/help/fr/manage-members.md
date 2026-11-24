@@ -9,10 +9,10 @@ updated: 2026-11-11
 
 Adaptez les droits de chaque personne ou retirez-la de l’espace de travail.
 
-1. Ouvrez **Members**, puis le menu **Actions** (…) de la ligne.
+1. Ouvrez **Membres**, puis le menu **Actions** (…) de la ligne.
 2. Choisissez un nouveau rôle : Owner, Admin ou Member.
-3. Pour un Member, choisissez **Change access…** et définissez chaque domaine sur **No access**, **View** ou **Edit**.
-4. Pour retirer quelqu’un, choisissez **Remove from workspace**. Pour partir vous-même, choisissez **Leave workspace**.
+3. Pour un Member, choisissez **Modifier l’accès…** et définissez chaque domaine sur **Pas d’accès**, **View** ou **Modifier**.
+4. Pour retirer quelqu’un, choisissez **Supprimer de l’espace de travail**. Pour partir vous-même, choisissez **Quitter l’espace de travail**.
 
 ## Bon à savoir
 

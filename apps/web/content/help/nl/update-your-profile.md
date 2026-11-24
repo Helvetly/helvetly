@@ -3,7 +3,7 @@ title: Je profiel bijwerken
 description: Wijzig de naam van je Helvetly-account en bekijk waar je e-mailadres en foto vandaan komen.
 category: Account and security
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Houd je naam actueel zodat je team weet wie wat heeft gedaan.
@@ -14,4 +14,4 @@ Houd je naam actueel zodat je team weet wie wat heeft gedaan.
 ## Goed om te weten
 
 - Je e-mailadres is je aanmeldadres.
-- Je foto komt van Google als je dat koppelt.
+- Kies bij **Upload photo** of **Change photo** een foto, snijd deze bij en sla op. Verwijder je de geüploade foto, dan verschijnt je Google-foto weer als je Google-account is gekoppeld.

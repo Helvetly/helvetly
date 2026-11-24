@@ -4,7 +4,7 @@ description: Ladda upp filer, skapa mappar, flytta, byt namn och stjärnmarkera 
 category: Documents and signatures
 categoryLabel: Dokument och signaturer
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Samla alla företagets filer på ett välordnat ställe.
@@ -18,3 +18,4 @@ Samla alla företagets filer på ett välordnat ställe.
 ## Bra att veta
 
 - Du kan också ladda upp filer på kundens flik **Files**. De kopplas då till kunden.
+- Gruppera filer efter typ, år eller kund utan att flytta dem. Ladda ned det filtrerade urvalet som en zip-fil. När större arkiv är klara får du en avisering. De kan laddas ned i sju dagar.

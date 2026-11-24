@@ -45,6 +45,7 @@ describe.each(LANGUAGES)('comparisons in %s', (language) => {
       expect(them.yearly.prices).toHaveLength(TEAM_SIZES.length)
       expect(them.yearly.note).not.toBe('')
       expect(them.pricesChecked).toMatch(/2026/)
+      expect(new URL(them.priceUrl).protocol).toBe('https:')
     },
   )
 

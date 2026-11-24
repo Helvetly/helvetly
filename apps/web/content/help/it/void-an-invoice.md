@@ -12,11 +12,11 @@ L’annullamento cancella una fattura emessa, così non resta più nulla da paga
 Annullare una fattura emessa richiede **Pro** o **Business**. In Free e Basic puoi comunque modificare o eliminare una bozza.
 
 1. Apri la fattura emessa e il menu **…**.
-2. Scegli **Void** e conferma con **Void invoice**.
+2. Scegli **Void** e conferma con **Annulla fattura**.
 3. Viene emessa una nota di credito totale a fronte della fattura e non resta più nulla da pagare.
 
 ## Da sapere
 
 - Solo titolari e amministratori possono annullare, e solo fatture aperte senza pagamenti e senza note di credito.
 - L’annullamento è irreversibile.
-- Le bozze non si annullano: usa invece **Delete draft**. Una bozza non ha numero, quindi non si crea alcuna lacuna nella numerazione.
+- Le bozze non si annullano: usa invece **Elimina bozza**. Una bozza non ha numero, quindi non si crea alcuna lacuna nella numerazione.

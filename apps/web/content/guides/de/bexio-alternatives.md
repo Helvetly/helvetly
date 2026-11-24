@@ -9,7 +9,7 @@ readingMinutes: 7
 
 Die wichtigsten bexio-Alternativen in der Schweiz sind Magic Heidi, KLARA, Banana, CashCtrl, AbaNinja und Helvetly. Welche passt, hängt davon ab, ob Sie eine vollständige Buchhaltung und Lohnbuchhaltung brauchen (bexio, KLARA, AbaNinja, CashCtrl, Banana) oder vor allem mit weniger Aufwand zu Ihrem Geld kommen wollen (Magic Heidi für einfache Buchhaltung, Helvetly für das Backoffice rund um die Rechnungen).
 
-Alles, was hier über andere Produkte steht, stammt von deren eigenen öffentlichen Websites (Stand 11. November 2026), die Preise von deren Websites (Stand 15. November 2026). Preise ändern sich, prüfen Sie sie deshalb vor Ihrer Entscheidung auf der Website des Anbieters. Zu jedem Produkt gibt es auf einer eigenen Seite einen direkten Vergleich mit Helvetly.
+Alles, was hier über andere Produkte steht, stammt von deren eigenen öffentlichen Websites (Stand 11. November 2026), die Preise von deren Websites (Stand 24. November 2026). Preise ändern sich, prüfen Sie sie deshalb vor Ihrer Entscheidung auf der Website des Anbieters. Zu jedem Produkt gibt es auf einer eigenen Seite einen direkten Vergleich mit Helvetly.
 
 ## Was ist bexio, und warum nach einer Alternative suchen?
 
@@ -48,10 +48,12 @@ Am günstigsten sind die kostenlosen Tarife von Magic Heidi, Banana, CashCtrl, A
 | bexio       | Basic CHF 35, Advanced CHF 42, Optima CHF 69, Ultimate CHF 119 pro Monat bei jährlicher Zahlung, mit 1, 2, 5 und 25 Benutzern                                   | Exklusive       |
 | Magic Heidi | Gratis für 3 Rechnungen und 3 Belege; Pro CHF 39 pro Monat oder CHF 299 pro Jahr, ohne Aufpreis pro Person                                                      | Inklusive       |
 | KLARA       | Business Basic CHF 69 pro Monat (CHF 55 jährlich, CHF 48 über 2 Jahre), bis zu 3 Admins; Plus CHF 99; Premium CHF 159; dazu kostenpflichtige Module             | Exklusive       |
-| Banana      | Gratis bis 70 Buchungen; Professional CHF 89 pro Jahr; Advanced CHF 179 pro Jahr, pro Benutzer                                                                  | Nicht angegeben |
+| Banana      | Gratis bis 70 Buchungen; Professional CHF 89 pro Jahr; Advanced CHF 179 pro Jahr, pro Benutzer                                                                  | Inklusive       |
 | CashCtrl    | Gratis für 1 Benutzer; PRO CHF 350 pro Jahr mit 3 Benutzern, 2 Organisationen und 1 GB                                                                          | Inklusive       |
 | AbaNinja    | Starter gratis (1 Benutzer, 1’000 Dokumente pro Jahr); Basic CHF 21 pro Monat (3 Benutzer, 2’100 Dokumente); Pro CHF 49 pro Monat (5 Benutzer, 5’000 Dokumente) | Nicht angegeben |
 | Helvetly    | Gratis für 1 Person; Basic CHF 19 pro Monat mit 1 Person, Pro CHF 49 mit 2, Business CHF 149 mit 5; jede weitere Person CHF 10, 15 oder 20                      | Inklusive       |
+
+Die regulären Preise für Ihr Team finden Sie in den Preislisten der Anbieter (24. November 2026): [Magic Heidi](https://magicheidi.ch/pricing), [bexio](https://www.bexio.com/en-CH/packages-and-prices), [KLARA](https://www.klara.ch/en/business), [Banana](https://www.banana.ch/en/prices), [CashCtrl](https://cashctrl.com/en/info/pro), [AbaNinja](https://www.abaninja.ch/en/#pricing).
 
 Die aktuellen Preise von Helvetly stehen auf der [Preisseite](/pricing). Free braucht keine Karte und läuft nie ab; eine 14-tägige Testphase von Pro braucht eine Karte. Basic erlaubt bis zu 5 Personen und Pro bis zu 25, und bei jährlicher Zahlung kosten die Tarife 20 % weniger. Ein Arbeitsbereich ohne bezahlten Tarif wechselt zu Free: Es wird nichts gelöscht, nur neue Einträge über die Limits von Free hinaus werden abgelehnt.
 
@@ -73,7 +75,7 @@ Bleiben Sie bei bexio, wenn Sie vollständige Buchhaltung und Jahresabschlüsse 
 
 ## Was macht Helvetly anders als bexio?
 
-Helvetly konzentriert sich auf das Backoffice rund ums Bezahltwerden, mit einigen Personen in jedem Tarif inklusive, während bexio eine breite Suite mit Buchhaltung, Lohn und Marktplatz ist. Helvetly bietet diese Dinge, die wir auf der Website von bexio nicht gefunden haben:
+Dienstleistungsunternehmen können mit Helvetly folgende Abläufe abdecken.
 
 - E-Rechnungs-XML für Deutschland, Polen, Rumänien und Peppol: XRechnung-, Peppol-BIS-, KSeF- und e-Factura-Dateien (Business). Sie werden als Dateien exportiert; Helvetly liefert sie nicht über die Netzwerke aus.
 - Verträge aus Vorlagen, die zur einfachen elektronischen Signatur verschickt werden (Pro und Business); qualifizierte Signaturen werden nicht angeboten.

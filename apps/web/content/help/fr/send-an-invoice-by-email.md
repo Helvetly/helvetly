@@ -9,10 +9,10 @@ updated: 2026-11-11
 
 Envoyez une facture émise directement depuis Helvetly, avec le PDF en pièce jointe.
 
-1. Ouvrez la facture émise depuis **Invoices**.
-2. Cliquez sur **Send**, ou choisissez **Send by email** / **Send again** dans le menu **…**.
-3. Vérifiez **To**, qui reprend par défaut l’e-mail de facturation du client. Renseignez **Cc**, **Subject** et **Message** si souhaité, puis envoyez.
-4. L’onglet **Emails** de la facture indique chaque e-mail envoyé, sa date et son auteur.
+1. Ouvrez la facture émise depuis **Factures**.
+2. Cliquez sur **Envoyer**, ou choisissez **Envoyer par email** / **Envoyer à nouveau** dans le menu **…**.
+3. Vérifiez **À**, qui reprend par défaut l’e-mail de facturation du client. Renseignez **Cc**, **Objet** et **Message** si souhaité, puis envoyez.
+4. L’onglet **Courriels** de la facture indique chaque e-mail envoyé, sa date et son auteur.
 
 ## Bon à savoir
 

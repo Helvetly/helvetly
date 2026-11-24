@@ -19,5 +19,5 @@ Expenses are in every plan, within its monthly allowance.
 
 ## Good to know
 
-- Booking needs the starred fields and a receipt.
-- Booked expenses can't be deleted. An owner or admin can **Void…** them with a reason, and **Duplicate** books a corrected copy.
+- To book, complete the required fields and attach a receipt or enter the reason it is missing.
+- Owners and admins can void a booked expense with a reason. Duplicate creates a new draft you can correct and book.

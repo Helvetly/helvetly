@@ -11,12 +11,12 @@ Un mandat permet de suivre les prestations prévues pour un client, par exemple 
 
 Free comprend 1 mandat actif et Basic jusqu’à 3, gérés manuellement ; les brouillons et notifications planifiés nécessitent **Pro** ou **Business**.
 
-1. Ouvrez **Engagements** et cliquez sur **New engagement**.
-2. Sous **Client & service**, choisissez **Client** et saisissez **Title**.
-3. Sous **Scope**, définissez la quantité par période et **Unit**, par exemple 30 heures.
-4. Sous **Schedule**, choisissez **One-off** (une période fixe) ou **Recurring**, puis définissez **Every** et **Starts**.
-5. Sous **Price & VAT**, choisissez **Billing** : **Advance** (facturer la période à l’avance) ou **Arrears** (facturer ensuite les prestations réalisées). Définissez la devise, le prix et la TVA.
-6. Sous **Details & automation**, vous pouvez reporter les quantités non utilisées et activer **Create invoice drafts automatically**. Cliquez sur **Create engagement**.
+1. Ouvrez **Mandats** et cliquez sur **Nouveau mandat**.
+2. Sous **Client & service**, choisissez **Client** et saisissez **Titre**.
+3. Sous **Portée**, définissez la quantité par période et **Unité**, par exemple 30 heures.
+4. Sous **Schedule**, choisissez **Unique** (une période fixe) ou **Récurrent**, puis définissez **Every** et **Démarre**.
+5. Sous **Prix et TVA**, choisissez **Facturation** : **Avance** (facturer la période à l’avance) ou **Arriérés** (facturer ensuite les prestations réalisées). Définissez la devise, le prix et la TVA.
+6. Sous **Détails & automatisation**, vous pouvez reporter les quantités non utilisées et activer **Créer automatiquement des brouillons de facture**. Cliquez sur **Créer un mandat**.
 
 ## Bon à savoir
 

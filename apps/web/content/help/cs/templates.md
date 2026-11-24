@@ -3,7 +3,7 @@ title: Vytvoření šablony a vyplnění pro klienta
 description: Převeďte smlouvu nebo dopis v PDF na šablonu s poli klienta a vyplňte ji, odešlete e-mailem či k podpisu.
 category: Documents and signatures
 order: 4
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Z často používané smlouvy nebo dopisu vytvořte šablonu, která za vás vyplní údaje klienta.
@@ -18,3 +18,5 @@ Z často používané smlouvy nebo dopisu vytvořte šablonu, která za vás vyp
 ## Co je dobré vědět
 
 - Pro změnu nebo odstranění šablony použijte **Edit template** nebo **Delete** v její nabídce.
+
+V tarifu Pro nebo Business otevřete nabídku a zvolte **Create contract**. Potřebujete právo číst nabídku a zapisovat dokumenty. Vyberte šablonu, vzorové PDF nebo vygenerovaný koncept, pokud je AI dostupná a povolená. Zkontrolujte smluvní strany, ceny, ustanovení a způsob doručení. Očíslovaná smlouva se uloží mezi dokumenty klienta a propojí se s nabídkou.

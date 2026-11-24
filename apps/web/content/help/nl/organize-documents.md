@@ -3,7 +3,7 @@ title: Documenten organiseren
 description: Upload bestanden, maak mappen, verplaats, hernoem en markeer ze met een ster en vind alles via zoeken, filters en sortering.
 category: Documents and signatures
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Bewaar al je bedrijfsbestanden op één overzichtelijke plek.
@@ -17,3 +17,4 @@ Bewaar al je bedrijfsbestanden op één overzichtelijke plek.
 ## Goed om te weten
 
 - Je kunt ook bestanden uploaden op het tabblad **Files** van een klant. Ze worden aan die klant gekoppeld.
+- Groepeer bestanden op type, jaar of klant zonder ze te verplaatsen. Download de gefilterde weergave als ZIP-bestand. Bij grotere archieven ontvang je een melding zodra ze klaarstaan. Ze blijven zeven dagen beschikbaar.

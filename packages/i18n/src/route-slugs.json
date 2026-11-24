@@ -391,6 +391,22 @@
     "cs": "zaznam-vratky",
     "sv": "registrera-en-aterbetalning"
   },
+  "/help/record-payroll": {
+    "de": "lohn-erfassen",
+    "fr": "enregistrer-la-paie",
+    "it": "registrare-una-retribuzione",
+    "nl": "loon-registreren",
+    "cs": "evidence-mezd",
+    "sv": "registrera-lon"
+  },
+  "/help/schedule-a-session": {
+    "de": "kundentermin-planen",
+    "fr": "planifier-une-seance",
+    "it": "pianificare-una-sessione",
+    "nl": "een-afspraak-plannen",
+    "cs": "naplanovani-schuzky",
+    "sv": "boka-ett-kundmote"
+  },
   "/help/send-a-pdf-for-signature": {
     "de": "pdf-zur-unterschrift-senden",
     "fr": "envoyer-un-pdf-pour-signature",
@@ -398,6 +414,14 @@
     "nl": "een-pdf-ter-ondertekening-versturen",
     "cs": "odeslani-pdf-k-podpisu",
     "sv": "skicka-en-pdf-for-signering"
+  },
+  "/help/send-a-quote": {
+    "de": "angebot-senden",
+    "fr": "envoyer-un-devis",
+    "it": "inviare-un-preventivo",
+    "nl": "offerte-versturen",
+    "cs": "odeslani-nabidky",
+    "sv": "skicka-en-offert"
   },
   "/help/send-an-invoice-by-email": {
     "de": "rechnung-per-e-mail-senden",
@@ -430,6 +454,14 @@
     "nl": "aanmeldmethoden-en-passkeys-beheren",
     "cs": "sprava-zpusobu-prihlaseni-a-pristupovych-klicu",
     "sv": "hantera-inloggningssatt-och-passnycklar"
+  },
+  "/help/submit-a-draft-for-approval": {
+    "de": "entwurf-freigeben",
+    "fr": "soumettre-un-brouillon",
+    "it": "approvare-una-bozza",
+    "nl": "concept-laten-goedkeuren",
+    "cs": "odeslani-ke-schvaleni",
+    "sv": "skicka-for-godkannande"
   },
   "/help/swiss-qr-bill": {
     "de": "schweizer-qr-zahlteil-auf-rechnungen-verwenden",

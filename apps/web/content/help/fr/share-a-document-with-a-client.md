@@ -12,11 +12,11 @@ Partagez des fichiers avec un client dans son portail plutôt que de lui envoyer
 Le partage via le portail client nécessite **Business**.
 
 1. Ouvrez **Documents** et trouvez le fichier.
-2. Cliquez sur son icône **Share with client**, ou faites un clic droit et choisissez **Share with client…**.
-3. Choisissez un client et cliquez sur **Share**. Pour arrêter le partage, retirez le client dans le même panneau.
+2. Cliquez sur son icône **Partager avec le client**, ou faites un clic droit et choisissez **Partager avec le client…**.
+3. Choisissez un client et cliquez sur **Partager**. Pour arrêter le partage, retirez le client dans le même panneau.
 4. Le document apparaît alors dans le portail du client.
 
 ## Bon à savoir
 
-- Le client doit aussi avoir **Client portal** activé et disposer d’une adresse e-mail.
+- Le client doit aussi avoir **Portail client** activé et disposer d’une adresse e-mail.
 - Les documents dans la corbeille ne sont pas affichés dans le portail.

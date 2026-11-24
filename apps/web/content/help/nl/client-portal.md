@@ -3,7 +3,7 @@ title: Een klant toegang tot het klantenportaal geven
 description: Schakel het klantenportaal in zodat een klant facturen, opdrachten, gedeelde documenten en eigen gegevens kan bekijken.
 category: Clients
 order: 3
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Het klantenportaal geeft je klant een eigen afgeschermde plek voor facturen en documenten.
@@ -19,3 +19,5 @@ Het klantenportaal hoort bij **Business**. Klanten in het portaal zijn geen beta
 
 - Contactpersonen zijn geen portaalaccounts. Het portaal gebruikt het eigen e-mailadres van de klant.
 - De schakelaar uitzetten of het e-mailadres van de klant wijzigen meldt de klant direct af bij het portaal.
+
+Kopieer het portaaladres van de werkruimte voor de klant. Via het gedeelde portaal kan de klant de links naar diens leveranciers per e-mail ontvangen. Open vanuit de klantkaart het alleen-lezenvoorbeeld van het portaal om te zien wat de klant ziet.

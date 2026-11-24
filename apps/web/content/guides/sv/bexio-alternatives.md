@@ -9,7 +9,7 @@ readingMinutes: 7
 
 De viktigaste alternativen till bexio i Schweiz är Magic Heidi, KLARA, Banana, CashCtrl, AbaNinja och Helvetly. Vilket som passar beror på om du behöver full bokföring och löner (bexio, KLARA, AbaNinja, CashCtrl, Banana) eller främst vill få betalt med mindre admin (Magic Heidi för enkel bokföring, Helvetly för back office kring fakturorna).
 
-Allt som sägs här om andra produkter kommer från deras egna offentliga webbplatser, kontrollerade den 11 november 2026, och deras priser kontrollerades den 15 november 2026. Priser ändras, så kontrollera leverantörens webbplats innan du bestämmer dig. Varje produkt har en jämförelse sida vid sida med Helvetly på sin egen sida.
+Allt som sägs här om andra produkter kommer från deras egna offentliga webbplatser, kontrollerade den 11 november 2026, och deras priser kontrollerades den 24 november 2026. Priser ändras, så kontrollera leverantörens webbplats innan du bestämmer dig. Varje produkt har en jämförelse sida vid sida med Helvetly på sin egen sida.
 
 ## Vad är bexio, och varför leta efter ett alternativ?
 
@@ -48,10 +48,12 @@ De billigaste alternativen är gratisplanerna hos Magic Heidi, Banana, CashCtrl,
 | bexio       | Basic CHF 35, Advanced CHF 42, Optima CHF 69, Ultimate CHF 119 per månad vid årsbetalning, med 1, 2, 5 och 25 användare                                       | Exklusive  |
 | Magic Heidi | Gratis för 3 fakturor och 3 kvitton; Pro CHF 39 per månad eller CHF 299 per år, utan extra avgift per person                                                  | Inklusive  |
 | KLARA       | Business Basic CHF 69 per månad (CHF 55 årsvis, CHF 48 över 2 år), upp till 3 administratörer; Plus CHF 99; Premium CHF 159; plus betalda moduler             | Exklusive  |
-| Banana      | Gratis upp till 70 transaktioner; Professional CHF 89 per år; Advanced CHF 179 per år, per användare                                                          | Anges inte |
+| Banana      | Gratis upp till 70 transaktioner; Professional CHF 89 per år; Advanced CHF 179 per år, per användare                                                          | Ingår      |
 | CashCtrl    | Gratis för 1 användare; PRO CHF 350 per år med 3 användare, 2 organisationer och 1 GB                                                                         | Inklusive  |
 | AbaNinja    | Starter gratis (1 användare, 1,000 dokument per år); Basic CHF 21 per månad (3 användare, 2,100 dokument); Pro CHF 49 per månad (5 användare, 5,000 dokument) | Anges inte |
 | Helvetly    | Gratis för 1 person; Basic CHF 19 per månad med 1 person, Pro CHF 49 med 2, Business CHF 149 med 5; varje ytterligare person CHF 10, 15 eller 20              | Inklusive  |
+
+Se ordinarie pris för ditt team i leverantörernas prislistor (24 november 2026): [Magic Heidi](https://magicheidi.ch/pricing), [bexio](https://www.bexio.com/en-CH/packages-and-prices), [KLARA](https://www.klara.ch/en/business), [Banana](https://www.banana.ch/en/prices), [CashCtrl](https://cashctrl.com/en/info/pro), [AbaNinja](https://www.abaninja.ch/en/#pricing).
 
 Helvetlys aktuella priser finns på [prissidan](/pricing). Free kräver inget kort och upphör aldrig; en provperiod på 14 dagar av Pro kräver kort. Basic tillåter upp till 5 personer och Pro upp till 25, och årsbetalning kostar 20 % mindre. En arbetsyta utan betald plan går över till Free: ingenting raderas, bara nya poster utöver Frees gränser avvisas.
 
@@ -73,7 +75,7 @@ Stanna hos bexio om du behöver full bokföring och årsbokslut i samma verktyg,
 
 ## Vad gör Helvetly annorlunda än bexio?
 
-Helvetly fokuserar på back office kring att få betalt, med några personer inkluderade i varje plan, medan bexio är ett brett system med bokföring, löner och en marknadsplats. Helvetly erbjuder följande, som vi inte hittade på bexios webbplats:
+Ett tjänsteföretag kan använda Helvetly för följande arbetsuppgifter.
 
 - E-faktura-XML för Tyskland, Polen, Rumänien och Peppol: filer för XRechnung, Peppol BIS, KSeF och e-Factura (Business). De exporteras som filer; Helvetly levererar dem inte via näten.
 - Avtal som fylls i från mallar och skickas för enkel elektronisk signatur (Pro och Business); kvalificerade signaturer erbjuds inte.

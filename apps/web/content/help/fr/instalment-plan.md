@@ -11,11 +11,11 @@ Un plan de paiement échelonné émet automatiquement une facture partielle dist
 
 Comme il émet les factures de manière autonome, il nécessite **Pro** ou **Business** et consomme des actions automatisées.
 
-1. Créez un brouillon de facture avec son client et ses lignes. Laissez **Pay in instalments** désactivé.
+1. Créez un brouillon de facture avec son client et ses lignes. Laissez **Payer en plusieurs fois** désactivé.
 2. Cliquez sur **Split into instalment invoices**, sous le document ou dans le menu **…** du brouillon.
-3. Définissez **Instalments** (2 à 12), **Every**, **First due date** et **Issue days before due**. Choisissez d’activer ou non **Send automatically**.
-4. Cliquez sur **Create plan**. Helvetly émet une facture partielle par échéance selon le calendrier.
-5. Gérez le plan depuis la carte **Instalment plan** de la facture : suspension, reprise ou annulation.
+3. Définissez **Instalments** (2 à 12), **Every**, **Première date d’échéance** et **Émission quelques jours avant l’échéance**. Choisissez d’activer ou non **Envoyer automatiquement**.
+4. Cliquez sur **Créer un plan**. Helvetly émet une facture partielle par échéance selon le calendrier.
+5. Gérez le plan depuis la carte **Plan de versement** de la facture : suspension, reprise ou annulation.
 
 ## Bon à savoir
 

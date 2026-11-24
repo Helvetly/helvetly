@@ -9,8 +9,8 @@ updated: 2026-11-11
 
 La suppression de votre compte vous retire définitivement de Helvetly.
 
-1. Ouvrez **Settings → Account settings → Delete account**.
-2. Saisissez votre e-mail pour confirmer et cliquez sur **Delete account**.
+1. Ouvrez **Paramètres → Paramètres du compte → Supprimer le compte**.
+2. Saisissez votre e-mail pour confirmer et cliquez sur **Supprimer le compte**.
 
 ## Bon à savoir
 

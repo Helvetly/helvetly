@@ -3,12 +3,12 @@ title: Orientace v Helvetly
 description: Najděte vše pomocí postranního panelu, Quick Actions, mobilního tlačítka + a vestavěné asistentky Heidi.
 category: Getting started
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Takto se v Helvetly pohybovat a vše rychle najít.
 
-1. Levý postranní panel má dvě skupiny. **Work** obsahuje Dashboard, Clients, Invoices, Products & services, Expenses, Engagements a Documents. **Team** obsahuje Members. Help & feedback, Ask Heidi a Notifications jsou dole.
+1. Kalendář a dokumenty otevřete z postranního panelu. V části **Sales** najdete klienty, nabídky, faktury, výdaje a účetní knihy. Část **Team** obsahuje členy a zaměstnance. Přístup závisí na oprávněních a tarifu.
 2. **Quick Actions** otevřete tlačítkem nahoře v panelu, ⌘K (Ctrl+K ve Windows) nebo `/`. Začněte psát název stránky, klienta (jméno nebo číslo) či akce.
 3. Quick Actions má tři skupiny: **Go to** vypisuje stránky, **Create** nabízí New invoice, New expense, New client, New engagement a New product a **Theme** přepíná Light, Dark a System.
 4. Asistentku otevřete přes ⌘J (Ctrl+J) nebo **Ask Heidi** v panelu. Dalším stiskem panel zavřete.

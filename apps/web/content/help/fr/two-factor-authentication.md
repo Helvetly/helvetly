@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 La double authentification ajoute un code de votre téléphone à chaque connexion.
 
-1. Ouvrez **Settings → Account settings → Two-factor authentication** et cliquez sur **Turn on**.
+1. Ouvrez **Paramètres → Paramètres du compte → Authentification à deux facteurs** et cliquez sur **Allumer**.
 2. Scannez le code avec une application d’authentification telle que 1Password, Google Authenticator ou Authy.
-3. Saisissez le **Code from the app** à 6 chiffres et cliquez sur **Turn on**.
+3. Saisissez le **Code depuis l’application** à 6 chiffres et cliquez sur **Allumer**.
 4. Conservez vos codes de récupération. Chacun permet une connexion si vous perdez votre téléphone.
 
 ## Bon à savoir

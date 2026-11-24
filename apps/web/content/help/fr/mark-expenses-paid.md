@@ -11,9 +11,9 @@ Suivez les dépenses réglées et les personnes qui attendent encore un rembours
 
 Les dépenses sont disponibles dans toutes les formules, dans la limite de leur quota mensuel.
 
-1. Ouvrez **Expenses**. Utilisez les onglets **To review**, **Unpaid** et **To reimburse** pour trouver les éléments à traiter.
-2. Sélectionnez des dépenses et cliquez sur **Mark paid** ou **Mark unpaid**. Vous pouvez aussi en ouvrir une, cliquer sur **Edit** et modifier **Payment**.
-3. Pour les frais avancés personnellement, modifiez la dépense et renseignez **Reimbursed on** lorsque l’entreprise les rembourse.
+1. Ouvrez **Dépenses**. Utilisez les onglets **À revoir**, **Impayée** et **Pour rembourser** pour trouver les éléments à traiter.
+2. Sélectionnez des dépenses et cliquez sur **Marque payée** ou **Marquer impayé**. Vous pouvez aussi en ouvrir une, cliquer sur **Modifier** et modifier **Paiement**.
+3. Pour les frais avancés personnellement, modifiez la dépense et renseignez **Remboursé le** lorsque l’entreprise les rembourse.
 
 ## Bon à savoir
 

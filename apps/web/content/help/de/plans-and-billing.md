@@ -9,10 +9,10 @@ updated: 2026-11-24
 
 Jeder Arbeitsbereich hat seinen eigenen Plan. Ein Arbeitsbereich ohne bezahlten Plan ist auf **Free**. Hier erfahren Sie, wie Sie einen Plan auswählen und verwalten.
 
-1. Gehen Sie zu **Settings → Billing** (Plan & Abrechnung), um Ihren Plan, seinen Status und Ihre Nutzung im Vergleich zu den Limits anzuzeigen.
-2. Wählen Sie unter **Plans** **Monthly** oder **Yearly** und dann **Basic**, **Pro** oder **Business** aus. **Compare plans** zeigt nebeneinander, was jeder Plan beinhaltet und welche Zulagen es gibt. Die Preise verstehen sich inklusive Schweizer Mehrwertsteuer.
-3. Um einen Rabatt einzugeben, klicken Sie auf **Have a promotion code?**.
-4. Um Ihre Karte zu aktualisieren, zu stornieren oder Rechnungen zu erhalten, klicken Sie auf **Manage billing**. Frühere Rechnungen werden unter **Invoices** aufgeführt.
+1. Gehen Sie zu **Einstellungen → Abrechnung** (Plan & Abrechnung), um Ihren Plan, seinen Status und Ihre Nutzung im Vergleich zu den Limits anzuzeigen.
+2. Wählen Sie unter **Pläne** **Monatlich** oder **Jährlich** und dann **Basic**, **Pro** oder **Business** aus. **Tarife vergleichen** zeigt nebeneinander, was jeder Plan beinhaltet und welche Zulagen es gibt. Die Preise verstehen sich inklusive Schweizer Mehrwertsteuer.
+3. Um einen Rabatt einzugeben, klicken Sie auf **Haben Sie einen Aktionscode?**.
+4. Um Ihre Karte zu aktualisieren, zu stornieren oder Rechnungen zu erhalten, klicken Sie auf **Abrechnung verwalten**. Frühere Rechnungen werden unter **Rechnungen** aufgeführt.
 
 ## Gut zu wissen
 
@@ -23,4 +23,4 @@ Jeder Arbeitsbereich hat seinen eigenen Plan. Ein Arbeitsbereich ohne bezahlten 
 - Neue berechtigte Testphasen umfassen Pro für 14 Tage mit bis zu 2 Personen. Eine Karte ist erforderlich. Während der Testphase erhalten Sie die Kontingente von Pro für eine Person, und sie werden nicht zurückgesetzt. Bereits gewährte Testphasen aus früheren Angeboten behalten ihre ursprünglichen Bedingungen.
 - Ohne bezahlten Plan, etwa nach der Testphase oder einer Kündigung, ist der Arbeitsbereich auf Free: Es wird nichts gelöscht und alles bleibt lesbar, aber neue Einträge über die Limits von Free hinaus warten, bis Sie einen Plan wählen.
 - Nur Eigentümer und Administratoren können den Plan ändern.
-- Wenn Sie ein Limit erreichen, wird eine Eingabeaufforderung mit **See plans** angezeigt.
+- Wenn Sie ein Limit erreichen, wird eine Eingabeaufforderung mit **Siehe Pläne** angezeigt.

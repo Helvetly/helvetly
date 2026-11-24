@@ -67,7 +67,9 @@ describe('home page', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
       'Your back office, Swiss quality.',
     )
-    expect(screen.getByText(/Built around the needs of Swiss small businesses/)).toBeTruthy()
+    expect(
+      screen.getByText(/Turn a quote into a contract, schedule the work and send the invoice/),
+    ).toBeTruthy()
     expect(
       screen.getByText(
         /Switzerland is our first market\. We plan to expand into the rest of Europe, then the US and other markets worldwide\./,
@@ -407,7 +409,7 @@ describe('comparison with Magic Heidi', () => {
     )
     const portal = screen.getByRole('rowheader', { name: 'Client portal' }).closest('tr')!
     expect(within(portal).getByText('Yes')).toBeTruthy()
-    expect(within(portal).getByText('Not offered')).toBeTruthy()
+    expect(within(portal).getByText('Not found on their website')).toBeVisible()
     expect(within(portal).getByRole('button', { name: 'About: Client portal' })).toBeTruthy()
     const sessions = screen
       .getByRole('rowheader', { name: 'Client sessions and booking' })
@@ -422,7 +424,7 @@ describe('comparison with Magic Heidi', () => {
         .map((row) => row.textContent),
     ).toEqual(['What Helvetly includes', 'Swiss QR bill'])
     expect(features.queryByText(/CHF/)).toBeNull()
-    expect(portal.dataset.win).toBe('true')
+    expect(portal.dataset.win).toBeUndefined()
     const feeds = screen.getByRole('rowheader', { name: 'Bank feeds' }).closest('tr')!
     expect(feeds.dataset.win).toBeUndefined()
     expect(screen.getByText(/as of 11 November 2026/)).toBeTruthy()
@@ -455,7 +457,7 @@ describe('comparison with Magic Heidi', () => {
     expect(pro).toHaveTextContent('+CHF 15 / person')
     expect(pro).toHaveTextContent('Billed yearly −20% · save CHF 153')
     expect(screen.getByText(/Advanced CHF 504/)).toBeTruthy()
-    expect(screen.getByText(/As published on 15 November 2026/)).toBeTruthy()
+    expect(screen.getByText(/As published on 24 November 2026/)).toBeTruthy()
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
     expect(pro).toHaveTextContent('CHF 64 / month')
     const payroll = screen.getByRole('rowheader', { name: 'Employees and payroll' })

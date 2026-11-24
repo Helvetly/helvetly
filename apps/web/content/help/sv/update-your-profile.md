@@ -4,7 +4,7 @@ description: Ändra namnet som visas på ditt Helvetly-konto och se varifrån me
 category: Account and security
 categoryLabel: Konto och säkerhet
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Håll namnet uppdaterat så att teamet vet vem som gjorde vad.
@@ -15,4 +15,4 @@ Håll namnet uppdaterat så att teamet vet vem som gjorde vad.
 ## Bra att veta
 
 - Din mejladress är din inloggningsadress.
-- Din bild hämtas från Google om du ansluter det.
+- Välj en bild under **Upload photo** eller **Change photo**, beskär den och spara. Om du tar bort den uppladdade bilden visas din Google-bild igen om kontot är anslutet.

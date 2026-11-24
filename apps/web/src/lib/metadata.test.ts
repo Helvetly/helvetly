@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { pageMetadata } from './metadata'
+import { notFoundMetadata, pageMetadata } from './metadata'
 
 describe('pageMetadata', () => {
   it('gives link previews the full title, the page URL and its language among the others', () => {
@@ -22,5 +22,15 @@ describe('pageMetadata', () => {
     const meta = pageMetadata('en', '/', { absolute: 'Helvetly · Home' }, 'Text')
     expect(meta.openGraph?.title).toBe('Helvetly · Home')
     expect(meta.openGraph?.url).toBe('/')
+  })
+})
+
+it('keeps missing pages out of search with a localized error title', () => {
+  expect(notFoundMetadata('de')).toMatchObject({
+    title: { absolute: expect.stringContaining('404') },
+    robots: { index: false },
+    alternates: null,
+    openGraph: null,
+    twitter: null,
   })
 })

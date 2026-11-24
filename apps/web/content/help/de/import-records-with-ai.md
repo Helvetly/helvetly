@@ -11,10 +11,10 @@ Wechsel von einem anderen System? Lassen Sie AI Ihre alten Dateien lesen und in 
 
 Der KI-Import benötigt **Pro** oder **Business** und funktioniert innerhalb der KI-Tokens des Plans.
 
-1. Öffnen Sie **Clients**, **Products & services**, **Aufträge** oder **Invoices** und wählen Sie **Import** im **…**-Menü der Seite. Verwenden Sie für Ausgaben stattdessen **Upload receipts**.
+1. Öffnen Sie **Kunden**, **Produkte und Dienstleistungen**, **Aufträge** oder **Rechnungen** und wählen Sie **Importieren** im **…**-Menü der Seite. Verwenden Sie für Ausgaben stattdessen **Belege hochladen**.
 2. Fügen Sie Tabellenkalkulationen, PDFs, Fotos oder Word-Dateien ein und klicken Sie dann auf **Read files**.
 3. Überprüfen Sie die gefundenen Datensätze. Bearbeiten Sie eine Zeile, deaktivieren Sie alle unerwünschten Elemente und lösen Sie etwaige Konflikte.
-4. Klicken Sie auf **Import**, um die ausgewählten Datensätze zu erstellen, und dann auf **Done**.
+4. Klicken Sie auf **Importieren**, um die ausgewählten Datensätze zu erstellen, und dann auf **Fertig**.
 5. Sie können auch Dateien in Heidi anhängen und „Importieren als“ auswählen. Anschliessend öffnet sich die Importschublade mit diesen Dateien.
 
 ## Gut zu wissen
@@ -25,4 +25,4 @@ Der KI-Import benötigt **Pro** oder **Business** und funktioniert innerhalb der
   KI-Verarbeitung; Entwurf und Dateien bleiben erhalten.
 - Für Importe wird die monatliche KI-Zulage verwendet.
 - Ein Import nimmt bis zu 25 Dateien zu je 25 MB an. Ein ZIP wird eine Ebene tief geöffnet und darf bis zu 250 Dateien enthalten; ein Import liest insgesamt höchstens 250 Dateien.
-- Wenn Ihr altes System bereits Mehrwertsteuer für die importierten Rechnungen ausgewiesen hat, schliessen Sie diese Monate zunächst in **Books → Closing**.
+- Wenn Ihr altes System bereits Mehrwertsteuer für die importierten Rechnungen ausgewiesen hat, schliessen Sie diese Monate zunächst in **Buchhaltung → Abschluss**.

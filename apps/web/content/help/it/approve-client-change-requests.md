@@ -13,7 +13,7 @@ Il portale clienti e, di conseguenza, le richieste di modifica richiedono **Busi
 
 1. Quando un cliente chiede dal portale di modificare i propri dati (nome, email di fatturazione, telefono, indirizzo, numero IVA o di registrazione), titolari e amministratori ricevono una notifica.
 2. Apri il cliente. Un banner mostra le modifiche richieste.
-3. Fai clic su **Approve** per applicarle oppure su **Reject** per rifiutarle.
+3. Fai clic su **Approve** per applicarle oppure su **Rifiutare** per rifiutarle.
 
 ## Da sapere
 

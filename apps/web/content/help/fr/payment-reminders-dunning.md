@@ -11,11 +11,11 @@ Laissez Helvetly relancer les factures en retard avec courtoisie et au bon momen
 
 Les rappels automatiques nécessitent **Pro** ou **Business** ; chaque rappel envoyé consomme une action automatisée.
 
-1. Ouvrez **Settings → Invoices → Dunning** et activez **Send reminders automatically**.
-2. Configurez jusqu’à trois niveaux. Pour chacun, définissez **Sent**, éventuellement **Fee** et **Own text**. Vous pouvez aussi définir **Default interest**.
+1. Ouvrez **Paramètres → Factures → Relance** et activez **Envoyer des rappels automatiquement**.
+2. Configurez jusqu’à trois niveaux. Pour chacun, définissez **Envoyé**, éventuellement **Frais** et **Texte propre**. Vous pouvez aussi définir **Intérêts moratoires**.
 3. Chaque niveau est ensuite envoyé une seule fois pour les factures en retard, par e-mail à l’adresse de facturation du client, avec une QR-facture pour le total.
-4. Pour agir sur une seule facture, ouvrez-la. La carte des rappels propose **Send … now**, **Pause** ou **Resume**. Chaque courrier envoyé s’ouvre en PDF.
-5. Pour exclure un client, modifiez-le et désactivez **Payment reminders**.
+4. Pour agir sur une seule facture, ouvrez-la. La carte des rappels propose **Send … now**, **Pause** ou **CV**. Chaque courrier envoyé s’ouvre en PDF.
+5. Pour exclure un client, modifiez-le et désactivez **Rappels de paiement**.
 
 ## Bon à savoir
 

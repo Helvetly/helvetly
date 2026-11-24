@@ -3,7 +3,7 @@ title: Give a client access to the client portal
 description: Turn on the client portal so a client can sign in to see invoices, engagements, shared documents and their details.
 category: Clients
 order: 3
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 The client portal gives your client a private place to find their invoices and documents.
@@ -19,3 +19,5 @@ The client portal is part of **Business**. Clients in the portal are not paid te
 
 - Contacts are not portal logins. The portal uses the client's own email address.
 - Turning the switch off, or changing the client's email, signs the client out of the portal right away.
+
+Copy the address shown for this workspace and send it to the client. The shared portal can email them links to their suppliers. To check what this client sees, use the read-only portal preview from their client record.

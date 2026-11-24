@@ -20,5 +20,5 @@ Utgifter ingår i alla planer, inom planens månadskvot.
 
 ## Bra att veta
 
-- Bokföring kräver de stjärnmarkerade fälten och ett kvitto.
-- Bokförda utgifter kan inte raderas. En ägare eller administratör kan välja **Void…** och ange ett skäl. **Duplicate** används för att bokföra en rättad kopia.
+- Fyll i de obligatoriska fälten och bifoga ett kvitto eller ange varför det saknas för att bokföra utgiften.
+- Ägare och administratörer kan makulera en bokförd utgift och ange en orsak. En duplicering skapar ett nytt utkast som du kan rätta och bokföra.

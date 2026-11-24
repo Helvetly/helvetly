@@ -9,10 +9,10 @@ updated: 2026-11-11
 
 Aggiungi una QR-fattura svizzera perché i clienti possano pagare con una rapida scansione.
 
-1. Vai a **Settings → Invoices** (titolari e amministratori).
-2. In **Bank account**, inserisci il tuo **IBAN**. Per una QR-fattura serve un IBAN CH o LI.
-3. In **Payment methods**, attiva **Swiss QR bill**.
-4. Le nuove fatture in CHF ed EUR includono quindi una sezione di pagamento su una pagina separata. Nell’editor della fattura, la nota **Payment** indica "QR bill attached".
+1. Vai a **Impostazioni → Fatture** (titolari e amministratori).
+2. In **Conto bancario**, inserisci il tuo **IBAN**. Per una QR-fattura serve un IBAN CH o LI.
+3. In **Modalità di pagamento**, attiva **QR-fattura svizzera**.
+4. Le nuove fatture in CHF ed EUR includono quindi una sezione di pagamento su una pagina separata. Nell’editor della fattura, la nota **Pagamento** indica "QR bill attached".
 
 ## Da sapere
 

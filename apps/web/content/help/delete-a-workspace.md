@@ -1,9 +1,9 @@
 ---
 title: Delete a workspace
-description: Permanently delete a workspace as its owner; invoices and receipts stay archived as Swiss law requires.
+description: Delete a workspace and restore it from your account within 30 days.
 category: Team and workspace
 order: 3
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Deleting a workspace ends access for everyone in it. Only owners can do this.
@@ -15,5 +15,5 @@ Deleting a workspace ends access for everyone in it. Only owners can do this.
 ## Good to know
 
 - Everyone loses access and a paid plan ends at once.
-- This can't be undone.
+- The owner who deleted the workspace can open **Account settings → Deleted workspaces** and choose **Restore** within 30 days. Members regain access to the restored workspace.
 - Invoices and receipts stay archived for the ten years Swiss law requires.

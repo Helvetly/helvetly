@@ -4,7 +4,7 @@ description: Registrera en hel- eller delbetalning på en faktura eller markera 
 category: Invoices and getting paid
 categoryLabel: Fakturor och betalningar
 order: 7
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Registrera pengarna på fakturan när de kommer in så att du alltid vet vad som återstår att betala.
@@ -18,3 +18,4 @@ Registrera pengarna på fakturan när de kommer in så att du alltid vet vad som
 
 - Beloppet får inte överstiga det återstående beloppet, och datumet får inte ligga i framtiden.
 - Öppna fliken **Payments** och radera betalningen för att rätta ett misstag.
+- Den utfärdade pdf-filen och QR-koden behåller ursprungsbeloppet. Efter en delbetalning kan kunden se återstående belopp i kundportalen i Business. Vid en banköverföring anger kunden det beloppet i sin internetbank.

@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 L’autenticazione a due fattori aggiunge un codice dal telefono a ogni accesso.
 
-1. Vai a **Settings → Account settings → Two-factor authentication** e fai clic su **Turn on**.
+1. Vai a **Impostazioni → Impostazioni dell’account → Autenticazione a due fattori** e fai clic su **Accendi**.
 2. Scansiona il codice con un’app di autenticazione come 1Password, Google Authenticator o Authy.
-3. Digita il **Code from the app** a 6 cifre e fai clic su **Turn on**.
+3. Digita il **Codice dall’app** a 6 cifre e fai clic su **Accendi**.
 4. Salva i codici di recupero. Ognuno permette un accesso se perdi il telefono.
 
 ## Da sapere

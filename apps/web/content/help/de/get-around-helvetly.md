@@ -4,17 +4,17 @@ description: Finden Sie Ihren Weg mit der Seitenleiste, Schnellaktionen, der mob
 category: Getting started
 categoryLabel: Erste Schritte
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Hier erfahren Sie, wie Sie sich im Helvetly bewegen und alles schnell erreichen.
 
-1. Die linke Seitenleiste hat zwei Gruppen. **Work** enthält Dashboard, Kunden, Rechnungen, Produkte und Dienstleistungen, Ausgaben, Verpflichtungen und Dokumente. **Team** hält Mitglieder. Hilfe und Feedback, Ask Heidi und Benachrichtigungen befinden sich unten.
-2. Um **Quick Actions** zu öffnen, klicken Sie auf die Schaltfläche oben in der Seitenleiste oder drücken Sie ⌘K (Strg+K unter Windows) oder `/`. Beginnen Sie mit der Eingabe, um eine Seite, einen Kunden (nach Name oder Nummer) oder eine Aktion zu finden.
-3. Quick Actions hat drei Gruppen: **Go to** listet die Seiten auf, **Create** bietet „Neue Rechnung“, „Neue Ausgabe“, „Neuer Kunde“, „Neuer Auftrag“ und „Neues Produkt“ und **Theme** wechselt zwischen Hell, Dunkel und System.
+1. Über die Seitenleiste erreichen Sie Kalender und Dokumente. Unter **Verkauf** finden Sie Kunden, Angebote, Rechnungen, Ausgaben und Bücher. **Team** führt zu Mitgliedern und Mitarbeitenden. Welche Bereiche Sie nutzen können, hängt von Tarif und Berechtigungen ab.
+2. Um **Schnellaktionen** zu öffnen, klicken Sie auf die Schaltfläche oben in der Seitenleiste oder drücken Sie ⌘K (Strg+K unter Windows) oder `/`. Beginnen Sie mit der Eingabe, um eine Seite, einen Kunden (nach Name oder Nummer) oder eine Aktion zu finden.
+3. Quick Actions hat drei Gruppen: **Gehe zu** listet die Seiten auf, **Erstellen** bietet „Neue Rechnung“, „Neue Ausgabe“, „Neuer Kunde“, „Neuer Auftrag“ und „Neues Produkt“ und **Darstellung** wechselt zwischen Hell, Dunkel und System.
 4. Um den Assistenten zu fragen, drücken Sie ⌘J (Strg+J) oder klicken Sie in der Seitenleiste auf **Ask Heidi**. Drücken Sie erneut darauf, um das Bedienfeld zu schliessen.
-5. Um den Arbeitsbereich zu wechseln, klicken Sie oben links auf den Namen des Arbeitsbereichs. Klicken Sie für Ihre Einstellungen unten links auf Ihren Namen und wählen Sie **Settings**, **Help & feedback** oder **Log out**.
-6. Auf einem Telefon zeigt die untere Leiste „Startseite“, „Rechnungen“, „Kunden“, eine Schaltfläche „**+**“ und „**Menu**“. Mit der Schaltfläche **+** wird die Hauptaktion der aktuellen Seite ausgeführt, beispielsweise „Neue Rechnung“ auf „Rechnungen“. Auf Seiten ohne eine wird aufgelistet, was Sie erstellen können.
+5. Um den Arbeitsbereich zu wechseln, klicken Sie oben links auf den Namen des Arbeitsbereichs. Klicken Sie für Ihre Einstellungen unten links auf Ihren Namen und wählen Sie **Einstellungen**, **Hilfe und Feedback** oder **Abmelden**.
+6. Auf einem Telefon zeigt die untere Leiste „Startseite“, „Rechnungen“, „Kunden“, eine Schaltfläche „**+**“ und „**Menü**“. Mit der Schaltfläche **+** wird die Hauptaktion der aktuellen Seite ausgeführt, beispielsweise „Neue Rechnung“ auf „Rechnungen“. Auf Seiten ohne eine wird aufgelistet, was Sie erstellen können.
 
 ## Gut zu wissen
 

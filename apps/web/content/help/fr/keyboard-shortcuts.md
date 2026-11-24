@@ -9,7 +9,7 @@ updated: 2026-11-11
 
 Quelques touches vous donnent accès à presque tout Helvetly sans utiliser la souris.
 
-1. Appuyez sur `?` pour afficher tous les raccourcis, ou cliquez sur votre nom en bas à gauche et choisissez **Keyboard shortcuts**.
+1. Appuyez sur `?` pour afficher tous les raccourcis, ou cliquez sur votre nom en bas à gauche et choisissez **Raccourcis clavier**.
 2. ⌘K ou `/` ouvre les actions rapides, ⌘J ouvre ou ferme Heidi et ⌘B affiche ou masque la barre latérale. Sous Windows et Linux, utilisez Ctrl à la place de ⌘.
 3. `H` ouvre Help & feedback et `G`, puis `N`, mène aux notifications. `D` change le thème : clair, sombre, puis système. `N` crée un nouvel enregistrement, comme le bouton **New** de la page.
 

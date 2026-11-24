@@ -9,11 +9,11 @@ updated: 2026-11-11
 
 Vous êtes bloqué, avez trouvé un bug ou avez une idée ? Voici comment nous joindre.
 
-1. Cliquez sur **Help & feedback** en bas de la barre latérale, ou sélectionnez cette commande dans le menu de votre nom ou les actions rapides.
+1. Cliquez sur **Aide et commentaires** en bas de la barre latérale, ou sélectionnez cette commande dans le menu de votre nom ou les actions rapides.
 2. Pour savoir comment procéder, cliquez sur **Ask Heidi** en haut afin d’ouvrir le panneau de Heidi.
-3. Pour écrire à l’équipe, choisissez **Report a problem** ou **Suggest an idea**.
-4. Rédigez une **Description**. Vous pouvez aussi ajouter des **Screenshots** (par glisser-déposer, collage ou sélection) : jusqu’à 5 images PNG, JPEG ou WebP de 5 Mo chacune.
-5. Cliquez sur **Send feedback**.
+3. Pour écrire à l’équipe, choisissez **Signaler un problème** ou **Proposer une idée**.
+4. Rédigez une **Description**. Vous pouvez aussi ajouter des **Captures d’écran** (par glisser-déposer, collage ou sélection) : jusqu’à 5 images PNG, JPEG ou WebP de 5 Mo chacune.
+5. Cliquez sur **Envoyer des commentaires**.
 
 ## Bon à savoir
 

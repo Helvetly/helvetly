@@ -9,10 +9,10 @@ updated: 2026-11-11
 
 Senden Sie eine ausgestellte Rechnung direkt aus Helvetly mit dem PDF-Anhang.
 
-1. Öffnen Sie die ausgestellte Rechnung von **Invoices**.
-2. Klicken Sie auf **Send** oder wählen Sie **Send by email** / **Send again** im Menü **…**.
-3. Überprüfen Sie **To**, das standardmässig die Rechnungs-E-Mail-Adresse des Kunden ist. Geben Sie bei Bedarf **Cc**, **Subject** und **Message** ein und senden Sie es dann ab.
-4. Auf der Registerkarte **Emails** der Rechnung wird jede E-Mail angezeigt, die wann und von wem versendet wurde.
+1. Öffnen Sie die ausgestellte Rechnung von **Rechnungen**.
+2. Klicken Sie auf **Senden** oder wählen Sie **Per E-Mail senden** / **Erneut senden** im Menü **…**.
+3. Überprüfen Sie **To**, das standardmässig die Rechnungs-E-Mail-Adresse des Kunden ist. Geben Sie bei Bedarf **Cc**, **Betreff** und **Nachricht** ein und senden Sie es dann ab.
+4. Auf der Registerkarte **E-Mails** der Rechnung wird jede E-Mail angezeigt, die wann und von wem versendet wurde.
 
 ## Gut zu wissen
 

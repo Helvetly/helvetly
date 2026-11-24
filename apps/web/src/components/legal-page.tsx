@@ -92,7 +92,7 @@ export function LegalView({ lang, slug }: { lang: Locale; slug: LegalSlug }) {
           </nav>
         </aside>
         <article className="min-w-0">
-          <h1 className="text-subhero font-semibold">{legalTitlesIn(lang)[slug]}</h1>
+          <h1 className="text-subhero font-semibold wrap-anywhere">{legalTitlesIn(lang)[slug]}</h1>
           <div className="prose-legal mt-8">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownIn(lang)}>
               {markdown}

@@ -9,7 +9,7 @@ readingMinutes: 7
 
 Les principales alternatives à bexio en Suisse sont Magic Heidi, KLARA, Banana, CashCtrl, AbaNinja et Helvetly. Le bon choix dépend de ce qu’il vous faut : comptabilité complète et salaires (bexio, KLARA, AbaNinja, CashCtrl, Banana) ou surtout être payé avec moins d’administration (Magic Heidi pour une comptabilité simple, Helvetly pour le back-office autour des factures).
 
-Tout ce qui est dit ici sur les autres produits provient de leurs sites publics, consultés le 11 novembre 2026, et leurs prix ont été vérifiés le 15 novembre 2026. Les prix changent : vérifiez le site du fournisseur avant de décider. Chaque produit a une comparaison directe avec Helvetly sur sa propre page.
+Tout ce qui est dit ici sur les autres produits provient de leurs sites publics, consultés le 11 novembre 2026, et leurs prix ont été vérifiés le 24 novembre 2026. Les prix changent : vérifiez le site du fournisseur avant de décider. Chaque produit a une comparaison directe avec Helvetly sur sa propre page.
 
 ## Qu’est-ce que bexio, et pourquoi chercher une alternative ?
 
@@ -48,10 +48,12 @@ Les options les moins chères sont les offres gratuites de Magic Heidi, Banana, 
 | bexio       | Basic CHF 35, Advanced CHF 42, Optima CHF 69, Ultimate CHF 119 par mois en facturation annuelle, avec 1, 2, 5 et 25 utilisateurs                                          | Exclue       |
 | Magic Heidi | Gratuit pour 3 factures et 3 justificatifs ; Pro CHF 39 par mois ou CHF 299 par an, sans supplément par personne                                                          | Incluse      |
 | KLARA       | Business Basic CHF 69 par mois (CHF 55 en annuel, CHF 48 sur 2 ans), jusqu’à 3 administrateurs ; Plus CHF 99 ; Premium CHF 159 ; plus modules payants                     | Exclue       |
-| Banana      | Gratuit jusqu’à 70 écritures ; Professional CHF 89 par an ; Advanced CHF 179 par an, par utilisateur                                                                      | Non précisée |
+| Banana      | Gratuit jusqu’à 70 écritures ; Professional CHF 89 par an ; Advanced CHF 179 par an, par utilisateur                                                                      | Incluse      |
 | CashCtrl    | Gratuit pour 1 utilisateur ; PRO CHF 350 par an avec 3 utilisateurs, 2 organisations et 1 Go                                                                              | Incluse      |
 | AbaNinja    | Starter gratuit (1 utilisateur, 1,000 documents par an) ; Basic CHF 21 par mois (3 utilisateurs, 2,100 documents) ; Pro CHF 49 par mois (5 utilisateurs, 5,000 documents) | Non précisée |
 | Helvetly    | Gratuit pour 1 personne ; Basic CHF 19 par mois avec 1 personne, Pro CHF 49 avec 2, Business CHF 149 avec 5 ; chaque personne supplémentaire CHF 10, 15 ou 20             | Incluse      |
+
+Consultez le tarif habituel pour votre équipe dans les barèmes officiels (24 novembre 2026): [Magic Heidi](https://magicheidi.ch/pricing), [bexio](https://www.bexio.com/en-CH/packages-and-prices), [KLARA](https://www.klara.ch/en/business), [Banana](https://www.banana.ch/en/prices), [CashCtrl](https://cashctrl.com/en/info/pro), [AbaNinja](https://www.abaninja.ch/en/#pricing).
 
 Les prix actuels de Helvetly figurent sur la [page des tarifs](/pricing). Free ne demande aucune carte et n’expire jamais ; un essai de 14 jours de Pro demande une carte. Basic accepte jusqu’à 5 personnes et Pro jusqu’à 25, et le paiement annuel coûte 20 % de moins. Un espace de travail sans formule payante passe sur Free : rien n’est supprimé, seuls les nouveaux enregistrements au-delà des limites de Free sont refusés.
 
@@ -73,7 +75,7 @@ Restez chez bexio si vous avez besoin de la comptabilité complète et des compt
 
 ## Que fait Helvetly différemment de bexio ?
 
-Helvetly se concentre sur le back-office autour de l’encaissement, avec quelques personnes comprises dans chaque formule, alors que bexio est une suite large avec comptabilité, salaires et place de marché. Helvetly propose les points suivants, que nous n’avons pas trouvés sur le site de bexio :
+Avec Helvetly, une entreprise de services peut gérer les opérations suivantes.
 
 - Du XML de facture électronique pour l’Allemagne, la Pologne, la Roumanie et Peppol : fichiers XRechnung, Peppol BIS, KSeF et e-Factura (Business). Ils sont exportés sous forme de fichiers ; Helvetly ne les transmet pas via les réseaux.
 - Des contrats remplis à partir de modèles et envoyés pour signature électronique simple (Pro et Business) ; les signatures qualifiées ne sont pas proposées.

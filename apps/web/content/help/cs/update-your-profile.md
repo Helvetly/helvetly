@@ -3,7 +3,7 @@ title: Aktualizace profilu
 description: Změňte jméno zobrazené u účtu Helvetly a zjistěte, odkud pochází váš e-mail a fotografie.
 category: Account and security
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Udržujte jméno aktuální, aby tým věděl, kdo co provedl.
@@ -14,4 +14,4 @@ Udržujte jméno aktuální, aby tým věděl, kdo co provedl.
 ## Co je dobré vědět
 
 - Váš e-mail je přihlašovací adresa.
-- Pokud připojíte Google, profilová fotografie pochází od něj.
+- Zvolte **Upload photo** nebo **Change photo**, vyberte obrázek, ořízněte jej a uložte. Pokud vlastní fotku odeberete a máte připojený účet Google, zobrazí se znovu fotka z něj.

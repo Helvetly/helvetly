@@ -9,7 +9,7 @@ updated: 2026-11-11
 
 Mit ein paar Tasten kommen Sie im Helvetly fast überall hin, ohne zur Maus greifen zu müssen.
 
-1. Drücken Sie `?`, um alle Verknüpfungen anzuzeigen, oder klicken Sie unten links auf Ihren Namen und wählen Sie **Keyboard shortcuts**.
+1. Drücken Sie `?`, um alle Verknüpfungen anzuzeigen, oder klicken Sie unten links auf Ihren Namen und wählen Sie **Tastaturkürzel**.
 2. ⌘K oder `/` öffnet Schnellaktionen, ⌘J öffnet oder schliesst Heidi und ⌘B zeigt oder verbirgt die Seitenleiste. Verwenden Sie unter Windows und Linux Strg anstelle von ⌘.
 3. `H` öffnet Hilfe und Feedback, und `G` und dann `N` gehen zu Benachrichtigungen. `D` wechselt das Thema: hell, dunkel, dann System. `N` startet einen neuen Datensatz, genau wie die Schaltfläche **New** der Seite.
 

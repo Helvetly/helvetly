@@ -11,10 +11,10 @@ Helvetly bereitet die Zahlen für Ihre Schweizer Mehrwertsteuererklärung (MWST)
 
 Für die Erstellung von Umsatzsteuererklärungen ist **Pro** oder **Business** erforderlich. Die Mehrwertsteuer auf Rechnungen wird in jedem Plan berechnet.
 
-1. Gehen Sie zu **Books → VAT return**.
-2. Legen Sie in den Mehrwertsteuereinstellungen die Methode (**Effective method** oder **Net tax rate method**), die Periodenlänge und die Basis (**Agreed** oder **Received consideration**) fest und speichern Sie dann. Fügen Sie bei Nettosteuersätzen Ihren **Approved net tax rates** hinzu.
-3. Wählen Sie den **Period** und überprüfen Sie die Zahlen und etwaige Warnungen.
-4. Klicken Sie auf **Export → ESTV file (XML)**, um die eCH-0217-Datei abzurufen. Das gleiche Menü hat **PDF summary** und **CSV**.
+1. Gehen Sie zu **Buchhaltung → MWST-Abrechnung**.
+2. Legen Sie in den Mehrwertsteuereinstellungen die Methode (**Effektive Methode** oder **Nettosteuersatzmethode**), die Periodenlänge und die Basis (**Agreed** oder **Erhaltene Gegenleistung**) fest und speichern Sie dann. Fügen Sie bei Nettosteuersätzen Ihren **Genehmigte Nettosteuersätze** hinzu.
+3. Wählen Sie den **Punkt** und überprüfen Sie die Zahlen und etwaige Warnungen.
+4. Klicken Sie auf **Exportieren → ESTV file (XML)**, um die eCH-0217-Datei abzurufen. Das gleiche Menü hat **PDF Zusammenfassung** und **CSV**.
 5. Öffnen Sie im ESTV ePortal MWST-Abrechnung pro → Importieren und laden Sie die Datei hoch.
 
 ## Gut zu wissen
