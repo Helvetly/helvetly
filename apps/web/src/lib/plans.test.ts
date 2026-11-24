@@ -14,6 +14,7 @@ import {
   SELF_SERVICE_SEATS,
   USAGE_DETAILS,
   YEARLY_DISCOUNT_PERCENT,
+  yearlyTerms,
 } from './plans'
 
 const { BENEFITS, bytes, LIMITS, PLANS, plansWith, tokens, FEATURE_GROUPS } = plansIn('en')
@@ -37,6 +38,62 @@ describe('plans', () => {
   it('price a month and a year as the API charges them, in rappen', () => {
     expect(PLANS.map((plan) => priceOf(plan, 'month').amount)).toEqual([1900, 4900, 9900])
     expect(PLANS.map((plan) => priceOf(plan, 'year').amount)).toEqual([18300, 47100, 95100])
+  })
+})
+
+/** "CHF 1'413", "15.25", "39,25" back to rappen. */
+const rappen = (shown: string) =>
+  Math.round(Number(shown.replace(/[^\d.,]/g, '').replace(',', '.')) * 100)
+
+describe('yearly prices as the cards show them', () => {
+  it.each(PLANS.map((plan) => [plan.id, plan] as const))(
+    '%s: twelve of the month shown make the year billed, to the rappen, and the saving is the difference',
+    (_, plan) => {
+      for (const language of ['en', 'de', 'nl'] as const) {
+        const { perMonth, billed, saving } = yearlyTerms(plan, language)
+        const year = priceOf(plan, 'year').amount
+        expect(Math.abs(rappen(perMonth) * 12 - year)).toBeLessThanOrEqual(12)
+        expect(rappen(billed)).toBe(year)
+        expect(rappen(saving)).toBe(priceOf(plan, 'month').amount * 12 - year)
+      }
+    },
+  )
+
+  it('words them with rappen and in the page language', () => {
+    expect(PLANS.map((plan) => yearlyTerms(plan, 'en'))).toEqual([
+      { perMonth: '15.25', billed: 'CHF 183', saving: 'CHF 45' },
+      { perMonth: '39.25', billed: 'CHF 471', saving: 'CHF 117' },
+      { perMonth: '79.25', billed: 'CHF 951', saving: 'CHF 237' },
+    ])
+    expect(PLANS.map((plan) => yearlyTerms(plan, 'nl').perMonth)).toEqual([
+      '15,25',
+      '39,25',
+      '79,25',
+    ])
+    expect(PLANS.map((plan) => yearlyTerms(plan, 'de', 'eur').saving)).toEqual([
+      'EUR 45',
+      'EUR 117',
+      'EUR 237',
+    ])
+  })
+})
+
+describe('gated features the comparisons quote', () => {
+  it('need the same plans as the full comparison and the offer', () => {
+    const rows = new Map(FEATURE_GROUPS.flatMap((g) => g.rows).map((r) => [r.key, r.plans]))
+    for (const key of [
+      'custom_portal_domain',
+      'document_approvals',
+      'api_access',
+      'employees',
+    ] as const)
+      expect({ [key]: PLAN_IDS.filter((id) => has(id, key)) }).toEqual({
+        [key]: PLAN_IDS.filter((id) => rows.get(key)?.[id]),
+      })
+    expect(readFileSync(join(api, 'store/migrations/00051_scheduling.sql'), 'utf8')).toContain(
+      `'scheduling', CASE plan_id WHEN 'basic' THEN 'disabled' ELSE 'enabled' END`,
+    )
+    expect(PLAN_IDS.filter((id) => has(id, 'scheduling'))).toEqual(['pro', 'business'])
   })
 })
 

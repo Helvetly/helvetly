@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { perLanguage } from '@/lib/i18n'
-import { type Plan, type PlanId, plansIn, priceOf } from '@/lib/plans'
+import { plansIn } from '@/lib/plans'
 import type { Tone } from '@/lib/tones'
 
 // Side-by-side comparisons with other business software used in Switzerland. What each competitor offers comes from its
@@ -14,14 +14,12 @@ import type { Tone } from '@/lib/tones'
 // payments), Zoho's mobile apps page (403), QuickBooks' promo fine print and its global prices (loaded live) and
 // which Zoho plans include Zia. Zoho's prices for Switzerland are the EUR group of its pricing page's own table.
 
-/** true: offered; false: not offered; null: not found on their site; text: how it is offered. */
-export type Cell = string | boolean | null
+/** true: offered; false: not offered; null: not found on their site; text: how it is offered; addon: offered at extra cost. */
+export type Cell = string | boolean | null | { addon: string }
 
-export type RowKey =
+/** The rows read from each competitor's site on its `checked` date. */
+export type CheckedKey =
   | 'madeFor'
-  | 'price'
-  | 'yearlyCost'
-  | 'pricingModel'
   | 'teamRoles'
   | 'qrBill'
   | 'documentTypes'
@@ -44,8 +42,10 @@ export type RowKey =
   | 'notifications'
   | 'apps'
 
-/** The rows where Helvetly's cell quotes plans.ts prices, shown only while the API's offer confirms them. */
-export const PRICE_ROWS: ReadonlySet<RowKey> = new Set(['price', 'yearlyCost'])
+/** Rows added later: a competitor's cell is filled only where its site was read for it, else "not compared". */
+export type LaterKey = 'scheduling' | 'documentFiling' | 'approvals' | 'payroll' | 'api' | 'hosting'
+
+export type RowKey = CheckedKey | LaterKey
 
 export type Competitor = {
   slug: string
@@ -63,40 +63,54 @@ export type Competitor = {
   pricesChecked: string
   title: ReactNode
   lead: string
+  /** Their packages and prices as read on `pricesChecked`, and how they charge: for the cost section, not the table. */
+  price: string
+  pricingModel: string
   /** Completes "Helvetly is the better fit when you…". */
   oursIf: string[]
   /** Completes "<name> may suit you better if you…". */
   theirsIf: string[]
-  rows: Record<RowKey, Cell>
+  rows: Record<CheckedKey, Cell> & Partial<Record<LaterKey, Cell>>
 }
-
-const year = (p: Plan, people: number) => (priceOf(p, 'year').amount / 100) * people
 
 /** The comparisons with other Swiss business software, in one language. */
 export const compareIn = perLanguage((translate, language) => {
-  const { count, LIMITS, planById, plansWith } = plansIn(language)
+  const { LIMITS, plansWith } = plansIn(language)
 
+  // Leads with what Helvetly includes; prices are not compared here but in the cost section below the table.
   const ROW_GROUPS: { group: string; rows: { key: RowKey; label: string }[] }[] = [
+    {
+      group: translate('cmpIncludedInHelvetly'),
+      rows: [
+        { key: 'qrBill', label: translate('swissQRBill') },
+        { key: 'einvoices', label: translate('cmpEinvoicesLabel') },
+        { key: 'clientPortal', label: translate('cmpPortalLabel') },
+        { key: 'scheduling', label: translate('cmpSchedulingLabel') },
+        { key: 'signatures', label: translate('electronicSignatures') },
+        { key: 'documentFiling', label: translate('cmpDocumentFilingLabel') },
+        { key: 'approvals', label: translate('cmpApprovalsLabel') },
+        { key: 'payroll', label: translate('employeesAndPayrollRegister') },
+        { key: 'assistant', label: translate('assistantOverYourOwnRecords') },
+        { key: 'api', label: translate('cmpApiLabel') },
+        { key: 'dataExport', label: translate('exportOfAllYourData') },
+        { key: 'hosting', label: translate('cmpHostingLabel') },
+      ],
+    },
     {
       group: translate('whoItIsFor'),
       rows: [
         { key: 'madeFor', label: translate('madeFor') },
-        { key: 'price', label: translate('packagesAndPrice') },
-        { key: 'yearlyCost', label: translate('aYearFor1AndFor3People') },
-        { key: 'pricingModel', label: translate('pricingModel') },
         { key: 'teamRoles', label: translate('teamAndRoles') },
       ],
     },
     {
       group: translate('gettingPaid2'),
       rows: [
-        { key: 'qrBill', label: translate('swissQRBill') },
         { key: 'documentTypes', label: translate('documentTypes') },
         { key: 'invoiceLanguages', label: translate('invoiceLanguages') },
         { key: 'reminders', label: translate('automaticReminders') },
         { key: 'depositPartial', label: translate('depositAndPartialInvoices') },
         { key: 'instalments', label: translate('instalmentSchedulesWithAQRBillEach') },
-        { key: 'einvoices', label: translate('eInvoices') },
       ],
     },
     {
@@ -104,17 +118,9 @@ export const compareIn = perLanguage((translate, language) => {
       rows: [
         { key: 'vatReturn', label: translate('vatReturn') },
         { key: 'expenses', label: translate('expensesWithReceipts') },
-        { key: 'signatures', label: translate('electronicSignatures') },
         { key: 'contractTemplates', label: translate('contractTemplatesFilledWithClientData') },
-        { key: 'clientPortal', label: translate('clientPortal') },
         { key: 'retainers', label: translate('retainersWithHourTracking') },
         { key: 'auditLog', label: translate('closedPeriodsAndAuditLog') },
-      ],
-    },
-    {
-      group: translate('ai'),
-      rows: [
-        { key: 'assistant', label: translate('assistantOverYourOwnRecords') },
         { key: 'aiImport', label: translate('importFromYourFilesWithAI') },
       ],
     },
@@ -122,34 +128,21 @@ export const compareIn = perLanguage((translate, language) => {
       group: translate('securityDataAndApps'),
       rows: [
         { key: 'signIn', label: translate('signIn2') },
-        { key: 'dataExport', label: translate('exportOfAllYourData') },
         { key: 'notifications', label: translate('notificationsPerPerson') },
         { key: 'apps', label: translate('apps') },
       ],
     },
   ]
 
-  const yearly = (id: PlanId) => {
-    const p = planById(id)
-    return translate('chf', { name: p.name, value2: count(year(p, 1)), value3: count(year(p, 3)) })
-  }
-  const monthly = (id: PlanId) =>
-    translate('offerMonthlyPrice', { name: planById(id).name, amount: count(planById(id).monthly) })
-
   /** Helvetly's side of every comparison. */
   const OURS: Record<RowKey, Cell> = {
+    scheduling: translate('cmpSchedulingOurs', { value1: plansWith('scheduling') }),
+    documentFiling: translate('cmpDocumentFilingOurs', { value1: plansWith('automations') }),
+    approvals: translate('cmpApprovalsOurs', { value1: plansWith('document_approvals') }),
+    payroll: translate('cmpPayrollOurs', { value1: plansWith('employees') }),
+    api: translate('cmpApiOurs', { value1: plansWith('api_access') }),
+    hosting: translate('cmpHostingOurs'),
     madeFor: translate('swissCompaniesOfAnySizeAloneOrAsA'),
-    price: translate('perPersonMonthInclVATHeidiExpensesAndThe', {
-      value1: monthly('basic'),
-      value2: monthly('pro'),
-      value3: monthly('business'),
-    }),
-    yearlyCost: translate('inclVAT2', {
-      value1: yearly('pro'),
-      value2: yearly('basic'),
-      value3: yearly('business'),
-    }),
-    pricingModel: translate('threePlansByFeaturesAndAllowancesEveryTeamMember'),
     teamRoles: translate('ownerAdminsAndMembersInEveryPlanEachOne'),
     documentTypes: translate('invoicePartialPrepaymentProformaAndSelfBilledCreditNote', {
       value1: plansWith('corrections_vat'),
@@ -169,9 +162,7 @@ export const compareIn = perLanguage((translate, language) => {
     reminders: translate('upTo10StepsWithFeesAndOR1042', { value1: plansWith('automations') }),
     depositPartial: true,
     instalments: translate('with', { value1: plansWith('automations') }),
-    einvoices: translate('xrechnungPeppolBISKSeFAndEFacturaXMLFiles', {
-      value1: plansWith('einvoice_xml'),
-    }),
+    einvoices: translate('cmpEinvoicesOurs', { value1: plansWith('einvoice_xml') }),
     expenses: translate('with', { value1: plansWith('expenses') }),
     vatReturn: translate('withEffectiveAndNetTaxRateAsTheECH', {
       value1: plansWith('corrections_vat'),
@@ -179,7 +170,7 @@ export const compareIn = perLanguage((translate, language) => {
     signatures: translate('simpleElectronicSignaturesWithNoQualifiedSignatures', {
       value1: plansWith('templates_signatures'),
     }),
-    clientPortal: translate('in', { value1: plansWith('client_portal') }),
+    clientPortal: translate('cmpPortalOurs', { value1: plansWith('custom_portal_domain') }),
     retainers: translate('yesUpToActiveInBasicManagedByHand', {
       basic: LIMITS.engagements.values.basic,
     }),
@@ -226,11 +217,11 @@ export const compareIn = perLanguage((translate, language) => {
         translate('wantYourBankFeedMatchedToInvoicesAutomatically'),
         translate('sellThroughShopifyAmazonOrEtsy'),
       ],
+      price: translate('freeFor3InvoicesAnd3ReceiptsProCHF'),
+      pricingModel: translate('aFreePlanThenOneProPlanWithNo'),
       rows: {
+        api: translate('connectsYourOwnClaudeOrChatGPTThroughMCPAn'),
         madeFor: translate('swissSelfEmployedPeopleAndSoleProprietorships'),
-        price: translate('freeFor3InvoicesAnd3ReceiptsProCHF'),
-        yearlyCost: translate('proCHF299299InclVAT'),
-        pricingModel: translate('aFreePlanThenOneProPlanWithNo'),
         teamRoles: translate('teamAndFiduciaryAccess'),
         documentTypes: translate('invoiceDepositAndPartialCreditNoteCancellationWithA'),
         contractTemplates: null,
@@ -284,11 +275,11 @@ export const compareIn = perLanguage((translate, language) => {
         translate('needStockManagementAlongsideInvoicing'),
         translate('workWithAFiduciaryWhoAlreadyUsesBexio'),
       ],
+      price: translate('basicCHF35AdvancedCHF42OptimaCHF69'),
+      pricingModel: translate('fourTiersByFeaturesAndIncludedUsersPlusAdd'),
       rows: {
+        payroll: { addon: '' },
         madeFor: translate('swissSmallBusinessesStartupsTheSelfEmployedAndTheir'),
-        price: translate('basicCHF35AdvancedCHF42OptimaCHF69'),
-        yearlyCost: translate('advancedCHF504For12UsersOptimaCHF'),
-        pricingModel: translate('fourTiersByFeaturesAndIncludedUsersPlusAdd'),
         teamRoles: translate('usersPerPlanWithPermissionsFreeFiduciaryAccess'),
         documentTypes: translate('invoiceCreditNoteAndPartialInvoicesFromAnOrder'),
         contractTemplates: null,
@@ -342,11 +333,11 @@ export const compareIn = perLanguage((translate, language) => {
         translate('sendInvoicesByEBillEPostOrSwissPostPrint'),
         translate('wantAnOnlineShopAndBookingFromTheSame'),
       ],
+      price: translate('businessBasicCHF69MonthCHF55YearlyCHF'),
+      pricingModel: translate('packagesPlusPaidModulesSuchAsBudgetEArchiveInventory'),
       rows: {
+        payroll: { addon: '' },
         madeFor: translate('swissSMEsAccountingCRMOrdersPayrollAndPOSIn'),
-        price: translate('businessBasicCHF69MonthCHF55YearlyCHF'),
-        yearlyCost: translate('businessBasicCHF660660OnAYearlyPlan'),
-        pricingModel: translate('packagesPlusPaidModulesSuchAsBudgetEArchiveInventory'),
         teamRoles: translate('rolesForAdminsTrusteesPayrollAccountingAndMore'),
         documentTypes: translate('invoiceCreditNoteCollectiveAndRecurringInvoices'),
         contractTemplates: null,
@@ -400,11 +391,10 @@ export const compareIn = perLanguage((translate, language) => {
         translate('keepManyClientsBooksAsAnAccountantOnOne'),
         translate('wantAFreePlanForVerySmallBooks'),
       ],
+      price: translate('freeUpTo70TransactionsProfessionalCHF89Year2'),
+      pricingModel: translate('yearlyLicencePerUserForUpTo5Devices'),
       rows: {
         madeFor: translate('smallCompaniesAssociationsPrivatePeopleAndAccountants'),
-        price: translate('freeUpTo70TransactionsProfessionalCHF89Year2'),
-        yearlyCost: translate('advancedWithTheVATXMLCHF179537VAT'),
-        pricingModel: translate('yearlyLicencePerUserForUpTo5Devices'),
         teamRoles: translate('multiUserSubscriptionsOnePersonEditsAFileAt'),
         documentTypes: translate('invoiceAndCreditNoteProformaInAdvanced'),
         contractTemplates: null,
@@ -458,11 +448,11 @@ export const compareIn = perLanguage((translate, language) => {
         translate('runPayrollForAFewEmployeesAlongsideTheBooks'),
         translate('manageSeveralClientCompaniesAsAFiduciary'),
       ],
+      price: translate('freeFor1UserPROCHF350YearWith2'),
+      pricingModel: translate('freePlanThenPrepaidLicences612Or24'),
       rows: {
+        payroll: true,
         madeFor: translate('smesFreelancersAndFiduciariesWhoKnowDoubleEntryBookkeeping'),
-        price: translate('freeFor1UserPROCHF350YearWith2'),
-        yearlyCost: translate('proCHF350350InclVAT'),
-        pricingModel: translate('freePlanThenPrepaidLicences612Or24'),
         teamRoles: translate('rolesForAdminsGuestsAndTrusteesAndCustomOnes'),
         documentTypes: translate('invoiceAndCreditNoteOffersAndMoreInPRO'),
         contractTemplates: translate('lettersFromTextTemplates'),
@@ -516,11 +506,11 @@ export const compareIn = perLanguage((translate, language) => {
         translate('wantInventoryAShopOrATillInOne'),
         translate('expectToMoveToAbacusERPLater'),
       ],
+      price: translate('starterFree1User1000DocumentsAYear'),
+      pricingModel: translate('freePlanThenTiersLimitedByUsersPayrollRuns'),
       rows: {
+        payroll: true,
         madeFor: translate('swissSMEsStartupsFreelancersAssociationsAndAccountants'),
-        price: translate('starterFree1User1000DocumentsAYear'),
-        yearlyCost: translate('basicCHF252252AtTheMonthlyPriceVAT'),
-        pricingModel: translate('freePlanThenTiersLimitedByUsersPayrollRuns'),
         teamRoles: translate('userGroupsWithPermissionsPerArea'),
         documentTypes: translate('invoiceAdvancePartialInstalmentAndCreditNote'),
         contractTemplates: null,
@@ -534,10 +524,10 @@ export const compareIn = perLanguage((translate, language) => {
         reminders: translate('upToThreeLevelsSentAutomaticallyOrByHand'),
         depositPartial: true,
         instalments: translate('instalmentInvoicesFromAnOrder'),
-        einvoices: translate('ebillThroughAbaNet21AMonthInBasicThen'),
+        einvoices: { addon: translate('ebillThroughAbaNet21AMonthInBasicThen') },
         expenses: true,
         vatReturn: translate('effectiveAndNetTaxRateAsAGuideFor'),
-        signatures: translate('offerSigningWithDeepSignPaid'),
+        signatures: { addon: translate('offerSigningWithDeepSignPaid') },
         clientPortal: true,
         retainers: null,
         auditLog: null,
@@ -568,11 +558,10 @@ export const compareIn = perLanguage((translate, language) => {
         translate('qbNeedInventory'),
         translate('needNativePhoneAndDesktopApps'),
       ],
+      price: translate('qbPrice'),
+      pricingModel: translate('qbPricingModel'),
       rows: {
         madeFor: translate('qbMadeFor'),
-        price: translate('qbPrice'),
-        yearlyCost: translate('qbYearly'),
-        pricingModel: translate('qbPricingModel'),
         teamRoles: translate('qbTeamRoles'),
         documentTypes: translate('qbDocumentTypes'),
         contractTemplates: null,
@@ -620,11 +609,10 @@ export const compareIn = perLanguage((translate, language) => {
         translate('xeroManyApps'),
         translate('xeroUKPayroll'),
       ],
+      price: translate('xeroPrice'),
+      pricingModel: translate('xeroPricingModel'),
       rows: {
         madeFor: translate('xeroMadeFor'),
-        price: translate('xeroPrice'),
-        yearlyCost: translate('xeroYearly'),
-        pricingModel: translate('xeroPricingModel'),
         teamRoles: translate('xeroTeamRoles'),
         documentTypes: translate('xeroDocumentTypes'),
         contractTemplates: null,
@@ -672,11 +660,10 @@ export const compareIn = perLanguage((translate, language) => {
         translate('fbManyLanguages'),
         translate('cmpWantNativePhoneApps'),
       ],
+      price: translate('fbPrice'),
+      pricingModel: translate('fbPricingModel'),
       rows: {
         madeFor: translate('fbMadeFor'),
-        price: translate('fbPrice'),
-        yearlyCost: translate('fbYearly'),
-        pricingModel: translate('fbPricingModel'),
         teamRoles: translate('fbTeamRoles'),
         documentTypes: translate('fbDocumentTypes'),
         contractTemplates: null,
@@ -723,11 +710,10 @@ export const compareIn = perLanguage((translate, language) => {
         translate('zbInventory'),
         translate('zbNativeApps'),
       ],
+      price: translate('zbPrice'),
+      pricingModel: translate('zbPricingModel'),
       rows: {
         madeFor: translate('zbMadeFor'),
-        price: translate('zbPrice'),
-        yearlyCost: translate('zbYearly'),
-        pricingModel: translate('zbPricingModel'),
         teamRoles: translate('zbTeamRoles'),
         documentTypes: translate('zbDocumentTypes'),
         contractTemplates: null,
@@ -775,11 +761,10 @@ export const compareIn = perLanguage((translate, language) => {
         translate('bonsaiCRM'),
         translate('bonsaiOwnAI'),
       ],
+      price: translate('bonsaiPrice'),
+      pricingModel: translate('bonsaiPricingModel'),
       rows: {
         madeFor: translate('bonsaiMadeFor'),
-        price: translate('bonsaiPrice'),
-        yearlyCost: translate('bonsaiYearly'),
-        pricingModel: translate('bonsaiPricingModel'),
         teamRoles: translate('bonsaiTeamRoles'),
         documentTypes: translate('bonsaiDocumentTypes'),
         contractTemplates: translate('bonsaiContractTemplates'),

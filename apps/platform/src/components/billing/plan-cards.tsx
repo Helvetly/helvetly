@@ -32,6 +32,7 @@ import {
   taxNoteLong,
   useCheckout,
   yearlySaving,
+  yearlySavingAmount,
   type Billing,
   limitNoun,
   offerNoun,
@@ -273,6 +274,7 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
           const trial = !subscribed && billing.trial_available && plan.id === billing.trial_plan
           const label = choiceLabel(billing, plan, interval)
           const shown = promoted ?? price
+          const saved = promoted ? null : yearlySavingAmount(plan)
           const per = interval === 'year' ? translate('aYear2') : translate('aMonth')
           // a yearly price reads as its month, like the website; the year's price is shown under it
           const perMonth = (p: PlanPrice) => (interval === 'year' ? monthOf(p) : p)
@@ -363,6 +365,11 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
                         {formatPrice(shown)}
                       </strong>
                       {translate('aYearBilledYearly')}
+                      {saved && (
+                        <span data-slot="yearly-saving" className="block">
+                          {translate('youSavePerPersonPerYear', { amount: formatPrice(saved) })}
+                        </span>
+                      )}
                     </span>
                   ) : interval === 'month' && plan.prices.year && yearlySaving(plan) > 0 ? (
                     <span className="text-caption text-muted-foreground tabular-nums">

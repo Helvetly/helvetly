@@ -273,6 +273,19 @@ test('the yearly saving sits in the Yearly segment, and the promotion code just 
   expect(promo.compareDocumentPosition(card('Basic'))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
 })
 
+test('yearly, each card shows the exact month, the year billed and the saving per person', async () => {
+  renderCards(billing())
+  await userEvent.click(screen.getByRole('radio', { name: 'Yearly −20%' }))
+  expect(card('Pro')).toHaveTextContent('CHF 39.25')
+  expect(card('Pro')).toHaveTextContent('CHF 471 a year, billed yearly')
+  expect(
+    within(card('Pro')).getByText('You save CHF 117 per person per year vs monthly'),
+  ).toBeTruthy()
+  expect(
+    within(card('Basic')).getByText('You save CHF 45 per person per year vs monthly'),
+  ).toBeTruthy()
+})
+
 test('a valid promotion code discounts the plans it covers and goes with the checkout', async () => {
   renderCards(billing({ trial_available: false }))
   await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))

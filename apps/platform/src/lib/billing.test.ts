@@ -40,6 +40,7 @@ import {
   withZone,
   trialDaysLeft,
   yearlySaving,
+  yearlySavingAmount,
   type Billing,
   type Plan,
 } from './billing'
@@ -118,6 +119,19 @@ const plan = (month: number, year: number): Plan => ({
   },
   features: [],
   prices: { month: { amount: month, currency: 'chf' }, year: { amount: year, currency: 'chf' } },
+})
+
+test('yearlySavingAmount is twelve months less the year, per person', () => {
+  const saved = (month: number, year: number) => yearlySavingAmount(plan(month, year))
+  expect([saved(1900, 18300), saved(4900, 47100), saved(9900, 95100)]).toEqual([
+    { amount: 4500, currency: 'chf' },
+    { amount: 11700, currency: 'chf' },
+    { amount: 23700, currency: 'chf' },
+  ])
+  expect(saved(1900, 22800)).toBeNull()
+  expect(
+    yearlySavingAmount({ ...plan(1900, 18300), prices: { month: null, year: null } }),
+  ).toBeNull()
 })
 
 test('yearlySaving compares a year with twelve months', () => {

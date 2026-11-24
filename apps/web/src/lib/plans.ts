@@ -1,5 +1,13 @@
-import { localeDetails } from '@helvetly/i18n'
-import { type Price, YEARLY_DISCOUNT_PERCENT, yearOf } from '@helvetly/ui/lib/price'
+import { type Locale, localeDetails } from '@helvetly/i18n'
+import {
+  formatAmount,
+  formatPrice,
+  monthOf,
+  type Price,
+  savingOf,
+  YEARLY_DISCOUNT_PERCENT,
+  yearOf,
+} from '@helvetly/ui/lib/price'
 // The one place the website keeps what each plan costs and includes: offer helvetly's public projection (prices,
 // the business comparison and the commercial allowances). Every page, card, table, FAQ and comparison reads it
 // from here. Prices are checked against apps/api/internal/billing/plans.go in plans.test.ts.
@@ -95,6 +103,11 @@ const FEATURE_FROM = {
   client_portal: 'business',
   einvoice_xml: 'business',
   employees: 'business',
+  // Quoted by the comparisons; checked against the offer in plans.test.ts.
+  scheduling: 'pro',
+  custom_portal_domain: 'business',
+  document_approvals: 'business',
+  api_access: 'pro',
 } as const satisfies Record<string, PlanId>
 
 export type Feature = keyof typeof FEATURE_FROM
@@ -149,6 +162,17 @@ export const TRIAL_DAYS = TRIAL.days
 export function priceOf(plan: Plan, interval: Interval, currency = 'chf'): Price {
   const month = { amount: plan.monthly * 100, currency }
   return interval === 'month' ? month : yearOf(month)
+}
+
+/** A plan's yearly price as the cards word it: what it comes to a month, the year billed and what it saves. */
+export function yearlyTerms(plan: Plan, language: Locale, currency = 'chf') {
+  const locale = localeDetails(language).numberLocale
+  const year = priceOf(plan, 'year', currency)
+  return {
+    perMonth: formatAmount(monthOf(year), locale),
+    billed: formatPrice(year, locale),
+    saving: formatPrice(savingOf(priceOf(plan, 'month', currency)), locale),
+  }
 }
 
 /** Everything the plans say in words, in one language. */

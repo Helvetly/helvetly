@@ -1,4 +1,4 @@
-import { formatAmount, formatPrice, monthOf, yearOf } from './price'
+import { formatAmount, formatPrice, monthOf, savingOf, yearOf } from './price'
 
 const chf = (amount: number) => ({ amount, currency: 'chf' })
 
@@ -19,4 +19,13 @@ test('prices show whole francs bare and the rest with rappen', () => {
   expect(formatPrice(chf(1900))).toBe('CHF 19')
   expect(formatPrice(chf(1850))).toBe('CHF 18.50')
   expect(formatAmount(chf(114000))).toBe("1'140")
+})
+
+test('the yearly saving is twelve months less the year', () => {
+  expect([1900, 4900, 9900].map((m) => savingOf(chf(m)).amount)).toEqual([4500, 11700, 23700])
+})
+
+test('a page in another language formats in its own locale', () => {
+  expect(formatAmount(chf(1525), 'nl-NL')).toBe('15,25')
+  expect(formatPrice(chf(114000), 'sv-SE')).toBe('CHF 1\u00a0140')
 })
