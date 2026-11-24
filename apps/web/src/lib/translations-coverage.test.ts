@@ -7,9 +7,8 @@ import { describe, expect, it } from 'vitest'
 import en from '../messages/en.json'
 import { isLegalSlug, LEGAL, readLegal, slugify } from './legal'
 
-// Every public language besides English, and the ones that must translate everything (German predates the legal texts).
+// Every public language besides English.
 const TRANSLATED = ['de', 'fr', 'it', 'nl', 'cs', 'sv'] as const satisfies readonly Locale[]
-const COMPLETE = ['fr', 'it', 'nl', 'cs', 'sv'] as const satisfies readonly Locale[]
 
 const messages = (file: string) => join(import.meta.dirname, '../messages', file)
 const content = join(import.meta.dirname, '../../content')
@@ -96,7 +95,7 @@ describe.each([
 ] as const)('%s translations', (collection, kept) => {
   const files = englishFiles(collection)
 
-  it.each(COMPLETE)('%s translates every English file and nothing else', (language) => {
+  it.each(TRANSLATED)('%s translates every English file and nothing else', (language) => {
     const directory = join(content, collection, language)
     expect(existsSync(directory) ? readdirSync(directory).toSorted() : []).toEqual(files)
   })
@@ -140,7 +139,7 @@ const legalSlug = (target: string) =>
     .filter(isLegalSlug)
     .find((slug) => LEGAL[slug].file === target || `/${slug}` === target)
 
-describe.each(COMPLETE)('%s anchors', (language) => {
+describe.each(TRANSLATED)('%s anchors', (language) => {
   // Every heading id of a legal page in the language, as the page renders it.
   const ids = new Map(
     Object.keys(LEGAL)

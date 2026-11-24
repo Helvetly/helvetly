@@ -100,7 +100,8 @@ func TestInvoicesNoDrafts(t *testing.T) {
 
 func TestInvoicePaymentInstructionsAndYearlyPayments(t *testing.T) {
 	e := newEnv(t)
-	for _, id := range []string{"unpaid", "partial", "scheduled", "no_qr", "old"} {
+	wantIDs := []string{"no_qr", "old", "partial", "scheduled", "unpaid"}
+	for _, id := range wantIDs {
 		e.invoice(id, "cli_1", "open", id, "pdf/"+id)
 	}
 	e.invoice("other_client", "cli_3", "open", "other", "pdf/other")
@@ -119,7 +120,8 @@ func TestInvoicePaymentInstructionsAndYearlyPayments(t *testing.T) {
 	var got struct {
 		Data []struct {
 			ID        string
-			CurrentQR bool `json:"current_qr"`
+			AmountDue store.Money `json:"amount_due"`
+			CurrentQR bool        `json:"current_qr"`
 		}
 		PaidIn struct {
 			Year   string
@@ -129,13 +131,19 @@ func TestInvoicePaymentInstructionsAndYearlyPayments(t *testing.T) {
 	if res.StatusCode != http.StatusOK || json.Unmarshal([]byte(body), &got) != nil {
 		t.Fatalf("invoices: %d %s", res.StatusCode, body)
 	}
-	if len(got.Data) != 5 {
-		t.Fatalf("expected five invoices of this client, got %+v", got.Data)
-	}
+	var ids []string
 	for _, inv := range got.Data {
+		ids = append(ids, inv.ID)
+		if inv.ID == "partial" && inv.AmountDue != 7810 {
+			t.Errorf("partial balance = %s, want 78.10", inv.AmountDue)
+		}
 		if inv.CurrentQR != (inv.ID == "unpaid") {
 			t.Errorf("current QR for %s: %v", inv.ID, inv.CurrentQR)
 		}
+	}
+	slices.Sort(ids)
+	if !slices.Equal(ids, wantIDs) {
+		t.Errorf("portal invoices = %v, want %v", ids, wantIDs)
 	}
 	if len(got.PaidIn.Totals) != 1 || got.PaidIn.Totals["CHF"] != 13000 {
 		t.Errorf("payments in %s: %v", got.PaidIn.Year, got.PaidIn.Totals)

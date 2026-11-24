@@ -9,10 +9,10 @@ updated: 2026-11-11
 
 Helvetly n’utilise pas de mots de passe. Choisissez les méthodes de connexion qui vous conviennent.
 
-1. Ouvrez **Settings → Account settings → Sign-in methods**.
-2. **Email code** envoie un code à 6 chiffres à votre adresse e-mail.
-3. Connectez **Google** pour une connexion en un clic, ou cliquez sur **Disconnect** pour le retirer.
-4. Sous **Passkeys**, cliquez sur **Add passkey** pour vous connecter avec votre empreinte, votre visage ou le code PIN de l’appareil. Retirez une clé d’accès avec son icône de suppression.
+1. Ouvrez **Paramètres → Paramètres du compte → Méthodes de connexion**.
+2. **Code email** envoie un code à 6 chiffres à votre adresse e-mail.
+3. Connectez **Google** pour une connexion en un clic, ou cliquez sur **Déconnecter** pour le retirer.
+4. Sous **Clés d’accès**, cliquez sur **Ajouter un mot de passe** pour vous connecter avec votre empreinte, votre visage ou le code PIN de l’appareil. Retirez une clé d’accès avec son icône de suppression.
 
 ## Bon à savoir
 

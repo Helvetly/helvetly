@@ -11,10 +11,10 @@ Helvetly prepara le cifre del rendiconto IVA svizzero e il file da importare nel
 
 La preparazione dei rendiconti IVA richiede **Pro** o **Business**. L’IVA sulle fatture viene calcolata in ogni piano.
 
-1. Vai a **Books → VAT return**.
-2. Nelle impostazioni IVA, scegli il metodo (**Effective method** o **Net tax rate method**), la durata del periodo e la base (**Agreed** o **Received consideration**), poi salva. Per le aliquote saldo, aggiungi le tue **Approved net tax rates**.
-3. Scegli **Period** e controlla le cifre e gli eventuali avvisi.
-4. Fai clic su **Export → ESTV file (XML)** per ottenere il file eCH-0217. Lo stesso menu offre **PDF summary** e **CSV**.
+1. Vai a **Contabilità → Rendiconto IVA**.
+2. Nelle impostazioni IVA, scegli il metodo (**Metodo efficace** o **Metodo dell’aliquota d’imposta netta**), la durata del periodo e la base (**Agreed** o **Corrispettivo ricevuto**), poi salva. Per le aliquote saldo, aggiungi le tue **Aliquote fiscali nette approvate**.
+3. Scegli **Periodo** e controlla le cifre e gli eventuali avvisi.
+4. Fai clic su **Esporta → ESTV file (XML)** per ottenere il file eCH-0217. Lo stesso menu offre **PDF riepilogo** e **CSV**.
 5. Nell’ePortal dell’AFC, apri MWST-Abrechnung pro → Import e carica il file.
 
 ## Da sapere

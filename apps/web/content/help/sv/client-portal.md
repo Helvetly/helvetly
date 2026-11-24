@@ -4,7 +4,7 @@ description: Aktivera kundportalen så att kunden kan logga in och se fakturor, 
 category: Clients
 categoryLabel: Kunder
 order: 3
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Kundportalen ger kunden en privat plats för fakturor och dokument.
@@ -20,3 +20,5 @@ Kundportalen ingår i **Business**. Kunder i portalen är inte betalande teammed
 
 - Kontaktpersoner är inte portalinloggningar. Portalen använder kundens egen mejladress.
 - Kunden loggas omedelbart ut från portalen om du stänger av reglaget eller ändrar kundens mejladress.
+
+Kopiera adressen till arbetsytans portal och ge den till kunden. Från den gemensamma portalen kan kunden få länkarna till sina leverantörer via e-post. Öppna den skrivskyddade förhandsvisningen från kundkortet för att se vad kunden ser.

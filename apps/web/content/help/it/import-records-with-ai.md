@@ -11,10 +11,10 @@ Passi da un altro sistema? Lascia che l’IA legga i vecchi file e li trasformi 
 
 L’importazione con IA richiede **Pro** o **Business** e utilizza i token IA del piano.
 
-1. Apri **Clients**, **Products & services**, **Engagements** o **Invoices** e scegli **Import** dal menu **…** della pagina. Per le spese, usa invece **Upload receipts**.
+1. Apri **Clienti**, **Prodotti e servizi**, **Engagements** o **Fatture** e scegli **Importa** dal menu **…** della pagina. Per le spese, usa invece **Carica ricevute**.
 2. Trascina fogli di calcolo, PDF, foto o file Word, poi fai clic su **Read files**.
 3. Verifica i record trovati. Modifica le righe, deseleziona quelle che non vuoi importare e risolvi gli eventuali conflitti.
-4. Fai clic su **Import** per creare i record selezionati, poi su **Done**.
+4. Fai clic su **Importa** per creare i record selezionati, poi su **Fatto**.
 5. Puoi anche allegare file in Heidi e scegliere "Import as". Il pannello di importazione si apre con quei file.
 
 ## Da sapere
@@ -25,4 +25,4 @@ L’importazione con IA richiede **Pro** o **Business** e utilizza i token IA de
   restano disponibili.
 - Le importazioni utilizzano la disponibilità IA mensile.
 - Un’importazione accetta fino a 25 file da 25 MB ciascuno. Uno ZIP viene aperto di un livello e può contenere fino a 250 file; un’importazione legge al massimo 250 file in tutto.
-- Se il sistema precedente ha già dichiarato l’IVA per le fatture importate, chiudi prima quei mesi in **Books → Closing**.
+- Se il sistema precedente ha già dichiarato l’IVA per le fatture importate, chiudi prima quei mesi in **Contabilità → Chiusura**.

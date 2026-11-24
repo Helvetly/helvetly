@@ -19,5 +19,5 @@ Výdaje jsou v každém tarifu, v rámci jeho měsíčního limitu.
 
 ## Co je dobré vědět
 
-- Zaúčtování vyžaduje pole označená hvězdičkou a účtenku.
-- Zaúčtované výdaje nelze smazat. Vlastník nebo správce je může stornovat přes **Void…** s uvedením důvodu a přes **Duplicate** zaúčtovat opravenou kopii.
+- Pro zaúčtování vyplňte povinná pole a přiložte účtenku nebo uveďte důvod, proč chybí.
+- Vlastník nebo správce může zaúčtovaný výdaj stornovat s uvedením důvodu. Duplikováním vznikne nový koncept, který můžete opravit a zaúčtovat.

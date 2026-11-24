@@ -11,12 +11,12 @@ Distribuisci una fattura su più scadenze, mantenendo un unico documento.
 
 I solleciti di pagamento automatici richiedono **Pro** o **Business** e utilizzano azioni automatiche.
 
-1. Nell’editor della fattura, attiva **Pay in instalments** sotto il documento.
-2. Imposta il numero di rate, l’intervallo e **First due date**. Puoi modificare le singole righe.
-3. Lascia attivo **Payment reminders** se vuoi che il cliente riceva email prima e dopo ogni scadenza.
+1. Nell’editor della fattura, attiva **Paga a rate** sotto il documento.
+2. Imposta il numero di rate, l’intervallo e **Prima data di scadenza**. Puoi modificare le singole righe.
+3. Lascia attivo **Solleciti di pagamento** se vuoi che il cliente riceva email prima e dopo ogni scadenza.
 4. Emetti la fattura come al solito. Il dettaglio della fattura mostra lo scadenzario rateale.
 
 ## Da sapere
 
-- Puoi impostare i valori predefiniti in **Settings → Invoices → Instalments**.
+- Puoi impostare i valori predefiniti in **Impostazioni → Fatture → Rate**.
 - Le fatture a rate sono escluse dalla procedura di sollecito Dunning.

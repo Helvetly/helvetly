@@ -9,10 +9,10 @@ updated: 2026-11-24
 
 Chaque espace de travail dispose de sa propre formule. Un espace de travail sans formule payante est sur **Free**. Voici comment choisir et gérer une formule.
 
-1. Ouvrez **Settings → Billing** (Plan & billing) pour voir votre formule, son statut et votre consommation par rapport aux limites.
-2. Sous **Plans**, choisissez **Monthly** ou **Yearly**, puis **Basic**, **Pro** ou **Business**. **Compare plans** présente côte à côte les fonctionnalités et quotas. Les prix comprennent la TVA suisse.
-3. Pour saisir une réduction, cliquez sur **Have a promotion code?**.
-4. Pour mettre à jour votre carte, annuler ou obtenir des factures, cliquez sur **Manage billing**. Les anciennes factures figurent sous **Invoices**.
+1. Ouvrez **Paramètres → Facturation** (Plan & billing) pour voir votre formule, son statut et votre consommation par rapport aux limites.
+2. Sous **Plans**, choisissez **Mensuel** ou **Annuel**, puis **Basic**, **Pro** ou **Business**. **Comparer les formules** présente côte à côte les fonctionnalités et quotas. Les prix comprennent la TVA suisse.
+3. Pour saisir une réduction, cliquez sur **Vous avez un code promotionnel ?**.
+4. Pour mettre à jour votre carte, annuler ou obtenir des factures, cliquez sur **Gérer la facturation**. Les anciennes factures figurent sous **Factures**.
 
 ## Bon à savoir
 
@@ -23,4 +23,4 @@ Chaque espace de travail dispose de sa propre formule. Un espace de travail sans
 - Les nouveaux essais éligibles donnent accès à Pro pendant 14 jours, avec jusqu’à 2 personnes. Une carte est nécessaire. Pendant l’essai, vous disposez des quotas de Pro pour une personne, qui ne sont pas réinitialisés. Les essais déjà accordés dans le cadre d’offres antérieures conservent leurs conditions initiales.
 - Sans formule payante, par exemple après l’essai ou une résiliation, l’espace de travail est sur Free : rien n’est supprimé et tout reste consultable, mais les nouveaux ajouts au-delà des limites de Free attendent que vous choisissiez une formule.
 - Seuls les propriétaires et administrateurs peuvent changer la formule.
-- Lorsque vous atteignez une limite, une invite s’affiche avec **See plans**.
+- Lorsque vous atteignez une limite, une invite s’affiche avec **Voir plans**.

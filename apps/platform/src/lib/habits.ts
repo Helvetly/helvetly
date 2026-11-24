@@ -155,7 +155,7 @@ export function useHabits() {
   const session = useQueryClient().getQueryData<Session>(queryKeys.session)
   const key = session ? storageKey(session.user.id, session.workspace.id) : null
   return {
-    habits: key ? load(key) : {},
+    readHabits: () => (key ? load(key) : {}),
     remember: <T extends Record<string, unknown>>(
       form: string,
       values: T,

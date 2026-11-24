@@ -13,7 +13,7 @@ Le portail client, et donc les demandes de modification, nécessite **Business**
 
 1. Lorsqu’un client demande dans le portail de modifier ses coordonnées (nom, e-mail de facturation, téléphone, adresse, numéro de TVA ou d’immatriculation), les propriétaires et administrateurs reçoivent une notification.
 2. Ouvrez le client. Une bannière présente les modifications demandées.
-3. Cliquez sur **Approve** pour les appliquer, ou sur **Reject** pour les refuser.
+3. Cliquez sur **Approuver** pour les appliquer, ou sur **Rejeter** pour les refuser.
 
 ## Bon à savoir
 

@@ -12,10 +12,10 @@ import {
 } from '@helvetly/ui/components/dropdown-menu'
 import { useTranslate } from '@helvetly/ui/components/language-provider'
 import { LanguageDialog, LanguageMenuItem } from '@helvetly/ui/components/language-switcher'
+import { Loader } from '@helvetly/ui/components/loader'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { errorMessage } from '@helvetly/ui/lib/http'
-import { cn } from '@helvetly/ui/lib/utils'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays,
@@ -55,7 +55,7 @@ import { useSessionsVisible } from '@/lib/scheduling'
 import { scoped, unscoped } from '@/lib/scope'
 import { shorten } from '@/lib/text'
 
-import { LoginAvatar, WorkspaceMark } from './portal-bits'
+import { LoginAvatar, PortalLoadError, WorkspaceMark } from './portal-bits'
 
 const NAV = [
   { href: '/', label: translate('overview'), icon: House },
@@ -101,7 +101,10 @@ export function PreviewLock({ children }: { children: ReactElement<{ disabled?: 
 function PreviewBanner({ session, onEnd }: { session: PortalSession; onEnd: () => void }) {
   if (!session.preview) return null
   return (
-    <output className="flex min-h-10 items-center gap-3 border-b bg-brand-surface px-4 py-1.5 text-body-sm text-foreground sm:px-6 lg:px-8">
+    <output
+      aria-label={translate('readOnlyPreview')}
+      className="flex min-h-10 items-center gap-3 border-b bg-brand-surface px-4 py-1.5 text-body-sm text-foreground sm:px-6 lg:px-8"
+    >
       <Eye aria-hidden className="size-4 shrink-0 stroke-[1.75] text-brand" />
       <span className="min-w-0 flex-1">
         {translate('previewBanner', {
@@ -241,12 +244,7 @@ function PortalNav({ pathname }: { pathname: string }) {
       aria-label={translate('portal')}
       className="fixed inset-x-0 bottom-0 z-30 border-t bg-card pb-[env(safe-area-inset-bottom)] md:static md:shrink-0 md:border-0 md:bg-transparent md:pb-0"
     >
-      <ul
-        className={cn(
-          'grid md:flex md:h-16 md:items-center md:gap-1',
-          nav.length > 5 ? 'grid-cols-6' : 'grid-cols-5',
-        )}
-      >
+      <ul className="grid auto-cols-fr grid-flow-col md:flex md:h-16 md:items-center md:gap-1">
         {nav.map(({ href, label, icon: Icon }) => {
           const active = href === '/' ? pathname === href : pathname.startsWith(href)
           return (
@@ -327,7 +325,12 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
   const queryClient = useQueryClient()
   const [languageOpen, setLanguageOpen] = useState(false)
   const accountButton = useRef<HTMLButtonElement>(null)
-  const { data: session, isPending } = useQuery({
+  const {
+    data: session,
+    isPending,
+    error: sessionError,
+    refetch,
+  } = useQuery({
     queryKey: portalKeys.session,
     queryFn: getPortalSession,
     retry: false,
@@ -343,7 +346,8 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
     if (session === null) router.replace(scoped('/login'))
   }, [session, router])
 
-  if (isPending || !session) return null
+  if (!session && sessionError) return <PortalLoadError retry={() => void refetch()} />
+  if (isPending || !session) return <Loader size="page" className="min-h-svh" />
 
   const switchClient = async (id: string) => {
     if (id === session.client.id) return

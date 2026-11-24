@@ -9,10 +9,10 @@ updated: 2026-11-11
 
 Modifica ciò che una persona può fare oppure rimuovila dallo spazio di lavoro.
 
-1. Vai a **Members** e apri il menu **Actions** (…) della riga.
+1. Vai a **Membri** e apri il menu **Azioni** (…) della riga.
 2. Scegli un nuovo ruolo: Owner, Admin o Member.
-3. Per un Member, scegli **Change access…** e imposta ogni area su **No access**, **View** o **Edit**.
-4. Per rimuovere qualcuno, scegli **Remove from workspace**. Per uscire tu stesso, scegli **Leave workspace**.
+3. Per un Member, scegli **Modifica accesso…** e imposta ogni area su **Nessun accesso**, **Visualizza** o **Modifica**.
+4. Per rimuovere qualcuno, scegli **Rimuovi dallo spazio di lavoro**. Per uscire tu stesso, scegli **Lascia l’area di lavoro**.
 
 ## Da sapere
 

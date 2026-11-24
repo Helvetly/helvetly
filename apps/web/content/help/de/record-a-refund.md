@@ -10,10 +10,10 @@ updated: 2026-11-11
 Wenn ein Kunde zu viel bezahlt hat, erfassen Sie die Rückerstattung, sobald Sie ihn zurückgezahlt haben.
 
 1. Wenn ein Kunde mehr bezahlt hat, als er schuldet, beispielsweise nach einer Gutschrift, wird in der Rechnung eine fällige Rückerstattung ausgewiesen.
-2. Öffnen Sie die Rechnung und klicken Sie auf **Record refund**.
-3. Geben Sie das **Amount**, das **Refunded on**-Datum und, wenn Sie möchten, das **Refund method** und eine Notiz ein.
-4. Klicken Sie auf **Record refund**.
+2. Öffnen Sie die Rechnung und klicken Sie auf **Rückerstattung aufzeichnen**.
+3. Geben Sie das **Betrag**, das **Erstattet am**-Datum und, wenn Sie möchten, das **Rückerstattungsmethode** und eine Notiz ein.
+4. Klicken Sie auf **Rückerstattung aufzeichnen**.
 
 ## Gut zu wissen
 
-- Verwenden Sie den **Refund due**-Filter für **Invoices**, um Rechnungen zu finden, die noch einer Rückerstattung bedürfen.
+- Verwenden Sie den **Rückerstattung fällig**-Filter für **Rechnungen**, um Rechnungen zu finden, die noch einer Rückerstattung bedürfen.

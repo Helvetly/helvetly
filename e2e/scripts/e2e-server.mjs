@@ -98,24 +98,9 @@ try {
   api.once('exit', () => {
     if (!stopping) void stop().finally(() => process.exit(1))
   })
-  let ready = false
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    if (stopping) break
-    try {
-      ready = (await fetch(`http://127.0.0.1:${apiPort}/api/v1/auth/config`)).ok
-    } catch {
-      ready = false
-    }
-    if (ready) break
-    await new Promise((resolve) => setTimeout(resolve, 100))
-  }
-  if (!ready) throw new Error('The isolated E2E API did not become ready')
+  // Playwright waits for the API through the platform and starts the portal separately.
   const platform = run('pnpm', ['exec', 'next', 'dev', '--port', port], 'apps/platform')
   platform.once('exit', () => {
-    if (!stopping) void stop().finally(() => process.exit(1))
-  })
-  const portal = run('pnpm', ['exec', 'next', 'dev', '--port', portalPort], 'apps/portal')
-  portal.once('exit', () => {
     if (!stopping) void stop().finally(() => process.exit(1))
   })
 } catch (error) {

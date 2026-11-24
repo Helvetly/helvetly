@@ -37,6 +37,26 @@ export function errorMessage(error: unknown): string {
 let csrfToken = ''
 let onUnauthorized = () => {}
 
+let notifyOtherTabs: (() => void) | undefined
+
+/** Every tab shares the session cookie. Recheck its identity when another tab replaces the session. */
+export function watchSessionChanges(scope: string) {
+  if (!('BroadcastChannel' in window)) return
+  const channel = new BroadcastChannel(`helvetly.session.${scope}`)
+  notifyOtherTabs = channel.postMessage.bind(channel, null)
+  channel.addEventListener('message', () => window.location.reload())
+  return () => {
+    channel.close()
+    notifyOtherTabs = undefined
+  }
+}
+
+/** A successful sign-in, switch or sign-out. Reading an existing session only sets its local CSRF token. */
+export function changeSession(token: string) {
+  setCsrfToken(token)
+  notifyOtherTabs?.()
+}
+
 export function setCsrfToken(token: string) {
   csrfToken = token
 }

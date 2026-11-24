@@ -3,7 +3,7 @@ title: Een betaling registreren
 description: Registreer een volledige of gedeeltelijke betaling op een factuur of markeer deze met één klik als vandaag volledig betaald.
 category: Invoices and getting paid
 order: 7
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Registreer ontvangen geld op de factuur, zodat je altijd weet wat nog verschuldigd is.
@@ -17,3 +17,4 @@ Registreer ontvangen geld op de factuur, zodat je altijd weet wat nog verschuldi
 
 - Het bedrag mag niet hoger zijn dan het openstaande bedrag en de datum mag niet in de toekomst liggen.
 - Open het tabblad **Payments** en verwijder de betaling om een fout te corrigeren.
+- De uitgereikte pdf en de QR-code behouden het oorspronkelijke bedrag. Na een deelbetaling ziet de klant in het Business-klantportaal het resterende saldo. Bij een overboeking vult de klant dat saldo in bij de eigen bank.

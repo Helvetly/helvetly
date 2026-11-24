@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const port = '8008' // e2e/scripts/e2e-server.mjs
+const portalPort = '8009'
+const gracefulShutdown = { signal: 'SIGTERM', timeout: 15_000 } as const
 
 export default defineConfig({
   testDir: './tests',
@@ -18,11 +20,25 @@ export default defineConfig({
     serviceWorkers: 'block',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: 'node scripts/e2e-server.mjs',
-    url: `http://localhost:${port}/api/v1/auth/config`,
-    timeout: 180_000,
-    reuseExistingServer: false,
-    gracefulShutdown: { signal: 'SIGTERM', timeout: 15_000 },
-  },
+  webServer: [
+    {
+      command: 'node scripts/e2e-server.mjs',
+      url: `http://localhost:${port}/api/v1/auth/config`,
+      timeout: 180_000,
+      reuseExistingServer: false,
+      gracefulShutdown,
+    },
+    {
+      command: `pnpm exec next dev --port ${portalPort}`,
+      cwd: '../apps/portal',
+      env: {
+        API_URL: 'http://127.0.0.1:3338',
+        HELVETLY_E2E_NEXT_DIST: 'true',
+        NEXT_TELEMETRY_DISABLED: '1',
+      },
+      url: `http://localhost:${portalPort}/robots.txt`,
+      reuseExistingServer: false,
+      gracefulShutdown,
+    },
+  ],
 })

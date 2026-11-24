@@ -11,8 +11,8 @@ Ihre Daten gehören Ihnen. Machen Sie jederzeit eine vollständige Kopie.
 
 Die ZIP-Datei des Arbeitsbereichs und die CSV-Listen benötigen **Pro** oder **Business**. In Free und Basic können Sie weiterhin jedes vorhandene Dokument, beispielsweise ein Rechnungs-PDF, öffnen und herunterladen, und jeder kann seine persönlichen Daten herunterladen.
 
-1. Um einen gesamten Arbeitsbereich zu exportieren (nur Besitzer), gehen Sie zu **Settings → Workspace → Export all data** und klicken Sie auf **Download export**. Sie erhalten eine ZIP-Datei mit jedem Datensatz als JSON sowie den gespeicherten Dateien.
-2. Um Ihre persönlichen Daten zu exportieren, gehen Sie zu **Settings → Account settings → Your data** und klicken Sie auf **Download my data** (JSON).
+1. Um einen gesamten Arbeitsbereich zu exportieren (nur Besitzer), gehen Sie zu **Einstellungen → Arbeitsbereich → Alle Daten exportieren** und klicken Sie auf **Export herunterladen**. Sie erhalten eine ZIP-Datei mit jedem Datensatz als JSON sowie den gespeicherten Dateien.
+2. Um Ihre persönlichen Daten zu exportieren, gehen Sie zu **Einstellungen → Kontoeinstellungen → Ihre Daten** und klicken Sie auf **Meine Daten herunterladen** (JSON).
 3. Für Listen verwenden Sie **Export CSV** im Seitenmenü oder in ausgewählten Zeilen von Kunden, Rechnungen, Produkten und Dienstleistungen und Ausgaben.
 
 ## Gut zu wissen

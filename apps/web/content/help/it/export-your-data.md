@@ -11,9 +11,9 @@ I tuoi dati ti appartengono. Scaricane una copia completa quando vuoi.
 
 Lo ZIP dello spazio di lavoro e gli elenchi CSV richiedono **Pro** o **Business**. In Free e Basic puoi comunque aprire e scaricare ogni documento esistente, come il PDF di una fattura, e chiunque può scaricare i propri dati personali.
 
-1. Per esportare un intero spazio di lavoro (solo titolari), vai a **Settings → Workspace → Export all data** e fai clic su **Download export**. Ricevi uno ZIP con ogni record in JSON e i file archiviati.
-2. Per esportare i tuoi dati personali, vai a **Settings → Account settings → Your data** e fai clic su **Download my data** (JSON).
-3. Per gli elenchi, usa **Export CSV** nel menu della pagina o sulle righe selezionate di Clients, Invoices, Products & services ed Expenses.
+1. Per esportare un intero spazio di lavoro (solo titolari), vai a **Impostazioni → Spazio di lavoro → Esporta tutti i dati** e fai clic su **Scarica esportazione**. Ricevi uno ZIP con ogni record in JSON e i file archiviati.
+2. Per esportare i tuoi dati personali, vai a **Impostazioni → Impostazioni dell’account → I tuoi dati** e fai clic su **Scarica i miei dati** (JSON).
+3. Per gli elenchi, usa **Esporta CSV** nel menu della pagina o sulle righe selezionate di Clients, Invoices, Products & services ed Expenses.
 
 ## Da sapere
 

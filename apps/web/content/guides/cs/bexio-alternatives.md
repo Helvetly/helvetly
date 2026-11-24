@@ -8,7 +8,7 @@ readingMinutes: 7
 
 Hlavními alternativami k bexio ve Švýcarsku jsou Magic Heidi, KLARA, Banana, CashCtrl, AbaNinja a Helvetly. Co se hodí, záleží na tom, zda potřebujete plné účetnictví a mzdy (bexio, KLARA, AbaNinja, CashCtrl, Banana), nebo chcete hlavně dostávat zaplaceno s menší administrativou (Magic Heidi pro jednoduché účetnictví, Helvetly pro zázemí kolem faktur).
 
-Vše, co je zde řečeno o jiných produktech, pochází z jejich veřejných webů podle stavu k 11. listopadu 2026, jejich ceny podle stavu k 15. listopadu 2026. Ceny se mění, proto si před rozhodnutím ověřte web dodavatele. Každý produkt má na vlastní stránce přímé srovnání s Helvetly.
+Vše, co je zde řečeno o jiných produktech, pochází z jejich veřejných webů podle stavu k 11. listopadu 2026, jejich ceny podle stavu k 24. listopadu 2026. Ceny se mění, proto si před rozhodnutím ověřte web dodavatele. Každý produkt má na vlastní stránce přímé srovnání s Helvetly.
 
 ## Co je bexio a proč hledat alternativu?
 
@@ -42,15 +42,17 @@ Pro malý tým, který chce účetnictví, mzdy a fakturaci od jednoho švýcars
 
 Nejlevnější jsou bezplatné tarify Magic Heidi, Banana, CashCtrl, AbaNinja a Helvetly, každý s limity. Nejlevnějším placeným tarifem je Banana Professional za CHF 89 ročně. Placené tarify Helvetly zahrnují 1, 2 nebo 5 osob a účtují každou další osobu; pro pět osob stojí CHF 59 měsíčně v Basic, CHF 94 v Pro a CHF 149 v Business, včetně DPH.
 
-| Produkt     | Balíčky a cena                                                                                                                                       | DPH       |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| bexio       | Basic CHF 35, Advanced CHF 42, Optima CHF 69, Ultimate CHF 119 měsíčně při roční platbě, s 1, 2, 5 a 25 uživateli                                    | Bez DPH   |
-| Magic Heidi | Zdarma pro 3 faktury a 3 účtenky; Pro CHF 39 měsíčně nebo CHF 299 ročně, bez příplatku za osobu                                                      | S DPH     |
-| KLARA       | Business Basic CHF 69 měsíčně (CHF 55 při roční platbě, CHF 48 při dvouleté), až 3 správci; Plus CHF 99; Premium CHF 159; plus placené moduly        | Bez DPH   |
-| Banana      | Zdarma do 70 transakcí; Professional CHF 89 ročně; Advanced CHF 179 ročně, za uživatele                                                              | Neuvedeno |
-| CashCtrl    | Zdarma pro 1 uživatele; PRO CHF 350 ročně se 3 uživateli, 2 organizacemi a 1 GB                                                                      | S DPH     |
-| AbaNinja    | Starter zdarma (1 uživatel, 1,000 dokladů ročně); Basic CHF 21 měsíčně (3 uživatelé, 2,100 dokladů); Pro CHF 49 měsíčně (5 uživatelů, 5,000 dokladů) | Neuvedeno |
-| Helvetly    | Zdarma pro 1 osobu; Basic CHF 19 měsíčně s 1 osobou, Pro CHF 49 se 2, Business CHF 149 s 5; každá další osoba CHF 10, 15 nebo 20                     | S DPH     |
+| Produkt     | Balíčky a cena                                                                                                                                       | DPH        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| bexio       | Basic CHF 35, Advanced CHF 42, Optima CHF 69, Ultimate CHF 119 měsíčně při roční platbě, s 1, 2, 5 a 25 uživateli                                    | Bez DPH    |
+| Magic Heidi | Zdarma pro 3 faktury a 3 účtenky; Pro CHF 39 měsíčně nebo CHF 299 ročně, bez příplatku za osobu                                                      | S DPH      |
+| KLARA       | Business Basic CHF 69 měsíčně (CHF 55 při roční platbě, CHF 48 při dvouleté), až 3 správci; Plus CHF 99; Premium CHF 159; plus placené moduly        | Bez DPH    |
+| Banana      | Zdarma do 70 transakcí; Professional CHF 89 ročně; Advanced CHF 179 ročně, za uživatele                                                              | Včetně DPH |
+| CashCtrl    | Zdarma pro 1 uživatele; PRO CHF 350 ročně se 3 uživateli, 2 organizacemi a 1 GB                                                                      | S DPH      |
+| AbaNinja    | Starter zdarma (1 uživatel, 1,000 dokladů ročně); Basic CHF 21 měsíčně (3 uživatelé, 2,100 dokladů); Pro CHF 49 měsíčně (5 uživatelů, 5,000 dokladů) | Neuvedeno  |
+| Helvetly    | Zdarma pro 1 osobu; Basic CHF 19 měsíčně s 1 osobou, Pro CHF 49 se 2, Business CHF 149 s 5; každá další osoba CHF 10, 15 nebo 20                     | S DPH      |
+
+Běžnou cenu pro svůj tým najdete v oficiálních cenících (24. listopadu 2026): [Magic Heidi](https://magicheidi.ch/pricing), [bexio](https://www.bexio.com/en-CH/packages-and-prices), [KLARA](https://www.klara.ch/en/business), [Banana](https://www.banana.ch/en/prices), [CashCtrl](https://cashctrl.com/en/info/pro), [AbaNinja](https://www.abaninja.ch/en/#pricing).
 
 Aktuální ceny Helvetly najdete na [stránce s ceníkem](/pricing). Free nevyžaduje kartu a nikdy nevyprší; 14denní zkušební verze Pro vyžaduje kartu. Basic umožňuje až 5 osob a Pro až 25 a roční platba je o 20 % levnější. Pracovní prostor bez placeného tarifu přejde na Free: nic se nemaže, odmítnou se jen nové záznamy nad limity Free.
 
@@ -72,7 +74,7 @@ U bexio zůstaňte, pokud potřebujete plné účetnictví a roční účetní z
 
 ## Čím se Helvetly liší od bexio?
 
-Helvetly se zaměřuje na zázemí kolem placení, s několika osobami zahrnutými v každém tarifu, kdežto bexio je široký balík s účetnictvím, mzdami a tržištěm. Helvetly nabízí následující věci, které jsme na webu bexio nenašli:
+Firma poskytující služby může v Helvetly využít následující postupy.
 
 - E-faktury XML pro Německo, Polsko, Rumunsko a Peppol: soubory XRechnung, Peppol BIS, KSeF a e-Factura (Business). Exportují se jako soubory; Helvetly je nedoručuje přes sítě.
 - Smlouvy vyplněné ze šablon a odeslané k jednoduchému elektronickému podpisu (Pro a Business); kvalifikované podpisy se nenabízejí.

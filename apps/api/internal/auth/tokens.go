@@ -31,21 +31,23 @@ type bearerKey struct{}
 
 // bearerSession resolves the request's token. The lookup (and its rate-limit hit) is done once per request and
 // shared with the guards and the handler through the context; the route and scope are checked on every call.
-func (s *Service) bearerSession(r *http.Request, header string) (store.Session, *http.Request, error) {
+func (s *Service) bearerSession(r *http.Request, header string, count bool) (store.Session, *http.Request, error) {
+	allowed, resource, write := false, "", false
+	if s.BearerRoutes != nil {
+		allowed, resource, write = s.BearerRoutes(r)
+	}
 	ts, ok := r.Context().Value(bearerKey{}).(store.TokenSession)
 	if !ok {
 		var err error
 		if ts, err = s.lookupToken(r, header); err != nil {
 			return store.Session{}, r, err
 		}
-		if err := s.allowTokenRequest(r, ts.Workspace.ID); err != nil {
-			return store.Session{}, r, err
+		if count {
+			if err := s.AllowTokenRequest(r, ts.Workspace.ID, write); err != nil {
+				return store.Session{}, r, err
+			}
 		}
 		r = r.WithContext(context.WithValue(r.Context(), bearerKey{}, ts))
-	}
-	allowed, resource, write := false, "", false
-	if s.BearerRoutes != nil {
-		allowed, resource, write = s.BearerRoutes(r)
 	}
 	if !allowed {
 		return store.Session{}, r, errTokenNotAllowed
@@ -59,15 +61,10 @@ func (s *Service) bearerSession(r *http.Request, header string) (store.Session, 
 	return ts.Session, r, nil
 }
 
-// allowTokenRequest counts an API token request against its workspace's plan: reads (the catalogue's GET operations
-// and every MCP message) and writes apart, per rolling minute, in the database so every instance shares the count.
-func (s *Service) allowTokenRequest(r *http.Request, workspaceID string) error {
+// AllowTokenRequest counts one request in the workspace's read or write pool across all instances.
+func (s *Service) AllowTokenRequest(r *http.Request, workspaceID string, write bool) error {
 	if s.APIRate == nil {
 		return nil
-	}
-	write := false
-	if s.BearerRoutes != nil {
-		_, _, write = s.BearerRoutes(r)
 	}
 	limit, err := s.APIRate(r.Context(), workspaceID, write)
 	if err != nil || limit < 0 { // negative: unlimited

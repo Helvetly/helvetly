@@ -4,7 +4,7 @@ description: Gör ett PDF-avtal eller brev till en mall med kundfält, fyll i de
 category: Documents and signatures
 categoryLabel: Dokument och signaturer
 order: 4
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Gör ett avtal eller brev du ofta använder till en mall som fyller i kunduppgifterna åt dig.
@@ -19,3 +19,5 @@ Dokumentmallar kräver **Pro** eller **Business**.
 ## Bra att veta
 
 - Använd **Edit template** eller **Delete** i mallens meny för att ändra eller ta bort mallen.
+
+Öppna en offert i Pro eller Business och välj **Create contract**. Du behöver läsrätt till offerten och skrivrätt till dokument. Välj en mall, ett pdf-exempel eller ett genererat utkast om AI är tillgängligt och godkänt. Granska parter, priser, villkor och leveranssätt. Det numrerade avtalet sparas bland kundens dokument och länkas till offerten.

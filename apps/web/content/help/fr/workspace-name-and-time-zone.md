@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 Gardez à jour le nom et le fuseau horaire de votre espace de travail.
 
-1. Ouvrez **Settings → Workspace**.
-2. Modifiez **Workspace name** et/ou **Time zone**.
-3. Cliquez sur **Save**.
+1. Ouvrez **Paramètres → Espace de travail**.
+2. Modifiez **Nom de l’espace de travail** et/ou **Fuseau horaire**.
+3. Cliquez sur **Enregistrer**.
 
 ## Bon à savoir
 

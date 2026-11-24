@@ -11,7 +11,7 @@ Chaque entreprise que vous gérez peut disposer de son propre espace de travail.
 
 1. Cliquez sur le nom de l’espace de travail en haut à gauche de la barre latérale.
 2. Pour changer d’espace, sélectionnez-en un autre dans la liste.
-3. Pour en créer un, cliquez sur **Add workspace**, saisissez un **Name** et confirmez.
+3. Pour en créer un, cliquez sur **Ajouter un espace de travail**, saisissez un **Nom** et confirmez.
 
 ## Bon à savoir
 

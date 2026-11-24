@@ -200,13 +200,13 @@ function FormSheetBody({
     vat_registered: settings?.vat_registered ?? FALLBACK_DEFAULTS.vat_registered,
     default_vat_rate: settings?.default_vat_rate ?? FALLBACK_DEFAULTS.default_vat_rate,
   }
-  const { habits, remember } = useHabits()
+  const { readHabits, remember } = useHabits()
   const [fromImport] = useState(() => importing && valuesFromImport(importing.data, defaults))
   const [initial] = useState(() =>
     engagement
       ? valuesFromEngagement(engagement)
       : (fromImport?.values ?? {
-          ...newValues(defaults, habits, clientId),
+          ...newValues(defaults, readHabits(), clientId),
           ...(newTitle ? { title: newTitle } : {}),
         }),
   )
@@ -329,7 +329,9 @@ function FormSheetBody({
   const pickClient = (client: Client) => {
     if (client.id !== values.client_id) setInvoiceId('')
     setValues((v) => ({
-      ...(engagement || importing ? v : withClientHabits(v, initial, defaults, habits, client.id)),
+      ...(engagement || importing
+        ? v
+        : withClientHabits(v, initial, defaults, readHabits(), client.id)),
       client_id: client.id,
       client_name: client.name,
       currency:

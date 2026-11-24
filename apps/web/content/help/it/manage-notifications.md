@@ -9,10 +9,10 @@ updated: 2026-11-11
 
 Decidi di cosa Helvetly deve informarti e dove.
 
-1. Fai clic su **Notifications** nella barra laterale per aprire il pannello con le ultime notifiche oppure su **All notifications** per vedere la pagina completa.
-2. Nella pagina Notifications, fai clic su **Mark all as read**.
-3. Per scegliere cosa ricevere via email e nel pannello, vai a **Settings → Account settings → Notifications**, seleziona le caselle per ciascun evento e fai clic su **Save changes**.
+1. Fai clic su **Notifiche** nella barra laterale per aprire il pannello con le ultime notifiche oppure su **All notifications** per vedere la pagina completa.
+2. Nella pagina Notifications, fai clic su **Contrassegna tutto come letto**.
+3. Per scegliere cosa ricevere via email e nel pannello, vai a **Impostazioni → Impostazioni dell’account → Notifiche**, seleziona le caselle per ciascun evento e fai clic su **Salva modifiche**.
 
 ## Da sapere
 
-- Titolari e amministratori possono attivare **Daily e-mail digest** per gli incarichi dal menu della pagina **Engagements**.
+- Titolari e amministratori possono attivare **Raccolta giornaliera di posta elettronica** per gli incarichi dal menu della pagina **Engagements**.

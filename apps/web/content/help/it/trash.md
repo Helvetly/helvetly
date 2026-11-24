@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 Hai eliminato qualcosa per errore? Resta nel cestino per 30 giorni.
 
-1. Vai a **Documents** e fai clic su **Trash** nel pannello sinistro.
-2. Seleziona gli elementi e fai clic su **Restore** per recuperarli oppure su **Delete forever**.
-3. **Empty Trash** rimuove tutto ciò che contiene.
+1. Vai a **Documenti** e fai clic su **Cestino** nel pannello sinistro.
+2. Seleziona gli elementi e fai clic su **Ripristina** per recuperarli oppure su **Elimina per sempre**.
+3. **Svuota cestino** rimuove tutto ciò che contiene.
 
 ## Da sapere
 

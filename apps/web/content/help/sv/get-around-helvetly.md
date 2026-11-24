@@ -4,12 +4,12 @@ description: Hitta rätt med sidofältet, snabbåtgärder, plusknappen i mobilen
 category: Getting started
 categoryLabel: Kom igång
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Så här hittar du runt i Helvetly och når allt snabbt.
 
-1. Sidofältet till vänster har två grupper. **Work** innehåller Dashboard, Clients, Invoices, Products & services, Expenses, Engagements och Documents. **Team** innehåller Members. Help & feedback, Ask Heidi och Notifications finns längst ned.
+1. Öppna kalendern och dokumenten i sidomenyn. Under **Sales** hittar du kunder, offerter, fakturor, utgifter och bokföring. Under **Team** hittar du medlemmar och anställda. Behörigheterna och abonnemanget avgör vilka delar du kan använda.
 2. Öppna **Quick Actions** med knappen högst upp i sidofältet eller tryck på ⌘K (Ctrl+K i Windows) eller `/`. Börja skriva för att hitta en sida, en kund (med namn eller nummer) eller en åtgärd.
 3. Snabbåtgärderna har tre grupper: **Go to** visar sidorna, **Create** erbjuder New invoice, New expense, New client, New engagement och New product, och **Theme** växlar mellan Light, Dark och System.
 4. Tryck på ⌘J (Ctrl+J) eller klicka på **Ask Heidi** i sidofältet för att fråga assistenten. Tryck igen för att stänga panelen.

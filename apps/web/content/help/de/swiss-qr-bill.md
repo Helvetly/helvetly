@@ -9,10 +9,10 @@ updated: 2026-11-11
 
 Fügen Sie eine Swiss QR-Rechnung hinzu, damit Ihre Kunden mit einem schnellen Scan bezahlen können.
 
-1. Gehen Sie zu **Settings → Invoices** (Eigentümer und Administratoren).
-2. Geben Sie unter **Bank account** Ihren **IBAN** ein. Für eine QR-Rechnung benötigen Sie eine CH- oder LI-IBAN.
-3. Aktivieren Sie unter **Payment methods** **Swiss QR bill**.
-4. Neue CHF- und EUR-Rechnungen erhalten dann einen Einzahlungsschein auf einer eigenen Seite. Im Rechnungseditor steht auf der **Payment**-Notiz „QR-Rechnung beigefügt“.
+1. Gehen Sie zu **Einstellungen → Rechnungen** (Eigentümer und Administratoren).
+2. Geben Sie unter **Bankkonto** Ihren **IBAN** ein. Für eine QR-Rechnung benötigen Sie eine CH- oder LI-IBAN.
+3. Aktivieren Sie unter **Zahlungsmethoden** **Schweizer QR-Rechnung**.
+4. Neue CHF- und EUR-Rechnungen erhalten dann einen Einzahlungsschein auf einer eigenen Seite. Im Rechnungseditor steht auf der **Zahlung**-Notiz „QR-Rechnung beigefügt“.
 
 ## Gut zu wissen
 

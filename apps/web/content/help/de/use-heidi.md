@@ -11,10 +11,10 @@ Heidi ist der in Helvetly integrierte Assistent. Fragen Sie sie nach Ihrem Unter
 
 Heidi ist in **Pro** und **Business** enthalten.
 
-1. Drücken Sie ⌘J (Strg+J) oder klicken Sie in der Seitenleiste auf **Ask Heidi**. Geben Sie eine Frage ein oder wählen Sie unter **Try asking** eine aus.
+1. Drücken Sie ⌘J (Strg+J) oder klicken Sie in der Seitenleiste auf **Ask Heidi**. Geben Sie eine Frage ein oder wählen Sie unter **Versuchen Sie zu fragen** eine aus.
 2. Heidi kann überfällige und aktuelle Rechnungen, die Ausgaben und die Vorsteuer dieses Monats, aktuelle Kunden und Dokumente sowie Auftragssalden anzeigen. Sie kann Rechnungen und Aufträge öffnen, eine neue Rechnung erstellen und die Arbeit an einem Auftrag protokollieren.
-3. Um Bilder oder PDFs anzuhängen, verwenden Sie **Attach files** oder legen Sie sie auf dem Panel ab. Sie können bis zu 4 Dateien pro Nachricht mit jeweils 8 MB hinzufügen.
-4. Bevor Heidi funktioniert oder eine Rechnung sendet, bittet sie Sie um eine Bestätigung. Verwenden Sie **New chat**, **Search in conversation** oder **Max view** im Panel-Header.
+3. Um Bilder oder PDFs anzuhängen, verwenden Sie **Dateien anhängen** oder legen Sie sie auf dem Panel ab. Sie können bis zu 4 Dateien pro Nachricht mit jeweils 8 MB hinzufügen.
+4. Bevor Heidi funktioniert oder eine Rechnung sendet, bittet sie Sie um eine Bestätigung. Verwenden Sie **Neuer Chat**, **Suche im Gespräch** oder **Maximale Ansicht** im Panel-Header.
 5. Viele Fragen beantwortet Heidi direkt aus Ihren Unterlagen und dem Helvetly-Leitfaden. Für alle anderen nutzt sie ein KI-Modell (OpenAI); Helvetly ruft für KI-Anfragen keine Daten aus Employees oder Payroll ab. Fügen Sie solche Daten nicht in Nachrichten oder Dateien ein.
 
 ## Gut zu wissen

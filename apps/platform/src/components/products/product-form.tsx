@@ -78,12 +78,12 @@ export function ProductForm({
   onClose: () => void
   onSaved: (product: Product, created: boolean) => void
 }) {
-  const { habits, remember } = useHabits()
+  const { readHabits, remember } = useHabits()
   const [fromImport] = useState(() => importing && valuesFromImport(importing.data, defaults))
   const [initial] = useState(() =>
     product
       ? valuesFromProduct(product)
-      : (fromImport?.values ?? { ...newValues(defaults, habits), name }),
+      : (fromImport?.values ?? { ...newValues(defaults, readHabits()), name }),
   )
   const [values, setValues] = useState(initial)
   const [errors, setErrors] = useState<FieldErrors>(() =>

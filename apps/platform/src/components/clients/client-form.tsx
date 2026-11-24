@@ -101,7 +101,7 @@ export function ClientForm({
   onClose: () => void
   onSaved: (client: Client, created: boolean) => void
 }) {
-  const { habits, remember } = useHabits()
+  const { readHabits, remember } = useHabits()
   const [fromImport] = useState(() => importing && valuesFromImport(importing.data))
   const [initial] = useState(() =>
     client
@@ -109,7 +109,7 @@ export function ClientForm({
       : fromImport
         ? fromImport.values
         : {
-            ...withHabits(emptyValues(), habits, 'client', CLIENT_HABITS, {
+            ...withHabits(emptyValues(), readHabits(), 'client', CLIENT_HABITS, {
               allowed: CLIENT_HABIT_OPTIONS,
               eager: ['is_company'],
             }),

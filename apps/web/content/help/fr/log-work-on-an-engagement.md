@@ -9,10 +9,10 @@ updated: 2026-11-11
 
 Enregistrez vos prestations pour toujours connaître le solde du mandat.
 
-1. Ouvrez le mandat depuis **Engagements**.
-2. Sous **Log delivery**, saisissez la quantité et une note (« What was done? »), puis appuyez sur Entrée ou cliquez sur **Log**.
-3. Les prestations enregistrées apparaissent sous **Entries**. Utilisez les icônes de modification et de suppression pour les rectifier.
-4. La carte **Current period** indique la consommation, le solde et le rythme d’utilisation.
+1. Ouvrez le mandat depuis **Mandats**.
+2. Sous **Saisir une prestation**, saisissez la quantité et une note (« What was done? »), puis appuyez sur Entrée ou cliquez sur **Journal**.
+3. Les prestations enregistrées apparaissent sous **Entrées**. Utilisez les icônes de modification et de suppression pour les rectifier.
+4. La carte **Période actuelle** indique la consommation, le solde et le rythme d’utilisation.
 
 ## Bon à savoir
 

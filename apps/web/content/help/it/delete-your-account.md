@@ -9,8 +9,8 @@ updated: 2026-11-11
 
 Eliminare il tuo account ti rimuove definitivamente da Helvetly.
 
-1. Vai a **Settings → Account settings → Delete account**.
-2. Digita la tua email per confermare e fai clic su **Delete account**.
+1. Vai a **Impostazioni → Impostazioni dell’account → Elimina account**.
+2. Digita la tua email per confermare e fai clic su **Elimina account**.
 
 ## Da sapere
 

@@ -77,12 +77,20 @@ export function ArticleView({
             )}
           </nav>
         </aside>
-        <article className="min-w-0">
+        <article className="min-w-0" itemScope itemType="https://schema.org/Article">
+          <meta itemProp="inLanguage" content={lang} />
+          <meta itemProp="dateModified" content={article.updated} />
           <div className="text-body-sm text-muted-foreground">{kicker}</div>
-          <h1 className="text-subhero mt-3 max-w-3xl font-semibold text-balance">
+          <h1
+            itemProp="headline"
+            className="text-subhero mt-3 max-w-3xl font-semibold text-balance wrap-anywhere"
+          >
             {article.title}
           </h1>
-          <p className="text-lead mt-4 max-w-4xl text-balance text-muted-foreground">
+          <p
+            itemProp="description"
+            className="text-lead mt-4 max-w-4xl text-balance text-muted-foreground"
+          >
             {article.description}
           </p>
           <p className="mt-4 text-body-sm text-muted-foreground">
@@ -92,7 +100,7 @@ export function ArticleView({
               ? translate('minRead2', { readingMinutes: article.readingMinutes })
               : ''}
           </p>
-          <div className="prose-legal mt-8">
+          <div itemProp="articleBody" className="prose-legal mt-8">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownIn(lang)}>
               {article.markdown}
             </ReactMarkdown>

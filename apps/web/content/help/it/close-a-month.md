@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 Chiudi un mese quando la sua contabilità è completata, così nulla cambia per errore.
 
-1. Vai a **Books → Closing**.
-2. Fai clic su **Close month** accanto al mese la cui contabilità è completata.
-3. Per poter apportare di nuovo modifiche, fai clic su **Reopen**.
+1. Vai a **Contabilità → Chiusura**.
+2. Fai clic su **Chiudi mese** accanto al mese la cui contabilità è completata.
+3. Per poter apportare di nuovo modifiche, fai clic su **Riapri**.
 
 ## Da sapere
 

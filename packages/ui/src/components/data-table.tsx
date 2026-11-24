@@ -713,7 +713,7 @@ export function DataTable<T extends RowData>({
                             column.className,
                           )}
                         >
-                          {column.cell(original)}
+                          <CellContent row={original} render={column.cell} />
                         </td>
                       )
                     }),
@@ -735,6 +735,11 @@ export function DataTable<T extends RowData>({
       {pagination && <Pager table={table} />}
     </div>
   )
+}
+
+/** A selection or drawer change leaves the content of unchanged cells in place. */
+function CellContent<T>({ row, render }: { row: T; render: (value: T) => ReactNode }) {
+  return useMemo(() => render(row), [row, render])
 }
 
 /** Gives a wrapped row (its context menu) a key without adding markup. */

@@ -1,10 +1,10 @@
 ---
 title: Radera en arbetsyta
-description: Radera en arbetsyta permanent som ägare; fakturor och kvitton förblir arkiverade enligt schweizisk lag.
+description: Ta bort en arbetsyta och återställ den från ditt konto inom 30 dagar.
 category: Team and workspace
 categoryLabel: Team och arbetsyta
 order: 3
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 När du raderar en arbetsyta upphör åtkomsten för alla i den. Bara ägare kan göra detta.
@@ -16,5 +16,5 @@ När du raderar en arbetsyta upphör åtkomsten för alla i den. Bara ägare kan
 ## Bra att veta
 
 - Alla förlorar åtkomsten och en betalplan avslutas direkt.
-- Detta kan inte ångras.
+- Ägaren som tog bort arbetsytan kan återställa den inom 30 dagar via **Account settings → Deleted workspaces → Restore**. Medlemmarna får då tillgång igen.
 - Fakturor och kvitton förblir arkiverade under de tio år som schweizisk lag kräver.

@@ -48,6 +48,7 @@ import {
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
+import { useHiddenColumns } from '@/components/data/use-hidden-columns'
 import { useImportAction, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
 import { DropOverlay, EmptyImportActions, useImportDrop } from '@/components/import/page-drop'
@@ -103,27 +104,6 @@ const SORTS: Partial<Record<string, SortField>> = {
   created: 'created_at',
 }
 
-const COLUMNS_KEY = 'helvetly:clients:columns'
-
-/** Which columns show: a per-browser choice, so storage may be missing. */
-function useHiddenColumns() {
-  const [hidden, setHidden] = useState<string[]>(() => {
-    try {
-      const stored: unknown = JSON.parse(localStorage.getItem(COLUMNS_KEY) ?? 'null')
-      if (Array.isArray(stored)) return stored.filter((id): id is string => typeof id === 'string')
-    } catch {}
-    return ['tags']
-  })
-  const toggle = (id: string) => {
-    const next = hidden.includes(id) ? hidden.filter((entry) => entry !== id) : [...hidden, id]
-    setHidden(next)
-    try {
-      localStorage.setItem(COLUMNS_KEY, JSON.stringify(next))
-    } catch {}
-  }
-  return { hidden, toggle }
-}
-
 /** The clients list: server-side search, filters, sort and paging, all kept in the URL. */
 export function ClientsPage() {
   const pathname = usePathname()
@@ -140,7 +120,7 @@ export function ClientsPage() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [form, setForm] = useState<{ client?: Client; focus?: 'address' } | null>(null)
   const [deleting, setDeleting] = useState<Client[] | null>(null)
-  const hiddenColumns = useHiddenColumns()
+  const hiddenColumns = useHiddenColumns('helvetly:clients:columns', ['tags'])
 
   const list = useClientList(params)
   const queryFields = useQueryFields()

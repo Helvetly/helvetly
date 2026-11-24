@@ -9,10 +9,10 @@ updated: 2026-11-24
 
 Ogni spazio di lavoro ha il proprio piano. Uno spazio di lavoro senza piano a pagamento è su **Free**. Ecco come scegliere e gestire un piano.
 
-1. Vai a **Settings → Billing** (Plan & billing) per vedere piano, stato e limiti di utilizzo.
-2. In **Plans**, scegli **Monthly** o **Yearly**, poi **Basic**, **Pro** o **Business**. **Compare plans** mostra affiancati contenuti e disponibilità dei piani. I prezzi includono l’IVA svizzera.
-3. Per inserire uno sconto, fai clic su **Have a promotion code?**.
-4. Per aggiornare la carta, annullare o ottenere le fatture, fai clic su **Manage billing**. Le fatture precedenti sono elencate in **Invoices**.
+1. Vai a **Impostazioni → Fatturazione** (Plan & billing) per vedere piano, stato e limiti di utilizzo.
+2. In **Piani**, scegli **Mensile** o **Annuale**, poi **Basic**, **Pro** o **Business**. **Confronta i piani** mostra affiancati contenuti e disponibilità dei piani. I prezzi includono l’IVA svizzera.
+3. Per inserire uno sconto, fai clic su **Hai un codice promozionale?**.
+4. Per aggiornare la carta, annullare o ottenere le fatture, fai clic su **Gestisci la fatturazione**. Le fatture precedenti sono elencate in **Fatture**.
 
 ## Da sapere
 
@@ -23,4 +23,4 @@ Ogni spazio di lavoro ha il proprio piano. Uno spazio di lavoro senza piano a pa
 - Le nuove prove idonee offrono Pro per 14 giorni, con un massimo di 2 persone. È richiesta una carta. Durante la prova hai le disponibilità di Pro per una persona, che non si rinnovano. Le prove già concesse nell’ambito di offerte precedenti mantengono le condizioni originarie.
 - Senza un piano a pagamento, ad esempio dopo la prova o un annullamento, lo spazio di lavoro è su Free: nulla viene eliminato e tutto resta consultabile, ma le nuove aggiunte oltre i limiti di Free attendono finché non scegli un piano.
 - Solo titolari e amministratori possono cambiare piano.
-- Quando raggiungi un limite, appare l’invito **See plans**.
+- Quando raggiungi un limite, appare l’invito **Vedi i piani**.

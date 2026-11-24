@@ -3,7 +3,7 @@ title: Zpřístupnění klientského portálu
 description: Zapněte klientský portál, aby se klient mohl přihlásit a zobrazit své faktury, zakázky, sdílené dokumenty a údaje.
 category: Clients
 order: 3
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Klientský portál dává klientovi soukromé místo pro jeho faktury a dokumenty.
@@ -19,3 +19,5 @@ Klientský portál je součástí **Business**. Klienti v portálu nejsou placen
 
 - Kontakty neslouží jako přihlašovací účty portálu. Portál používá vlastní e-mailovou adresu klienta.
 - Vypnutí přepínače nebo změna klientova e-mailu jej z portálu ihned odhlásí.
+
+Zkopírujte klientovi adresu portálu tohoto pracovního prostoru. Ze společného portálu si klient může nechat poslat e-mailem odkazy na své dodavatele. Na kartě klienta lze otevřít náhled portálu pouze pro čtení a ověřit, co klient uvidí.

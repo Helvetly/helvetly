@@ -65,9 +65,18 @@ func (s *Service) setSessionCookie(w http.ResponseWriter, ns newSession) {
 // SignedIn lets the request through with its session, or answers 401; unsafe methods also need the CSRF token.
 // A request with an Authorization header is an API token instead (tokens.go): no cookie, no CSRF.
 func (s *Service) SignedIn(next func(http.ResponseWriter, *http.Request, store.Session)) http.HandlerFunc {
+	return s.signedIn(next, true)
+}
+
+// SignedInMCP authenticates the RPC envelope. Its handler counts the request once it has decoded the tool.
+func (s *Service) SignedInMCP(next func(http.ResponseWriter, *http.Request, store.Session)) http.HandlerFunc {
+	return s.signedIn(next, false)
+}
+
+func (s *Service) signedIn(next func(http.ResponseWriter, *http.Request, store.Session), countToken bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if h := r.Header.Get("Authorization"); h != "" {
-			sess, r, err := s.bearerSession(r, h)
+			sess, r, err := s.bearerSession(r, h, countToken)
 			if err != nil {
 				s.WriteError(w, r, err)
 				return

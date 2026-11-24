@@ -13,7 +13,7 @@ Das Kundenportal und damit Änderungswünsche benötigen **Business**.
 
 1. Wenn ein Kunde im Portal eine Änderung seiner Daten (Name, Rechnungs-E-Mail-Adresse, Telefonnummer, Adresse, Umsatzsteuer- oder Registrierungsnummer) anfordert, erhalten Eigentümer und Administratoren eine Benachrichtigung.
 2. Öffnen Sie den Client. Ein Banner zeigt die gewünschten Änderungen an.
-3. Klicken Sie auf **Approve**, um sie anzuwenden, oder auf **Reject**.
+3. Klicken Sie auf **Approve**, um sie anzuwenden, oder auf **Ablehnen**.
 
 ## Gut zu wissen
 

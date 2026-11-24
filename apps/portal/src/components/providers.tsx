@@ -3,12 +3,12 @@
 import { BrowserLanguage } from '@helvetly/ui/components/browser-language'
 import { Toaster } from '@helvetly/ui/components/sonner'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
-import { ApiError } from '@helvetly/ui/lib/http'
+import { ApiError, watchSessionChanges } from '@helvetly/ui/lib/http'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { translate } from '@/lib/i18n'
-import { applyScope } from '@/lib/scope'
+import { applyScope, scopePrefix } from '@/lib/scope'
 
 // Before any call: under /w/<slug>/ every API call goes under the same prefix.
 if (typeof window !== 'undefined') applyScope()
@@ -21,6 +21,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry, staleTime: 30_000 } } }),
   )
+  useEffect(() => watchSessionChanges(`portal${scopePrefix()}`), [])
   return (
     <BrowserLanguage>
       <meta name="description" content={translate('yourInvoicesEngagementsAndDocuments')} />

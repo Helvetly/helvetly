@@ -11,10 +11,10 @@ Evita l’inserimento manuale: carica le ricevute e l’IA le trasforma in bozze
 
 Le spese sono incluse in ogni piano; la lettura delle ricevute con l’IA richiede **Pro** o **Business**.
 
-1. Vai a **Expenses** e fai clic su **Upload receipts** oppure trascina i file sulla pagina.
+1. Vai a **Spese** e fai clic su **Carica ricevute** oppure trascina i file sulla pagina.
 2. Fai clic su **Read files**. L’IA legge ogni ricevuta e crea una bozza di spesa.
-3. Controlla le righe, modifica quelle che lo richiedono e fai clic su **Import**.
-4. Apri ogni bozza, controllala e fai clic su **Book**.
+3. Controlla le righe, modifica quelle che lo richiedono e fai clic su **Importa**.
+4. Apri ogni bozza, controllala e fai clic su **Contabilizza**.
 
 ## Da sapere
 

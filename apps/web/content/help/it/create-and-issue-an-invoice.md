@@ -9,14 +9,14 @@ updated: 2026-11-11
 
 Crea una bozza, controlla il PDF ed emettila quando sei pronto.
 
-1. Vai a **Invoices** e fai clic su **New invoice**. Puoi anche usare Quick Actions o il pulsante **Invoice** sul cliente.
-2. In **Bill to**, fai clic su **Choose a client**.
-3. Controlla **Issue date**, **Due date** e le date **Service** e aggiungi un **Reference** (ad esempio il numero d’ordine d’acquisto), se necessario.
-4. Aggiungi le righe con **Add line** (oppure premi Invio) o **Add from catalogue**. Sopra il documento imposta **Currency**, **Document language** e **VAT**. Puoi aggiungere anche **Discount**, un’introduzione, un piè di pagina e una **Internal note**, che non viene mai stampata.
-5. La bozza si salva automaticamente e ⌘S la salva subito. Fai clic su **Preview** (⌘P) per vedere il PDF.
+1. Vai a **Fatture** e fai clic su **Nuova fattura**. Puoi anche usare Quick Actions o il pulsante **Fattura** sul cliente.
+2. In **Fattura a**, fai clic su **Scegli un cliente**.
+3. Controlla **Data di emissione**, **Data di scadenza** e le date **Servizio** e aggiungi un **Riferimento** (ad esempio il numero d’ordine d’acquisto), se necessario.
+4. Aggiungi le righe con **Aggiungi riga** (oppure premi Invio) o **Aggiungi dal catalogo**. Sopra il documento imposta **Valuta**, **Lingua del documento** e **IVA**. Puoi aggiungere anche **Sconto**, un’introduzione, un piè di pagina e una **Nota interna**, che non viene mai stampata.
+5. La bozza si salva automaticamente e ⌘S la salva subito. Fai clic su **Anteprima** (⌘P) per vedere il PDF.
 6. Fai clic su **Issue invoice** e conferma. La fattura riceve il numero successivo e il PDF viene archiviato.
 
 ## Da sapere
 
 - L’emissione è irreversibile. Una fattura emessa non può essere modificata: gli errori si risolvono con una nota di credito o una correzione.
-- Se manca qualcosa, Helvetly elenca cosa correggere con un link, come **Open invoice settings** o **Complete the client**.
+- Se manca qualcosa, Helvetly elenca cosa correggere con un link, come **Open invoice settings** o **Completa il cliente**.

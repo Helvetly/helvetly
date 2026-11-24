@@ -11,10 +11,10 @@ Vous quittez un autre système ? Laissez l’IA lire vos anciens fichiers et les
 
 L’import par IA nécessite **Pro** ou **Business** et utilise le quota de tokens d’IA de la formule.
 
-1. Ouvrez **Clients**, **Products & services**, **Engagements** ou **Invoices**, puis choisissez **Import** dans le menu **…** de la page. Pour les dépenses, utilisez plutôt **Upload receipts**.
+1. Ouvrez **Clients**, **Produits et services**, **Mandats** ou **Factures**, puis choisissez **Importer** dans le menu **…** de la page. Pour les dépenses, utilisez plutôt **Télécharger les reçus**.
 2. Déposez des tableurs, PDF, photos ou fichiers Word, puis cliquez sur **Read files**.
 3. Vérifiez les enregistrements trouvés. Modifiez les lignes, décochez celles à exclure et résolvez les conflits.
-4. Cliquez sur **Import** pour créer les enregistrements sélectionnés, puis sur **Done**.
+4. Cliquez sur **Importer** pour créer les enregistrements sélectionnés, puis sur **Terminé**.
 5. Vous pouvez aussi joindre des fichiers dans Heidi et choisir « Import as ». Le volet d’import s’ouvre alors avec ces fichiers.
 
 ## Bon à savoir
@@ -25,4 +25,4 @@ L’import par IA nécessite **Pro** ou **Business** et utilise le quota de toke
   traitement par IA ; votre brouillon et vos fichiers sont conservés.
 - Les imports consomment le quota mensuel d’IA.
 - Un import accepte jusqu’à 25 fichiers de 25 Mo chacun. Un ZIP est ouvert sur un niveau et peut contenir jusqu’à 250 fichiers ; un import lit au plus 250 fichiers au total.
-- Si votre ancien système a déjà déclaré la TVA des factures importées, clôturez d’abord les mois concernés dans **Books → Closing**.
+- Si votre ancien système a déjà déclaré la TVA des factures importées, clôturez d’abord les mois concernés dans **Comptabilité → Clôture**.

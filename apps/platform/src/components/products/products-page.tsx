@@ -45,6 +45,7 @@ import {
   type RowMenuSpec,
 } from '@/components/data/menus'
 import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
+import { useHiddenColumns } from '@/components/data/use-hidden-columns'
 import { FormSheetLoading, settled } from '@/components/form-sheet-loading'
 import { useImportAction, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -120,27 +121,6 @@ function PriceCell({ product }: { product: Product }) {
   )
 }
 
-const COLUMNS_KEY = 'helvetly:products:columns'
-
-/** Which columns show: a per-browser choice, so storage may be missing. */
-function useHiddenColumns() {
-  const [hidden, setHidden] = useState<string[]>(() => {
-    try {
-      const stored: unknown = JSON.parse(localStorage.getItem(COLUMNS_KEY) ?? 'null')
-      if (Array.isArray(stored)) return stored.filter((id): id is string => typeof id === 'string')
-    } catch {}
-    return []
-  })
-  const toggle = (id: string) => {
-    const next = hidden.includes(id) ? hidden.filter((entry) => entry !== id) : [...hidden, id]
-    setHidden(next)
-    try {
-      localStorage.setItem(COLUMNS_KEY, JSON.stringify(next))
-    } catch {}
-  }
-  return { hidden, toggle }
-}
-
 const toastError = (error: unknown) => toast.error(errorMessage(error))
 
 /** "3 items archived." plus why the others were skipped, if any. */
@@ -170,7 +150,7 @@ export function ProductsPage() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [form, setForm] = useState<{ product?: Product } | null>(null)
   const [deleting, setDeleting] = useState<Product[] | null>(null)
-  const hiddenColumns = useHiddenColumns()
+  const hiddenColumns = useHiddenColumns('helvetly:products:columns', [])
 
   const list = useProductList(params)
   const prefetch = usePrefetch(productQuery)

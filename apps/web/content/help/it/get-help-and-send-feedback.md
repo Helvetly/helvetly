@@ -9,11 +9,11 @@ updated: 2026-11-11
 
 Sei bloccato, hai trovato un errore o hai un’idea? Ecco come contattarci.
 
-1. Fai clic su **Help & feedback** in fondo alla barra laterale oppure sceglilo nel menu del tuo nome o in Quick Actions.
+1. Fai clic su **Aiuto e feedback** in fondo alla barra laterale oppure sceglilo nel menu del tuo nome o in Quick Actions.
 2. Per una domanda su come fare qualcosa, fai clic su **Ask Heidi** in alto: si apre il pannello di Heidi.
-3. Per scrivere al team, scegli **Report a problem** o **Suggest an idea**.
-4. Scrivi una **Description**. Puoi aggiungere anche **Screenshots** trascinandoli, incollandoli o scegliendoli dai file: fino a 5 immagini PNG, JPEG o WebP da 5 MB ciascuna.
-5. Fai clic su **Send feedback**.
+3. Per scrivere al team, scegli **Segnala un problema** o **Suggerisci un’idea**.
+4. Scrivi una **Descrizione**. Puoi aggiungere anche **Schermate** trascinandoli, incollandoli o scegliendoli dai file: fino a 5 immagini PNG, JPEG o WebP da 5 MB ciascuna.
+5. Fai clic su **Invia feedback**.
 
 ## Da sapere
 

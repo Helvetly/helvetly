@@ -11,12 +11,12 @@ Teilen Sie Dateien mit einem Kunden über dessen Portal, anstatt Anhänge zu sen
 
 Für die Freigabe über das Kundenportal ist **Business** erforderlich.
 
-1. Gehen Sie zu **Documents** und suchen Sie die Datei.
-2. Klicken Sie auf das **Share with client**-Symbol in der Datei oder klicken Sie mit der rechten Maustaste darauf und wählen Sie **Share with client…**.
-3. Wählen Sie einen Client und klicken Sie auf **Share**. Um die Freigabe zu beenden, entfernen Sie den Client im selben Bereich.
+1. Gehen Sie zu **Dokumente** und suchen Sie die Datei.
+2. Klicken Sie auf das **Mit dem Kunden teilen**-Symbol in der Datei oder klicken Sie mit der rechten Maustaste darauf und wählen Sie **Mit dem Kunden teilen…**.
+3. Wählen Sie einen Client und klicken Sie auf **Teilen**. Um die Freigabe zu beenden, entfernen Sie den Client im selben Bereich.
 4. Das Dokument erscheint dann im Portal dieses Kunden.
 
 ## Gut zu wissen
 
-- Für den Client muss ausserdem **Client portal** aktiviert sein und eine E-Mail-Adresse vorhanden sein.
+- Für den Client muss ausserdem **Kundenportal** aktiviert sein und eine E-Mail-Adresse vorhanden sein.
 - Dokumente im Papierkorb werden im Portal nicht angezeigt.

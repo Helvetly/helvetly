@@ -3,12 +3,12 @@ title: Get around Helvetly
 description: Find your way with the sidebar, Quick Actions, the mobile + button and Heidi, the built-in assistant.
 category: Getting started
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Here is how to move around Helvetly and reach everything quickly.
 
-1. The left sidebar has two groups. **Work** holds Dashboard, Clients, Invoices, Products & services, Expenses, Engagements and Documents. **Team** holds Members. Help & feedback, Ask Heidi and Notifications sit at the bottom.
+1. Use the sidebar to open the calendar and documents. Under **Sales**, follow a client from quote to invoice, expenses and books. Under **Team**, find members and employees. Access depends on your permissions and plan.
 2. To open **Quick Actions**, click the button at the top of the sidebar, or press ⌘K (Ctrl+K on Windows) or `/`. Start typing to find a page, a client (by name or number) or an action.
 3. Quick Actions has three groups: **Go to** lists the pages, **Create** offers New invoice, New expense, New client, New engagement and New product, and **Theme** switches between Light, Dark and System.
 4. To ask the assistant, press ⌘J (Ctrl+J) or click **Ask Heidi** in the sidebar. Press it again to close the panel.

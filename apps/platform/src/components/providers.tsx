@@ -3,6 +3,7 @@
 import { BrowserLanguage } from '@helvetly/ui/components/browser-language'
 import { Toaster } from '@helvetly/ui/components/sonner'
 import { TooltipProvider } from '@helvetly/ui/components/tooltip'
+import { watchSessionChanges } from '@helvetly/ui/lib/http'
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -44,6 +45,8 @@ export function Providers({ children }: { children: ReactNode }) {
         }),
       }),
   )
+
+  useEffect(() => watchSessionChanges('platform'), [])
 
   useEffect(() => {
     setUnauthorizedHandler(() => {

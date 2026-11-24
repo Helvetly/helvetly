@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 Tieni aggiornati il nome e il fuso orario dello spazio di lavoro.
 
-1. Vai a **Settings → Workspace**.
-2. Modifica **Workspace name** e/o **Time zone**.
-3. Fai clic su **Save**.
+1. Vai a **Impostazioni → Spazio di lavoro**.
+2. Modifica **Nome dell’area di lavoro** e/o **Fuso orario**.
+3. Fai clic su **Salva**.
 
 ## Da sapere
 

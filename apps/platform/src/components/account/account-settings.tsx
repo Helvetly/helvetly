@@ -32,7 +32,7 @@ import {
 } from '@/components/settings/layout'
 import { SettingsHeader } from '@/components/settings/settings-tabs'
 import { useDeleteAccount, useUpdateProfile } from '@/lib/account'
-import { setCsrfToken, type User } from '@/lib/api'
+import { changeSession, type User } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
@@ -211,7 +211,7 @@ function DeleteDialog({ email, onClose }: { email: string; onClose: () => void }
     event.preventDefault()
     remove.mutate(typed.trim(), {
       onSuccess: () => {
-        setCsrfToken('')
+        changeSession('')
         router.replace('/login')
       },
       onError: toastError,

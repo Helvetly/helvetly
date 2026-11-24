@@ -76,6 +76,10 @@ func TestCatalogueInvoicePaymentCreditExpenseReportingFlow(t *testing.T) {
 	if partial.AmountDue != "681.00" {
 		t.Fatalf("after partial payment: %+v", partial)
 	}
+	pdfAfterPayment, archived := e.send(b, "GET", path+"/pdf", nil)
+	if pdfAfterPayment.StatusCode != http.StatusOK || !bytes.Equal(rawBefore, archived) {
+		t.Fatal("partial payment changed the archived invoice PDF")
+	}
 	paid := e.invoice(b, "POST", path+"/mark-paid", map[string]any{}, 200)
 	if paid.AmountPaid != "1081.00" || paid.AmountDue != "0.00" {
 		t.Fatalf("settled invoice: %+v", paid)

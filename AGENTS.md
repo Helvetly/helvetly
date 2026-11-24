@@ -319,8 +319,7 @@ on the server of `HELVETLY_TEST_DATABASE_URL` (default: the compose database), d
 ## 7. Quality gate
 
 `pnpm check` must pass before a change is finished. CI (`.github/workflows/ci.yml`) selects checks
-by PR scope after a quick gate; drafts run only that gate. Ready-for-review, manual, merge-group
-and push-to-`main` runs select the full suite; `CI required` is the one required check.
+by PR scope after a quick gate; drafts run only that gate. Ready-for-review and manual runs select the full suite. A merge group or a push to main selects checks by changed paths only after CI passes on its base commit. `CI required` is the one required check.
 Selected tests run in parallel jobs (unit and Storybook tests once, through `pnpm test:coverage`;
 E2E specs sharded with `HELVETLY_E2E_SHARD`). The build job uploads the `helvetly` binary as an
 artifact. A step added to `check` goes into a CI job too. Rules:

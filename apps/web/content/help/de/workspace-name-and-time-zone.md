@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 Halten Sie den Namen und die Zeitzone Ihres Arbeitsbereichs auf dem neuesten Stand.
 
-1. Gehen Sie zu **Settings → Workspace**.
-2. Ändern Sie **Workspace name** und/oder **Time zone**.
-3. Klicken Sie auf **Save**.
+1. Gehen Sie zu **Einstellungen → Arbeitsbereich**.
+2. Ändern Sie **Arbeitsbereichsname** und/oder **Zeitzone**.
+3. Klicken Sie auf **Speichern**.
 
 ## Gut zu wissen
 

@@ -32,61 +32,77 @@ func Material(account, box string) bool {
 }
 
 // SplitExpense divides an expense's base total, deductible input tax and net total over the accounts of its
-// lines, in the order they first appear, in proportion to each account's gross, VAT and net in the document
-// currency; the last account takes what rounding leaves, so the parts always add up to the totals.
+// lines, in the order they first appear, in proportion to each account's VAT and net in the document
+// currency. The last account with a share takes what rounding leaves.
 func SplitExpense(account, box string, gross bool, lines []SplitLine, total, deductible, net invoicecalc.Money) []Split {
-	mode := invoicecalc.Exclusive
-	if gross {
-		mode = invoicecalc.Inclusive
+	if len(lines) == 0 {
+		return []Split{{Account: account, Material: Material(account, box), Net: total - deductible, Deductible: deductible, Taxable: net}}
 	}
-	var order []string
-	byAccount := map[string][]invoicecalc.Line{}
+	accounts := map[string]int{}
+	var splits []Split
+	var netWeights, vatWeights []*big.Rat
 	for _, l := range lines {
 		a := l.Account
 		if a == "" {
 			a = account
 		}
-		if _, ok := byAccount[a]; !ok {
-			order = append(order, a)
+		i, ok := accounts[a]
+		if !ok {
+			i = len(splits)
+			accounts[a] = i
+			splits = append(splits, Split{Account: a, Material: Material(a, box)})
+			netWeights = append(netWeights, new(big.Rat))
+			vatWeights = append(vatWeights, new(big.Rat))
 		}
-		category := "O"
-		if l.Rate > 0 {
-			category = "S"
+		// Account weights keep fractional cents: only the document rounds the tax for each rate.
+		base := new(big.Rat).SetInt64(int64(l.Amount))
+		denominator := invoicecalc.Hundred
+		if gross {
+			denominator += l.Rate
 		}
-		byAccount[a] = append(byAccount[a], invoicecalc.Line{Quantity: 1000, UnitPrice: l.Amount, Category: category, Rate: l.Rate})
+		vat := big.NewRat(int64(l.Rate), int64(denominator))
+		vat.Mul(base, vat)
+		if gross {
+			base.Sub(base, vat)
+		}
+		netWeights[i].Add(netWeights[i], base)
+		vatWeights[i].Add(vatWeights[i], vat)
 	}
-	if len(order) == 0 {
-		order = []string{account}
-	}
-	grossW, vatW, netW := make([]invoicecalc.Money, len(order)), make([]invoicecalc.Money, len(order)), make([]invoicecalc.Money, len(order))
-	for i, a := range order {
-		t := invoicecalc.Compute(mode, "", byAccount[a], 0)
-		grossW[i], vatW[i], netW[i] = t.Total, t.VATTotal, t.NetTotal
-	}
-	totals, deductibles, nets := allocate(total, grossW), allocate(deductible, vatW), allocate(net, netW)
-	splits := make([]Split, len(order))
-	for i, a := range order {
-		splits[i] = Split{Account: a, Material: Material(a, box), Net: totals[i] - deductibles[i], Deductible: deductibles[i], Taxable: nets[i]}
+
+	nets := allocate(net, netWeights)
+	deductibles := allocate(deductible, vatWeights)
+	unrecoverable := allocate(total-net-deductible, vatWeights)
+	for i := range splits {
+		splits[i].Taxable = nets[i]
+		splits[i].Deductible = deductibles[i]
+		splits[i].Net = nets[i] + unrecoverable[i]
 	}
 	return splits
 }
 
-// allocate divides amount in proportion to weights, rounding each part down and giving the rest to the last, so no
-// part is negative and none is lost; with no weight at all the last takes everything.
-func allocate(amount invoicecalc.Money, weights []invoicecalc.Money) []invoicecalc.Money {
+// allocate divides amount in proportion to weights, rounding each part down and giving the rest to the last with weight.
+// With no weight at all the last takes everything.
+func allocate(amount invoicecalc.Money, weights []*big.Rat) []invoicecalc.Money {
 	parts := make([]invoicecalc.Money, len(weights))
-	var sum invoicecalc.Money
-	for _, w := range weights {
-		sum += w
+	var sum big.Rat
+	last := len(weights) - 1
+	for i, w := range weights {
+		sum.Add(&sum, w)
+		if w.Sign() > 0 {
+			last = i
+		}
+	}
+	if sum.Sign() == 0 {
+		parts[last] = amount
+		return parts
 	}
 	left := amount
-	for i := range len(weights) - 1 {
-		if sum != 0 {
-			q := new(big.Int).Mul(big.NewInt(int64(amount)), big.NewInt(int64(weights[i])))
-			parts[i] = invoicecalc.Money(q.Div(q, big.NewInt(int64(sum))).Int64())
-		}
+	for i := range last {
+		share := new(big.Rat).Mul(new(big.Rat).SetInt64(int64(amount)), weights[i])
+		share.Quo(share, &sum)
+		parts[i] = invoicecalc.Money(new(big.Int).Quo(share.Num(), share.Denom()).Int64())
 		left -= parts[i]
 	}
-	parts[len(parts)-1] = left
+	parts[last] = left
 	return parts
 }

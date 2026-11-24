@@ -11,7 +11,6 @@ import { Loader } from '@helvetly/ui/components/loader'
 import { Logo } from '@helvetly/ui/components/logo'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronsUpDown, Gift, Lock, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -19,10 +18,11 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { ShellLoading } from '@/components/auth-gate'
+import { useSignOut } from '@/components/auth/use-sign-out'
 import { PlanCards } from '@/components/billing/plan-cards'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { DeleteDialog } from '@/components/settings/workspace-settings'
-import { api, errorMessage, setCsrfToken, type Session } from '@/lib/api'
+import { errorMessage, type Session } from '@/lib/api'
 import { useBilling, usePublicOffer } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { useSwitchWorkspace, useWorkspaces } from '@/lib/members'
@@ -272,16 +272,7 @@ function WorkspaceSwitcher({ session }: { session: Session }) {
 }
 
 function SignOutButton() {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const signOut = useMutation({
-    mutationFn: api.signOut,
-    onSettled: () => {
-      setCsrfToken('')
-      queryClient.clear()
-      router.replace('/login')
-    },
-  })
+  const signOut = useSignOut()
   return (
     <Button
       variant="ghost"

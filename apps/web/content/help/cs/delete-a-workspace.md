@@ -1,9 +1,9 @@
 ---
 title: Smazání pracovního prostoru
-description: Jako vlastník trvale smažte pracovní prostor; faktury a účtenky zůstávají archivované podle švýcarského práva.
+description: Smažte pracovní prostor a do 30 dnů jej obnovte ze svého účtu.
 category: Team and workspace
 order: 3
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Smazání pracovního prostoru ukončí přístup všech jeho uživatelů. Provést ho mohou jen vlastníci.
@@ -15,5 +15,5 @@ Smazání pracovního prostoru ukončí přístup všech jeho uživatelů. Prov�
 ## Co je dobré vědět
 
 - Všichni ztratí přístup a placený tarif ihned skončí.
-- Tuto akci nelze vrátit zpět.
+- Vlastník, který pracovní prostor smazal, jej může do 30 dnů obnovit pomocí **Account settings → Deleted workspaces → Restore**. Členové znovu získají přístup.
 - Faktury a účtenky zůstávají archivované po deset let vyžadovaných švýcarským právem.

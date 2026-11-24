@@ -8,7 +8,7 @@ readingMinutes: 7
 
 The main bexio alternatives in Switzerland are Magic Heidi, KLARA, Banana, CashCtrl, AbaNinja and Helvetly. Which one fits depends on whether you need full bookkeeping and payroll (bexio, KLARA, AbaNinja, CashCtrl, Banana) or mainly want to get paid with less admin (Magic Heidi for simple books, Helvetly for the back office around invoices).
 
-Everything said here about other products comes from their own public websites as checked on 11 November 2026, and their prices as checked on 15 November 2026. Prices change, so check the vendor's site before you decide. Each product has a side-by-side comparison with Helvetly on its own page.
+Everything said here about other products comes from their own public websites as checked on 11 November 2026, and their prices as checked on 24 November 2026. Prices change, so check the vendor's site before you decide. Each product has a side-by-side comparison with Helvetly on its own page.
 
 ## What is bexio, and why look for an alternative?
 
@@ -47,10 +47,12 @@ The cheapest options are the free plans of Magic Heidi, Banana, CashCtrl, AbaNin
 | bexio       | Basic CHF 35, Advanced CHF 42, Optima CHF 69, Ultimate CHF 119 a month billed yearly, with 1, 2, 5 and 25 users                               | Excluded   |
 | Magic Heidi | Free for 3 invoices and 3 receipts; Pro CHF 39 a month or CHF 299 a year, with no extra charge per person                                     | Included   |
 | KLARA       | Business Basic CHF 69 a month (CHF 55 yearly, CHF 48 over 2 years), up to 3 admins; Plus CHF 99; Premium CHF 159; plus paid modules           | Excluded   |
-| Banana      | Free up to 70 transactions; Professional CHF 89 a year; Advanced CHF 179 a year, per user                                                     | Not stated |
+| Banana      | Free up to 70 transactions; Professional CHF 89 a year; Advanced CHF 179 a year, per user                                                     | Included   |
 | CashCtrl    | Free for 1 user; PRO CHF 350 a year with 3 users, 2 organisations and 1 GB                                                                    | Included   |
 | AbaNinja    | Starter free (1 user, 1,000 documents a year); Basic CHF 21 a month (3 users, 2,100 documents); Pro CHF 49 a month (5 users, 5,000 documents) | Not stated |
 | Helvetly    | Free for 1 person; Basic CHF 19 a month with 1 person, Pro CHF 49 with 2, Business CHF 149 with 5; each further person CHF 10, 15 or 20       | Included   |
+
+Check the regular price for your team on the official price lists (24 November 2026): [Magic Heidi](https://magicheidi.ch/pricing), [bexio](https://www.bexio.com/en-CH/packages-and-prices), [KLARA](https://www.klara.ch/en/business), [Banana](https://www.banana.ch/en/prices), [CashCtrl](https://cashctrl.com/en/info/pro), [AbaNinja](https://www.abaninja.ch/en/#pricing).
 
 Helvetly's current prices are on the [pricing page](/pricing). Free needs no card and never expires; a 14-day trial of Pro needs a card. Basic allows up to 5 people and Pro up to 25, and paying yearly costs 20 % less. A workspace without a paid plan moves to Free: nothing is deleted, only new records beyond Free's limits are refused.
 
@@ -72,7 +74,7 @@ Stay with bexio if you need full bookkeeping and annual financial statements in 
 
 ## What does Helvetly do differently from bexio?
 
-Helvetly focuses on the back office around getting paid, with a few people included in each plan, where bexio is a broad suite with accounting, payroll and a marketplace. Helvetly offers these things, which we did not find on bexio's site:
+In Helvetly, a service business can use the following workflows.
 
 - E-invoice XML for Germany, Poland, Romania and Peppol: XRechnung, Peppol BIS, KSeF and e-Factura files (Business). They are exported as files; Helvetly does not deliver them through the networks.
 - Contracts filled from templates and sent for simple electronic signature (Pro and Business); qualified signatures are not offered.

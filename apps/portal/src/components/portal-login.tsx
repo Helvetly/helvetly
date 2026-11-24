@@ -2,6 +2,7 @@
 import { Callout } from '@helvetly/ui/components/callout'
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
 import { LanguageDialogButton } from '@helvetly/ui/components/language-switcher'
+import { Loader } from '@helvetly/ui/components/loader'
 import { Logo } from '@helvetly/ui/components/logo'
 import type { EmailCodeSent } from '@helvetly/ui/lib/http'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -20,7 +21,7 @@ import {
 } from '@/lib/portal'
 import { scoped, scopePrefix } from '@/lib/scope'
 
-import { WorkspaceMark } from './portal-bits'
+import { PortalLoadError, WorkspaceMark } from './portal-bits'
 import { PortalLinksRequest } from './portal-links-request'
 import { PortalNotFound } from './portal-not-found'
 
@@ -57,8 +58,17 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
     if (signedIn) router.replace(scoped('/'))
   }, [signedIn, router])
   if (isPortalClosed(scope.error)) return <PortalNotFound closed />
+  if (!signedIn && (session.isError || scope.isError))
+    return (
+      <PortalLoadError
+        retry={() => {
+          if (session.isError) void session.refetch()
+          if (scope.isError) void scope.refetch()
+        }}
+      />
+    )
   if (session.isPending || scope.isPending || signedIn)
-    return <div className="min-h-svh bg-background" aria-busy />
+    return <Loader size="page" className="min-h-svh" />
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background bg-[radial-gradient(80rem_36rem_at_50%_-8rem,var(--brand-surface),transparent_70%)] px-4 py-10">

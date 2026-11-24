@@ -9,12 +9,12 @@ updated: 2026-11-11
 
 Renseignez une fois les coordonnées de votre entreprise ; chaque facture les réutilisera.
 
-1. Ouvrez **Settings → Invoices**, ou choisissez **Invoice settings** dans le menu de la page **Invoices**.
-2. Renseignez **Logo**, **Company** (nom et adresse) et **VAT**. Sous VAT, activez **Registered for VAT**, puis ajoutez votre IDE avec MWST, le taux par défaut et le mode de saisie des prix, nets ou bruts.
-3. Sous **Bank account**, saisissez votre **IBAN** et votre banque. Sous **Payment methods**, activez **Swiss QR bill** et/ou **Revolut**.
-4. Sous **Numbering**, choisissez l’un des formats usuels dans le pays de votre entreprise (par exemple 2026-001 en Suisse ou INV-0001 aux États-Unis), ou choisissez **Format personnalisé** et composez le vôtre avec du texte et des espaces réservés : {YYYY} ou {YY} (année), {MM} (mois), {DD} (jour), {TYPE} (INV, CN, DN, PF ou Q) et {NNN} (le numéro courant, complété à trois chiffres ; {N} sans complément). Le numéro courant est obligatoire. Avec une année dans le format, il recommence chaque année ; sans année, il ne recommence jamais. Après un import de factures dans un nouvel espace de travail, l’accueil propose de continuer leur numérotation.
-5. Définissez vos **Defaults** (devise, langue des documents, conditions de paiement), **Instalments**, **Dunning** et **Footer**.
-6. Lorsque la liste de contrôle affiche **Ready to issue invoices**, tout est prêt.
+1. Ouvrez **Paramètres → Factures**, ou choisissez **Paramètres de facture** dans le menu de la page **Factures**.
+2. Renseignez **Logo**, **Société** (nom et adresse) et **TVA**. Sous VAT, activez **Immatriculé à la TVA**, puis ajoutez votre IDE avec MWST, le taux par défaut et le mode de saisie des prix, nets ou bruts.
+3. Sous **Compte bancaire**, saisissez votre **IBAN** et votre banque. Sous **Modes de paiement**, activez **QR-facture suisse** et/ou **Revolut**.
+4. Sous **Numérotation**, choisissez l’un des formats usuels dans le pays de votre entreprise (par exemple 2026-001 en Suisse ou INV-0001 aux États-Unis), ou choisissez **Format personnalisé** et composez le vôtre avec du texte et des espaces réservés : {YYYY} ou {YY} (année), {MM} (mois), {DD} (jour), {TYPE} (INV, CN, DN, PF ou Q) et {NNN} (le numéro courant, complété à trois chiffres ; {N} sans complément). Le numéro courant est obligatoire. Avec une année dans le format, il recommence chaque année ; sans année, il ne recommence jamais. Après un import de factures dans un nouvel espace de travail, l’accueil propose de continuer leur numérotation.
+5. Définissez vos **Valeurs par défaut** (devise, langue des documents, conditions de paiement), **Instalments**, **Relance** et **Pied de page**.
+6. Lorsque la liste de contrôle affiche **Prêt à émettre des factures**, tout est prêt.
 
 ## Bon à savoir
 

@@ -11,7 +11,7 @@ Jedes von Ihnen verwaltete Unternehmen kann über einen eigenen Arbeitsbereich v
 
 1. Klicken Sie oben links in der Seitenleiste auf den Namen des Arbeitsbereichs.
 2. Wählen Sie zum Wechseln einen anderen Arbeitsbereich aus der Liste aus.
-3. Um einen zu erstellen, klicken Sie auf **Add workspace**, geben Sie einen **Name** ein und bestätigen Sie.
+3. Um einen zu erstellen, klicken Sie auf **Arbeitsbereich hinzufügen**, geben Sie einen **Name** ein und bestätigen Sie.
 
 ## Gut zu wissen
 

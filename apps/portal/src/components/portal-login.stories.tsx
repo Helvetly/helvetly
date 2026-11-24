@@ -315,3 +315,25 @@ export const SharedPortalRateLimited: Story = {
     await expect(canvas.queryByRole('heading', { name: 'Check your inbox' })).toBeNull()
   },
 }
+
+export const ScopeRetry: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        signedOut,
+        http.get('/api/v1/public/portal/scope', () => new HttpResponse(null, { status: 503 }), {
+          once: true,
+        }),
+        scopedPortal(),
+        ...portalHandlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const error = await canvas.findByRole('alert')
+    await expect(canvas.queryByLabelText('Email')).toBeNull()
+    await userEvent.click(within(error).getByRole('button', { name: /Try again/ }))
+    await expect(await canvas.findByLabelText('Email')).toBeVisible()
+  },
+}

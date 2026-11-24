@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 Memorizza le persone di contatto di ogni cliente per sapere sempre a chi rivolgerti.
 
-1. Apri il cliente da **Clients** e vai alla scheda **Contacts**.
-2. Fai clic su **Add contact**, inserisci un nome ed eventualmente email e telefono, poi fai clic su **Add contact**.
-3. Per modificare, rimuovere o scegliere **Make primary**, usa il menu **Actions** (…) accanto al contatto.
+1. Apri il cliente da **Clienti** e vai alla scheda **Contatti**.
+2. Fai clic su **Aggiungi contatto**, inserisci un nome ed eventualmente email e telefono, poi fai clic su **Aggiungi contatto**.
+3. Per modificare, rimuovere o scegliere **Rendi primario**, usa il menu **Azioni** (…) accanto al contatto.
 
 ## Da sapere
 

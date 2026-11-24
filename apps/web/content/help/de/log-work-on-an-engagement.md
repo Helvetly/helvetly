@@ -10,9 +10,9 @@ updated: 2026-11-11
 Protokollieren Sie, was Sie liefern, damit Sie immer wissen, wie viel Engagement noch übrig ist.
 
 1. Öffnen Sie die Verlobung von **Aufträge**.
-2. Geben Sie unter **Log delivery** die Menge und einen Hinweis („Was wurde getan?“) ein und drücken Sie dann die Eingabetaste oder klicken Sie auf **Log**.
-3. Protokollierte Einträge werden unter **Entries** angezeigt. Verwenden Sie die Symbole „Bearbeiten“ und „Löschen“, um eines zu beheben.
-4. Die **Current period**-Karte zeigt an, was verbraucht wurde, was noch übrig ist und wie viel Tempo es gibt.
+2. Geben Sie unter **Leistung erfassen** die Menge und einen Hinweis („Was wurde getan?“) ein und drücken Sie dann die Eingabetaste oder klicken Sie auf **Protokoll**.
+3. Protokollierte Einträge werden unter **Einträge** angezeigt. Verwenden Sie die Symbole „Bearbeiten“ und „Löschen“, um eines zu beheben.
+4. Die **Aktueller Zeitraum**-Karte zeigt an, was verbraucht wurde, was noch übrig ist und wie viel Tempo es gibt.
 
 ## Gut zu wissen
 

@@ -800,6 +800,67 @@ func TestAccessChangesApplyImmediately(t *testing.T) {
 	}
 }
 
+func TestClientCollectionsFollowTheActiveWorkspace(t *testing.T) {
+	h, st, pool := app(t)
+	alpha := newWorkspace(t, st, pool, "Alpha")
+	beta := newWorkspace(t, st, pool, "Beta")
+	if err := st.AddMember(t.Context(), beta.workspace, alpha.userID, "member", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), `UPDATE workspace_members SET scopes = ARRAY['read:clients'] WHERE workspace_id=$1 AND user_id=$2`, beta.workspace, alpha.userID); err != nil {
+		t.Fatal(err)
+	}
+	const path = "/api/v1/clients"
+	create := func(owner person, name string) string {
+		t.Helper()
+		return dataID(t, jsonCall(t, h, owner, "POST", path, map[string]any{"name": name}, http.StatusCreated))
+	}
+	wantAlpha := []string{create(alpha, "Alpha one"), create(alpha, "Alpha two")}
+	wantBeta := []string{create(beta, "Beta only")}
+	check := func(actor person, want []string) {
+		t.Helper()
+		code, raw := call(h, actor, "GET", path, nil, "")
+		var list struct {
+			Data []struct{ ID string }
+			Meta struct{ Total int }
+		}
+		if code != http.StatusOK || json.Unmarshal(raw, &list) != nil || list.Meta.Total != len(want) {
+			t.Fatalf("list status %d, body %s", code, raw)
+		}
+		var ids []string
+		for _, client := range list.Data {
+			ids = append(ids, client.ID)
+		}
+		slices.Sort(ids)
+		slices.Sort(want)
+		if !slices.Equal(ids, want) {
+			t.Fatalf("clients = %v, want %v", ids, want)
+		}
+	}
+	check(alpha, wantAlpha)
+	req := httptest.NewRequest("POST", "/api/v1/session/workspace", strings.NewReader(`{"workspace_id":"`+beta.workspace+`"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-CSRF-Token", alpha.csrf)
+	req.AddCookie(&http.Cookie{Name: "helvetly_session", Value: alpha.token})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	var switched struct {
+		CSRF string `json:"csrf_token"`
+	}
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &switched) != nil || switched.CSRF == "" || len(rec.Result().Cookies()) != 1 {
+		t.Fatalf("switch status %d, body %s", rec.Code, rec.Body)
+	}
+	current := person{token: rec.Result().Cookies()[0].Value, csrf: switched.CSRF}
+	check(current, wantBeta)
+	jsonCall(t, h, current, "POST", path, map[string]any{"name": "Member draft"}, http.StatusForbidden)
+	jsonCall(t, h, alpha, "GET", path, nil, http.StatusUnauthorized)
+	if _, err := pool.Exec(t.Context(), `UPDATE sessions SET expires_at = now() - interval '1 second' WHERE user_id = $1`, alpha.userID); err != nil {
+		t.Fatal(err)
+	}
+	jsonCall(t, h, current, "GET", path, nil, http.StatusUnauthorized)
+	check(beta, wantBeta)
+}
+
 // TestDocumentedStatusesForReads: each catalogue read, called by A's owner on A's own records, answers a status the
 // spec documents for it (an error answer is covered by a documented "default"), never a 5xx.
 func TestDocumentedStatusesForReads(t *testing.T) {

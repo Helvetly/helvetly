@@ -11,9 +11,9 @@ Behalten Sie den Überblick darüber, welche Ausgaben bezahlt wurden und wer noc
 
 Ausgaben sind in jedem Plan enthalten, im Rahmen seines monatlichen Kontingents.
 
-1. Gehen Sie zu **Expenses**. Verwenden Sie die Registerkarten **To review**, **Unpaid** und **To reimburse**, um herauszufinden, was Massnahmen erfordern.
-2. Wählen Sie Ausgaben aus und klicken Sie auf **Mark paid** oder **Mark unpaid**. Oder öffnen Sie eines, klicken Sie auf **Edit** und ändern Sie **Payment**.
-3. Bearbeiten Sie für Auslagen die Ausgabe und geben Sie **Reimbursed on** ein, wenn das Unternehmen sie zurückzahlt.
+1. Gehen Sie zu **Ausgaben**. Verwenden Sie die Registerkarten **Zur Überprüfung**, **Unbezahlt** und **Zur Erstattung**, um herauszufinden, was Massnahmen erfordern.
+2. Wählen Sie Ausgaben aus und klicken Sie auf **Mark bezahlt** oder **Als unbezahlt markieren**. Oder öffnen Sie eines, klicken Sie auf **Bearbeiten** und ändern Sie **Zahlung**.
+3. Bearbeiten Sie für Auslagen die Ausgabe und geben Sie **Erstattet am** ein, wenn das Unternehmen sie zurückzahlt.
 
 ## Gut zu wissen
 

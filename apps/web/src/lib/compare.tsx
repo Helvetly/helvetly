@@ -77,9 +77,6 @@ export type RowKey = (typeof ROW_KEYS)[number]
 /** The rows where Helvetly's cell quotes a price, shown only while the API's offer confirms it. */
 export const PRICE_ROWS: ReadonlySet<RowKey> = new Set(['freePlan', 'paidFrom', 'pricingModel'])
 
-/** Helvetly offers it and the other product does not, or we did not find it on its site. */
-export const offered = (value: Value) => value !== false && value !== null && value !== NOT_COMPARED
-
 export type YearlyPrices = {
   /** The package priced, by the other product's own name. */
   plan: string
@@ -92,6 +89,7 @@ export type Competitor = {
   slug: string
   name: string
   url: string
+  priceUrl: string
   /** Their icon, taken from their own website, under `public/brands`. */
   logo: string
   /** The card colour on the comparisons page. */
@@ -132,10 +130,10 @@ export const compareIn = perLanguage((translate, language) => {
   const perYear = (price: string) => translate('cmpPerYear', { price })
   const fromPlan = (plan: string) => translate('cmpFromPlan', { plan })
   const name = (id: TieredPlanId) => planById(id).name
-  // Scheduling is not one of plans.ts's comparison features, so its plans are named here.
-  const proOrBusiness = new Intl.ListFormat(localeDetails(language).languageTag, {
-    type: 'disjunction',
-  }).format([name('pro'), name('business')])
+  const priceCheck = new Intl.DateTimeFormat(localeDetails(language).languageTag, {
+    dateStyle: 'long',
+    timeZone: 'UTC',
+  }).format(new Date('2026-11-24T00:00:00Z'))
 
   const ROW_LABELS: Record<RowKey, string> = {
     madeFor: translate('madeFor'),
@@ -230,8 +228,6 @@ export const compareIn = perLanguage((translate, language) => {
         quotes: FREE_PLAN.quotes,
         clients: FREE_PLAN.clients,
         expenses: FREE_PLAN.expenses,
-        documentFiling: NOT_COMPARED,
-        hosting: NOT_COMPARED,
         sessions: FREE_PLAN.sessions,
       }),
     ],
@@ -272,7 +268,7 @@ export const compareIn = perLanguage((translate, language) => {
       'XRechnung, Peppol, Factur-X, KSeF',
       translate('cmpUsEinvoicesNote', { plans: plansWith('einvoice_xml') }),
     ],
-    sessions: [true, translate('cmpUsSessionsNote', { plans: proOrBusiness })],
+    sessions: [true, translate('cmpUsSessionsNote')],
     calendarSync: ['Google, Microsoft', translate('cmpUsCalendarNote')],
     documentFiling: [
       true,
@@ -330,26 +326,17 @@ export const compareIn = perLanguage((translate, language) => {
     api: [translate('cmpUsApi'), translate('cmpUsApiNote')],
   }
 
-  const internationalTitle = (
-    <>
-      {translate('cmpMadeFor')}
-      <span className="accent">{translate('cmpSwiss')}</span>
-      {translate('cmpInvoicesAndVAT')}
-    </>
-  )
-
-  const noSwissReturn: Entry = [translate('cmpNoSwissReturn'), translate('cmpVATByCountryNoSwiss')]
-
   const COMPETITORS: Competitor[] = [
     {
       slug: 'magic-heidi',
       name: translate('magicHeidi'),
       url: 'https://magicheidi.ch',
+      priceUrl: 'https://magicheidi.ch/pricing',
       logo: '/brands/magic-heidi.png',
       tone: 'rose',
       summary: translate('aSimpleInvoicingAndBookkeepingAppForTheSwiss'),
       checked: translate('message11November2026'),
-      pricesChecked: translate('message15November2026'),
+      pricesChecked: priceCheck,
       title: (
         <>
           {translate('grownPastThe')}
@@ -387,24 +374,27 @@ export const compareIn = perLanguage((translate, language) => {
         invoiceLanguages: 'DE, FR, IT, EN',
         reminders: true,
         depositPartial: [true, translate('invoiceDepositAndPartialCreditNoteCancellationWithA')],
-        instalments: false,
-        einvoices: false,
+        instalments: null,
+        einvoices: null,
         documentFiling: NOT_COMPARED,
         hosting: NOT_COMPARED,
         sessions: NOT_COMPARED,
         calendarSync: NOT_COMPARED,
         documents: null,
-        signatures: false,
+        signatures: null,
         contracts: null,
         approvals: NOT_COMPARED,
-        clientPortal: false,
+        clientPortal: null,
         ownDomain: null,
-        retainers: false,
-        vatReturn: [translate('cmpEstvExport'), translate('yesWithAnESTVExport')],
+        retainers: null,
+        vatReturn: [
+          translate('cmpFiguresByHand'),
+          translate('effectiveAndNetTaxRateFiguresTransferredToThe'),
+        ],
         expenses: true,
         bookkeeping: [true, translate('aSimpleInvoicingAndBookkeepingAppForTheSwiss')],
         bankFeeds: true,
-        auditLog: false,
+        auditLog: null,
         assistant: [
           translate('cmpOwnAIViaMcp'),
           translate('connectsYourOwnClaudeOrChatGPTThroughMCPAn'),
@@ -424,11 +414,12 @@ export const compareIn = perLanguage((translate, language) => {
       slug: 'bexio',
       name: translate('bexio'),
       url: 'https://www.bexio.com',
+      priceUrl: 'https://www.bexio.com/en-CH/packages-and-prices',
       logo: '/brands/bexio.svg',
       tone: 'sky',
       summary: translate('aBroadSwissBusinessSuiteWithAccountingPayrollAnd'),
       checked: translate('message11November2026'),
-      pricesChecked: translate('message15November2026'),
+      pricesChecked: priceCheck,
       title: (
         <>
           {translate('builtToGetYouPaid')}
@@ -495,7 +486,7 @@ export const compareIn = perLanguage((translate, language) => {
         ],
         expenses: translate('fromTheAdvancedPlan'),
         bookkeeping: [true, translate('aBroadSwissBusinessSuiteWithAccountingPayrollAnd')],
-        bankFeeds: null,
+        bankFeeds: true,
         auditLog: [translate('cmpLockedYears'), translate('fiscalYearsCanBeLocked')],
         assistant: null,
         aiImport: [
@@ -525,11 +516,12 @@ export const compareIn = perLanguage((translate, language) => {
       slug: 'klara',
       name: 'KLARA',
       url: 'https://www.klara.ch',
+      priceUrl: 'https://www.klara.ch/en/business',
       logo: '/brands/klara.png',
       tone: 'peach',
       summary: translate('aModularSMESuiteWithAccountingPayrollPOSAnd'),
       checked: translate('message11November2026'),
-      pricesChecked: translate('message15November2026'),
+      pricesChecked: priceCheck,
       title: (
         <>
           {translate('everythingToGetPaid')}
@@ -596,7 +588,7 @@ export const compareIn = perLanguage((translate, language) => {
         vatReturn: [translate('cmpXmlFile'), translate('effectiveAndNetTaxRateWithAnXMLFile')],
         expenses: true,
         bookkeeping: [true, translate('swissSMEsAccountingCRMOrdersPayrollAndPOSIn')],
-        bankFeeds: null,
+        bankFeeds: true,
         auditLog: null,
         assistant: [translate('cmpOutsideAI'), translate('connectsAnOutsideChatGPTOrClaude')],
         aiImport: translate('aiReceiptScanning'),
@@ -610,18 +602,19 @@ export const compareIn = perLanguage((translate, language) => {
           translate('packagesPlusPaidModulesSuchAsBudgetEArchiveInventory'),
         ],
         dataExport: [translate('cmpPerArea'), translate('perAreaSuchAsCustomersOrReports')],
-        api: NOT_COMPARED,
+        api: 'MCP',
       },
     },
     {
       slug: 'banana',
       name: translate('banana'),
       url: 'https://www.banana.ch',
+      priceUrl: 'https://www.banana.ch/en/prices',
       logo: '/brands/banana.png',
       tone: 'lemon',
       summary: translate('lowCostDesktopAccountingSoftwareForPeopleWhoKeep'),
       checked: translate('message11November2026'),
-      pricesChecked: translate('message15November2026'),
+      pricesChecked: priceCheck,
       title: (
         <>
           {translate('fromDesktopFilesToA')}
@@ -706,11 +699,12 @@ export const compareIn = perLanguage((translate, language) => {
       slug: 'cashctrl',
       name: translate('cashctrl'),
       url: 'https://cashctrl.com',
+      priceUrl: 'https://cashctrl.com/en/info/pro',
       logo: '/brands/cashctrl.png',
       tone: 'mint',
       summary: translate('onlineDoubleEntryAccountingForPeopleWhoKeepTheir'),
       checked: translate('message11November2026'),
-      pricesChecked: translate('message15November2026'),
+      pricesChecked: priceCheck,
       title: (
         <>
           {translate('lessBookkeeping')}
@@ -781,18 +775,19 @@ export const compareIn = perLanguage((translate, language) => {
         signIn: [translate('cmpPasswordPasskeys2fa'), translate('passwordPasskeysAndTwoFactor')],
         payroll: [true, translate('runPayrollForAFewEmployeesAlongsideTheBooks')],
         dataExport: translate('perModuleDocumentsAsZIP'),
-        api: NOT_COMPARED,
+        api: 'API',
       },
     },
     {
       slug: 'abaninja',
       name: translate('abaninja'),
       url: 'https://abaninja.ch',
+      priceUrl: 'https://www.abaninja.ch/en/#pricing',
       logo: '/brands/abaninja.png',
       tone: 'lilac',
       summary: translate('invoicingAccountingAndPayrollFromTheAbacusWorldWith'),
       checked: translate('message11November2026'),
-      pricesChecked: translate('message15November2026'),
+      pricesChecked: priceCheck,
       title: (
         <>
           {translate('yourBackOffice')}
@@ -853,7 +848,7 @@ export const compareIn = perLanguage((translate, language) => {
         vatReturn: [translate('cmpGuideForForm'), translate('effectiveAndNetTaxRateAsAGuideFor')],
         expenses: true,
         bookkeeping: [true, translate('invoicingAccountingAndPayrollFromTheAbacusWorldWith')],
-        bankFeeds: null,
+        bankFeeds: true,
         auditLog: null,
         assistant: translate('samuraiActsAfterConfirmation'),
         aiImport: [translate('cmpAiReadsPdfs'), translate('aiReadsPDFInvoicesAndReceipts')],
@@ -870,19 +865,20 @@ export const compareIn = perLanguage((translate, language) => {
           translate('cmpPerAppNotFull'),
           translate('perApplicationNoFullDatabaseExport'),
         ],
-        api: NOT_COMPARED,
+        api: [fromPlan('Basic'), 'API'],
       },
     },
     {
       slug: 'quickbooks',
       name: 'QuickBooks Online',
       url: 'https://quickbooks.intuit.com',
+      priceUrl: 'https://quickbooks.intuit.com/pricing/',
       logo: '/brands/quickbooks.png',
       tone: 'mint',
       summary: translate('qbSummary'),
       checked: translate('message19November2026'),
-      pricesChecked: translate('message19November2026'),
-      title: internationalTitle,
+      pricesChecked: priceCheck,
+      title: translate('helvetlyVs', { name: 'QuickBooks Online' }),
       lead: `${translate('qbLead')} ${translate('cmpLeadHelvetly')}`,
       oursIf: [
         translate('cmpNeedSwissQRBill'),
@@ -924,7 +920,7 @@ export const compareIn = perLanguage((translate, language) => {
         clientPortal: null,
         ownDomain: null,
         retainers: [translate('cmpNoHourBalance'), translate('qbRetainers')],
-        vatReturn: noSwissReturn,
+        vatReturn: [null, translate('cmpVATByCountryNoSwiss')],
         expenses: true,
         bookkeeping: [true, translate('qbSummary')],
         bankFeeds: [true, translate('qbSummary')],
@@ -942,12 +938,13 @@ export const compareIn = perLanguage((translate, language) => {
       slug: 'xero',
       name: 'Xero',
       url: 'https://www.xero.com',
+      priceUrl: 'https://www.xero.com/pricing-plans/',
       logo: '/brands/xero.svg',
       tone: 'sky',
       summary: translate('xeroSummary'),
       checked: translate('message19November2026'),
-      pricesChecked: translate('message19November2026'),
-      title: internationalTitle,
+      pricesChecked: priceCheck,
+      title: translate('helvetlyVs', { name: 'Xero' }),
       lead: `${translate('xeroLead')} ${translate('cmpLeadHelvetly')}`,
       oursIf: [
         translate('cmpNeedSwissQRBill'),
@@ -989,7 +986,7 @@ export const compareIn = perLanguage((translate, language) => {
         clientPortal: null,
         ownDomain: null,
         retainers: null,
-        vatReturn: noSwissReturn,
+        vatReturn: [null, translate('cmpVATByCountryNoSwiss')],
         expenses: true,
         bookkeeping: [true, translate('xeroSummary')],
         bankFeeds: [true, translate('xeroSummary')],
@@ -1007,12 +1004,13 @@ export const compareIn = perLanguage((translate, language) => {
       slug: 'freshbooks',
       name: 'FreshBooks',
       url: 'https://www.freshbooks.com',
+      priceUrl: 'https://www.freshbooks.com/pricing',
       logo: '/brands/freshbooks.svg',
       tone: 'peach',
       summary: translate('fbSummary'),
       checked: translate('message19November2026'),
-      pricesChecked: translate('message19November2026'),
-      title: internationalTitle,
+      pricesChecked: priceCheck,
+      title: translate('helvetlyVs', { name: 'FreshBooks' }),
       lead: `${translate('fbLead')} ${translate('cmpLeadHelvetly')}`,
       oursIf: [
         translate('cmpNeedSwissQRBill'),
@@ -1054,10 +1052,10 @@ export const compareIn = perLanguage((translate, language) => {
         clientPortal: true,
         ownDomain: null,
         retainers: [fromPlan('Plus'), translate('fbRetainers')],
-        vatReturn: noSwissReturn,
+        vatReturn: [null, translate('cmpVATByCountryNoSwiss')],
         expenses: [true, translate('fbExpenses')],
         bookkeeping: [true, translate('fbSummary')],
-        bankFeeds: null,
+        bankFeeds: true,
         auditLog: [translate('cmpLockAndLog'), translate('fbAuditLog')],
         assistant: [translate('cmpOwnAIReadOnly'), translate('fbAssistant')],
         aiImport: [translate('cmpReceiptsSomeCountries'), translate('fbAiImport')],
@@ -1072,12 +1070,13 @@ export const compareIn = perLanguage((translate, language) => {
       slug: 'zoho-books',
       name: 'Zoho Books',
       url: 'https://www.zoho.com/books/',
+      priceUrl: 'https://www.zoho.com/books/pricing/',
       logo: '/brands/zoho-books.png',
       tone: 'lemon',
       summary: translate('zbSummary'),
       checked: translate('message19November2026'),
-      pricesChecked: translate('message19November2026'),
-      title: internationalTitle,
+      pricesChecked: priceCheck,
+      title: translate('helvetlyVs', { name: 'Zoho Books' }),
       lead: `${translate('zbLead')} ${translate('cmpLeadHelvetly')}`,
       oursIf: [
         translate('cmpNeedSwissQRBill'),
@@ -1117,7 +1116,7 @@ export const compareIn = perLanguage((translate, language) => {
         vatReturn: [translate('cmpTaxSummaryOnly'), translate('zbVatReturn')],
         expenses: true,
         bookkeeping: [true, translate('zbSummary')],
-        bankFeeds: null,
+        bankFeeds: true,
         auditLog: [translate('cmpLockAndLog'), translate('zbAuditLog')],
         assistant: ['Zia', translate('zbAssistant')],
         aiImport: [translate('cmpDocumentScan'), translate('zbAiImport')],
@@ -1132,12 +1131,13 @@ export const compareIn = perLanguage((translate, language) => {
       slug: 'bonsai',
       name: 'Bonsai',
       url: 'https://www.hellobonsai.com',
+      priceUrl: 'https://www.hellobonsai.com/pricing',
       logo: '/brands/bonsai.png',
       tone: 'lilac',
       summary: translate('bonsaiSummary'),
       checked: translate('message19November2026'),
-      pricesChecked: translate('message19November2026'),
-      title: internationalTitle,
+      pricesChecked: priceCheck,
+      title: translate('helvetlyVs', { name: 'Bonsai' }),
       lead: `${translate('bonsaiLead')} ${translate('cmpLeadHelvetly')}`,
       oursIf: [
         translate('cmpNeedSwissQRBill'),

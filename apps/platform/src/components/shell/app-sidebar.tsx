@@ -27,7 +27,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { capitalize } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Check,
   ChevronsUpDown,
@@ -43,6 +43,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { type ReactNode, useState } from 'react'
 import { toast } from 'sonner'
 
+import { useSignOut } from '@/components/auth/use-sign-out'
 import {
   featureLock,
   PLANS_HREF,
@@ -60,7 +61,7 @@ import { WorkspaceMark } from '@/components/shared/workspace-mark'
 import { ShortcutKeys, WithShortcut } from '@/components/shortcuts/shortcut-keys'
 import { ShortcutsDialog } from '@/components/shortcuts/shortcuts-dialog'
 import { AddWorkspaceDialog } from '@/components/workspaces/add-workspace-dialog'
-import { api, setCsrfToken, type Session, type User } from '@/lib/api'
+import { type Session, type User } from '@/lib/api'
 import { type Billing } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { useSwitchWorkspace, useWorkspaces, type WorkspaceItem } from '@/lib/members'
@@ -82,16 +83,20 @@ export const isCurrent = (pathname: string, href: string) => {
  * later route change wins. Resting the pointer on an item starts loading its page's list.
  */
 export function useNavTarget() {
+  const router = useRouter()
   const pathname = usePathname()
   const queryClient = useQueryClient()
   const [clicked, setClicked] = useState<{ href: string; from: string } | null>(null)
   return {
     current: clicked?.from === pathname ? clicked.href : pathname,
     linkProps: (href: string) => ({
+      prefetch: false,
       onClick: () => setClicked({ href, from: pathname }),
       // Loaded on demand, so the shell does not carry every page's queries.
-      onPointerEnter: () =>
-        void import('@/lib/warm').then(({ warmPage }) => warmPage(queryClient, href)),
+      onPointerEnter: () => {
+        router.prefetch(href)
+        void import('@/lib/warm').then(({ warmPage }) => warmPage(queryClient, href))
+      },
     }),
   }
 }
@@ -431,15 +436,7 @@ function UserMenu({
   const [tooltip, setTooltip] = useState(false)
   const settingsHref = useSettingsHref()
   useShortcut('settings', () => router.push(settingsHref))
-  const queryClient = useQueryClient()
-  const signOut = useMutation({
-    mutationFn: api.signOut,
-    onSettled: () => {
-      setCsrfToken('')
-      queryClient.clear()
-      router.replace('/login')
-    },
-  })
+  const signOut = useSignOut()
 
   return (
     <SidebarMenu>

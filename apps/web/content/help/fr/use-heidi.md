@@ -11,10 +11,10 @@ Heidi est l’assistante intégrée à Helvetly. Interrogez-la sur votre activit
 
 Heidi est incluse dans **Pro** et **Business**.
 
-1. Appuyez sur ⌘J (Ctrl+J) ou cliquez sur **Ask Heidi** dans la barre latérale. Saisissez une question ou choisissez-en une sous **Try asking**.
+1. Appuyez sur ⌘J (Ctrl+J) ou cliquez sur **Ask Heidi** dans la barre latérale. Saisissez une question ou choisissez-en une sous **Essayez de demander**.
 2. Heidi peut afficher les factures récentes ou en retard, les dépenses et l’impôt préalable du mois, les clients et documents récents, ainsi que les soldes des mandats. Elle peut ouvrir des factures et mandats, commencer une nouvelle facture et enregistrer une prestation sur un mandat.
-3. Pour joindre des images ou PDF, utilisez **Attach files** ou déposez-les dans le panneau. Vous pouvez ajouter jusqu’à 4 fichiers par message, de 8 Mo chacun.
-4. Avant d’enregistrer une prestation ou d’envoyer une facture, Heidi vous demande de confirmer. Utilisez **New chat**, **Search in conversation** ou **Max view** dans l’en-tête du panneau.
+3. Pour joindre des images ou PDF, utilisez **Joindre des fichiers** ou déposez-les dans le panneau. Vous pouvez ajouter jusqu’à 4 fichiers par message, de 8 Mo chacun.
+4. Avant d’enregistrer une prestation ou d’envoyer une facture, Heidi vous demande de confirmer. Utilisez **Nouvelle discussion**, **Recherche dans la conversation** ou **Vue maximale** dans l’en-tête du panneau.
 5. Heidi répond à de nombreuses questions à partir de vos données et du guide Helvetly. Pour les autres, elle utilise un modèle d’IA (OpenAI) ; Helvetly ne récupère pas les données d’Employees ou de Payroll pour les requêtes d’IA. N’incluez pas ces informations dans les messages ou fichiers.
 
 ## Bon à savoir

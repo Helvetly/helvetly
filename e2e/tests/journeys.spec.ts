@@ -116,6 +116,15 @@ test('catalogue creates a priced item through the actual form', async ({ page, a
   expect(object(rows[0]).unit_price_gross).toBe('100.00')
 })
 
+test('new invoice link opens the editor with its client selected', async ({ page, api }) => {
+  const client = await api.client()
+  await page.goto(`/invoices/new/?client=${text(client.id)}`)
+  const editor = page.getByRole('dialog', { name: 'New invoice' })
+  await expect(
+    editor.getByRole('button', { name: /Change$/ }).filter({ hasText: text(client.name) }),
+  ).toBeVisible()
+})
+
 test('issued invoice, payment, credit and refund agree with the browser and historical PDF', async ({
   page,
   api,
@@ -125,17 +134,24 @@ test('issued invoice, payment, credit and refund agree with the browser and hist
   const invoice = await api.draft(client)
   const path = `/invoices/${text(invoice.id)}`
   await page.goto(`/invoices/edit?id=${text(invoice.id)}`)
-  await expect(page.getByRole('button', { name: /^Issue/ }).first()).toBeVisible()
   await page
-    .getByRole('button', { name: /^Issue/ })
-    .first()
+    .getByRole('dialog', { name: 'Edit invoice' })
+    .getByRole('button', { name: 'Issue invoice', exact: true })
     .click()
-  await page
-    .getByRole('dialog', { name: 'Issue this invoice?' })
-    .getByRole('button', { name: 'Issue invoice' })
-    .click()
-  await expect.poll(async () => (await api.read(path)).status).toBe('open')
+  const [issueResponse] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `/api/v1${path}/issue` &&
+        response.request().method() === 'POST',
+    ),
+    page
+      .getByRole('dialog', { name: 'Issue this invoice?' })
+      .getByRole('button', { name: 'Issue invoice', exact: true })
+      .click(),
+  ])
+  expect(issueResponse.status()).toBe(200)
   const issued = await api.read(path)
+  expect(issued.status).toBe('open')
   expect(issued.payable_total).toBe('1081.00')
   const originalPDF = await api.request.get(`/api/v1${path}/pdf`)
   await expect(originalPDF).toBeOK()
@@ -482,4 +498,38 @@ test('forged CSRF and foreign-tenant identifiers never mutate data', async ({
   } finally {
     await foreign.close()
   }
+})
+
+test('failed logout keeps the session and can be retried from the account menu', async ({
+  page,
+  api,
+  email,
+}) => {
+  const client = await api.client()
+  await openPage(page, '/clients', 'Clients')
+  const other = await page.context().newPage()
+  await other.goto('/clients')
+  const privateName = other.getByText(text(client.name), { exact: true }).first()
+  await expect(privateName).toBeVisible()
+  const account = page.getByRole('button', { name: email, exact: false })
+  const logout = async () => {
+    await account.click()
+    await page.getByRole('menuitem', { name: 'Log out' }).click()
+  }
+  await page.route('**/api/v1/session', (route) =>
+    route.request().method() === 'DELETE'
+      ? route.fulfill({ status: 503, contentType: 'application/json', body: '{}' })
+      : route.continue(),
+  )
+  await logout()
+  await expect(page.getByText(/cannot reach helvetly/i)).toBeVisible()
+  await expect(account).toBeVisible()
+  await expect(await api.request.get('/api/v1/session')).toBeOK()
+  await expect(page).toHaveURL(/\/clients\/?$/)
+  await page.unroute('**/api/v1/session')
+  await logout()
+  await expect(page).toHaveURL(/\/login/)
+  await expect(other).toHaveURL(/\/login/)
+  await expect(privateName).toHaveCount(0)
+  expect((await api.request.get('/api/v1/session')).status()).toBe(401)
 })

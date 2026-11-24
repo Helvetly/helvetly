@@ -19,5 +19,5 @@ Kosten zitten in elk abonnement, binnen het maandtegoed ervan.
 
 ## Goed om te weten
 
-- Boeken vereist de velden met een sterretje en een bon.
-- Geboekte kosten kunnen niet worden verwijderd. Een eigenaar of beheerder kan ze met een reden **Void…** verklaren; **Duplicate** maakt een gecorrigeerde kopie om te boeken.
+- Vul de verplichte velden in en voeg een bon toe of geef aan waarom die ontbreekt om de uitgave te boeken.
+- Eigenaren en beheerders kunnen een geboekte uitgave met opgave van reden terugboeken. Bij dupliceren ontstaat een nieuw concept dat je kunt corrigeren en boeken.

@@ -4,15 +4,15 @@ description: Modifiez le nom affiché sur votre compte Helvetly et découvrez l�
 category: Account and security
 categoryLabel: Compte et sécurité
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Gardez votre nom à jour pour que l’équipe sache qui a fait quoi.
 
-1. Cliquez sur votre nom en bas à gauche et choisissez **Settings**, ou ouvrez **Settings → Account settings**.
-2. Sous **Profile**, modifiez **Full name** et cliquez sur **Save**.
+1. Cliquez sur votre nom en bas à gauche et choisissez **Paramètres**, ou ouvrez **Paramètres → Paramètres du compte**.
+2. Sous **Profil**, modifiez **Nom complet** et cliquez sur **Enregistrer**.
 
 ## Bon à savoir
 
 - Votre e-mail est votre adresse de connexion.
-- Votre photo provient de Google si vous le connectez.
+- Cliquez sur **Télécharger une photo** ou **Changer de photo**, choisissez une image, recadrez-la et enregistrez. Si vous supprimez cette photo, votre photo Google réapparaît si le compte est connecté.

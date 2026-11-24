@@ -151,6 +151,14 @@ export function RetryAlert({ what, onRetry }: { what: string; onRetry: () => voi
   )
 }
 
+export function PortalLoadError({ retry }: { retry: () => void }) {
+  return (
+    <main className="grid min-h-svh place-items-center p-6">
+      <RetryAlert what={translate('clientPortal')} onRetry={retry} />
+    </main>
+  )
+}
+
 /** A calm centred message with the brand tile, for a list with nothing in it. */
 export function EmptyState({
   icon,

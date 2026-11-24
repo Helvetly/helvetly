@@ -3,7 +3,7 @@ title: Organize documents
 description: Upload files, create folders, move, rename and star them, and find anything with search, filters and sorting.
 category: Documents and signatures
 order: 1
-updated: 2026-11-11
+updated: 2026-11-24
 ---
 
 Keep all your business files in one tidy place.
@@ -17,3 +17,4 @@ Keep all your business files in one tidy place.
 ## Good to know
 
 - You can also upload files on a client's **Files** tab. They are linked to that client.
+- Group files by type, year or client to review them without moving them. Download the filtered view as a ZIP. Larger downloads appear in your notifications when ready and are available for seven days.

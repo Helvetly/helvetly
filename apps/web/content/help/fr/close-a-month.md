@@ -9,9 +9,9 @@ updated: 2026-11-11
 
 Clôturez un mois une fois sa comptabilité terminée afin d’éviter toute modification accidentelle.
 
-1. Ouvrez **Books → Closing**.
-2. Cliquez sur **Close month** à côté du mois dont les comptes sont terminés.
-3. Pour autoriser à nouveau les modifications, cliquez sur **Reopen**.
+1. Ouvrez **Comptabilité → Clôture**.
+2. Cliquez sur **Clôture du mois** à côté du mois dont les comptes sont terminés.
+3. Pour autoriser à nouveau les modifications, cliquez sur **Réouvrir**.
 
 ## Bon à savoir
 

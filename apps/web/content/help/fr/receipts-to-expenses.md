@@ -11,10 +11,10 @@ updated: 2026-11-24
 
 Les dépenses sont disponibles dans toutes les formules ; la lecture des justificatifs par l’IA nécessite **Pro** ou **Business**.
 
-1. Ouvrez **Expenses** et cliquez sur **Upload receipts**, ou déposez les fichiers sur la page.
+1. Ouvrez **Dépenses** et cliquez sur **Télécharger les reçus**, ou déposez les fichiers sur la page.
 2. Cliquez sur **Read files**. L’IA lit chaque justificatif pour créer un brouillon de dépense.
-3. Vérifiez les lignes, modifiez celles qui en ont besoin et cliquez sur **Import**.
-4. Ouvrez chaque brouillon, vérifiez-le et cliquez sur **Book**.
+3. Vérifiez les lignes, modifiez celles qui en ont besoin et cliquez sur **Importer**.
+4. Ouvrez chaque brouillon, vérifiez-le et cliquez sur **Comptabiliser**.
 
 ## Bon à savoir
 

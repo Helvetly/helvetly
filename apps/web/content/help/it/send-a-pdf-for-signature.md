@@ -11,12 +11,12 @@ Fai firmare i documenti online, senza stamparli o scansionarli.
 
 Le richieste di firma richiedono **Pro** o **Business** e rientrano nelle richieste di firma mensili. Si tratta di firme elettroniche semplici, non qualificate.
 
-1. Vai a **Documents** e fai clic su **Create → PDF for signature…**. Oppure fai clic con il tasto destro su un PDF → **Send for signature…**.
-2. In **Document**, scegli un PDF e aggiungi titolo e messaggio.
-3. In **Signers**, aggiungi nome ed email di ogni persona con **Add signer** (oppure scegli un contatto). Imposta **Signing order** ed **Expires after**.
-4. In **Place fields**, posiziona i campi dei firmatari sulle pagine.
-5. In **Review & send**, controlla tutto e fai clic su **Send for signature**.
-6. Segui l’avanzamento in **Signatures**. La richiesta offre **Remind**, **Revoke** e **Download PDF**, oltre alla traccia di audit.
+1. Vai a **Documenti** e fai clic su **Crea → PDF per la firma…**. Oppure fai clic con il tasto destro su un PDF → **Invia per la firma…**.
+2. In **Documento**, scegli un PDF e aggiungi titolo e messaggio.
+3. In **Firmatari**, aggiungi nome ed email di ogni persona con **Aggiungi firmatario** (oppure scegli un contatto). Imposta **Ordine di firma** ed **Scade dopo**.
+4. In **Posiziona i campi**, posiziona i campi dei firmatari sulle pagine.
+5. In **Rivedi e invia**, controlla tutto e fai clic su **Invia per la firma**.
+6. Segui l’avanzamento in **Firme**. La richiesta offre **Ricorda**, **Revoca** e **Download PDF**, oltre alla traccia di audit.
 
 ## Da sapere
 

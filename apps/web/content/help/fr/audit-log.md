@@ -9,8 +9,8 @@ updated: 2026-11-11
 
 Le journal d’audit est un historique complet de chaque modification financière qui révèle les altérations.
 
-1. Ouvrez **Settings → Audit log**. Cet onglet est réservé aux propriétaires et administrateurs.
-2. Parcourez les événements financiers dans l’ordre, avec leur auteur. Cliquez sur **Load more** pour afficher les plus anciens.
+1. Ouvrez **Paramètres → Journal d’audit**. Cet onglet est réservé aux propriétaires et administrateurs.
+2. Parcourez les événements financiers dans l’ordre, avec leur auteur. Cliquez sur **Charger plus** pour afficher les plus anciens.
 3. Un contrôle en haut de page confirme l’intégrité de la chaîne ou indique l’endroit où elle est rompue.
 
 ## Bon à savoir
