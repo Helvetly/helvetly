@@ -5,7 +5,6 @@ import (
 	"io"
 	"math"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -51,17 +50,6 @@ func TestFitsCannotOverflow(t *testing.T) {
 	}
 }
 
-func TestPersonalAccountDoesNotRequireWorkspacePlan(t *testing.T) {
-	for _, method := range []string{http.MethodPatch, http.MethodDelete} {
-		if readOnlyWithoutPlan(httptest.NewRequest(method, "/api/v1/account", nil)) {
-			t.Fatalf("%s personal account was trapped by workspace billing", method)
-		}
-	}
-	if !readOnlyWithoutPlan(httptest.NewRequest(http.MethodPatch, "/api/v1/accounting", nil)) {
-		t.Fatal("account prefix exempted an unrelated workspace route")
-	}
-}
-
 func TestInvoiceAllowed(t *testing.T) {
 	allowed := func(t *testing.T, e *env, ws store.Workspace) bool {
 		ok, err := e.svc.InvoiceAllowed(context.Background(), ws)
@@ -78,8 +66,8 @@ func TestInvoiceAllowed(t *testing.T) {
 	})
 	e := newEnv(t, true)
 	ws := store.Workspace{ID: e.workspace().workspace, Timezone: "UTC"}
-	if allowed(t, e, ws) {
-		t.Fatal("a workspace without a plan may invoice")
+	if !allowed(t, e, ws) {
+		t.Fatal("a workspace on Free under its cap may not invoice")
 	}
 	e.subscribe(ws.ID, "price_bm")
 	if !allowed(t, e, ws) {

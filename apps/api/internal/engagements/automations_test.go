@@ -145,14 +145,14 @@ func TestAutomationDigestPartialSend(t *testing.T) {
 func TestAutomationDigestWaitsForRoomForEveryRecipient(t *testing.T) {
 	e, b, m, _ := automationEnv(t)
 	at := automationClock(e, 9)
-	e.seedAutomations(b.workspace, 1500-2-2, at)
+	e.seedAutomations(b.workspace, 3000-2-2, at)
 	e.tick(at)
-	if u := e.automationUsage(b.workspace, at); m.count() != 0 || u.Total() != 1498 || e.pendingNotices(b.workspace) != 2 {
+	if u := e.automationUsage(b.workspace, at); m.count() != 0 || u.Total() != 2998 || e.pendingNotices(b.workspace) != 2 {
 		t.Fatalf("at the limit: %d sent, %+v, pending %d", m.count(), u, e.pendingNotices(b.workspace))
 	}
 	billingtest.On(t, e.st, b.workspace, billing.Business)
 	e.tick(automationClock(e, 10))
-	if u := e.automationUsage(b.workspace, at); m.count() != 3 || u.Total() != 1501 {
+	if u := e.automationUsage(b.workspace, at); m.count() != 3 || u.Total() != 3001 {
 		t.Fatalf("after the upgrade: %d sent, %+v", m.count(), u)
 	}
 }
@@ -176,7 +176,7 @@ func TestAutomationAutoDraftCountsOnceAndWaitsAtTheLimit(t *testing.T) {
 			v := e.create(b, input(e.client(b), map[string]any{"auto_invoice": true,
 				"start_date": time.Date(y, mo, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly)}))
 			if full {
-				e.seedAutomations(b.workspace, 1500, at)
+				e.seedAutomations(b.workspace, 3000, at)
 			}
 			e.tick(at)
 			e.tick(at)

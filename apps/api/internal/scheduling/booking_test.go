@@ -179,9 +179,13 @@ func TestPlanGateAndMonthlyLimit(t *testing.T) {
 	billingtest.Wire(t, e.st)
 	b := e.workspace()
 	billingtest.On(t, e.st, b.workspace, billing.Basic)
+	billingtest.Without(t, e.st, b.workspace, store.FeatureScheduling)
 	c := e.client(b, "")
 	body := map[string]any{"client_id": c, "title": "Intro", "starts_local": "2026-12-01T09:00", "duration_minutes": 30}
 	e.fails(b, "POST", "/api/v1/scheduling/events", body, http.StatusForbidden, "feature_not_in_plan")
+	if err := billing.ClearWorkspaceOverride(context.Background(), e.st, b.workspace, store.FeatureScheduling, "test", "back"); err != nil {
+		t.Fatal(err)
+	}
 	billingtest.On(t, e.st, b.workspace, billing.Pro)
 	e.at(time.Now().UTC()) // the quota month is the real one
 	series := map[string]any{"client_id": c, "title": "Weekly", "starts_local": "2027-01-04T09:00", "duration_minutes": 30,

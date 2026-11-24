@@ -22,6 +22,7 @@ type Brand struct {
 	Language string // the workspace's document language, for a message without its own
 	ReplyTo  string // the workspace's reply address, else the company email; empty when it has neither
 	Owner    string // the owner's email: replies go there when neither the brand nor the sender names an address
+	SentWith bool   // ends with a muted "Sent with Helvetly" (Free and Basic; plans with remove_branding have none)
 }
 
 // Branded sends a workspace's email to its clients as the business: its name in From (the address stays MAIL_FROM's),
@@ -151,7 +152,7 @@ func websiteDomain(u string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(u, "www."), "/")
 }
 
-// brandFooter is the business footer under the card, then a muted "Sent with Helvetly".
+// brandFooter is the business footer under the card, then, when the brand says so, a muted "Sent with Helvetly".
 func brandFooter(b Brand, language, publicURL string) string {
 	var f strings.Builder
 	for i, l := range b.lines(language, true) {
@@ -161,14 +162,20 @@ func brandFooter(b Brand, language, publicURL string) string {
 		}
 		f.WriteString("<br>" + l)
 	}
-	f.WriteString(`<br><br><span style="font-size:11px">` + html.EscapeString(wordsFor(language).sentWith) + ` <a href="` +
-		html.EscapeString(publicURL) + `" style="color:` + muted + `">Helvetly</a></span>`)
+	if b.SentWith {
+		f.WriteString(`<br><br><span style="font-size:11px">` + html.EscapeString(wordsFor(language).sentWith) + ` <a href="` +
+			html.EscapeString(publicURL) + `" style="color:` + muted + `">Helvetly</a></span>`)
+	}
 	return f.String()
 }
 
 // brandText is the plain-text part's footer, after the signature delimiter.
 func brandText(b Brand, language, publicURL string) string {
-	return "\n\n-- \n" + strings.Join(b.lines(language, false), "\n") + "\n\n" + wordsFor(language).sentWith + " Helvetly: " + publicURL + "\n"
+	out := "\n\n-- \n" + strings.Join(b.lines(language, false), "\n") + "\n"
+	if b.SentWith {
+		out += "\n" + wordsFor(language).sentWith + " Helvetly: " + publicURL + "\n"
+	}
+	return out
 }
 
 // Preview is the HTML a workspace's client would get for m, as Branded and Sender build it, without sending.

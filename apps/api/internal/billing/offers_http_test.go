@@ -33,28 +33,30 @@ func TestPublicCurrentOffer(t *testing.T) {
 		res.Header.Get("Cache-Control") != "public, max-age=60" || res.Header.Get("Access-Control-Allow-Origin") != "*" {
 		t.Fatalf("%d %v %v", res.StatusCode, res.Header, d["offer_id"])
 	}
-	if d["price_per"] != "person" || d["tax_inclusive"] != true {
+	if d["price_per"] != "plan" || d["tax_inclusive"] != true {
 		t.Fatalf("price basis: %v %v", d["price_per"], d["tax_inclusive"])
 	}
-	want := map[string][2]float64{Basic: {1900, 18300}, Pro: {4900, 47100}, Business: {9900, 95100}}
+	want := map[string][5]float64{Free: {0, 0, 1, 0, 0}, Basic: {1900, 18300, 1, 1000, 9600}, Pro: {4900, 47100, 2, 1500, 14400},
+		Business: {14900, 143100, 5, 2000, 19200}}
 	plans, _ := d["plans"].([]any)
 	for _, p := range plans {
 		p, _ := p.(map[string]any)
 		prices, _ := p["prices"].(map[string]any)
 		for _, cur := range []string{"CHF", "EUR", "USD"} {
 			pr, _ := prices[cur].(map[string]any)
-			if w := want[p["id"].(string)]; pr["month"] != w[0] || pr["year"] != w[1] {
+			if w := want[p["id"].(string)]; pr["month"] != w[0] || pr["year"] != w[1] || pr["included_people"] != w[2] ||
+				pr["extra_person_month"] != w[3] || pr["extra_person_year"] != w[4] {
 				t.Errorf("%v in %s: %v", p["id"], cur, pr)
 			}
 		}
 	}
-	if len(plans) != 3 {
+	if len(plans) != 4 {
 		t.Fatalf("plans: %v", plans)
 	}
 	rows, _ := d["comparison"].([]any)
 	details, _ := d["usage_details"].([]any)
 	limits, _ := d["limits"].(map[string]any)
-	if len(rows) != 13 || len(details) != 10 {
+	if len(rows) != 16 || len(details) != 12 {
 		t.Fatalf("%d rows, %d allowances", len(rows), len(details))
 	}
 	raw, _ := json.Marshal(d)
@@ -72,7 +74,9 @@ func TestPublicCurrentOffer(t *testing.T) {
 		row, plan string
 		want      bool
 	}{
-		{"invoicing", Basic, true}, {"swiss_qr", Basic, true}, {"revolut", Basic, true}, {"expenses", Basic, false},
+		{"invoicing", Basic, true}, {"swiss_qr", Basic, true}, {"revolut", Basic, true}, {"expenses", Free, true}, {"expenses", Basic, true},
+		{"ai_import", Basic, false}, {"ai_import", Pro, true}, {"scheduling", Free, true}, {"remove_branding", Basic, false},
+		{"remove_branding", Pro, true}, {"heidi", Free, false},
 		{"expenses", Pro, true}, {"heidi", Basic, false}, {"heidi", Pro, true}, {"client_portal", Pro, false},
 		{"client_portal", Business, true}, {"einvoice_xml", Pro, false}, {"ledger_exports", Pro, true}, {"automations", Basic, false},
 	} {
@@ -92,8 +96,14 @@ func TestPublicCurrentOffer(t *testing.T) {
 	if pp, v := limit("storage_bytes", Pro); !pp || v["value"] != 5e9 {
 		t.Errorf("storage: %v %v", pp, v)
 	}
-	if _, v := limit("expenses_per_month", Basic); v["included"] != false {
+	if _, v := limit("expenses_per_month", Basic); v["included"] != true || v["value"] != 10.0 {
 		t.Errorf("basic expenses: %v", v)
+	}
+	if _, v := limit("invoices_per_month", Free); v["included"] != true || v["value"] != 3.0 {
+		t.Errorf("free invoices: %v", v)
+	}
+	if features, _ := d["features"].(map[string]any); len(features) == 0 || features["remove_branding"].(map[string]any)[Pro] != true {
+		t.Errorf("features: %v", d["features"])
 	}
 	// Unlimited is published as included with no value, never as -1 or 0.
 	for _, key := range []string{"clients", "products", "engagements", "invoices_per_month", "quotes_per_month", "expenses_per_month", "signatures_per_month"} {
@@ -157,7 +167,7 @@ func TestOverviewEntitlements(t *testing.T) {
 	expires := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
 	e.override(b.workspace, Products, StateLimited, n64(260), &expires)
 	data, items := entitlements(t, e, b)
-	if data["offer_id"] != currentOffer || len(items) != 70 {
+	if data["offer_id"] != currentOffer || len(items) != 71 {
 		t.Fatalf("offer %v, %d entitlements", data["offer_id"], len(items))
 	}
 	if _, ok := items["ai_cost_usd_micros"]; ok {

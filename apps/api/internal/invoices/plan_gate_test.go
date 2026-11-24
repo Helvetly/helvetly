@@ -140,3 +140,28 @@ func TestEInvoiceSendNeedsBusiness(t *testing.T) {
 		t.Fatalf("attachments on Business: %+v", m.Attachments)
 	}
 }
+
+// TestSentWithHelvetlyByPlan: client email and the PDFs carry "Sent with Helvetly" on Free and Basic, never on Pro
+// or Business (remove_branding), nor on a self-hosted server.
+func TestSentWithHelvetlyByPlan(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(t)
+	if got, err := e.svc.sentWith(ctx, e.workspace().workspace); err != nil || got {
+		t.Fatalf("self-hosted: %v %v", got, err)
+	}
+	billingtest.Wire(t, e.st)
+	for _, c := range []struct {
+		plan string
+		want bool
+	}{{"", true}, {billing.Basic, true}, {billing.Pro, false}, {billing.Business, false}} {
+		b := e.workspace()
+		if c.plan != "" {
+			billingtest.On(t, e.st, b.workspace, c.plan)
+		}
+		brand, err := e.svc.MailBrand(ctx, b.workspace)
+		pdf, perr := e.svc.sentWith(ctx, b.workspace)
+		if err != nil || perr != nil || brand.SentWith != c.want || pdf != c.want {
+			t.Errorf("plan %q: email %v, PDF %v (%v %v), want %v", c.plan, brand.SentWith, pdf, err, perr, c.want)
+		}
+	}
+}

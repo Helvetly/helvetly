@@ -74,11 +74,11 @@ func TestFeatureOverrides(t *testing.T) {
 			e.override(ws, Limit(store.FeatureInvoiceCorrections), StateEnabled, nil, nil)
 		}, store.FeatureInvoiceCorrections, true},
 		{"an allowance alone opens no feature", "price_bm", func(e *env, ws string) {
-			e.override(ws, Expenses, StateLimited, n64(20), nil)
-		}, store.FeatureExpenses, false},
-		{"expenses on Basic by override", "price_bm", func(e *env, ws string) {
-			e.override(ws, Limit(store.FeatureExpenses), StateEnabled, nil, nil)
-		}, store.FeatureExpenses, true},
+			e.override(ws, Signatures, StateLimited, n64(20), nil)
+		}, store.FeatureSimpleSignatures, false},
+		{"signatures on Basic by override", "price_bm", func(e *env, ws string) {
+			e.override(ws, Limit(store.FeatureSimpleSignatures), StateEnabled, nil, nil)
+		}, store.FeatureSimpleSignatures, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			e := newEnv(t, true)

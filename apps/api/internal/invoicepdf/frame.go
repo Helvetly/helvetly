@@ -14,6 +14,8 @@ import (
 type Frame struct {
 	r      *renderer
 	offset float64
+	// SentWith ends each page's footer with "Created with Helvetly" (Free and Basic).
+	SentWith bool
 }
 
 // NewFrame draws with pdf and txt in lang (English when invoices have no labels for it).
@@ -43,7 +45,7 @@ func (f *Frame) Footer(contact, page string) {
 	if contact != "" {
 		r.cell(left, contactY-f.offset, contentW, 4, contact, "C")
 	}
-	r.cell(left, pageNoY-f.offset, contentW, 4, page, "C")
+	r.cell(left, pageNoY-f.offset, contentW, 4, withHelvetly(page, r.l, f.SentWith), "C")
 	r.pdf.SetTextColor(0, 0, 0)
 }
 

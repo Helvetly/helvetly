@@ -82,6 +82,7 @@ type Document struct {
 	SellerSigner Signer      `json:"seller_signer"`
 	ClientSigner Signer      `json:"client_signer"`
 	SellerSigned *Signed     `json:"seller_signed,omitempty"` // nil: the contractor signs later
+	SentWith     bool        // each page's footer ends with "Created with Helvetly" (Free and Basic)
 }
 
 // Box is a signature field's place, in fractions of the page as signatures expect.
@@ -140,7 +141,9 @@ func Render(d Document) (Result, error) {
 	pdf.SetTitle(d.Title, true)
 	pdf.SetAuthor(d.Seller.Name, true)
 	txt := pdffont.New(pdf)
-	r := &renderer{pdf: pdf, txt: txt, frame: invoicepdf.NewFrame(pdf, txt, d.Language, d.Logo, pageH), l: l, d: d,
+	frame := invoicepdf.NewFrame(pdf, txt, d.Language, d.Logo, pageH)
+	frame.SentWith = d.SentWith
+	r := &renderer{pdf: pdf, txt: txt, frame: frame, l: l, d: d,
 		date: contractlaw.FormatFor(law, d.Language).Date, pageW: pageW, pageH: pageH, bottom: pageH - 27}
 	number := d.Number
 	if number == "" {

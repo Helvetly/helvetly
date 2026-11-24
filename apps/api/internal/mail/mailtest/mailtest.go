@@ -26,7 +26,7 @@ var Unsupported = regexp.MustCompile(`(?i)<style|<body|<hr|<pre|@media|!importan
 const PublicURL = "https://app.helvetly.example"
 
 var Brand = mail.Brand{Name: "Dein Deutsch Coach", LogoPath: "/api/v1/public/email-logo/ws/logo", Address: []string{"Bahnhofstrasse 1", "8001 Zürich"},
-	Phone: "+41 44 000 00 00", Email: "hallo@deutsch.example", Website: "https://www.deutsch.example/", VAT: "CHE-123.456.789", Language: "de"}
+	Phone: "+41 44 000 00 00", Email: "hallo@deutsch.example", Website: "https://www.deutsch.example/", VAT: "CHE-123.456.789", Language: "de", SentWith: true}
 
 // maxWord: a longer run of visible characters without a break (a bare URL) would make a phone scroll sideways.
 const maxWord = 60

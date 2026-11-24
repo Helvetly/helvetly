@@ -33,7 +33,7 @@ const (
 // limits grown by its paid seats.
 type Rights struct {
 	SelfHosted bool   // billing is off: no commercial limits, every feature, by configuration (never on an error)
-	Plan       string // "" without a plan: the workspace is read-only
+	Plan       string // Free without a paid plan; "" only self-hosted or when nothing could be resolved
 	OfferID    string
 	Seats      int64 // the paid seats pooled limits grow by
 	Trial      bool  // the workspace is in its trial: the trial's limits, for the whole trial (trialRights)
@@ -109,30 +109,46 @@ func (s *Service) Entitlements(ctx context.Context, q store.Q, workspaceID strin
 }
 
 // baseRights are the rights of the workspace's plan in full, for its billing b: the trial's while it lasts, else its
-// plan's for its paid seats.
+// plan's for its paid seats, at least the people its price includes; Free's without a paid plan.
 func (s *Service) baseRights(ctx context.Context, q store.Q, workspaceID string, b store.Billing) (Rights, error) {
 	if !s.enabled {
 		return Rights{SelfHosted: true}, nil
-	}
-	plan := PlanOf(b, s.now())
-	if plan == "" {
-		return Rights{}, nil
 	}
 	offer, err := q.WorkspaceOffer(ctx, workspaceID)
 	if err != nil {
 		return Rights{}, err
 	}
+	plan := PlanOf(b, s.now())
+	if plan == "" {
+		return s.freeRights(ctx, q, workspaceID, offer)
+	}
 	if b.Status == "trialing" {
 		return s.trialRights(ctx, q, workspaceID, offer)
 	}
-	return s.rightsOn(ctx, q, workspaceID, offer, plan, paidSeats(b))
+	return s.rightsOn(ctx, q, workspaceID, offer, plan, max(paidSeats(b), IncludedSeats(plan)))
+}
+
+// freeRights are Free's rights on the workspace's offer, or the offer on sale when it has none yet (it never
+// subscribed): one person, nothing pooled.
+func (s *Service) freeRights(ctx context.Context, q store.Q, workspaceID, offer string) (Rights, error) {
+	if offer == "" {
+		cur, err := q.CurrentOffer(ctx)
+		if errors.Is(err, store.ErrNotFound) {
+			return Rights{}, errEntitlementsUnavailable
+		}
+		if err != nil {
+			return Rights{}, err
+		}
+		offer = cur.ID
+	}
+	return s.rightsOn(ctx, q, workspaceID, offer, Free, 1)
 }
 
 // entitlementsOf is Entitlements for the workspace's billing b, read already: baseRights with this month's costly
 // allowances granted pro rata (allowances.go) and, while a payment is overdue, no new model cost.
 func (s *Service) entitlementsOf(ctx context.Context, q store.Q, workspaceID string, b store.Billing) (Rights, error) {
 	r, err := s.baseRights(ctx, q, workspaceID, b)
-	if err != nil || r.Plan == "" || r.SelfHosted || r.Trial {
+	if err != nil || r.Plan == "" || r.Plan == Free || r.SelfHosted || r.Trial {
 		return r, err
 	}
 	r.prorate(b, s.now())

@@ -29,7 +29,7 @@ import (
 // requiredPlan is the offer's access matrix for the gated features: the cheapest plan with each.
 var requiredPlan = map[string]string{
 	store.FeatureHeidi: billing.Pro, store.FeatureDocumentTemplates: billing.Pro, store.FeatureSimpleSignatures: billing.Pro,
-	store.FeatureVATReturns: billing.Pro, store.FeatureInvoiceCorrections: billing.Pro, store.FeatureExpenses: billing.Pro,
+	store.FeatureVATReturns: billing.Pro, store.FeatureInvoiceCorrections: billing.Pro, store.FeatureExpenses: billing.Basic,
 	store.FeatureLedgerExports: billing.Pro, store.FeatureDataExport: billing.Pro, store.FeatureAutomations: billing.Pro,
 	store.FeatureInvoiceReminders: billing.Pro, store.FeatureInvoiceInstalments: billing.Pro,
 	store.FeatureEngagementAutomation: billing.Pro, store.FeatureClientPortal: billing.Business,
@@ -166,12 +166,18 @@ func TestGatedRoutesByPlan(t *testing.T) {
 		}
 	}
 	// Basic and Pro together refuse every gated route once at least; the token reaches the public ones.
-	if refused[false] < len(billing.GatedRoutes())-1 || refused[true] < 15 {
+	aboveBasic := 0
+	for _, feature := range billing.GatedRoutes() {
+		if feature != billing.APIAccess && rank[requiredPlan[string(feature)]] > rank[billing.Basic] {
+			aboveBasic++
+		}
+	}
+	if refused[false] < aboveBasic || refused[true] < 15 {
 		t.Fatalf("refusals: session %d, token %d of %d routes", refused[false], refused[true], len(billing.GatedRoutes()))
 	}
-	// No plan: the workspace is read-only, the plan answer, not a module.
+	// No paid plan: Free, which lacks the module like Basic.
 	none := workspace("")
-	if code, body := call(t, srv, none, false, http.MethodGet, "/api/v1/ledger", nil); code != http.StatusPaymentRequired {
+	if code, body := call(t, srv, none, false, http.MethodGet, "/api/v1/ledger", nil); code != http.StatusForbidden {
 		t.Fatalf("no plan: %d %v", code, body)
 	}
 	// Token creation keeps the answer clients knew before the offer.
@@ -188,16 +194,16 @@ func TestGatesFollowTheWorkspace(t *testing.T) {
 	_, srv, workspace := newGateEnv(t)
 	basic, business := workspace(billing.Basic), workspace(billing.Business)
 	for _, c := range []caller{basic, business} {
-		want := http.StatusCreated
+		want := http.StatusOK
 		if c == basic {
 			want = http.StatusForbidden
 		}
-		if code, _ := call(t, srv, c, true, http.MethodPost, "/api/v1/expenses", map[string]any{}); code != want {
-			t.Errorf("expenses through a token: %d, want %d", code, want)
+		if code, _ := call(t, srv, c, true, http.MethodGet, "/api/v1/vat-return", nil); code != want {
+			t.Errorf("VAT return through a token: %d, want %d", code, want)
 		}
-		got := mcpCall(t, srv, c, http.MethodPost, "/api/v1/expenses")
+		got := mcpCall(t, srv, c, http.MethodGet, "/api/v1/vat-return")
 		if isError, _ := got["isError"].(bool); isError != (c == basic) {
-			t.Errorf("expenses through MCP: %v", got)
+			t.Errorf("VAT return through MCP: %v", got)
 		}
 		if c == basic && !strings.Contains(textOf(got), "feature_not_in_plan") {
 			t.Errorf("MCP refusal: %v", got)
@@ -227,8 +233,12 @@ func mcpCall(t *testing.T, srv *httptest.Server, c caller, method, path string) 
 	if name == "" {
 		t.Fatalf("no operation %s %s", method, path)
 	}
+	args := map[string]any{"body": map[string]any{}}
+	if method == http.MethodGet { // a read takes no body
+		args = map[string]any{}
+	}
 	code, body := call(t, srv, c, true, http.MethodPost, "/api/mcp", map[string]any{"jsonrpc": "2.0", "id": 1,
-		"method": "tools/call", "params": map[string]any{"name": name, "arguments": map[string]any{"body": map[string]any{}}}})
+		"method": "tools/call", "params": map[string]any{"name": name, "arguments": args}})
 	result, _ := body["result"].(map[string]any)
 	if code != http.StatusOK || result == nil {
 		t.Fatalf("mcp %s: %d %v", name, code, body)

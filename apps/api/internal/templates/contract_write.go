@@ -656,6 +656,9 @@ func (s *Service) contractPreview(w http.ResponseWriter, r *http.Request, sess s
 	if d.Logo, err = s.contractLogo(ctx, ws); err != nil {
 		return err
 	}
+	if d.SentWith, err = sentWith(ctx, s.db.Q, ws); err != nil {
+		return err
+	}
 	out, err := contractpdf.Render(d)
 	if err != nil {
 		return err
@@ -877,6 +880,9 @@ func (s *Service) fileContract(ctx context.Context, sess store.Session, src cont
 			return err
 		}
 		doc := src.document(sec, number)
+		if doc.SentWith, err = sentWith(ctx, q, ws); err != nil {
+			return err
+		}
 		if !in.AsIs {
 			doc.Logo, doc.SellerSigned = logo, signed
 			doc.SellerSigner = contractpdf.Signer{Name: sess.User.Name, Company: src.settings.Seller.Name}
@@ -977,4 +983,10 @@ func contractSigning(in createBody, title, documentID string, printed contractpd
 	}
 	body.Fields = append(body.Fields, field(client, "date", printed.ClientDate), field(client, "signature", printed.Client))
 	return body
+}
+
+// sentWith: the workspace's contracts print "Created with Helvetly" unless its plan includes remove_branding.
+func sentWith(ctx context.Context, q store.Q, workspaceID string) (bool, error) {
+	unbranded, err := q.FeatureAllowed(ctx, workspaceID, store.FeatureRemoveBranding)
+	return !unbranded, err
 }

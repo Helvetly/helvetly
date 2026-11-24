@@ -26,6 +26,7 @@ const (
 	FeatureCustomPortalDomain   = "custom_portal_domain"
 	FeatureDocumentApprovals    = "document_approvals"
 	FeatureScheduling           = "scheduling"
+	FeatureRemoveBranding       = "remove_branding" // no "Sent with Helvetly" on client email and PDFs
 )
 
 // ErrFeatureDenied wraps a gate's refusal (the plan lacks the feature, the workspace has none, or its plan cannot be

@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"helvetly.com/api/internal/store"
 	"net/http"
 	"testing"
 	"time"
@@ -57,7 +58,7 @@ func TestPlanChangeWaitsForThePaymentOfWhatIsChargedNow(t *testing.T) {
 				}
 			case "scheduled":
 				sf := e.stripe.form("POST /v1/subscription_schedules/sub_sched_sub_1")
-				if e.stripe.called("POST /v1/subscriptions/sub_1") != 0 || sf.Get("phases[1][items][0][price]") != priceIDs[LookupKey(tc.plan, tc.interval)] ||
+				if e.stripe.called("POST /v1/subscriptions/sub_1") != 0 || sf.Get("phases[1][items][0][price]") != priceIDs[priceKey(tc.plan, tc.interval)] ||
 					b.Plan != before.Plan || b.Interval != before.Interval || b.PendingPlan != tc.plan || b.PendingInterval != tc.interval {
 					t.Fatalf("schedule form %v, billing %+v", sf, b)
 				}
@@ -92,7 +93,7 @@ func TestDeclinedUpgradeAnswers402WithAPayLink(t *testing.T) {
 
 	// The dashboard asks again later; only an owner or admin may.
 	e.stripe.set("sub_1", map[string]any{"pending_update": map[string]any{"expires_at": time.Now().Add(time.Hour).Unix(),
-		"subscription_items": []map[string]any{{"price": map[string]any{"id": "price_pm", "lookup_key": "helvetly_pro_month"}}}},
+		"subscription_items": []map[string]any{{"price": map[string]any{"id": "price_pm", "lookup_key": "helvetly-v1_pro_month"}}}},
 		"latest_invoice": "in_pending"})
 	e.stripe.invoices["in_pending"] = map[string]any{"id": "in_pending", "status": "open", "hosted_invoice_url": "https://invoice.stripe.com/i/pending"}
 	code, body = e.do(owner, http.MethodGet, "/api/v1/billing/pending-payment", nil)
@@ -179,9 +180,9 @@ func TestPlanExpiry(t *testing.T) {
 	}
 }
 
-// A renewal that stays unpaid keeps the plan for the grace from the period's start, then the workspace is read-only
-// (reads and billing still work); paying unlocks it.
-func TestUnpaidRenewalLocksAfterTheGrace(t *testing.T) {
+// A renewal that stays unpaid keeps the plan for the grace from the period's start, then the workspace is on Free
+// (its data kept, additions within Free's limits); paying gives the plan back.
+func TestUnpaidRenewalFallsToFreeAfterTheGrace(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
 	ws := owner.workspace
@@ -198,18 +199,16 @@ func TestUnpaidRenewalLocksAfterTheGrace(t *testing.T) {
 
 	e.stripe.startedAt(sub, time.Now().Add(-4*24*time.Hour))
 	e.event("evt_fail_2", "customer.subscription.updated", map[string]any{"id": sub})
-	code, body := e.do(owner, http.MethodPost, "/api/v1/clients", map[string]any{})
-	errBody, _ := body["error"].(map[string]any)
-	details, _ := errBody["details"].(map[string]any)
-	if code != http.StatusPaymentRequired || errBody["code"] != "plan_required" || details["reason"] != "payment_overdue" {
-		t.Fatalf("after the grace: %d %v", code, body)
+	// After the grace the workspace is on Free: it works within Free's limits, and says the payment is overdue.
+	if r := mustRights(t, e, ws); r.Plan != Free || r.Includes(store.FeatureHeidi) {
+		t.Fatalf("after the grace: %+v", r)
 	}
 	if code, _ := e.do(owner, http.MethodGet, "/api/v1/clients", nil); code != http.StatusOK {
 		t.Fatalf("a read after the grace: %d", code)
 	}
-	code, body = e.do(owner, http.MethodGet, "/api/v1/billing", nil)
+	code, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)
 	data, _ := body["data"].(map[string]any)
-	if code != http.StatusOK || data["locked"] != true || data["payment_overdue"] != true || data["plan"] != "" {
+	if code != http.StatusOK || data["locked"] != false || data["payment_overdue"] != true || data["plan"] != Free {
 		t.Fatalf("overview: %d %v", code, data)
 	}
 

@@ -375,7 +375,7 @@ func TestNothingRestartsTheMonth(t *testing.T) {
 	e.exec(`UPDATE workspaces SET timezone = 'Pacific/Kiritimati' WHERE id = $1`, ws)
 	refused("after a time zone change")
 	e.subscribe(ws, "price_pm")
-	if room := e.cap(ws, Invoices) - e.usedIn(ws, Invoices, now); room != 85 {
+	if room := e.cap(ws, Invoices) - e.usedIn(ws, Invoices, now); room != 185 { // Pro: 100 for each of its 2 included people
 		t.Fatalf("Pro's room after 15 issues on Basic: %d", room)
 	}
 	e.subscribe(ws, "price_bm")
@@ -410,7 +410,7 @@ func TestExpensesAndSignaturesCountForGood(t *testing.T) {
 			Title: "Contract", SigningOrder: "parallel", OriginalKey: "k", OriginalSHA256: "x", PageCount: 1,
 			ExpiresAt: time.Now().Add(time.Hour), CreatedAt: time.Now()}, user)
 	}
-	if err := expense("exp_basic"); !denied(err) {
+	if err := expense("exp_basic"); err != nil { // Basic: 10 expenses a month
 		t.Fatalf("Basic's first expense: %v", err)
 	}
 	if err := signature("sig_basic"); !denied(err) {
@@ -421,13 +421,13 @@ func TestExpensesAndSignaturesCountForGood(t *testing.T) {
 		limit  Limit
 		want   int64
 		create func(string) error
-	}{{Expenses, 300, expense}, {Signatures, 50, signature}} {
+	}{{Expenses, 600, expense}, {Signatures, 100, signature}} { // Pro: per person, 2 included
 		if got := e.cap(ws, tc.limit); got != tc.want {
 			t.Fatalf("Pro's %s is %d, the offer sells %d", tc.limit, got, tc.want)
 		}
 		e.exec(`INSERT INTO usage_events (workspace_id, resource, operation, params_hash, period, reserved, consumed, created_at, settled_at)
 			SELECT $1, $2, 'seed' || i, '', $3, 0, 1, now(), now() FROM generate_series(1, $4::int) AS i`,
-			ws, string(tc.limit), store.UsagePeriod(time.Now()), tc.want-1)
+			ws, string(tc.limit), store.UsagePeriod(time.Now()), tc.want-1-e.usedIn(ws, tc.limit, time.Now()))
 		if err := tc.create(string(tc.limit) + "_last"); err != nil {
 			t.Fatalf("%s at cap-1: %v", tc.limit, err)
 		}

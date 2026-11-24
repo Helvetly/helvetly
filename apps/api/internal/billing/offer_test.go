@@ -34,8 +34,8 @@ func clone(t *testing.T, o Offer) Offer {
 }
 
 // currentOffer is the offer on sale in the seeded database, the one 00051 publishes (00007 published helvetly-v1,
-// 00017 helvetly-v1.1, 00018 helvetly-v1.2, 00032 helvetly-v1.3, 00039 helvetly-v1.4).
-const currentOffer = "helvetly-v1.5"
+// 00017 … 00051 helvetly-v1.1 … v1.5, which 00065 reset to one offer).
+const currentOffer = "helvetly-v1"
 
 func recordOf(o *Offer, key string) *OfferRecord {
 	return &o.Records[slices.IndexFunc(o.Records, func(r OfferRecord) bool { return r.Key == key })]
@@ -50,10 +50,10 @@ func TestSeededOffer(t *testing.T) {
 	if err != nil || v.ID != currentOffer || v.Checksum != o.Checksum() {
 		t.Fatalf("current offer %s, checksum %s, recomputed %s: %v", v.ID, v.Checksum, o.Checksum(), err)
 	}
-	if o.Trial.AccessPlan != Pro || o.Trial.Days != 7 || o.Trial.Seats != 2 {
+	if o.Trial.AccessPlan != Pro || o.Trial.Days != 14 || o.Trial.Seats != 2 {
 		t.Fatalf("the current offer's trial: %+v", o.Trial)
 	}
-	if len(o.Records) != 72 || len(defs) != 72 || len(o.PublicPricing.ComparisonRows) != 13 || len(o.PublicPricing.UsageDetailsKeys) != 10 {
+	if len(o.Records) != 73 || len(defs) != 73 || len(o.PublicPricing.ComparisonRows) != 16 || len(o.PublicPricing.UsageDetailsKeys) != 12 {
 		t.Fatalf("%d records, %d definitions, %d rows, %d allowances", len(o.Records), len(defs),
 			len(o.PublicPricing.ComparisonRows), len(o.PublicPricing.UsageDetailsKeys))
 	}
@@ -110,13 +110,13 @@ func TestOfferValidation(t *testing.T) {
 		{"limited without a value", func(o *Offer) { recordOf(o, "clients").Values[Basic] = OfferValue{State: StateLimited} }, "clients on basic: a limited value"},
 		{"-1 is not unlimited", func(o *Offer) { recordOf(o, "clients").Values[Basic] = OfferValue{State: "-1"} }, `state "-1"`},
 		{"a feature with a value", func(o *Offer) { recordOf(o, "heidi").Values[Pro] = OfferValue{State: StateEnabled, Value: n64(1)} }, "heidi on pro: a feature"},
-		{"a feature growing with seats", func(o *Offer) { recordOf(o, "heidi").PerAdditionalPaidSeat = map[string]int64{Pro: 1} }, "heidi on basic: a feature"},
+		{"a feature growing with seats", func(o *Offer) { recordOf(o, "heidi").PerAdditionalPaidSeat = map[string]int64{Pro: 1} }, "heidi on free: a feature"},
 		{"no per-seat growth given", func(o *Offer) { delete(recordOf(o, "clients").PerAdditionalPaidSeat, Pro) }, "clients on pro: per_additional_paid_seat"},
 		{"an allowance for a disabled feature", func(o *Offer) {
-			r := recordOf(o, "expenses_per_month")
+			r := recordOf(o, "signatures_per_month")
 			r.Values[Basic] = OfferValue{State: StateLimited, Value: n64(10)}
 			r.PerAdditionalPaidSeat[Basic] = 10
-		}, "expenses_per_month on basic: expenses is disabled there"},
+		}, "signatures_per_month on basic: simple_signatures is disabled there"},
 		{"a dependent feature on without its base", func(o *Offer) { recordOf(o, "invoice_reminders").Values[Basic] = OfferValue{State: StateEnabled} }, "invoice_reminders on basic: automations is disabled there"},
 		{"a pooled limit growing by less than its value", func(o *Offer) { recordOf(o, "storage_bytes").PerAdditionalPaidSeat[Pro] = 1 }, "storage_bytes on pro: a pooled limit"},
 		{"another price", func(o *Offer) { o.Billing.Plans[Pro] = PlanPrice{MonthMinor: 4500, YearMinor: 47100} }, "billing.plans.pro"},

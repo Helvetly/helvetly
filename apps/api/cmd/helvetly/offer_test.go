@@ -50,15 +50,20 @@ func TestOfferCommand(t *testing.T) {
 
 	out, err := run("catalog")
 	var c billing.StripeCatalog
-	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-v1.5" || len(c.Plans) != 3 ||
-		c.Plans[1].Amounts["month"] != 4900 || c.Plans[1].Amounts["year"] != 47100 || c.Plans[2].LookupKeys["year"] != "helvetly_business_year" ||
-		c.TaxBehavior != "inclusive" || strings.Join(c.CurrencyOptions, ",") != "eur,usd" {
+	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-v1" || len(c.Plans) != 3 ||
+		c.Plans[1].Amounts["month"] != 4900 || c.Plans[1].Amounts["year"] != 47100 || c.Plans[1].IncludedPeople != 2 ||
+		c.Plans[1].ExtraPerson["month"] != 1500 || c.Plans[2].LookupKeys["year"] != "helvetly-v1_business_year" ||
+		c.BillingScheme != "tiered" || c.TiersMode != "graduated" || c.TaxBehavior != "inclusive" || strings.Join(c.CurrencyOptions, ",") != "eur,usd" {
+		t.Fatalf("catalog: %q %v", out, err)
+	}
+	if tiers := c.Plans[1].Tiers["year"]; len(tiers) != 2 || tiers[0] != (billing.StripeTier{UpTo: "2", FlatAmount: 47100}) ||
+		tiers[1] != (billing.StripeTier{UpTo: "inf", UnitAmount: 14400}) {
 		t.Fatalf("catalog: %q %v", out, err)
 	}
 	if _, err := run("catalog", "-offer", "nope"); err == nil {
 		t.Fatal("catalog of an unknown offer")
 	}
-	if out, err := run("validate", file); err != nil || !strings.HasPrefix(out, "valid: helvetly-v3, 72 records") {
+	if out, err := run("validate", file); err != nil || !strings.HasPrefix(out, "valid: helvetly-v3, 73 records") {
 		t.Fatalf("validate: %q %v", out, err)
 	}
 	broken := o

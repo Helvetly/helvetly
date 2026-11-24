@@ -2,7 +2,6 @@ package billing
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"slices"
 	"testing"
@@ -41,7 +40,7 @@ func TestRequire(t *testing.T) {
 		e := newEnv(t, false)
 		ws := e.workspace().workspace
 		all, err := allFeatures(ctx, e.st.Q)
-		if err != nil || len(all) != 41 {
+		if err != nil || len(all) != 42 {
 			t.Fatalf("features: %v %v", all, err)
 		}
 		for _, f := range all {
@@ -54,8 +53,8 @@ func TestRequire(t *testing.T) {
 	none, basic, pro := e.workspace().workspace, e.workspace().workspace, e.workspace().workspace
 	e.subscribe(basic, "price_bm")
 	e.subscribe(pro, "price_pm")
-	if err := e.svc.Require(ctx, e.st.Q, none, APIAccess); !errors.Is(err, errPlanRequired) {
-		t.Fatalf("no plan: %v", err)
+	if _, code, _, _ := auth.Describe(e.svc.Require(ctx, e.st.Q, none, APIAccess)); code != "plan_required" { // Free: no API tokens
+		t.Fatalf("no plan: %v", code)
 	}
 	if err := e.svc.Require(ctx, e.st.Q, pro, APIAccess); err != nil {
 		t.Fatalf("pro: %v", err)
@@ -128,7 +127,7 @@ func TestOverviewFeatures(t *testing.T) {
 	}
 	t.Run("billing off", func(t *testing.T) {
 		e := newEnv(t, false)
-		if own, _ := features(t, e, e.workspace()); len(own) != 41 {
+		if own, _ := features(t, e, e.workspace()); len(own) != 42 {
 			t.Fatalf("features without billing: %v", own)
 		}
 	})

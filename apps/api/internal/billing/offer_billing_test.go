@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,27 +41,39 @@ func (e *env) midMonth() time.Time {
 	return at
 }
 
-func TestPricesPerPersonInEveryCurrencyAndInterval(t *testing.T) {
-	perPerson := map[string]map[string]int64{Basic: {"month": 1900, "year": 18300}, Pro: {"month": 4900, "year": 47100},
-		Business: {"month": 9900, "year": 95100}}
-	for plan, want := range perPerson {
-		for interval, amount := range want {
-			if got := PlanAmount(plan, interval); got != amount {
-				t.Fatalf("%s %s per person: %d, want %d", plan, interval, got, amount)
+// TestTieredPricesForOneToTenPeople: each plan's price covers its included people and each further person adds the
+// same amount; a year is twelve months less 20 %, rounded up to a whole franc, of each part (variant B, 2026-11-24).
+func TestTieredPricesForOneToTenPeople(t *testing.T) {
+	type tier struct{ base, included, extra int64 }
+	want := map[string]map[string]tier{
+		Basic:    {"month": {1900, 1, 1000}, "year": {18300, 1, 9600}},
+		Pro:      {"month": {4900, 2, 1500}, "year": {47100, 2, 14400}},
+		Business: {"month": {14900, 5, 2000}, "year": {143100, 5, 19200}},
+	}
+	for plan, byInterval := range want {
+		for interval, w := range byInterval {
+			for people := int64(1); people <= 10; people++ {
+				total := w.base + max(people-w.included, 0)*w.extra
+				if got := PlanTotal(plan, interval, people); got != total {
+					t.Errorf("%s %s for %d: %d, want %d", plan, interval, people, got, total)
+				}
 			}
 		}
 	}
-	// A year is rounded up per person before multiplying: two Basic people pay 2 × 183, not 2 × 182.40 rounded up.
-	if 2*PlanAmount(Basic, "year") != 36600 {
-		t.Fatalf("2 Basic yearly: %d", 2*PlanAmount(Basic, "year"))
+	// Spot checks in francs: Basic for 3 people is 19 + 2 × 10 a month; Pro for 4 a year is 471 + 2 × 144.
+	if PlanTotal(Basic, "month", 3) != 3900 || PlanTotal(Pro, "year", 4) != 75900 || PlanTotal(Business, "month", 10) != 24900 {
+		t.Fatal("spot checks")
+	}
+	if PlanTotal(Free, "month", 1) != 0 || PlanTotal(Free, "year", 1) != 0 {
+		t.Fatal("Free costs something")
 	}
 	for _, zone := range []struct{ tz, cur string }{{"Europe/Zurich", Currency}, {"Europe/Berlin", EUR}, {"America/New_York", USD}} {
-		t.Run(zone.cur, func(t *testing.T) { checkoutPrices(t, zone.tz, zone.cur, perPerson) })
+		t.Run(zone.cur, func(t *testing.T) { checkoutPrices(t, zone.tz, zone.cur) })
 	}
 }
 
 // checkoutPrices checks Checkout's price, currency and quantity for 1, 2, 5 and 10 people in a workspace in tz.
-func checkoutPrices(t *testing.T, tz, cur string, perPerson map[string]map[string]int64) {
+func checkoutPrices(t *testing.T, tz, cur string) {
 	zone := struct{ tz, cur string }{tz, cur}
 	{
 		e := newEnv(t, true)
@@ -70,8 +83,8 @@ func checkoutPrices(t *testing.T, tz, cur string, perPerson map[string]map[strin
 			for range people - 1 {
 				e.join(owner.workspace, "member")
 			}
-			for plan, want := range perPerson {
-				for interval, amount := range want {
+			for _, plan := range planOrder {
+				for _, interval := range intervals {
 					code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": plan, "interval": interval})
 					if errBody, _ := body["error"].(map[string]any); plan == Basic && people > 5 { // Basic's people limit
 						if code != http.StatusConflict || errBody["code"] != "too_many_seats" {
@@ -81,13 +94,11 @@ func checkoutPrices(t *testing.T, tz, cur string, perPerson map[string]map[strin
 					}
 					f := e.stripe.form("POST /v1/checkout/sessions")
 					id := f.Get("line_items[0][price]")
-					unit, ok := e.stripe.catalog[LookupKey(plan, interval)]["currency_options"].(map[string]any)[zone.cur].(map[string]any)
-					if zone.cur == Currency {
-						unit, ok = map[string]any{"unit_amount": e.stripe.catalog[LookupKey(plan, interval)]["unit_amount"]}, true
-					}
-					// One price per plan and interval whatever the people (no cheaper extra seat), every person at full price.
-					if code != http.StatusOK || id != priceIDs[LookupKey(plan, interval)] || f.Get("currency") != zone.cur ||
-						f.Get("line_items[0][quantity]") != strconv.FormatInt(people, 10) || !ok || unit["unit_amount"].(int64)*people != amount*people {
+					_, ok := e.stripe.catalog[priceKey(plan, interval)]["currency_options"].(map[string]any)[zone.cur].(map[string]any)
+					ok = ok || zone.cur == Currency
+					// One tiered price per plan and interval whatever the people; Stripe's tiers make the total.
+					if code != http.StatusOK || id != priceIDs[priceKey(plan, interval)] || f.Get("currency") != zone.cur ||
+						f.Get("line_items[0][quantity]") != strconv.FormatInt(people, 10) || !ok {
 						t.Fatalf("%s: %d × %s %s: %d %v %v", zone.cur, people, plan, interval, code, body, f)
 					}
 				}
@@ -103,10 +114,11 @@ func TestPooledAllowancesForEveryPaidSeat(t *testing.T) {
 		storage, tokens, cost, ai int64
 		clients                   int64
 	}{
-		{Pro, "price_pm", 2, 9800, 10 * gb, 10_000_000, 6_000_000, 0, 300},
-		{Business, "price_xm", 5, 49500, 100 * gb, 100_000_000, 60_000_000, 0, Unlimited},
+		{Pro, "price_pm", 2, 4900, 10 * gb, 10_000_000, 6_000_000, 0, 300},
+		{Pro, "price_pm", 3, 6400, 15 * gb, 15_000_000, 9_000_000, 0, 300},
+		{Business, "price_xm", 5, 14900, 100 * gb, 100_000_000, 60_000_000, 0, Unlimited},
 	} {
-		t.Run(tc.plan, func(t *testing.T) {
+		t.Run(fmt.Sprint(tc.plan, tc.seats), func(t *testing.T) {
 			e := newEnv(t, true)
 			e.stripe.setPerSeat()
 			owner := e.workspace()
@@ -114,8 +126,8 @@ func TestPooledAllowancesForEveryPaidSeat(t *testing.T) {
 				e.join(owner.workspace, "member")
 			}
 			e.subscribe(owner.workspace, tc.price) // the webhook syncs the quantity to every member
-			if seatsOf(e, owner.workspace) != tc.seats || PlanAmount(tc.plan, "month")*tc.seats != tc.month {
-				t.Fatalf("seats %d, %d a month", seatsOf(e, owner.workspace), PlanAmount(tc.plan, "month")*tc.seats)
+			if seatsOf(e, owner.workspace) != tc.seats || PlanTotal(tc.plan, "month", tc.seats) != tc.month {
+				t.Fatalf("seats %d, %d a month", seatsOf(e, owner.workspace), PlanTotal(tc.plan, "month", tc.seats))
 			}
 			for l, want := range map[Limit]int64{Storage: tc.storage, AITokens: tc.tokens, AICost: tc.cost, Clients: tc.clients} {
 				if got := e.cap(owner.workspace, l); got != want {
@@ -168,22 +180,22 @@ func TestNewSubscriptionMidMonthGetsCostlyAllowancesProRata(t *testing.T) {
 	e.event("evt_1", "customer.subscription.created", map[string]any{"id": "sub_1"})
 	start, end := utcMonth(now)
 	left, total := int64(end.Sub(now)/time.Second), int64(end.Sub(start)/time.Second)
-	if got := e.cap(owner.workspace, AITokens); got != share(5_000_000, left, total) {
+	if got := e.cap(owner.workspace, AITokens); got != share(10_000_000, left, total) {
 		t.Fatalf("AI tokens mid-month: %d", got)
 	}
-	if got := e.cap(owner.workspace, "emails_per_month"); got != share(500, left, total) {
+	if got := e.cap(owner.workspace, "emails_per_month"); got != 20+share(1000-20, left, total) { // Free's 20 were whole already
 		t.Fatalf("emails mid-month: %d", got)
 	}
-	if got := e.cap(owner.workspace, Invoices); got != 100 { // not a costly allowance: whole at once
+	if got := e.cap(owner.workspace, Invoices); got != 200 { // not a costly allowance: whole at once (100 for each of 2)
 		t.Fatalf("invoices: %d", got)
 	}
 	// A duplicate delivery grants nothing more; the next month is whole.
 	e.event("evt_1b", "customer.subscription.updated", map[string]any{"id": "sub_1"})
-	if got := e.cap(owner.workspace, AITokens); got != share(5_000_000, left, total) {
+	if got := e.cap(owner.workspace, AITokens); got != share(10_000_000, left, total) {
 		t.Fatalf("after a second event: %d", got)
 	}
 	e.svc.now = func() time.Time { return end.Add(time.Hour) }
-	if got := e.cap(owner.workspace, AITokens); got != 5_000_000 {
+	if got := e.cap(owner.workspace, AITokens); got != 10_000_000 {
 		t.Fatalf("next month: %d", got)
 	}
 }
@@ -195,7 +207,7 @@ func TestSeatsArePaidBeforeTheyCountAndReducedAtTheRenewal(t *testing.T) {
 	owner := e.workspace()
 	ws := owner.workspace
 	sub := "sub_" + ws
-	e.subscribe(ws, "price_pm")
+	e.subscribe(ws, "price_bm") // Basic: one person included, so a second one is a paid seat
 	path := "POST /v1/subscriptions/" + sub
 
 	// A second person whose seat is not paid yet adds nothing to the pool.
@@ -207,7 +219,7 @@ func TestSeatsArePaidBeforeTheyCountAndReducedAtTheRenewal(t *testing.T) {
 	if f := e.stripe.form(path); f.Get("payment_behavior") != "pending_if_incomplete" || f.Get("proration_behavior") != "always_invoice" {
 		t.Fatalf("seat form %v", f)
 	}
-	if seatsOf(e, ws) != 1 || e.cap(ws, Storage) != 5*gb {
+	if seatsOf(e, ws) != 1 || e.cap(ws, Storage) != gb/2 {
 		t.Fatalf("an unpaid seat counts: seats %d, storage %d", seatsOf(e, ws), e.cap(ws, Storage))
 	}
 	// While Stripe holds the change for its payment, nothing is asked again.
@@ -222,7 +234,7 @@ func TestSeatsArePaidBeforeTheyCountAndReducedAtTheRenewal(t *testing.T) {
 	e.stripe.declines = false
 	e.stripe.mu.Unlock()
 	e.svc.SyncSeats(ctx, ws)
-	if seatsOf(e, ws) != 2 || e.cap(ws, Storage) != 10*gb {
+	if seatsOf(e, ws) != 2 || e.cap(ws, Storage) != gb {
 		t.Fatalf("a paid seat: seats %d, storage %d", seatsOf(e, ws), e.cap(ws, Storage))
 	}
 
@@ -232,7 +244,7 @@ func TestSeatsArePaidBeforeTheyCountAndReducedAtTheRenewal(t *testing.T) {
 	if f := e.stripe.form(path); f.Get("proration_behavior") != "none" || f.Get("items[0][quantity]") != "1" || f.Has("payment_behavior") {
 		t.Fatalf("reduction form %v", f)
 	}
-	if b := e.billing(ws); seatsOf(e, ws) != 1 || paidSeats(b) != 2 || e.cap(ws, Storage) != 10*gb {
+	if b := e.billing(ws); seatsOf(e, ws) != 1 || paidSeats(b) != 2 || e.cap(ws, Storage) != gb {
 		t.Fatalf("after a reduction: %+v, storage %d", b, e.cap(ws, Storage))
 	}
 	// Someone taking the paid seat is charged nothing.
@@ -246,7 +258,7 @@ func TestSeatsArePaidBeforeTheyCountAndReducedAtTheRenewal(t *testing.T) {
 	e.svc.SyncSeats(ctx, ws)
 	e.stripe.set(sub, map[string]any{"current_period_end": time.Now().Add(60 * 24 * time.Hour).Unix()})
 	e.event("evt_renewal", "customer.subscription.updated", map[string]any{"id": sub})
-	if b := e.billing(ws); paidSeats(b) != 1 || e.cap(ws, Storage) != 5*gb {
+	if b := e.billing(ws); paidSeats(b) != 1 || e.cap(ws, Storage) != gb/2 {
 		t.Fatalf("after the renewal: %+v", b)
 	}
 }
@@ -450,7 +462,7 @@ func TestTrialIsOncePerCustomer(t *testing.T) {
 		if code, _ := e.do(b, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": Pro, "interval": "month"}); code != http.StatusOK {
 			t.Fatalf("checkout: %d", code)
 		}
-		if got := e.stripe.form("POST /v1/checkout/sessions").Get("subscription_data[trial_period_days]") == "7"; got != offered {
+		if got := e.stripe.form("POST /v1/checkout/sessions").Get("subscription_data[trial_period_days]") == "14"; got != offered {
 			t.Fatalf("overview says %v, checkout %v", offered, got)
 		}
 		return offered
@@ -496,7 +508,7 @@ func TestTrialConvertsToBasicWithoutABonus(t *testing.T) {
 	e.stripe.set(id, map[string]any{"status": "active", "trial_end": nil, "items": items("price_bm", true, 2)})
 	e.event("evt_converted", "customer.subscription.updated", map[string]any{"id": id})
 	r := mustRights(t, e, owner.workspace)
-	if r.Trial || r.Plan != Basic || r.Includes(Feature("expenses")) || r.Includes(Feature("heidi")) || seatsOf(e, owner.workspace) != 2 {
+	if r.Trial || r.Plan != Basic || !r.Includes(Feature("expenses")) || r.Includes(Feature("heidi")) || seatsOf(e, owner.workspace) != 2 {
 		t.Fatalf("after the trial: %+v", r)
 	}
 	// Basic has neither Heidi nor the AI import, so no AI tokens: none carry over from the trial either.

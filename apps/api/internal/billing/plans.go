@@ -1,9 +1,11 @@
 // Package billing is subscription billing with Stripe and the plan limits (docs/billing-contract.md). A workspace
 // is on Basic, Pro or Business while its subscription is active, trialing or past due and its paid end plus the
-// billing grace has not passed, and locked (read-only) otherwise.
+// billing grace has not passed, and on Free otherwise (no subscription, never expires; additions above its limits are
+// refused, nothing is deleted).
 package billing
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 )
 
 const (
+	Free     = "free"
 	Basic    = "basic"
 	Pro      = "pro"
 	Business = "business"
@@ -32,11 +35,22 @@ const (
 // cannot change a price's tax behaviour, so the catalogue tool replaces a price with another behaviour.
 const TaxBehavior = "inclusive"
 
-// planOrder is the order plans are listed in.
+// planOrder is the paid plans, sold through Stripe, in the order they are listed in.
 var planOrder = []string{Basic, Pro, Business}
 
-// monthly prices per seat in minor units; a year is twelve months less 20 %, rounded up to a whole franc.
-var monthly = map[string]int64{Basic: 1900, Pro: 4900, Business: 9900}
+// offerPlans is every plan an offer gives values for: Free first, then the paid ones.
+var offerPlans = []string{Free, Basic, Pro, Business}
+
+// paid: the plan is sold through Stripe.
+func paid(plan string) bool { return slices.Contains(planOrder, plan) }
+
+// Tiered prices in minor units, VAT included: a plan's monthly price covers its included people, each further
+// person adds extraMonthly; a year is twelve months less 20 %, rounded up to a whole franc, of each.
+var (
+	monthly      = map[string]int64{Basic: 1900, Pro: 4900, Business: 14900}
+	included     = map[string]int64{Free: 1, Basic: 1, Pro: 2, Business: 5}
+	extraMonthly = map[string]int64{Basic: 1000, Pro: 1500, Business: 2000}
+)
 
 // yearlyDiscountPercent is what paying a year at once saves against twelve monthly payments.
 const yearlyDiscountPercent = 20
@@ -47,40 +61,51 @@ func Plans() []string { return planOrder }
 // PlanName is the display name of a plan id.
 func PlanName(plan string) string { return planNames[plan] }
 
-// PlanAmount is what one seat of a plan costs in an interval ("month" or "year"), in minor units of any of the
-// currencies: CHF, EUR and USD have the same figures.
-func PlanAmount(plan, interval string) int64 {
-	if interval == "year" {
-		discounted := monthly[plan] * 12 * (100 - yearlyDiscountPercent) / 100
-		return (discounted + 99) / 100 * 100 // up to the next whole franc when there are rappen
-	}
-	return monthly[plan]
+// PlanAmount is what a plan costs in an interval ("month" or "year") for up to its included people, in minor units
+// of any of the currencies: CHF, EUR and USD have the same figures. Free costs nothing.
+func PlanAmount(plan, interval string) int64 { return inInterval(monthly[plan], interval) }
+
+// ExtraSeatAmount is what each person beyond the included ones adds in an interval.
+func ExtraSeatAmount(plan, interval string) int64 { return inInterval(extraMonthly[plan], interval) }
+
+// IncludedSeats is the people a plan's price covers; per-person limits grow as if at least these were paid.
+func IncludedSeats(plan string) int64 { return max(included[plan], 1) }
+
+// PlanTotal is what a plan costs in an interval for people people: the price for the included ones, plus each
+// further person.
+func PlanTotal(plan, interval string, people int64) int64 {
+	return PlanAmount(plan, interval) + max(people-IncludedSeats(plan), 0)*ExtraSeatAmount(plan, interval)
 }
 
-// LookupKey is the Stripe lookup key of a plan's price in an interval; the catalogue tool creates the
-// prices under these keys and billing finds them by them.
-func LookupKey(plan, interval string) string { return "helvetly_" + plan + "_" + interval }
+func inInterval(month int64, interval string) int64 {
+	if interval == "year" {
+		discounted := month * 12 * (100 - yearlyDiscountPercent) / 100
+		return (discounted + 99) / 100 * 100 // up to the next whole franc when there are rappen
+	}
+	return month
+}
 
-// planOfKey is the plan and interval a lookup key stands for.
+// LookupKey is the Stripe lookup key of a plan's price in an interval on an offer ("helvetly-v1_pro_month"); the
+// catalogue tool creates the prices under these keys and billing finds them by them, so a new offer's prices never
+// replace the ones subscriptions on an earlier offer keep.
+func LookupKey(offerID, plan, interval string) string { return offerID + "_" + plan + "_" + interval }
+
+// planOfKey is the plan and interval a lookup key stands for, of any offer (and the earlier "helvetly_pro_month").
 func planOfKey(key string) (plan, interval string) {
-	rest, ok := strings.CutPrefix(key, "helvetly_")
-	if !ok {
+	parts := strings.Split(key, "_")
+	if len(parts) != 3 || !paid(parts[1]) || (parts[2] != "month" && parts[2] != "year") {
 		return "", ""
 	}
-	plan, interval, _ = strings.Cut(rest, "_")
-	if planNames[plan] == "" || (interval != "month" && interval != "year") {
-		return "", ""
-	}
-	return plan, interval
+	return parts[1], parts[2]
 }
 
 // PlanDescription is what the Stripe product says about a plan; the limits themselves live in the offer (offer.go).
 func PlanDescription(plan string) string { return planDescriptions[plan] }
 
 var planDescriptions = map[string]string{
-	Basic:    "For one person or a small team: invoices and quotes with Swiss QR bills.",
-	Pro:      "For a growing team: Heidi, expenses, signatures, automations and VAT returns.",
-	Business: "For larger teams: everything in Pro, the client portal, e-invoice XML and the most room.",
+	Basic:    "For one person or a small team: invoices, quotes, expenses and scheduling with Swiss QR bills. One person included.",
+	Pro:      "For a growing team: Heidi, signatures, automations and VAT returns. Two people included.",
+	Business: "For larger teams: everything in Pro, the client portal, e-invoice XML and the most room. Five people included.",
 }
 
 // Limit names one thing a plan caps.
@@ -128,7 +153,7 @@ const Unlimited int64 = -1
 
 const gb = 1_000_000_000 // storage is sold in decimal gigabytes (the offer)
 
-var planNames = map[string]string{Basic: "Basic", Pro: "Pro", Business: "Business"}
+var planNames = map[string]string{Free: "Free", Basic: "Basic", Pro: "Pro", Business: "Business"}
 
 // limitOrder is the order limits are listed in.
 var limitOrder = []Limit{Members, Clients, Invoices, Quotes, Expenses, Products, Engagements, Signatures, Storage, AITokens, AIAutomationTokens}
@@ -148,9 +173,9 @@ func live(status string) bool {
 	return status == "active" || status == "trialing" || status == "past_due"
 }
 
-// PlanOf is the plan the workspace is on at now; "" when it has none and is locked.
+// PlanOf is the paid plan the workspace is on at now; "" when it has none, and its rights are Free's (FreeRights).
 func PlanOf(b store.Billing, now time.Time) string {
-	if live(b.Status) && planNames[b.Plan] != "" && (b.PlanExpiresAt == nil || now.Before(*b.PlanExpiresAt)) {
+	if live(b.Status) && paid(b.Plan) && (b.PlanExpiresAt == nil || now.Before(*b.PlanExpiresAt)) {
 		return b.Plan
 	}
 	return ""

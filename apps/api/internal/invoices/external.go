@@ -174,5 +174,8 @@ func (s *Service) QuotePDF(ctx context.Context, q store.Q, workspaceID string, i
 	}
 	doc := s.document(inv, set, draft, nil)
 	doc.Logo = logo
+	if doc.SentWith, err = s.sentWith(ctx, workspaceID); err != nil {
+		return nil, err
+	}
 	return invoicepdf.Render(doc)
 }
