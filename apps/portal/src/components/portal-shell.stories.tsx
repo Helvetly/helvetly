@@ -1,6 +1,6 @@
 import { ThemeProvider } from '@helvetly/ui/components/theme-provider'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
@@ -413,6 +413,22 @@ export const WithSessions: Story = {
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
     )
+  },
+}
+
+export const SessionLoading: Story = {
+  parameters: {
+    msw: {
+      handlers: [http.get(`${P}/session`, () => delay('infinite')), ...portalHandlers],
+    },
+  },
+  render: page(<p>Private page</p>),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const loading = await canvas.findByRole('status', { name: 'Loading' })
+    await waitFor(() => expect(loading).toBeVisible())
+    await expect(canvas.queryByRole('status', { name: 'Read-only preview' })).toBeNull()
+    await expect(canvas.queryByText('Private page')).toBeNull()
   },
 }
 

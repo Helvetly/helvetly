@@ -101,7 +101,10 @@ export function PreviewLock({ children }: { children: ReactElement<{ disabled?: 
 function PreviewBanner({ session, onEnd }: { session: PortalSession; onEnd: () => void }) {
   if (!session.preview) return null
   return (
-    <output className="flex min-h-10 items-center gap-3 border-b bg-brand-surface px-4 py-1.5 text-body-sm text-foreground sm:px-6 lg:px-8">
+    <output
+      aria-label={translate('readOnlyPreview')}
+      className="flex min-h-10 items-center gap-3 border-b bg-brand-surface px-4 py-1.5 text-body-sm text-foreground sm:px-6 lg:px-8"
+    >
       <Eye aria-hidden className="size-4 shrink-0 stroke-[1.75] text-brand" />
       <span className="min-w-0 flex-1">
         {translate('previewBanner', {

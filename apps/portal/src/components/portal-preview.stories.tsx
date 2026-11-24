@@ -38,7 +38,7 @@ export const ReadOnly: Story = {
   ),
   play: async () => {
     ended.mockClear()
-    const banner = await body().findByRole('status')
+    const banner = await body().findByRole('status', { name: 'Read-only preview' })
     await expect(banner).toHaveTextContent(
       'Preview as Keller AG · read-only · started by Olivia Muster',
     )
@@ -62,7 +62,7 @@ export const ClientsOwnSession: Story = {
     await expect(
       await body().findByRole('button', { name: /^(Upload|Change) photo$/ }),
     ).toBeEnabled()
-    await expect(body().queryByText(/Preview as/)).toBeNull()
+    await expect(body().queryByRole('status', { name: 'Read-only preview' })).toBeNull()
   },
 }
 
