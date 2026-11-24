@@ -18,8 +18,8 @@ permissions:
   contents: read
 
 # The full local gate remains `pnpm check`. PR selection and the required aggregate are documented
-# in the maintainers' CI notes. ready_for_review, merge groups and manual runs always select the full suite; a push to
-# main is scoped against the previous main commit only when that commit's CI run passed.
+# in the maintainers' CI notes. ready_for_review and manual runs always select the full suite; a push to main and a
+# merge group are scoped against the main commit they build on only when that commit's CI run passed.
 
 env:
   STORYBOOK_DISABLE_TELEMETRY: '1'

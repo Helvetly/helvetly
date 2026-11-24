@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { detectChecks, pushRunPassed, selectChecks, verifyResults } from './ci.mjs'
+import { baseRunPassed, detectChecks, selectChecks, verifyResults } from './ci.mjs'
 
 const full = { backend: true, frontend: true, e2e: true, build: true }
 const docs = { backend: false, frontend: false, e2e: false, build: false }
@@ -85,6 +85,11 @@ test('PR diff includes older commits, deletions and both sides of a rename; erro
     )
     for (const name of ['push', 'workflow_dispatch', 'merge_group', 'unrecognised'])
       assert.deepEqual(detectChecks(name, event, head, cwd), full)
+    // A merge group is scoped against main as the queue found it, only when main's run passed.
+    const group = { merge_group: { base_sha: base, head_sha: head } }
+    assert.deepEqual(detectChecks('merge_group', group, head, cwd, true), frontend)
+    assert.deepEqual(detectChecks('merge_group', group, head, cwd, false), full)
+    assert.deepEqual(detectChecks('merge_group', {}, head, cwd, true), full)
     // A push is scoped by its whole range, only when the previous main commit's run passed.
     const push = { before: base, forced: false }
     assert.deepEqual(detectChecks('push', push, head, cwd, true), frontend)
@@ -131,20 +136,25 @@ test('PR diff includes older commits, deletions and both sides of a rename; erro
 
 const verifiedSha = 'b'.repeat(40)
 const reply = (status, body) => async (url, init) => {
-  assert.match(url, /actions\/workflows\/ci\.yml\/runs\?event=push&head_sha=b{40}/)
+  assert.match(url, /actions\/workflows\/ci\.yml\/runs\?head_sha=b{40}/)
   assert.equal(init.headers.authorization, 'Bearer token')
   return new Response(JSON.stringify(body), { status })
 }
-const pushRuns = (...conclusions) => ({
-  workflow_runs: conclusions.map((conclusion) => ({ conclusion })),
+const runs = (event, ...conclusions) => ({
+  workflow_runs: conclusions.map((conclusion) => ({ event, conclusion })),
 })
-const passed = (request) => pushRunPassed('Helvetly/helvetly', verifiedSha, 'token', request)
+const pushRuns = (...conclusions) => runs('push', ...conclusions)
+const passed = (request) => baseRunPassed('Helvetly/helvetly', verifiedSha, 'token', request)
 const unreachable = async () => {
   throw new Error('offline')
 }
 
 test('a previous main commit counts as verified only when its CI run passed', async () => {
   assert.equal(await passed(reply(200, pushRuns('success'))), true)
+  // A queued squash fast-forwards main to the merge group's commit, so that group's run counts too.
+  assert.equal(await passed(reply(200, runs('merge_group', 'success'))), true)
+  // A pull request run of the same commit is not a run of main.
+  assert.equal(await passed(reply(200, runs('pull_request', 'success'))), false)
   for (const body of [pushRuns(), pushRuns('failure', 'cancelled', null), {}])
     assert.equal(await passed(reply(200, body)), false)
   assert.equal(await passed(reply(403, {})), false)
@@ -154,7 +164,7 @@ test('a previous main commit counts as verified only when its CI run passed', as
     ['Helvetly/helvetly', '0', 'token'],
     ['not a repository', verifiedSha, 'token'],
   ])
-    assert.equal(await pushRunPassed(repository, commit, token, unreachable), false)
+    assert.equal(await baseRunPassed(repository, commit, token, unreachable), false)
 })
 
 function results(checks) {
