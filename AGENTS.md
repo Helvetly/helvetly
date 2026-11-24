@@ -190,7 +190,7 @@ are the reference.
   export carries it in `employees/`; the audit log gets HR events with empty payloads. Jurisdiction rules are data
   (`employment/rules.json`), never a calculation.
 - **Scheduling** (`internal/scheduling`, `internal/calsync`, pure `internal/recur`, `internal/schedpolicy`,
-  `internal/ical`; Pro and Business feature `scheduling`, monthly limit `scheduled_events_per_month`): sessions with
+  `internal/ical`; feature `scheduling` on every plan, monthly limit `scheduled_events_per_month`): sessions with
   clients, one-off or a series (an event with its RRULE, our own subset) whose occurrences are stored rows up to 400
   days ahead (at most 520), extended by a daily job and expanded in the series' zone from its wall-clock start. Edits
   take a scope (`this` = an exception row, `following` = a split that keeps the rows' ids, `all`); moving a series'
@@ -217,6 +217,19 @@ are the reference.
   sessions left in a package) with `session` records and `open_session`; creating or changing sessions through Heidi
   is not built. Settings, holidays, event-type writes, host hours, calendars, the feed, request decisions and
   invoicing sessions are session-only.
+- **Plans and offer** (`internal/billing`, `plans.go`, `offer.go`): one offer on sale, `helvetly-v1` (00065 reset the
+  earlier ids; a new version is published with `helvetly offer publish`, never edited). Plans Free, Basic, Pro, Business;
+  only the paid ones are sold through Stripe (`planOrder`). Prices are tiered and include VAT, the same figures in CHF,
+  EUR and USD: a plan's price covers its included people (Basic 1, Pro 2, Business 5), each further person adds a fixed
+  amount; a year is twelve months less 20 %, rounded up to a whole franc per part. Stripe has one graduated tiered price
+  per plan and interval (lookup key `<offer>_<plan>_<interval>`, made from `helvetly offer catalog` by the billing
+  repository's tool), the subscription's quantity is the workspace's people. Per-person limits grow with
+  max(paid people, included people). A workspace without a live paid plan (never subscribed, trial over, cancelled, or
+  unpaid past the grace) is on Free: never read-only, nothing deleted, additions above Free's limits refused with the
+  usual upgrade answers. The trial is 14 days of Pro for up to 2 people. Free and Basic print "Sent with Helvetly" on
+  client email (`mail.Brand.SentWith`) and PDFs (`invoicepdf`, `contractpdf`); feature `remove_branding` (Pro, Business)
+  drops it. `helvetly billing reprice -workspace ID [-apply]` moves a live subscription onto the offer's tiered price
+  keeping its discounts (dry run by default; operators only).
 - **Plan usage**: a monthly limit counts through `store.ConsumeUsage` in the write's transaction, or
   `ReserveUsage` before an external effect and `SettleUsage` after it (`usage_events`: one row per operation id, its
   UTC month fixed at admission); state limits count what exists. Both are admitted by `billing.AllowResource`.
