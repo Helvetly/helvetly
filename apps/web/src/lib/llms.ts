@@ -55,7 +55,7 @@ export function llmsTxt(): string {
     '',
     '## Scope and availability',
     '',
-    'Built in Switzerland; EU hosting (Frankfurt). The public website supports seven languages; ' +
+    'Built in Switzerland; Hosted in Frankfurt, Germany (EU). The public website supports seven languages; ' +
       'the application and client portal support English, German, French and Italian. ' +
       'Feature availability and usage limits depend on the plan; employee records and the payroll register are Business features. ' +
       'The payroll register records externally calculated pay; it does not calculate salaries or payroll taxes. ' +
@@ -85,7 +85,7 @@ export function llmsTxt(): string {
     link(
       'Security',
       '/security',
-      'EU hosting (Frankfurt), encryption, sign-in and data protection',
+      'hosted in Frankfurt, Germany (EU), encryption, sign-in and data protection',
     ),
     link('Questions', '/faq', 'frequent questions about plans, data and switching'),
     `- [Sign up](${PLATFORM_URL}/login): sign-in by email code, Google or passkey creates the account; start on Free or with the Pro trial`,

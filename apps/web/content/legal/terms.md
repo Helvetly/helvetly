@@ -55,8 +55,8 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - Prices **include Swiss VAT** where we charge it: the price shown is the price paid. Where your business is abroad and the reverse charge applies, the same amount is charged without
   VAT and you account for the tax yourself.
 - When people join or leave the workspace, the number of people billed follows: a person added beyond
-  those included is charged at once and one who leaves is credited at once to your balance with
-  Stripe (which pays your next invoices), each prorated from the day of the change. Subscriptions
+  those included is charged at once, prorated from the day of the change, and one who leaves stops
+  being billed from the next renewal (nothing is credited). Subscriptions
   taken out at an earlier flat price per workspace keep that price, and its member limit, until
   their plan or billing interval changes.
 - **Trial:** New eligible trials include Pro for 14 days, with up to 2 people and Pro's allowances
@@ -76,8 +76,7 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - Apart from the trial, a plan starts only once its first payment goes through: an unpaid first
   payment never activates it.
 - **Upgrades** and moving from monthly to yearly are charged at once, prorated, and apply once that
-  payment goes through; until then, the plan you already paid for keeps working. **Downgrades** and
-  moving to monthly apply at once; the unused part is credited to your balance with Stripe. A smaller
+  payment goes through; until then, the plan you already paid for keeps working. **Downgrades** and moving to monthly take effect at the end of the period you have paid for; nothing is credited, and until then your current plan keeps working. A smaller
   plan deletes nothing: existing records stay readable, but new work must fit its features and
   allowances.
 - **Chargebacks:** if you dispute a payment with your bank or card issuer and the dispute is decided

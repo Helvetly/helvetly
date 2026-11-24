@@ -60,9 +60,8 @@ ne fanno parte. Le tue condizioni generali non si applicano.
   un’impresa all’estero a cui si applica l’inversione contabile, viene addebitato lo stesso
   importo senza IVA e assolvi autonomamente l’imposta.
 - Quando persone entrano o escono dallo spazio di lavoro, il numero di persone fatturate si adegua:
-  una persona aggiunta oltre quelle incluse viene addebitata subito e una che esce viene accreditata
-  subito sul saldo Stripe, usato per le fatture successive, in entrambi i casi proporzionalmente dal giorno
-  della modifica. Gli abbonamenti sottoscritti in precedenza a prezzo fisso per spazio di lavoro
+  una persona aggiunta oltre quelle incluse viene addebitata subito, proporzionalmente dal giorno della modifica,
+  e una che esce non viene più fatturata dal rinnovo successivo (nulla viene accreditato). Gli abbonamenti sottoscritti in precedenza a prezzo fisso per spazio di lavoro
   mantengono prezzo e limite di membri fino al cambiamento del piano o della periodicità.
 - **Prova:** le nuove prove idonee includono Pro per 14 giorni, con un massimo di 2 persone e le
   disponibilità di Pro per una persona per l’intera prova, che non si rinnovano né aumentano con il
@@ -83,8 +82,7 @@ ne fanno parte. Le tue condizioni generali non si applicano.
   pagamento non saldato non lo attiva mai.
 - I **passaggi a un piano superiore** e da mensile ad annuale vengono addebitati una sola volta,
   proporzionalmente, e si applicano quando il pagamento va a buon fine; fino ad allora continua
-  a funzionare il piano già pagato. I **passaggi a un piano inferiore** e alla fatturazione mensile
-  si applicano subito; la parte inutilizzata viene accreditata sul saldo Stripe. Un piano inferiore
+  a funzionare il piano già pagato. I **passaggi a un piano inferiore** e alla fatturazione mensile hanno effetto alla fine del periodo pagato; nulla viene accreditato e fino ad allora resta attivo il piano attuale. Un piano inferiore
   non elimina nulla: i dati esistenti restano consultabili, ma il nuovo lavoro deve rientrare nelle
   sue funzioni e disponibilità.
 - **Contestazioni dei pagamenti:** se contesti un pagamento presso la banca o l’emittente della
