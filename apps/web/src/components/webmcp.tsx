@@ -5,6 +5,7 @@ import { publicHref } from '@helvetly/i18n/public-href'
 import { useEffect } from 'react'
 
 import { confirms, OFFER_URL, projectPlans, type PublicOfferValues } from '@/lib/offer'
+import { SELF_SERVICE_SEATS, TRIAL } from '@/lib/plans'
 import { PLATFORM_URL } from '@/lib/site'
 
 /** A WebMCP tool (https://github.com/webmachinelearning/webmcp): what an AI agent in the browser can call here. */
@@ -54,18 +55,29 @@ export function pageUrl(page: PageName, lang: Locale): string {
   return publicHref(PATHS[page], lang)
 }
 
-/** Prices in major units, per person and month, tax included, for each plan and currency. */
+/** Prices in major units, tax included, for each plan and currency: the base for the included people, and each further person. */
 export function pricing(offer: PublicOfferValues) {
   return {
-    price_per: 'person and month, tax included',
-    trial: 'Every new workspace starts with a free 7-day Pro trial.',
+    price_model:
+      "per plan, tax included: the plan's price covers its included people, and each further person adds the " +
+      'extra-person price; Free is free forever for one person',
+    trial:
+      `Every new workspace can try Pro free for ${TRIAL.days} days with up to ${TRIAL.members} people; a payment ` +
+      'card is required. Without a paid plan afterwards, the workspace continues on Free and keeps its data.',
     plans: offer.plans.map((plan) => ({
       id: plan.id,
       name: plan.name,
+      max_people: SELF_SERVICE_SEATS[plan.id],
       prices: Object.fromEntries(
         Object.entries(plan.prices).map(([currency, price]) => [
           currency,
-          { monthly: price.month / 100, billed_yearly_per_month: price.year / 100 / 12 },
+          {
+            monthly: price.month / 100,
+            yearly: price.year / 100,
+            included_people: price.included_people,
+            extra_person_monthly: price.extra_person_month / 100,
+            extra_person_yearly: price.extra_person_year / 100,
+          },
         ]),
       ),
     })),
@@ -77,8 +89,8 @@ export function toolsFor(lang: Locale, open: (url: string) => void): WebMcpTool[
     {
       name: 'get_pricing',
       description:
-        "Helvetly's current plans (Basic, Pro, Business) and their prices per person and month in CHF, EUR and " +
-        'USD, monthly or billed yearly, tax included.',
+        "Helvetly's current plans (Free, Basic, Pro, Business) with the people each includes and allows, and their " +
+        'prices in CHF, EUR and USD, monthly or yearly, tax included: the base price and the price of each extra person.',
       inputSchema: { type: 'object', properties: {} },
       annotations: { readOnlyHint: true },
       execute: async () => {
@@ -95,7 +107,7 @@ export function toolsFor(lang: Locale, open: (url: string) => void): WebMcpTool[
       description:
         "Opens a page of Helvetly's website in this language: home, pricing, compare_plans, security (data " +
         'protection, hosted in Frankfurt, Germany (EU)), guides (back-office software, Swiss VAT, QR bill, e-invoicing), help, faq, or sign_up ' +
-        '(start the free trial; sign-in is passwordless).',
+        '(start on Free or with the Pro trial; sign-in is passwordless).',
       inputSchema: {
         type: 'object',
         properties: {

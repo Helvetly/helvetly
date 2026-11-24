@@ -243,8 +243,8 @@ describe('the redirect', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
-  test('without a plan, the first visit is not sent to the welcome: the plan gate sends it on', async () => {
-    billing = billingFixture()
+  test('without any plan, the first visit is not sent to the welcome: the plan gate sends it on', async () => {
+    billing = billingFixture({ plan: '', locked: true, features: [] })
     pathname = '/invoices'
     wrap(
       <OnboardingRedirect session={session()}>
@@ -255,8 +255,8 @@ describe('the redirect', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
-  test('without a plan, the welcome itself sends on to the plan picker', async () => {
-    billing = billingFixture()
+  test('without any plan, the welcome itself sends on to the plan picker', async () => {
+    billing = billingFixture({ plan: '', locked: true, features: [] })
     pathname = '/welcome/'
     wrap(
       <OnboardingRedirect session={session()}>
@@ -267,7 +267,7 @@ describe('the redirect', () => {
     expect(screen.queryByText('The app')).not.toBeInTheDocument()
   })
 
-  test('without a plan yet, the wait after Checkout stays put', async () => {
+  test('on Free, the wait after Checkout stays put', async () => {
     billing = billingFixture()
     pathname = '/activating/'
     wrap(

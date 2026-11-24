@@ -3,12 +3,12 @@ title: Een kostenpost met bon toevoegen
 description: Leg een kostenpost vast met bon, bedragen, voorbelasting en betaalstatus en sla deze op als concept of boek deze.
 category: Expenses
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Bewaar elke zakelijke kostenpost samen met de bijbehorende bon.
 
-Kosten vereisen **Pro** of **Business**.
+Kosten zitten in elk abonnement, binnen het maandtegoed ervan.
 
 1. Ga naar **Expenses** en klik op **New expense**.
 2. Sleep onder **Receipt** het bonbestand naar het veld of klik om het te kiezen. Een pdf of foto is mogelijk, tot 25 MB per bestand.

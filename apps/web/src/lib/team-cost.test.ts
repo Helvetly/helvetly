@@ -11,13 +11,13 @@ describe('team cost', () => {
     expect(teamCost(planById('pro'), 3, 'month', 'en')).toEqual({
       fits: true,
       total: 'CHF 64',
-      perPersonMonth: 'CHF 21.33',
+      extraPerson: 'CHF 15',
       saving: null,
     })
     expect(teamCost(planById('pro'), 3, 'year', 'en')).toEqual({
       fits: true,
       total: 'CHF 615',
-      perPersonMonth: 'CHF 17.08',
+      extraPerson: 'CHF 15',
       saving: 'CHF 153',
     })
   })
@@ -42,10 +42,8 @@ describe('team cost', () => {
   it('formats in the page language', () => {
     expect(teamCost(planById('business'), 10, 'year', 'de')).toMatchObject({
       total: "CHF 2'391",
-      perPersonMonth: 'CHF 19.93',
+      extraPerson: 'CHF 20',
     })
-    expect(teamCost(planById('pro'), 1, 'year', 'nl')).toMatchObject({
-      perPersonMonth: 'CHF 39,25',
-    })
+    expect(teamCost(planById('pro'), 1, 'year', 'nl')).toMatchObject({ total: 'CHF 471' })
   })
 })

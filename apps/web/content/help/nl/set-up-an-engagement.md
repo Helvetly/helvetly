@@ -3,12 +3,12 @@ title: Een opdracht instellen
 description: Stel voor een klant een vaste overeenkomst, urenpakket of terugkerende opdracht in, vooraf of achteraf gefactureerd.
 category: Engagements
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Een opdracht houdt afgesproken werk voor een klant bij, zoals een vaste overeenkomst voor 30 uur per maand.
 
-Basic bevat maximaal 3 actieve, handmatig beheerde opdrachten; geplande concepten en meldingen vereisen **Pro** of **Business**.
+Free bevat 1 actieve opdracht en Basic maximaal 3, handmatig beheerd; geplande concepten en meldingen vereisen **Pro** of **Business**.
 
 1. Ga naar **Engagements** en klik op **New engagement**.
 2. Kies onder **Client & service** de **Client** en voer een **Title** in.

@@ -63,9 +63,14 @@ func entitlementItems(r Rights, u store.Usage, reset *time.Time) []entitlementIt
 
 // ---- public: GET /api/v1/public/offers/current ----
 
+// publicPrice is a plan's tiered price in minor units, VAT included: Month and Year for up to IncludedPeople, each
+// further person ExtraPersonMonth or ExtraPersonYear. Free's is all zero, for one person.
 type publicPrice struct {
-	Month int64 `json:"month"` // per person, minor units, VAT included
-	Year  int64 `json:"year"`
+	Month            int64 `json:"month"`
+	Year             int64 `json:"year"`
+	IncludedPeople   int64 `json:"included_people"`
+	ExtraPersonMonth int64 `json:"extra_person_month"`
+	ExtraPersonYear  int64 `json:"extra_person_year"`
 }
 
 type publicPlan struct {
@@ -125,11 +130,15 @@ func (s *Service) currentOffer(w http.ResponseWriter, r *http.Request) {
 }
 
 func publicOffer(o Offer, v store.OfferVersion) map[string]any {
-	plans := make([]publicPlan, 0, len(planOrder))
-	for _, id := range planOrder {
+	plans := make([]publicPlan, 0, len(offerPlans))
+	for _, id := range offerPlans {
 		p := publicPlan{ID: id, Name: planNames[id], Prices: map[string]publicPrice{}}
 		for _, cur := range o.Billing.Currencies {
-			p.Prices[cur] = publicPrice{o.Billing.Plans[id].MonthMinor, o.Billing.Plans[id].YearMinor}
+			bp, price := o.Billing.Plans[id], publicPrice{IncludedPeople: 1} // Free: none, for one person
+			if paid(id) {
+				price = publicPrice{bp.MonthMinor, bp.YearMinor, bp.IncludedPeople, bp.ExtraPersonMonthMinor, bp.ExtraPersonYearMinor}
+			}
+			p.Prices[cur] = price
 		}
 		plans = append(plans, p)
 	}
@@ -137,7 +146,7 @@ func publicOffer(o Offer, v store.OfferVersion) map[string]any {
 	limits := map[string]publicLimit{}
 	for _, row := range o.PublicPricing.ComparisonRows {
 		pr := publicRow{Key: row.Key, Label: row.LabelEN, Note: row.NoteEN, LimitKeys: row.LimitKeys, Plans: map[string]bool{}}
-		for _, plan := range planOrder {
+		for _, plan := range offerPlans {
 			pr.Plans[plan] = !slices.ContainsFunc(row.FeatureKeys, func(f string) bool { return !o.enabled(f, plan) })
 		}
 		rows = append(rows, pr)
@@ -151,17 +160,27 @@ func publicOffer(o Offer, v store.OfferVersion) map[string]any {
 	// The people a workspace can have without asking: a technical guard the site states, never a comparison row.
 	seats := map[string]*int64{}
 	r, _ := o.record(string(MaxSeats))
-	for _, plan := range planOrder {
+	for _, plan := range offerPlans {
 		seats[plan] = nil // unlimited
 		if v := r.Values[plan]; v.State == StateLimited {
 			seats[plan] = v.Value
 		}
 	}
+	// Every public feature's state on every plan: the website's comparison table is checked to name each one.
+	features := map[string]map[string]bool{}
+	for _, r := range o.Records {
+		if r.Type == KindAccess && !slices.Contains(o.PublicPricing.InternalOnlyKeys, r.Key) {
+			features[r.Key] = map[string]bool{}
+			for _, plan := range offerPlans {
+				features[r.Key][plan] = r.Values[plan].State == StateEnabled
+			}
+		}
+	}
 	return map[string]any{
 		"offer_id": v.ID, "schema_version": v.SchemaVersion, "checksum": v.Checksum, "published_at": v.PublishedAt,
-		"price_per": "person", "tax_inclusive": true, "currencies": o.Billing.Currencies, "plans": plans,
+		"price_per": "plan", "tax_inclusive": true, "currencies": o.Billing.Currencies, "plans": plans,
 		"comparison": rows, "usage_details": o.PublicPricing.UsageDetailsKeys, "limits": limits,
-		"max_self_service_seats": seats,
+		"max_self_service_seats": seats, "features": features,
 	}
 }
 
@@ -174,7 +193,7 @@ func (o Offer) enabled(feature, plan string) bool {
 func (o Offer) publicLimit(key string) publicLimit {
 	r, _ := o.record(key) // Validate checked that it exists
 	l := publicLimit{Unit: r.Unit, Period: r.Period, Plans: map[string]publicValue{}}
-	for _, plan := range planOrder {
+	for _, plan := range offerPlans {
 		v := r.Values[plan]
 		l.PerPerson = l.PerPerson || r.PerAdditionalPaidSeat[plan] > 0
 		included := !slices.ContainsFunc(r.RequiresFeatures, func(f string) bool { return !o.enabled(f, plan) })

@@ -1,17 +1,21 @@
 import { defaultLocale, type Locale } from '@helvetly/i18n'
-import { planFeatureLines } from '@helvetly/ui/lib/plan-features'
+import { type PlanCatalogue, planCards } from '@helvetly/ui/lib/plan-features'
 // The offer on sale as the API publishes it (GET /api/v1/public/offers/current, publicOffer in
 // apps/api/internal/billing/offers_http.go). Pages render plans.ts at build time; once they run, they ask the API and
 // show prices only while it confirms the same values, so a visitor never sees a price the API would not charge.
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
+  extraPersonOf,
+  featurePlans,
+  has,
   type LimitKey,
-  SELF_SERVICE_SEATS,
+  OFFER_FEATURE_KEYS,
   type PerPlan,
   type PlanId,
   plansIn,
   priceOf,
+  SELF_SERVICE_SEATS,
   UNLIMITED,
   USAGE_DETAILS,
 } from '@/lib/plans'
@@ -19,15 +23,21 @@ import { PLATFORM_URL } from '@/lib/site'
 
 export const OFFER_URL = `${PLATFORM_URL}/api/v1/public/offers/current`
 
-/** Per person, in minor units, tax included. */
-type PublicPrice = { month: number; year: number }
+/** A plan's price for its included people and each further person, in minor units, tax included. */
+type PublicPrice = {
+  month: number
+  year: number
+  included_people: number
+  extra_person_month: number
+  extra_person_year: number
+}
 
 export type PublicOffer = {
   offer_id: string
   schema_version: number
   checksum: string
   published_at: string
-  price_per: 'person'
+  price_per: 'plan'
   tax_inclusive: true
   currencies: string[]
   plans: { id: PlanId; name: string; prices: Record<string, PublicPrice> }[]
@@ -38,6 +48,8 @@ export type PublicOffer = {
     limit_keys: LimitKey[]
     plans: PerPlan<boolean>
   }[]
+  /** Every public feature key and the plans that have it. */
+  features: Record<string, PerPlan<boolean>>
   usage_details: LimitKey[]
   /** The people a workspace can have without asking us; null when unlimited. */
   max_self_service_seats: PerPlan<number | null>
@@ -62,6 +74,7 @@ export type PublicOfferValues = Omit<PublicOffer, (typeof IDENTITY)[number]>
 const CURRENCIES = ['CHF', 'EUR', 'USD']
 
 const perPlan = <T>(of: (plan: PlanId) => T): PerPlan<T> => ({
+  free: of('free'),
   basic: of('basic'),
   pro: of('pro'),
   business: of('business'),
@@ -89,26 +102,33 @@ function limit(key: LimitKey) {
 export function projectPlans(): PublicOfferValues {
   const limitKeys = [...new Set([...BENEFITS.flatMap((b) => b.limitKeys), ...USAGE_DETAILS])]
   return {
-    price_per: 'person',
+    price_per: 'plan',
     tax_inclusive: true,
     currencies: CURRENCIES,
-    plans: PLANS.map((plan) => ({
-      id: plan.id,
-      name: plan.name,
-      prices: Object.fromEntries(
-        CURRENCIES.map((c) => [
-          c,
-          { month: priceOf(plan, 'month').amount, year: priceOf(plan, 'year').amount },
-        ]),
-      ),
-    })),
+    plans: PLANS.map((plan) => {
+      const price: PublicPrice = {
+        month: priceOf(plan, 'month').amount,
+        year: priceOf(plan, 'year').amount,
+        included_people: plan.includedPeople,
+        extra_person_month: extraPersonOf(plan, 'month').amount,
+        extra_person_year: extraPersonOf(plan, 'year').amount,
+      }
+      return {
+        id: plan.id,
+        name: plan.name,
+        prices: Object.fromEntries(CURRENCIES.map((c) => [c, price])),
+      }
+    }),
     comparison: BENEFITS.map((b) => ({
       key: b.key,
       label: b.label,
       note: b.note,
       limit_keys: b.limitKeys,
-      plans: perPlan((id) => b.cell(id) !== null),
+      plans: perPlan((id) => b.features.every((feature) => has(id, feature))),
     })),
+    features: Object.fromEntries(
+      OFFER_FEATURE_KEYS.map((feature) => [feature, featurePlans(feature)]),
+    ),
     usage_details: USAGE_DETAILS,
     max_self_service_seats: perPlan((id) => SELF_SERVICE_SEATS[id]),
     limits: Object.fromEntries(limitKeys.map((key) => [key, limit(key)])),
@@ -184,13 +204,10 @@ export function useOffer(): Offer {
   return useMemo(() => ({ status, checking, retry }), [status, checking, retry])
 }
 
-/** What each plan includes, as the pricing cards list it: this offer's numbers in the plan lines the app shows too. */
-export function planLines(language: Locale) {
-  const { FEATURE_GROUPS, PLANS: named } = plansIn(language)
-  const rows = FEATURE_GROUPS.flatMap((group) => group.rows)
-  return planFeatureLines(
-    { ...projectPlans(), plans: named },
-    (id) => rows.filter((row) => row.plans[id]).map((row) => row.key),
-    language,
-  )
+/** The offer as the shared plan cards and comparison read it, with the plan names in a language. */
+export function planCatalogue(language: Locale): PlanCatalogue {
+  return { ...projectPlans(), plans: plansIn(language).PLANS }
 }
+
+/** What each plan includes, as the pricing cards list it: the shared plan lines with this offer's numbers. */
+export const planLines = (language: Locale) => planCards(planCatalogue(language), language)

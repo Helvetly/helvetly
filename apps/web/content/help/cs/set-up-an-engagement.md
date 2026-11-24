@@ -3,12 +3,12 @@ title: Nastavení zakázky
 description: Nastavte klientovi paušál, balíček hodin či opakovanou práci s fakturací předem nebo zpětně.
 category: Engagements
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Zakázka sleduje práci sjednanou pro klienta, například paušál 30 hodin měsíčně.
 
-Basic zahrnuje až 3 aktivní ručně spravované zakázky; naplánované návrhy a oznámení vyžadují **Pro** nebo **Business**.
+Free zahrnuje 1 aktivní zakázku a Basic až 3, spravované ručně; naplánované návrhy a oznámení vyžadují **Pro** nebo **Business**.
 
 1. Přejděte do **Engagements** a klikněte na **New engagement**.
 2. V **Client & service** vyberte **Client** a zadejte **Title**.

@@ -13,6 +13,7 @@ type labels struct {
 	Pos, Description, Quantity, UnitPrice, Discount, VAT, Amount                                string
 	Subtotal, DocDiscount, NetTotal, VATOn, Total, TotalNoVAT, Rounding, Payable, Credited      string
 	InclusiveNote, SmallBusinessDE, BankDetails, PaymentReference, Page, Draft, Refunded        string
+	MadeWith                                                                                    string // "Created with", before "Helvetly" (Document.SentWith)
 	ContractDetails, PaymentDetails, AccountHolder, BankName, BIC                               string // the labelled blocks below the totals
 	PayWithRevolut, RevolutAmount, RevolutNote                                                  string // RevolutAmount %s %s = currency, amount; RevolutNote %s = number
 	Units                                                                                       map[string]string
@@ -47,7 +48,7 @@ var languages = map[string]labels{
 		Subtotal: "Zwischentotal", DocDiscount: "Rabatt %s %%", NetTotal: "Total exkl. MWST", VATOn: "MWST %s %% auf %s",
 		Total: "Total inkl. MWST", TotalNoVAT: "Total", Rounding: "Rundung", Payable: "Zu bezahlen", Credited: "Gutgeschrieben",
 		InclusiveNote: "Preise inkl. MWST.", SmallBusinessDE: "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.",
-		BankDetails: "Bankverbindung", Refunded: "Der Betrag wird Ihnen zurückerstattet.", PaymentReference: "Zahlungsreferenz", Page: "Seite %d von {nb}", Draft: "ENTWURF",
+		BankDetails: "Bankverbindung", Refunded: "Der Betrag wird Ihnen zurückerstattet.", PaymentReference: "Zahlungsreferenz", Page: "Seite %d von {nb}", MadeWith: "Erstellt mit", Draft: "ENTWURF",
 		ContractDetails: "Vertragsangaben", PaymentDetails: "Bank- und Zahlungsangaben", AccountHolder: "Kontoinhaber", BankName: "Bank", BIC: "SWIFT / BIC",
 		PayWithRevolut: "Mit Revolut bezahlen", RevolutAmount: "Betrag %s %s", RevolutNote: "Vermerk: %s",
 		Units: map[string]string{"hour": "Std.", "day": "Tage", "piece": "Stk.", "month": "Mt.", "km": "km", "flat": "pauschal"},
@@ -76,7 +77,7 @@ var languages = map[string]labels{
 		Subtotal: "Sous-total", DocDiscount: "Rabais %s %%", NetTotal: "Total hors TVA", VATOn: "TVA %s %% sur %s",
 		Total: "Total TVA incluse", TotalNoVAT: "Total", Rounding: "Arrondi", Payable: "Montant à payer", Credited: "Montant crédité",
 		InclusiveNote: "Prix TVA incluse.", SmallBusinessDE: "Aucune TVA n'est facturée conformément au § 19 UStG.",
-		BankDetails: "Coordonnées bancaires", Refunded: "Le montant vous sera remboursé.", PaymentReference: "Référence de paiement", Page: "Page %d sur {nb}", Draft: "BROUILLON",
+		BankDetails: "Coordonnées bancaires", Refunded: "Le montant vous sera remboursé.", PaymentReference: "Référence de paiement", Page: "Page %d sur {nb}", MadeWith: "Créé avec", Draft: "BROUILLON",
 		ContractDetails: "Données contractuelles", PaymentDetails: "Coordonnées bancaires et de paiement", AccountHolder: "Titulaire du compte", BankName: "Banque", BIC: "SWIFT / BIC",
 		PayWithRevolut: "Payer avec Revolut", RevolutAmount: "Montant %s %s", RevolutNote: "communication : %s",
 		Units: map[string]string{"hour": "h", "day": "jours", "piece": "pce", "month": "mois", "km": "km", "flat": "forfait"},
@@ -105,7 +106,7 @@ var languages = map[string]labels{
 		Subtotal: "Subtotale", DocDiscount: "Sconto %s %%", NetTotal: "Totale IVA esclusa", VATOn: "IVA %s %% su %s",
 		Total: "Totale IVA inclusa", TotalNoVAT: "Totale", Rounding: "Arrotondamento", Payable: "Importo da pagare", Credited: "Importo accreditato",
 		InclusiveNote: "Prezzi IVA inclusa.", SmallBusinessDE: "IVA non addebitata ai sensi del § 19 UStG.",
-		BankDetails: "Coordinate bancarie", Refunded: "L'importo le verrà rimborsato.", PaymentReference: "Riferimento di pagamento", Page: "Pagina %d di {nb}", Draft: "BOZZA",
+		BankDetails: "Coordinate bancarie", Refunded: "L'importo le verrà rimborsato.", PaymentReference: "Riferimento di pagamento", Page: "Pagina %d di {nb}", MadeWith: "Creato con", Draft: "BOZZA",
 		ContractDetails: "Dati contrattuali", PaymentDetails: "Coordinate bancarie e di pagamento", AccountHolder: "Titolare del conto", BankName: "Banca", BIC: "SWIFT / BIC",
 		PayWithRevolut: "Paga con Revolut", RevolutAmount: "Importo %s %s", RevolutNote: "causale: %s",
 		Units: map[string]string{"hour": "ore", "day": "giorni", "piece": "pz.", "month": "mesi", "km": "km", "flat": "forfait"},
@@ -134,7 +135,7 @@ var languages = map[string]labels{
 		Subtotal: "Subtotal", DocDiscount: "Discount %s %%", NetTotal: "Total excl. VAT", VATOn: "VAT %s %% on %s",
 		Total: "Total incl. VAT", TotalNoVAT: "Total", Rounding: "Rounding", Payable: "Amount payable", Credited: "Amount credited",
 		InclusiveNote: "Prices include VAT.", SmallBusinessDE: "No VAT is charged under § 19 UStG (small business).",
-		BankDetails: "Bank details", Refunded: "The amount will be refunded to you.", PaymentReference: "Payment reference", Page: "Page %d of {nb}", Draft: "DRAFT",
+		BankDetails: "Bank details", Refunded: "The amount will be refunded to you.", PaymentReference: "Payment reference", Page: "Page %d of {nb}", MadeWith: "Created with", Draft: "DRAFT",
 		ContractDetails: "Contract details", PaymentDetails: "Bank and payment details", AccountHolder: "Account holder", BankName: "Bank name", BIC: "SWIFT / BIC",
 		PayWithRevolut: "Pay with Revolut", RevolutAmount: "Amount %s %s", RevolutNote: "reference: %s",
 		Units: map[string]string{"hour": "h", "day": "days", "piece": "pcs", "month": "months", "km": "km", "flat": "flat"},

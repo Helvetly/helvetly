@@ -104,8 +104,7 @@ var gated = map[string]Feature{
 	"PUT /api/v1/workspace/portal/domain":         store.FeatureCustomPortalDomain,
 }
 
-// Guard gives an early answer for writes that exceed a plan or need a feature it lacks, and makes an unsubscribed
-// workspace read-only. Transactional canonical-write admission also covers jobs and races.
+// Guard gives an early answer for writes that exceed a plan (Free's without a paid one) or need a feature it lacks. Transactional canonical-write admission also covers jobs and races.
 func (s *Service) Guard(next http.Handler) http.Handler {
 	routes := http.NewServeMux()
 	patterns := slices.Collect(maps.Keys(guarded))
@@ -136,53 +135,13 @@ func (s *Service) Guard(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-	// A workspace without a live subscription is read-only: every change but the exempt routes answers 402.
-	needsPlan := s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
-		b, err := s.db.WorkspaceBilling(r.Context(), sess.Workspace.ID)
-		if err == nil && PlanOf(b, s.now()) == "" {
-			err = errPlanRequired
-			if lapsed(b, s.now()) {
-				err = errPaymentOverdue
-			}
-		}
-		if err != nil {
-			s.writeError(w, r, err)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !s.enabled {
+			next.ServeHTTP(w, r)
 			return
 		}
 		limited.ServeHTTP(w, r)
 	})
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case !s.enabled:
-			next.ServeHTTP(w, r)
-		case readOnlyWithoutPlan(r):
-			needsPlan(w, r)
-		default:
-			limited.ServeHTTP(w, r)
-		}
-	})
-}
-
-// planFree: what a workspace without a plan can still do. Besides signing in, switching and billing itself, the
-// workspace's own settings and delete, workspaces, public pages, the account, accepting an invitation and marking
-// notifications read, and feedback to the Helvetly team (none changes this workspace's data, and a locked workspace
-// must not trap a person).
-var planFree = []string{"/api/v1/auth/", "/api/v1/session", "/api/v1/billing/", "/api/v1/workspaces", "/api/v1/public/",
-	"/api/v1/account/", "/api/v1/invitations/", "/api/v1/notifications/", "/api/v1/feedback"}
-
-// readOnlyWithoutPlan: a change to the workspace's data, which needs a plan.
-func readOnlyWithoutPlan(r *http.Request) bool {
-	p := r.URL.Path
-	if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions || !strings.HasPrefix(p, "/api/v1/") {
-		return false
-	}
-	if p == "/api/v1/workspace" {
-		return r.Method != http.MethodPatch && r.Method != http.MethodDelete
-	}
-	if p == "/api/v1/account" {
-		return false
-	}
-	return !slices.ContainsFunc(planFree, func(prefix string) bool { return strings.HasPrefix(p, prefix) })
 }
 
 // AllowStorage checks exact new bytes inside the upload transaction. Existing hashes add zero bytes.

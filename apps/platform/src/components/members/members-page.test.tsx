@@ -315,7 +315,7 @@ test('removing on a per-seat plan shows the saving; on a flat plan it does not',
   await userEvent.click(await screen.findByRole('button', { name: 'Actions for Mia Member' }))
   await userEvent.click(await screen.findByRole('menuitem', { name: /Remove/ }))
   expect(
-    await screen.findByText(/Saves CHF 19 \/ month incl\. VAT, prorated by Stripe\./),
+    await screen.findByText(/Saves CHF 10 \/ month incl\. VAT, prorated by Stripe\./),
   ).toBeVisible()
 })
 
@@ -325,7 +325,7 @@ test('leaving on a per-seat plan shows the saving', async () => {
   renderPage()
   await userEvent.click(await screen.findByRole('button', { name: 'Actions for Me Myself' }))
   await userEvent.click(await screen.findByRole('menuitem', { name: /Leave workspace/ }))
-  expect(await screen.findByText(/Saves CHF 471 \/ year incl\. VAT/)).toBeVisible()
+  expect(await screen.findByText(/Saves CHF 144 \/ year incl\. VAT/)).toBeVisible()
 })
 
 test('a flat plan shows no saving when removing', async () => {

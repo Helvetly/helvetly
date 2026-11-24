@@ -70,7 +70,7 @@ func (s *Service) makeWatch(ctx context.Context, connectionID, cal string) error
 	if p == nil || c.Status != "active" || !s.webhooks(p) {
 		return nil
 	}
-	if ok, err := s.db.FeatureAllowed(ctx, c.WorkspaceID, store.FeatureScheduling); err != nil || !ok {
+	if ok, err := s.db.FeatureAllowed(ctx, c.WorkspaceID, store.FeatureCalendarSync); err != nil || !ok {
 		return err
 	}
 	sess, err := s.session(ctx, c, true)

@@ -3,9 +3,8 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { billingFixture } from '@/components/billing/billing-fixture'
+import { billingFixture, publicOfferFixture } from '@/components/billing/billing-fixture'
 import { PlanCards } from '@/components/billing/plan-cards'
-import publicOffer from '@/components/billing/public-offer.fixture.json'
 
 const meta = { title: 'Design system/Billing actions' } satisfies Meta
 export default meta
@@ -20,7 +19,7 @@ export const SharedActions: Story = {
           Secondary action
         </Button>
       </div>
-      <PlanCards billing={billingFixture()} offer={publicOffer} />
+      <PlanCards billing={billingFixture()} offer={publicOfferFixture} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -29,13 +28,13 @@ export const SharedActions: Story = {
     const secondary = canvas.getByRole('button', { name: 'Secondary action' })
     const actions = [
       ['Basic', 'Choose Basic'],
-      ['Pro', 'Start 7-day free trial'],
+      ['Pro', 'Start 14-day free trial'],
       ['Business', 'Choose Business'],
     ] satisfies [string, string][]
     // Pro (recommended, and the one with the trial) is the primary way on; the rest are secondary.
     await Promise.all(
       actions.map(([plan, label]) => {
-        const button = within(canvas.getByRole('region', { name: plan })).getByRole('button', {
+        const button = within(canvas.getByRole('article', { name: plan })).getByRole('button', {
           name: label,
         })
         const expected = getComputedStyle(plan === 'Pro' ? reference : secondary)
@@ -69,7 +68,7 @@ const launch20 = {
 
 /** The one promotion code entry: the link opens the popover, Apply shows the discount, Cancel closes. */
 export const PromotionCodeEntry: Story = {
-  render: () => <PlanCards billing={billingFixture()} offer={publicOffer} />,
+  render: () => <PlanCards billing={billingFixture()} offer={publicOfferFixture} />,
   parameters: {
     msw: {
       handlers: [

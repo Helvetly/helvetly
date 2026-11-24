@@ -109,7 +109,7 @@ func TestDowngradeOverStorageKeepsEverythingAndBlocksGrowth(t *testing.T) {
 	}
 }
 
-// TestTrialEmailsAreOnePoolForTheTrial: the trial's recipients (Pro's 500) last the trial, across the month's end,
+// TestTrialEmailsAreOnePoolForTheTrial: the trial's recipients (Pro's 1000 for its 2 included people) last the trial, across the month's end,
 // not per member.
 func TestTrialEmailsAreOnePoolForTheTrial(t *testing.T) {
 	ctx := context.Background()
@@ -118,17 +118,17 @@ func TestTrialEmailsAreOnePoolForTheTrial(t *testing.T) {
 	e.join(owner.workspace, "member")
 	month := store.UsagePeriodStart(time.Now())
 	e.trialing(owner.workspace, "fp_1", month.Add(-48*time.Hour)) // began in the previous month
-	if m := e.cap(owner.workspace, Emails); m != 500 {
+	if m := e.cap(owner.workspace, Emails); m != 1000 {
 		t.Fatalf("trial emails %d", m)
 	}
 	e.exec(`INSERT INTO usage_events (workspace_id, resource, operation, params_hash, period, reserved, consumed, created_at, settled_at)
-		VALUES ($1, $2, 'last-month', '', $3, 0, 499, now(), now())`,
+		VALUES ($1, $2, 'last-month', '', $3, 0, 999, now(), now())`,
 		owner.workspace, string(Emails), month.AddDate(0, 0, -1).Format("2006-01"))
 	if _, err := e.svc.ReserveEmail(ctx, owner.workspace, 2, 0); !denied(err) {
 		t.Fatalf("the trial's emails restarted with the month: %v", err)
 	}
 	if _, err := e.svc.ReserveEmail(ctx, owner.workspace, 1, 0); err != nil {
-		t.Fatalf("the trial's 500th recipient: %v", err)
+		t.Fatalf("the trial's 1000th recipient: %v", err)
 	}
 }
 

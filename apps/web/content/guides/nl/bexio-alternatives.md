@@ -2,7 +2,7 @@
 title: Alternatieven voor bexio in Zwitserland
 description: Magic Heidi, KLARA, Banana, CashCtrl, AbaNinja en Helvetly vergeleken met bexio: prijzen, sterke punten en voor wie elk past.
 category: Choosing software
-updated: 2026-11-19
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -30,7 +30,7 @@ Voor een freelancer met een eenvoudige boekhouding en weinig facturen komt Magic
 
 ## Wat is het beste alternatief voor bexio voor een klein team?
 
-Voor een klein team dat boekhouding, salarisadministratie en facturatie bij één Zwitserse aanbieder wil, zijn KLARA en AbaNinja de dichtstbijzijnde alternatieven voor bexio. Voor een team dat vooral betaald wil worden en met klanten wil werken, is Helvetly daarvoor gemaakt: iedereen werkt tegelijk in dezelfde gegevens, met rollen voor eigenaar, beheerders en leden in elk abonnement.
+Voor een klein team dat boekhouding, salarisadministratie en facturatie bij één Zwitserse aanbieder wil, zijn KLARA en AbaNinja de dichtstbijzijnde alternatieven voor bexio. Voor een team dat vooral betaald wil worden en met klanten wil werken, is Helvetly daarvoor gemaakt: iedereen werkt tegelijk in dezelfde gegevens, met rollen voor eigenaar, beheerders en leden in elk betaald abonnement.
 
 - **KLARA** bundelt boekhouding, salarisadministratie, een kassa en een webshop als pakketten en modules, met rollen voor beheerders, trustees, salaris, boekhouding en meer. Het past bij winkels en horeca die een kassa met pinterminals nodig hebben.
 - **AbaNinja** brengt facturatie, boekhouding en salarisadministratie uit de Abacus-wereld samen in één app, met gebruikersgroepen en rechten per onderdeel. Het past bij teams die salarisadministratie met ELM en loonbewijzen nodig hebben, of later naar Abacus ERP verwachten te gaan.
@@ -40,7 +40,7 @@ Voor een klein team dat boekhouding, salarisadministratie en facturatie bij éé
 
 ## Hoe verhouden alternatieven voor bexio zich qua prijs?
 
-De goedkoopste opties zijn de gratis abonnementen van Magic Heidi, Banana, CashCtrl en AbaNinja, elk met beperkingen. Het laagste betaalde abonnement is Banana Professional voor CHF 89 per jaar. Helvetly heeft geen gratis abonnement en rekent per persoon en per maand.
+De goedkoopste opties zijn de gratis abonnementen van Magic Heidi, Banana, CashCtrl, AbaNinja en Helvetly, elk met beperkingen. Het laagste betaalde abonnement is Banana Professional voor CHF 89 per jaar. De betaalde abonnementen van Helvetly bevatten 1, 2 of 5 personen en rekenen voor elke extra persoon; voor vijf personen kosten ze CHF 59 per maand bij Basic, CHF 94 bij Pro en CHF 149 bij Business, inclusief btw.
 
 | Product     | Pakketten en prijs                                                                                                                                                      | Btw          |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
@@ -50,13 +50,13 @@ De goedkoopste opties zijn de gratis abonnementen van Magic Heidi, Banana, CashC
 | Banana      | Gratis tot 70 transacties; Professional CHF 89 per jaar; Advanced CHF 179 per jaar, per gebruiker                                                                       | Niet vermeld |
 | CashCtrl    | Gratis voor 1 gebruiker; PRO CHF 350 per jaar met 3 gebruikers, 2 organisaties en 1 GB                                                                                  | Inclusief    |
 | AbaNinja    | Starter gratis (1 gebruiker, 1,000 documenten per jaar); Basic CHF 21 per maand (3 gebruikers, 2,100 documenten); Pro CHF 49 per maand (5 gebruikers, 5,000 documenten) | Niet vermeld |
-| Helvetly    | Basic, Pro en Business, per persoon en per maand; elk teamlid betaalt de volle prijs                                                                                    | Inclusief    |
+| Helvetly    | Gratis voor 1 persoon; Basic CHF 19 per maand met 1 persoon, Pro CHF 49 met 2, Business CHF 149 met 5; elke extra persoon CHF 10, 15 of 20                              | Inclusief    |
 
-De actuele prijzen van Helvetly staan op de [prijzenpagina](/pricing). Er is geen gratis abonnement; een proefperiode van 7 dagen voor Pro vraagt om een kaart, en zonder actief abonnement wordt een werkruimte alleen-lezen, zonder dat er iets wordt verwijderd.
+De actuele prijzen van Helvetly staan op de [prijzenpagina](/pricing). Free vraagt geen kaart en verloopt nooit; een proefperiode van 14 dagen voor Pro vraagt om een kaart. Basic staat maximaal 5 personen toe en Pro maximaal 25, en jaarlijks betalen kost 20 % minder. Een werkruimte zonder betaald abonnement gaat naar Free: er wordt niets verwijderd, alleen nieuwe gegevens boven de limieten van Free worden geweigerd.
 
 ## Welke alternatieven voor bexio hebben een gratis abonnement?
 
-Magic Heidi, Banana, CashCtrl en AbaNinja hebben gratis abonnementen; bexio, KLARA en Helvetly niet. De gratis abonnementen zijn beperkt: Magic Heidi tot 3 facturen en 3 bonnetjes, Banana tot 70 transacties, CashCtrl tot 1 gebruiker en AbaNinja tot 1 gebruiker en 1,000 documenten per jaar.
+Magic Heidi, Banana, CashCtrl, AbaNinja en Helvetly hebben gratis abonnementen; bexio en KLARA niet. De gratis abonnementen zijn beperkt: Magic Heidi tot 3 facturen en 3 bonnetjes, Banana tot 70 transacties, CashCtrl tot 1 gebruiker, AbaNinja tot 1 gebruiker en 1,000 documenten per jaar, en Helvetly tot 1 persoon, 5 klanten en 3 facturen en 3 offertes per maand.
 
 Verstuur je maar een paar facturen per jaar, dan is een gratis abonnement moeilijk te verslaan. Verstuur je elke week facturen of werk je in een team, vergelijk dan wat de betaalde abonnementen bieden in plaats van de instapprijs.
 
@@ -72,7 +72,7 @@ Blijf bij bexio als je complete boekhouding en jaarrekeningen in hetzelfde progr
 
 ## Wat doet Helvetly anders dan bexio?
 
-Helvetly richt zich op de back-office rond het betaald krijgen, tegen één prijs per persoon, terwijl bexio een breed pakket is met boekhouding, salarisadministratie en een marktplaats. Helvetly biedt deze dingen, die we op de site van bexio niet hebben gevonden:
+Helvetly richt zich op de back-office rond het betaald krijgen, met een paar personen inbegrepen in elk abonnement, terwijl bexio een breed pakket is met boekhouding, salarisadministratie en een marktplaats. Helvetly biedt deze dingen, die we op de site van bexio niet hebben gevonden:
 
 - E-factuur-XML voor Duitsland, Polen, Roemenië en Peppol: XRechnung-, Peppol BIS-, KSeF- en e-Factura-bestanden (Business). Ze worden als bestand geëxporteerd; Helvetly levert ze niet af via de netwerken.
 - Contracten die uit sjablonen worden ingevuld en met een eenvoudige elektronische handtekening worden verstuurd (Pro en Business); gekwalificeerde handtekeningen worden niet aangeboden.
@@ -80,7 +80,7 @@ Helvetly richt zich op de back-office rond het betaald krijgen, tegen één prij
 - Retainers met de resterende uren, en betalingsregelingen in termijnen met een QR-factuur voor elk deel.
 - Heidi, een ingebouwde assistent die antwoordt op basis van je eigen gegevens en pas handelt nadat je dat bevestigt (Pro en Business).
 
-Wat Helvetly mist ten opzichte van bexio: jaarrekeningen, salarisberekening, voorraadbeheer, native telefoon-apps (Helvetly is een webapp voor elk apparaat) en een gratis abonnement.
+Wat Helvetly mist ten opzichte van bexio: jaarrekeningen, salarisberekening, voorraadbeheer en native telefoon-apps (Helvetly is een webapp voor elk apparaat).
 
 ## Hoe stap je over van bexio?
 

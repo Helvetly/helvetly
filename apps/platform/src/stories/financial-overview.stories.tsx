@@ -585,11 +585,10 @@ export const BillingExpiredTrial: Story = {
   render: () => <BillingSettings />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      await canvas.findByText('Choose a plan; until then nothing can be changed.'),
-    ).toBeVisible()
-    // No trial left: the way on is to choose a plan, on its own page.
-    await expect(canvas.getByRole('link', { name: 'Choose a plan' })).toHaveAttribute(
+    // The workspace is on Free, never read-only; no trial left, so no trial offer.
+    await expect(await canvas.findByRole('heading', { name: 'Free' })).toBeVisible()
+    await expect(canvas.queryByText(/read-only|days free on/i)).toBeNull()
+    await expect(canvas.getByRole('link', { name: 'Upgrade to Basic' })).toHaveAttribute(
       'href',
       '/settings/billing/plans/',
     )

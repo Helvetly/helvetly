@@ -34,13 +34,18 @@ import (
 const whsec = "whsec_test"
 
 // priceIDs are the fake Stripe's prices by lookup key (the catalogue tool makes them).
-var priceIDs = map[string]string{"helvetly_basic_month": "price_bm", "helvetly_basic_year": "price_by", "helvetly_pro_month": "price_pm",
-	"helvetly_pro_year": "price_py", "helvetly_business_month": "price_xm", "helvetly_business_year": "price_xy"}
+var priceIDs = map[string]string{"basic_month": "price_bm", "basic_year": "price_by", "pro_month": "price_pm",
+	"pro_year": "price_py", "business_month": "price_xm", "business_year": "price_xy"}
+
+// priceKey is the fake catalogue's key of a plan's price in an interval: the same prices answer the lookup key of
+// whichever offer is on sale (a test may publish its own).
+func priceKey(plan, interval string) string { return plan + "_" + interval }
 
 func lookupKeyOf(id string) string {
 	for k, v := range priceIDs {
 		if v == id {
-			return k
+			plan, interval, _ := strings.Cut(k, "_")
+			return LookupKey("helvetly-v1", plan, interval)
 		}
 	}
 	return ""
@@ -49,8 +54,8 @@ func lookupKeyOf(id string) string {
 func catalog() map[string]map[string]any {
 	out := map[string]map[string]any{}
 	for key, id := range priceIDs {
-		plan, interval := planOfKey(key)
-		out[key] = map[string]any{"id": id, "lookup_key": key, "currency": "chf", "unit_amount": PlanAmount(plan, interval), "product": "prod_" + plan,
+		plan, interval, _ := strings.Cut(key, "_")
+		out[key] = map[string]any{"id": id, "lookup_key": LookupKey("helvetly-v1", plan, interval), "currency": "chf", "unit_amount": PlanAmount(plan, interval), "product": "prod_" + plan,
 			"currency_options": options(PlanAmount(plan, interval))}
 	}
 	return out
@@ -237,8 +242,12 @@ func (f *fakeStripe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case key == "GET /v1/prices":
 		data := []map[string]any{}
 		for _, k := range r.Form["lookup_keys[]"] {
-			if p, ok := f.catalog[k]; ok {
-				data = append(data, expanded(r, p))
+			if plan, interval := planOfKey(k); plan != "" {
+				if p, ok := f.catalog[priceKey(plan, interval)]; ok {
+					p = maps.Clone(p)
+					p["lookup_key"] = k
+					data = append(data, expanded(r, p))
+				}
 			}
 		}
 		if r.Form.Get("product") == AITokensProduct && r.Form.Get("type") == "one_time" {
@@ -772,9 +781,8 @@ func TestGuard(t *testing.T) {
 	}
 	for _, r := range routes {
 		code, body := e.do(owner, http.MethodPost, r.path, map[string]string{"x": "y"})
-		if strings.HasPrefix(r.path, "/api/v1/expenses") { // Basic has no expenses at all: a missing module, not a spent month
-			details, _ := body["error"].(map[string]any)["details"].(map[string]any)
-			if code != http.StatusForbidden || details["feature"] != "expenses" || details["required_plan"] != Pro {
+		if strings.HasPrefix(r.path, "/api/v1/expenses") { // Basic has expenses (10 a month, counted when saved)
+			if code == http.StatusForbidden {
 				t.Fatalf("%s on Basic: %d %v", r.path, code, body)
 			}
 			continue
@@ -868,9 +876,9 @@ func TestOverview(t *testing.T) {
 	pro, _ := plansList[1].(map[string]any)
 	proPrices, _ := pro["prices"].(map[string]any)
 	proLimits, _ := pro["limits"].(map[string]any)
-	if code != http.StatusOK || data["plan"] != "" || data["locked"] != true || data["trial_available"] != true || data["trial_plan"] != Pro ||
-		data["trial_days"] != 7.0 || data["discount"] != nil || data["can_manage"] != true ||
-		members["used"] != 0.0 || members["max"] != nil || proLimits["clients"] != 300.0 || proPrices["month"] == nil {
+	if code != http.StatusOK || data["plan"] != Free || data["locked"] != false || data["trial_available"] != true || data["trial_plan"] != Pro ||
+		data["trial_days"] != 14.0 || data["discount"] != nil || data["can_manage"] != true ||
+		members["used"] != 0.0 || members["max"] != 0.0 || proLimits["clients"] != 300.0 || proPrices["month"] == nil {
 		t.Fatalf("overview: %d %v", code, body)
 	}
 }

@@ -95,7 +95,7 @@ test('excluded, unlimited, workspace-wide and custom limits read as such', () =>
     />,
   )
   // A limit the plan does not include has no row.
-  expect(screen.queryByText('Expenses')).toBeNull()
+  expect(screen.queryByText('Signature requests')).toBeNull()
   expect(screen.queryByText('Automated actions')).toBeNull()
   expect(screen.queryByText(/Not included/)).toBeNull()
   expect(screen.getByText('Email recipients').closest('li')).toHaveTextContent('Unlimited')

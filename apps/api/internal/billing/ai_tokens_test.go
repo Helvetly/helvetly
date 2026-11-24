@@ -28,7 +28,7 @@ func TestAITokensFollowThePlan(t *testing.T) {
 		t.Fatalf("basic: %d", n)
 	}
 	e.subscribe(b.workspace, "price_pm")
-	if n := allowance(e, b.workspace); n != 5_000_000 {
+	if n := allowance(e, b.workspace); n != 10_000_000 { // 5M for each of Pro's 2 included people
 		t.Fatalf("pro: %d", n)
 	}
 	// The month's model usage is what the limit counts.

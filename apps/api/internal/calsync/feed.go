@@ -50,7 +50,7 @@ func (s *Service) feedGet(w http.ResponseWriter, r *http.Request, sess store.Ses
 
 // feedRotate makes the member's feed, or gives it a new URL.
 func (s *Service) feedRotate(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	if err := s.requireFeature(r.Context(), sess.Workspace.ID); err != nil {
+	if err := s.db.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureScheduling); err != nil {
 		return err
 	}
 	raw := make([]byte, 32)

@@ -1,11 +1,12 @@
 'use client'
 import { publicHref } from '@helvetly/i18n/public-href'
-import { useLanguage } from '@helvetly/ui/components/language-provider'
+import { BillingIntervalToggle } from '@helvetly/ui/components/billing-interval-toggle'
+import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
 import { Slider } from '@helvetly/ui/components/slider'
+import { YEARLY_DISCOUNT_PERCENT } from '@helvetly/ui/lib/price'
 import { useState } from 'react'
 
 import { useOfferStatus } from '@/components/offer-provider'
-import { IntervalSwitch } from '@/components/pricing-cards'
 import { cn } from '@/lib/cn'
 import { translatorFor } from '@/lib/i18n'
 import { type Interval, plansIn, RECOMMENDED } from '@/lib/plans'
@@ -25,7 +26,8 @@ export type TheirPrices = {
 export function TeamCost({ them }: { them: TheirPrices }) {
   const language = useLanguage()
   const translate = translatorFor(language)
-  const { PLANS } = plansIn(language)
+  const ui = useTranslate()
+  const PLANS = plansIn(language).PLANS.filter((plan) => plan.id !== 'free') // Free is for one person: no team cost
   const unavailable = useOfferStatus().status === 'unavailable'
   const [people, setPeople] = useState(TEAM_SIZE.start)
   const [interval, setInterval] = useState<Interval>('year')
@@ -34,7 +36,7 @@ export function TeamCost({ them }: { them: TheirPrices }) {
     <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
       <div data-reveal className="border-site-line bg-site-tint rounded-3xl border p-7">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <IntervalSwitch value={interval} onChange={setInterval} />
+          <BillingIntervalToggle value={interval} onValueChange={setInterval} />
           <p className="text-body font-medium tabular-nums" id="team-size">
             {translate('cmpTeamOf', { count: people })}
           </p>
@@ -72,9 +74,13 @@ export function TeamCost({ them }: { them: TheirPrices }) {
                         price: cost.total,
                       })}
                     </span>
+                    <span className="block text-body-sm whitespace-nowrap">
+                      {ui('planExtraPerson', { extra: cost.extraPerson })}
+                    </span>
                     <span className="block text-body-sm text-muted-foreground">
-                      {translate('cmpPerPersonMonth', { price: cost.perPersonMonth })}
-                      {cost.saving && ` · ${translate('cmpTeamSaves', { amount: cost.saving })}`}
+                      {cost.saving
+                        ? `${ui('planBilledYearly', { percent: YEARLY_DISCOUNT_PERCENT })} · ${ui('planYouSave', { saving: cost.saving })}`
+                        : ui('planBilledMonthly')}
                     </span>
                   </span>
                 ) : (

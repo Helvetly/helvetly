@@ -4,12 +4,12 @@ description: Skapa ett löpande avtal, timpaket eller återkommande arbete för 
 category: Engagements
 categoryLabel: Uppdrag
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Ett uppdrag följer avtalat arbete för en kund, till exempel ett löpande avtal om 30 timmar per månad.
 
-Basic innehåller upp till 3 aktiva uppdrag som hanteras manuellt; schemalagda utkast och meddelanden kräver **Pro** eller **Business**.
+Free innehåller 1 aktivt uppdrag och Basic upp till 3, som hanteras manuellt; schemalagda utkast och meddelanden kräver **Pro** eller **Business**.
 
 1. Gå till **Engagements** och klicka på **New engagement**.
 2. Under **Client & service** väljer du **Client** och anger en **Title**.

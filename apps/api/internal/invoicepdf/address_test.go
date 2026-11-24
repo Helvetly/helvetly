@@ -37,3 +37,13 @@ func TestAddressLinesKeepShape(t *testing.T) {
 		}
 	}
 }
+
+func TestWithHelvetly(t *testing.T) {
+	l := languages["de"]
+	if got := withHelvetly("Seite 1 von 2", l, true); got != "Seite 1 von 2  ·  Erstellt mit Helvetly" {
+		t.Fatal(got)
+	}
+	if got := withHelvetly("Seite 1 von 2", l, false); got != "Seite 1 von 2" {
+		t.Fatal(got)
+	}
+}

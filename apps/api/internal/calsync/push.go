@@ -191,7 +191,7 @@ func (s *Service) pushOne(ctx context.Context, c store.CalendarConnection, occur
 	}
 	want := !gone && isOpen(occ.Status) && occ.HostUserID != nil && *occ.HostUserID == c.UserID && c.PushCalendarID != nil
 	if want {
-		if want, err = s.db.FeatureAllowed(ctx, c.WorkspaceID, store.FeatureScheduling); err != nil {
+		if want, err = s.db.FeatureAllowed(ctx, c.WorkspaceID, store.FeatureCalendarSync); err != nil {
 			return err
 		}
 	}

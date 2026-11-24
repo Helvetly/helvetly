@@ -15,6 +15,7 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/billing"
 	"helvetly.com/api/internal/billing/billingtest"
 	"helvetly.com/api/internal/config"
@@ -271,11 +272,23 @@ func TestConnectRefused(t *testing.T) {
 	t.Run("plan without scheduling", func(t *testing.T) {
 		e := newEnv(t)
 		b := e.workspace(billing.Basic, "member")
+		billingtest.Without(t, e.st, b.ws, store.FeatureScheduling)
 		if status, out := e.do(b, "GET", "/api/v1/scheduling/calendars/google/connect", nil); status != http.StatusForbidden {
 			t.Fatalf("%d %v", status, out)
 		}
 		if status, _ := e.do(b, "POST", "/api/v1/scheduling/feed", nil); status != http.StatusForbidden {
 			t.Fatalf("feed on Basic: %d", status)
+		}
+	})
+	t.Run("Free: scheduling and its feed, no calendar sync", func(t *testing.T) {
+		e := newEnv(t)
+		b := e.member(auth.NewID("wsp"), "owner") // no paid plan: Free
+		status, out := e.do(b, "GET", "/api/v1/scheduling/calendars/google/connect", nil)
+		if got, _ := out["error"].(map[string]any); status != http.StatusForbidden || got["code"] != "feature_not_in_plan" {
+			t.Fatalf("connect on Free: %d %v", status, out)
+		}
+		if status, out := e.do(b, "POST", "/api/v1/scheduling/feed", nil); status != http.StatusOK {
+			t.Fatalf("feed on Free: %d %v", status, out)
 		}
 	})
 }
@@ -473,7 +486,7 @@ func TestImportPausedWithoutPlan(t *testing.T) {
 	b := e.workspace(pro, "member")
 	e.connect(b, "google")
 	occ := e.session(b, b.userID, e.clock.Add(24*time.Hour))
-	billingtest.On(t, e.st, b.ws, billing.Basic)
+	billingtest.Without(t, e.st, b.ws, store.FeatureCalendarSync)
 	primary := e.fake.PrimaryCalendar("google")
 	e.fake.AddEvent("google", primary, e.clock.Add(time.Hour), e.clock.Add(2*time.Hour), false)
 	e.svc.ImportTick(context.Background())
@@ -825,11 +838,13 @@ func TestFeed(t *testing.T) {
 		t.Fatal("rotation not audited")
 	}
 	// the plan without Scheduling: 404; unknown token: 404
-	billingtest.On(t, e.st, b.ws, billing.Basic)
+	billingtest.Without(t, e.st, b.ws, store.FeatureScheduling)
 	if res, _ := get(rotated, nil); res.StatusCode != 404 {
 		t.Fatalf("without the feature: %d", res.StatusCode)
 	}
-	billingtest.On(t, e.st, b.ws, pro)
+	if err := billing.ClearWorkspaceOverride(context.Background(), e.st, b.ws, store.FeatureScheduling, "test", "back"); err != nil {
+		t.Fatal(err)
+	}
 	for _, u := range []string{publicURL + feedPath + strings.Repeat("A", 43) + ".ics", publicURL + feedPath + "short.ics", strings.TrimSuffix(rotated, ".ics")} {
 		if res, _ := get(u, nil); res.StatusCode != 404 {
 			t.Fatalf("%s: %d", u, res.StatusCode)

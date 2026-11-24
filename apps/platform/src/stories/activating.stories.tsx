@@ -7,7 +7,7 @@ import { billingFixture } from '@/components/billing/billing-fixture'
 
 import { screenHandlers, sessionHandler } from './screen-fixtures'
 
-// Stripe has not told Helvetly yet: the workspace stays locked for as long as the story runs.
+// Stripe has not told Helvetly yet: the workspace stays on Free for as long as the story runs.
 const locked = billingFixture()
 
 const meta = {
@@ -45,7 +45,7 @@ export const Loading: Story = {
 
 export const LoadingDark: Story = { ...Loading, parameters: { dark: true } }
 
-/** Still locked after the wait: a calm notice instead of an endless spinner, and two ways on. */
+/** Still on Free after the wait: a calm notice instead of an endless spinner, and two ways on. */
 export const Slow: Story = {
   render: () => <Activating slowAfter={0} />,
   play: async ({ canvasElement }) => {

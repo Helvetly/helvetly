@@ -65,7 +65,7 @@ function afterDiscount(billing: Billing, discount: Discount): string {
 /** The workspace's plan under its name in the switcher: "Pro", "Basic · Payment due"; null without billing. */
 export function planLabel(billing: Billing | undefined): string | null {
   if (!billing?.enabled) return null
-  if (billing.locked || billing.plan === '') return translate('noPlanReadOnly')
+  if (billing.locked) return translate('noPlanReadOnly')
   const name = planName(billing)
   if (failing(billing.status)) return translate('paymentDue', { name: name })
   return name
@@ -75,18 +75,18 @@ export function planLabel(billing: Billing | undefined): string | null {
 export function planNotice(billing: Billing | undefined, now = Date.now()): PlanNotice | null {
   if (!billing?.enabled) return null
   const manage = billing.can_manage
-  if (billing.locked && billing.payment_overdue)
+  if (billing.payment_overdue)
     return {
-      kind: 'locked',
+      kind: 'payment',
       tone: 'danger',
-      title: 'Read-only workspace',
+      title: translate('paymentFailed'),
       text: manage
-        ? 'The last payment failed and the three days of grace have passed. Pay the open invoice to make changes again.'
-        : `The last payment failed and the three days of grace have passed. ${ASK} to pay the open invoice.`,
-      action: manage ? { label: 'Update payment', href: BILLING } : null,
+        ? translate('paymentOverdueOnFree')
+        : translate('paymentOverdueOnFreeAsk', { ASK: ASK }),
+      action: manage ? { label: translate('updatePayment'), href: BILLING } : null,
       dismissable: false,
     }
-  if (billing.locked || billing.plan === '')
+  if (billing.locked)
     return {
       kind: 'locked',
       tone: 'danger',
@@ -121,7 +121,7 @@ export function planNotice(billing: Billing | undefined, now = Date.now()): Plan
     const left = trialDaysLeft(billing.trial_end, now)
     const ends = formatDate(billing.trial_end)
     const after = billing.cancel_at_period_end
-      ? translate('theWorkspaceTurnsReadOnly')
+      ? translate('theWorkspaceMovesToFree')
       : translate('billingStarts')
     const title =
       left === 0 ? translate('trialEndsToday') : translate('trialLeft', { value1: days(left) })
@@ -162,8 +162,8 @@ export function planNotice(billing: Billing | undefined, now = Date.now()): Plan
       tone: 'warning',
       title: translate('planEnds', { value1: formatDate(billing.current_period_end) }),
       text: manage
-        ? translate('afterThatTheWorkspaceIsReadOnlyRenewTo')
-        : translate('afterThatTheWorkspaceIsReadOnlyToRenew', { ASK: ASK }),
+        ? translate('afterThatTheWorkspaceMovesToFreeRenewTo')
+        : translate('afterThatTheWorkspaceMovesToFreeToRenew', { ASK: ASK }),
       action: manage ? { label: translate('renewPlan'), href: BILLING } : null,
       dismissable: true,
     }

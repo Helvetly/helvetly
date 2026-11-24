@@ -18,10 +18,15 @@ test('a feature the plan lacks names the cheapest plan that has it', () => {
   ).toBeNull()
 })
 
-test('no tag while billing has not answered, without a plan or self-hosted', () => {
+test('Free shows the tag like any plan without the feature', () => {
+  expect(featureLock(billingFixture(), 'heidi')?.plan?.id).toBe('pro')
+  expect(featureLock(billingFixture(), 'expenses')).toBeNull()
+})
+
+test('no tag while billing has not answered, without any plan or self-hosted', () => {
   expect(featureLock(undefined, 'heidi')).toBeNull()
-  // without a plan the whole workspace is read-only and says so elsewhere
-  expect(featureLock(billingFixture(), 'heidi')).toBeNull()
+  // a locked workspace (no plan at all) is read-only and says so elsewhere
+  expect(featureLock(billingFixture({ plan: '', locked: true, features: [] }), 'heidi')).toBeNull()
   expect(featureLock(billingFixture({ enabled: false, features: ['heidi'] }), 'heidi')).toBeNull()
 })
 
@@ -36,5 +41,6 @@ test('employees are hidden on a plan without them unless the owner has records t
   // billing not answered yet: hidden while loading, so nothing flashes in and out; unreadable: nothing is hidden
   expect(employeesHidden(undefined, true)).toBe(true)
   expect(employeesHidden(undefined)).toBe(false)
-  expect(employeesHidden(billingFixture())).toBe(false)
+  expect(employeesHidden(billingFixture())).toBe(true)
+  expect(employeesHidden(billingFixture({ plan: '', locked: true, features: [] }))).toBe(false)
 })

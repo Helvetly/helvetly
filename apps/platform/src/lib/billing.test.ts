@@ -40,7 +40,6 @@ import {
   withZone,
   trialDaysLeft,
   yearlySaving,
-  yearlySavingAmount,
   type Billing,
   type Plan,
 } from './billing'
@@ -118,20 +117,10 @@ const plan = (month: number, year: number): Plan => ({
     ai_automation_tokens_per_month: 1_000_000,
   },
   features: [],
-  prices: { month: { amount: month, currency: 'chf' }, year: { amount: year, currency: 'chf' } },
-})
-
-test('yearlySavingAmount is twelve months less the year, per person', () => {
-  const saved = (month: number, year: number) => yearlySavingAmount(plan(month, year))
-  expect([saved(1900, 18300), saved(4900, 47100), saved(9900, 95100)]).toEqual([
-    { amount: 4500, currency: 'chf' },
-    { amount: 11700, currency: 'chf' },
-    { amount: 23700, currency: 'chf' },
-  ])
-  expect(saved(1900, 22800)).toBeNull()
-  expect(
-    yearlySavingAmount({ ...plan(1900, 18300), prices: { month: null, year: null } }),
-  ).toBeNull()
+  prices: {
+    month: { amount: month, currency: 'chf', included_people: 1, extra_person: 0 },
+    year: { amount: year, currency: 'chf', included_people: 1, extra_person: 0 },
+  },
 })
 
 test('yearlySaving compares a year with twelve months', () => {
@@ -163,7 +152,7 @@ test('paymentFailed reads a 402 payment_failed and keeps only a Stripe pay link'
 })
 
 test('discounted prices, descriptions and which plans a code covers', () => {
-  const price = { amount: 1900, currency: 'chf' }
+  const price = { amount: 1900, currency: 'chf', included_people: 1, extra_person: 1000 }
   const percent = {
     percent_off: 20,
     amount_off: null,
@@ -171,7 +160,7 @@ test('discounted prices, descriptions and which plans a code covers', () => {
     duration: 'repeating',
     duration_in_months: 3,
   } as const
-  expect(discounted(price, percent)).toEqual({ amount: 1520, currency: 'chf' })
+  expect(discounted(price, percent)).toEqual({ ...price, amount: 1520 })
   expect(
     discounted(price, { ...percent, percent_off: null, amount_off: 2500, currency: 'chf' }).amount,
   ).toBe(0)
@@ -214,32 +203,37 @@ test('planHighlights lists the main limits as short lines', () => {
   // Business has no cap on clients: "Unlimited", never a number, ∞ or -1.
   expect(planHighlights(business, 2)).toEqual(['Any number of people', 'Unlimited clients'])
   const [perSeat] = billingFixture().plans
-  expect(perSeat && planHighlights(perSeat, 1)).toEqual(['Any number of people'])
+  expect(perSeat && planHighlights(perSeat, 1)).toEqual(['4 members'])
 })
 
 const live = (over: Partial<Billing> = {}) =>
   billingFixture({ plan: 'pro', interval: 'month', pricing: 'per_seat', seats: 3, ...over })
 
-test('seatPrice and seatTotal are the live plan price per person and for everyone', () => {
-  expect(seatPrice(live())).toEqual({ amount: 4900, currency: 'chf' })
-  expect(seatTotal(live())).toEqual({ amount: 14700, currency: 'chf' })
-  expect(seatTotal(live({ interval: 'year', seats: 2 }))).toEqual({
-    amount: 94200,
-    currency: 'chf',
-  })
-  expect(seatsCost({ amount: 1900, currency: 'chf' }, 0).amount).toBe(0)
+test('seatPrice is what one more person adds past the included ones; seatTotal the tiered price for everyone', () => {
+  // Pro includes 2 people: the third adds CHF 15, the second nothing.
+  expect(seatPrice(live())).toEqual({ amount: 1500, currency: 'chf' })
+  expect(seatPrice(live(), 3)).toEqual({ amount: 1500, currency: 'chf' })
+  expect(seatPrice(live(), 2)).toBeNull()
+  expect(seatPrice(live({ seats: 1 }))).toBeNull()
+  expect(seatTotal(live())?.amount).toBe(6400)
+  expect(seatTotal(live({ interval: 'year', seats: 2 }))?.amount).toBe(47100)
+  const basic = { amount: 1900, currency: 'chf', included_people: 1, extra_person: 1000 }
+  expect(seatsCost(basic, 0).amount).toBe(1900)
+  expect(seatsCost(basic, 4).amount).toBe(4900)
 })
 
 test('there is no seat price without a per-seat live subscription', () => {
   expect(seatPrice(live({ pricing: 'flat' }))).toBeNull()
   expect(seatPrice(live({ pricing: '' }))).toBeNull()
   expect(seatPrice(live({ plan: '', interval: '' }))).toBeNull()
+  expect(seatPrice(live({ plan: 'free', interval: '' }))).toBeNull()
   expect(seatTotal(flatBillingFixture({ plan: 'pro', interval: 'month' }))).toBeNull()
 })
 
-test('seatCostLabel names one person with the interval, only when billing is on', () => {
-  expect(seatCostLabel(live())).toBe('CHF 49 / month incl. VAT')
-  expect(seatCostLabel(live({ interval: 'year' }))).toBe('CHF 471 / year incl. VAT')
+test('seatCostLabel names one more person with the interval, only when billing is on', () => {
+  expect(seatCostLabel(live())).toBe('CHF 15 / month incl. VAT')
+  expect(seatCostLabel(live({ interval: 'year' }))).toBe('CHF 144 / year incl. VAT')
+  expect(seatCostLabel(live(), 2)).toBeNull()
   expect(seatCostLabel(live({ enabled: false }))).toBeNull()
   expect(seatCostLabel(live({ pricing: 'flat' }))).toBeNull()
 })
@@ -255,7 +249,7 @@ test('the tax note follows the currency: Swiss VAT in francs, VAT in euros, tax 
     'incl. VAT',
     'incl. tax',
   ])
-  expect(seatCostLabel(live({ currency: 'usd' }))).toBe('USD 49 / month incl. tax')
+  expect(seatCostLabel(live({ currency: 'usd' }))).toBe('USD 15 / month incl. tax')
 })
 
 test('people counts in words', () => {
@@ -292,13 +286,10 @@ test('billingPeriod measures the period back from its end by one interval', () =
   expect(billingPeriod({ current_period_end: end, interval: '' })).toBeNull()
 })
 
-test('planTotal: per seat × people, the legacy flat price, or nothing without a plan', () => {
+test('planTotal: the tiered price for the people, the legacy flat price, or nothing on Free', () => {
   const perSeat = billingFixture({ plan: 'pro', interval: 'month', pricing: 'per_seat', seats: 3 })
-  expect(planTotal(perSeat)).toEqual({ amount: 14_700, currency: 'chf' })
-  expect(planTotal(flatBillingFixture({ plan: 'pro', interval: 'month' }))).toEqual({
-    amount: 4900,
-    currency: 'chf',
-  })
+  expect(planTotal(perSeat)?.amount).toBe(6400)
+  expect(planTotal(flatBillingFixture({ plan: 'pro', interval: 'month' }))?.amount).toBe(4900)
   expect(planTotal(billingFixture())).toBeNull()
 })
 
@@ -306,11 +297,11 @@ test('nextCharge: the total on the trial or period end, discounted, none once ca
   const basic = { plan: 'basic', interval: 'month', pricing: 'per_seat', seats: 3 } as const
   expect(
     nextCharge(billingFixture({ ...basic, status: 'trialing', trial_end: '2026-11-14' })),
-  ).toEqual({ kind: 'trial', amount: { amount: 5700, currency: 'chf' }, date: '2026-11-14' })
+  ).toMatchObject({ kind: 'trial', amount: { amount: 3900, currency: 'chf' }, date: '2026-11-14' })
   const active = billingFixture({ ...basic, status: 'active', current_period_end: '2026-12-01' })
-  expect(nextCharge(active)).toEqual({
+  expect(nextCharge(active)).toMatchObject({
     kind: 'renewal',
-    amount: { amount: 5700, currency: 'chf' },
+    amount: { amount: 3900, currency: 'chf' },
     date: '2026-12-01',
   })
   const discount = {
@@ -322,7 +313,7 @@ test('nextCharge: the total on the trial or period end, discounted, none once ca
     duration_in_months: null,
     ends_at: null,
   } as const
-  expect(nextCharge({ ...active, discount })).toMatchObject({ amount: { amount: 2850 } })
+  expect(nextCharge({ ...active, discount })).toMatchObject({ amount: { amount: 1950 } })
   expect(nextCharge({ ...active, cancel_at_period_end: true })).toEqual({
     kind: 'ends',
     date: '2026-12-01',
@@ -440,7 +431,9 @@ test('usageItems shows the allowances of the entitlements, pooled ones grown by 
     custom: { expires_at: '2027-01-31T00:00:00Z' },
     reset_at: null,
   })
-  expect(items.find((item) => item.limit === 'expenses_per_month')).toMatchObject({ max: 0 })
+  expect(items.find((item) => item.limit === 'automation_actions_per_month')).toMatchObject({
+    max: 0,
+  })
   expect(items.find((item) => item.limit === 'emails_per_month')).toMatchObject({ max: null })
   expect(items.find((item) => item.limit === 'signatures_per_month')?.used).toBeNull()
   expect(items.find((item) => item.limit === 'quotes_per_month')).toMatchObject({

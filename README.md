@@ -36,7 +36,8 @@ Each item below is implemented and covered by tests in this repository:
   clients. Two-way sync with Google Calendar and Microsoft 365 (optional) and a private iCal feed per member.
 - **Client portal**: clients sign in on their own host to see invoices, engagements, sessions and shared documents.
 - **Notifications**: in-app and email notifications with per-person preferences.
-- **Subscription billing (optional)**: Stripe Checkout, webhooks, seats and plan limits. Off without a Stripe key.
+- **Subscription billing (optional)**: a free plan for one person, paid plans with tiered team prices through Stripe
+  Checkout and webhooks, and plan limits. Off without a Stripe key.
 - **AI features (optional)**: an assistant (Heidi) and AI-assisted imports through an OpenAI-compatible API, used
   only after each user approves AI use for themselves in that workspace. Off without an API key.
 - **Public API and MCP**: personal API tokens for a documented subset of the API (OpenAPI 3.1 at
@@ -234,8 +235,12 @@ Switzerland) also needs backups, access control and a documented process, which 
 ### Billing
 
 Billing is optional. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, prices are read from your Stripe
-account by lookup key `helvetly_<basic|pro|business>_<month|year>`: recurring, per seat, with the metadata
-`helvetly_pricing=per_seat`. Create those prices in your own Stripe account. Plan features and limits come from a
+account by lookup key `<offer>_<basic|pro|business>_<month|year>` (such as `helvetly-v1_pro_month`): recurring,
+graduated tiered prices (a flat amount for the people the plan includes, then each further person) whose quantity is
+the workspace's people, with the metadata `helvetly_pricing=per_seat`. Create those prices in your own Stripe account;
+`helvetly offer catalog` prints them from the published offer, and `helvetly billing reprice -workspace ID [-apply]`
+moves a live subscription onto the current offer's price. A workspace without a paid plan is on Free (one person,
+no card, no end; nothing is deleted, additions beyond Free's limits are refused). Plan features and limits come from a
 published offer: `limits` defines every key, `offer_versions` keeps each published offer (never changed afterwards),
 `limit_plans` its values per plan (a feature enabled or disabled, a limit limited or unlimited, growing with every
 paid seat where the offer says so), and `limit_workspaces` gives one workspace its own value until it expires. A
@@ -254,8 +259,10 @@ matter: billing reads only the event's id, type and object id, and reads the obj
 version, so a version change needs no new endpoint or secret. Only while rotating the signing secret, set
 `STRIPE_WEBHOOK_SECRET=whsec_new,whsec_old`: both verify, and an event delivered twice is applied once.
 
-Every accepted member (owner, accountant and read-only included) is a full-price seat on the one per-seat
-subscription item, up to the offer's self-service seats (25); open invitations and outside recipients are none. A
+Every accepted member (owner, accountant and read-only included) counts as one person on the one subscription
+item; the price includes the plan's first people (Basic 1, Pro 2, Business 5) and charges each further one, up to the
+plan's most people (Basic 5, Pro 25, Business unlimited). Pooled limits grow with the paid people, counting at least
+the included ones. Open invitations and outside recipients are none. A
 Checkout records what it sells (offer, plan, interval, currency, price, seats) in `billing_checkouts` before Stripe is
 asked, and the webhook settles the subscription only when it matches, putting the workspace on that offer. More seats
 than are paid for the period, an upgrade and monthly to yearly are invoiced at once and granted once paid. A smaller
@@ -263,11 +270,12 @@ plan and yearly to monthly are scheduled for the paid period's end (a subscripti
 billed from the renewal; nothing is credited and no data is deleted, though new growth beyond the smaller plan is
 refused. Increases of the costly monthly allowances (AI, email, transfer, automations) are granted pro rata to what is
 left of the UTC month. When a renewal fails, new AI work stops at once and the rest keeps working until three days
-after the paid period ended; then the workspace is read-only until the invoice is paid (Stripe's retries continue
+after the paid period ended; then the workspace is on Free until the invoice is paid (Stripe's retries continue
 meanwhile). A second subscription of the same workspace is cancelled with its unused time credited.
 
-The trial is the offer's (`trial`): its plan's features and limits for its days and seats (the current offer has no
-overrides: a trial's monthly limits are one pool for the whole trial). It needs a card, and a customer gets one: the person, their email and their card's fingerprint are kept as
+The trial is the offer's (`trial`): its plan's features and limits for one person, for its days and seats (the
+current offer: Pro for 14 days and up to 2 people, no overrides; a trial's monthly limits are one pool for the whole
+trial). It needs a card, and a customer gets one: the person, their email and their card's fingerprint are kept as
 digests in `trial_claims`, and a trial started again with a known card is ended at once. All trials together spend
 at most USD 20 a day on the AI model.
 

@@ -4,12 +4,12 @@ description: Annulla una fattura emessa con una nota di credito totale e scopri 
 category: Invoices and getting paid
 categoryLabel: Fatture e incassi
 order: 9
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 L’annullamento cancella una fattura emessa, così non resta più nulla da pagare.
 
-Annullare una fattura emessa richiede **Pro** o **Business**. In Basic puoi comunque modificare o eliminare una bozza.
+Annullare una fattura emessa richiede **Pro** o **Business**. In Free e Basic puoi comunque modificare o eliminare una bozza.
 
 1. Apri la fattura emessa e il menu **…**.
 2. Scegli **Void** e conferma con **Void invoice**.

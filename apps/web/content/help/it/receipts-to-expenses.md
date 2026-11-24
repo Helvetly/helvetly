@@ -4,12 +4,12 @@ description: Carica un gruppo di ricevute e lascia che l’IA trasformi ciascuna
 category: Expenses
 categoryLabel: Spese
 order: 2
-updated: 2026-11-16
+updated: 2026-11-24
 ---
 
 Evita l’inserimento manuale: carica le ricevute e l’IA le trasforma in bozze di spesa.
 
-Le spese e l’importazione delle ricevute richiedono **Pro** o **Business**.
+Le spese sono incluse in ogni piano; la lettura delle ricevute con l’IA richiede **Pro** o **Business**.
 
 1. Vai a **Expenses** e fai clic su **Upload receipts** oppure trascina i file sulla pagina.
 2. Fai clic su **Read files**. L’IA legge ogni ricevuta e crea una bozza di spesa.

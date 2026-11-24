@@ -3,12 +3,12 @@ title: Add an expense with a receipt
 description: Record an expense with its receipt, amounts, input tax and payment status, then save it as a draft or book it.
 category: Expenses
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Keep every business cost together with its receipt.
 
-Expenses need **Pro** or **Business**.
+Expenses are in every plan, within its monthly allowance.
 
 1. Go to **Expenses** and click **New expense**.
 2. Under **Receipt**, drop the receipt file or click to choose it. A PDF or photo works, up to 25 MB each.

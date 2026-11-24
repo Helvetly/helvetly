@@ -176,21 +176,27 @@ export const PlanEnding: Story = {
 }
 export const PlanEndingDark = dark(PlanEnding)
 
-/** Read-only workspaces show the plan picker everywhere but on billing, where the sidebar stays. */
-export const ReadOnly: Story = {
-  parameters: {
-    ...page(live({ plan: '', status: 'canceled', locked: true })),
-    nextjs: { navigation: { pathname: '/settings/billing', query: {} } },
-  },
-  render: () => (
-    <Frame>
-      <p className="p-6 text-muted-foreground">Billing</p>
-    </Frame>
-  ),
+/** A renewal unpaid past the grace: the workspace is on Free until the open invoice is paid, and says so. */
+export const OverdueOnFree: Story = {
+  parameters: page(live({ plan: 'free', status: 'past_due', interval: '', payment_overdue: true })),
   play: async ({ canvasElement }) => {
     const card = await notice(canvasElement)
-    await expect(card.getByText('Read-only workspace')).toBeVisible()
-    await expect(card.getByRole('link', { name: 'Choose a plan' })).toBeVisible()
+    await expect(card.getByText('Payment failed')).toBeVisible()
+    await expect(card.getByText(/on Free until the open invoice is paid/)).toBeVisible()
+    await expect(card.queryByText('Read-only workspace')).toBeNull()
+    await expect(card.getByRole('link', { name: 'Update payment' })).toBeVisible()
+  },
+}
+
+/** Free says nothing in the sidebar (no read-only banner); the switcher names it. */
+export const FreePlan: Story = {
+  parameters: page(billingFixture({ has_customer: false })),
+  play: async ({ canvasElement }) => {
+    const screen = await openSidebar(canvasElement)
+    await waitFor(() =>
+      expect(screen.getAllByTestId('workspace-plan')[0]).toHaveTextContent(/^Free$/),
+    )
+    await expect(screen.queryByRole('region', { name: 'Plan' })).toBeNull()
   },
 }
 

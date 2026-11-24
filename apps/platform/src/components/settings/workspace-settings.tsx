@@ -23,7 +23,7 @@ import { confirmPhrase } from '@/components/confirm-phrase'
 import { MAX_WORKSPACE_NAME } from '@/components/onboarding/onboarding-model'
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
 import { setCsrfToken } from '@/lib/api'
-import { useBilling } from '@/lib/billing'
+import { isPaid, useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { canManage, useDeleteWorkspace } from '@/lib/members'
 import { useCan } from '@/lib/permissions'
@@ -280,7 +280,7 @@ export function DeleteDialog({ name, onClose }: { name: string; onClose: () => v
   const router = useRouter()
   const remove = useDeleteWorkspace()
   const plan = useBilling().data
-  const paid = plan?.enabled && plan.plan !== ''
+  const paid = plan?.enabled && isPaid(plan.plan)
   const [typed, setTyped] = useState('')
   const confirm = confirmPhrase((value) => translate('typeToConfirm2', { name: value }), name)
 

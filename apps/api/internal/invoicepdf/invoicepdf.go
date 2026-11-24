@@ -38,6 +38,7 @@ type Document struct {
 	Logo       []byte        // PNG or JPEG (checked with CheckLogo), nil for none
 	Refund     bool          // credit note on a paid invoice: its amount is paid back, not offset
 	SelfBilled bool          // credit note against a self-billed invoice: printed like one
+	SentWith   bool          // the page footer ends with "Created with Helvetly" (Free and Basic)
 }
 
 // Logo box on the first page, in mm: at most 18 mm high and, for a wordmark, up to 75 mm wide where the text beside
@@ -191,7 +192,7 @@ func newRenderer(d Document, title string) (*renderer, *bool, error) {
 				r.cell(left, contactY, contentW, 4, r.contact, "C")
 			}
 			r.lines(left, r.footerTop(), contentW, footerH, r.footer, "C")
-			r.cell(left, pageNoY, contentW, 4, fmt.Sprintf(l.Page, pdf.PageNo()), "C")
+			r.cell(left, pageNoY, contentW, 4, withHelvetly(fmt.Sprintf(l.Page, pdf.PageNo()), l, r.d.SentWith), "C")
 			pdf.SetTextColor(0, 0, 0)
 		}
 	})
@@ -881,4 +882,12 @@ func senderLine(parts ...string) string {
 		}
 	}
 	return strings.Join(kept, ", ")
+}
+
+// withHelvetly is a page's footer text, followed by "Created with Helvetly" when sent says so.
+func withHelvetly(page string, l labels, sent bool) string {
+	if !sent {
+		return page
+	}
+	return page + "  ·  " + l.MadeWith + " Helvetly"
 }

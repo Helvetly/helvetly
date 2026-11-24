@@ -14,7 +14,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// Wire gives st billing's feature gate and quota admission; a workspace without a plan (On) is read-only.
+// Wire gives st billing's feature gate and quota admission; a workspace without a paid plan (On) is on Free.
 func Wire(t testing.TB, st *store.Store) *billing.Service {
 	t.Helper()
 	cfg := config.Config{Stripe: config.Stripe{SecretKey: "sk_test_billingtest"}} // never called: no checkout here
@@ -36,6 +36,16 @@ func On(t testing.TB, st *store.Store, workspaceID, plan string) {
 	sub := store.Subscription{ID: "sub_" + workspaceID, Status: "active", Plan: plan, Interval: "month", CurrentPeriodEnd: &end,
 		PerSeat: true, Seats: 1, PlanExpiresAt: &end}
 	if err := st.ApplySubscription(context.Background(), workspaceID, "cus_"+workspaceID, sub, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Without takes feature away from the workspace (an operator's override), for a test of what a plan without it does
+// now that every plan has it (scheduling).
+func Without(t testing.TB, st *store.Store, workspaceID, feature string) {
+	t.Helper()
+	w := store.WorkspaceLimit{WorkspaceID: workspaceID, Key: feature, State: billing.StateDisabled, Reason: "test: a plan without " + feature}
+	if err := billing.SetWorkspaceOverride(context.Background(), st, w, "test", time.Now()); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -4,12 +4,12 @@ description: Monitora le spese non pagate e anticipate personalmente, segnale co
 category: Expenses
 categoryLabel: Spese
 order: 3
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Tieni traccia delle spese pagate e di chi deve ancora ricevere un rimborso.
 
-Le spese richiedono **Pro** o **Business**.
+Le spese sono incluse in ogni piano, entro la sua disponibilità mensile.
 
 1. Vai a **Expenses**. Usa le schede **To review**, **Unpaid** e **To reimburse** per trovare ciò che richiede un intervento.
 2. Seleziona le spese e fai clic su **Mark paid** o **Mark unpaid**. Oppure aprine una, fai clic su **Edit** e modifica **Payment**.

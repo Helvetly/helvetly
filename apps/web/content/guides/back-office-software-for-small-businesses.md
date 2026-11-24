@@ -2,7 +2,7 @@
 title: How to choose back-office software
 description: Choose back-office software for a small business: clients, invoices, expenses, documents, books, employee records, AI and support for local requirements.
 category: Choosing software
-updated: 2026-11-20
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -58,7 +58,7 @@ In Helvetly, specifically:
 
 - **Clients** have contact persons, files and billing defaults such as currency, document language and payment terms ([add a client](/help/add-a-client)).
 - **Invoices** come in eight document types, from invoice and partial invoice to credit note and proforma, with a Swiss QR bill, in German, French, Italian or English.
-- **Expenses** keep their receipts and input VAT (Pro and Business); AI can turn receipts into expenses.
+- **Expenses** keep their receipts and input VAT in every plan; on Pro and Business, AI can turn receipts into expenses.
 - **Documents** are stored once per workspace: the same file uploaded twice is recognised by its content.
 - **Signatures** are simple electronic signatures with an audit trail; qualified signatures are not offered ([send a PDF for signature](/help/send-a-pdf-for-signature)).
 - **Engagements** track retainers and the hours left, and turn delivered work into draft invoices.
@@ -78,7 +78,7 @@ A solo consultant needs fast quotes and invoices, a QR bill, reminders that send
 | Audit log and closed periods        | Nice to have        | Important                         |
 | Client portal                       | Rarely              | Often, with many clients          |
 
-Look at the pricing model too. Some tools charge one price however many people use it (Magic Heidi), some include a number of users per tier (bexio, AbaNinja), and some charge per person (Helvetly, where every team member is a paid seat). A per-person price is simple for one or two people; a flat price can be cheaper for a larger team.
+Look at the pricing model too. Some tools charge one price however many people use it (Magic Heidi), some include a number of users per tier (bexio, AbaNinja), and some include a few people and charge for each further one (Helvetly: 1 person on Basic, 2 on Pro and 5 on Business, plus a free plan for one person). Compare what your team's size would cost, not only the entry price.
 
 ## What changes when you have clients abroad?
 

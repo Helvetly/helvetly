@@ -3,12 +3,12 @@ title: Stornování faktury
 description: Zrušte vystavenou fakturu úplným dobropisem a zjistěte, jak namísto toho smazat návrh.
 category: Invoices and getting paid
 order: 9
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Stornování zruší vystavenou fakturu, takže již není nic dlužné.
 
-Stornování vystavené faktury vyžaduje **Pro** nebo **Business**. V Basic můžete nadále upravovat či mazat návrhy.
+Stornování vystavené faktury vyžaduje **Pro** nebo **Business**. Ve Free a Basic můžete nadále upravovat či mazat návrhy.
 
 1. Otevřete vystavenou fakturu a nabídku **…**.
 2. Vyberte **Void** a potvrďte přes **Void invoice**.

@@ -51,7 +51,7 @@ func (s *Service) importSource(ctx context.Context, src store.CalendarSource) er
 	if p == nil {
 		return retry(pollEvery)
 	}
-	if ok, err := s.db.FeatureAllowed(ctx, c.WorkspaceID, store.FeatureScheduling); err != nil || !ok {
+	if ok, err := s.db.FeatureAllowed(ctx, c.WorkspaceID, store.FeatureCalendarSync); err != nil || !ok {
 		return errors.Join(err, retry(pollEvery)) // paused while the plan lacks Scheduling
 	}
 	sess, err := s.session(ctx, c, true)

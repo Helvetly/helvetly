@@ -73,7 +73,7 @@ const settings = (billing: Billing) => ({
 const price = (canvas: HTMLElement) => canvas.querySelector('[data-slot=plan-price]')
 const nextStep = (canvas: HTMLElement) => canvas.querySelector('[data-slot=plan-next]')
 const tile = (canvas: ReturnType<typeof within>, name: string) =>
-  within(canvas.getByRole('region', { name }))
+  within(canvas.getByRole('article', { name }))
 
 export const PerSeatSummary: Story = {
   ...settings(perSeat()),
@@ -81,10 +81,10 @@ export const PerSeatSummary: Story = {
     const canvas = within(canvasElement)
     const summary = within(await canvas.findByRole('region', { name: 'Plan' }))
     await expect(price(canvasElement)).toHaveTextContent(
-      /CHF 49 per person × 3 people\s*CHF 147\s*\/ month/,
+      /CHF 49 for 2 people \+ 1 person at CHF 15\s*CHF 64\s*\/ month/,
     )
     await expect(summary.getByText('Renews on 1 Dec 2026')).toBeVisible()
-    await expect(nextStep(canvasElement)).toHaveTextContent('Next charge CHF 147.')
+    await expect(nextStep(canvasElement)).toHaveTextContent('Next charge CHF 64.')
     await expect(
       summary.queryByRole('button', { name: 'About the flat price' }),
     ).not.toBeInTheDocument()
@@ -107,7 +107,7 @@ export const PerSeatYearlySummary: Story = {
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('region', { name: 'Plan' })
     await expect(price(canvasElement)).toHaveTextContent(
-      /CHF 183 per person × 2 people\s*CHF 366\s*\/ year/,
+      /CHF 183 for 1 person \+ 1 person at CHF 96\s*CHF 279\s*\/ year/,
     )
   },
 }
@@ -145,28 +145,26 @@ export const PlanTilesPerPerson: Story = {
   render: () => <ChangePlan />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await canvas.findByRole('region', { name: 'Basic' })
+    await canvas.findByRole('article', { name: 'Basic' })
     await expect(canvas.getByText(/3 people in this workspace now/)).toBeVisible()
-    const basic = tile(canvas, 'Basic')
     const total = (plan: string) =>
-      canvas.getByRole('region', { name: plan }).querySelector('[data-slot=team-total]')
-    await expect(basic.getByText('per person / month')).toBeVisible()
-    await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 57 / month')
-    // The most people a plan takes is its first line, once the public offer has loaded.
-    await expect(await basic.findByRole('list', { name: 'Basic includes' })).toHaveTextContent(
-      /^\d+ team members/,
+      canvas.getByRole('article', { name: plan }).querySelector('[data-slot=team-total]')
+    // Each plan's price covers its first people, each further one adds a little.
+    await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent(
+      '1 person incl. · +CHF 10 / person',
     )
-    await expect(total('Business')).toHaveTextContent('For 3 peopleCHF 297 / month')
+    await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 39 / month')
+    await expect(total('Pro')).toHaveTextContent('For 3 peopleCHF 64 / month')
+    await expect(total('Business')).toHaveTextContent('For 3 peopleCHF 149 / month')
+    // How many people each plan takes is one of its lead features.
+    await expect(tile(canvas, 'Basic').getByText('Up to 5 people')).toBeVisible()
     // Seats follow the workspace's people: nobody picks a number here.
     await expect(canvas.queryByRole('button', { name: 'More people' })).not.toBeInTheDocument()
-    await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
-    await expect(basic.getByText('per person / month')).toBeVisible()
-    await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 549 / year')
-    // The yearly amount is bold, so the sentence is split in two nodes.
-    await expect(
-      basic.getByText('CHF 183', { selector: 'strong' }).parentElement,
-    ).toHaveTextContent('CHF 183 a year, billed yearly')
-    await expect(basic.getByText('CHF 15.25', { exact: true })).toBeVisible()
+    await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
+    await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 375 / year')
+    await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent(
+      'CHF 183 / year · save CHF 45',
+    )
   },
 }
 
@@ -191,7 +189,7 @@ export const InviteWithCost: Story = {
   ...invite(perSeat()),
   play: async () => {
     const body = within(document.body)
-    const note = await body.findByText('Adds CHF 49 / month incl. VAT once accepted')
+    const note = await body.findByText('Adds CHF 15 / month incl. VAT once accepted')
     // The sheet fades in.
     await waitFor(() => expect(note).toBeVisible())
     await expect(body.getByRole('button', { name: 'Send invitation' })).toBeVisible()
@@ -281,7 +279,7 @@ export const RemoveMemberShowsSaving: Story = {
     const dialog = await askRemove(canvasElement)
     await waitFor(() =>
       expect(
-        dialog.getByText(/Saves CHF 49 \/ month incl\. VAT, prorated by Stripe\./),
+        dialog.getByText(/Saves CHF 15 \/ month incl\. VAT, prorated by Stripe\./),
       ).toBeVisible(),
     )
   },

@@ -47,7 +47,8 @@ export function OnboardingRedirect({
     fresh && billing.isPending && billing.failureCount === 0 && billing.errorUpdateCount === 0
   const locked = Boolean(billing.data?.enabled && billing.data.locked)
   const welcome = isWelcome(pathname)
-  const away = fresh && !waiting && (locked ? welcome : !welcome)
+  // The wait after Checkout stays put (the workspace is on Free until the plan is in), then goes home and on here.
+  const away = fresh && !waiting && !isActivating(pathname ?? '') && (locked ? welcome : !welcome)
 
   useEffect(() => {
     if (!away) return

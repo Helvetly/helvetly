@@ -20,15 +20,20 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 
 ## 3. Plans, trial and prices
 
-- There is no free plan. Each workspace needs its own subscription: **Basic**, **Pro** or
+- Each workspace has its own plan: **Free**, or a subscription to **Basic**, **Pro** or
   **Business**. The plans differ in features and allowances, as shown on the
-  [pricing page](/pricing) before you buy and in Settings → Billing. Heidi,
-  expenses, templates, signatures, invoice corrections, VAT returns, the ledger, data exports and
+  [pricing page](/pricing) before you buy and in Settings → Billing. Heidi, AI import,
+  templates, signatures, invoice corrections, VAT returns, the ledger, data exports and
   automations need Pro or Business; the client portal and e-invoice XML exports need Business.
+- **Free** costs nothing, needs no card and has no end date. It is for one person and has the
+  smallest allowances. A workspace without a paid plan is on Free.
+- On Free and Basic, emails sent to your clients and the PDFs you create carry a short "Sent with
+  Helvetly" line; Pro and Business do not.
 - **Allowances:** clients, products, engagements, stored drafts and stored quotes are fixed caps per
   workspace, where the plan sets one. The other allowances (such as invoice issues, quote sends, expenses, signature requests, storage,
-  downloads, emails, AI tokens and automation actions) are per paid seat and add up into one pool
-  for the workspace; adding or changing a member does not renew them. Monthly allowances restart at
+  emails, AI tokens and automation actions) are per person and add up into one pool for the
+  workspace, counting at least the people the plan includes; adding or changing a member does not
+  renew them. Monthly allowances restart at
   00:00 UTC on the first day of each month; the first part-month and increases during a month are
   prorated. Paying yearly does not grant twelve months of allowances at once. Storage counts what
   the workspace keeps, including history and files in the trash, and does not restart. MB and GB
@@ -36,27 +41,29 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - When an allowance is used up, the new action that needs it is refused until the next month or an
   upgrade; nothing is charged extra and nothing is deleted, and drafts and manual work remain
   available.
-- Prices are **per seat**: every person in the workspace (owner, admins and members, whatever their
-  access) is one seat at the full price of the plan; no extra seats are included. An open invitation
-  takes no seat until it is accepted, and clients in the portal and people asked to sign a document
-  take none. Up to 25 seats can be bought in the app; more on request. Per seat and month: Basic CHF 19, Pro
-  CHF 49 and Business CHF 99. Paying yearly costs twelve months less 20 %, rounded up to a whole
-  franc (CHF 183, 471 and 951 per seat and year).
+- Each paid plan's price **includes a number of people**, and each further person costs extra. Every
+  person in the workspace (owner, admins and members, whatever their access) counts. An open
+  invitation counts only once it is accepted, and clients in the portal and people asked to sign a
+  document do not count. Per month: Basic CHF 19 with 1 person, each further person CHF 10, up to
+  5 people; Pro CHF 49 with 2 people, each further person CHF 15, up to 25 people; Business CHF 149
+  with 5 people, each further person CHF 20. Paying yearly costs twelve months less 20 %, rounded up
+  to a whole franc (Basic CHF 183 and CHF 96 per further person, Pro CHF 471 and CHF 144, Business
+  CHF 1,431 and CHF 192 a year).
 - Prices are shown and charged in **CHF** in Switzerland and Liechtenstein, in **EUR** in the EU and
-  in **USD** everywhere else, with the same figures (Basic EUR 19 or USD 19 per seat and month, and so
-  on); your location decides which. Once you have paid, Stripe keeps that currency for your later
+  in **USD** everywhere else, with the same figures (Basic EUR 19 or USD 19 a month, and so on); your location decides which. Once you have paid, Stripe keeps that currency for your later
   payments.
 - Prices **include Swiss VAT** where we charge it: the price shown is the price paid. Where your business is abroad and the reverse charge applies, the same amount is charged without
   VAT and you account for the tax yourself.
-- When people join or leave the workspace, the number of seats follows: an added seat is charged at once, prorated from the day of the change, and a freed seat stops being billed from the next renewal (nothing is credited). Subscriptions
+- When people join or leave the workspace, the number of people billed follows: a person added beyond
+  those included is charged at once, prorated from the day of the change, and one who leaves stops
+  being billed from the next renewal (nothing is credited). Subscriptions
   taken out at an earlier flat price per workspace keep that price, and its member limit, until
   their plan or billing interval changes.
-- **Trial:** New eligible trials include only Pro features for 7 days, with up to 2 members and
-  small allowances for the whole trial (10 invoice issues, 10 quote sends, 20 expenses, 2 signature requests,
-  100 MB storage, 250,000 AI tokens and 50 automation actions) that neither restart nor grow with
-  the number of members. A card is required. Without a valid card at the end of the trial, the
-  subscription ends. Each customer gets one trial only. Once the trial converts, every member is
-  billed at the full price of the chosen plan.
+- **Trial:** New eligible trials include Pro for 14 days, with up to 2 people and Pro's allowances
+  for one person for the whole trial, which neither restart nor grow with the number of people. A
+  card is required. Without a valid card at the end of the trial, the subscription ends and the
+  workspace moves to Free. Each customer gets one trial only. Once the trial converts, the chosen
+  plan's price applies.
   Trials already granted under earlier offers keep their original terms.
 - Promotion codes apply only as stated with the code.
 
@@ -65,7 +72,7 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - Payments are processed by Stripe. Helvetly never sees your full card details.
 - Subscriptions are paid in advance and **renew automatically** for the same period (a month or a
   year) until cancelled. If a payment fails, Stripe retries it; the plan stays active until three days
-  after the end of the paid period, then the workspace is read-only until the invoice is paid.
+  after the end of the paid period, then the workspace is on Free until the invoice is paid.
 - Apart from the trial, a plan starts only once its first payment goes through: an unpaid first
   payment never activates it.
 - **Upgrades** and moving from monthly to yearly are charged at once, prorated, and apply once that
@@ -81,12 +88,13 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
 - We may change prices with at least 30 days' notice by email. A new price applies from your next
   renewal; you may cancel before it does.
 
-## 5. Read-only workspaces and data export
+## 5. Workspaces without a paid plan and data export
 
 - A workspace without a live subscription (trial ended, cancelled, ended after a lost chargeback, or a
-  payment still unpaid three days after the paid period ended) becomes **read-only**: you can still see and download everything, but cannot change anything until you
-  choose a plan again.
-- In every plan, and in a read-only workspace, you can see and download each existing record and
+  payment still unpaid three days after the paid period ended) is on **Free**: nothing is deleted
+  and you can still see and download everything, including records beyond Free's allowances, but
+  new additions must fit Free's features and allowances until you choose a paid plan again.
+- In every plan you can see and download each existing record and
   document, such as a single invoice PDF. With Pro or Business, owners can also **download the whole
   workspace** (records and files, as a ZIP) and business exports such as client and product CSV in
   Settings → Workspace → Export all data. Everyone can download their own account data as JSON.
@@ -150,8 +158,8 @@ You must not:
 - AI answers and extracted records can be **wrong or incomplete**. Check them before you rely on
   them; AI import creates nothing until a person reviews and confirms the records. Nothing Heidi says
   is legal, tax or financial advice.
-- Heidi and AI import need Pro or Business, which include a monthly allowance of AI tokens per paid
-  seat, shared by the workspace; Basic includes no AI features and no AI tokens. Requests, responses
+- Heidi and AI import need Pro or Business, which include a monthly allowance of AI tokens per
+  person, shared by the workspace; Free and Basic include no AI features and no AI tokens. Requests, responses
   and conversation context use tokens. When the allowance is used up, the AI features pause until
   the next month or an upgrade.
 - **Automations** (such as scheduled invoices, automatic sending and payment reminders) need Pro or

@@ -4,12 +4,12 @@ description: Invitez vos collègues ou votre comptable par e-mail ou par lien et
 category: Team and workspace
 categoryLabel: Équipe et espace de travail
 order: 4
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Faites entrer vos collègues ou votre comptable dans votre espace de travail avec les accès dont ils ont besoin.
 
-Chaque membre ayant accepté l’invitation est un utilisateur facturé au prix complet de votre formule. Les invitations en attente, les clients du portail et les signataires sollicités n’occupent aucune place payante.
+Free est prévu pour une seule personne : pour inviter quelqu’un, il faut une formule payante. Basic comprend 1 personne, Pro 2 et Business 5 ; chaque membre ayant accepté l’invitation au-delà s’ajoute au prix mensuel. Les invitations en attente, les clients du portail et les signataires sollicités ne sont pas comptés.
 
 1. Ouvrez **Members** et cliquez sur **Invite member**.
 2. Saisissez son **Email**.

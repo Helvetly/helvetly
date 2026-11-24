@@ -24,17 +24,24 @@ func TestScheduledEventsAdmission(t *testing.T) {
 		return e.st.CreateSchedEvent(ctx, store.SchedEvent{ID: fmt.Sprintf("sev_%d", n), WorkspaceID: ws,
 			ClientID: "cli_1", Title: "Lesson", Mode: "live", TimeZone: "UTC", StartsLocal: now, DurationMinutes: 60, CreatedAt: now, UpdatedAt: now})
 	}
-	e.subscribe(ws, "price_bm")
+	seed := func(n int) {
+		e.exec(`INSERT INTO usage_events (workspace_id, resource, operation, params_hash, period, reserved, consumed, created_at, settled_at)
+			SELECT $1, $2, 'seed' || $4 || ':' || i, '', $3, 0, 1, now(), now() FROM generate_series(1, $4::int) AS i`,
+			ws, string(ScheduledEvents), store.UsagePeriod(time.Now()), n)
+	}
+	e.subscribe(ws, "price_bm") // Basic: 10 a month
+	seed(9)
+	if err := create(); err != nil {
+		t.Fatalf("Basic's 10th event: %v", err)
+	}
 	if err := create(); !denied(err) {
-		t.Fatalf("Basic scheduled an event: %v", err)
+		t.Fatalf("Basic's 11th event: %v", err)
 	}
 	e.subscribe(ws, "price_pm")
 	if got := e.cap(ws, ScheduledEvents); got != 100 {
 		t.Fatalf("Pro's %s is %d, the offer sells 100", ScheduledEvents, got)
 	}
-	e.exec(`INSERT INTO usage_events (workspace_id, resource, operation, params_hash, period, reserved, consumed, created_at, settled_at)
-		SELECT $1, $2, 'seed' || i, '', $3, 0, 1, now(), now() FROM generate_series(1, 99) AS i`,
-		ws, string(ScheduledEvents), store.UsagePeriod(time.Now()))
+	seed(89) // 99 with Basic's 10
 	if err := create(); err != nil {
 		t.Fatalf("the 100th event: %v", err)
 	}

@@ -79,6 +79,13 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "billing" { // `helvetly billing reprice …`: a subscription onto the offer on sale
+		if err := billingCommand(os.Args[2:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "offer" { // `helvetly offer …`: validate, diff and publish offers; workspace overrides
 		if err := offerCommand(os.Args[2:], os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, err)

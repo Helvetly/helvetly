@@ -71,7 +71,11 @@ export default async function HomePage({ params }: Props) {
             '@type': 'UnitPriceSpecification',
             price: plan.monthly,
             priceCurrency: 'CHF',
-            unitText: 'per person per month',
+            // The base price covers the plan's included people; each further person costs extra.
+            unitText:
+              plan.includedPeople === 1
+                ? 'per month, 1 person included'
+                : `per month, ${plan.includedPeople} people included`,
             valueAddedTaxIncluded: true,
           },
         })),
@@ -106,7 +110,7 @@ export default async function HomePage({ params }: Props) {
                 {translate('pricingHeadingEnd')}
               </>
             }
-            lead={translate('eachTeamMemberPaysThePlanSPriceStart', {
+            lead={translate('startFreeThenGrowPricingLead', {
               YEARLY_DISCOUNT_PERCENT: YEARLY_DISCOUNT_PERCENT,
             })}
           />

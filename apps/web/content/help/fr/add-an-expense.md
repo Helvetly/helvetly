@@ -4,12 +4,12 @@ description: Enregistrez une dépense avec son justificatif, ses montants, l’i
 category: Expenses
 categoryLabel: Dépenses
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Conservez chaque charge professionnelle avec son justificatif.
 
-Les dépenses nécessitent **Pro** ou **Business**.
+Les dépenses sont disponibles dans toutes les formules, dans la limite de leur quota mensuel.
 
 1. Ouvrez **Expenses** et cliquez sur **New expense**.
 2. Sous **Receipt**, déposez le justificatif ou cliquez pour le sélectionner. Les PDF et photos sont acceptés, jusqu’à 25 Mo par fichier.

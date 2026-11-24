@@ -9,7 +9,7 @@ import { compareIn } from '@/lib/compare'
 import { faqIn, TOPICS } from '@/lib/faq'
 import { translatorFor } from '@/lib/i18n'
 import { OFFER_URL } from '@/lib/offer'
-import { plansIn } from '@/lib/plans'
+import { plansIn, TRIAL_DAYS } from '@/lib/plans'
 import golden from '@/lib/public-offer.golden.json'
 import { siteIn } from '@/lib/site'
 
@@ -29,7 +29,6 @@ import TermsPage from './(default)/terms/page'
 import HomePage from './[lang]/page'
 
 const { COMPETITORS } = compareIn('en')
-const { FEATURE_GROUPS } = plansIn('en')
 /** The English route: no language segment. */
 const english = { params: Promise.resolve({}) }
 
@@ -75,7 +74,9 @@ describe('home page', () => {
       ),
     ).toBeTruthy()
     expect(
-      screen.getByRole('link', { name: /Start your 7-day Pro trial/ }).getAttribute('href'),
+      screen
+        .getByRole('link', { name: new RegExp(`Start your ${TRIAL_DAYS}-day Pro trial`) })
+        .getAttribute('href'),
     ).toBe('http://localhost:8000/login')
   })
 
@@ -118,6 +119,7 @@ describe('home page', () => {
       expect(
         app.offers.map((offer: { name: string; price: number }) => [offer.name, offer.price]),
       ).toEqual(plansIn(lang).PLANS.map((plan) => [plan.name, plan.monthly]))
+      expect(app.offers[0]).toMatchObject({ price: 0, priceSpecification: { price: 0 } })
     },
   )
 })
@@ -199,63 +201,53 @@ const cells = (table: HTMLElement, name: string) =>
     .getAllByRole('cell')
     .map((c) => c.textContent)
 
+/** The plans in order: Free's row under the cards, then the cards Basic, Pro, Business. */
+const card = (index: number) =>
+  index === 0
+    ? document.querySelector<HTMLElement>('[data-slot="free-plan"]')!
+    : screen.getAllByRole('article')[index - 1]!
+
 describe('pricing page', () => {
   beforeEach(() => {
     inZone('Europe/Zurich')
     serve()
+    window.history.replaceState(null, '', '/')
+    sessionStorage.clear()
   })
   afterEach(() => vi.restoreAllMocks())
 
   describe.each(['en', 'de', 'fr', 'it', 'nl', 'cs', 'sv'] as const)(
-    '%s annual pricing formatting',
+    '%s yearly pricing',
     (language) => {
       it.each([
         ['home', HomePage],
         ['pricing', PricingPage],
-      ] as const)(
-        'bills the year, bolds the saving and keeps percentages joined on %s',
-        async (_, Page) => {
-          const { container } = await renderPage(
-            <LanguageProvider language={language}>
-              {await Page({ params: Promise.resolve({ lang: language }) })}
-            </LanguageProvider>,
-          )
-          await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
-          expect(container.textContent?.match(/\S*\s+%/gu) ?? []).toEqual([])
-          expect(container.textContent).toContain('20%')
-          for (const [index, [amount, saving]] of (
-            [
-              ['CHF 183', 'CHF 45'],
-              ['CHF 471', 'CHF 117'],
-              ['CHF 951', 'CHF 237'],
-            ] as const
-          ).entries()) {
-            const card = screen.getAllByRole('article')[index]!
-            const annual = within(card).getByText(
-              (_text, element) =>
-                element?.tagName === 'P' && (element.textContent ?? '').includes(amount),
-            )
-            expect(annual.querySelector('strong')?.textContent).toContain(saving)
-          }
-        },
-      )
+      ] as const)('names each year’s price and keeps percentages joined on %s', async (_, Page) => {
+        const { container } = await renderPage(
+          <LanguageProvider language={language}>
+            {await Page({ params: Promise.resolve({ lang: language }) })}
+          </LanguageProvider>,
+        )
+        await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
+        expect(container.textContent?.match(/\S*\s+%/gu) ?? []).toEqual([])
+        expect(container.textContent).toContain('20%')
+        for (const [index, amount] of ['CHF 183', 'CHF 471', 'CHF 1’431'].entries())
+          expect(card(index + 1).textContent?.replaceAll("'", '’')).toContain(amount)
+      })
     },
   )
 
   it('shows the same figures in the visitor’s currency', async () => {
     inZone('Europe/Berlin')
     await renderPage(await PricingPage(english))
-    const pro = screen.getAllByRole('article')[1]!
-    expect(within(pro).getByText('EUR')).toBeTruthy()
-    expect(within(pro).getByText('Billed EUR 471 yearly per person')).toBeTruthy()
-    expect(within(pro).getByText('You save EUR 117 per person per year vs monthly')).toBeTruthy()
+    expect(within(card(2)).getByText('EUR')).toBeTruthy()
+    expect(within(card(2)).getByText('EUR 471 / year')).toBeTruthy()
   })
 
   it('prefers the country Cloudflare saw to the time zone', async () => {
     serve({ trace: 'h=helvetly.com\nloc=GB\n' })
     await renderPage(await PricingPage(english))
-    const pro = screen.getAllByRole('article')[1]!
-    expect(await within(pro).findByText('Billed USD 471 yearly per person')).toBeTruthy()
+    expect(await within(card(2)).findByText('USD 471 / year')).toBeTruthy()
     expect(fetch).toHaveBeenCalledWith('/cdn-cgi/trace', expect.anything())
   })
 
@@ -265,12 +257,15 @@ describe('pricing page', () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
     expect(fetch.mock.calls.filter(([url]) => url === OFFER_URL)).toHaveLength(1)
     expect(screen.queryByText('Pricing is temporarily unavailable.')).toBeNull()
-    expect(screen.getByRole('link', { name: /Choose Pro/ }).getAttribute('href')).toBe(
-      'http://localhost:8000/login',
-    )
+    expect(
+      within(card(1))
+        .getByRole('link', { name: /Choose Basic/ })
+        .getAttribute('href'),
+    ).toBe('http://localhost:8000/login')
+    expect(within(card(2)).getByRole('link', { name: /Try Pro free for 14 days/ })).toBeTruthy()
   })
 
-  it('shows no price and no checkout while the API cannot confirm the offer', async () => {
+  it('shows no paid price and no checkout while the API cannot confirm the offer', async () => {
     serve({ offer: false })
     await renderPage(await PricingPage(english))
     const alert = await screen.findByRole('alert')
@@ -278,14 +273,18 @@ describe('pricing page', () => {
     expect(within(alert).getByRole('button', { name: 'Retry' }).getAttribute('aria-busy')).toBe(
       'false',
     )
-    for (const card of screen.getAllByRole('article')) {
-      expect(card.textContent).not.toMatch(/CHF|\/ person \/|billed|\b(19|49|99|183|471|951)\b/)
-      expect(within(card).getByText('Price unavailable')).toBeTruthy()
+    for (const index of [1, 2, 3]) {
+      expect(card(index).textContent).not.toMatch(/CHF|billed|\b(19|49|149|183|471)\b/i)
+      expect(within(card(index)).getByText('Price unavailable')).toBeTruthy()
     }
-    for (const name of [/Choose Basic/, /Choose Pro/, /Choose Business/, /Start with Pro/])
+    for (const name of [/Choose Basic/, /Try Pro free/, /Choose Business/])
       for (const button of screen.getAllByRole('button', { name }))
         expect(button.hasAttribute('disabled')).toBe(true)
-    expect(screen.queryByRole('link', { name: /Choose|Start with/ })).toBeNull()
+    expect(
+      screen.queryByRole('link', { name: /Choose (Basic|Business)|Try Pro free for/ }),
+    ).toBeNull()
+    // Free costs nothing to confirm.
+    expect(within(card(0)).getByRole('link', { name: /Start free/ })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'support@helvetly.com' }).getAttribute('href')).toBe(
       'mailto:support@helvetly.com',
     )
@@ -307,52 +306,95 @@ describe('pricing page', () => {
       expect(screen.queryByText('Pricing is temporarily unavailable.')).toBeNull(),
     )
     expect(again).toHaveBeenCalledExactlyOnceWith(OFFER_URL, expect.anything())
-    expect(within(screen.getAllByRole('article')[1]!).getByText('39.25')).toBeTruthy()
+    expect(within(card(2)).getByText('39.25')).toBeTruthy()
   })
 
-  it('shows yearly prices first and monthly ones on request', async () => {
+  it('shows yearly prices first, monthly ones on request, and keeps the choice in the address', async () => {
     await renderPage(await PricingPage(english))
-    const pro = screen.getAllByRole('article')[1]!
+    const pro = card(2)
     expect(within(pro).getByText('39.25')).toBeTruthy()
-    expect(within(pro).getByText('Billed CHF 471 yearly per person')).toBeTruthy()
-    expect(within(pro).getByText('You save CHF 117 per person per year vs monthly')).toBeTruthy()
+    expect(pro).toHaveTextContent('2 people incl. · +CHF 15 / person')
+    expect(pro).toHaveTextContent('CHF 471 / year · save CHF 117')
+    expect(screen.getByText('Save CHF 45 a year on Basic')).toBeTruthy()
 
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
     expect(within(pro).getByText('49')).toBeTruthy()
-    expect(within(pro).getByText('Billed monthly')).toBeTruthy()
+    expect(pro).toHaveTextContent('2 people incl. · +CHF 15 / person')
+    expect(pro).toHaveTextContent('Billed monthly')
+    expect(window.location.search).toBe('?billing=monthly')
+    // Free is a small, inviting row under the three paid cards, with three facts and no limits block.
+    expect(screen.getAllByRole('article').map((a) => a.dataset.plan)).toEqual([
+      'basic',
+      'pro',
+      'business',
+    ])
+    const free = card(0)
+    expect(within(free).getByRole('heading', { name: 'Just starting? Start free.' })).toBeTruthy()
+    expect(within(free).getByText('CHF 0 forever · 1 person · no card needed')).toBeTruthy()
+    expect(within(free).getByRole('link', { name: 'Start free' })).toBeTruthy()
+    expect(
+      within(within(free).getByRole('list', { name: 'What Free includes' }))
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['3 invoices & 3 quotes / month', 'Swiss QR bills', '5 clients'])
+    expect(within(free).queryByRole('definition')).toBeNull()
   })
 
-  it('compares every feature by area, with allowances in their cells', async () => {
+  it('compares every feature by group, with allowances in words', async () => {
     await renderPage(await PricingPage(english))
-    const table = screen.getByRole('table', { name: 'What each plan includes' })
+    const table = screen.getByRole('table', { name: 'Compare every feature' })
     expect(
       within(table)
-        .getAllByRole('rowheader')
-        .map((r) => r.getAttribute('aria-label')),
-    ).toEqual(FEATURE_GROUPS.flatMap((g) => g.rows.map((r) => r.label)))
-    // An amount and its unit on one line; no cap is ∞ (read out as Unlimited), as on the cards.
-    expect(cells(table, 'Clients and contacts')).toEqual([
-      '30 per workspace',
-      '300 per workspace',
-      '∞Unlimited per workspace',
+        .getAllByRole('columnheader')
+        .slice(0, 5)
+        .map((h) => h.textContent),
+    ).toEqual([
+      'Features',
+      expect.stringMatching(/^FreeCHF 0/),
+      expect.stringMatching(/^BasicCHF 15.25/),
+      expect.stringMatching(/^ProCHF 39.25/),
+      expect.stringMatching(/^BusinessCHF 119.25/),
     ])
-    expect(cells(table, 'Quotes')).toEqual(['5 / month', '100 / month', '∞Unlimited / month'])
-    expect(within(table).getByRole('rowheader', { name: 'Automated actions' }).textContent).toMatch(
-      /Each automatic step counts once/,
-    )
-    expect(cells(table, 'Heidi AI assistant')[0]).toBe('Not included')
-    expect(cells(table, 'Client portal')).toEqual(['Not included', 'Not included', 'Included'])
+    expect(cells(table, 'Clients')).toEqual(['5', '30', '300', 'Unlimited'])
+    expect(cells(table, 'Quotes')).toEqual(['3 / month', '5 / month', '100 / month', 'Unlimited'])
+    expect(cells(table, 'Heidi, your AI assistant')[1]).toBe('Not included')
+    expect(cells(table, 'White-labelled client portal on your own domain')).toEqual([
+      'Not included',
+      'Not included',
+      'Not included',
+      'Included',
+    ])
+    expect(table.textContent).not.toContain('∞')
   })
 
-  it('lists only what a plan includes on its card', async () => {
+  it('keeps each card compact: five features, three stats, short price lines, no limits table', async () => {
     await renderPage(await PricingPage(english))
-    expect(within(screen.getAllByRole('article')[0]!).queryByText(/not included/i)).toBeNull()
+    for (const index of [1, 2, 3]) {
+      const article = card(index)
+      const features = article.querySelector('[data-slot="plan-features"]')!
+      expect(within(features as HTMLElement).getAllByRole('listitem').length).toBeLessThanOrEqual(5)
+      const stats = article.querySelector('[data-slot="plan-stats"]')!.textContent!.split(' · ')
+      expect(stats.length).toBeLessThanOrEqual(3)
+      expect(article.querySelector('dl')).toBeNull()
+      for (const line of article.querySelectorAll('[data-slot="plan-price-terms"] p'))
+        expect(line.textContent!.length).toBeLessThanOrEqual(38)
+    }
+    expect(within(card(1)).getByText('Up to 5 people')).toBeTruthy()
+    const stats = (index: number) => card(index).querySelector('[data-slot="plan-stats"]')
+    expect(stats(1)).toHaveTextContent('15 invoices / mo · 30 clients · 500 MB')
+    expect(within(card(2)).getByText('AI import & smart capture')).toBeTruthy()
+    expect(within(card(3)).getByText('Everything in Pro')).toBeTruthy()
+    expect(within(card(3)).getByText('Approvals')).toBeTruthy()
+    expect(stats(3)?.textContent).toMatch(/^Unlimited invoices · Unlimited clients · \d+ GB$/)
+    expect(screen.getByRole('link', { name: 'Compare all features' }).getAttribute('href')).toBe(
+      '/pricing#compare-plans',
+    )
   })
 
   it('recommends Pro without claiming popularity', async () => {
     await renderPage(await PricingPage(english))
-    expect(within(screen.getAllByRole('article')[1]!).getByText('Recommended')).toBeTruthy()
-    expect(screen.queryByText(/most popular|every feature/i)).toBeNull()
+    expect(within(card(2)).getByText('Recommended')).toBeTruthy()
+    expect(screen.queryByText(/most popular|every feature in every plan/i)).toBeNull()
   })
 })
 
@@ -410,7 +452,8 @@ describe('comparison with Magic Heidi', () => {
     expect(screen.getByText('Team of 3 people')).toBeTruthy()
     const pro = document.querySelector('[data-plan="pro"]')!
     expect(pro).toHaveTextContent('CHF 615 / year')
-    expect(pro).toHaveTextContent('CHF 17.08 / person / month · saves CHF 153 a year vs monthly')
+    expect(pro).toHaveTextContent('+CHF 15 / person')
+    expect(pro).toHaveTextContent('Billed yearly −20% · save CHF 153')
     expect(screen.getByText(/Advanced CHF 504/)).toBeTruthy()
     expect(screen.getByText(/As published on 15 November 2026/)).toBeTruthy()
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))

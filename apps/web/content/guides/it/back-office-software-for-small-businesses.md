@@ -3,7 +3,7 @@ title: Come scegliere un software di back office
 description: Scegliere un gestionale per piccole imprese: clienti, fatture, spese, documenti, contabilità, fascicoli del personale, IA e requisiti locali.
 category: Choosing software
 categoryLabel: Scegliere un software
-updated: 2026-11-20
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -59,7 +59,7 @@ In Helvetly, nello specifico:
 
 - I **clienti** hanno persone di contatto, file e impostazioni di fatturazione predefinite come valuta, lingua del documento e condizioni di pagamento ([aggiungere un cliente](/help/add-a-client)).
 - Le **fatture** esistono in otto tipi di documento, da fattura e fattura parziale a nota di credito e proforma, con QR-fattura svizzera, in tedesco, francese, italiano o inglese.
-- Le **spese** conservano le ricevute e l’imposta precedente (Pro e Business); l’IA può trasformare le ricevute in spese.
+- Le **spese** conservano le ricevute e l’imposta precedente in ogni piano; con Pro e Business l’IA può trasformare le ricevute in spese.
 - I **documenti** sono archiviati una sola volta per spazio di lavoro: lo stesso file caricato due volte viene riconosciuto dal contenuto.
 - Le **firme** sono firme elettroniche semplici con traccia di controllo; le firme qualificate non sono offerte ([inviare un PDF da firmare](/help/send-a-pdf-for-signature)).
 - Gli **incarichi** (engagement) seguono i retainer e le ore rimanenti e trasformano il lavoro consegnato in bozze di fattura.
@@ -79,7 +79,7 @@ Un consulente da solo ha bisogno di preventivi e fatture rapidi, di una QR-fattu
 | Registro delle attività e periodi chiusi      | Utile                       | Importante                         |
 | Portale clienti                               | Raramente                   | Spesso, con molti clienti          |
 
-Guarda anche il modello di prezzo. Alcuni strumenti fanno pagare un prezzo unico indipendentemente da quante persone lo usano (Magic Heidi), altri includono un certo numero di utenti per livello (bexio, AbaNinja) e altri ancora si pagano per persona (Helvetly, dove ogni membro del team è un posto a pagamento). Un prezzo per persona è semplice per una o due persone; un prezzo fisso può costare meno per un team più grande.
+Guarda anche il modello di prezzo. Alcuni strumenti fanno pagare un prezzo unico indipendentemente da quante persone lo usano (Magic Heidi), altri includono un certo numero di utenti per livello (bexio, AbaNinja) e altri ancora includono alcune persone e fanno pagare ogni persona in più (Helvetly: 1 persona con Basic, 2 con Pro e 5 con Business, più un piano gratuito per una persona). Confronta quanto costerebbe la dimensione del tuo team, non solo il prezzo d’ingresso.
 
 ## Cosa cambia se hai clienti all’estero?
 

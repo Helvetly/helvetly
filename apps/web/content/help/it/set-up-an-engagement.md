@@ -4,12 +4,12 @@ description: Imposta un incarico una tantum o ricorrente per un cliente, fattura
 category: Engagements
 categoryLabel: Incarichi
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Un incarico tiene traccia del lavoro concordato per un cliente, come un forfait di 30 ore al mese.
 
-Basic include fino a 3 incarichi attivi, gestiti manualmente; le bozze e le notifiche programmate richiedono **Pro** o **Business**.
+Free include 1 incarico attivo e Basic fino a 3, gestiti manualmente; le bozze e le notifiche programmate richiedono **Pro** o **Business**.
 
 1. Vai a **Engagements** e fai clic su **New engagement**.
 2. In **Client & service**, scegli il **Client** e inserisci un **Title**.

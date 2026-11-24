@@ -47,6 +47,9 @@ func (s *Service) MailBrand(ctx context.Context, workspaceID string) (mail.Brand
 	if logo != nil {
 		b.LogoPath = emailLogoPath + workspaceID + "/" + *logo
 	}
+	if b.SentWith, err = s.sentWith(ctx, workspaceID); err != nil {
+		return mail.Brand{}, err
+	}
 	members, err := s.db.ListMembers(ctx, workspaceID)
 	if err != nil {
 		return mail.Brand{}, err
@@ -109,4 +112,16 @@ func (s *Service) serveEmailLogo(w http.ResponseWriter, r *http.Request, workspa
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	_, err = w.Write(small)
 	return err
+}
+
+// sentWith: the workspace's client email and PDFs carry "Sent with Helvetly" (Free and Basic), unless its plan
+// includes remove_branding; without billing it is allowed, so a self-hosted server never prints it.
+func (s *Service) sentWith(ctx context.Context, workspaceID string) (bool, error) {
+	return sentWithIn(ctx, s.db.Q, workspaceID)
+}
+
+// sentWithIn is sentWith read through q, the caller's transaction.
+func sentWithIn(ctx context.Context, q store.Q, workspaceID string) (bool, error) {
+	unbranded, err := q.FeatureAllowed(ctx, workspaceID, store.FeatureRemoveBranding)
+	return !unbranded, err
 }

@@ -35,15 +35,16 @@ func refusedWith(t *testing.T, err error, code string) {
 	}
 }
 
-// TestAutomationActionsAtTheCap: the paid seats' pooled allowance admits its last action and refuses the next, on Pro
-// and Business; Basic has no automations at all, however many seats it pays for.
+// TestAutomationActionsAtTheCap: the pooled allowance of the paid seats, at least the plan's included people, admits
+// its last action and refuses the next, on Pro (2 included) and Business (5); Basic has no automations at all, however
+// many seats it pays for.
 func TestAutomationActionsAtTheCap(t *testing.T) {
 	ctx := context.Background()
 	for _, tc := range []struct {
 		price string
 		seats int
 		cap   int64
-	}{{"price_pm", 1, 1500}, {"price_xm", 1, 6000}, {"price_pm", 5, 7500}} {
+	}{{"price_pm", 1, 3000}, {"price_xm", 1, 30000}, {"price_pm", 5, 7500}, {"price_xm", 6, 36000}} {
 		t.Run(fmt.Sprint(tc.price, tc.seats), func(t *testing.T) {
 			e := usageEnv(t)
 			ws := e.workspace().workspace
@@ -83,7 +84,7 @@ func TestTwentyActionsForTheLastOneAdmitOne(t *testing.T) {
 	ws := e.workspace().workspace
 	e.subscribe(ws, "price_pm")
 	now := time.Now()
-	e.automated(ws, store.UsagePeriod(now), 1499)
+	e.automated(ws, store.UsagePeriod(now), 2999) // Pro: 1500 for each of its 2 included people
 	race := func(id func(int) string, act func(string) error) int {
 		var wg sync.WaitGroup
 		start := make(chan struct{})
@@ -113,7 +114,7 @@ func TestTwentyActionsForTheLastOneAdmitOne(t *testing.T) {
 	if n := race(func(i int) string { return fmt.Sprint("dunning:inv", i, ":1") }, count); n != 1 {
 		t.Fatalf("%d of 20 admitted for the last action", n)
 	}
-	if u := e.actionsIn(ws, store.UsagePeriod(now)); u.Total() != 1500 {
+	if u := e.actionsIn(ws, store.UsagePeriod(now)); u.Total() != 3000 {
 		t.Fatalf("used %+v", u)
 	}
 
@@ -122,7 +123,7 @@ func TestTwentyActionsForTheLastOneAdmitOne(t *testing.T) {
 	if n := race(func(int) string { return "dunning:same:1" }, reserve); n != 20 { // one reservation, nineteen replays
 		t.Fatalf("%d of 20 attempts of one action went through", n)
 	}
-	if u := e.actionsIn(ws, store.UsagePeriod(now)); u.Consumed != 1500 || u.Reserved != 1 {
+	if u := e.actionsIn(ws, store.UsagePeriod(now)); u.Consumed != 3000 || u.Reserved != 1 {
 		t.Fatalf("one action reserved %+v", u)
 	}
 }
@@ -153,7 +154,7 @@ func TestAnActionCountsOnceAcrossRetriesAndMonths(t *testing.T) {
 		t.Fatalf("reserved last month, sent this month: then %+v, now %+v", u, cur)
 	}
 
-	e.automated(ws, store.UsagePeriod(now), 1499)
+	e.automated(ws, store.UsagePeriod(now), 2999) // Pro: 1500 for each of its 2 included people
 	if err := e.st.ReserveAutomation(ctx, ws, "dunning:inv2:1", now); err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +167,7 @@ func TestAnActionCountsOnceAcrossRetriesAndMonths(t *testing.T) {
 	}
 }
 
-// TestTrialHasProActionsForItsWholeLife: the trial's 1500 (Pro's) are shared by its two people and do not restart
+// TestTrialHasProActionsForItsWholeLife: the trial's 3000 (Pro's, for its 2 included people) are shared by its two people and do not restart
 // with the month.
 func TestTrialHasProActionsForItsWholeLife(t *testing.T) {
 	ctx := context.Background()
@@ -177,12 +178,12 @@ func TestTrialHasProActionsForItsWholeLife(t *testing.T) {
 	now := time.Now().UTC()
 	month := store.UsagePeriodStart(now)
 	e.trialing(ws, "fp_1", month.Add(-48*time.Hour))
-	e.automated(ws, store.UsagePeriod(month.Add(-time.Hour)), 1480)
+	e.automated(ws, store.UsagePeriod(month.Add(-time.Hour)), 2980)
 	e.automated(ws, store.UsagePeriod(now), 19)
-	if err := e.st.CountAutomation(ctx, ws, "test:1500", now); err != nil {
-		t.Fatalf("the 1500th: %v", err)
+	if err := e.st.CountAutomation(ctx, ws, "test:3000", now); err != nil {
+		t.Fatalf("the 3000th: %v", err)
 	}
-	refusedWith(t, e.st.CountAutomation(ctx, ws, "test:1501", now), "limit_reached")
+	refusedWith(t, e.st.CountAutomation(ctx, ws, "test:3001", now), "limit_reached")
 }
 
 // TestPlanChangesNeitherResetNorDropActions: Business→Pro keeps the month's usage against Pro's smaller pool, Basic
@@ -193,7 +194,7 @@ func TestPlanChangesNeitherResetNorDropActions(t *testing.T) {
 	ws := e.workspace().workspace
 	e.subscribe(ws, "price_xm")
 	now := time.Now()
-	e.automated(ws, store.UsagePeriod(now), 1600)
+	e.automated(ws, store.UsagePeriod(now), 3100) // above Pro's 3000 (1500 for each of its 2 included people)
 	e.subscribe(ws, "price_pm")
 	refusedWith(t, e.st.CountAutomation(ctx, ws, "test:a", now), "limit_reached")
 	e.subscribe(ws, "price_bm")
@@ -202,7 +203,7 @@ func TestPlanChangesNeitherResetNorDropActions(t *testing.T) {
 	if err := e.st.CountAutomation(ctx, ws, "test:a", now); err != nil {
 		t.Fatalf("back on Business: %v", err)
 	}
-	if u := e.actionsIn(ws, store.UsagePeriod(now)); u.Total() != 1601 {
+	if u := e.actionsIn(ws, store.UsagePeriod(now)); u.Total() != 3101 {
 		t.Fatalf("used %+v", u)
 	}
 }

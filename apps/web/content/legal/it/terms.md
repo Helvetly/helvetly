@@ -21,17 +21,21 @@ ne fanno parte. Le tue condizioni generali non si applicano.
 
 ## 3. Piani, prova e prezzi
 
-- Non esiste un piano gratuito. Ogni spazio di lavoro richiede un proprio abbonamento: **Basic**,
-  **Pro** o **Business**. I piani si distinguono per funzioni e disponibilità, indicate nella
-  [pagina dei prezzi](/pricing) prima dell’acquisto e in Settings → Billing. Heidi, spese, modelli,
-  firme, correzioni di fatture, rendiconti IVA, registro contabile, esportazioni dei dati e
+- Ogni spazio di lavoro ha il proprio piano: **Free** oppure un abbonamento a **Basic**, **Pro** o
+  **Business**. I piani si distinguono per funzioni e disponibilità, indicate nella
+  [pagina dei prezzi](/pricing) prima dell’acquisto e in Settings → Billing. Heidi, importazione IA,
+  modelli, firme, correzioni di fatture, rendiconti IVA, registro contabile, esportazioni dei dati e
   automazioni richiedono Pro o Business; portale clienti ed esportazioni XML delle fatture
   elettroniche richiedono Business.
+- **Free** non costa nulla, non richiede una carta e non ha scadenza. È per una persona e ha le
+  disponibilità più ridotte. Uno spazio di lavoro senza piano a pagamento è su Free.
+- Con Free e Basic, le email inviate ai tuoi clienti e i PDF che crei riportano una breve riga
+  «Inviato con Helvetly»; con Pro e Business no.
 - **Disponibilità:** clienti, prodotti, incarichi, bozze archiviate e preventivi archiviati hanno
   limiti fissi per spazio di lavoro, se previsti dal piano. Le altre disponibilità (come emissioni di fatture, invii di preventivi, spese,
-  richieste di firma, spazio di archiviazione, download, email, token IA e azioni di automazione)
-  sono per posto a pagamento e si sommano in un unico fondo condiviso dello spazio di lavoro;
-  aggiungere o cambiare un membro non le rinnova. Le disponibilità mensili si rinnovano alle
+  richieste di firma, spazio di archiviazione, email, token IA e azioni di automazione) sono per
+  persona e si sommano in un unico fondo condiviso dello spazio di lavoro, contando almeno le
+  persone incluse nel piano; aggiungere o cambiare un membro non le rinnova. Le disponibilità mensili si rinnovano alle
   00:00 UTC del primo giorno di ogni mese; il primo mese parziale e gli aumenti durante il mese
   sono calcolati proporzionalmente. Pagare annualmente non assegna subito dodici mesi di
   disponibilità. Lo spazio di archiviazione conta ciò che lo spazio conserva, compresi cronologia
@@ -39,28 +43,31 @@ ne fanno parte. Le tue condizioni generali non si applicano.
 - Quando una disponibilità si esaurisce, la nuova azione che la richiede viene rifiutata fino al
   mese successivo o al passaggio a un piano superiore; non ci sono addebiti aggiuntivi e nulla
   viene eliminato, mentre bozze e lavoro manuale restano disponibili.
-- I prezzi sono **per posto**: ogni persona nello spazio di lavoro (titolare, amministratori e
-  membri, indipendentemente dall’accesso) occupa un posto al prezzo intero del piano; non sono
-  inclusi posti aggiuntivi. Un invito aperto non occupa un posto finché non viene accettato;
-  clienti nel portale e persone invitate a firmare un documento non ne occupano. Nell’app si
-  possono acquistare fino a 25 posti; quantità maggiori su richiesta. Per posto e mese: Basic
-  CHF 19, Pro CHF 49 e Business CHF 99. Il pagamento annuale costa dodici mesi meno il 20 %,
-  arrotondato al franco intero superiore (CHF 183, 471 e 951 per posto e anno).
+- Il prezzo di ogni piano a pagamento **include un certo numero di persone** e ogni persona in più
+  costa a parte. Conta ogni persona nello spazio di lavoro (titolare, amministratori e membri,
+  indipendentemente dall’accesso). Un invito aperto conta solo una volta accettato; clienti nel
+  portale e persone invitate a firmare un documento non contano. Al mese: Basic CHF 19 con 1
+  persona, ogni persona in più CHF 10, fino a 5 persone; Pro CHF 49 con 2 persone, ogni persona in
+  più CHF 15, fino a 25 persone; Business CHF 149 con 5 persone, ogni persona in più CHF 20. Il
+  pagamento annuale costa dodici mesi meno il 20 %, arrotondato al franco intero superiore (Basic
+  CHF 183 e CHF 96 per persona in più, Pro CHF 471 e CHF 144, Business CHF 1,431 e CHF 192
+  all’anno).
 - I prezzi vengono mostrati e addebitati in **CHF** in Svizzera e Liechtenstein, in **EUR** nell’UE
-  e in **USD** nel resto del mondo, con le stesse cifre (Basic EUR 19 o USD 19 per posto e mese,
-  e così via); la valuta dipende dalla tua posizione. Dopo il primo pagamento, Stripe mantiene
+  e in **USD** nel resto del mondo, con le stesse cifre (Basic EUR 19 o USD 19 al mese, e così
+  via); la valuta dipende dalla tua posizione. Dopo il primo pagamento, Stripe mantiene
   quella valuta per i pagamenti successivi.
 - I prezzi **includono l’IVA svizzera**, ove applicata: il prezzo mostrato è quello pagato. Per
   un’impresa all’estero a cui si applica l’inversione contabile, viene addebitato lo stesso
   importo senza IVA e assolvi autonomamente l’imposta.
-- Quando persone entrano o escono dallo spazio di lavoro, il numero di posti si adegua: un posto aggiunto viene addebitato subito, proporzionalmente dal giorno della modifica, e un posto liberato non viene più fatturato dal rinnovo successivo (nulla viene accreditato). Gli abbonamenti sottoscritti in precedenza a prezzo fisso per spazio di lavoro
+- Quando persone entrano o escono dallo spazio di lavoro, il numero di persone fatturate si adegua:
+  una persona aggiunta oltre quelle incluse viene addebitata subito, proporzionalmente dal giorno della modifica,
+  e una che esce non viene più fatturata dal rinnovo successivo (nulla viene accreditato). Gli abbonamenti sottoscritti in precedenza a prezzo fisso per spazio di lavoro
   mantengono prezzo e limite di membri fino al cambiamento del piano o della periodicità.
-- **Prova:** le nuove prove idonee includono solo le funzioni di Pro per 7 giorni, con un massimo di
-  2 membri e disponibilità ridotte per l’intera prova (10 emissioni di fatture, 10 invii di preventivi, 20 spese, 2 richieste
-  di firma, 100 MB di spazio, 250,000 token IA e 50 azioni di automazione), che non si rinnovano
-  né aumentano con il numero di membri. È richiesta una carta. Senza una carta valida alla fine
-  della prova, l’abbonamento termina. Ogni cliente ha diritto a una sola prova. Quando la prova
-  si converte in abbonamento, ogni membro viene fatturato al prezzo intero del piano scelto.
+- **Prova:** le nuove prove idonee includono Pro per 14 giorni, con un massimo di 2 persone e le
+  disponibilità di Pro per una persona per l’intera prova, che non si rinnovano né aumentano con il
+  numero di persone. È richiesta una carta. Senza una carta valida alla fine della prova,
+  l’abbonamento termina e lo spazio di lavoro passa a Free. Ogni cliente ha diritto a una sola
+  prova. Quando la prova si converte in abbonamento, si applica il prezzo del piano scelto.
   Le prove già concesse nell’ambito di offerte precedenti mantengono le condizioni originarie.
 - I codici promozionali si applicano solo secondo quanto indicato per il codice.
 
@@ -70,7 +77,7 @@ ne fanno parte. Le tue condizioni generali non si applicano.
 - Gli abbonamenti si pagano anticipatamente e **si rinnovano automaticamente** per lo stesso
   periodo (un mese o un anno) fino all’annullamento. Se un pagamento non riesce, Stripe riprova;
   il piano resta attivo fino a tre giorni dopo la fine del periodo pagato, poi lo spazio di lavoro
-  passa in sola lettura finché la fattura non viene pagata.
+  passa a Free finché la fattura non viene pagata.
 - A parte la prova, un piano inizia solo quando il primo pagamento va a buon fine: un primo
   pagamento non saldato non lo attiva mai.
 - I **passaggi a un piano superiore** e da mensile ad annuale vengono addebitati una sola volta,
@@ -87,13 +94,14 @@ ne fanno parte. Le tue condizioni generali non si applicano.
 - Possiamo modificare i prezzi con un preavviso via email di almeno 30 giorni. Il nuovo prezzo
   si applica al rinnovo successivo; puoi annullare prima.
 
-## 5. Spazi di lavoro in sola lettura ed esportazione dei dati
+## 5. Spazi di lavoro senza piano a pagamento ed esportazione dei dati
 
 - Uno spazio senza abbonamento attivo (prova terminata, annullamento, cessazione dopo una
   contestazione persa o pagamento ancora insoluto tre giorni dopo la fine del periodo pagato)
-  diventa **di sola lettura**: puoi ancora vedere e scaricare tutto, ma non modificare nulla
-  finché non scegli di nuovo un piano.
-- In ogni piano e in uno spazio in sola lettura puoi vedere e scaricare ogni record e documento
+  è su **Free**: nulla viene eliminato e puoi ancora vedere e scaricare tutto, anche i record oltre
+  le disponibilità di Free, ma le nuove aggiunte devono rientrare nelle funzioni e disponibilità di
+  Free finché non scegli di nuovo un piano a pagamento.
+- In ogni piano puoi vedere e scaricare ogni record e documento
   esistente, come il PDF di una singola fattura. Con Pro o Business, i titolari possono anche
   **scaricare l’intero spazio di lavoro** (record e file, ZIP) ed esportazioni aziendali come CSV
   di clienti e prodotti in Settings → Workspace → Export all data. Chiunque può scaricare i
@@ -161,7 +169,7 @@ Non devi:
   affidamento; l’importazione IA non crea nulla finché una persona non ha esaminato e confermato
   i record. Nulla di ciò che dice Heidi costituisce consulenza legale, fiscale o finanziaria.
 - Heidi e l’importazione IA richiedono Pro o Business, che includono una disponibilità mensile
-  di token IA per posto a pagamento, condivisa dallo spazio di lavoro; Basic non include funzioni
+  di token IA per persona, condivisa dallo spazio di lavoro; Free e Basic non includono funzioni
   IA né token IA. Richieste, risposte e contesto della conversazione consumano token. Una volta
   esaurita la disponibilità, le funzioni IA si fermano fino al mese successivo o al passaggio a
   un piano superiore.

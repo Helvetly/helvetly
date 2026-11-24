@@ -288,5 +288,8 @@ func (s *Service) draftPDF(ctx context.Context, sess store.Session, inv store.In
 	}
 	doc := s.document(inv, set, true, preceding)
 	doc.Logo = logo
+	if doc.SentWith, err = s.sentWith(ctx, sess.Workspace.ID); err != nil {
+		return nil, err
+	}
 	return invoicepdf.Render(doc)
 }

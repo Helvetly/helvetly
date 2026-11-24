@@ -4,12 +4,12 @@ description: Registrera en utgift med kvitto, belopp, ingående moms och betalni
 category: Expenses
 categoryLabel: Utgifter
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Håll företagets kostnader samlade med deras kvitton.
 
-Utgifter kräver **Pro** eller **Business**.
+Utgifter ingår i alla planer, inom planens månadskvot.
 
 1. Gå till **Expenses** och klicka på **New expense**.
 2. Under **Receipt** släpper du kvittofilen eller klickar för att välja den. PDF eller foto fungerar, upp till 25 MB per fil.

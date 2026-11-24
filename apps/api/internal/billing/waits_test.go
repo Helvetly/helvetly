@@ -32,14 +32,14 @@ func TestARefusedAutomationWaitsWhileItStillWouldNotFit(t *testing.T) {
 				e.svc.now = func() time.Time { return next }
 				// the plan still runs then, with the same cap: only the month changed
 				e.exec(`UPDATE workspace_billing SET plan_expires_at = $2 WHERE workspace_id = $1`, ws, next.AddDate(0, 1, 0))
-				if PlanOf(e.billing(ws), next) == "" || e.cap(ws, AutomationActions) != 1500 {
+				if PlanOf(e.billing(ws), next) == "" || e.cap(ws, AutomationActions) != 3000 { // Pro: its 2 included people
 					e.t.Fatal("the plan lapsed or its cap moved in the next month")
 				}
 			}},
 		{name: "an override raises the cap", refuse: AutomationActions, limits: email,
-			change: func(e *env, ws string) { e.override(ws, AutomationActions, StateLimited, n64(2000), nil) }},
+			change: func(e *env, ws string) { e.override(ws, AutomationActions, StateLimited, n64(4000), nil) }},
 		{name: "an override keeps the cap", refuse: AutomationActions, limits: email, wait: true,
-			change: func(e *env, ws string) { e.override(ws, AutomationActions, StateLimited, n64(1500), nil) }},
+			change: func(e *env, ws string) { e.override(ws, AutomationActions, StateLimited, n64(3000), nil) }},
 		{name: "a reservation given back", refuse: AutomationActions, limits: email,
 			change: func(e *env, ws string) {
 				if err := e.st.ReleaseAutomation(context.Background(), ws, "held"); err != nil {

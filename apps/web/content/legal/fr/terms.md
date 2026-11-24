@@ -23,18 +23,22 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
 
 ## 3. Formules, essai et prix
 
-- Il n’existe pas de formule gratuite. Chaque espace nécessite son propre abonnement : **Basic**,
-  **Pro** ou **Business**. Les formules diffèrent par leurs fonctionnalités et quotas, indiqués sur
-  la [page des tarifs](/pricing) avant l’achat et dans Settings → Billing. Heidi, les dépenses,
-  modèles, signatures, corrections de factures, décomptes TVA, le grand livre, les exports de
+- Chaque espace a sa propre formule : **Free**, ou un abonnement **Basic**, **Pro** ou
+  **Business**. Les formules diffèrent par leurs fonctionnalités et quotas, indiqués sur
+  la [page des tarifs](/pricing) avant l’achat et dans Settings → Billing. Heidi, l’import par IA,
+  les modèles, signatures, corrections de factures, décomptes TVA, le grand livre, les exports de
   données et les automatisations nécessitent Pro ou Business ; le portail client et les exports
   XML de factures électroniques nécessitent Business.
+- **Free** est gratuit, ne demande aucune carte et n’a pas de date de fin. Il est prévu pour une
+  seule personne et offre les plus petits quotas. Un espace sans formule payante est sur Free.
+- Avec Free et Basic, les e-mails envoyés à vos clients et les PDF que vous créez portent une
+  courte mention « Envoyé avec Helvetly » ; ce n’est pas le cas avec Pro et Business.
 - **Quotas :** les clients, produits, mandats, brouillons conservés et devis conservés sont soumis
   à des plafonds fixes par espace, lorsque la formule en prévoit. Les autres quotas (notamment
   émissions de factures, envois de devis, dépenses,
-  demandes de signature, stockage, téléchargements, e-mails, tokens d’IA et actions automatisées)
-  sont définis par place payante et s’additionnent dans une réserve commune ; ajouter ou modifier
-  un membre ne les renouvelle pas. Les quotas mensuels sont réinitialisés à 00:00 UTC le premier
+  demandes de signature, stockage, e-mails, tokens d’IA et actions automatisées) sont définis par
+  personne et s’additionnent dans une réserve commune pour l’espace, en comptant au moins les
+  personnes comprises dans la formule ; ajouter ou modifier un membre ne les renouvelle pas. Les quotas mensuels sont réinitialisés à 00:00 UTC le premier
   jour de chaque mois ; le premier mois incomplet et les augmentations en cours de mois sont
   calculés au prorata. Le paiement annuel n’accorde pas douze mois de quotas en une seule fois.
   Le stockage comptabilise ce que l’espace conserve, y compris l’historique et les fichiers dans
@@ -42,31 +46,32 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
 - Lorsqu’un quota est épuisé, la nouvelle action qui en dépend est refusée jusqu’au mois suivant
   ou au passage à une formule supérieure ; aucun supplément n’est facturé, rien n’est supprimé,
   et les brouillons et opérations manuelles restent disponibles.
-- Les prix sont **par place** : chaque personne de l’espace (propriétaire, administrateurs et
-  membres, quels que soient leurs accès) représente une place au prix complet de la formule ;
-  aucune place supplémentaire n’est incluse. Une invitation en attente ne compte qu’à son
+- Le prix de chaque formule payante **comprend un nombre de personnes**, et chaque personne
+  supplémentaire est facturée en plus. Chaque personne de l’espace (propriétaire, administrateurs
+  et membres, quels que soient leurs accès) compte. Une invitation en attente ne compte qu’à son
   acceptation ; les clients du portail et les personnes invitées à signer un document ne comptent
-  pas. Jusqu’à 25 places peuvent être achetées dans l’application, davantage sur demande. Par
-  place et par mois : Basic CHF 19, Pro CHF 49 et Business CHF 99. Le paiement annuel correspond
-  à douze mois moins 20 %, arrondis au franc entier supérieur (CHF 183, 471 et 951 par place et par an).
+  pas. Par mois : Basic CHF 19 avec 1 personne, chaque personne supplémentaire CHF 10, jusqu’à
+  5 personnes ; Pro CHF 49 avec 2 personnes, chaque personne supplémentaire CHF 15, jusqu’à
+  25 personnes ; Business CHF 149 avec 5 personnes, chaque personne supplémentaire CHF 20. Le
+  paiement annuel correspond à douze mois moins 20 %, arrondis au franc entier supérieur (Basic
+  CHF 183 et CHF 96 par personne supplémentaire, Pro CHF 471 et CHF 144, Business CHF 1,431 et
+  CHF 192 par an).
 - Les prix sont affichés et facturés en **CHF** en Suisse et au Liechtenstein, en **EUR** dans l’UE
-  et en **USD** partout ailleurs, avec les mêmes montants (Basic EUR 19 ou USD 19 par place et par
+  et en **USD** partout ailleurs, avec les mêmes montants (Basic EUR 19 ou USD 19 par
   mois, etc.) ; votre localisation détermine la devise. Après votre premier paiement, Stripe
   conserve cette devise pour les paiements suivants.
 - Les prix **comprennent la TVA suisse** lorsque nous la facturons : le prix affiché est le prix
   payé. Si votre entreprise est à l’étranger et relève de l’autoliquidation, le même montant est
   facturé sans TVA et vous déclarez vous-même la taxe.
-- Lorsque des personnes rejoignent ou quittent l’espace, le nombre de places est adapté : une place ajoutée est facturée immédiatement, au prorata à compter du jour du changement, et une place libérée n’est plus facturée à partir du renouvellement suivant (rien n’est crédité).
+- Lorsque des personnes rejoignent ou quittent l’espace, le nombre de personnes facturées est
+  adapté : une personne ajoutée au-delà de celles comprises est facturée immédiatement, au prorata à compter du jour du changement, et une personne qui part n’est plus facturée à partir du renouvellement suivant (rien n’est crédité).
   Les abonnements souscrits à un ancien prix fixe par espace conservent ce prix et leur limite
   de membres jusqu’à un changement de formule ou de périodicité.
-- **Essai :** les nouveaux essais éligibles donnent accès uniquement aux fonctionnalités de Pro pendant 7 jours,
-  avec jusqu’à 2 membres et de petits quotas pour l’ensemble de l’essai (10 émissions de factures,
-  10 envois de devis,
-  20 dépenses, 2 demandes de signature, 100 Mo de stockage, 250,000 tokens d’IA et 50 actions
-  automatisées), sans réinitialisation ni augmentation selon le nombre de membres. Une carte est
-  nécessaire. Sans carte valide à la fin de l’essai, l’abonnement prend fin. Chaque client ne
-  bénéficie que d’un essai. Après conversion, chaque membre est facturé au prix complet de la
-  formule choisie.
+- **Essai :** les nouveaux essais éligibles donnent accès à Pro pendant 14 jours, avec jusqu’à
+  2 personnes et les quotas de Pro pour une personne pour l’ensemble de l’essai, sans
+  réinitialisation ni augmentation selon le nombre de personnes. Une carte est nécessaire. Sans
+  carte valide à la fin de l’essai, l’abonnement prend fin et l’espace passe sur Free. Chaque
+  client ne bénéficie que d’un essai. Après conversion, le prix de la formule choisie s’applique.
   Les essais déjà accordés dans le cadre d’offres antérieures conservent leurs conditions initiales.
 - Les codes promotionnels s’appliquent uniquement selon les conditions indiquées avec le code.
 
@@ -75,8 +80,8 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
 - Les paiements sont traités par Stripe. Helvetly ne voit jamais les coordonnées complètes de votre carte.
 - Les abonnements sont payables d’avance et **renouvelés automatiquement** pour la même durée
   (un mois ou un an) jusqu’à résiliation. En cas d’échec de paiement, Stripe réessaie ; la formule
-  reste active jusqu’à trois jours après la fin de la période payée, puis l’espace passe en
-  lecture seule jusqu’au règlement de la facture.
+  reste active jusqu’à trois jours après la fin de la période payée, puis l’espace passe sur
+  Free jusqu’au règlement de la facture.
 - Hors essai, une formule ne commence qu’après la réussite du premier paiement : un premier
   paiement impayé ne l’active jamais.
 - Les **passages à une formule supérieure** et d’une périodicité mensuelle à annuelle sont facturés
@@ -93,13 +98,15 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
 - Nous pouvons modifier les prix avec un préavis d’au moins 30 jours par e-mail. Le nouveau prix
   s’applique au prochain renouvellement ; vous pouvez résilier avant son entrée en vigueur.
 
-## 5. Espaces en lecture seule et export des données
+## 5. Espaces sans formule payante et export des données
 
 - Un espace sans abonnement actif (essai terminé, résiliation, fin après une contestation de
-  paiement perdue, ou paiement toujours impayé trois jours après la fin de la période payée)
-  devient **en lecture seule** : vous pouvez toujours tout consulter et télécharger, mais ne
-  pouvez rien modifier avant de choisir à nouveau une formule.
-- Dans chaque formule et dans un espace en lecture seule, vous pouvez consulter et télécharger
+  paiement perdue, ou paiement toujours impayé trois jours après la fin de la période payée) est
+  sur **Free** : rien n’est supprimé et vous pouvez toujours tout consulter et télécharger, y
+  compris les enregistrements au-delà des quotas de Free, mais les nouveaux ajouts doivent
+  respecter les fonctionnalités et quotas de Free jusqu’à ce que vous choisissiez à nouveau une
+  formule payante.
+- Dans chaque formule, vous pouvez consulter et télécharger
   chaque enregistrement et document existant, par exemple le PDF d’une facture. Avec Pro ou
   Business, les propriétaires peuvent aussi **télécharger tout l’espace** (données et fichiers,
   au format ZIP) et les exports de gestion comme les CSV clients et produits dans Settings →
@@ -170,8 +177,8 @@ Vous ne devez pas :
   avant de vous y fier ; l’import par IA ne crée rien avant examen et confirmation par une
   personne. Les réponses de Heidi ne constituent aucun conseil juridique, fiscal ou financier.
 - Heidi et l’import par IA nécessitent Pro ou Business, qui comprennent un quota mensuel de
-  tokens d’IA par place payante, partagé par l’espace ; Basic ne comprend ni fonction d’IA ni
-  token d’IA. Les requêtes, réponses et le contexte de conversation consomment des tokens. Une fois
+  tokens d’IA par personne, partagé par l’espace ; Free et Basic ne comprennent ni fonction d’IA
+  ni token d’IA. Les requêtes, réponses et le contexte de conversation consomment des tokens. Une fois
   le quota épuisé, les fonctions d’IA sont suspendues jusqu’au mois suivant ou à un passage à une
   formule supérieure.
 - Les **automatisations** (factures planifiées, envois automatiques et rappels de paiement, par

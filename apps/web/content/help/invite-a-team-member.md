@@ -3,12 +3,12 @@ title: Invite a team member
 description: Invite colleagues or your accountant by email or link, and choose their role and access.
 category: Team and workspace
 order: 4
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Bring colleagues or your accountant into your workspace with just the access they need.
 
-Each accepted member is a seat billed at the full price of your plan. Open invitations, clients in the portal and people asked to sign take no seat.
+Free is for one person, so inviting someone needs a paid plan. Basic includes 1 person, Pro 2 and Business 5; each accepted member beyond those adds to the monthly price. Open invitations, clients in the portal and people asked to sign are not counted.
 
 1. Go to **Members** and click **Invite member**.
 2. Enter their **Email**.

@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { Calendars } from '@/components/account/calendars'
+import { billingFixture } from '@/components/billing/billing-fixture'
 import { SchedulingSettingsPage } from '@/components/scheduling/settings/scheduling-settings'
 import {
   googleConnection,
@@ -318,6 +319,36 @@ export const ConnectOffersConfiguredProviders: Story = {
       '/api/v1/scheduling/calendars/microsoft/connect',
     )
     await expect(canvas.queryByText('Google Calendar')).toBeNull()
+  },
+}
+
+/** On Free, sessions and the iCal feed work, but Google and Microsoft calendars come with a paid plan. */
+export const CalendarSyncNotOnFree: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture() })),
+        ...page('owner').msw.handlers,
+      ],
+    },
+  },
+  beforeEach: () => resetSchedulingSettings({ providers: ['google'] }),
+  render: () => (
+    <Shell>
+      <Calendars userId="usr_story" />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      await canvas.findByText(/Google and Microsoft calendar sync comes with the Basic plan/),
+    ).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'See plans' })).toHaveAttribute(
+      'href',
+      '/settings/billing/plans/',
+    )
+    await expect(canvas.getByRole('button', { name: 'Connect' })).toBeDisabled()
+    await expect(canvas.queryByRole('link', { name: 'Connect' })).toBeNull()
   },
 }
 

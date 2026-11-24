@@ -3,12 +3,12 @@ title: Bonnen automatisch omzetten in kosten
 description: Upload meerdere bonnen en laat AI van elke bon een conceptkostenpost maken die je kunt controleren en boeken.
 category: Expenses
 order: 2
-updated: 2026-11-16
+updated: 2026-11-24
 ---
 
 Bespaar typwerk: upload je bonnen en AI zet ze om in conceptkosten.
 
-Kosten en bonimport vereisen **Pro** of **Business**.
+Kosten zitten in elk abonnement; bonnen uitlezen met AI vereist **Pro** of **Business**.
 
 1. Ga naar **Expenses** en klik op **Upload receipts**, of sleep de bestanden naar de pagina.
 2. Klik op **Read files**. AI zet elke bon om in een conceptkostenpost.

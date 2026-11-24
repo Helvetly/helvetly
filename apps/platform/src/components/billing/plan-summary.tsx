@@ -14,6 +14,7 @@ import {
   Info,
   Layers,
   Lock,
+  Sparkles,
   Tag,
   Zap,
 } from 'lucide-react'
@@ -25,12 +26,12 @@ import {
   describeDiscount,
   formatPrice,
   freeForever,
+  isPaid,
   nextCharge,
   nextPlan,
-  people,
   planTotal,
   taxNoteLong,
-  seatPrice,
+  seatTotal,
   trialDaysLeft,
   type Billing,
   type PlanId,
@@ -86,14 +87,20 @@ export function PlanSummary({
           <div className="grid min-w-0 gap-1">
             <div className="flex items-center gap-2">
               <h3 className="text-title font-semibold tracking-[-0.015em]">
-                {plan ? plan.name : translate('noPlan')}
+                {plan
+                  ? plan.name
+                  : billing.plan === 'free'
+                    ? translate('planFree')
+                    : translate('noPlan')}
               </h3>
               {plan && <Badge tone={badge.tone}>{badge.label}</Badge>}
             </div>
             <p className="text-body-sm text-muted-foreground">
-              {!plan
-                ? translate('thisWorkspaceIsReadOnlyUntilItHasA')
-                : `${billing.interval === 'year' ? translate('billedYearly') : translate('billedMonthly')} · ${taxNoteLong(billing.currency)}`}
+              {billing.plan === 'free'
+                ? translate('freePlanSummary')
+                : !plan
+                  ? translate('thisWorkspaceIsReadOnlyUntilItHasA')
+                  : `${billing.interval === 'year' ? translate('billedYearly') : translate('billedMonthly')} · ${taxNoteLong(billing.currency)}`}
             </p>
           </div>
           {plan && <Price billing={billing} />}
@@ -106,17 +113,25 @@ export function PlanSummary({
   )
 }
 
-/** The total in large type, with how it adds up (per person × people) or the legacy flat price. */
+/** The total in large type, with how it adds up (the included people, then each further one) or the flat price. */
 function Price({ billing }: { billing: Billing }) {
-  const perSeat = seatPrice(billing)
+  const tiered = seatTotal(billing)
+  const price = billing.plans.find((entry) => entry.id === billing.plan)?.prices[
+    billing.interval || 'month'
+  ]
   const total = planTotal(billing)
   if (!total) return null
   const interval = billing.interval || 'month'
   return (
     <div data-slot="plan-price" className="grid gap-1 tabular-nums sm:text-right">
       <p className="text-body-sm text-muted-foreground">
-        {perSeat ? (
-          translate('perPerson2', { value1: formatPrice(perSeat), value2: people(billing.seats) })
+        {tiered && price ? (
+          translate('planTierLine', {
+            price: formatPrice(price),
+            included: price.included_people,
+            extra: Math.max(0, billing.seats - price.included_people),
+            extraPrice: formatPrice({ amount: price.extra_person, currency: price.currency }),
+          })
         ) : (
           <span className="inline-flex items-center gap-1.5">
             {translate('flatPriceForTheWorkspace')}
@@ -145,7 +160,7 @@ function Price({ billing }: { billing: Billing }) {
   )
 }
 
-/** What comes next, by state: the trial's countdown, the renewal or end, a failed payment, no plan. */
+/** What comes next, by state: the trial's countdown, the renewal or end, a failed payment, Free's trial offer. */
 function NextStep({
   billing,
   onPortal,
@@ -156,23 +171,46 @@ function NextStep({
   portalPending: boolean
 }) {
   if (!billing.enabled) return null
-  if (billing.plan === '')
+  if (!isPaid(billing.plan)) {
+    if (billing.payment_overdue)
+      return (
+        <Panel
+          tone="danger"
+          label={translate('paymentFailed')}
+          icon={<AlertTriangle aria-hidden />}
+          title={translate('paymentFailed')}
+          action={
+            billing.can_manage &&
+            billing.has_customer && (
+              <Button size="sm" variant="outline" disabled={portalPending} onClick={onPortal}>
+                <CreditCard aria-hidden />
+                {translate('updatePaymentMethod')}
+              </Button>
+            )
+          }
+        >
+          {billing.can_manage
+            ? translate('paymentOverdueOnFree')
+            : translate('paymentOverdueOnFreeAsk', { ASK: translate('askAnOwnerOrAdmin') })}
+        </Panel>
+      )
+    if (!billing.trial_available || !billing.can_manage) return null
+    const trialPlan = planName(billing, billing.trial_plan)
     return (
       <Panel
         tone="muted"
-        label={translate('readOnly')}
-        icon={<Lock aria-hidden />}
-        title={translate('readOnly')}
+        label={translate('daysFreeOnPlan', { days: billing.trial_days, plan: trialPlan })}
+        icon={<Sparkles aria-hidden />}
+        title={translate('daysFreeOnPlan', { days: billing.trial_days, plan: trialPlan })}
       >
-        {billing.trial_available
-          ? translate('tryPlanFreeUntilThenNothingCanBeChanged', {
-              plan: planName(billing, billing.trial_plan),
-              trial_days: billing.trial_days,
-              trial_seats: billing.trial_seats,
-            })
-          : translate('chooseAPlanUntilThenNothingCanBeChanged')}
+        {translate('tryPlanFree', {
+          plan: trialPlan,
+          trial_days: billing.trial_days,
+          trial_seats: billing.trial_seats,
+        })}
       </Panel>
     )
+  }
   if (billing.status === 'past_due')
     return (
       <Panel
@@ -234,7 +272,7 @@ function NextStep({
     <NextPanel
       title={ends ? translate('endsOn', { end: end }) : translate('renewsOn', { end: end })}
       detail={
-        ends ? translate('thenTheWorkspaceIsReadOnly') : translate('thePlanRenewsAutomatically')
+        ends ? translate('thenTheWorkspaceMovesToFree') : translate('thePlanRenewsAutomatically')
       }
     >
       {ends
@@ -411,7 +449,7 @@ function Actions({
           <Link href={PLANS_PAGE}>
             {!canChange
               ? translate('comparePlans')
-              : billing.plan === ''
+              : !isPaid(billing.plan)
                 ? translate('chooseAPlan')
                 : translate('changePlan')}
             {canChange && <ArrowRight data-icon="inline-end" aria-hidden />}

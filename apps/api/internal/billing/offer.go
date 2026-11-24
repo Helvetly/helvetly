@@ -17,7 +17,7 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// Offer is one version of what Helvetly sells: the per-person prices, every plan's value of every feature and limit
+// Offer is one version of what Helvetly sells: the tiered prices of the paid plans, every plan's value of every feature and limit
 // (records), the trial and the public pricing projection. The operator reads it from the offer contract's JSON file
 // (fields this binary does not use, such as rationale, are ignored) and publishes it once; offer_versions keeps it
 // unchanged from then on, and limit_plans holds its values for the resolver.
@@ -33,20 +33,24 @@ type Offer struct {
 	PublicPricing PublicPricing `json:"public_pricing"`
 }
 
-// OfferBilling is the prices: per person, the same figures in every currency.
+// OfferBilling is the paid plans' prices, the same figures in every currency; Free has none.
 type OfferBilling struct {
 	Currencies []string             `json:"currencies"`
 	Plans      map[string]PlanPrice `json:"plans"`
 }
 
-// PlanPrice is one person's price of a plan in minor units, VAT included.
+// PlanPrice is a plan's tiered price in minor units, VAT included: MonthMinor and YearMinor pay for up to
+// IncludedPeople, and each further person adds ExtraPersonMonthMinor or ExtraPersonYearMinor.
 type PlanPrice struct {
-	MonthMinor int64 `json:"month_minor"`
-	YearMinor  int64 `json:"year_minor"`
+	MonthMinor            int64 `json:"month_minor"`
+	YearMinor             int64 `json:"year_minor"`
+	IncludedPeople        int64 `json:"included_people"`
+	ExtraPersonMonthMinor int64 `json:"extra_person_month_minor"`
+	ExtraPersonYearMinor  int64 `json:"extra_person_year_minor"`
 }
 
-// OfferRecord is one feature or limit with its value on each plan. Values grow by PerAdditionalPaidSeat for every
-// paid seat after the first.
+// OfferRecord is one feature or limit with its value on each plan, Free included. Values grow by
+// PerAdditionalPaidSeat for every paid seat after the first, a plan's included people counting as paid.
 type OfferRecord struct {
 	Key                   string                `json:"key"`
 	Type                  string                `json:"type"`
@@ -174,7 +178,7 @@ func (o Offer) Validate(defs []store.LimitDef) error {
 			fail("usage_policy.pooled_by_paid_seat_keys: %s is not a limit", key)
 			continue
 		}
-		for _, plan := range planOrder {
+		for _, plan := range offerPlans {
 			v := r.Values[plan]
 			if v.State == StateUnlimited { // nothing to grow; validateRecord checks it has no per-seat growth
 				continue
@@ -196,9 +200,10 @@ func (o Offer) validatePrices(fail func(string, ...any)) {
 	}
 	for _, plan := range planOrder {
 		p := o.Billing.Plans[plan]
-		if p.MonthMinor != PlanAmount(plan, "month") || p.YearMinor != PlanAmount(plan, "year") {
-			fail("billing.plans.%s: %d a month and %d a year, but plans.go charges %d and %d", plan, p.MonthMinor,
-				p.YearMinor, PlanAmount(plan, "month"), PlanAmount(plan, "year"))
+		want := PlanPrice{PlanAmount(plan, "month"), PlanAmount(plan, "year"), IncludedSeats(plan),
+			ExtraSeatAmount(plan, "month"), ExtraSeatAmount(plan, "year")}
+		if p != want {
+			fail("billing.plans.%s: %+v, but plans.go charges %+v", plan, p, want)
 		}
 	}
 	cur := make([]string, 0, len(o.Billing.Currencies))
@@ -220,10 +225,10 @@ func (o Offer) validateRecord(r OfferRecord, def store.LimitDef, fail func(strin
 		fail("%s: type, unit, scope, period or requires_features differ from its definition (%s, %s, %s, %q, %v)",
 			r.Key, def.Kind, def.Unit, def.Scope, def.Period, def.RequiresFeatures)
 	}
-	if got := slices.Sorted(maps.Keys(r.Values)); !slices.Equal(got, slices.Sorted(slices.Values(planOrder))) {
-		fail("%s: values must be given for exactly %v, got %v", r.Key, planOrder, got)
+	if got := slices.Sorted(maps.Keys(r.Values)); !slices.Equal(got, slices.Sorted(slices.Values(offerPlans))) {
+		fail("%s: values must be given for exactly %v, got %v", r.Key, offerPlans, got)
 	}
-	for _, plan := range planOrder {
+	for _, plan := range offerPlans {
 		v := r.Values[plan]
 		inc, hasInc := r.PerAdditionalPaidSeat[plan]
 		for _, f := range r.RequiresFeatures {
@@ -291,7 +296,7 @@ func (o Offer) validatePoolFunding(tokenKey, costKey Limit, fail func(string, ..
 			fail("%s: %v", where, err)
 		}
 	}
-	for _, plan := range planOrder {
+	for _, plan := range offerPlans {
 		t, c := tokens.Values[plan], cost.Values[plan]
 		if t.State != StateLimited || c.State != StateLimited || t.Value == nil || c.Value == nil {
 			continue // a state error is reported with the record
@@ -354,9 +359,9 @@ func (o Offer) validatePublic(fail func(string, ...any)) {
 
 // planValues are the offer's rows of limit_plans.
 func (o Offer) planValues() []store.PlanValue {
-	out := make([]store.PlanValue, 0, len(o.Records)*len(planOrder))
+	out := make([]store.PlanValue, 0, len(o.Records)*len(offerPlans))
 	for _, r := range o.Records {
-		for _, plan := range planOrder {
+		for _, plan := range offerPlans {
 			v := r.Values[plan]
 			out = append(out, store.PlanValue{Plan: plan, Key: r.Key, State: v.State, Value: v.Value, PerSeat: r.PerAdditionalPaidSeat[plan]})
 		}
@@ -395,7 +400,8 @@ func (o Offer) flat() map[string]string {
 	out := map[string]string{"currencies": j(o.Billing.Currencies), "schema_version": j(o.SchemaVersion),
 		"pooled": j(o.UsagePolicy.Pooled), "trial": j(o.Trial)}
 	for plan, p := range o.Billing.Plans {
-		out["price."+plan] = fmt.Sprintf("%d/month %d/year", p.MonthMinor, p.YearMinor)
+		out["price."+plan] = fmt.Sprintf("%d/month %d/year for %d, +%d/month %d/year each further", p.MonthMinor,
+			p.YearMinor, p.IncludedPeople, p.ExtraPersonMonthMinor, p.ExtraPersonYearMinor)
 	}
 	for _, r := range o.Records {
 		for plan, v := range r.Values {

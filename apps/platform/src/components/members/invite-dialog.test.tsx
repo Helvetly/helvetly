@@ -260,18 +260,20 @@ const perSeat = (over: Partial<Billing> = {}) =>
 
 test('on a per-seat plan the footer says what the person adds, once accepted', async () => {
   setup(201, { data: invitation }, perSeat())
-  expect(await screen.findByText('Adds CHF 49 / month incl. VAT once accepted')).toBeVisible()
+  expect(await screen.findByText('Adds CHF 15 / month incl. VAT once accepted')).toBeVisible()
 })
 
 test('the yearly price shows for a yearly per-seat subscription', async () => {
   setup(201, { data: invitation }, perSeat({ interval: 'year' }))
-  expect(await screen.findByText('Adds CHF 471 / year incl. VAT once accepted')).toBeVisible()
+  expect(await screen.findByText('Adds CHF 144 / year incl. VAT once accepted')).toBeVisible()
 })
 
 test.each([
   ['a flat plan', { pricing: 'flat' as const }],
   ['billing off', { enabled: false, pricing: 'per_seat' as const }],
   ['no plan', { plan: '' as const, interval: '' as const, pricing: '' as const }],
+  ['Free', { plan: 'free' as const, interval: '' as const, pricing: '' as const }],
+  ['a person the price includes', { seats: 1 }],
 ])('there is no cost note on %s', async (_name, over) => {
   setup(201, { data: invitation }, perSeat(over))
   await screen.findByRole('button', { name: 'Send invitation' })

@@ -1,8 +1,8 @@
 import type { Locale } from '@helvetly/i18n'
 import { LanguageProvider } from '@helvetly/ui/components/language-provider'
+import { translatorFor } from '@helvetly/ui/lib/i18n'
 import { render, screen, within } from '@testing-library/react'
-
-import { translatorFor } from '@/lib/i18n'
+import userEvent from '@testing-library/user-event'
 
 import { PlanTable } from './plan-table'
 
@@ -10,44 +10,43 @@ vi.mock('@/components/offer-provider', () => ({
   useOfferStatus: () => ({ status: 'current' }),
 }))
 
-const cases = [
-  { language: 'en', monthly: '/ month', repeated: 'per team member a month' },
-  { language: 'de', monthly: '/ Monat', repeated: 'pro Teammitglied und Monat' },
-  { language: 'fr', monthly: '/ mois', repeated: 'par membre de l’équipe et par mois' },
-  { language: 'it', monthly: '/ mese', repeated: 'per membro del team al mese' },
-] satisfies { language: Locale; monthly: string; repeated: string }[]
+const cellsOf = (table: HTMLElement, name: string) =>
+  within(within(table).getByRole('rowheader', { name }).closest('tr')!)
+    .getAllByRole('cell')
+    .map((c) => c.textContent)
 
-it.each(cases)(
-  '$language keeps comparison allowances compact and preserves their scope',
-  ({ language, monthly, repeated }) => {
+it.each(['en', 'de', 'fr', 'it'] satisfies Locale[])(
+  '%s shows allowances with their unit, unlimited in words',
+  (language) => {
     const translate = translatorFor(language)
     render(
       <LanguageProvider language={language}>
         <PlanTable />
       </LanguageProvider>,
     )
-
     const table = screen.getByRole('table')
-    expect(within(table).getAllByText(monthly, { exact: true }).length).toBeGreaterThan(0)
-    expect(screen.queryByText(repeated, { exact: true })).toBeNull()
-    expect(screen.getAllByText(translate('allowanceLegend'), { exact: false })).toHaveLength(1)
-    expect(table).toHaveTextContent(translate('perWorkspaceShort'))
-    expect(table).toHaveTextContent(translate('personMonth').trim())
-
-    const storage = within(table)
-      .getByRole('rowheader', { name: translate('featureDocumentLibrary') })
-      .closest('tr')
-    expect(storage).toHaveTextContent('500 MB')
-    expect(storage).not.toHaveTextContent(monthly)
-
-    // An amount and its unit share one cell line, "300 / month"; no cap is ∞, read out as Unlimited.
-    const invoices = within(table)
-      .getByRole('rowheader', { name: translate('featureInvoices') })
-      .closest('tr')
-    const [, , pro, business] = invoices?.querySelectorAll('th, td') ?? []
-    expect(pro?.textContent).toBe(`100 ${monthly}`)
-    expect(pro?.querySelector('.block')).toBeNull()
-    expect(business?.textContent).toContain('∞')
-    expect(business?.querySelector('[aria-hidden]')).toHaveTextContent('∞')
+    const month = translate('planPerMonth')
+    expect(cellsOf(table, translate('planRowInvoices'))).toEqual([
+      `3 ${month}`,
+      `15 ${month}`,
+      `100 ${month}`,
+      translate('planUnlimited'),
+    ])
+    expect(cellsOf(table, translate('planRowDocuments'))).toEqual([
+      '100 MB',
+      '500 MB',
+      '5 GB',
+      '20 GB',
+    ])
+    expect(table.textContent).not.toContain('∞')
+    const legends = document.querySelectorAll('[data-slot="allowance-legend"]')
+    expect([...legends].map((l) => l.textContent)).toEqual([translate('planFootnote')])
   },
 )
+
+it('explains a row in its (?) popover', async () => {
+  render(<PlanTable />)
+  const table = screen.getByRole('table')
+  await userEvent.click(within(table).getByRole('button', { name: 'About E-invoices (XML)' }))
+  expect(await screen.findByText(/XRechnung \(UBL and CII\), Peppol BIS Billing 3\.0/)).toBeTruthy()
+})

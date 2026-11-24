@@ -6,7 +6,7 @@ import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 
-import { billingFixture } from '@/components/billing/billing-fixture'
+import { billingFixture, publicOfferFixture } from '@/components/billing/billing-fixture'
 import type { Session } from '@/lib/api'
 import { billingKeys, useBilling, type Billing } from '@/lib/billing'
 import { queryKeys } from '@/lib/queries'
@@ -40,12 +40,17 @@ function renderWith(node: ReactNode, billing?: Billing, role = 'owner') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   client.setQueryData(queryKeys.session, { ...session, role })
   if (billing) client.setQueryData(billingKeys.overview, billing)
+  client.setQueryData(['offers', 'current'], publicOfferFixture)
   render(
     <QueryClientProvider client={client}>
       <TooltipProvider>{node}</TooltipProvider>
     </QueryClientProvider>,
   )
 }
+
+/** No plan at all, not even Free: the API no longer answers it, the gate still guards it. */
+const noPlan = (over: Partial<Billing> = {}) =>
+  billingFixture({ plan: '', locked: true, features: [], ...over })
 
 const gate = (billing?: Billing) =>
   renderWith(
@@ -61,7 +66,7 @@ afterEach(() => {
 })
 
 test('a locked workspace goes to the plan picker without showing the page', () => {
-  gate(billingFixture())
+  gate(noPlan())
   expect(screen.queryByText('The list')).toBeNull()
   expect(replace).toHaveBeenCalledWith('/choose-plan')
 })
@@ -75,14 +80,14 @@ test('before billing loads the page does not show', () => {
 
 test('the billing settings are never gated', () => {
   pathname = '/settings/billing'
-  gate(billingFixture())
+  gate(noPlan())
   expect(screen.getByText('The list')).toBeVisible()
   expect(replace).not.toHaveBeenCalled()
 })
 
 test('the workspace settings are never gated, so its owner can rename or delete it', () => {
   pathname = '/settings/workspace'
-  gate(billingFixture())
+  gate(noPlan())
   expect(screen.getByText('The list')).toBeVisible()
   expect(replace).not.toHaveBeenCalled()
 })
@@ -92,23 +97,29 @@ test('a workspace with a plan is not gated', () => {
   expect(screen.getByText('The list')).toBeVisible()
 })
 
+test('a workspace on Free is not gated', () => {
+  gate(billingFixture())
+  expect(screen.getByText('The list')).toBeVisible()
+  expect(replace).not.toHaveBeenCalled()
+})
+
 test('billing off is not gated', () => {
   gate(billingFixture({ enabled: false, locked: false }))
   expect(screen.getByText('The list')).toBeVisible()
 })
 
 test('the picker shows the plans to an owner or admin', () => {
-  renderWith(<ChoosePlan />, billingFixture())
+  renderWith(<ChoosePlan />, noPlan())
   expect(screen.getByRole('heading', { name: 'Choose a plan for Acme' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible()
-  expect(screen.getByRole('region', { name: 'Basic' })).toBeVisible()
+  expect(screen.getByRole('article', { name: 'Basic' })).toBeVisible()
 })
 
 test('the picker tells a member to ask an owner', () => {
-  renderWith(<ChoosePlan />, billingFixture({ can_manage: false }))
+  renderWith(<ChoosePlan />, noPlan({ can_manage: false }))
   expect(screen.getByText('This workspace has no active plan')).toBeVisible()
   expect(screen.getByText(/until an owner or admin chooses one/)).toBeVisible()
-  expect(screen.queryByRole('region', { name: 'Basic' })).toBeNull()
+  expect(screen.queryByRole('article', { name: 'Basic' })).toBeNull()
   expect(screen.getByRole('link', { name: 'Workspace settings' })).toHaveAttribute(
     'href',
     '/settings/workspace',
@@ -116,21 +127,26 @@ test('the picker tells a member to ask an owner', () => {
 })
 
 test('the owner can delete the workspace from the picker, in place', () => {
-  renderWith(<ChoosePlan />, billingFixture({ has_customer: true }))
+  renderWith(<ChoosePlan />, noPlan({ has_customer: true }))
   fireEvent.click(screen.getByRole('button', { name: 'Delete workspace' }))
   expect(screen.getByRole('dialog', { name: 'Delete “Acme”?' })).toBeVisible()
 })
 
 test('only the owner is offered the deletion', () => {
-  renderWith(<ChoosePlan />, billingFixture(), 'admin')
+  renderWith(<ChoosePlan />, noPlan(), 'admin')
   expect(screen.getByRole('link', { name: 'Workspace settings' })).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Delete workspace' })).toBeNull()
+})
+
+test('the picker sends a workspace on Free home', () => {
+  renderWith(<ChoosePlan />, billingFixture())
+  expect(replace).toHaveBeenCalledWith('/')
 })
 
 test('the picker sends a workspace with a plan home', () => {
   renderWith(<ChoosePlan />, billingFixture({ locked: false, plan: 'basic', status: 'active' }))
   expect(replace).toHaveBeenCalledWith('/')
-  expect(screen.queryByRole('region', { name: 'Basic' })).toBeNull()
+  expect(screen.queryByRole('article', { name: 'Basic' })).toBeNull()
 })
 
 /** A page that reads billing itself, as the sidebar and the usage meters do. */
@@ -162,9 +178,9 @@ test('billing the person may not read does not hold the page', async () => {
 
 test('back from a cancelled Checkout the picker says so and tidies the URL', () => {
   window.history.replaceState(null, '', '/choose-plan?checkout=canceled')
-  renderWith(<ChoosePlan />, billingFixture())
+  renderWith(<ChoosePlan />, noPlan())
   expect(toast).toHaveBeenCalledWith('Checkout cancelled. Nothing was charged.')
   expect(replace).toHaveBeenCalledWith('/choose-plan')
-  expect(screen.getByRole('region', { name: 'Basic' })).toBeVisible()
+  expect(screen.getByRole('article', { name: 'Basic' })).toBeVisible()
   window.history.replaceState(null, '', '/')
 })

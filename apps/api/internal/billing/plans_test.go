@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -11,7 +12,7 @@ import (
 func TestPricesByLookupKey(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspaceIn("Europe/Zurich")
-	delete(e.stripe.catalog, "helvetly_business_year") // not deployed yet
+	delete(e.stripe.catalog, "business_year") // not deployed yet
 	for range 2 {
 		code, body := e.do(owner, http.MethodGet, "/api/v1/billing", nil)
 		data, _ := body["data"].(map[string]any)
@@ -23,7 +24,7 @@ func TestPricesByLookupKey(t *testing.T) {
 			id           string
 			month, year  float64
 			yearDeployed bool
-		}{{"basic", 1900, 18300, true}, {"pro", 4900, 47100, true}, {"business", 9900, 0, false}} {
+		}{{"basic", 1900, 18300, true}, {"pro", 4900, 47100, true}, {"business", 14900, 0, false}} {
 			p, _ := list[i].(map[string]any)
 			prices, _ := p["prices"].(map[string]any)
 			month, _ := prices["month"].(map[string]any)
@@ -47,54 +48,55 @@ func TestPricesByLookupKey(t *testing.T) {
 	}
 }
 
-func TestLockedGuard(t *testing.T) {
+// TestFreeWithoutAPaidPlan: a workspace that never subscribed, or whose subscription ended, is on Free: it keeps
+// working within Free's limits (5 clients), keeps everything it made above them and only further additions are
+// refused; a live subscription lifts them again. Billing off caps nothing.
+func TestFreeWithoutAPaidPlan(t *testing.T) {
 	e := newEnv(t, true)
 	owner := e.workspace()
 	ws := owner.workspace
-	for _, path := range []string{"/api/v1/clients", "/api/v1/invoices", "/api/v1/documents"} {
-		code, body := e.do(owner, http.MethodPost, path, map[string]string{"x": "y"})
-		errBody, _ := body["error"].(map[string]any)
-		details, ok := errBody["details"].(map[string]any)
-		if code != http.StatusPaymentRequired || errBody["code"] != "plan_required" || !ok || len(details) != 0 {
-			t.Fatalf("POST %s without a plan: %d %v", path, code, body)
+	made := 0
+	client := func() int { // the guard answers; the stub behind it stores nothing, so the client is stored here
+		code, _ := e.do(owner, http.MethodPost, "/api/v1/clients", map[string]string{"x": "y"})
+		if code == http.StatusCreated {
+			made++
+			e.exec(`INSERT INTO clients (id, workspace_id, number, name, created_at, updated_at) VALUES ($1, $2, $3, 'C', now(), now())`,
+				fmt.Sprint("cli_", made), ws, made)
+		}
+		return code
+	}
+	for i := range 5 {
+		if code := client(); code != http.StatusCreated {
+			t.Fatalf("client %d on Free: %d", i+1, code)
 		}
 	}
-	for _, tc := range []struct{ method, path string }{
-		{"PUT", "/api/v1/engagement-settings"}, {"DELETE", "/api/v1/clients/cli_1"}, {"POST", "/api/v1/workspace"},
-	} {
-		if code, _ := e.do(owner, tc.method, tc.path, nil); code != http.StatusPaymentRequired {
-			t.Fatalf("%s %s without a plan: %d", tc.method, tc.path, code)
-		}
+	if code := client(); code == http.StatusCreated {
+		t.Fatal("a sixth client on Free")
 	}
-	notLocked := []struct{ method, path string }{
-		{"GET", "/api/v1/clients"}, {"GET", "/api/v1/billing"}, {"POST", "/api/v1/billing/checkout"}, {"POST", "/api/v1/billing/portal"},
-		{"POST", "/api/v1/session/workspace"}, {"POST", "/api/v1/session/onboarded"}, {"POST", "/api/v1/workspaces"}, {"PATCH", "/api/v1/workspace"},
-		{"DELETE", "/api/v1/workspace"}, {"POST", "/api/v1/public/sign/abc"}, {"POST", "/api/v1/auth/email/start"},
-		{"POST", "/api/v1/invitations/accept"}, {"POST", "/api/v1/account/passkeys/start"},
+	if r := mustRights(t, e, ws); r.Plan != Free || r.Trial || r.Includes(store.FeatureHeidi) || !r.Includes(store.FeatureExpenses) ||
+		!r.Includes(store.FeatureScheduling) || r.Includes(store.FeatureRemoveBranding) {
+		t.Fatalf("Free rights: %+v", r)
 	}
-	for _, tc := range notLocked {
-		if code, body := e.do(owner, tc.method, tc.path, map[string]string{}); code == http.StatusPaymentRequired {
-			t.Fatalf("%s %s was locked: %v", tc.method, tc.path, body)
-		}
-	}
-	// The webhook is not signed in and must always get through.
-	if code := e.event("evt_x", "invoice.paid", map[string]any{"id": "in_1"}); code != http.StatusOK {
-		t.Fatalf("webhook: %d", code)
-	}
-
 	for _, status := range []string{"active", "trialing", "past_due"} {
 		e.stripe.put("sub_1", ws, "cus_1", status, "price_bm")
 		e.event("evt_"+status, "customer.subscription.updated", map[string]any{"id": "sub_1"})
-		if code, body := e.do(owner, http.MethodPost, "/api/v1/clients", map[string]string{"x": "y"}); code != http.StatusCreated {
-			t.Fatalf("%s subscription: %d %v", status, code, body)
+		if code := client(); code != http.StatusCreated {
+			t.Fatalf("%s subscription: %d", status, code)
 		}
 	}
 	e.stripe.put("sub_1", ws, "cus_1", "canceled", "price_bm")
 	e.event("evt_canceled", "customer.subscription.deleted", map[string]any{"id": "sub_1"})
-	if code, _ := e.do(owner, http.MethodPost, "/api/v1/clients", map[string]string{"x": "y"}); code != http.StatusPaymentRequired {
-		t.Fatalf("after cancelling: %d", code)
+	if code := client(); code == http.StatusCreated {
+		t.Fatal("a client above Free's limit after cancelling")
 	}
-
+	var kept int
+	e.scan(`SELECT count(*) FROM clients WHERE workspace_id = '`+ws+`' AND deleted_at IS NULL`, &kept)
+	if kept != 8 {
+		t.Fatalf("%d clients kept, want 8", kept)
+	}
+	if code, _ := e.do(owner, http.MethodPatch, "/api/v1/workspace", map[string]string{}); code == http.StatusPaymentRequired {
+		t.Fatal("the workspace's settings are locked on Free")
+	}
 	t.Run("billing off", func(t *testing.T) {
 		off := newEnv(t, false)
 		if code, _ := off.do(off.workspace(), http.MethodPost, "/api/v1/clients", map[string]string{"x": "y"}); code != http.StatusCreated {
@@ -120,9 +122,9 @@ func TestTrialOnlyOnTheTrialPlan(t *testing.T) {
 	}
 	checkout(Pro) // the offer's trial plan
 	f := e.stripe.form("POST /v1/checkout/sessions")
-	if f.Get("subscription_data[trial_period_days]") != "7" || f.Get("subscription_data[trial_settings][end_behavior][missing_payment_method]") != "cancel" ||
+	if f.Get("subscription_data[trial_period_days]") != "14" || f.Get("subscription_data[trial_settings][end_behavior][missing_payment_method]") != "cancel" ||
 		f.Get("payment_method_collection") != "always" || f.Get("subscription_data[metadata][trial_user]") == "" {
-		t.Fatalf("Pro has no 7-day trial with card: %v", f)
+		t.Fatalf("Pro has no 14-day trial with card: %v", f)
 	}
 }
 
@@ -354,9 +356,9 @@ func TestPlanAmountYearly(t *testing.T) {
 		plan        string
 		month, year int64
 	}{
-		{Basic, 1900, 18300},    // 182.40 rounds up to 183
-		{Pro, 4900, 47100},      // 470.40 rounds up to 471
-		{Business, 9900, 95100}, // 950.40 rounds up to 951
+		{Basic, 1900, 18300},      // 182.40 rounds up to 183
+		{Pro, 4900, 47100},        // 470.40 rounds up to 471
+		{Business, 14900, 143100}, // 1430.40 rounds up to 1431
 	} {
 		if got := PlanAmount(tt.plan, "month"); got != tt.month {
 			t.Errorf("%s monthly = %d, want %d", tt.plan, got, tt.month)
@@ -374,7 +376,7 @@ func TestOlderOfferWorkspacesGetOnlyTheProTrial(t *testing.T) {
 	e.publishOlder("older", func(o *Offer) { o.Trial.AccessPlan = Business })
 	owner := e.workspace()
 	e.exec(`INSERT INTO workspace_billing (workspace_id, offer_id, updated_at) VALUES ($1, 'older', now()) ON CONFLICT (workspace_id) DO UPDATE SET offer_id = 'older'`, owner.workspace)
-	for plan, trial := range map[string]string{Basic: "", Business: "", Pro: "7"} {
+	for plan, trial := range map[string]string{Basic: "", Business: "", Pro: "14"} {
 		if code, body := e.do(owner, http.MethodPost, "/api/v1/billing/checkout", map[string]string{"plan": plan, "interval": "month"}); code != http.StatusOK {
 			t.Fatalf("checkout %s: %d %v", plan, code, body)
 		}

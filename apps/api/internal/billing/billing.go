@@ -90,10 +90,6 @@ var (
 		"This workspace has no billing account yet: choose a plan first.", nil)
 	errPlanRequired = auth.Error(http.StatusPaymentRequired, "plan_required",
 		"This workspace has no active plan. Choose a plan to keep working.", map[string]any{})
-	// errPaymentOverdue is errPlanRequired for a workspace whose renewal stayed unpaid past the billing grace.
-	errPaymentOverdue = auth.Error(http.StatusPaymentRequired, "plan_required",
-		"The last payment for this workspace's plan failed, so it is read-only. Pay the open invoice in Billing to keep working.",
-		map[string]any{"reason": "payment_overdue"})
 	errUnavailable = auth.Error(http.StatusConflict, "plan_unavailable", "This plan is not available right now: try again later.", nil)
 	errBadCode     = badCode("invalid", "This code isn't valid.")
 	errDiscounted  = badCode("has_discount", "This workspace already has a discount; another code can be added once it ends.")
@@ -124,9 +120,12 @@ type usageItem struct {
 	Max   *int64 `json:"max"` // null: unlimited
 }
 
+// planPrice is a plan's tiered price in an interval: Amount for up to IncludedPeople, ExtraPerson for each further one.
 type planPrice struct {
-	Amount   int64  `json:"amount"` // minor units, VAT included
-	Currency string `json:"currency"`
+	Amount         int64  `json:"amount"` // minor units, VAT included
+	Currency       string `json:"currency"`
+	IncludedPeople int64  `json:"included_people"`
+	ExtraPerson    int64  `json:"extra_person"`
 }
 
 type planItem struct {
@@ -168,6 +167,9 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
+	if s.enabled {
+		plan = rights.Plan // Free without a paid plan
+	}
 	cat, err := currentCatalogue(r.Context(), s.db.Q)
 	if err != nil {
 		return err
@@ -186,13 +188,13 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	usage := make([]usageItem, 0, len(limitOrder))
 	for _, l := range limitOrder {
-		max := Unlimited // without a plan nothing is capped: the workspace is read-only
+		max := Unlimited // unresolved rights cap nothing here; the writes refuse
 		if plan != "" || rights.SelfHosted {
 			if max, err = rights.capFor(l); err != nil {
 				return err
 			}
 		}
-		if l == AITokens && max != Unlimited && plan != "" && !rights.Trial && rights.Items[string(AITokens)].Source != SourcePaymentOverdue {
+		if l == AITokens && max != Unlimited && paid(plan) && !rights.Trial && rights.Items[string(AITokens)].Source != SourcePaymentOverdue {
 			max += bought // the packs bought this month count on top of the plan's allowance
 		}
 		usage = append(usage, usageItem{l, used(u, l), maxOf(max)})
@@ -258,8 +260,8 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 			}
 		}
 		for _, interval := range []string{"month", "year"} {
-			if amount, ok := prices[id+"_"+interval].amountIn(cur); ok {
-				p.Prices[interval] = &planPrice{amount, cur}
+			if _, ok := prices[id+"_"+interval].amountIn(cur); ok { // sold in cur; the figures are the same in each
+				p.Prices[interval] = &planPrice{PlanAmount(id, interval), cur, IncludedSeats(id), ExtraSeatAmount(id, interval)}
 			} else {
 				p.Prices[interval] = nil
 			}
@@ -307,7 +309,8 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	return nil
 }
 
-// planPrices reads the plans' prices from Stripe by lookup key, cached for ten minutes; a failure leaves them out.
+// planPrices reads the offer on sale's prices from Stripe by lookup key, cached for ten minutes; a failure leaves
+// them out.
 func (s *Service) planPrices(ctx context.Context) map[string]price {
 	if !s.enabled {
 		return nil
@@ -317,10 +320,15 @@ func (s *Service) planPrices(ctx context.Context) map[string]price {
 	if s.prices != nil && s.now().Sub(s.pricedAt) < 10*time.Minute {
 		return s.prices
 	}
+	offer, err := s.db.CurrentOffer(ctx)
+	if err != nil {
+		s.log.WarnContext(ctx, "reading the offer on sale failed", "error", err)
+		return map[string]price{}
+	}
 	form := url.Values{"active": {"true"}, "limit": {"100"}, "expand[]": {"data.currency_options"}}
 	for _, plan := range planOrder {
 		for _, interval := range intervals {
-			form.Add("lookup_keys[]", LookupKey(plan, interval))
+			form.Add("lookup_keys[]", LookupKey(offer.ID, plan, interval))
 		}
 	}
 	var found list[price]
@@ -470,7 +478,7 @@ func (s *Service) checkout(w http.ResponseWriter, r *http.Request, sess store.Se
 	if !slices.Contains(checkoutLanguages, in.Language) {
 		in.Language = "" // Stripe then picks by the browser
 	}
-	if planNames[in.Plan] == "" || !slices.Contains(intervals, in.Interval) {
+	if !paid(in.Plan) || !slices.Contains(intervals, in.Interval) {
 		return auth.Error(http.StatusBadRequest, "invalid_request", "Choose the Basic, Pro or Business plan, monthly or yearly.",
 			map[string]any{"fields": map[string]string{"plan": "invalid"}})
 	}

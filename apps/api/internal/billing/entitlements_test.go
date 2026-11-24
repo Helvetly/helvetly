@@ -67,7 +67,11 @@ func TestResolveMatrix(t *testing.T) {
 		{Business, 5, Storage, 100_000_000_000}, {Business, 5, AITokens, 100_000_000}, {Business, 5, "ai_cost_usd_micros", 60_000_000},
 		{Business, 5, "automation_actions_per_month", 30_000}, {Business, 5, Engagements, Unlimited}, {Business, 5, Clients, Unlimited},
 		{Pro, 5, "automation_actions_per_month", 7500}, {Basic, 25, Invoices, 375}, {Basic, 1, Clients, 30},
-		{Basic, 25, Expenses, 0}, {Basic, 25, Signatures, 0}, {Basic, 25, "automation_actions_per_month", 0},
+		{Basic, 25, Expenses, 250}, {Basic, 1, Expenses, 10}, {Basic, 1, ScheduledEvents, 10}, {Basic, 25, Signatures, 0},
+		// Free (helvetly-v1): one person, Free's own small limits, nothing that costs model tokens.
+		{Free, 1, Invoices, 3}, {Free, 1, Quotes, 3}, {Free, 1, Clients, 5}, {Free, 1, Products, 10}, {Free, 1, Engagements, 1},
+		{Free, 1, Emails, 20}, {Free, 1, Storage, 100_000_000}, {Free, 1, Expenses, 1}, {Free, 1, ScheduledEvents, 3},
+		{Free, 1, Signatures, 0}, {Free, 1, "automation_actions_per_month", 0}, {Free, 1, AITokens, 0}, {Free, 1, MaxSeats, 1}, {Basic, 25, "automation_actions_per_month", 0},
 		{Basic, 25, Storage, 12_500_000_000}, {Basic, 1, MaxSeats, 5}, {Pro, 1, MaxSeats, 25}, {Business, 1, MaxSeats, Unlimited}, {Business, 26, MaxSeats, Unlimited}, {Basic, 1, AICost, 0}, {Basic, 25, AITokens, 0},
 		// The current offer: Pro issues 100 invoices per paid seat; quotes are new; Business counts no records.
 		{Pro, 2, Invoices, 200}, {Basic, 1, Quotes, 5}, {Basic, 3, Quotes, 15}, {Pro, 5, Quotes, 500},
@@ -151,7 +155,7 @@ func TestEntitlementsInTheDatabase(t *testing.T) {
 	e.exec(`UPDATE workspace_billing SET per_seat = true, seats = 5 WHERE workspace_id = $1`, b.workspace)
 	r := mustRights(t, e, b.workspace)
 	if r.Plan != Basic || r.OfferID != currentOffer || r.Seats != 5 || r.Items["storage_bytes"].Value != 2_500_000_000 ||
-		r.Items["clients"].Value != 30 || r.Includes("expenses") || r.Items["expenses_per_month"].Value != 0 {
+		r.Items["clients"].Value != 30 || !r.Includes("expenses") || r.Items["expenses_per_month"].Value != 50 || r.Includes("heidi") {
 		t.Fatalf("basic × 5: %+v", r)
 	}
 

@@ -23,13 +23,13 @@ func (e *env) actions(ws string) store.PeriodUsage {
 	return u
 }
 
-// useActions spends all but left of Pro's 1500 actions in the month of at.
+// useActions spends all but left of Pro's 3000 actions (1500 for each of its 2 included people) in the month of at.
 func (e *env) useActions(ws string, at time.Time, left int) {
 	e.t.Helper()
 	if _, err := e.pool.Exec(context.Background(), `INSERT INTO usage_events (workspace_id, resource, operation, params_hash, period,
 			reserved, consumed, created_at, settled_at)
 		SELECT $1, $2, 'seed:' || i, '', $3, 0, 1, now(), now() FROM generate_series(1, $4::int) AS i`,
-		ws, store.AutomationActions, store.UsagePeriod(at), 1500-left); err != nil {
+		ws, store.AutomationActions, store.UsagePeriod(at), 3000-left); err != nil {
 		e.t.Fatal(err)
 	}
 }
@@ -104,7 +104,7 @@ func TestRemindersPauseAtTheLimitAndNeverChaseAPaidInvoice(t *testing.T) {
 	if st := e.status(b, open); len(st.Notices) != 1 {
 		t.Fatalf("the open invoice: %+v", st.Notices)
 	}
-	if u := e.actions(b.workspace); u.Total() != 1501 {
+	if u := e.actions(b.workspace); u.Total() != 3001 {
 		t.Fatalf("used %+v", u)
 	}
 }

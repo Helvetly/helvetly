@@ -2,7 +2,7 @@
 title: Back-officesoftware kiezen
 description: Kies backofficesoftware voor een klein bedrijf: klanten, facturen, kosten, documenten, boekhouding, personeelsdossiers, AI en lokale vereisten.
 category: Choosing software
-updated: 2026-11-20
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -58,7 +58,7 @@ Specifiek in Helvetly:
 
 - **Klanten** hebben contactpersonen, bestanden en factuurstandaarden zoals valuta, documenttaal en betalingstermijn ([een klant toevoegen](/help/add-a-client)).
 - **Facturen** zijn er in acht documenttypen, van factuur en deelfactuur tot creditnota en proforma, met een Zwitserse QR-factuur, in het Duits, Frans, Italiaans of Engels.
-- **Uitgaven** bewaren hun bonnetjes en voorbelasting (Pro en Business); AI kan van bonnetjes uitgaven maken.
+- **Uitgaven** bewaren hun bonnetjes en voorbelasting in elk abonnement; met Pro en Business kan AI van bonnetjes uitgaven maken.
 - **Documenten** worden één keer per werkruimte opgeslagen: hetzelfde bestand dat twee keer wordt geüpload, wordt herkend aan de inhoud.
 - **Handtekeningen** zijn eenvoudige elektronische handtekeningen met een auditspoor; gekwalificeerde handtekeningen worden niet aangeboden ([een pdf ter ondertekening versturen](/help/send-a-pdf-for-signature)).
 - **Opdrachten** (engagements) volgen retainers en de resterende uren, en maken van geleverd werk conceptfacturen.
@@ -78,7 +78,7 @@ Een solo-consultant heeft snelle offertes en facturen nodig, een QR-factuur, her
 | Auditlog en afgesloten perioden      | Fijn om te hebben        | Belangrijk                                |
 | Klantenportaal                       | Zelden                   | Vaak, bij veel klanten                    |
 
-Kijk ook naar het prijsmodel. Sommige tools rekenen één prijs, hoeveel mensen het ook gebruiken (Magic Heidi), sommige nemen een aantal gebruikers op per niveau (bexio, AbaNinja) en sommige rekenen per persoon (Helvetly, waar elk teamlid een betaalde plek is). Een prijs per persoon is eenvoudig voor één of twee mensen; een vaste prijs kan goedkoper zijn voor een groter team.
+Kijk ook naar het prijsmodel. Sommige tools rekenen één prijs, hoeveel mensen het ook gebruiken (Magic Heidi), sommige nemen een aantal gebruikers op per niveau (bexio, AbaNinja) en sommige nemen een paar mensen op en rekenen voor elke extra persoon (Helvetly: 1 persoon bij Basic, 2 bij Pro en 5 bij Business, plus een gratis abonnement voor één persoon). Vergelijk wat de grootte van je team zou kosten, niet alleen de instapprijs.
 
 ## Wat verandert er als je klanten in het buitenland hebt?
 

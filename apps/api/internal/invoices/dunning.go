@@ -217,6 +217,9 @@ func (s *Service) ReminderPDF(ctx context.Context, ws store.Workspace, inv store
 	}
 	d := s.document(inv, set, false, nil)
 	d.Logo = logo
+	if d.SentWith, err = s.sentWith(ctx, ws.ID); err != nil {
+		return nil, err
+	}
 	if !qrBill {
 		d.Bill = nil
 	} else if d.Bill != nil {

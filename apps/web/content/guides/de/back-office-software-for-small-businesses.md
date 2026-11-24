@@ -3,7 +3,7 @@ title: So wählen Sie Backoffice-Software
 description: Backoffice-Software für kleine Unternehmen wählen: Kunden, Rechnungen, Ausgaben, Dokumente, Buchhaltung, Personalunterlagen, KI und lokale Anforderungen.
 category: Choosing software
 categoryLabel: Software wählen
-updated: 2026-11-20
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -59,7 +59,7 @@ Konkret in Helvetly:
 
 - **Kunden** haben Kontaktpersonen, Dateien und Rechnungsvorgaben wie Währung, Dokumentsprache und Zahlungsbedingungen ([Kunden hinzufügen](/help/add-a-client)).
 - **Rechnungen** gibt es in acht Dokumentarten, von der Rechnung und Teilrechnung bis zur Gutschrift und Proforma, mit Schweizer QR-Rechnung, auf Deutsch, Französisch, Italienisch oder Englisch.
-- **Spesen** behalten ihre Belege und die Vorsteuer (Pro und Business); die KI kann aus Belegen Spesen erstellen.
+- **Spesen** behalten ihre Belege und die Vorsteuer in jedem Tarif; mit Pro und Business kann die KI aus Belegen Spesen erstellen.
 - **Dokumente** werden pro Arbeitsbereich nur einmal gespeichert: Dieselbe Datei, die zweimal hochgeladen wird, wird am Inhalt erkannt.
 - **Signaturen** sind einfache elektronische Signaturen mit Prüfpfad; qualifizierte Signaturen werden nicht angeboten ([ein PDF zur Unterschrift senden](/help/send-a-pdf-for-signature)).
 - **Mandate** erfassen Retainer und die verbleibenden Stunden und machen aus geleisteter Arbeit Rechnungsentwürfe.
@@ -79,7 +79,7 @@ Ein Einzelberater braucht schnelle Offerten und Rechnungen, eine QR-Rechnung, Ma
 | Änderungsprotokoll und geschlossene Perioden | Nützlich              | Wichtig                                           |
 | Kundenportal                                 | Selten                | Oft, bei vielen Kunden                            |
 
-Achten Sie auch auf das Preismodell. Manche Tools verlangen einen Preis, egal wie viele Personen sie nutzen (Magic Heidi), manche enthalten pro Stufe eine bestimmte Anzahl Benutzer (bexio, AbaNinja), und manche verrechnen pro Person (Helvetly, wo jedes Teammitglied ein bezahlter Platz ist). Ein Preis pro Person ist für ein oder zwei Personen einfach; ein Pauschalpreis kann für ein grösseres Team günstiger sein.
+Achten Sie auch auf das Preismodell. Manche Tools verlangen einen Preis, egal wie viele Personen sie nutzen (Magic Heidi), manche enthalten pro Stufe eine bestimmte Anzahl Benutzer (bexio, AbaNinja), und manche enthalten einige Personen und verrechnen jede weitere (Helvetly: 1 Person mit Basic, 2 mit Pro und 5 mit Business, dazu ein kostenloser Tarif für eine Person). Vergleichen Sie, was die Grösse Ihres Teams kosten würde, nicht nur den Einstiegspreis.
 
 ## Was ändert sich bei Kunden im Ausland?
 
