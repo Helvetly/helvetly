@@ -1,0 +1,642 @@
+{
+  "/compare": {
+    "de": "vergleich",
+    "fr": "comparatif",
+    "it": "confronto",
+    "nl": "vergelijken",
+    "cs": "srovnani",
+    "sv": "jamforelse"
+  },
+  "/dpa": {
+    "de": "auftragsverarbeitungsvertrag",
+    "fr": "accord-de-traitement-des-donnees",
+    "it": "accordo-sul-trattamento-dei-dati",
+    "nl": "verwerkersovereenkomst",
+    "cs": "smlouva-o-zpracovani-osobnich-udaju",
+    "sv": "personuppgiftsbitradesavtal"
+  },
+  "/faq": {
+    "de": "haeufige-fragen",
+    "fr": "questions-frequentes",
+    "it": "domande-frequenti",
+    "nl": "veelgestelde-vragen",
+    "cs": "caste-dotazy",
+    "sv": "vanliga-fragor"
+  },
+  "/guides": {
+    "de": "ratgeber",
+    "fr": "guides",
+    "it": "guide",
+    "nl": "gidsen",
+    "cs": "prirucky",
+    "sv": "guider"
+  },
+  "/guides/back-office-software-for-small-businesses": {
+    "de": "backoffice-software-fuer-kleinunternehmen",
+    "fr": "comment-choisir-un-logiciel-de-back-office",
+    "it": "software-gestionale-per-piccole-imprese",
+    "nl": "back-officesoftware-kiezen",
+    "cs": "jak-vybrat-software-pro-zazemi-firmy",
+    "sv": "sa-valjer-du-back-office-programvara"
+  },
+  "/guides/bexio-alternatives": {
+    "de": "bexio-alternativen-in-der-schweiz",
+    "fr": "alternatives-a-bexio-en-suisse",
+    "it": "alternative-a-bexio-in-svizzera",
+    "nl": "alternatieven-voor-bexio-in-zwitserland",
+    "cs": "alternativy-k-bexio-ve-svycarsku",
+    "sv": "alternativ-till-bexio-i-schweiz"
+  },
+  "/guides/e-invoicing-for-swiss-companies": {
+    "de": "e-rechnungen-fuer-schweizer-unternehmen-mit-kunden-im-ausland",
+    "fr": "la-facturation-electronique-pour-les-entreprises-suisses-qui-exportent",
+    "it": "fatturazione-elettronica-per-aziende-svizzere-che-vendono-all-estero",
+    "nl": "e-facturatie-voor-zwitserse-bedrijven-die-internationaal-verkopen",
+    "cs": "e-fakturace-pro-svycarske-firmy-prodavajici-do-zahranici",
+    "sv": "e-fakturering-for-schweiziska-foretag-som-saljer-utomlands"
+  },
+  "/guides/invoice-requirements": {
+    "de": "pflichtangaben-einer-schweizer-rechnung",
+    "fr": "les-mentions-obligatoires-d-une-facture-suisse",
+    "it": "cosa-deve-contenere-una-fattura-svizzera",
+    "nl": "wat-een-zwitserse-factuur-moet-bevatten",
+    "cs": "co-musi-obsahovat-svycarska-faktura",
+    "sv": "vad-en-schweizisk-faktura-maste-innehalla"
+  },
+  "/guides/multi-currency-invoicing": {
+    "de": "rechnungen-an-kunden-im-ausland-und-in-fremdwaehrungen",
+    "fr": "facturer-des-clients-a-l-etranger-et-en-devises",
+    "it": "fatturare-a-clienti-all-estero-e-in-valuta-estera",
+    "nl": "facturen-aan-klanten-in-het-buitenland-en-in-vreemde-valuta",
+    "cs": "fakturace-klientum-v-zahranici-a-v-cizich-menach",
+    "sv": "fakturera-kunder-utomlands-och-i-utlandsk-valuta"
+  },
+  "/guides/payment-reminders": {
+    "de": "zahlungserinnerungen-in-der-schweiz",
+    "fr": "les-rappels-de-paiement-en-suisse",
+    "it": "solleciti-di-pagamento-in-svizzera",
+    "nl": "betalingsherinneringen-in-zwitserland",
+    "cs": "upominky-plateb-ve-svycarsku",
+    "sv": "betalningspaminnelser-i-schweiz"
+  },
+  "/guides/qr-bill": {
+    "de": "die-schweizer-qr-rechnung",
+    "fr": "la-qr-facture-suisse",
+    "it": "la-qr-fattura-svizzera",
+    "nl": "de-zwitserse-qr-factuur",
+    "cs": "svycarsky-qr-ucet",
+    "sv": "den-schweiziska-qr-fakturan"
+  },
+  "/guides/swiss-vat": {
+    "de": "schweizer-mehrwertsteuer-einfach-erklaert",
+    "fr": "la-tva-suisse-expliquee",
+    "it": "l-iva-svizzera-spiegata",
+    "nl": "zwitserse-btw-uitgelegd",
+    "cs": "svycarska-dph-srozumitelne",
+    "sv": "schweizisk-moms-forklarad"
+  },
+  "/guides/vat-for-the-self-employed": {
+    "de": "mehrwertsteuer-fuer-selbststaendige",
+    "fr": "la-tva-pour-les-independants",
+    "it": "iva-per-gli-indipendenti",
+    "nl": "btw-voor-zelfstandigen",
+    "cs": "dph-pro-osoby-samostatne-vydelecne-cinne",
+    "sv": "moms-for-egenforetagare"
+  },
+  "/help": {
+    "de": "hilfe",
+    "fr": "aide",
+    "it": "assistenza",
+    "nl": "hulp",
+    "cs": "napoveda",
+    "sv": "hjalp"
+  },
+  "/help/active-sessions": {
+    "de": "aktive-sitzungen-pruefen-und-beenden",
+    "fr": "consulter-et-fermer-les-sessions-actives",
+    "it": "visualizzare-e-terminare-le-sessioni-attive",
+    "nl": "actieve-sessies-bekijken-en-beeindigen",
+    "cs": "zobrazeni-a-ukonceni-aktivnich-relaci",
+    "sv": "se-och-avsluta-aktiva-sessioner"
+  },
+  "/help/add-a-client": {
+    "de": "kunden-anlegen",
+    "fr": "ajouter-un-client",
+    "it": "aggiungere-un-cliente",
+    "nl": "een-klant-toevoegen",
+    "cs": "pridani-klienta",
+    "sv": "lagg-till-en-kund"
+  },
+  "/help/add-an-expense": {
+    "de": "ausgabe-mit-beleg-erfassen",
+    "fr": "ajouter-une-depense-avec-un-justificatif",
+    "it": "aggiungere-una-spesa-con-ricevuta",
+    "nl": "een-kostenpost-met-bon-toevoegen",
+    "cs": "pridani-vydaje-s-uctenkou",
+    "sv": "lagg-till-en-utgift-med-kvitto"
+  },
+  "/help/add-contact-persons": {
+    "de": "kontaktpersonen-zu-einem-kunden-hinzufuegen",
+    "fr": "ajouter-des-personnes-de-contact-a-un-client",
+    "it": "aggiungere-persone-di-contatto-a-un-cliente",
+    "nl": "contactpersonen-aan-een-klant-toevoegen",
+    "cs": "pridani-kontaktnich-osob-klienta",
+    "sv": "lagg-till-kontaktpersoner-hos-en-kund"
+  },
+  "/help/approve-client-change-requests": {
+    "de": "aenderungsanfrage-eines-kunden-genehmigen-oder-ablehnen",
+    "fr": "approuver-ou-refuser-une-demande-de-modification-client",
+    "it": "approvare-o-rifiutare-una-richiesta-di-modifica-del-cliente",
+    "nl": "een-wijzigingsverzoek-van-een-klant-goedkeuren-of-afwijzen",
+    "cs": "schvaleni-nebo-zamitnuti-zadosti-klienta-o-zmenu",
+    "sv": "godkann-eller-avsla-en-kunds-andringsbegaran"
+  },
+  "/help/audit-log": {
+    "de": "aenderungsprotokoll-einsehen",
+    "fr": "consulter-le-journal-d-audit",
+    "it": "consultare-il-registro-di-audit",
+    "nl": "het-auditlog-bekijken",
+    "cs": "zobrazeni-auditniho-zaznamu",
+    "sv": "visa-revisionsloggen"
+  },
+  "/help/client-portal": {
+    "de": "kundenportal-fuer-einen-kunden-freischalten",
+    "fr": "donner-acces-au-portail-a-un-client",
+    "it": "dare-a-un-cliente-l-accesso-al-portale-clienti",
+    "nl": "een-klant-toegang-tot-het-klantenportaal-geven",
+    "cs": "zpristupneni-klientskeho-portalu",
+    "sv": "ge-en-kund-tillgang-till-kundportalen"
+  },
+  "/help/close-a-month": {
+    "de": "monat-abschliessen",
+    "fr": "cloturer-un-mois",
+    "it": "chiudere-un-mese",
+    "nl": "een-maand-afsluiten",
+    "cs": "uzavreni-mesice",
+    "sv": "stang-en-manad"
+  },
+  "/help/create-and-issue-an-invoice": {
+    "de": "rechnung-erstellen-und-ausstellen",
+    "fr": "creer-et-emettre-une-facture",
+    "it": "creare-ed-emettere-una-fattura",
+    "nl": "een-factuur-maken-en-uitgeven",
+    "cs": "vytvoreni-a-vystaveni-faktury",
+    "sv": "skapa-och-utfarda-en-faktura"
+  },
+  "/help/create-or-switch-workspaces": {
+    "de": "arbeitsbereich-erstellen-oder-wechseln",
+    "fr": "creer-un-espace-de-travail-ou-en-changer",
+    "it": "creare-uno-spazio-di-lavoro-o-passare-a-un-altro",
+    "nl": "werkruimtes-maken-of-wisselen",
+    "cs": "vytvareni-a-prepinani-pracovnich-prostoru",
+    "sv": "skapa-eller-vaxla-arbetsytor"
+  },
+  "/help/delete-a-workspace": {
+    "de": "arbeitsbereich-loeschen",
+    "fr": "supprimer-un-espace-de-travail",
+    "it": "eliminare-uno-spazio-di-lavoro",
+    "nl": "een-werkruimte-verwijderen",
+    "cs": "smazani-pracovniho-prostoru",
+    "sv": "radera-en-arbetsyta"
+  },
+  "/help/delete-your-account": {
+    "de": "eigenes-konto-loeschen",
+    "fr": "supprimer-votre-compte",
+    "it": "eliminare-il-tuo-account",
+    "nl": "je-account-verwijderen",
+    "cs": "smazani-uctu",
+    "sv": "radera-ditt-konto"
+  },
+  "/help/export-an-e-invoice": {
+    "de": "e-rechnung-exportieren-xrechnung-peppol-zugferd-factur-x-e-factura-ksef",
+    "fr": "exporter-une-facture-electronique-xrechnung-peppol-factur-x-zugferd-e-factura-ksef",
+    "it": "esportare-una-fattura-elettronica-xrechnung-peppol-factur-x-zugferd-e-factura-ksef",
+    "nl": "een-e-factuur-exporteren-xrechnung-peppol-zugferd-factur-x-e-factura-ksef",
+    "cs": "export-e-faktury-xrechnung-peppol-zugferd-factur-x-e-factura-ksef",
+    "sv": "exportera-en-e-faktura-xrechnung-peppol-zugferd-factur-x-e-factura-ksef"
+  },
+  "/help/export-your-data": {
+    "de": "eigene-daten-exportieren",
+    "fr": "exporter-vos-donnees",
+    "it": "esportare-i-tuoi-dati",
+    "nl": "je-gegevens-exporteren",
+    "cs": "export-dat",
+    "sv": "exportera-dina-uppgifter"
+  },
+  "/help/get-around-helvetly": {
+    "de": "sich-in-helvetly-zurechtfinden",
+    "fr": "se-reperer-dans-helvetly",
+    "it": "orientarsi-in-helvetly",
+    "nl": "wegwijs-in-helvetly",
+    "cs": "orientace-v-helvetly",
+    "sv": "hitta-i-helvetly"
+  },
+  "/help/get-help-and-send-feedback": {
+    "de": "hilfe-erhalten-oder-feedback-senden",
+    "fr": "obtenir-de-l-aide-ou-envoyer-un-commentaire",
+    "it": "ricevere-assistenza-o-inviare-un-feedback",
+    "nl": "hulp-krijgen-of-feedback-sturen",
+    "cs": "ziskani-pomoci-a-odeslani-zpetne-vazby",
+    "sv": "fa-hjalp-eller-lamna-feedback"
+  },
+  "/help/import-records-with-ai": {
+    "de": "datensaetze-mit-ki-importieren",
+    "fr": "importer-des-donnees-avec-l-ia",
+    "it": "importare-dati-con-l-ia",
+    "nl": "gegevens-importeren-met-ai",
+    "cs": "import-zaznamu-pomoci-ai",
+    "sv": "importera-poster-med-ai"
+  },
+  "/help/instalment-plan": {
+    "de": "rechnung-in-teilrechnungen-aufteilen",
+    "fr": "repartir-une-facture-en-factures-echelonnees",
+    "it": "suddividere-una-fattura-in-fatture-rateali",
+    "nl": "een-factuur-in-termijnfacturen-splitsen",
+    "cs": "rozdeleni-faktury-na-splatkove-faktury",
+    "sv": "dela-upp-en-faktura-i-delfakturor"
+  },
+  "/help/invite-a-team-member": {
+    "de": "teammitglied-einladen",
+    "fr": "inviter-un-membre-de-l-equipe",
+    "it": "invitare-un-membro-del-team",
+    "nl": "een-teamlid-uitnodigen",
+    "cs": "pozvani-clena-tymu",
+    "sv": "bjud-in-en-teammedlem"
+  },
+  "/help/invoice-an-engagement": {
+    "de": "auftrag-abrechnen-und-leistungsnachweis-senden",
+    "fr": "facturer-un-mandat-et-envoyer-un-rapport-de-prestations",
+    "it": "fatturare-un-incarico-e-inviare-un-rapporto-sulle-prestazioni",
+    "nl": "een-opdracht-factureren-en-een-dienstenrapport-versturen",
+    "cs": "fakturace-zakazky-a-odeslani-vykazu-sluzeb",
+    "sv": "fakturera-ett-uppdrag-och-skicka-en-tjansterapport"
+  },
+  "/help/invoice-document-types": {
+    "de": "gutschriften-proformas-vorauszahlungen-und-weitere-dokumentarten",
+    "fr": "notes-de-credit-pro-forma-acomptes-et-autres-types-de-documents",
+    "it": "note-di-credito-pro-forma-anticipi-e-altri-tipi-di-documento",
+    "nl": "creditnota-s-proforma-s-vooruitbetalingen-en-andere-documenttypen",
+    "cs": "dobropisy-proformy-zalohy-a-dalsi-typy-dokladu",
+    "sv": "kreditnotor-proforma-forskott-och-andra-dokumenttyper"
+  },
+  "/help/invoice-settings": {
+    "de": "rechnungseinstellungen-einrichten",
+    "fr": "configurer-la-facturation",
+    "it": "configurare-le-impostazioni-delle-fatture",
+    "nl": "factuurinstellingen-configureren",
+    "cs": "nastaveni-fakturace",
+    "sv": "stall-in-faktureringen"
+  },
+  "/help/keyboard-shortcuts": {
+    "de": "tastenkombinationen",
+    "fr": "raccourcis-clavier",
+    "it": "scorciatoie-da-tastiera",
+    "nl": "sneltoetsen",
+    "cs": "klavesove-zkratky",
+    "sv": "kortkommandon"
+  },
+  "/help/log-work-on-an-engagement": {
+    "de": "leistungen-fuer-einen-auftrag-erfassen",
+    "fr": "enregistrer-des-prestations-sur-un-mandat",
+    "it": "registrare-il-lavoro-su-un-incarico",
+    "nl": "werk-op-een-opdracht-boeken",
+    "cs": "zaznam-prace-na-zakazce",
+    "sv": "registrera-arbete-pa-ett-uppdrag"
+  },
+  "/help/manage-members": {
+    "de": "rolle-oder-zugriff-eines-mitglieds-aendern-oder-mitglied-entfernen",
+    "fr": "modifier-le-role-ou-les-acces-d-un-membre-ou-le-retirer",
+    "it": "modificare-ruolo-o-accesso-di-un-membro-oppure-rimuoverlo",
+    "nl": "de-rol-of-toegang-van-een-lid-wijzigen-of-een-lid-verwijderen",
+    "cs": "zmena-role-nebo-pristupu-clena-a-jeho-odebrani",
+    "sv": "andra-en-medlems-roll-eller-behorighet-eller-ta-bort-medlemmen"
+  },
+  "/help/manage-notifications": {
+    "de": "benachrichtigungen-verwalten",
+    "fr": "gerer-les-notifications",
+    "it": "gestire-le-notifiche",
+    "nl": "meldingen-beheren",
+    "cs": "sprava-oznameni",
+    "sv": "hantera-aviseringar"
+  },
+  "/help/mark-expenses-paid": {
+    "de": "ausgaben-als-bezahlt-oder-erstattet-markieren",
+    "fr": "marquer-des-depenses-comme-payees-ou-remboursees",
+    "it": "contrassegnare-le-spese-come-pagate-o-rimborsate",
+    "nl": "kosten-als-betaald-of-vergoed-markeren",
+    "cs": "oznaceni-vydaju-jako-uhrazenych-nebo-proplacenych",
+    "sv": "markera-utgifter-som-betalda-eller-ersatta"
+  },
+  "/help/organize-documents": {
+    "de": "dokumente-organisieren",
+    "fr": "organiser-les-documents",
+    "it": "organizzare-i-documenti",
+    "nl": "documenten-organiseren",
+    "cs": "usporadani-dokumentu",
+    "sv": "organisera-dokument"
+  },
+  "/help/pay-in-instalments": {
+    "de": "ratenzahlung-fuer-einen-kunden-einrichten",
+    "fr": "permettre-a-un-client-de-payer-en-plusieurs-fois",
+    "it": "consentire-a-un-cliente-di-pagare-a-rate",
+    "nl": "een-klant-in-termijnen-laten-betalen",
+    "cs": "umozneni-platby-na-splatky",
+    "sv": "lat-kunden-betala-i-delar"
+  },
+  "/help/payment-reminders-dunning": {
+    "de": "zahlungserinnerungen-und-mahnungen-versenden",
+    "fr": "envoyer-des-rappels-de-paiement",
+    "it": "inviare-un-sollecito-di-pagamento",
+    "nl": "betalingsherinneringen-versturen-aanmaningen",
+    "cs": "odesilani-upominek-plateb-dunning",
+    "sv": "skicka-betalningspaminnelser-och-krav"
+  },
+  "/help/plans-and-billing": {
+    "de": "tarif-waehlen-oder-wechseln",
+    "fr": "choisir-une-formule-ou-en-changer",
+    "it": "scegliere-o-cambiare-piano",
+    "nl": "een-abonnement-kiezen-of-wijzigen",
+    "cs": "vyber-a-zmena-tarifu",
+    "sv": "valj-eller-byt-plan"
+  },
+  "/help/products-and-services": {
+    "de": "produkte-und-dienstleistungen-zum-katalog-hinzufuegen",
+    "fr": "ajouter-des-produits-et-services-au-catalogue",
+    "it": "aggiungere-prodotti-e-servizi-al-catalogo",
+    "nl": "producten-en-diensten-aan-je-catalogus-toevoegen",
+    "cs": "pridani-katalogu-produktu-a-sluzeb",
+    "sv": "lagg-till-produkter-och-tjanster-i-katalogen"
+  },
+  "/help/receipts-to-expenses": {
+    "de": "belege-automatisch-als-ausgaben-erfassen",
+    "fr": "transformer-automatiquement-les-justificatifs-en-depenses",
+    "it": "trasformare-automaticamente-le-ricevute-in-spese",
+    "nl": "bonnen-automatisch-omzetten-in-kosten",
+    "cs": "automaticky-prevod-uctenek-na-vydaje",
+    "sv": "gor-kvitton-till-utgifter-automatiskt"
+  },
+  "/help/record-a-payment": {
+    "de": "zahlung-erfassen",
+    "fr": "enregistrer-un-paiement",
+    "it": "registrare-un-pagamento",
+    "nl": "een-betaling-registreren",
+    "cs": "zaznam-platby",
+    "sv": "registrera-en-betalning"
+  },
+  "/help/record-a-refund": {
+    "de": "rueckerstattung-erfassen",
+    "fr": "enregistrer-un-remboursement",
+    "it": "registrare-un-rimborso",
+    "nl": "een-terugbetaling-registreren",
+    "cs": "zaznam-vratky",
+    "sv": "registrera-en-aterbetalning"
+  },
+  "/help/send-a-pdf-for-signature": {
+    "de": "pdf-zur-unterschrift-senden",
+    "fr": "envoyer-un-pdf-pour-signature",
+    "it": "inviare-un-pdf-per-la-firma",
+    "nl": "een-pdf-ter-ondertekening-versturen",
+    "cs": "odeslani-pdf-k-podpisu",
+    "sv": "skicka-en-pdf-for-signering"
+  },
+  "/help/send-an-invoice-by-email": {
+    "de": "rechnung-per-e-mail-senden",
+    "fr": "envoyer-une-facture-par-e-mail",
+    "it": "inviare-una-fattura-via-email",
+    "nl": "een-factuur-per-e-mail-versturen",
+    "cs": "odeslani-faktury-e-mailem",
+    "sv": "skicka-en-faktura-via-mejl"
+  },
+  "/help/set-up-an-engagement": {
+    "de": "auftrag-einrichten",
+    "fr": "configurer-un-mandat",
+    "it": "configurare-un-incarico",
+    "nl": "een-opdracht-instellen",
+    "cs": "nastaveni-zakazky",
+    "sv": "skapa-ett-uppdrag"
+  },
+  "/help/share-a-document-with-a-client": {
+    "de": "dokument-fuer-einen-kunden-freigeben",
+    "fr": "partager-un-document-avec-un-client",
+    "it": "condividere-un-documento-con-un-cliente",
+    "nl": "een-document-met-een-klant-delen",
+    "cs": "sdileni-dokumentu-s-klientem",
+    "sv": "dela-ett-dokument-med-en-kund"
+  },
+  "/help/sign-in-methods-and-passkeys": {
+    "de": "anmeldemethoden-und-passkeys-verwalten",
+    "fr": "gerer-les-methodes-de-connexion-et-les-cles-d-acces",
+    "it": "gestire-i-metodi-di-accesso-e-le-passkey",
+    "nl": "aanmeldmethoden-en-passkeys-beheren",
+    "cs": "sprava-zpusobu-prihlaseni-a-pristupovych-klicu",
+    "sv": "hantera-inloggningssatt-och-passnycklar"
+  },
+  "/help/swiss-qr-bill": {
+    "de": "schweizer-qr-zahlteil-auf-rechnungen-verwenden",
+    "fr": "ajouter-une-qr-facture-suisse-a-vos-factures",
+    "it": "aggiungere-la-qr-fattura-svizzera-alle-fatture",
+    "nl": "een-zwitserse-qr-factuur-aan-je-facturen-toevoegen",
+    "cs": "svycarsky-qr-ucet-na-fakturach",
+    "sv": "lagg-till-schweizisk-qr-faktura-pa-fakturor"
+  },
+  "/help/swiss-vat-return": {
+    "de": "schweizer-mwst-abrechnung-vorbereiten",
+    "fr": "preparer-le-decompte-tva-suisse",
+    "it": "preparare-il-rendiconto-iva-svizzero",
+    "nl": "de-zwitserse-btw-aangifte-voorbereiden",
+    "cs": "priprava-svycarskeho-priznani-k-dph",
+    "sv": "forbered-en-schweizisk-momsdeklaration"
+  },
+  "/help/templates": {
+    "de": "vorlage-erstellen-und-fuer-einen-kunden-ausfuellen",
+    "fr": "creer-un-modele-et-le-remplir-pour-un-client",
+    "it": "creare-un-modello-e-compilarlo-per-un-cliente",
+    "nl": "een-sjabloon-maken-en-voor-een-klant-invullen",
+    "cs": "vytvoreni-sablony-a-vyplneni-pro-klienta",
+    "sv": "skapa-en-mall-och-fyll-i-den-for-en-kund"
+  },
+  "/help/topic": {
+    "de": "thema",
+    "fr": "theme",
+    "it": "argomento",
+    "nl": "onderwerp",
+    "cs": "tema",
+    "sv": "amne"
+  },
+  "/help/topic/account-and-security": {
+    "de": "konto-und-sicherheit",
+    "fr": "compte-et-securite",
+    "it": "account-e-sicurezza",
+    "nl": "account-en-beveiliging",
+    "cs": "ucet-a-zabezpeceni",
+    "sv": "konto-och-sakerhet"
+  },
+  "/help/topic/clients": {
+    "de": "kunden",
+    "fr": "clients",
+    "it": "clienti",
+    "nl": "klanten",
+    "cs": "klienti",
+    "sv": "kunder"
+  },
+  "/help/topic/documents-and-signatures": {
+    "de": "dokumente-und-unterschriften",
+    "fr": "documents-et-signatures",
+    "it": "documenti-e-firme",
+    "nl": "documenten-en-handtekeningen",
+    "cs": "dokumenty-a-podpisy",
+    "sv": "dokument-och-signaturer"
+  },
+  "/help/topic/engagements": {
+    "de": "auftraege",
+    "fr": "mandats",
+    "it": "incarichi",
+    "nl": "opdrachten",
+    "cs": "zakazky",
+    "sv": "uppdrag"
+  },
+  "/help/topic/expenses": {
+    "de": "ausgaben",
+    "fr": "depenses",
+    "it": "spese",
+    "nl": "kosten",
+    "cs": "vydaje",
+    "sv": "utgifter"
+  },
+  "/help/topic/getting-started": {
+    "de": "erste-schritte",
+    "fr": "premiers-pas",
+    "it": "primi-passi",
+    "nl": "aan-de-slag",
+    "cs": "zaciname",
+    "sv": "kom-igang"
+  },
+  "/help/topic/heidi": {
+    "de": "heidi",
+    "fr": "heidi",
+    "it": "heidi",
+    "nl": "heidi",
+    "cs": "heidi",
+    "sv": "heidi"
+  },
+  "/help/topic/invoices-and-getting-paid": {
+    "de": "rechnungen-und-bezahlung",
+    "fr": "factures-et-encaissements",
+    "it": "fatture-e-incassi",
+    "nl": "facturen-en-betaald-krijgen",
+    "cs": "faktury-a-prijimani-plateb",
+    "sv": "fakturor-och-betalningar"
+  },
+  "/help/topic/team-and-workspace": {
+    "de": "team-und-arbeitsbereich",
+    "fr": "equipe-et-espace-de-travail",
+    "it": "team-e-spazio-di-lavoro",
+    "nl": "team-en-werkruimte",
+    "cs": "tym-a-pracovni-prostor",
+    "sv": "team-och-arbetsyta"
+  },
+  "/help/topic/vat-and-books": {
+    "de": "mwst-und-buecher",
+    "fr": "tva-et-comptabilite",
+    "it": "iva-e-contabilita",
+    "nl": "btw-en-boekhouding",
+    "cs": "dph-a-ucetnictvi",
+    "sv": "moms-och-bokforing"
+  },
+  "/help/trash": {
+    "de": "dateien-wiederherstellen-oder-endgueltig-loeschen",
+    "fr": "restaurer-ou-supprimer-definitivement-des-fichiers",
+    "it": "ripristinare-o-eliminare-definitivamente-i-file",
+    "nl": "bestanden-herstellen-of-definitief-verwijderen",
+    "cs": "obnoveni-nebo-trvale-smazani-souboru",
+    "sv": "aterstall-eller-radera-filer-permanent"
+  },
+  "/help/two-factor-authentication": {
+    "de": "zwei-faktor-authentifizierung-2fa-aktivieren",
+    "fr": "activer-la-double-authentification-2fa",
+    "it": "attivare-l-autenticazione-a-due-fattori-2fa",
+    "nl": "tweefactorauthenticatie-2fa-inschakelen",
+    "cs": "zapnuti-dvoufazoveho-overeni-2fa",
+    "sv": "aktivera-tvafaktorsautentisering-2fa"
+  },
+  "/help/update-your-profile": {
+    "de": "profil-aktualisieren",
+    "fr": "mettre-a-jour-votre-profil",
+    "it": "aggiornare-il-tuo-profilo",
+    "nl": "je-profiel-bijwerken",
+    "cs": "aktualizace-profilu",
+    "sv": "uppdatera-din-profil"
+  },
+  "/help/use-heidi": {
+    "de": "mit-der-assistentin-heidi-arbeiten",
+    "fr": "utiliser-heidi-l-assistante",
+    "it": "usare-heidi-l-assistente",
+    "nl": "heidi-de-assistent-gebruiken",
+    "cs": "pouzivani-asistentky-heidi",
+    "sv": "anvand-assistenten-heidi"
+  },
+  "/help/void-an-invoice": {
+    "de": "rechnung-stornieren",
+    "fr": "annuler-une-facture",
+    "it": "annullare-una-fattura",
+    "nl": "een-factuur-ongeldig-verklaren",
+    "cs": "stornovani-faktury",
+    "sv": "makulera-en-faktura"
+  },
+  "/help/workspace-name-and-time-zone": {
+    "de": "arbeitsbereich-umbenennen-oder-zeitzone-aendern",
+    "fr": "renommer-un-espace-de-travail-ou-changer-son-fuseau-horaire",
+    "it": "rinominare-uno-spazio-di-lavoro-o-cambiarne-il-fuso-orario",
+    "nl": "een-werkruimte-hernoemen-of-de-tijdzone-wijzigen",
+    "cs": "prejmenovani-pracovniho-prostoru-a-zmena-casoveho-pasma",
+    "sv": "byt-namn-eller-tidszon-pa-en-arbetsyta"
+  },
+  "/imprint": {
+    "de": "impressum",
+    "fr": "mentions-legales",
+    "it": "note-legali",
+    "nl": "colofon",
+    "cs": "pravni-informace",
+    "sv": "juridisk-information"
+  },
+  "/pricing": {
+    "de": "preise",
+    "fr": "tarifs",
+    "it": "prezzi",
+    "nl": "prijzen",
+    "cs": "ceny",
+    "sv": "priser"
+  },
+  "/privacy": {
+    "de": "datenschutz",
+    "fr": "confidentialite",
+    "it": "privacy",
+    "nl": "privacybeleid",
+    "cs": "ochrana-soukromi",
+    "sv": "integritetspolicy"
+  },
+  "/security": {
+    "de": "sicherheit",
+    "fr": "securite",
+    "it": "sicurezza",
+    "nl": "beveiliging",
+    "cs": "zabezpeceni",
+    "sv": "sakerhet"
+  },
+  "/subprocessors": {
+    "de": "unterauftragsverarbeiter",
+    "fr": "sous-traitants-ulterieurs",
+    "it": "sub-responsabili-del-trattamento",
+    "nl": "subverwerkers",
+    "cs": "dalsi-zpracovatele",
+    "sv": "underbitraden"
+  },
+  "/terms": {
+    "de": "nutzungsbedingungen",
+    "fr": "conditions-utilisation",
+    "it": "condizioni-di-utilizzo",
+    "nl": "gebruiksvoorwaarden",
+    "cs": "podminky-uzivani",
+    "sv": "anvandarvillkor"
+  }
+}

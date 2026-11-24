@@ -1,6 +1,7 @@
 'use client'
 
-import { defaultLocale, languageHref, type Locale, localizedHref } from '@helvetly/i18n'
+import { defaultLocale, languageHref, type Locale } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import { useEffect } from 'react'
 
 import { confirms, OFFER_URL, projectPlans, type PublicOfferValues } from '@/lib/offer'
@@ -50,7 +51,7 @@ export function pageUrl(page: PageName, lang: Locale): string {
     // Sign-in is passwordless and makes the account on first use (lib/site.ts).
     return `${PLATFORM_URL}${lang === defaultLocale ? '/login' : languageHref('/login', lang)}`
   }
-  return localizedHref(PATHS[page], lang)
+  return publicHref(PATHS[page], lang)
 }
 
 /** Prices in major units, per person and month, tax included, for each plan and currency. */

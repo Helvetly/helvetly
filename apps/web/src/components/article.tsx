@@ -1,4 +1,5 @@
-import { type Locale, localizedHref } from '@helvetly/i18n'
+import { type Locale } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import { isValidElement, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -32,7 +33,7 @@ const markdownIn = perLanguage((translate, language): Components => ({
         {children}
       </a>
     ) : (
-      <a href={localizedHref(href, language)}>{children}</a>
+      <a href={publicHref(href, language)}>{children}</a>
     ),
 }))
 
@@ -66,7 +67,7 @@ export function ArticleView({
                 {article.headings.map((h) => (
                   <a
                     key={h.id}
-                    href={localizedHref(`#${h.id}`)}
+                    href={`#${h.id}`}
                     className="px-3 py-1 leading-snug text-muted-foreground hover:text-foreground"
                   >
                     {h.text}

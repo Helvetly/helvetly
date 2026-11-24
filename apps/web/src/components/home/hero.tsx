@@ -1,4 +1,5 @@
-import { type Locale, localizedHref } from '@helvetly/i18n'
+import { type Locale } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import { HeidiMark, HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { ArrowRight, Check, CircleCheck } from 'lucide-react'
 import Link from 'next/link'
@@ -67,11 +68,7 @@ export function Hero({ lang }: { lang: Locale }) {
             {TRIAL_DAYS}
             {translate('dayTrial')}
           </Cta>
-          <Cta
-            href={localizedHref('/pricing', lang)}
-            variant="outline"
-            className="w-full sm:w-auto"
-          >
+          <Cta href={publicHref('/pricing', lang)} variant="outline" className="w-full sm:w-auto">
             {translate('seePricing')}
           </Cta>
         </div>

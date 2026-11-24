@@ -1,4 +1,5 @@
-import { localeDetails, locales, localizedHref } from '@helvetly/i18n'
+import { localeDetails, locales } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 
 import { FaqSection } from '@/components/faq'
 import { About } from '@/components/home/about'
@@ -42,9 +43,9 @@ export default async function HomePage({ params }: Props) {
       },
       {
         '@type': 'SoftwareApplication',
-        '@id': `${SITE_URL}${localizedHref('/', lang)}#software`,
+        '@id': `${SITE_URL}${publicHref('/', lang)}#software`,
         name: 'Helvetly',
-        url: `${SITE_URL}${localizedHref('/', lang)}`,
+        url: `${SITE_URL}${publicHref('/', lang)}`,
         description: translate('whatIsHelvetlyAnswer'),
         featureList: [
           translate('clients'),
@@ -130,7 +131,7 @@ export default async function HomePage({ params }: Props) {
         card={{
           title: translate('heidiAnswersTheRest'),
           body: translate('insideHelvetlyPressJOnAnyPageAndAsk'),
-          href: localizedHref('/security', lang),
+          href: publicHref('/security', lang),
           link: translate('howHeidiTreatsYourData'),
         }}
         teaser="home"

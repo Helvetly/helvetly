@@ -1,4 +1,5 @@
-import { type Locale, localizedHref } from '@helvetly/i18n'
+import { type Locale } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import { Flag } from '@helvetly/ui/components/flag'
 import { LanguageSwitcher } from '@helvetly/ui/components/language-switcher'
 import { Logo } from '@helvetly/ui/components/logo'
@@ -71,7 +72,7 @@ export function SiteFooter({ lang }: { lang: Locale }) {
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Cta href={START_URL}>{translate('startYourFreeTrial')}</Cta>
               <Cta
-                href={localizedHref('/pricing', lang)}
+                href={publicHref('/pricing', lang)}
                 variant="outline"
                 className="border-white/15 bg-white/5 text-white hover:border-white/30 hover:bg-white/10"
               >

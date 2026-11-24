@@ -1,2 +1,14 @@
-// English at the root URL: the same page as app/[lang], without the language segment.
-export { default, generateMetadata } from '@/app/[lang]/dpa/page'
+import type { Metadata } from 'next'
+
+import { LegalView, legalMetadata } from '@/components/legal-page'
+import { languageOf } from '@/lib/i18n'
+
+type Props = { params: Promise<{ lang?: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  return legalMetadata('dpa', await languageOf(params))
+}
+
+export default async function DpaPage({ params }: Props) {
+  return <LegalView lang={await languageOf(params)} slug="dpa" />
+}

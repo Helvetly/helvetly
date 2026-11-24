@@ -1,5 +1,5 @@
 'use client'
-import { localizedHref } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { Slider } from '@helvetly/ui/components/slider'
 import { useState } from 'react'
@@ -89,7 +89,7 @@ export function TeamCost({ them }: { them: TheirPrices }) {
         <p className="mt-5 text-body-sm text-muted-foreground">
           {translate('cmpOurPriceExplained', { days: PRO_TRIAL_DAYS })}{' '}
           <a
-            href={localizedHref('/pricing', language)}
+            href={publicHref('/pricing', language)}
             className="underline underline-offset-4 hover:text-foreground"
           >
             {translate('cmpWhatEachPlanIncludes')}
