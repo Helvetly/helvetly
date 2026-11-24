@@ -3,7 +3,7 @@
 // Members, invitations and workspaces, typed by hand from docs/members-contract.md.
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
-import { ApiError, browserTimeZone, request, setCsrfToken } from '@/lib/api'
+import { ApiError, browserTimeZone, request, changeSession } from '@/lib/api'
 import { type Sort, type SortValue } from '@/lib/list-sort'
 
 export type Role = 'owner' | 'admin' | 'member'
@@ -228,7 +228,7 @@ function useNewSession(url: string, body: (value: string) => unknown) {
   return useMutation<{ csrf_token: string }, ApiError, string>({
     mutationFn: (value) => request(url, json('POST', body(value))),
     onSuccess: (res) => {
-      setCsrfToken(res.csrf_token)
+      changeSession(res.csrf_token)
       resetForNewSession(queryClient)
     },
   })
@@ -257,7 +257,7 @@ export function useDeleteWorkspace() {
         json: { confirm },
       })
       if (!res) return { moved: false }
-      setCsrfToken(res.csrf_token)
+      changeSession(res.csrf_token)
       return { moved: true }
     },
     onSuccess: () => resetForNewSession(queryClient),
@@ -286,7 +286,7 @@ export function useRestoreWorkspace() {
   return useMutation<{ csrf_token: string }, ApiError, string>({
     mutationFn: (id) => request(`/workspaces/deleted/${path(id)}/restore`, json('POST', {})),
     onSuccess: (res) => {
-      setCsrfToken(res.csrf_token)
+      changeSession(res.csrf_token)
       resetForNewSession(queryClient)
     },
   })

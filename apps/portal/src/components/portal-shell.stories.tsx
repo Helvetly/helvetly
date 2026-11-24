@@ -208,6 +208,8 @@ async function fitsThePhone(canvasElement: HTMLElement, text: string) {
   // The tabs sit in a bar at the bottom of the screen.
   const nav = within(canvasElement).getByRole('navigation', { name: 'Portal' })
   await expect(Math.round(nav.getBoundingClientRect().bottom)).toBe(window.innerHeight)
+  const links = within(nav).getAllByRole('link')
+  await expect(Math.round(links.at(-1)!.getBoundingClientRect().right)).toBe(window.innerWidth)
 }
 
 const onPhone = (render: Story['render'], text: string): Story => ({
@@ -411,5 +413,24 @@ export const WithSessions: Story = {
     await waitFor(() =>
       expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth),
     )
+  },
+}
+
+export const SessionRetry: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get(`${P}/session`, () => new HttpResponse(null, { status: 503 }), { once: true }),
+        ...portalHandlers,
+      ],
+    },
+  },
+  render: page(<p>Private page</p>),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const error = await canvas.findByRole('alert')
+    await expect(canvas.queryByText('Private page')).toBeNull()
+    await userEvent.click(within(error).getByRole('button', { name: /Try again/ }))
+    await expect(await canvas.findByText('Private page')).toBeVisible()
   },
 }

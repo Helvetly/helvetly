@@ -132,7 +132,7 @@ test('issued invoice, payment, credit and refund agree with the browser and hist
     .click()
   await page
     .getByRole('dialog', { name: 'Issue this invoice?' })
-    .getByRole('button', { name: 'Issue invoice' })
+    .getByRole('button', { name: 'Issue', exact: true })
     .click()
   await expect.poll(async () => (await api.read(path)).status).toBe('open')
   const issued = await api.read(path)
@@ -482,4 +482,38 @@ test('forged CSRF and foreign-tenant identifiers never mutate data', async ({
   } finally {
     await foreign.close()
   }
+})
+
+test('failed logout keeps the session and can be retried from the account menu', async ({
+  page,
+  api,
+  email,
+}) => {
+  const client = await api.client()
+  await openPage(page, '/clients', 'Clients')
+  const other = await page.context().newPage()
+  await other.goto('/clients')
+  const privateName = other.getByText(text(client.name), { exact: true }).first()
+  await expect(privateName).toBeVisible()
+  const account = page.getByRole('button', { name: email, exact: false })
+  const logout = async () => {
+    await account.click()
+    await page.getByRole('menuitem', { name: 'Log out' }).click()
+  }
+  await page.route('**/api/v1/session', (route) =>
+    route.request().method() === 'DELETE'
+      ? route.fulfill({ status: 503, contentType: 'application/json', body: '{}' })
+      : route.continue(),
+  )
+  await logout()
+  await expect(page.getByText(/cannot reach helvetly/i)).toBeVisible()
+  await expect(account).toBeVisible()
+  await expect(await api.request.get('/api/v1/session')).toBeOK()
+  await expect(page).toHaveURL(/\/clients\/?$/)
+  await page.unroute('**/api/v1/session')
+  await logout()
+  await expect(page).toHaveURL(/\/login/)
+  await expect(other).toHaveURL(/\/login/)
+  await expect(privateName).toHaveCount(0)
+  expect((await api.request.get('/api/v1/session')).status()).toBe(401)
 })

@@ -1,12 +1,12 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { MailX, UserPlus } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
+import { useSignOut } from '@/components/auth/use-sign-out'
 import { State } from '@/components/data/table-page'
 import { PageHeader } from '@/components/shell/page-header'
-import { api, ApiError, errorMessage, setCsrfToken } from '@/lib/api'
+import { ApiError, errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useAcceptInvitation, useInvitationPreview } from '@/lib/members'
 import { useSession } from '@/lib/queries'
@@ -16,18 +16,10 @@ import { loginHref } from '@/lib/safe'
 export function AcceptInvitation() {
   const token = useSearchParams().get('token') ?? ''
   const router = useRouter()
-  const queryClient = useQueryClient()
   const session = useSession().data
   const preview = useInvitationPreview(token)
   const accept = useAcceptInvitation()
-  const signOut = useMutation({
-    mutationFn: api.signOut,
-    onSettled: () => {
-      setCsrfToken('')
-      queryClient.clear()
-      router.replace(loginHref(`/invite?token=${encodeURIComponent(token)}`))
-    },
-  })
+  const signOut = useSignOut(loginHref(`/invite?token=${encodeURIComponent(token)}`))
 
   const invitation = preview.data
   const error = accept.error

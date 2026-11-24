@@ -11,8 +11,9 @@ import { PageHeader } from './page-header'
 import { PrimaryActionProvider } from './primary-action'
 
 const push = vi.fn<(href: string) => void>()
+const prefetch = vi.fn<(href: string) => void>()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, prefetch }),
   usePathname: () => '/invoices/new',
 }))
 
@@ -84,6 +85,8 @@ test('a tapped tab is current at once, before its page has loaded', async () => 
   renderBar()
   const clients = screen.getByRole('link', { name: 'Clients' })
   clients.addEventListener('click', (event) => event.preventDefault())
+  await userEvent.hover(clients)
+  expect(prefetch).toHaveBeenCalledWith('/clients')
   await userEvent.click(clients)
   expect(clients).toHaveAttribute('aria-current', 'page')
   expect(screen.getByRole('link', { name: 'Invoices' })).not.toHaveAttribute('aria-current')

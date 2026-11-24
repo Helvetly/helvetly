@@ -166,7 +166,7 @@ function ExpenseFormBody({
   const booked = expense !== undefined && expense.status !== 'draft'
   const today = workspaceToday()
 
-  const { habits, remember } = useHabits()
+  const { readHabits, remember } = useHabits()
   const [initial] = useState(() =>
     expense
       ? valuesFromExpense(expense)
@@ -174,13 +174,13 @@ function ExpenseFormBody({
           baseCurrency,
           defaultRate,
           registered,
-          habits,
+          readHabits(),
           (categories.data ?? []).map((category) => category.id),
         ),
   )
   // A saved country (even CH) is the person's choice; without one, CH is only the form's fallback.
   const [countrySaved] = useState(
-    () => !expense && preferred(habits, 'expense.supplier_country') !== null,
+    () => !expense && preferred(readHabits(), 'expense.supplier_country') !== null,
   )
   const [values, setValues] = useState(initial)
   const [errors, setErrors] = useState<FieldErrors>({})

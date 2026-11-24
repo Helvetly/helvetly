@@ -22,7 +22,7 @@ import { Combobox, type Option } from '@/components/clients/fields'
 import { confirmPhrase } from '@/components/confirm-phrase'
 import { MAX_WORKSPACE_NAME } from '@/components/onboarding/onboarding-model'
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
-import { setCsrfToken } from '@/lib/api'
+import { changeSession } from '@/lib/api'
 import { isPaid, useBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import { canManage, useDeleteWorkspace } from '@/lib/members'
@@ -290,7 +290,7 @@ export function DeleteDialog({ name, onClose }: { name: string; onClose: () => v
       onSuccess: ({ moved }) => {
         toast.success(translate('wasDeleted', { name: name }))
         if (moved) return router.replace('/')
-        setCsrfToken('')
+        changeSession('')
         router.replace('/login')
       },
       onError: toastError,

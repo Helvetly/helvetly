@@ -369,12 +369,12 @@ export const ProblemPhone: Story = {
 }
 
 export const IssuingCertificateDark: Story = {
-  ...Certificate,
+  ...IssuingCertificate,
   parameters: { ...meta.parameters, dark: true },
 }
 
 export const IssuingCertificatePhone: Story = {
-  ...Certificate,
+  ...IssuingCertificate,
   parameters: phone,
   globals: { viewport: { value: 'phone' } },
 }

@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { createElement } from 'react'
+import { describe, expect, it, vi } from 'vitest'
 
-import { fitColumns, type DataColumn } from './data-table'
+import { DataTable, fitColumns, type DataColumn } from './data-table'
 
 const column = (id: string, extra: Partial<DataColumn<unknown>> = {}): DataColumn<unknown> => ({
   id,
@@ -44,4 +46,20 @@ describe('fitColumns', () => {
     const stored = { name: 300, date: 100 }
     expect(fitColumns(COLUMNS, stored, 2000)).toBe(stored)
   })
+})
+
+it('keeps unchanged cells when the table updates and redraws edited rows', () => {
+  type Row = { id: string; name: string }
+  const cell = vi.fn<(row: Row) => string>((row) => row.name)
+  const columns = [{ id: 'name', header: 'Name', cell }]
+  const data = [{ id: 'one', name: 'Original' }]
+  const props = { id: 'cell-test', columns, data, getRowId: (row: Row) => row.id }
+  const view = render(createElement(DataTable<Row>, props))
+  expect(screen.getByText('Original')).toBeTruthy()
+  cell.mockClear()
+  view.rerender(createElement(DataTable<Row>, { ...props, pending: true }))
+  expect(cell).not.toHaveBeenCalled()
+  view.rerender(createElement(DataTable<Row>, { ...props, data: [{ id: 'one', name: 'Edited' }] }))
+  expect(screen.getByText('Edited')).toBeTruthy()
+  expect(cell).toHaveBeenCalled()
 })

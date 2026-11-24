@@ -1,6 +1,13 @@
 // Client portal, typed by hand from docs/portal-contract.md. Every call is `public`: a 401 here
 // is the portal's own sign-in, never the staff redirect.
-import { ApiError, apiUrl, request, setCsrfToken, type EmailCodeSent } from '@helvetly/ui/lib/http'
+import {
+  ApiError,
+  changeSession,
+  apiUrl,
+  request,
+  setCsrfToken,
+  type EmailCodeSent,
+} from '@helvetly/ui/lib/http'
 
 export type PortalSession = {
   /** The client's address this session signed in with. */
@@ -163,7 +170,7 @@ export async function verifyPortalCode(email: string, code: string) {
     method: 'POST',
     json: { email, code, time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
   })
-  setCsrfToken(result.csrf_token)
+  changeSession(result.csrf_token)
   return result
 }
 
@@ -207,12 +214,12 @@ export async function switchPortalClient(clientId: string) {
     method: 'POST',
     json: { client_id: clientId },
   })
-  setCsrfToken(result.csrf_token)
+  changeSession(result.csrf_token)
 }
 
 export async function signOutPortal() {
   await call<void>('/session', { method: 'DELETE' })
-  setCsrfToken('')
+  changeSession('')
 }
 
 export const listPortalInvoices = () => call<PortalInvoiceList>('/invoices')

@@ -6,6 +6,7 @@ import type { CreationOptionsJSON, RequestOptionsJSON } from '@/lib/passkeys'
 
 export {
   ApiError,
+  changeSession,
   errorFromBody,
   errorMessage,
   getCsrfToken,

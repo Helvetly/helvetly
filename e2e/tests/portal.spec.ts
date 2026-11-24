@@ -81,6 +81,17 @@ test('a partial payment changes the portal instructions and keeps the issued PDF
     const afterPayment = await context.request.get(pdf)
     await expect(afterPayment).toBeOK()
     expect((await afterPayment.body()).equals(await original.body())).toBe(true)
+
+    const other = await context.newPage()
+    await other.goto(`${path}invoices`)
+    const number = other.getByText(text(invoice.number), { exact: true }).first()
+    await expect(number).toBeVisible()
+    await portal.keyboard.press('Escape')
+    await portal.getByRole('button', { name: /^Account menu/ }).click()
+    await portal.getByRole('menuitem', { name: 'Sign out' }).click()
+    await expect(portal).toHaveURL(/\/login\/?$/)
+    await expect(other).toHaveURL(/\/login\/?$/)
+    await expect(number).toHaveCount(0)
   } finally {
     await context.close()
   }
