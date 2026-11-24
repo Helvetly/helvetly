@@ -757,6 +757,86 @@ export const SeriesMoveRefused: Story = {
   },
 }
 
+const thursday = () =>
+  document.querySelector<HTMLElement>('[data-day-column="2026-12-03"]') ?? document.body
+
+/**
+ * The owner's flow: a series session dragged to the day before and a quarter of an hour earlier, for all sessions.
+ * The list asks about a day off; Apply moves the series, and the dragged block lands where it was dropped.
+ */
+export const DragSeriesAllSessions: Story = {
+  parameters: pageParameters('/scheduling', { date: '2026-12-04' }, [
+    team,
+    http.patch('/api/v1/scheduling/occurrences/:id', async ({ request }) => {
+      const sent = (await request.clone().json()) as { dry_run?: boolean }
+      moveSent.push(sent)
+      if (!sent.dry_run) return undefined
+      return HttpResponse.json({
+        data: {
+          moving: 5,
+          sample: [],
+          items: [
+            {
+              occurrence_id: 'soc_later',
+              starts_at: '2026-12-25T08:00:00Z',
+              ends_at: '2026-12-25T09:00:00Z',
+              moves_to: '2026-12-24T07:45:00Z',
+              status: 'scheduled',
+              reason: 'day_off',
+              moves: false,
+              day_off: 'Christmas Eve',
+            },
+          ],
+        },
+      })
+    }),
+    ...schedulingHandlers(shared),
+  ]),
+  play: async () => {
+    moveSent.length = 0
+    const page = body()
+    const block = await coachingAt9()
+    const column = document.querySelector('[data-day-column="2026-12-04"]')
+    const width = column?.clientWidth ?? 0
+    const { left, top } = block.getBoundingClientRect()
+    fireEvent.pointerDown(block, { button: 0, clientX: left + 5, clientY: top + 5, pointerId: 1 })
+    fireEvent.pointerMove(block, { clientX: left + 5 - width, clientY: top - 17, pointerId: 1 })
+    // The block follows the pointer before it is let go.
+    const dragged = await within(thursday()).findByRole('button', { name: /^Coaching/ })
+    fireEvent.pointerUp(dragged, { clientX: left + 5 - width, clientY: top - 17, pointerId: 1 })
+    const scope = within(await page.findByRole('dialog', { name: 'Change a recurring session' }))
+    await userEvent.click(scope.getByRole('radio', { name: /All sessions/ }))
+    await userEvent.click(scope.getByRole('button', { name: 'Apply' }))
+    const dialog = within(
+      await page.findByRole('dialog', { name: '1 session needs your decision' }),
+    )
+    await expect(
+      dialog.getByText(
+        'Moving the series from Friday 09:00 to Thursday 08:45. 5 sessions move without problems.',
+      ),
+    ).toBeVisible()
+    await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
+    await waitFor(() =>
+      expect(document.querySelector('[data-sonner-toast]')).toHaveTextContent(/saved/i),
+    )
+    await expect(moveSent.at(-1)).toEqual({
+      starts_local: '2026-12-03T08:45',
+      duration_minutes: 60,
+      scope: 'all',
+      decisions: { soc_later: 'skip' },
+    })
+    await waitFor(async () => {
+      const moved = (await body().findAllByRole('button', { name: /^Coaching/ })).find((entry) =>
+        entry.textContent?.includes('08:45'),
+      )
+      await expect(moved?.closest('[data-day-column]')).toHaveAttribute(
+        'data-day-column',
+        '2026-12-03',
+      )
+    })
+  },
+}
+
 /** The requests strip opens the requests: a late cancellation, and a move with the client's times. */
 export const Requests: Story = {
   play: async () => {

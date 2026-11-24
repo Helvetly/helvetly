@@ -49,6 +49,9 @@ type edit struct {
 	touched, cancelled, added []string
 	kept                      int
 	ended                     string // a "following" split: the old series, which now ends before it
+	// proposed is where each open session of the series would go by the rule (its date moved by the series' days, at
+	// the new time of day), whether or not it went there: the preview's new times.
+	proposed map[string]time.Time
 }
 
 func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -59,7 +62,7 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 	if err := decode(body, append(append(slices.Clone(eventFields), "notify", "scope", "allow_day_off"), choiceFields...)...); err != nil {
 		return err
 	}
-	ch, err := choicesOf(body)
+	ch, err := s.choicesOf(body)
 	if err != nil {
 		return err
 	}
@@ -116,7 +119,7 @@ func (s *Service) patchOccurrence(w http.ResponseWriter, r *http.Request, sess s
 			return err
 		}
 		if ch.dryRun { // the edit is rolled back: nothing changes until the person confirms
-			if preview, err = s.preview(ctx, q, sess.Workspace, o, before, following); err != nil {
+			if preview, err = s.preview(ctx, q, sess.Workspace, o, before, following, ed); err != nil {
 				return err
 			}
 			return errDryRun
@@ -310,6 +313,9 @@ func (s *Service) editAll(ctx context.Context, q store.Q, sess store.Session, e 
 	if err != nil {
 		return edit{}, err
 	}
+	if in.set["starts_local"] {
+		ch.pin(o.ID, startsLocal(e).In(loadZone(e.TimeZone)))
+	}
 	days, err := seriesTime(&e, old, o, in.set)
 	if err != nil {
 		return edit{}, err
@@ -357,6 +363,7 @@ func (s *Service) editFollowing(ctx context.Context, q store.Q, sess store.Sessi
 	days := 0
 	if in.set["starts_local"] { // the session goes there; the ones after move by as many days
 		given := startsLocal(n)
+		ch.pin(o.ID, given.In(loadZone(n.TimeZone)))
 		days = daysBetween(recur.DateOf(o.StartsAt.In(oldZone)), given.Date)
 		n.StartsLocal = wall(from.AddDays(days).At(given.Hour, given.Minute))
 	}
@@ -415,15 +422,17 @@ func (s *Service) editFollowing(ctx context.Context, q store.Q, sess store.Sessi
 // changed on their own with the others.
 func (s *Service) reconcile(ctx context.Context, q store.Q, actor string, old, target store.SchedEvent, rows []store.SchedOccurrence,
 	from time.Time, set map[string]bool, shift int, ch moveChoices) (edit, error) {
-	var ed edit
+	ed := edit{proposed: map[string]time.Time{}}
 	holidays, err := holidaySet(ctx, q, target.WorkspaceID)
 	if err != nil {
 		return ed, err
 	}
 	oldZone, zone := loadZone(old.TimeZone), loadZone(target.TimeZone)
+	at := startsLocal(target)
 	slots := map[recur.Date]time.Time{}
 	if changesRule(set) || old.ID != target.ID {
-		for _, t := range slotStarts(target, holidays, from, s.horizon()) {
+		// Past the horizon by the days moved: the last sessions moved later still have their slot.
+		for _, t := range slotStarts(target, holidays, from, s.horizon().AddDate(0, 0, max(shift, 0))) {
 			slots[recur.DateOf(t.In(zone))] = t
 		}
 	}
@@ -440,25 +449,29 @@ func (s *Service) reconcile(ctx context.Context, q store.Q, actor string, old, t
 		}
 		if changesRule(set) || old.ID != target.ID {
 			t, ok := slots[d]
-			if slices.Contains(ch.include, row.ID) {
-				row.IsException = false
+			// Without a slot (a day off the series skips, past its end) the date at the new time: still unique per row.
+			proposed := t
+			if !ok {
+				proposed = d.At(at.Hour, at.Minute).In(zone)
 			}
+			ed.proposed[row.ID] = proposed
+			dec := ch.decisions[row.ID]
 			switch {
-			case slices.Contains(ch.keep, row.ID): // stays where it is, off the rule
-				if ok {
-					row.OriginalStart = t
-				}
-				row.IsException = true
+			case dec.kind == decideKeep:
+				row.OriginalStart, row.IsException = proposed, true
 				ed.kept++
-			case !ok || slices.Contains(ch.cancel, row.ID):
+			case dec.kind == decideSkip, !ok && dec.kind == "":
 				row.Status, row.Late, row.StatusChangedBy, row.StatusChangedAt = store.SchedCancelledOnTime, false, &actor, &now
 				ed.cancelled = append(ed.cancelled, row.ID)
-			case row.IsException:
+			case dec.kind == decideMoveTo:
+				row.OriginalStart, row.IsException = proposed, !ok || !t.Equal(dec.at)
+				s.retime(&row, dec.at, dec.at.Add(duration(target)))
+			case dec.kind == decideMoveAnyway, dec.kind == decideWithSeries, !row.IsException:
+				row.OriginalStart, row.IsException = proposed, !ok
+				s.retime(&row, proposed, proposed.Add(duration(target)))
+			default: // changed on its own: keeps its time
 				row.OriginalStart = t
 				ed.kept++
-			default:
-				row.OriginalStart = t
-				s.retime(&row, t, t.Add(duration(target)))
 			}
 		}
 		if isOpen(row.Status) {
