@@ -93,7 +93,7 @@ export function toolsFor(lang: Locale, open: (url: string) => void): WebMcpTool[
       name: 'open_page',
       description:
         "Opens a page of Helvetly's website in this language: home, pricing, compare_plans, security (data " +
-        'protection and EU hosting), guides (back-office software, Swiss VAT, QR bill, e-invoicing), help, faq, or sign_up ' +
+        'protection, hosted in Frankfurt, Germany (EU)), guides (back-office software, Swiss VAT, QR bill, e-invoicing), help, faq, or sign_up ' +
         '(start the free trial; sign-in is passwordless).',
       inputSchema: {
         type: 'object',

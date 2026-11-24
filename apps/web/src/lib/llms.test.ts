@@ -20,7 +20,7 @@ describe('llms.txt', () => {
 
   it('describes the whole back office and links every language with its own summary', () => {
     expect(text).toContain(translatorFor('en')('whatIsHelvetlyAnswer'))
-    expect(text).toContain('EU hosting (Frankfurt)')
+    expect(text).toContain('Hosted in Frankfurt, Germany (EU)')
     expect(text).not.toContain('hosting in Switzerland')
     for (const language of Object.keys(locales).filter(isLocale)) {
       expect(text).toContain(`https://www.helvetly.com${localizedHref('/', language)}`)
