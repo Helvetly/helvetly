@@ -1164,7 +1164,6 @@
   "cmpCostTitle": "Kolik to stojí váš tým",
   "cmpCostLead": "Zvolte velikost týmu a způsob platby. Každá osoba v pracovním prostoru platí cenu tarifu včetně DPH. {name} účtuje po svém, proto uvádíme jeho zveřejněné ceny bez přepočtu.",
   "cmpTeamOf": "{count, plural, one {Tým s # osobou} few {Tým s # osobami} other {Tým s # osobami}}",
-  "cmpTeamSaves": "ušetří {amount} ročně oproti měsíční platbě",
   "cmpUpToPeople": "Až {count} osob; zvolte Pro nebo Business",
   "cmpOurPriceExplained": "Ceny včetně DPH. Vyzkoušejte Pro {days} dní zdarma.",
   "cmpWhatEachPlanIncludes": "Co obsahuje každý tarif",

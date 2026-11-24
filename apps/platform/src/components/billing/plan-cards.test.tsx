@@ -98,12 +98,13 @@ const monthly = () => userEvent.click(screen.getByRole('radio', { name: 'Monthly
 
 test('a card leads with its bold features, then what it adds over the plan before, then its limits', () => {
   renderCards(billing())
-  expect(card('Basic')).toHaveTextContent('Everything in Free, with more room:')
+  expect(card('Basic')).toHaveTextContent('Up to 5 people')
+  expect(card('Basic')).toHaveTextContent('Everything in Free, plus:')
   const pro = card('Pro')
   expect(pro).toHaveTextContent('Everything in Basic, plus:')
   expect(pro).toHaveTextContent('Heidi, your AI assistant')
   expect(pro).toHaveTextContent('No “Sent with Helvetly” on your emails and PDFs')
-  expect(pro).not.toHaveTextContent('Calendar, booking links and calendar sync')
+  expect(pro).not.toHaveTextContent('Calendar and booking links')
   expect(card('Business')).toHaveTextContent('White-labelled client portal on your own domain')
   const limits = within(card('Business')).getByLabelText('Limits')
   expect(within(limits).getByText('People').nextSibling).toHaveTextContent('Unlimited')
@@ -134,11 +135,11 @@ test('the toggle starts on yearly with what yearly saves, a subscription on its 
   expect(screen.getByRole('radio', { name: 'Yearly' })).toBeChecked()
   expect(screen.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
   expect(card('Basic')).toHaveTextContent('15.25')
-  expect(card('Basic')).toHaveTextContent('Billed CHF 183 yearly · you save CHF 45')
+  expect(card('Basic')).toHaveTextContent('Billed yearly −20% · CHF 183 a year · you save CHF 45')
   expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 375 / year')
   await monthly()
   expect(screen.getByRole('radio', { name: 'Monthly' })).toBeChecked()
-  expect(card('Basic')).toHaveTextContent('1 person included · +CHF 10 per extra person')
+  expect(card('Basic')).toHaveTextContent('1 person included · +CHF 10 / extra person')
   unmount()
   renderCards(billing({ plan: 'pro', status: 'active', interval: 'month' }))
   expect(screen.getByRole('radio', { name: 'Monthly' })).toBeChecked()
@@ -152,7 +153,7 @@ test('only Pro offers the trial, with its line; the others are charged today', a
   expect(pro).toHaveTextContent(
     'Pro free for 14 days, up to 2 people, card required. Full Pro limits, shared by the team. Then CHF 64 a month for 3 people.',
   )
-  expect(pro).toHaveTextContent('2 people included · +CHF 15 per extra person')
+  expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
   expect(within(card('Business')).getByRole('button', { name: 'Choose Business' })).toBeEnabled()
   expect(card('Business')).toHaveTextContent('Charged today.')
   const basic = card('Basic')

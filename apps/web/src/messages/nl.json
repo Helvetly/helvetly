@@ -1164,7 +1164,6 @@
   "cmpCostTitle": "Wat het kost voor uw team",
   "cmpCostLead": "Kies de grootte van uw team en hoe u betaalt. Iedere persoon in de werkruimte betaalt de prijs van het abonnement, inclusief btw. {name} rekent op een eigen manier af, dus noemen we de gepubliceerde prijzen zonder ze om te rekenen.",
   "cmpTeamOf": "{count, plural, one {Team van # persoon} other {Team van # personen}}",
-  "cmpTeamSaves": "bespaart {amount} per jaar ten opzichte van maandelijks",
   "cmpUpToPeople": "Tot {count} personen; kies Pro of Business",
   "cmpOurPriceExplained": "Prijzen inclusief btw. Probeer Pro {days} dagen gratis.",
   "cmpWhatEachPlanIncludes": "Wat elk abonnement bevat",

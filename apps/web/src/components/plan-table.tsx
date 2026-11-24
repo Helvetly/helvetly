@@ -1,6 +1,7 @@
 'use client'
 
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
+import { PlanPriceTerms } from '@helvetly/ui/components/plan-card'
 import { PlanComparison } from '@helvetly/ui/components/plan-comparison'
 import { planComparison, planFootnote } from '@helvetly/ui/lib/plan-features'
 import { formatPrice, monthOf } from '@helvetly/ui/lib/price'
@@ -12,7 +13,10 @@ import { useCurrency } from '@/lib/currency'
 import { planCatalogue } from '@/lib/offer'
 import { type PlanId, plansIn, RECOMMENDED } from '@/lib/plans'
 
-/** The price in a column's pinned head: a month's price (yearly: its share of the year) for the included people. */
+/**
+ * The price in a column's pinned head: a month's price (yearly: its share of the year) for the included people, then
+ * the extra person and the billing as the cards word them.
+ */
 function HeadPrice({ plan }: { plan: PlanId }) {
   const translate = useTranslate()
   const [interval] = useBillingInterval()
@@ -24,9 +28,11 @@ function HeadPrice({ plan }: { plan: PlanId }) {
     interval === 'year'
       ? monthOf({ amount: prices.year, currency })
       : { amount: prices.month, currency }
+  if (prices.month === 0) return <>{formatPrice(month)}</>
   return (
     <>
-      {formatPrice(month)} {prices.month > 0 && translate('planPerMonth')}
+      {formatPrice(month)} {translate('planPerMonth')}
+      <PlanPriceTerms prices={prices} interval={interval} currency={currency} className="mt-1" />
     </>
   )
 }
@@ -46,9 +52,9 @@ export function PlanTable() {
           name: plan.name,
           head: (
             <>
-              <span className="mt-1 block text-body-sm font-normal text-muted-foreground tabular-nums">
+              <div className="mt-1 text-body-sm font-normal text-muted-foreground tabular-nums">
                 <HeadPrice plan={plan.id} />
-              </span>
+              </div>
               <PlanCta plan={plan.id} className="mt-3 min-h-9 px-4 py-1.5 text-body-sm" />
             </>
           ),

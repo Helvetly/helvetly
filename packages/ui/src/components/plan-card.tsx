@@ -24,10 +24,61 @@ export type PlanPrices = {
 }
 
 /**
- * A plan's price: "CHF 49 / month", then "2 people included · +CHF 15 per extra person / month" and how it is billed;
- * yearly shows the month's share of the year and what the year saves, the extra person still at its monthly price with
- * ", billed yearly −20%". Free: "CHF 0" and "1 person · free forever". The
- * figure crossfades when the interval changes (not with reduced motion).
+ * How a paid plan's people and billing read, under its price: "2 people included · +CHF 15 / extra person" (the extra
+ * person always at its monthly price), then, muted, "Billed yearly −20% · CHF 470 a year · you save CHF 118" or "Billed
+ * monthly". Each part keeps to one line; lines break only between parts. `people` false leaves "2 people included" out.
+ */
+export function PlanPriceTerms({
+  prices,
+  interval,
+  currency,
+  people = true,
+  className,
+}: {
+  prices: PlanPrices
+  interval: BillingInterval
+  currency: string
+  people?: boolean
+  className?: string
+}) {
+  const translate = useTranslate()
+  const price = (amount: number): Price => ({ amount, currency })
+  const terms = [
+    people && translate('planPeopleIncluded', { count: prices.included_people }),
+    translate('planExtraPerson', { extra: formatPrice(price(prices.extra_person_month)) }),
+  ]
+  const billing =
+    interval === 'year'
+      ? [
+          translate('planBilledYearly', { percent: YEARLY_DISCOUNT_PERCENT }),
+          translate('planYearTotal', { price: formatPrice(price(prices.year)) }),
+          translate('planYouSave', { saving: formatPrice(price(prices.month * 12 - prices.year)) }),
+        ]
+      : [translate('planBilledMonthly')]
+  return (
+    <div data-slot="plan-price-terms" className={cn('text-body-sm tabular-nums', className)}>
+      <p className="text-foreground">{parts(terms)}</p>
+      <p className="mt-0.5 text-muted-foreground">{parts(billing)}</p>
+    </div>
+  )
+}
+
+/** Parts joined by " · ", each kept on one line. */
+function parts(list: (string | false)[]) {
+  return list
+    .filter((part) => part !== false)
+    .map((part, index) => (
+      <span key={part}>
+        {index > 0 && ' · '}
+        <span className="whitespace-nowrap">{part}</span>
+      </span>
+    ))
+}
+
+/**
+ * A plan's price: "CHF 49 / month", then its people and billing (`PlanPriceTerms`); yearly shows the month's share of
+ * the year. Free: "CHF 0", "1 person · free forever" and "No card needed". The figure crossfades when the interval
+ * changes (not with reduced motion).
  */
 export function PlanPrice({
   prices,
@@ -43,8 +94,6 @@ export function PlanPrice({
   const free = prices.month === 0
   const yearly = interval === 'year' && !free
   const month = yearly ? monthOf(price(prices.year)) : price(prices.month)
-  // An extra person reads as its monthly price either way; yearly adds the discount, never a second figure.
-  const extra = price(prices.extra_person_month)
   return (
     <div data-slot="plan-price">
       <p className="flex items-baseline gap-1.5">
@@ -59,26 +108,21 @@ export function PlanPrice({
           <span className="text-body text-muted-foreground">{translate('planPerMonth')}</span>
         )}
       </p>
-      <p className="mt-1.5 text-body-sm text-foreground">
-        {free
-          ? translate('planFreeForever', { count: prices.included_people })
-          : translate('planPeopleIncluded', {
-              count: prices.included_people,
-              extra: formatPrice(extra),
-              yearly: String(yearly),
-              percent: YEARLY_DISCOUNT_PERCENT,
-            })}
-      </p>
-      <p className="mt-0.5 min-h-[18px] text-body-sm text-muted-foreground">
-        {free
-          ? translate('planNoCard')
-          : yearly
-            ? translate('planBilledYearly', {
-                price: formatPrice(price(prices.year)),
-                saving: formatPrice(price(prices.month * 12 - prices.year)),
-              })
-            : translate('planBilledMonthly')}
-      </p>
+      {free ? (
+        <>
+          <p className="mt-1.5 text-body-sm text-foreground">
+            {translate('planFreeForever', { count: prices.included_people })}
+          </p>
+          <p className="mt-0.5 text-body-sm text-muted-foreground">{translate('planNoCard')}</p>
+        </>
+      ) : (
+        <PlanPriceTerms
+          prices={prices}
+          interval={interval}
+          currency={currency}
+          className="mt-1.5"
+        />
+      )}
     </div>
   )
 }

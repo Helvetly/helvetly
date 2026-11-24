@@ -447,7 +447,7 @@ export const PlansTrialSwitch: Story = {
     await expect(canvas.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
     const proCard = card(canvas, 'Pro')
     await expect(canvas.getByRole('article', { name: 'Pro' })).toHaveTextContent(
-      '2 people included · +CHF 15 per extra person',
+      '2 people included · +CHF 15 / extra person',
     )
     await expect(
       canvas.getByRole('article', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
@@ -563,7 +563,9 @@ export const PlansYearly: Story = {
     const proCard = canvas.getByRole('article', { name: 'Pro' })
     // A yearly price reads as its month, with the year's price and saving under it.
     await expect(proCard).toHaveTextContent('39.25')
-    await expect(proCard).toHaveTextContent('Billed CHF 471 yearly · you save CHF 117')
+    await expect(proCard).toHaveTextContent(
+      'Billed yearly −20% · CHF 471 a year · you save CHF 117',
+    )
     await expect(proCard.querySelector('[data-slot=team-total]')).toHaveTextContent(
       'For 3 peopleCHF 615 / year',
     )
@@ -588,7 +590,7 @@ export const PlansSwitchToYearly: Story = {
     await canvas.findByRole('article', { name: 'Basic' })
     await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
     await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent(
-      'Billed CHF 183 yearly · you save CHF 45',
+      'Billed yearly −20% · CHF 183 a year · you save CHF 45',
     )
     await userEvent.click(card(canvas, 'Basic').getByRole('button', { name: 'Switch yearly' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
@@ -613,7 +615,7 @@ export const PlansProToBusiness: Story = {
     // Pro is the recommendation; a workspace already on it sees no badge
     await expect(canvas.queryByText('Recommended')).not.toBeInTheDocument()
     await expect(canvas.getByRole('article', { name: 'Business' })).toHaveTextContent(
-      '5 people included · +CHF 20 per extra person',
+      '5 people included · +CHF 20 / extra person',
     )
     // Business has no cap on people, clients, invoices or quotes: "Unlimited", never ∞, a number or -1
     const limits = within(businessCard.getByLabelText('Limits'))

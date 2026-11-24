@@ -1164,7 +1164,6 @@
   "cmpCostTitle": "Was es für Ihr Team kostet",
   "cmpCostLead": "Wählen Sie die Grösse Ihres Teams und wie Sie zahlen. Jede Person im Arbeitsbereich zahlt den Preis des Plans, inklusive MWST. {name} rechnet anders ab, daher zitieren wir die veröffentlichten Preise, statt sie umzurechnen.",
   "cmpTeamOf": "{count, plural, one {Team mit # Person} other {Team mit # Personen}}",
-  "cmpTeamSaves": "spart {amount} pro Jahr gegenüber monatlich",
   "cmpUpToPeople": "Bis {count} Personen; wählen Sie Pro oder Business",
   "cmpOurPriceExplained": "Preise inklusive MWST. Testen Sie Pro {days} Tage kostenlos.",
   "cmpWhatEachPlanIncludes": "Was jeder Plan enthält",

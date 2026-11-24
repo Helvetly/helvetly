@@ -240,13 +240,13 @@ describe('pricing page', () => {
     inZone('Europe/Berlin')
     await renderPage(await PricingPage(english))
     expect(within(card(2)).getByText('EUR')).toBeTruthy()
-    expect(within(card(2)).getByText(/Billed EUR 471 yearly/)).toBeTruthy()
+    expect(within(card(2)).getByText('EUR 471 a year')).toBeTruthy()
   })
 
   it('prefers the country Cloudflare saw to the time zone', async () => {
     serve({ trace: 'h=helvetly.com\nloc=GB\n' })
     await renderPage(await PricingPage(english))
-    expect(await within(card(2)).findByText(/Billed USD 471 yearly/)).toBeTruthy()
+    expect(await within(card(2)).findByText('USD 471 a year')).toBeTruthy()
     expect(fetch).toHaveBeenCalledWith('/cdn-cgi/trace', expect.anything())
   })
 
@@ -312,20 +312,14 @@ describe('pricing page', () => {
     await renderPage(await PricingPage(english))
     const pro = card(2)
     expect(within(pro).getByText('39.25')).toBeTruthy()
-    expect(
-      within(pro).getByText(
-        '2 people included · +CHF 15 per extra person / month, billed yearly −20%',
-      ),
-    ).toBeTruthy()
-    expect(within(pro).getByText('Billed CHF 471 yearly · you save CHF 117')).toBeTruthy()
+    expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
+    expect(pro).toHaveTextContent('Billed yearly −20% · CHF 471 a year · you save CHF 117')
     expect(screen.getByText('Save 20% — CHF 45 a year on Basic')).toBeTruthy()
 
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
     expect(within(pro).getByText('49')).toBeTruthy()
-    expect(
-      within(pro).getByText('2 people included · +CHF 15 per extra person / month'),
-    ).toBeTruthy()
-    expect(within(pro).getByText('Billed monthly')).toBeTruthy()
+    expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
+    expect(pro).toHaveTextContent('Billed monthly')
     expect(window.location.search).toBe('?billing=monthly')
     // Free is a small row under the three paid cards, with a few facts and no limits block.
     expect(screen.getAllByRole('article').map((a) => a.dataset.plan)).toEqual([
@@ -378,8 +372,11 @@ describe('pricing page', () => {
   it('leads each card with its features in bold and lists its limits', async () => {
     await renderPage(await PricingPage(english))
     expect(within(card(0)).queryByText(/not included/i)).toBeNull()
-    expect(within(card(1)).getByText('Everything in Free, with more room:')).toBeTruthy()
+    expect(within(card(1)).getByText('Up to 5 people')).toBeTruthy()
+    expect(within(card(1)).getByText('Everything in Free, plus:')).toBeTruthy()
+    expect(within(card(1)).getByText('Google and Microsoft calendar sync')).toBeTruthy()
     expect(within(card(3)).getByText('Everything in Pro, plus:')).toBeTruthy()
+    expect(within(card(3)).getByText('Approvals before invoices go out')).toBeTruthy()
     const people = within(card(3)).getByText('People').nextElementSibling
     expect(people?.textContent).toBe('Unlimited')
   })
@@ -445,7 +442,8 @@ describe('comparison with Magic Heidi', () => {
     expect(screen.getByText('Team of 3 people')).toBeTruthy()
     const pro = document.querySelector('[data-plan="pro"]')!
     expect(pro).toHaveTextContent('CHF 615 / year')
-    expect(pro).toHaveTextContent('CHF 17.08 / person / month · saves CHF 153 a year vs monthly')
+    expect(pro).toHaveTextContent('+CHF 15 / extra person')
+    expect(pro).toHaveTextContent('Billed yearly −20% · you save CHF 153')
     expect(screen.getByText(/Advanced CHF 504/)).toBeTruthy()
     expect(screen.getByText(/As published on 15 November 2026/)).toBeTruthy()
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))

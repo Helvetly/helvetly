@@ -177,6 +177,7 @@ const ROWS: RowDef[] = [
     group: 'run_your_day',
     label: 'planRowCalendarSync',
     hint: 'planHintCalendarSync',
+    card: 'planRowCalendarSync',
     features: ['scheduling', 'calendar_sync'],
   },
   {
@@ -425,14 +426,21 @@ export const ROW_FEATURES = [...new Set(ROWS.flatMap((row) => row.features ?? []
 /** The gated features the public offer leaves out, and the cheapest plan with each (checked against the offer). */
 export const INTERNAL_ROWS = ROWS.flatMap((row) => (row.internal ? [row.internal] : []))
 
-/** Each card's headline, who it is for, and the 3–4 rows (by key) it leads with in bold. */
+/**
+ * Each card's headline, who it is for, and the 3–4 rows (by key) it leads with in bold: any row the plan has, or
+ * `people`, how many people it takes.
+ */
 const PLAN_COPY: PerPlan<{ headline: MessageKey; bestFor: MessageKey; heroes: string[] }> = {
   free: {
     headline: 'planHeadlineFree',
     bestFor: 'planBestForFree',
     heroes: ['invoices', 'swiss_qr', 'scheduling', 'expenses'],
   },
-  basic: { headline: 'planHeadlineBasic', bestFor: 'planBestForBasic', heroes: [] },
+  basic: {
+    headline: 'planHeadlineBasic',
+    bestFor: 'planBestForBasic',
+    heroes: ['people', 'scheduling', 'expenses', 'dashboard'],
+  },
   pro: {
     headline: 'planHeadlinePro',
     bestFor: 'planBestForPro',
@@ -441,7 +449,7 @@ const PLAN_COPY: PerPlan<{ headline: MessageKey; bestFor: MessageKey; heroes: st
   business: {
     headline: 'planHeadlineBusiness',
     bestFor: 'planBestForBusiness',
-    heroes: ['portal', 'einvoice', 'approvals', 'employees'],
+    heroes: ['people', 'portal', 'einvoice', 'employees'],
   },
 }
 
@@ -502,16 +510,16 @@ export type PlanCardData = {
   bestFor: string
   /** The plan's lead features, in bold. */
   heroes: PlanLine[]
-  /** "Everything in Free, plus:" for every plan but the first. */
+  /** "Everything in Free, plus:" above `groups`, for every plan but the first when it adds rows besides its heroes. */
   basis?: string
-  /** The rest of what the plan has (or adds to the one before), by group; empty groups left out. */
+  /** What the plan has (or adds to the one before) besides its heroes, by group; empty groups left out. */
   groups: { group: PlanGroup; title: string; lines: PlanLine[] }[]
   limits: PlanLimitLine[]
 }
 
 /**
- * Each plan's card: the first plan's features in full, every other one "Everything in <the plan before>, plus:" what
- * it adds; its heroes first, then the rest by group; then its allowances.
+ * Each plan's card: its heroes first, then the first plan's features in full, every other one "Everything in <the plan
+ * before>, plus:" what it adds besides its heroes, by group; then its allowances.
  */
 export function planCards(offer: PlanCatalogue, language: Locale): PlanCardData[] {
   const translate = translatorFor(language)
@@ -526,27 +534,39 @@ export function planCards(offer: PlanCatalogue, language: Locale): PlanCardData[
     const shown = carded.filter(
       (row) => hasRow(offer, row, id) && !(below && hasRow(offer, row, below.id)),
     )
-    const heroes = PLAN_COPY[id].heroes.flatMap((key) => {
-      const row = shown.find((r) => r.key === key)
+    const heroes = PLAN_COPY[id].heroes.flatMap((key): PlanLine[] => {
+      if (key === 'people') {
+        const seats = offer.max_self_service_seats[id]
+        return [
+          {
+            key,
+            label:
+              seats === null
+                ? translate('planCardPeopleUnlimited')
+                : translate('planCardPeopleUpTo', { count: seats }),
+          },
+        ]
+      }
+      const row = carded.find((r) => r.key === key && hasRow(offer, r, id))
       return row ? [line(row)] : []
     })
     const rest = shown.filter((row) => !PLAN_COPY[id].heroes.includes(row.key))
+    const groups = PLAN_GROUPS.map((group) => ({
+      group,
+      title: translate(GROUP_TITLES[group]),
+      lines: rest.filter((row) => row.group === group).map(line),
+    })).filter((group) => group.lines.length > 0)
     return {
       plan: id,
       name,
       headline: translate(PLAN_COPY[id].headline),
       bestFor: translate(PLAN_COPY[id].bestFor),
       heroes,
-      basis: below
-        ? translate(shown.length ? 'planEverythingIn' : 'planEverythingInMoreRoom', {
-            plan: below.name,
-          })
-        : undefined,
-      groups: PLAN_GROUPS.map((group) => ({
-        group,
-        title: translate(GROUP_TITLES[group]),
-        lines: rest.filter((row) => row.group === group).map(line),
-      })).filter((group) => group.lines.length > 0),
+      basis:
+        below && groups.length > 0
+          ? translate('planEverythingIn', { plan: below.name })
+          : undefined,
+      groups,
       limits: CARD_LIMITS.map(({ limit, label }) => ({
         key: limit,
         label: translate(label),

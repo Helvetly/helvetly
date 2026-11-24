@@ -1164,7 +1164,6 @@
   "cmpCostTitle": "Ce que cela coûte pour votre équipe",
   "cmpCostLead": "Choisissez la taille de votre équipe et le mode de paiement. Chaque personne de l’espace de travail paie le prix de la formule, TVA incluse. {name} facture à sa manière : ses prix sont cités tels que publiés, sans recalcul.",
   "cmpTeamOf": "{count, plural, one {Équipe de # personne} other {Équipe de # personnes}}",
-  "cmpTeamSaves": "économise {amount} par an par rapport au mensuel",
   "cmpUpToPeople": "Jusqu’à {count} personnes ; choisissez Pro ou Business",
   "cmpOurPriceExplained": "Prix TVA incluse. Essayez Pro gratuitement pendant {days} jours.",
   "cmpWhatEachPlanIncludes": "Ce que chaque formule inclut",

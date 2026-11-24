@@ -1164,7 +1164,6 @@
   "cmpCostTitle": "Vad det kostar för ditt team",
   "cmpCostLead": "Välj hur stort ditt team är och hur du betalar. Varje person i arbetsytan betalar planens pris, moms ingår. {name} tar betalt på sitt eget sätt, så vi anger deras publicerade priser utan att räkna om dem.",
   "cmpTeamOf": "{count, plural, one {Team med # person} other {Team med # personer}}",
-  "cmpTeamSaves": "sparar {amount} per år jämfört med månadsvis",
   "cmpUpToPeople": "Upp till {count} personer; välj Pro eller Business",
   "cmpOurPriceExplained": "Priserna inkluderar moms. Prova Pro gratis i {days} dagar.",
   "cmpWhatEachPlanIncludes": "Vad varje plan innehåller",

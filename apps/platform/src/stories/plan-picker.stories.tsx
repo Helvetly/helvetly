@@ -44,13 +44,13 @@ export const IntervalByKeyboard: Story = {
     await expect(yearly).toBeChecked()
     await expect(canvas.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
     const basic = canvas.getByRole('article', { name: 'Basic' })
-    await expect(basic).toHaveTextContent('Billed CHF 183 yearly · you save CHF 45')
+    await expect(basic).toHaveTextContent('Billed yearly −20% · CHF 183 a year · you save CHF 45')
 
     yearly.focus()
     await userEvent.keyboard('{ArrowLeft}')
     await expect(monthly).toBeChecked()
     await expect(monthly).toHaveFocus()
-    await expect(basic).toHaveTextContent('1 person included · +CHF 10 per extra person')
+    await expect(basic).toHaveTextContent('1 person included · +CHF 10 / extra person')
     await expect(canvas.getByRole('article', { name: 'Pro' })).toHaveTextContent(
       'Then CHF 64 a month for 3 people.',
     )

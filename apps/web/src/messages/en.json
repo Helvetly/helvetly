@@ -1164,7 +1164,6 @@
   "cmpCostTitle": "What it costs for your team",
   "cmpCostLead": "Pick your team size and how you pay. Every person in the workspace pays the plan’s price, VAT included. {name} charges in its own way, so its prices are quoted as published, not recalculated.",
   "cmpTeamOf": "{count, plural, one {Team of # person} other {Team of # people}}",
-  "cmpTeamSaves": "saves {amount} a year vs monthly",
   "cmpUpToPeople": "Up to {count} people; choose Pro or Business",
   "cmpOurPriceExplained": "Prices include VAT. Try Pro free for {days} days.",
   "cmpWhatEachPlanIncludes": "What each plan includes",

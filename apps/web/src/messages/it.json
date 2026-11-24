@@ -1164,7 +1164,6 @@
   "cmpCostTitle": "Quanto costa per il tuo team",
   "cmpCostLead": "Scegli la dimensione del team e come paghi. Ogni persona nello spazio di lavoro paga il prezzo del piano, IVA inclusa. {name} fattura a modo suo, quindi i suoi prezzi sono citati come pubblicati, senza ricalcolarli.",
   "cmpTeamOf": "{count, plural, one {Team di # persona} other {Team di # persone}}",
-  "cmpTeamSaves": "risparmia {amount} all’anno rispetto al mensile",
   "cmpUpToPeople": "Fino a {count} persone; scegli Pro o Business",
   "cmpOurPriceExplained": "Prezzi IVA inclusa. Prova Pro gratis per {days} giorni.",
   "cmpWhatEachPlanIncludes": "Cosa include ogni piano",

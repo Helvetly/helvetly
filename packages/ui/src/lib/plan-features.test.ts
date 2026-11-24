@@ -57,7 +57,15 @@ const offer: PlanCatalogue = {
   features: Object.fromEntries(
     ROW_FEATURES.map((key) => [
       key,
-      from(BUSINESS.has(key) ? 'business' : PRO.has(key) ? 'pro' : 'free'),
+      from(
+        BUSINESS.has(key)
+          ? 'business'
+          : PRO.has(key)
+            ? 'pro'
+            : key === 'calendar_sync'
+              ? 'basic'
+              : 'free',
+      ),
     ]),
   ),
   max_self_service_seats: { free: 1, basic: 5, pro: 25, business: null },
@@ -92,23 +100,47 @@ describe('planCards', () => {
     expect(lines('free')).not.toContain('Heidi, your AI assistant')
   })
 
-  it('gives Basic more room only, and every other plan what it adds', () => {
-    expect(card('basic')?.basis).toBe('Everything in Free, with more room:')
-    expect(lines('basic')).toEqual([])
+  it('leads every paid plan with heroes, then what it adds under "Everything in …, plus:"', () => {
+    expect(card('basic')?.heroes.map((l) => l.label)).toEqual([
+      'Up to 5 people',
+      'Calendar and booking links',
+      'Expenses and receipts',
+      'Dashboard, reports and period closing',
+    ])
+    expect(card('basic')?.basis).toBe('Everything in Free, plus:')
+    expect(card('basic')?.groups.flatMap((g) => g.lines.map((l) => l.key))).toEqual([
+      'calendar_sync',
+    ])
     expect(card('pro')?.basis).toBe('Everything in Basic, plus:')
     expect(lines('pro')).toContain('Developer API & MCP for AI agents')
     expect(card('business')?.heroes.map((l) => l.label)).toEqual([
+      'No limit on people',
       'White-labelled client portal on your own domain',
       'E-invoices',
-      'Approvals before invoices go out',
       'Employee records and payroll',
     ])
+    expect(card('business')?.basis).toBe('Everything in Pro, plus:')
+    expect(card('business')?.groups.flatMap((g) => g.lines.map((l) => l.key))).toEqual([
+      'approvals',
+    ])
+    for (const plan of ['basic', 'pro', 'business'] as const)
+      expect(card(plan)?.heroes.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('never repeats a line, on a card or between a plan and the ones below it', () => {
-    const seen = cards.flatMap((c) => [...c.heroes, ...c.groups.flatMap((g) => g.lines)])
-    expect(new Set(seen.map((l) => l.key)).size).toBe(seen.length)
-    expect(new Set(seen.map((l) => l.label)).size).toBe(seen.length)
+  it('leaves "Everything in …, plus:" out when a plan adds nothing besides its heroes', () => {
+    const noSync = { ...offer, features: { ...offer.features, calendar_sync: from('free') } }
+    const basic = planCards(noSync, 'en').find((c) => c.plan === 'basic')
+    expect(basic?.basis).toBeUndefined()
+    expect(basic?.groups).toEqual([])
+  })
+
+  it('never repeats a line on a card, nor a listed feature between plans', () => {
+    for (const c of cards) {
+      const own = [...c.heroes, ...c.groups.flatMap((g) => g.lines)]
+      expect(new Set(own.map((l) => l.key)).size).toBe(own.length)
+    }
+    const listed = cards.flatMap((c) => c.groups.flatMap((g) => g.lines))
+    expect(new Set(listed.map((l) => l.key)).size).toBe(listed.length)
   })
 
   it('groups the rest in the one group order, never an empty group', () => {

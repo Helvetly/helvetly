@@ -151,7 +151,7 @@ export const PlanTilesPerPerson: Story = {
       canvas.getByRole('article', { name: plan }).querySelector('[data-slot=team-total]')
     // Each plan's price covers its first people, each further one adds a little.
     await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent(
-      '1 person included · +CHF 10 per extra person',
+      '1 person included · +CHF 10 / extra person',
     )
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 39 / month')
     await expect(total('Pro')).toHaveTextContent('For 3 peopleCHF 64 / month')
@@ -165,7 +165,7 @@ export const PlanTilesPerPerson: Story = {
     await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 375 / year')
     await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent(
-      'Billed CHF 183 yearly · you save CHF 45',
+      'Billed yearly −20% · CHF 183 a year · you save CHF 45',
     )
   },
 }

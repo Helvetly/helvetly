@@ -163,14 +163,11 @@ export const Cards: Story = {
     const free = canvas.getByRole('region', { name: 'Free' })
     await expect(within(free).getByText('CHF 0 · 1 person · no card needed')).toBeVisible()
     await expect(within(free).getByText('3 invoices & 3 quotes a month')).toBeVisible()
-    await expect(
-      within(pro).getByText(
-        '2 people included · +CHF 15 per extra person / month, billed yearly −20%',
-      ),
-    ).toBeVisible()
-    await expect(within(basic).getByText('Everything in Free, with more room:')).toBeVisible()
+    await expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
+    await expect(within(basic).getByText('Up to 5 people')).toBeVisible()
+    await expect(within(basic).getByText('Everything in Free, plus:')).toBeVisible()
     await expect(within(pro).getByText('39.25')).toBeVisible()
-    await expect(within(pro).getByText('Billed CHF 471 yearly · you save CHF 117')).toBeVisible()
+    await expect(pro).toHaveTextContent('Billed yearly −20% · CHF 471 a year · you save CHF 117')
     await expect(within(business).getByText('Everything in Pro, plus:')).toBeVisible()
     await expect(
       within(business).getByText('White-labelled client portal on your own domain'),
@@ -179,9 +176,8 @@ export const Cards: Story = {
 
     await userEvent.click(canvas.getByRole('radio', { name: 'Monthly' }))
     await expect(within(pro).getByText('49')).toBeVisible()
-    await expect(
-      within(pro).getByText('2 people included · +CHF 15 per extra person / month'),
-    ).toBeVisible()
+    await expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
+    await expect(pro).toHaveTextContent('Billed monthly')
   },
 }
 
