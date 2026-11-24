@@ -1,14 +1,15 @@
 'use client'
+import { localeDetails } from '@helvetly/i18n'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Callout } from '@helvetly/ui/components/callout'
 import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { PlanFeatureText } from '@helvetly/ui/components/plan-feature-text'
 import { segmentLabels } from '@helvetly/ui/components/segmented'
 import { planFootnote } from '@helvetly/ui/lib/plan-features'
-import { formatAmount, formatPrice, monthOf } from '@helvetly/ui/lib/price'
+import { formatAmount } from '@helvetly/ui/lib/price'
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { Ban, Check, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import { Cta } from '@/components/cta'
 import { useOfferStatus } from '@/components/offer-provider'
@@ -23,6 +24,7 @@ import {
   RECOMMENDED,
   TRIAL,
   YEARLY_DISCOUNT_PERCENT,
+  yearlyTerms,
 } from '@/lib/plans'
 import { siteIn, SUPPORT_EMAIL } from '@/lib/site'
 import { TONES } from '@/lib/tones'
@@ -42,29 +44,7 @@ export function PricingCards() {
 
   return (
     <div className="flex flex-col items-center">
-      <fieldset className={cn(segmentTrack, 'inline-flex h-10')}>
-        <legend className="sr-only">{translate('billingInterval')}</legend>
-        {(['month', 'year'] as const).map((value) => (
-          <label key={value} className={cn(segmentItem, 'h-8 gap-0 px-4')}>
-            <input
-              type="radio"
-              name="interval"
-              value={value}
-              checked={interval === value}
-              onChange={() => setInterval(value)}
-              className="absolute inset-0 cursor-pointer appearance-none opacity-0"
-            />
-            {segmentLabels(value === 'month' ? translate('monthly') : translate('yearly'))}
-            {/* The space is for the spoken name: "Yearly −20%". */}
-            {value === 'year' && ' '}
-            {value === 'year' && (
-              <Badge tone="green" size="sm" className="ml-1.5">
-                −{YEARLY_DISCOUNT_PERCENT}%
-              </Badge>
-            )}
-          </label>
-        ))}
-      </fieldset>
+      <IntervalSwitch value={interval} onChange={setInterval} />
 
       {unavailable && (
         <Callout
@@ -103,6 +83,7 @@ export function PricingCards() {
         {PLANS.map((plan, i) => {
           const featured = plan.id === RECOMMENDED
           const included = lines[i]
+          const yearly = yearlyTerms(plan, language, currency)
           return (
             <article
               key={plan.id}
@@ -158,11 +139,12 @@ export function PricingCards() {
                     key={interval}
                     className="pop text-price font-semibold tracking-tight tabular-nums"
                   >
-                    {formatAmount(
-                      interval === 'year'
-                        ? monthOf(priceOf(plan, 'year', currency))
-                        : priceOf(plan, 'month', currency),
-                    )}
+                    {interval === 'year'
+                      ? yearly.perMonth
+                      : formatAmount(
+                          priceOf(plan, 'month', currency),
+                          localeDetails(language).numberLocale,
+                        )}
                   </span>
                   <span
                     className={cn('text-body', featured ? 'opacity-70' : 'text-muted-foreground')}
@@ -171,9 +153,10 @@ export function PricingCards() {
                   </span>
                 </p>
               )}
+              {/* Two lines in both intervals, so the cards keep their rhythm when the toggle flips. */}
               <p
                 className={cn(
-                  'mt-2 min-h-5 text-body-sm',
+                  'mt-2 min-h-10 text-body-sm',
                   featured ? 'opacity-60' : 'text-muted-foreground',
                 )}
               >
@@ -181,8 +164,11 @@ export function PricingCards() {
                   ''
                 ) : interval === 'year' ? (
                   <>
-                    <strong>{formatPrice(priceOf(plan, 'year', currency))}</strong>
-                    {translate('annualPriceSuffix')}
+                    {translate('billedYearlyPerPerson', { price: yearly.billed })}
+                    <br />
+                    <strong data-slot="yearly-saving">
+                      {translate('youSavePerPersonPerYear', { amount: yearly.saving })}
+                    </strong>
                   </>
                 ) : (
                   translate('billedMonthly')
@@ -255,5 +241,42 @@ export function PricingCards() {
         ))}
       </ul>
     </div>
+  )
+}
+
+/** Monthly or yearly, with the yearly discount on its segment; one per section, so each gets its own radio group. */
+export function IntervalSwitch({
+  value: selected,
+  onChange,
+}: {
+  value: Interval
+  onChange: (value: Interval) => void
+}) {
+  const translate = translatorFor(useLanguage())
+  const name = useId()
+  return (
+    <fieldset className={cn(segmentTrack, 'inline-flex h-10')}>
+      <legend className="sr-only">{translate('billingInterval')}</legend>
+      {(['month', 'year'] as const).map((value) => (
+        <label key={value} className={cn(segmentItem, 'h-8 gap-0 px-4')}>
+          <input
+            type="radio"
+            name={name}
+            value={value}
+            checked={selected === value}
+            onChange={() => onChange(value)}
+            className="absolute inset-0 cursor-pointer appearance-none opacity-0"
+          />
+          {segmentLabels(value === 'month' ? translate('monthly') : translate('yearly'))}
+          {/* The space is for the spoken name: "Yearly −20%". */}
+          {value === 'year' && ' '}
+          {value === 'year' && (
+            <Badge tone="green" size="sm" className="ml-1.5">
+              −{YEARLY_DISCOUNT_PERCENT}%
+            </Badge>
+          )}
+        </label>
+      ))}
+    </fieldset>
   )
 }

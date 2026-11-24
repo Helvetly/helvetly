@@ -1,7 +1,7 @@
 import type { Locale } from '@helvetly/i18n'
 import { describe, expect, it } from 'vitest'
 
-import { cellOf, compareIn, MAX_CELL_LENGTH, ROW_KEYS } from './compare'
+import { cellOf, compareIn, MAX_CELL_LENGTH, NOT_COMPARED, ROW_KEYS } from './compare'
 import { plansIn } from './plans'
 import { TEAM_SIZES, TIERED_PLANS, yearlyFor } from './team-pricing'
 
@@ -22,8 +22,14 @@ describe.each(LANGUAGES)('comparisons in %s', (language) => {
     (_name, side) => {
       expect(Object.keys(side.rows).toSorted()).toEqual([...ROW_KEYS].toSorted())
       const cells = ROW_KEYS.map((key) => ({ key, ...cellOf(side.rows[key]) }))
-      const kinds = new Set(cells.map(({ value }) => (value === null ? 'null' : typeof value)))
-      expect([...kinds].filter((kind) => !['string', 'boolean', 'null'].includes(kind))).toEqual([])
+      const kinds = new Set(
+        cells.map(({ value }) =>
+          value === NOT_COMPARED ? 'unchecked' : value === null ? 'null' : typeof value,
+        ),
+      )
+      expect(
+        [...kinds].filter((kind) => !['string', 'boolean', 'null', 'unchecked'].includes(kind)),
+      ).toEqual([])
       const texts = cells.filter((c) => typeof c.value === 'string')
       expect(texts.filter((c) => String(c.value).trim() === '')).toEqual([])
       expect(texts.filter((c) => String(c.value).length > MAX_CELL_LENGTH)).toEqual([])

@@ -212,7 +212,7 @@ describe('pricing page', () => {
         ['home', HomePage],
         ['pricing', PricingPage],
       ] as const)(
-        'bolds only annual amounts and keeps percentages joined on %s',
+        'bills the year, bolds the saving and keeps percentages joined on %s',
         async (_, Page) => {
           const { container } = await renderPage(
             <LanguageProvider language={language}>
@@ -222,14 +222,19 @@ describe('pricing page', () => {
           await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
           expect(container.textContent?.match(/\S*\s+%/gu) ?? []).toEqual([])
           expect(container.textContent).toContain('20%')
-          for (const [index, amount] of ['CHF 183', 'CHF 471', 'CHF 951'].entries()) {
+          for (const [index, [amount, saving]] of (
+            [
+              ['CHF 183', 'CHF 45'],
+              ['CHF 471', 'CHF 117'],
+              ['CHF 951', 'CHF 237'],
+            ] as const
+          ).entries()) {
             const card = screen.getAllByRole('article')[index]!
             const annual = within(card).getByText(
               (_text, element) =>
                 element?.tagName === 'P' && (element.textContent ?? '').includes(amount),
             )
-            expect(annual.querySelector('strong')?.textContent).toBe(amount)
-            expect(annual.textContent).not.toBe(amount)
+            expect(annual.querySelector('strong')?.textContent).toContain(saving)
           }
         },
       )
@@ -241,18 +246,15 @@ describe('pricing page', () => {
     await renderPage(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
     expect(within(pro).getByText('EUR')).toBeTruthy()
-    expect(within(pro).getByText('EUR 471').closest('p')?.textContent).toBe(
-      'EUR 471 a year, billed yearly',
-    )
+    expect(within(pro).getByText('Billed EUR 471 yearly per person')).toBeTruthy()
+    expect(within(pro).getByText('You save EUR 117 per person per year vs monthly')).toBeTruthy()
   })
 
   it('prefers the country Cloudflare saw to the time zone', async () => {
     serve({ trace: 'h=helvetly.com\nloc=GB\n' })
     await renderPage(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
-    expect((await within(pro).findByText('USD 471')).closest('p')?.textContent).toBe(
-      'USD 471 a year, billed yearly',
-    )
+    expect(await within(pro).findByText('Billed USD 471 yearly per person')).toBeTruthy()
     expect(fetch).toHaveBeenCalledWith('/cdn-cgi/trace', expect.anything())
   })
 
@@ -311,9 +313,8 @@ describe('pricing page', () => {
     await renderPage(await PricingPage(english))
     const pro = screen.getAllByRole('article')[1]!
     expect(within(pro).getByText('39.25')).toBeTruthy()
-    expect(within(pro).getByText('CHF 471').closest('p')?.textContent).toBe(
-      'CHF 471 a year, billed yearly',
-    )
+    expect(within(pro).getByText('Billed CHF 471 yearly per person')).toBeTruthy()
+    expect(within(pro).getByText('You save CHF 117 per person per year vs monthly')).toBeTruthy()
 
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
     expect(within(pro).getByText('49')).toBeTruthy()
@@ -365,6 +366,19 @@ describe('comparison with Magic Heidi', () => {
     expect(within(portal).getByText('Yes')).toBeTruthy()
     expect(within(portal).getByText('Not offered')).toBeTruthy()
     expect(within(portal).getByRole('button', { name: 'About: Client portal' })).toBeTruthy()
+    const sessions = screen
+      .getByRole('rowheader', { name: 'Client sessions and booking' })
+      .closest('tr')!
+    expect(within(sessions).getByText('Not compared')).toBeTruthy()
+    expect(sessions.dataset.win).toBeUndefined()
+    const features = within(portal.closest('table')!)
+    expect(
+      features
+        .getAllByRole('rowheader')
+        .slice(0, 2)
+        .map((row) => row.textContent),
+    ).toEqual(['What Helvetly includes', 'Swiss QR bill'])
+    expect(features.queryByText(/CHF/)).toBeNull()
     expect(portal.dataset.win).toBe('true')
     const feeds = screen.getByRole('rowheader', { name: 'Bank feeds' }).closest('tr')!
     expect(feeds.dataset.win).toBeUndefined()
@@ -388,13 +402,30 @@ describe('comparison with Magic Heidi', () => {
     expect(within(theirs).getAllByText('CHF 299')).toHaveLength(3)
   })
 
+  it('shows the cost for a team apart, with their prices as published', async () => {
+    serve({ trace: 'loc=CH' })
+    await renderPage(await ComparePage({ params: Promise.resolve({ lang: 'en', slug: 'bexio' }) }))
+    expect(screen.getByRole('heading', { name: 'What it costs for your team' })).toBeTruthy()
+    expect(screen.getByText('Team of 3 people')).toBeTruthy()
+    const pro = document.querySelector('[data-plan="pro"]')!
+    expect(pro).toHaveTextContent('CHF 615 / year')
+    expect(pro).toHaveTextContent('CHF 17.08 / person / month · saves CHF 153 a year vs monthly')
+    expect(screen.getByText(/Advanced CHF 504/)).toBeTruthy()
+    expect(screen.getByText(/As published on 15 November 2026/)).toBeTruthy()
+    await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
+    expect(pro).toHaveTextContent('CHF 64 / month')
+    const payroll = screen.getByRole('rowheader', { name: 'Employees and payroll' })
+    expect(within(payroll.closest('tr')!).getByText('Payroll as an add-on')).toBeTruthy()
+  })
+
   it.each(COMPETITORS.map((c) => c.slug))('has a page for %s with a dated source', async (slug) => {
     await renderPage(await ComparePage({ params: Promise.resolve({ lang: 'en', slug }) }))
     const them = COMPETITORS.find((c) => c.slug === slug)!
-    expect(screen.getByRole('columnheader', { name: them.name })).toBeTruthy()
+    expect(screen.getAllByRole('columnheader', { name: them.name })).toHaveLength(2)
+    // The table's sources and the prices' source.
     expect(
-      screen.getByRole('link', { name: new URL(them.url).hostname.replace(/^www\./, '') }),
-    ).toBeTruthy()
+      screen.getAllByRole('link', { name: new URL(them.url).hostname.replace(/^www\./, '') }),
+    ).toHaveLength(2)
   })
 
   it('lists every comparison on the index and in the footer', async () => {

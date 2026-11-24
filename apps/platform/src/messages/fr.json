@@ -5987,5 +5987,6 @@
   "kmu8900": "Impôts directs",
   "emailDigestSettings": "Paramètres du résumé par e-mail",
   "dailyEMailDigestHelp": "Chaque matin après 07:00, dans le fuseau horaire de l’espace de travail, un e-mail pour vous (jamais pour vos clients) : ce qui est à facturer, ce qui se termine bientôt et les relances envoyées la veille. Envoyé seulement s’il y a quelque chose à signaler. Pour les propriétaires et administrateurs ; nécessite l’automatisation des mandats dans votre offre.",
-  "dailyEMailDigestKept": "Vous pouvez toujours le désactiver."
+  "dailyEMailDigestKept": "Vous pouvez toujours le désactiver.",
+  "youSavePerPersonPerYear": "Vous économisez {amount} par personne et par an par rapport au mensuel"
 }

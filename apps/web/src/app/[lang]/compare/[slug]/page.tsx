@@ -11,6 +11,8 @@ import { Cta } from '@/components/cta'
 import { OfferProvider } from '@/components/offer-provider'
 import { PageHero } from '@/components/page-hero'
 import { Container, SectionHeading } from '@/components/section'
+import { TeamCost } from '@/components/team-cost'
+import { cellOf } from '@/lib/compare'
 import { compareIn } from '@/lib/compare'
 import { languageOf, translatorFor } from '@/lib/i18n'
 import { pageMetadata } from '@/lib/metadata'
@@ -111,6 +113,17 @@ export default async function ComparePage({ params }: Props) {
                 })}
               </p>
             </div>
+            <CompareTable lang={lang} them={them} prices />
+            <h2 className="mt-10 mb-4 text-title font-semibold">{translate('cmpCostTitle')}</h2>
+            <TeamCost
+              them={{
+                name: them.name,
+                url: them.url,
+                pricesChecked: them.pricesChecked,
+                price: them.yearly.note,
+                pricingModel: cellOf(them.rows.pricingModel).note ?? '',
+              }}
+            />
           </Container>
         </section>
 

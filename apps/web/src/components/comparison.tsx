@@ -13,6 +13,7 @@ import {
   compareIn,
   type Entry,
   offered,
+  NOT_COMPARED,
   PRICE_ROWS,
   type RowKey,
 } from '@/lib/compare'
@@ -57,7 +58,8 @@ function CompareValue({
   const translate = translatorFor(lang)
   const { value, note } = cellOf(entry)
   let shown: ReactNode
-  if (value === true)
+  if (value === NOT_COMPARED) shown = translate('cmpNotCompared')
+  else if (value === true)
     shown = (
       <>
         <Check aria-hidden className="size-4 text-brand" />
@@ -154,11 +156,22 @@ export function PriceBlock({ lang, them }: { lang: Locale; them: Competitor }) {
 }
 
 /** Feature by feature, grouped by section; rows where only Helvetly offers it are tinted. */
-export function CompareTable({ lang, them }: { lang: Locale; them: Competitor }) {
+export function CompareTable({
+  lang,
+  them,
+  prices = false,
+}: {
+  lang: Locale
+  them: Competitor
+  prices?: boolean
+}) {
   const translate = translatorFor(lang)
   const { ROW_GROUPS, OURS } = compareIn(lang)
+  const sections = ROW_GROUPS.filter(({ rows }) => PRICE_ROWS.has(rows[0]!.key) === prices)
   const wins = (key: RowKey) =>
-    offered(cellOf(OURS[key]).value) && !offered(cellOf(them.rows[key]).value)
+    offered(cellOf(OURS[key]).value) &&
+    cellOf(them.rows[key]).value !== NOT_COMPARED &&
+    !offered(cellOf(them.rows[key]).value)
   const ours = (key: RowKey, label: string) => (
     <CompareValue lang={lang} entry={OURS[key]} label={label} price={PRICE_ROWS.has(key)} />
   )
@@ -197,7 +210,7 @@ export function CompareTable({ lang, them }: { lang: Locale; them: Competitor })
               </th>
             </tr>
           </thead>
-          {ROW_GROUPS.map(({ group, rows }) => (
+          {sections.map(({ group, rows }) => (
             <tbody key={group}>
               <tr className="border-site-line bg-site-tint border-t">
                 <th
@@ -230,7 +243,7 @@ export function CompareTable({ lang, them }: { lang: Locale; them: Competitor })
       </div>
 
       <div className="grid gap-4 md:hidden">
-        {ROW_GROUPS.map(({ group, rows }) => (
+        {sections.map(({ group, rows }) => (
           <section
             key={group}
             aria-label={group}
