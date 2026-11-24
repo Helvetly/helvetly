@@ -82,53 +82,89 @@ func (q Q) VATSales(ctx context.Context, workspaceID, from, to string) ([]VATDoc
 	return collectVATDocuments(rows, err)
 }
 
-// VATReceipts: the share of each receivable that payments less refunds of [from, to) cover (received basis,
-// MWSTG art. 40 para. 1 b), as signed documents. A payment is priced against what its invoice still asks once the
-// credit notes issued by its date are taken out; a refund against those credit notes, which created what it pays back.
+// VATReceipts allocates payments and refunds to the VAT groups still outstanding on their date.
+// Previous receipts of the same invoices carry both the rounding and any amounts reported before a credit note.
 func (q Q) VATReceipts(ctx context.Context, workspaceID, from, to string) ([]VATDocument, error) {
-	rows, err := q.db.Query(ctx, `SELECT coalesce(i.number, i.id), i.currency, `+supplyDate+`, i.vat_breakdown,
-			m.amount, i.total + i.rounding_amount, m.refund,
-			COALESCE(c.breakdowns, '[]'::json), COALESCE(c.payable, 0)
-		FROM (SELECT invoice_id, amount, paid_on AS moved_on, false AS refund FROM invoice_payments WHERE paid_on >= $2 AND paid_on < $3
-			UNION ALL SELECT invoice_id, -amount, refunded_on, true FROM invoice_refunds WHERE refunded_on >= $2 AND refunded_on < $3) m
-		JOIN invoices i ON i.id = m.invoice_id
-		LEFT JOIN LATERAL (SELECT json_agg(n.vat_breakdown) AS breakdowns, sum(n.total + n.rounding_amount) AS payable
-			FROM invoices n WHERE n.credited_invoice_id = i.id AND n.kind = 'credit_note' AND n.status <> 'draft'
-				AND n.issue_date <= m.moved_on) c ON true
+	rows, err := q.db.Query(ctx, `SELECT i.id, coalesce(i.number, i.id), i.currency, `+supplyDate+`, i.vat_breakdown,
+			i.total + i.rounding_amount, m.amount, m.moved_on >= $2, coalesce(c.latest::text, ''),
+			coalesce(c.breakdowns, '[]'::json), coalesce(c.credited, 0)
+		FROM invoices i
+		CROSS JOIN LATERAL (SELECT 1 FROM (
+			SELECT 1 FROM invoice_payments p WHERE p.invoice_id = i.id AND p.paid_on >= $2 AND p.paid_on < $3
+			UNION ALL SELECT 1 FROM invoice_refunds f WHERE f.invoice_id = i.id AND f.refunded_on >= $2 AND f.refunded_on < $3
+		) activity LIMIT 1) active
+		CROSS JOIN LATERAL (
+			SELECT id, amount, paid_on AS moved_on, created_at FROM invoice_payments WHERE invoice_id = i.id AND paid_on < $3
+			UNION ALL SELECT id, -amount, refunded_on, created_at FROM invoice_refunds WHERE invoice_id = i.id AND refunded_on < $3
+		) m
+		LEFT JOIN LATERAL (SELECT max(n.issue_date) AS latest, json_agg(n.vat_breakdown) AS breakdowns, sum(n.total + n.rounding_amount) AS credited
+			FROM invoices n WHERE n.credited_invoice_id = i.id AND n.kind = 'credit_note' AND n.status <> 'draft' AND n.issue_date <= m.moved_on) c ON true
 		WHERE i.workspace_id = $1 AND i.kind IN `+receivableKinds+`
-		ORDER BY 1`, workspaceID, from, to)
+		ORDER BY i.id, m.moved_on, m.created_at, m.id`, workspaceID, from, to)
 	if err != nil {
 		return nil, err
 	}
-	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (VATDocument, error) {
+	defer rows.Close()
+	var result []VATDocument
+	var state receiptAllocation
+	for rows.Next() {
 		var d VATDocument
+		var id, latest string
 		var breakdown, credits []byte
-		var part, whole, credited invoicecalc.Money
-		var refund bool
-		if err := r.Scan(&d.Ref, &d.Currency, &d.SupplyDate, &breakdown, &part, &whole, &refund, &credits, &credited); err != nil {
-			return d, err
+		var payable, amount, credited invoicecalc.Money
+		var inPeriod bool
+		if err := rows.Scan(&id, &d.Ref, &d.Currency, &d.SupplyDate, &breakdown, &payable, &amount, &inPeriod, &latest, &credits, &credited); err != nil {
+			return nil, err
 		}
-		var groups []invoicecalc.Group
-		var notes [][]invoicecalc.Group
-		if err := json.Unmarshal(breakdown, &groups); err != nil {
-			return d, fmt.Errorf("invoice %s breakdown: %w", d.Ref, err)
+		if state.invoice != id {
+			state = receiptAllocation{invoice: id}
 		}
-		if err := json.Unmarshal(credits, &notes); err != nil {
-			return d, fmt.Errorf("invoice %s credit notes: %w", d.Ref, err)
+		refund := amount < 0
+		if state.basis == nil || state.creditDate != latest || state.refund != refund {
+			var groups []invoicecalc.Group
+			if err := json.Unmarshal(breakdown, &groups); err != nil {
+				return nil, fmt.Errorf("invoice %s breakdown: %w", d.Ref, err)
+			}
+			var notes [][]invoicecalc.Group
+			if err := json.Unmarshal(credits, &notes); err != nil {
+				return nil, fmt.Errorf("invoice %s credit notes: %w", d.Ref, err)
+			}
+			state.creditDate, state.refund = latest, refund
+			state.balance = payable - credited - state.received
+			if state.balance == 0 {
+				// A payment can precede a full credit on the same date. Its later refund unwinds that receipt.
+				state.basis, state.balance = groups, payable
+			} else {
+				for _, n := range notes {
+					groups = addGroups(groups, n, -1)
+				}
+				state.basis = addGroups(groups, state.recognised, -1)
+			}
+			state.inBasis = 0
 		}
-		var noted []invoicecalc.Group
-		for _, n := range notes {
-			noted = addGroups(noted, n, 1)
+		d.Groups = state.apply(amount)
+		if inPeriod {
+			result = append(result, d)
 		}
-		switch {
-		case refund && credited > 0:
-			groups, whole = noted, credited
-		case !refund && credited > 0 && whole > credited:
-			groups, whole = addGroups(groups, noted, -1), whole-credited
-		}
-		d.Groups = vatcalc.Portion(groups, part, whole)
-		return d, nil
-	})
+	}
+	return result, rows.Err()
+}
+
+type receiptAllocation struct {
+	invoice, creditDate        string
+	refund                     bool
+	received, inBasis, balance invoicecalc.Money
+	basis, recognised          []invoicecalc.Group
+}
+
+func (s *receiptAllocation) apply(amount invoicecalc.Money) []invoicecalc.Group {
+	before := vatcalc.Portion(s.basis, s.inBasis, s.balance)
+	s.inBasis += amount
+	s.received += amount
+	after := vatcalc.Portion(s.basis, s.inBasis, s.balance)
+	part := addGroups(after, before, -1)
+	s.recognised = addGroups(s.recognised, part, 1)
+	return part
 }
 
 // addGroups adds (sign 1) or subtracts (sign -1) the groups of b to those of a, by category and rate.

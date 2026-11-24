@@ -24,7 +24,8 @@ import (
 
 // Auth is what the server uses of internal/auth.
 type Auth interface {
-	SignedIn(func(http.ResponseWriter, *http.Request, store.Session)) http.HandlerFunc
+	SignedInMCP(func(http.ResponseWriter, *http.Request, store.Session)) http.HandlerFunc
+	AllowTokenRequest(*http.Request, string, bool) error
 	WriteError(http.ResponseWriter, *http.Request, error)
 }
 
@@ -59,10 +60,12 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 type request struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      json.RawMessage `json:"id"`
-	Method  string          `json:"method"`
-	Params  json.RawMessage `json:"params"`
+	JSONRPC   string          `json:"jsonrpc"`
+	ID        json.RawMessage `json:"id"`
+	Method    string          `json:"method"`
+	Params    json.RawMessage `json:"params"`
+	tool      *openapi.Operation
+	arguments map[string]any
 }
 
 type rpcError struct {
@@ -81,22 +84,46 @@ func (s *Service) post(w http.ResponseWriter, r *http.Request) {
 		s.auth.WriteError(w, r, auth.Error(http.StatusBadRequest, "invalid_request", "Unsupported MCP-Protocol-Version.", nil))
 		return
 	}
-	s.auth.SignedIn(s.serve)(w, r)
+	s.auth.SignedInMCP(s.serve)(w, r)
 }
 
-func (s *Service) serve(w http.ResponseWriter, r *http.Request, sess store.Session) {
+func (s *Service) read(w http.ResponseWriter, r *http.Request) (request, *rpcError) {
 	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxRequest))
 	if err != nil {
-		reply(w, nil, nil, &rpcError{-32700, "Request body too large or unreadable."})
-		return
+		return request{}, &rpcError{-32700, "Request body too large or unreadable."}
 	}
 	var req request
 	if err := json.Unmarshal(raw, &req); err != nil {
-		reply(w, nil, nil, &rpcError{-32700, "Parse error: send one JSON-RPC message (batches are not supported)."})
-		return
+		return request{}, &rpcError{-32700, "Parse error: send one JSON-RPC message (batches are not supported)."}
 	}
 	if req.JSONRPC != "2.0" || req.Method == "" {
-		reply(w, req.ID, nil, &rpcError{-32600, "Invalid request: jsonrpc must be 2.0 and method set."})
+		return req, &rpcError{-32600, "Invalid request: jsonrpc must be 2.0 and method set."}
+	}
+	if req.ID != nil && req.Method == "tools/call" {
+		var p struct {
+			Name      string         `json:"name"`
+			Arguments map[string]any `json:"arguments"`
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			return req, &rpcError{-32602, "Invalid params: want {name, arguments}."}
+		}
+		i := slices.IndexFunc(s.ops, func(op openapi.Operation) bool { return op.ID == p.Name })
+		if i < 0 {
+			return req, &rpcError{-32602, fmt.Sprintf("Unknown tool %q.", p.Name)}
+		}
+		req.tool, req.arguments = &s.ops[i], p.Arguments
+	}
+	return req, nil
+}
+
+func (s *Service) serve(w http.ResponseWriter, r *http.Request, sess store.Session) {
+	req, rpcErr := s.read(w, r)
+	if err := s.auth.AllowTokenRequest(r, sess.Workspace.ID, req.tool != nil && req.tool.Write); err != nil {
+		s.auth.WriteError(w, r, err)
+		return
+	}
+	if rpcErr != nil {
+		reply(w, req.ID, nil, rpcErr)
 		return
 	}
 	if req.ID == nil { // a notification (notifications/initialized, cancelled): nothing to answer
@@ -128,20 +155,11 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request, sess store.Sessi
 		}
 		reply(w, req.ID, map[string]any{"tools": tools}, nil)
 	case "tools/call":
-		var p struct {
-			Name      string         `json:"name"`
-			Arguments map[string]any `json:"arguments"`
-		}
-		if err := json.Unmarshal(req.Params, &p); err != nil {
-			reply(w, req.ID, nil, &rpcError{-32602, "Invalid params: want {name, arguments}."})
+		if !s.visible(r, sess, *req.tool) {
+			reply(w, req.ID, nil, &rpcError{-32602, fmt.Sprintf("Unknown tool %q.", req.tool.ID)})
 			return
 		}
-		i := slices.IndexFunc(s.ops, func(op openapi.Operation) bool { return op.ID == p.Name })
-		if i < 0 || !s.visible(r, sess, s.ops[i]) {
-			reply(w, req.ID, nil, &rpcError{-32602, fmt.Sprintf("Unknown tool %q.", p.Name)})
-			return
-		}
-		reply(w, req.ID, s.call(r, s.ops[i], p.Arguments), nil)
+		reply(w, req.ID, s.call(r, *req.tool, req.arguments), nil)
 	default:
 		reply(w, req.ID, nil, &rpcError{-32601, "Method not found: " + req.Method})
 	}

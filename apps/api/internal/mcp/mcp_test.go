@@ -51,9 +51,10 @@ import (
 )
 
 type env struct {
-	t   *testing.T
-	st  *store.Store
-	srv *httptest.Server
+	t    *testing.T
+	st   *store.Store
+	srv  *httptest.Server
+	auth *auth.Service
 }
 
 // newEnv serves the real auth, scope guard, every catalogued service, the spec and the MCP handlers, wired as in
@@ -109,7 +110,7 @@ func newEnv(t *testing.T) *env {
 	m.SetAPI(h)
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &env{t: t, st: st, srv: srv}
+	return &env{t: t, st: st, srv: srv, auth: a}
 }
 
 // person joins a new or given workspace with a role and returns an API token of the scope.
@@ -199,6 +200,30 @@ func (e *env) tools(token string) map[string]map[string]any {
 		byName[tl["name"].(string)] = tl
 	}
 	return byName
+}
+
+func TestRatePoolFollowsToolOperation(t *testing.T) {
+	e := newEnv(t)
+	ws, token := e.person("", "owner", nil, "write:*")
+	checks := make(chan bool, 4)
+	e.auth.APIRate = func(_ context.Context, workspace string, write bool) (int64, error) {
+		if workspace != ws {
+			t.Errorf("rate limit workspace %s, want %s", workspace, ws)
+		}
+		checks <- write
+		return 10, nil
+	}
+	out := e.call(token, "create_client", map[string]any{"body": map[string]any{"name": "Synthetic client"}})
+	if out.IsError {
+		t.Fatalf("create client: %+v", out)
+	}
+	e.tools(token)
+	if len(checks) != 2 {
+		t.Fatalf("rate checks = %d, want one per request", len(checks))
+	}
+	if write, list := <-checks, <-checks; !write || list {
+		t.Fatalf("write pool for create_client = %v, tools/list = %v", write, list)
+	}
 }
 
 func TestProtocol(t *testing.T) {
