@@ -56,9 +56,7 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
 - Les prix **comprennent la TVA suisse** lorsque nous la facturons : le prix affiché est le prix
   payé. Si votre entreprise est à l’étranger et relève de l’autoliquidation, le même montant est
   facturé sans TVA et vous déclarez vous-même la taxe.
-- Lorsque des personnes rejoignent ou quittent l’espace, le nombre de places est adapté : une
-  place ajoutée est immédiatement facturée et une place libérée immédiatement créditée sur votre
-  solde Stripe (utilisé pour vos prochaines factures), au prorata à compter du jour du changement.
+- Lorsque des personnes rejoignent ou quittent l’espace, le nombre de places est adapté : une place ajoutée est facturée immédiatement, au prorata à compter du jour du changement, et une place libérée n’est plus facturée à partir du renouvellement suivant (rien n’est crédité).
   Les abonnements souscrits à un ancien prix fixe par espace conservent ce prix et leur limite
   de membres jusqu’à un changement de formule ou de périodicité.
 - **Essai :** les nouveaux essais éligibles donnent accès uniquement aux fonctionnalités de Pro pendant 7 jours,
@@ -83,8 +81,7 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
   paiement impayé ne l’active jamais.
 - Les **passages à une formule supérieure** et d’une périodicité mensuelle à annuelle sont facturés
   immédiatement au prorata et prennent effet après réussite du paiement ; jusque-là, la formule
-  déjà payée reste active. Les **passages à une formule inférieure** et à une périodicité mensuelle
-  prennent effet immédiatement ; la part inutilisée est créditée sur votre solde Stripe. Une
+  déjà payée reste active. Les **passages à une formule inférieure** et à une périodicité mensuelle prennent effet à la fin de la période payée ; rien n’est crédité, et jusque-là la formule actuelle reste active. Une
   formule inférieure ne supprime rien : les données existantes restent consultables, mais toute
   nouvelle activité doit respecter ses fonctionnalités et quotas.
 - **Contestations de paiement :** si vous contestez un paiement auprès de votre banque ou émetteur
