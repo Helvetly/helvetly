@@ -20,7 +20,7 @@ export const FreeCurrentPlan: Story = {
     const canvas = within(canvasElement)
     const free = canvas.getByRole('region', { name: 'Free' })
     await expect(free).toHaveTextContent('Your current plan')
-    await expect(free).toHaveTextContent('CHF 0 · 1 person · no card needed')
+    await expect(free).toHaveTextContent('CHF 0 forever · 1 person · no card needed')
     await expect(within(free).queryByRole('button')).toBeNull()
     await expect(canvas.queryByRole('article', { name: 'Free' })).toBeNull()
     await Promise.all(
@@ -44,13 +44,13 @@ export const IntervalByKeyboard: Story = {
     await expect(yearly).toBeChecked()
     await expect(canvas.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
     const basic = canvas.getByRole('article', { name: 'Basic' })
-    await expect(basic).toHaveTextContent('Billed yearly −20% · CHF 183 a year · you save CHF 45')
+    await expect(basic).toHaveTextContent('CHF 183 / year · save CHF 45')
 
     yearly.focus()
     await userEvent.keyboard('{ArrowLeft}')
     await expect(monthly).toBeChecked()
     await expect(monthly).toHaveFocus()
-    await expect(basic).toHaveTextContent('1 person included · +CHF 10 / extra person')
+    await expect(basic).toHaveTextContent('1 person incl. · +CHF 10 / person')
     await expect(canvas.getByRole('article', { name: 'Pro' })).toHaveTextContent(
       'Then CHF 64 a month for 3 people.',
     )

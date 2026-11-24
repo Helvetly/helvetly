@@ -3,15 +3,9 @@
 import type { BillingInterval } from '@helvetly/ui/components/billing-interval-toggle'
 import { useTranslate } from '@helvetly/ui/components/language-provider'
 import type { PlanCardData } from '@helvetly/ui/lib/plan-features'
-import {
-  formatAmount,
-  formatPrice,
-  monthOf,
-  type Price,
-  YEARLY_DISCOUNT_PERCENT,
-} from '@helvetly/ui/lib/price'
+import { formatAmount, formatPrice, monthOf, type Price } from '@helvetly/ui/lib/price'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check } from 'lucide-react'
+import { Check, Rocket } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 /** A plan's price as the offer publishes it, in minor units of one currency, tax included. */
@@ -24,9 +18,9 @@ export type PlanPrices = {
 }
 
 /**
- * How a paid plan's people and billing read, under its price: "2 people included · +CHF 15 / extra person" (the extra
- * person always at its monthly price), then, muted, "Billed yearly −20% · CHF 470 a year · you save CHF 118" or "Billed
- * monthly". Each part keeps to one line; lines break only between parts. `people` false leaves "2 people included" out.
+ * How a paid plan's people and billing read, under its price, each on one line: "1 person incl. · +CHF 10 / person"
+ * (the extra person at its monthly price), then, muted, "CHF 470 / year · save CHF 118" or "Billed monthly".
+ * `people` false leaves "1 person incl." out.
  */
 export function PlanPriceTerms({
   prices,
@@ -50,7 +44,6 @@ export function PlanPriceTerms({
   const billing =
     interval === 'year'
       ? [
-          translate('planBilledYearly', { percent: YEARLY_DISCOUNT_PERCENT }),
           translate('planYearTotal', { price: formatPrice(price(prices.year)) }),
           translate('planYouSave', { saving: formatPrice(price(prices.month * 12 - prices.year)) }),
         ]
@@ -134,8 +127,8 @@ const tick = (
 )
 
 /**
- * One plan: its name, headline and who it is for, the price and the call to action, then its lead features in bold,
- * the rest by group, muted, and its allowances as a small two-column table.
+ * One plan, compact: its name and tagline, the price, the call to action, five lead features at most and three key
+ * allowances in one muted line. Everything else is in the comparison table.
  */
 export function PlanCard({
   data,
@@ -171,56 +164,37 @@ export function PlanCard({
         </h3>
         {badge}
       </div>
-      <p className="mt-1 text-body font-medium text-balance">{data.headline}</p>
-      <p className="mt-1 min-h-10 text-body-sm text-pretty text-muted-foreground">{data.bestFor}</p>
-      <div className="mt-5">{price}</div>
+      <p className="mt-1 text-body-sm text-muted-foreground">{data.tagline}</p>
+      <div className="mt-4">{price}</div>
       <div className="mt-5">{cta}</div>
 
-      {data.heroes.length > 0 && (
-        <ul className="mt-6 grid gap-2 text-body font-medium">
-          {data.heroes.map((line) => (
-            <li key={line.key} className="flex gap-2.5">
-              {tick}
-              <span>{line.label}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {data.basis && <p className="mt-6 text-body-sm font-medium">{data.basis}</p>}
-      {data.groups.map((group) => (
-        <div key={group.group} className="mt-4">
-          <h4 className="text-caption font-medium tracking-wide text-muted-foreground uppercase">
-            {group.title}
-          </h4>
-          <ul className="mt-1.5 grid gap-1.5 text-body-sm text-muted-foreground">
-            {group.lines.map((line) => (
-              <li key={line.key} className="flex gap-2">
-                <Check aria-hidden className="mt-0.5 size-3.5 shrink-0 text-success" />
-                <span>{line.label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-
-      <dl
-        aria-label={translate('planLimitsTitle')}
-        className="mt-auto grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 border-t border-border/70 pt-4 text-body-sm [&:not(:first-child)]:mt-6"
-      >
-        {data.limits.map((limit) => (
-          <div key={limit.key} className="contents">
-            <dt className="text-muted-foreground">{limit.label}</dt>
-            <dd className="text-right font-medium tabular-nums">{limit.amount}</dd>
-          </div>
+      <ul data-slot="plan-features" className="mt-6 grid gap-2.5 text-body-sm">
+        {data.features.map((line) => (
+          <li
+            key={line.key}
+            className={cn('flex gap-2.5', line.key === 'everything' && 'font-medium')}
+          >
+            {tick}
+            <span>{line.label}</span>
+          </li>
         ))}
-      </dl>
+      </ul>
+
+      <p
+        data-slot="plan-stats"
+        aria-label={translate('planStatsLabel')}
+        className="mt-auto border-t border-border/70 pt-4 text-caption text-muted-foreground tabular-nums [&:not(:first-child)]:mt-6"
+      >
+        {parts(data.stats)}
+      </p>
     </article>
   )
 }
 
 /**
- * Free as one calm row under the paid plans (stacked on phones): its name and "CHF 0 · 1 person · no card needed",
- * a few facts inline and one action (or a badge such as "Your current plan").
+ * Free as one calm, inviting row under the paid plans (stacked on phones): an icon, "Just starting? Start free." with
+ * "CHF 0 forever · 1 person · no card needed" under it, a few facts as chips and one action (or a badge such as "Your
+ * current plan").
  */
 export function FreePlanRow({
   name,
@@ -230,6 +204,7 @@ export function FreePlanRow({
   action,
   className,
 }: {
+  /** The headline, e.g. "Just starting? Start free." or the plan's name. */
   name: string
   summary: string
   facts: string[]
@@ -244,26 +219,34 @@ export function FreePlanRow({
       data-slot="free-plan"
       data-plan="free"
       className={cn(
-        'grid w-full gap-3 rounded-2xl border bg-card px-5 py-4 text-left md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-6',
+        'grid w-full gap-4 rounded-2xl border border-violet-solid/15 bg-linear-to-r from-violet-surface/60 via-card to-card px-5 py-4 text-left md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-6',
         className,
       )}
     >
-      <div className="grid gap-0.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 id="plan-free" className="text-title-sm font-semibold">
-            {name}
-          </h3>
-          {badge}
+      <div className="flex items-center gap-3.5">
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-surface text-violet">
+          <Rocket aria-hidden className="size-5" />
+        </span>
+        <div className="grid gap-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 id="plan-free" className="text-title-sm font-semibold">
+              {name}
+            </h3>
+            {badge}
+          </div>
+          <p className="text-body-sm text-muted-foreground tabular-nums">{summary}</p>
         </div>
-        <p className="text-body-sm text-muted-foreground tabular-nums">{summary}</p>
       </div>
       <ul
         aria-label={translate('planFreeFactsLabel')}
-        className="flex flex-wrap gap-x-4 gap-y-1.5 text-body-sm text-muted-foreground"
+        className="flex flex-wrap gap-2 md:justify-center"
       >
         {facts.map((fact) => (
-          <li key={fact} className="flex items-center gap-1.5">
-            <Check aria-hidden className="size-3.5 shrink-0 text-success" />
+          <li
+            key={fact}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-3 py-1 text-caption text-muted-foreground"
+          >
+            <Check aria-hidden className="size-3 shrink-0 text-success" />
             {fact}
           </li>
         ))}

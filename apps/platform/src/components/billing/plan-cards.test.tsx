@@ -96,21 +96,24 @@ const card = (name: string) => screen.getByRole('article', { name })
 const total = (name: string) => card(name).querySelector('[data-slot=team-total]')
 const monthly = () => userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
 
-test('a card leads with its bold features, then what it adds over the plan before, then its limits', () => {
+test('a card is compact: a tagline, five lead features at most and three key stats', () => {
   renderCards(billing())
   expect(card('Basic')).toHaveTextContent('Up to 5 people')
-  expect(card('Basic')).toHaveTextContent('Everything in Free, plus:')
   const pro = card('Pro')
-  expect(pro).toHaveTextContent('Everything in Basic, plus:')
-  expect(pro).toHaveTextContent('Heidi, your AI assistant')
-  expect(pro).toHaveTextContent('No “Sent with Helvetly” on your emails and PDFs')
-  expect(pro).not.toHaveTextContent('Calendar and booking links')
-  expect(card('Business')).toHaveTextContent('White-labelled client portal on your own domain')
-  const limits = within(card('Business')).getByLabelText('Limits')
-  expect(within(limits).getByText('People').nextSibling).toHaveTextContent('Unlimited')
-  expect(
-    within(within(card('Pro')).getByLabelText('Limits')).getByText('People').nextSibling,
-  ).toHaveTextContent('25')
+  expect(pro).toHaveTextContent('Everything in Basic')
+  expect(pro).toHaveTextContent('Heidi AI assistant')
+  expect(pro).toHaveTextContent('AI import & smart capture')
+  expect(card('Business')).toHaveTextContent('White-label client portal')
+  for (const name of ['Basic', 'Pro', 'Business']) {
+    const features = card(name).querySelector<HTMLElement>('[data-slot=plan-features]')!
+    expect(within(features).getAllByRole('listitem').length).toBeLessThanOrEqual(5)
+    const stats = card(name).querySelector('[data-slot=plan-stats]')!.textContent!.split(' · ')
+    expect(stats.length).toBeLessThanOrEqual(3)
+    expect(card(name).querySelector('dl')).toBeNull()
+  }
+  expect(card('Business').querySelector('[data-slot=plan-stats]')?.textContent).toMatch(
+    /^Unlimited invoices · Unlimited clients/,
+  )
   expect(document.body.textContent).not.toContain('∞')
 })
 
@@ -118,7 +121,7 @@ test('on Free, Free is the current plan as one compact strip with a few facts an
   renderCards(billing())
   const free = screen.getByRole('region', { name: 'Free' })
   expect(free).toHaveTextContent('Your current plan')
-  expect(free).toHaveTextContent('CHF 0 · 1 person · no card needed')
+  expect(free).toHaveTextContent('CHF 0 forever · 1 person · no card needed')
   expect(within(free).queryByRole('button')).toBeNull()
   expect(free).toHaveTextContent('5 clients')
   expect(within(free).queryByLabelText('Limits')).toBeNull()
@@ -135,11 +138,11 @@ test('the toggle starts on yearly with what yearly saves, a subscription on its 
   expect(screen.getByRole('radio', { name: 'Yearly' })).toBeChecked()
   expect(screen.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
   expect(card('Basic')).toHaveTextContent('15.25')
-  expect(card('Basic')).toHaveTextContent('Billed yearly −20% · CHF 183 a year · you save CHF 45')
+  expect(card('Basic')).toHaveTextContent('CHF 183 / year · save CHF 45')
   expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 375 / year')
   await monthly()
   expect(screen.getByRole('radio', { name: 'Monthly' })).toBeChecked()
-  expect(card('Basic')).toHaveTextContent('1 person included · +CHF 10 / extra person')
+  expect(card('Basic')).toHaveTextContent('1 person incl. · +CHF 10 / person')
   unmount()
   renderCards(billing({ plan: 'pro', status: 'active', interval: 'month' }))
   expect(screen.getByRole('radio', { name: 'Monthly' })).toBeChecked()
@@ -153,7 +156,7 @@ test('only Pro offers the trial, with its line; the others are charged today', a
   expect(pro).toHaveTextContent(
     'Pro free for 14 days, up to 2 people, card required. Full Pro limits, shared by the team. Then CHF 64 a month for 3 people.',
   )
-  expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
+  expect(pro).toHaveTextContent('2 people incl. · +CHF 15 / person')
   expect(within(card('Business')).getByRole('button', { name: 'Choose Business' })).toBeEnabled()
   expect(card('Business')).toHaveTextContent('Charged today.')
   const basic = card('Basic')

@@ -1,11 +1,13 @@
 'use client'
+import { publicHref } from '@helvetly/i18n/public-href'
 import { BillingIntervalToggle } from '@helvetly/ui/components/billing-interval-toggle'
 import { Callout } from '@helvetly/ui/components/callout'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
 import { FreePlanRow, PlanCard, PlanPrice } from '@helvetly/ui/components/plan-card'
 import { freePlanFacts, planCards, planFootnote } from '@helvetly/ui/lib/plan-features'
 import { formatPrice, savingOf } from '@helvetly/ui/lib/price'
-import { Ban, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
+import { ArrowDown, Ban, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
+import Link from 'next/link'
 
 import { Cta } from '@/components/cta'
 import { useOfferStatus } from '@/components/offer-provider'
@@ -47,7 +49,15 @@ export function publishedPrices(plan: PlanId) {
 }
 
 /** The call to action of a plan: Free starts free, Pro starts its trial, the others are chosen. */
-export function PlanCta({ plan, className }: { plan: PlanId; className?: string }) {
+export function PlanCta({
+  plan,
+  arrow,
+  className,
+}: {
+  plan: PlanId
+  arrow?: boolean
+  className?: string
+}) {
   const language = useLanguage()
   const translate = useTranslate()
   const unavailable = useOfferStatus().status === 'unavailable'
@@ -57,6 +67,7 @@ export function PlanCta({ plan, className }: { plan: PlanId; className?: string 
       href={siteIn(language).START_URL}
       disabled={unavailable && plan !== 'free'}
       variant={plan === RECOMMENDED ? 'primary' : 'outline'}
+      arrow={arrow}
       className={cn('w-full', className)}
     >
       {plan === 'free'
@@ -174,14 +185,21 @@ export function PricingCards() {
       </div>
       <FreePlanRow
         className="mt-4"
-        name={planById('free').name}
+        name={ui('planFreeHeadline')}
         summary={ui('planFreeSummary', {
           price: formatPrice({ amount: free.month, currency }),
           count: free.included_people,
         })}
         facts={freePlanFacts(catalogue, language)}
-        action={<PlanCta plan="free" className="md:w-auto" />}
+        action={<PlanCta plan="free" arrow className="md:w-auto" />}
       />
+      <Link
+        href={`${publicHref('/pricing', language)}#compare-plans`}
+        className="mt-6 inline-flex items-center gap-1.5 text-body font-medium underline underline-offset-4"
+      >
+        {ui('planCompareAll')}
+        <ArrowDown aria-hidden className="size-4" />
+      </Link>
       <p
         data-slot="allowance-legend"
         className="mt-8 max-w-3xl text-center text-body-sm text-pretty text-muted-foreground"

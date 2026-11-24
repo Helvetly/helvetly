@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { translatorFor } from './i18n'
 import {
   PLAN_GROUPS,
   PLAN_IDS,
@@ -83,78 +84,66 @@ const offer: PlanCatalogue = {
 const cards = planCards(offer, 'en')
 const table = planComparison(offer, 'en')
 const card = (plan: PlanId) => cards.find((c) => c.plan === plan)
-const lines = (plan: PlanId) => {
-  const c = card(plan)
-  return [...(c?.heroes ?? []), ...(c?.groups.flatMap((g) => g.lines) ?? [])].map((l) => l.label)
-}
+const featureLabels = (plan: PlanId) => card(plan)?.features.map((l) => l.label)
 
 describe('planCards', () => {
-  it('leads Free with its heroes and lists everything it has', () => {
-    expect(card('free')?.basis).toBeUndefined()
-    expect(card('free')?.heroes.map((l) => l.key)).toEqual([
-      'invoices',
-      'swiss_qr',
-      'scheduling',
-      'expenses',
-    ])
-    expect(lines('free')).not.toContain('Heidi, your AI assistant')
-  })
-
-  it('leads every paid plan with heroes, then what it adds under "Everything in …, plus:"', () => {
-    expect(card('basic')?.heroes.map((l) => l.label)).toEqual([
+  it('gives each paid plan a short tagline and its five lead features', () => {
+    expect(featureLabels('basic')).toEqual([
+      'Invoices & Swiss QR bills',
+      'Scheduling & booking links',
+      'Expenses & receipts',
+      'Reports & period closing',
       'Up to 5 people',
-      'Calendar and booking links',
-      'Expenses and receipts',
-      'Dashboard, reports and period closing',
     ])
-    expect(card('basic')?.basis).toBe('Everything in Free, plus:')
-    expect(card('basic')?.groups.flatMap((g) => g.lines.map((l) => l.key))).toEqual([
-      'calendar_sync',
+    expect(featureLabels('pro')).toEqual([
+      'Everything in Basic',
+      'Heidi AI assistant',
+      'AI import & smart capture',
+      'E-signatures & contracts',
+      'Automatic reminders',
     ])
-    expect(card('pro')?.basis).toBe('Everything in Basic, plus:')
-    expect(lines('pro')).toContain('Developer API & MCP for AI agents')
-    expect(card('business')?.heroes.map((l) => l.label)).toEqual([
-      'No limit on people',
-      'White-labelled client portal on your own domain',
+    expect(featureLabels('business')).toEqual([
+      'Everything in Pro',
+      'White-label client portal',
       'E-invoices',
-      'Employee records and payroll',
+      'Approvals',
+      'Employees & payroll',
     ])
-    expect(card('business')?.basis).toBe('Everything in Pro, plus:')
-    expect(card('business')?.groups.flatMap((g) => g.lines.map((l) => l.key))).toEqual([
-      'approvals',
-    ])
-    for (const plan of ['basic', 'pro', 'business'] as const)
-      expect(card(plan)?.heroes.length).toBeGreaterThanOrEqual(3)
-  })
-
-  it('leaves "Everything in …, plus:" out when a plan adds nothing besides its heroes', () => {
-    const noSync = { ...offer, features: { ...offer.features, calendar_sync: from('free') } }
-    const basic = planCards(noSync, 'en').find((c) => c.plan === 'basic')
-    expect(basic?.basis).toBeUndefined()
-    expect(basic?.groups).toEqual([])
-  })
-
-  it('never repeats a line on a card, nor a listed feature between plans', () => {
     for (const c of cards) {
-      const own = [...c.heroes, ...c.groups.flatMap((g) => g.lines)]
-      expect(new Set(own.map((l) => l.key)).size).toBe(own.length)
-    }
-    const listed = cards.flatMap((c) => c.groups.flatMap((g) => g.lines))
-    expect(new Set(listed.map((l) => l.key)).size).toBe(listed.length)
-  })
-
-  it('groups the rest in the one group order, never an empty group', () => {
-    for (const c of cards) {
-      const order = c.groups.map((g) => PLAN_GROUPS.indexOf(g.group))
-      expect(order).toEqual(order.toSorted((a, b) => a - b))
-      expect(c.groups.every((g) => g.lines.length > 0)).toBe(true)
+      expect(c.tagline.split(' ').length).toBeLessThanOrEqual(5)
+      expect(c.features.length).toBeLessThanOrEqual(5)
+      for (const line of c.features) expect(line.label.split(' ').length).toBeLessThanOrEqual(5)
     }
   })
 
-  it('lists the allowances in words, never ∞', () => {
-    expect(card('business')?.limits.find((l) => l.key === 'people')?.amount).toBe('Unlimited')
-    expect(card('pro')?.limits.find((l) => l.key === 'storage_bytes')?.amount).toBe('5 GB')
+  it('leaves out a lead feature the plan does not have', () => {
+    const noHeidi = { ...offer, features: { ...offer.features, heidi: from('business') } }
+    const pro = planCards(noHeidi, 'en').find((c) => c.plan === 'pro')
+    expect(pro?.features.map((l) => l.key)).not.toContain('heidi')
+  })
+
+  it('sums up its allowances in three short stats, in words, never ∞', () => {
+    expect(card('basic')?.stats).toEqual(['15 invoices / mo', '30 clients', '500 MB'])
+    expect(card('business')?.stats).toEqual(['Unlimited invoices', 'Unlimited clients', '20 GB'])
+    for (const c of cards) expect(c.stats.length).toBeLessThanOrEqual(3)
     expect(JSON.stringify(cards)).not.toContain('∞')
+  })
+})
+
+describe('AI import wording', () => {
+  it('names it "AI import & smart capture" in English and translates it in every language', () => {
+    const en = translatorFor('en')
+    expect(en('planRowAIImport')).toBe('AI import & smart capture')
+    expect(en('planCardAIImport')).toBe('AI import & smart capture')
+    expect(en('planHintAIImport')).toBe(
+      'Drop PDFs, photos or spreadsheets — invoices, clients and expenses are created for you.',
+    )
+    for (const language of ['de', 'fr', 'it', 'nl', 'cs', 'sv'] as const) {
+      const translate = translatorFor(language)
+      expect(translate('planRowAIImport')).toBe(translate('planCardAIImport'))
+      expect(translate('planRowAIImport')).not.toBe(en('planRowAIImport'))
+      expect(translate('planHintAIImport')).not.toBe(en('planHintAIImport'))
+    }
   })
 })
 

@@ -241,13 +241,13 @@ describe('pricing page', () => {
     inZone('Europe/Berlin')
     await renderPage(await PricingPage(english))
     expect(within(card(2)).getByText('EUR')).toBeTruthy()
-    expect(within(card(2)).getByText('EUR 471 a year')).toBeTruthy()
+    expect(within(card(2)).getByText('EUR 471 / year')).toBeTruthy()
   })
 
   it('prefers the country Cloudflare saw to the time zone', async () => {
     serve({ trace: 'h=helvetly.com\nloc=GB\n' })
     await renderPage(await PricingPage(english))
-    expect(await within(card(2)).findByText('USD 471 a year')).toBeTruthy()
+    expect(await within(card(2)).findByText('USD 471 / year')).toBeTruthy()
     expect(fetch).toHaveBeenCalledWith('/cdn-cgi/trace', expect.anything())
   })
 
@@ -313,33 +313,30 @@ describe('pricing page', () => {
     await renderPage(await PricingPage(english))
     const pro = card(2)
     expect(within(pro).getByText('39.25')).toBeTruthy()
-    expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
-    expect(pro).toHaveTextContent('Billed yearly −20% · CHF 471 a year · you save CHF 117')
+    expect(pro).toHaveTextContent('2 people incl. · +CHF 15 / person')
+    expect(pro).toHaveTextContent('CHF 471 / year · save CHF 117')
     expect(screen.getByText('Save 20% — CHF 45 a year on Basic')).toBeTruthy()
 
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
     expect(within(pro).getByText('49')).toBeTruthy()
-    expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
+    expect(pro).toHaveTextContent('2 people incl. · +CHF 15 / person')
     expect(pro).toHaveTextContent('Billed monthly')
     expect(window.location.search).toBe('?billing=monthly')
-    // Free is a small row under the three paid cards, with a few facts and no limits block.
+    // Free is a small, inviting row under the three paid cards, with three facts and no limits block.
     expect(screen.getAllByRole('article').map((a) => a.dataset.plan)).toEqual([
       'basic',
       'pro',
       'business',
     ])
     const free = card(0)
-    expect(within(free).getByText('CHF 0 · 1 person · no card needed')).toBeTruthy()
+    expect(within(free).getByRole('heading', { name: 'Just starting? Start free.' })).toBeTruthy()
+    expect(within(free).getByText('CHF 0 forever · 1 person · no card needed')).toBeTruthy()
+    expect(within(free).getByRole('link', { name: 'Start free' })).toBeTruthy()
     expect(
       within(within(free).getByRole('list', { name: 'What Free includes' }))
         .getAllByRole('listitem')
         .map((li) => li.textContent),
-    ).toEqual([
-      '3 invoices & 3 quotes a month',
-      'Swiss QR bills',
-      '5 clients',
-      '“Sent with Helvetly” footer',
-    ])
+    ).toEqual(['3 invoices & 3 quotes / month', 'Swiss QR bills', '5 clients'])
     expect(within(free).queryByRole('definition')).toBeNull()
   })
 
@@ -370,16 +367,28 @@ describe('pricing page', () => {
     expect(table.textContent).not.toContain('∞')
   })
 
-  it('leads each card with its features in bold and lists its limits', async () => {
+  it('keeps each card compact: five features, three stats, short price lines, no limits table', async () => {
     await renderPage(await PricingPage(english))
-    expect(within(card(0)).queryByText(/not included/i)).toBeNull()
+    for (const index of [1, 2, 3]) {
+      const article = card(index)
+      const features = article.querySelector('[data-slot="plan-features"]')!
+      expect(within(features as HTMLElement).getAllByRole('listitem').length).toBeLessThanOrEqual(5)
+      const stats = article.querySelector('[data-slot="plan-stats"]')!.textContent!.split(' · ')
+      expect(stats.length).toBeLessThanOrEqual(3)
+      expect(article.querySelector('dl')).toBeNull()
+      for (const line of article.querySelectorAll('[data-slot="plan-price-terms"] p'))
+        expect(line.textContent!.length).toBeLessThanOrEqual(38)
+    }
     expect(within(card(1)).getByText('Up to 5 people')).toBeTruthy()
-    expect(within(card(1)).getByText('Everything in Free, plus:')).toBeTruthy()
-    expect(within(card(1)).getByText('Google and Microsoft calendar sync')).toBeTruthy()
-    expect(within(card(3)).getByText('Everything in Pro, plus:')).toBeTruthy()
-    expect(within(card(3)).getByText('Approvals before invoices go out')).toBeTruthy()
-    const people = within(card(3)).getByText('People').nextElementSibling
-    expect(people?.textContent).toBe('Unlimited')
+    const stats = (index: number) => card(index).querySelector('[data-slot="plan-stats"]')
+    expect(stats(1)).toHaveTextContent('15 invoices / mo · 30 clients · 500 MB')
+    expect(within(card(2)).getByText('AI import & smart capture')).toBeTruthy()
+    expect(within(card(3)).getByText('Everything in Pro')).toBeTruthy()
+    expect(within(card(3)).getByText('Approvals')).toBeTruthy()
+    expect(stats(3)?.textContent).toMatch(/^Unlimited invoices · Unlimited clients · \d+ GB$/)
+    expect(screen.getByRole('link', { name: 'Compare all features' }).getAttribute('href')).toBe(
+      '/pricing#compare-plans',
+    )
   })
 
   it('recommends Pro without claiming popularity', async () => {
@@ -443,8 +452,8 @@ describe('comparison with Magic Heidi', () => {
     expect(screen.getByText('Team of 3 people')).toBeTruthy()
     const pro = document.querySelector('[data-plan="pro"]')!
     expect(pro).toHaveTextContent('CHF 615 / year')
-    expect(pro).toHaveTextContent('+CHF 15 / extra person')
-    expect(pro).toHaveTextContent('Billed yearly −20% · you save CHF 153')
+    expect(pro).toHaveTextContent('+CHF 15 / person')
+    expect(pro).toHaveTextContent('Billed yearly −20% · save CHF 153')
     expect(screen.getByText(/Advanced CHF 504/)).toBeTruthy()
     expect(screen.getByText(/As published on 15 November 2026/)).toBeTruthy()
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))

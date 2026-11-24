@@ -60,8 +60,6 @@ type RowDef = {
   label: MessageKey
   /** The (?) beside it: what it does, in a sentence or two. */
   hint?: MessageKey
-  /** The card's wording, when the row is on the cards. Cards name features, never numbers. */
-  card?: MessageKey
   features?: string[]
   internal?: { feature: string; from: PlanId }
   /** The table's cell quotes this allowance instead of a tick. */
@@ -76,7 +74,6 @@ const ROWS: RowDef[] = [
     group: 'get_paid',
     label: 'planRowInvoices',
     hint: 'planHintInvoices',
-    card: 'planCardInvoices',
     features: ['invoice_documents'],
     limit: 'invoices_per_month',
   },
@@ -93,7 +90,6 @@ const ROWS: RowDef[] = [
     group: 'get_paid',
     label: 'planRowSwissQR',
     hint: 'planHintSwissQR',
-    card: 'planCardPayments',
     features: ['swiss_qr'],
   },
   {
@@ -127,7 +123,6 @@ const ROWS: RowDef[] = [
     group: 'get_paid',
     label: 'planRowReminders',
     hint: 'planHintReminders',
-    card: 'planCardReminders',
     features: ['invoice_reminders'],
   },
   {
@@ -135,7 +130,6 @@ const ROWS: RowDef[] = [
     group: 'get_paid',
     label: 'planRowInstalments',
     hint: 'planHintInstalments',
-    card: 'planCardInstalments',
     features: ['invoice_instalments'],
   },
   {
@@ -143,7 +137,6 @@ const ROWS: RowDef[] = [
     group: 'get_paid',
     label: 'planRowCorrections',
     hint: 'planHintCorrections',
-    card: 'planCardCorrections',
     features: ['invoice_corrections'],
   },
   {
@@ -151,7 +144,6 @@ const ROWS: RowDef[] = [
     group: 'get_paid',
     label: 'planRowEInvoice',
     hint: 'planHintEInvoice',
-    card: 'planCardEInvoice',
     features: ['einvoice_xml'],
   },
 
@@ -161,7 +153,6 @@ const ROWS: RowDef[] = [
     group: 'run_your_day',
     label: 'planRowScheduling',
     hint: 'planHintScheduling',
-    card: 'planCardScheduling',
     features: ['scheduling'],
     limit: 'scheduled_events_per_month',
   },
@@ -177,7 +168,6 @@ const ROWS: RowDef[] = [
     group: 'run_your_day',
     label: 'planRowCalendarSync',
     hint: 'planHintCalendarSync',
-    card: 'planRowCalendarSync',
     features: ['scheduling', 'calendar_sync'],
   },
   {
@@ -185,7 +175,6 @@ const ROWS: RowDef[] = [
     group: 'run_your_day',
     label: 'planRowExpenses',
     hint: 'planHintExpenses',
-    card: 'planCardExpenses',
     features: ['expenses'],
     limit: 'expenses_per_month',
   },
@@ -194,7 +183,6 @@ const ROWS: RowDef[] = [
     group: 'run_your_day',
     label: 'planRowDocuments',
     hint: 'planHintDocuments',
-    card: 'planCardDocuments',
     features: ['document_library'],
     limit: 'storage_bytes',
   },
@@ -210,7 +198,6 @@ const ROWS: RowDef[] = [
     group: 'run_your_day',
     label: 'planRowDashboard',
     hint: 'planHintDashboard',
-    card: 'planCardDashboard',
     features: ['dashboard_reports'],
   },
 
@@ -220,7 +207,6 @@ const ROWS: RowDef[] = [
     group: 'work_with_clients',
     label: 'planRowClients',
     hint: 'planHintClients',
-    card: 'planCardClients',
     features: ['clients_contacts'],
     limit: 'clients',
   },
@@ -235,7 +221,6 @@ const ROWS: RowDef[] = [
     group: 'work_with_clients',
     label: 'planRowEngagements',
     hint: 'planHintEngagements',
-    card: 'planCardEngagements',
     features: ['engagement_management'],
     limit: 'engagements',
   },
@@ -252,7 +237,6 @@ const ROWS: RowDef[] = [
     group: 'work_with_clients',
     label: 'planRowSignatures',
     hint: 'planHintSignatures',
-    card: 'planCardSignatures',
     features: ['simple_signatures'],
     limit: 'signatures_per_month',
   },
@@ -261,7 +245,6 @@ const ROWS: RowDef[] = [
     group: 'work_with_clients',
     label: 'planRowContracts',
     hint: 'planHintContracts',
-    card: 'planCardContracts',
     features: ['document_templates'],
   },
   {
@@ -269,7 +252,6 @@ const ROWS: RowDef[] = [
     group: 'work_with_clients',
     label: 'planRowPortal',
     hint: 'planHintPortal',
-    card: 'planCardPortal',
     features: ['client_portal', 'custom_portal_domain'],
   },
 
@@ -279,7 +261,6 @@ const ROWS: RowDef[] = [
     group: 'automate_ai',
     label: 'planRowHeidi',
     hint: 'planHintHeidi',
-    card: 'planCardHeidi',
     features: ['heidi'],
     limit: 'ai_tokens_per_month',
   },
@@ -288,7 +269,6 @@ const ROWS: RowDef[] = [
     group: 'automate_ai',
     label: 'planRowAIImport',
     hint: 'planHintAIImport',
-    card: 'planCardAIImport',
     features: ['ai_import'],
     limit: 'ai_automation_tokens_per_month',
   },
@@ -297,7 +277,6 @@ const ROWS: RowDef[] = [
     group: 'automate_ai',
     label: 'planRowAIFiling',
     hint: 'planHintAIFiling',
-    card: 'planCardAIFiling',
     features: ['ai_import'],
   },
   {
@@ -305,7 +284,6 @@ const ROWS: RowDef[] = [
     group: 'automate_ai',
     label: 'planRowAutomations',
     hint: 'planHintAutomations',
-    card: 'planCardAutomations',
     features: ['automations', 'engagement_automation'],
     limit: 'automation_actions_per_month',
   },
@@ -314,7 +292,6 @@ const ROWS: RowDef[] = [
     group: 'automate_ai',
     label: 'planRowAPI',
     hint: 'planHintAPI',
-    card: 'planCardAPI',
     internal: { feature: 'api_access', from: 'pro' },
   },
 
@@ -352,7 +329,6 @@ const ROWS: RowDef[] = [
     group: 'team_compliance',
     label: 'planRowVATReturns',
     hint: 'planHintVATReturns',
-    card: 'planCardBooks',
     features: ['vat_returns'],
   },
   {
@@ -367,7 +343,6 @@ const ROWS: RowDef[] = [
     group: 'team_compliance',
     label: 'planRowDataExport',
     hint: 'planHintDataExport',
-    card: 'planCardDataExport',
     features: ['data_export'],
   },
   {
@@ -375,7 +350,6 @@ const ROWS: RowDef[] = [
     group: 'team_compliance',
     label: 'planRowApprovals',
     hint: 'planHintApprovals',
-    card: 'planCardApprovals',
     features: ['document_approvals'],
   },
   {
@@ -383,7 +357,6 @@ const ROWS: RowDef[] = [
     group: 'team_compliance',
     label: 'planRowEmployees',
     hint: 'planHintEmployees',
-    card: 'planCardEmployees',
     features: ['employees'],
   },
   {
@@ -391,7 +364,6 @@ const ROWS: RowDef[] = [
     group: 'team_compliance',
     label: 'planRowBranding',
     hint: 'planHintBranding',
-    card: 'planCardBranding',
     features: ['remove_branding'],
   },
   {
@@ -427,43 +399,52 @@ export const ROW_FEATURES = [...new Set(ROWS.flatMap((row) => row.features ?? []
 export const INTERNAL_ROWS = ROWS.flatMap((row) => (row.internal ? [row.internal] : []))
 
 /**
- * Each card's headline, who it is for, and the 3–4 rows (by key) it leads with in bold: any row the plan has, or
- * `people`, how many people it takes.
+ * A card's feature line: a row it is gated by (shown only when the plan has it) with the card's short wording,
+ * `people`: how many people the plan takes, or `everything`: "Everything in <the plan before>".
  */
-const PLAN_COPY: PerPlan<{ headline: MessageKey; bestFor: MessageKey; heroes: string[] }> = {
+type CardFeature = { row: string; label: MessageKey } | 'people' | 'everything'
+
+/** Each card's tagline and its five lead features at most, the most attractive ones; the rest is the table's. */
+const PLAN_COPY: PerPlan<{ tagline: MessageKey; features: CardFeature[] }> = {
   free: {
-    headline: 'planHeadlineFree',
-    bestFor: 'planBestForFree',
-    heroes: ['invoices', 'swiss_qr', 'scheduling', 'expenses'],
+    tagline: 'planHeadlineFree',
+    features: [
+      { row: 'swiss_qr', label: 'planCardInvoices' },
+      { row: 'scheduling', label: 'planCardScheduling' },
+      { row: 'expenses', label: 'planCardExpenses' },
+    ],
   },
   basic: {
-    headline: 'planHeadlineBasic',
-    bestFor: 'planBestForBasic',
-    heroes: ['people', 'scheduling', 'expenses', 'dashboard'],
+    tagline: 'planHeadlineBasic',
+    features: [
+      { row: 'swiss_qr', label: 'planCardInvoices' },
+      { row: 'booking_links', label: 'planCardScheduling' },
+      { row: 'expenses', label: 'planCardExpenses' },
+      { row: 'audit', label: 'planCardDashboard' },
+      'people',
+    ],
   },
   pro: {
-    headline: 'planHeadlinePro',
-    bestFor: 'planBestForPro',
-    heroes: ['heidi', 'ai_import', 'signatures', 'reminders'],
+    tagline: 'planHeadlinePro',
+    features: [
+      'everything',
+      { row: 'heidi', label: 'planCardHeidi' },
+      { row: 'ai_import', label: 'planCardAIImport' },
+      { row: 'contracts', label: 'planCardSignatures' },
+      { row: 'reminders', label: 'planCardReminders' },
+    ],
   },
   business: {
-    headline: 'planHeadlineBusiness',
-    bestFor: 'planBestForBusiness',
-    heroes: ['people', 'portal', 'einvoice', 'employees'],
+    tagline: 'planHeadlineBusiness',
+    features: [
+      'everything',
+      { row: 'portal', label: 'planCardPortal' },
+      { row: 'einvoice', label: 'planCardEInvoice' },
+      { row: 'approvals', label: 'planCardApprovals' },
+      { row: 'employees', label: 'planCardEmployees' },
+    ],
   },
 }
-
-/** The allowances each card lists under its features, in this order. */
-const CARD_LIMITS: { limit: PlanLimit; label: MessageKey }[] = [
-  { limit: 'people', label: 'planLimitPeople' },
-  { limit: 'clients', label: 'planLimitClients' },
-  { limit: 'invoices_per_month', label: 'planLimitInvoices' },
-  { limit: 'quotes_per_month', label: 'planLimitQuotes' },
-  { limit: 'expenses_per_month', label: 'planLimitExpenses' },
-  { limit: 'scheduled_events_per_month', label: 'planLimitSessions' },
-  { limit: 'storage_bytes', label: 'planLimitStorage' },
-  { limit: 'emails_per_month', label: 'planLimitEmails' },
-]
 
 const MB = 1_000_000
 const GB = 1_000_000_000
@@ -502,77 +483,53 @@ function hasRow(offer: PlanCatalogue, row: RowDef, plan: PlanId): boolean {
 }
 
 export type PlanLine = { key: string; label: string }
-export type PlanLimitLine = { key: string; label: string; amount: string }
 export type PlanCardData = {
   plan: PlanId
   name: string
-  headline: string
-  bestFor: string
-  /** The plan's lead features, in bold. */
-  heroes: PlanLine[]
-  /** "Everything in Free, plus:" above `groups`, for every plan but the first when it adds rows besides its heroes. */
-  basis?: string
-  /** What the plan has (or adds to the one before) besides its heroes, by group; empty groups left out. */
-  groups: { group: PlanGroup; title: string; lines: PlanLine[] }[]
-  limits: PlanLimitLine[]
+  tagline: string
+  /** At most five short lines; the comparison table has the rest. */
+  features: PlanLine[]
+  /** Three key allowances, e.g. "15 invoices / mo", "30 clients", "500 MB". */
+  stats: string[]
 }
 
-/**
- * Each plan's card: its heroes first, then the first plan's features in full, every other one "Everything in <the plan
- * before>, plus:" what it adds besides its heroes, by group; then its allowances.
- */
+/** Each plan's compact card: tagline, its lead features (those the plan has) and three key allowances. */
 export function planCards(offer: PlanCatalogue, language: Locale): PlanCardData[] {
   const translate = translatorFor(language)
-  const carded = ROWS.filter((row) => row.card)
-  const line = (row: RowDef): PlanLine => ({
-    key: row.key,
-    label: translate(row.card ?? row.label),
-  })
-
   return offer.plans.map(({ id, name }, index) => {
     const below = offer.plans[index - 1]
-    const shown = carded.filter(
-      (row) => hasRow(offer, row, id) && !(below && hasRow(offer, row, below.id)),
-    )
-    const heroes = PLAN_COPY[id].heroes.flatMap((key): PlanLine[] => {
-      if (key === 'people') {
+    const features = PLAN_COPY[id].features.flatMap((feature): PlanLine[] => {
+      if (feature === 'everything')
+        return below
+          ? [{ key: feature, label: translate('planEverythingIn', { plan: below.name }) }]
+          : []
+      if (feature === 'people') {
         const seats = offer.max_self_service_seats[id]
-        return [
-          {
-            key,
-            label:
-              seats === null
-                ? translate('planCardPeopleUnlimited')
-                : translate('planCardPeopleUpTo', { count: seats }),
-          },
-        ]
+        return seats === null
+          ? []
+          : [{ key: feature, label: translate('planCardPeopleUpTo', { count: seats }) }]
       }
-      const row = carded.find((r) => r.key === key && hasRow(offer, r, id))
-      return row ? [line(row)] : []
+      const row = ROWS.find((r) => r.key === feature.row)
+      return row && hasRow(offer, row, id)
+        ? [{ key: row.key, label: translate(feature.label) }]
+        : []
     })
-    const rest = shown.filter((row) => !PLAN_COPY[id].heroes.includes(row.key))
-    const groups = PLAN_GROUPS.map((group) => ({
-      group,
-      title: translate(GROUP_TITLES[group]),
-      lines: rest.filter((row) => row.group === group).map(line),
-    })).filter((group) => group.lines.length > 0)
-    return {
-      plan: id,
-      name,
-      headline: translate(PLAN_COPY[id].headline),
-      bestFor: translate(PLAN_COPY[id].bestFor),
-      heroes,
-      basis:
-        below && groups.length > 0
-          ? translate('planEverythingIn', { plan: below.name })
-          : undefined,
-      groups,
-      limits: CARD_LIMITS.map(({ limit, label }) => ({
-        key: limit,
-        label: translate(label),
-        amount: planAllowance(offer, limit, id, language)?.amount ?? '–',
-      })),
-    }
+    const stat = (limit: PlanLimit) => planAllowance(offer, limit, id, language)
+    const invoices = stat('invoices_per_month')
+    const clients = stat('clients')
+    const storage = stat('storage_bytes')
+    const stats = [
+      invoices &&
+        (invoices.value === null
+          ? translate('planStatInvoicesUnlimited')
+          : translate('planStatInvoices', { count: invoices.value })),
+      clients &&
+        (clients.value === null
+          ? translate('planStatClientsUnlimited')
+          : translate('planStatClients', { count: clients.value })),
+      storage?.amount,
+    ].filter((line): line is string => Boolean(line))
+    return { plan: id, name, tagline: translate(PLAN_COPY[id].tagline), features, stats }
   })
 }
 
@@ -620,8 +577,8 @@ export function planComparison(offer: PlanCatalogue, language: Locale): Comparis
 }
 
 /**
- * Free's few facts for its compact row under the paid plans: "3 invoices & 3 quotes a month", "Swiss QR bills",
- * "5 clients", "“Sent with Helvetly” footer". The full list is the comparison's Free column.
+ * Free's few facts for its compact row under the paid plans: "3 invoices & 3 quotes / month", "Swiss QR bills",
+ * "5 clients". The full list, its limits included, is the comparison's Free column.
  */
 export function freePlanFacts(offer: PlanCatalogue, language: Locale): string[] {
   const translate = translatorFor(language)
@@ -633,7 +590,6 @@ export function freePlanFacts(offer: PlanCatalogue, language: Locale): string[] 
     }),
     translate('planFreeFactSwissQR'),
     translate('planFreeFactClients', { count: value('clients') }),
-    translate('planFreeFactBranding'),
   ]
 }
 

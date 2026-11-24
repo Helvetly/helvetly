@@ -447,16 +447,14 @@ export const PlansTrialSwitch: Story = {
     await expect(canvas.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
     const proCard = card(canvas, 'Pro')
     await expect(canvas.getByRole('article', { name: 'Pro' })).toHaveTextContent(
-      '2 people included · +CHF 15 / extra person',
+      '2 people incl. · +CHF 15 / person',
     )
     await expect(
       canvas.getByRole('article', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
     ).toHaveTextContent('For 2 peopleCHF 49 / month')
-    // Its limits as a small table, and what it adds over Basic, nothing it lacks.
-    await expect(
-      within(proCard.getByLabelText('Limits')).getByText('Clients').nextSibling,
-    ).toHaveTextContent('300')
-    await expect(proCard.getByText('Heidi, your AI assistant')).toBeVisible()
+    // Its key limits in one line, and what it adds over Basic, nothing it lacks.
+    await expect(proCard.getByLabelText('Key limits')).toHaveTextContent('300 clients')
+    await expect(proCard.getByText('Heidi AI assistant')).toBeVisible()
     await expect(proCard.queryByText(/client portal/)).toBeNull()
     await expect(proCard.getByText('Your trial ends now and Pro is charged today.')).toBeVisible()
     const businessCard = card(canvas, 'Business')
@@ -563,9 +561,7 @@ export const PlansYearly: Story = {
     const proCard = canvas.getByRole('article', { name: 'Pro' })
     // A yearly price reads as its month, with the year's price and saving under it.
     await expect(proCard).toHaveTextContent('39.25')
-    await expect(proCard).toHaveTextContent(
-      'Billed yearly −20% · CHF 471 a year · you save CHF 117',
-    )
+    await expect(proCard).toHaveTextContent('CHF 471 / year · save CHF 117')
     await expect(proCard.querySelector('[data-slot=team-total]')).toHaveTextContent(
       'For 3 peopleCHF 615 / year',
     )
@@ -590,7 +586,7 @@ export const PlansSwitchToYearly: Story = {
     await canvas.findByRole('article', { name: 'Basic' })
     await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
     await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent(
-      'Billed yearly −20% · CHF 183 a year · you save CHF 45',
+      'CHF 183 / year · save CHF 45',
     )
     await userEvent.click(card(canvas, 'Basic').getByRole('button', { name: 'Switch yearly' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
@@ -615,19 +611,13 @@ export const PlansProToBusiness: Story = {
     // Pro is the recommendation; a workspace already on it sees no badge
     await expect(canvas.queryByText('Recommended')).not.toBeInTheDocument()
     await expect(canvas.getByRole('article', { name: 'Business' })).toHaveTextContent(
-      '5 people included · +CHF 20 / extra person',
+      '5 people incl. · +CHF 20 / person',
     )
-    // Business has no cap on people, clients, invoices or quotes: "Unlimited", never ∞, a number or -1
-    const limits = within(businessCard.getByLabelText('Limits'))
-    await Promise.all(
-      ['People', 'Clients', 'Invoices / month', 'Quotes / month'].map((row) =>
-        expect(limits.getByText(row).nextSibling).toHaveTextContent('Unlimited'),
-      ),
+    // Business has no cap on clients or invoices: "Unlimited", never ∞, a number or -1
+    await expect(businessCard.getByLabelText('Key limits')).toHaveTextContent(
+      /^Unlimited invoices · Unlimited clients/,
     )
-    await expect(businessCard.getByLabelText('Limits')).not.toHaveTextContent(/NaN|-1|∞/)
-    await expect(
-      within(card(canvas, 'Pro').getByLabelText('Limits')).getByText('Quotes / month').nextSibling,
-    ).toHaveTextContent('100')
+    await expect(businessCard.getByLabelText('Key limits')).not.toHaveTextContent(/NaN|-1|∞/)
     await expect(
       card(canvas, 'Basic').getByRole('button', { name: 'Switch to Basic' }),
     ).toBeEnabled()

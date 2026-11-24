@@ -244,7 +244,7 @@ export const BillingPeriod: Story = {
       '14 days, up to 2 people, card required',
     )
     await expect(canvas.getByRole('article', { name: 'Business' })).toHaveTextContent(
-      'Everything in Pro, plus:',
+      'Everything in Pro',
     )
   },
 }

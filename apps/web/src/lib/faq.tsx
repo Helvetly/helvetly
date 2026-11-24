@@ -1,5 +1,5 @@
-import { formatPrice } from '@helvetly/ui/lib/price'
 import { publicHref } from '@helvetly/i18n/public-href'
+import { formatPrice } from '@helvetly/ui/lib/price'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 

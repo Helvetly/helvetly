@@ -151,21 +151,19 @@ export const PlanTilesPerPerson: Story = {
       canvas.getByRole('article', { name: plan }).querySelector('[data-slot=team-total]')
     // Each plan's price covers its first people, each further one adds a little.
     await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent(
-      '1 person included · +CHF 10 / extra person',
+      '1 person incl. · +CHF 10 / person',
     )
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 39 / month')
     await expect(total('Pro')).toHaveTextContent('For 3 peopleCHF 64 / month')
     await expect(total('Business')).toHaveTextContent('For 3 peopleCHF 149 / month')
-    // How many people each plan takes leads its limits.
-    await expect(
-      within(tile(canvas, 'Basic').getByLabelText('Limits')).getByText('People').nextSibling,
-    ).toHaveTextContent('5')
+    // How many people each plan takes is one of its lead features.
+    await expect(tile(canvas, 'Basic').getByText('Up to 5 people')).toBeVisible()
     // Seats follow the workspace's people: nobody picks a number here.
     await expect(canvas.queryByRole('button', { name: 'More people' })).not.toBeInTheDocument()
     await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 375 / year')
     await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent(
-      'Billed yearly −20% · CHF 183 a year · you save CHF 45',
+      'CHF 183 / year · save CHF 45',
     )
   },
 }

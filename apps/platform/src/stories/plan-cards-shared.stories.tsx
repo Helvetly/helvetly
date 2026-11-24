@@ -144,7 +144,7 @@ function CardsView() {
         </div>
         <FreePlanRow
           name="Free"
-          summary="CHF 0 · 1 person · no card needed"
+          summary="CHF 0 forever · 1 person · no card needed"
           facts={freePlanFacts(OFFER, 'en')}
           action={button('Start free')}
         />
@@ -153,7 +153,7 @@ function CardsView() {
   )
 }
 
-/** The three paid cards and Free's row under them: lead features in bold, the rest by group, the limits, and prices that follow the toggle. */
+/** The three paid cards and Free's row under them: five lead features, three key stats, and prices that follow the toggle. */
 export const Cards: Story = {
   render: () => <CardsView />,
   play: async ({ canvasElement }) => {
@@ -161,22 +161,23 @@ export const Cards: Story = {
     const [basic, pro, business, more] = canvas.getAllByRole('article')
     if (!basic || !pro || !business || more) throw new Error('three paid plan cards expected')
     const free = canvas.getByRole('region', { name: 'Free' })
-    await expect(within(free).getByText('CHF 0 · 1 person · no card needed')).toBeVisible()
-    await expect(within(free).getByText('3 invoices & 3 quotes a month')).toBeVisible()
-    await expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
+    await expect(within(free).getByText('CHF 0 forever · 1 person · no card needed')).toBeVisible()
+    await expect(within(free).getByText('3 invoices & 3 quotes / month')).toBeVisible()
+    await expect(pro).toHaveTextContent('2 people incl. · +CHF 15 / person')
     await expect(within(basic).getByText('Up to 5 people')).toBeVisible()
-    await expect(within(basic).getByText('Everything in Free, plus:')).toBeVisible()
+    await expect(within(pro).getByText('Everything in Basic')).toBeVisible()
     await expect(within(pro).getByText('39.25')).toBeVisible()
-    await expect(pro).toHaveTextContent('Billed yearly −20% · CHF 471 a year · you save CHF 117')
-    await expect(within(business).getByText('Everything in Pro, plus:')).toBeVisible()
-    await expect(
-      within(business).getByText('White-labelled client portal on your own domain'),
-    ).toBeVisible()
+    await expect(pro).toHaveTextContent('CHF 471 / year · save CHF 117')
+    await expect(within(business).getByText('Everything in Pro')).toBeVisible()
+    await expect(within(business).getByLabelText('Key limits')).toHaveTextContent(
+      /^Unlimited invoices · Unlimited clients/,
+    )
+    await expect(within(business).getByText('White-label client portal')).toBeVisible()
     await expect(canvasElement.textContent).not.toContain('∞')
 
     await userEvent.click(canvas.getByRole('radio', { name: 'Monthly' }))
     await expect(within(pro).getByText('49')).toBeVisible()
-    await expect(pro).toHaveTextContent('2 people included · +CHF 15 / extra person')
+    await expect(pro).toHaveTextContent('2 people incl. · +CHF 15 / person')
     await expect(pro).toHaveTextContent('Billed monthly')
   },
 }

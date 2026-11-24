@@ -197,18 +197,9 @@ function catalogueOf(offer: PublicOffer, billing: Billing): PlanCatalogue {
   return { ...offer, features }
 }
 
-const withoutAILines = <T extends { key: string }>(lines: T[]) =>
-  lines.filter((line) => !AI_LINES.has(line.key))
-
 /** An installation without AI never offers it. */
 function withoutAI(card: PlanCardData): PlanCardData {
-  return {
-    ...card,
-    heroes: withoutAILines(card.heroes),
-    groups: card.groups
-      .map((group) => ({ ...group, lines: withoutAILines(group.lines) }))
-      .filter((group) => group.lines.length > 0),
-  }
+  return { ...card, features: card.features.filter((line) => !AI_LINES.has(line.key)) }
 }
 
 /** A plan's prices as the shared price block reads them; null when it is not sold in the currency. */
@@ -296,11 +287,7 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer: PublicO
               key={plan.id}
               billing={billing}
               plan={plan}
-              card={
-                card.plan === 'pro' && !ai
-                  ? { ...card, bestFor: translate('runYourBusinessWithExpensesSignaturesAnd') }
-                  : card
-              }
+              card={card}
               interval={interval}
               team={team}
               promo={promo}
