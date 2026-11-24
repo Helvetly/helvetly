@@ -275,7 +275,7 @@ test('the promotion code sits just under the toggle, above the cards', () => {
   renderCards(billing())
   const yearly = screen.getByRole('radio', { name: 'Yearly' })
   const promo = screen.getByRole('button', { name: 'Have a promotion code?' })
-  expect(yearly.closest('fieldset')?.compareDocumentPosition(promo)).toBe(
+  expect(yearly.closest('[role="radiogroup"]')?.compareDocumentPosition(promo)).toBe(
     Node.DOCUMENT_POSITION_FOLLOWING,
   )
   expect(promo.compareDocumentPosition(card('Basic'))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
