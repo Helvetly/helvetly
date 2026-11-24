@@ -1,3 +1,4 @@
+import { publicHref } from '@helvetly/i18n/public-href'
 import { LanguageProvider } from '@helvetly/ui/components/language-provider'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -19,13 +20,13 @@ import fr from '../messages/fr.json'
 import italian from '../messages/it.json'
 import nl from '../messages/nl.json'
 import sv from '../messages/sv.json'
-import ComparePage from './[lang]/compare/[slug]/page'
-import CompareIndexPage from './[lang]/compare/page'
-import FaqPage from './[lang]/faq/page'
+import ComparePage from './(default)/compare/[slug]/page'
+import CompareIndexPage from './(default)/compare/page'
+import FaqPage from './(default)/faq/page'
+import PricingPage from './(default)/pricing/page'
+import SubprocessorsPage from './(default)/subprocessors/page'
+import TermsPage from './(default)/terms/page'
 import HomePage from './[lang]/page'
-import PricingPage from './[lang]/pricing/page'
-import SubprocessorsPage from './[lang]/subprocessors/page'
-import TermsPage from './[lang]/terms/page'
 
 const { COMPETITORS } = compareIn('en')
 const { FEATURE_GROUPS } = plansIn('en')
@@ -134,7 +135,7 @@ describe('home page in German', () => {
       'Ihr Backoffice, Schweizer Qualität.',
     )
     expect(screen.getByRole('link', { name: /Preise ansehen/ }).getAttribute('href')).toBe(
-      '/de/pricing',
+      '/de/preise',
     )
     expect(screen.getByRole('link', { name: /Starten Sie Ihre/ }).getAttribute('href')).toBe(
       'http://localhost:8000/login?lang=de',
@@ -166,7 +167,7 @@ describe.each(['fr', 'it', 'nl', 'cs', 'sv'] as const)('home page in %s', (langu
       inEnglish('yourSwissBackOffice') + inEnglish('beautifully') + inEnglish('inOrder'),
     )
     expect(screen.getByRole('link', { name: translate('seePricing') }).getAttribute('href')).toBe(
-      `/${language}/pricing`,
+      publicHref('/pricing', language),
     )
     const anchors = screen.getAllByRole('link')
     const trial = anchors.find((link) => link.textContent?.includes(translate('startYour').trim()))
@@ -177,7 +178,7 @@ describe.each(['fr', 'it', 'nl', 'cs', 'sv'] as const)('home page in %s', (langu
     expect(internal.filter((href) => !href.startsWith(`/${language}/`))).toEqual([])
     const faq = siteIn(language)
       .FOOTER.flatMap(({ links }) => links)
-      .find(({ href }) => href === `/${language}/faq`)
+      .find(({ href }) => href === publicHref('/faq', language))
     expect(faq?.label).toBe(translate('questions'))
   })
 })
@@ -511,8 +512,8 @@ describe('questions', () => {
       screen
         .getByRole('link', { name: `Alle ${questions.length} Fragen ansehen` })
         .getAttribute('href'),
-    ).toBe('/de/faq')
+    ).toBe('/de/haeufige-fragen')
     const footerLinks = siteIn('de').FOOTER.flatMap(({ links }) => links)
-    expect(footerLinks.find(({ label }) => label === 'Fragen')?.href).toBe('/de/faq')
+    expect(footerLinks.find(({ label }) => label === 'Fragen')?.href).toBe('/de/haeufige-fragen')
   })
 })

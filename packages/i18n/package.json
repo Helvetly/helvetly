@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./public-href": "./src/public-href.ts",
     "./next": "./src/next.ts",
     "./locales.json": "./src/locales.json"
   },

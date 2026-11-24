@@ -1,4 +1,5 @@
-import { type Locale, localizedHref } from '@helvetly/i18n'
+import { type Locale } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { isValidElement, type ReactNode } from 'react'
@@ -38,7 +39,7 @@ export function legalMetadata(slug: LegalSlug, lang: Locale): Metadata {
 // Section headings get ids for the contents list; links between the files go to their pages.
 const markdownIn = perLanguage((translate, language): Components => ({
   h2: ({ children }) => <h2 id={slugify(text(children))}>{children}</h2>,
-  a: ({ href = '', children }) => <a href={localizedHref(legalHref(href), language)}>{children}</a>,
+  a: ({ href = '', children }) => <a href={publicHref(legalHref(href), language)}>{children}</a>,
   // A wide table scrolls sideways in its own labelled box, which the keyboard can reach and scroll.
   table: ({ children }) => (
     <section aria-label={translate('table')} tabIndex={0} className="legal-table">
@@ -65,7 +66,7 @@ export function LegalView({ lang, slug }: { lang: Locale; slug: LegalSlug }) {
               .map((key) => (
                 <Link
                   key={key}
-                  href={localizedHref(`/${key}`, lang)}
+                  href={publicHref(`/${key}`, lang)}
                   aria-current={key === slug ? 'page' : undefined}
                   className="hover:bg-site-tint aria-[current=page]:bg-site-tint rounded-lg px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
                 >

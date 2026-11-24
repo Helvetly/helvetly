@@ -1,4 +1,5 @@
-import { type Locale, localizedHref } from '@helvetly/i18n'
+import { type Locale } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import {
   ArchiveRestore,
   Fingerprint,
@@ -36,7 +37,7 @@ export function Trust({ lang }: { lang: Locale }) {
         <p data-reveal className="mt-8 text-center text-body text-muted-foreground">
           {translate('readMoreAbout')}{' '}
           <Link
-            href={localizedHref('/security', lang)}
+            href={publicHref('/security', lang)}
             className="text-link underline underline-offset-4 hover:no-underline"
           >
             {translate('howWeProtectYourData')}

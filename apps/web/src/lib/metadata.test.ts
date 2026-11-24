@@ -6,11 +6,11 @@ describe('pageMetadata', () => {
   it('gives link previews the full title, the page URL and its language among the others', () => {
     const meta = pageMetadata('de', '/pricing', 'Preise', 'Beschreibung')
     expect(meta.title).toBe('Preise')
-    expect(meta.alternates?.canonical).toBe('/de/pricing')
+    expect(meta.alternates?.canonical).toBe('/de/preise')
     expect(meta.openGraph).toMatchObject({
       title: 'Preise · Helvetly',
       description: 'Beschreibung',
-      url: '/de/pricing',
+      url: '/de/preise',
       locale: 'de_CH',
       alternateLocale: ['en_GB', 'fr_CH', 'it_CH', 'nl_NL', 'cs_CZ', 'sv_SE'],
       images: [{ url: '/og.png', width: 1200, height: 630 }],

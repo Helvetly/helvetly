@@ -1,4 +1,5 @@
-import { defaultLocale, languageHref, localizedHref } from '@helvetly/i18n'
+import { defaultLocale, languageHref } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 
 import { compareIn } from '@/lib/compare'
 import { perLanguage } from '@/lib/i18n'
@@ -11,7 +12,7 @@ export const siteIn = perLanguage((translate, language) => {
   // Sign-in is passwordless and makes the account on first use, so starting and signing in share a page.
   const SIGN_IN_URL = `${PLATFORM_URL}${language === defaultLocale ? '/login' : languageHref('/login', language)}`
   const localize = (links: { href: string; label: string }[]) =>
-    links.map(({ href, label }) => ({ href: localizedHref(href, language), label }))
+    links.map(({ href, label }) => ({ href: publicHref(href, language), label }))
 
   const NAV = [
     { href: '/#features', label: translate('product') },
