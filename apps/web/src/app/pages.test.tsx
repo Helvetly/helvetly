@@ -357,19 +357,35 @@ describe('pricing page', () => {
 describe('comparison with Magic Heidi', () => {
   beforeEach(() => serve())
 
-  it('says where each product is ahead', async () => {
+  it('says where each product is ahead, in short cells with the detail behind a (?)', async () => {
     await renderPage(
       await ComparePage({ params: Promise.resolve({ lang: 'en', slug: 'magic-heidi' }) }),
     )
     const portal = screen.getByRole('rowheader', { name: 'Client portal' }).closest('tr')!
-    expect(within(portal).getByText('In Business')).toBeTruthy()
+    expect(within(portal).getByText('Yes')).toBeTruthy()
     expect(within(portal).getByText('Not offered')).toBeTruthy()
+    expect(within(portal).getByRole('button', { name: 'About: Client portal' })).toBeTruthy()
+    expect(portal.dataset.win).toBe('true')
+    const feeds = screen.getByRole('rowheader', { name: 'Bank feeds' }).closest('tr')!
+    expect(feeds.dataset.win).toBeUndefined()
     expect(screen.getByText(/as of 11 November 2026/)).toBeTruthy()
-    const cost = screen
-      .getByRole('rowheader', { name: 'A year for 1 and for 3 people' })
+  })
+
+  it('prices a year for 1, 3 and 5 people side by side', async () => {
+    await renderPage(
+      await ComparePage({ params: Promise.resolve({ lang: 'en', slug: 'magic-heidi' }) }),
+    )
+    const year = screen.getByRole('table', { name: 'A year by team size' })
+    const pro = within(year).getByRole('rowheader', { name: 'Helvetly Pro' }).closest('tr')!
+    expect(
+      within(pro)
+        .getAllByRole('cell')
+        .map((c) => c.textContent),
+    ).toEqual(['CHF 471', 'CHF 615', 'CHF 903'])
+    const theirs = within(year)
+      .getByRole('rowheader', { name: /^Magic Heidi Pro/ })
       .closest('tr')!
-    expect(within(cost).getByText(/Pro CHF 471 \/ 1’413/)).toBeTruthy()
-    expect(within(cost).getByText('Pro CHF 299 / 299, incl. VAT')).toBeTruthy()
+    expect(within(theirs).getAllByText('CHF 299')).toHaveLength(3)
   })
 
   it.each(COMPETITORS.map((c) => c.slug))('has a page for %s with a dated source', async (slug) => {

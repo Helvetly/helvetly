@@ -1,19 +1,21 @@
-import { defaultLocale, type Locale, localizedHref } from '@helvetly/i18n'
+import { defaultLocale, localizedHref } from '@helvetly/i18n'
 import { Logo } from '@helvetly/ui/components/logo'
+import { YEARLY_DISCOUNT_PERCENT } from '@helvetly/ui/lib/price'
 import { Check, Minus } from 'lucide-react'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 
+import { CompareTable, PriceBlock } from '@/components/comparison'
 import { Cta } from '@/components/cta'
-import { OfferPrice, OfferProvider } from '@/components/offer-provider'
+import { OfferProvider } from '@/components/offer-provider'
 import { PageHero } from '@/components/page-hero'
 import { Container, SectionHeading } from '@/components/section'
-import { type Cell, compareIn, PRICE_ROWS } from '@/lib/compare'
+import { compareIn } from '@/lib/compare'
 import { languageOf, translatorFor } from '@/lib/i18n'
 import { pageMetadata } from '@/lib/metadata'
-import { TRIAL } from '@/lib/plans'
 import { siteIn } from '@/lib/site'
+import { PRO_TRIAL_DAYS } from '@/lib/team-pricing'
 
 type Props = { params: Promise<{ lang?: string; slug: string }> }
 
@@ -38,38 +40,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : {}
 }
 
-function Value({ lang, cell }: { lang: Locale; cell: Cell }) {
-  const translate = translatorFor(lang)
-  if (cell === null)
-    return (
-      <>
-        <Minus aria-hidden className="size-4 text-placeholder" />
-        <span className="sr-only">{translate('notFoundOnTheirWebsite')}</span>
-      </>
-    )
-  if (cell === true)
-    return (
-      <>
-        <Check aria-hidden className="size-4 text-brand" />
-        <span className="sr-only">{translate('yes')}</span>
-      </>
-    )
-  if (cell === false)
-    return (
-      <>
-        <Minus aria-hidden className="size-4 text-placeholder" />
-        <span className="sr-only">{translate('notOffered')}</span>
-      </>
-    )
-  return <span className="text-body">{cell}</span>
-}
-
 export default async function ComparePage({ params }: Props) {
   const lang = await languageOf(params)
   const translate = translatorFor(lang)
-  const { competitor, OURS, ROW_GROUPS } = compareIn(lang)
-  const them = competitor((await params).slug)
+  const them = compareIn(lang).competitor((await params).slug)
   if (!them) notFound()
+  const site = new URL(them.url).hostname.replace(/^www\./, '')
   return (
     <main>
       <PageHero
@@ -91,13 +67,26 @@ export default async function ComparePage({ params }: Props) {
         title={them.title}
         lead={them.lead}
       >
+        <div data-reveal style={{ ['--d' as string]: '150ms' }} className="mx-auto mt-8 max-w-xl">
+          <h2 className="text-body-sm font-medium text-muted-foreground">
+            {translate('helvetlyIsTheBetterFitWhenYou')}
+          </h2>
+          <ul className="mt-3 grid gap-2 text-left text-body">
+            {them.oursIf.map((item) => (
+              <li key={item} className="flex gap-2.5">
+                <Check aria-hidden className="mt-1 size-4 shrink-0 text-brand" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
         <div
           data-reveal
           style={{ ['--d' as string]: '200ms' }}
-          className="mt-9 flex flex-col gap-3 sm:flex-row"
+          className="mt-8 flex flex-col gap-3 sm:flex-row"
         >
           <Cta href={siteIn(lang).START_URL}>
-            {translate('tryProFreeForDays', { days: TRIAL.days })}
+            {translate('tryProFreeForDays', { days: PRO_TRIAL_DAYS })}
           </Cta>
           <Cta href={localizedHref('/pricing', lang)} variant="outline">
             {translate('seePricing')}
@@ -105,123 +94,59 @@ export default async function ComparePage({ params }: Props) {
         </div>
       </PageHero>
 
-      <section className="py-16">
-        <Container className="grid gap-4 md:grid-cols-2">
-          <div data-reveal className="border-site-line bg-site-tint rounded-3xl border p-7">
-            <h2 className="text-title font-semibold">
-              {translate('helvetlyIsTheBetterFitWhenYou')}
-            </h2>
-            <ul className="mt-4 grid gap-2.5 text-body">
-              {them.oursIf.map((item) => (
-                <li key={item} className="flex gap-2.5">
-                  <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-brand" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div
-            data-reveal
-            style={{ ['--d' as string]: '100ms' }}
-            className="border-site-line rounded-3xl border p-7"
-          >
-            <h2 className="text-title font-semibold">
+      <OfferProvider>
+        <section className="py-12">
+          <Container>
+            <SectionHeading
+              eyebrow={translate('cmpGroupPrice')}
+              title={translate('cmpYearByTeamSize')}
+            />
+            <div className="mx-auto mt-8 max-w-3xl">
+              <PriceBlock lang={lang} them={them} />
+              <p className="mt-3 text-center text-body-sm text-muted-foreground">
+                {translate('cmpPriceBlockNote', {
+                  name: them.name,
+                  date: them.pricesChecked,
+                  percent: YEARLY_DISCOUNT_PERCENT,
+                })}
+              </p>
+            </div>
+          </Container>
+        </section>
+
+        <section className="py-12">
+          <Container>
+            <SectionHeading
+              eyebrow={translate('sideBySide')}
+              title={translate('featureByFeature')}
+            />
+            <div className="mt-10">
+              <CompareTable lang={lang} them={them} />
+            </div>
+            <p className="mx-auto mt-4 max-w-3xl text-center text-body-sm text-muted-foreground">
+              {translate('cmpLegend', { name: them.name })}
+            </p>
+          </Container>
+        </section>
+      </OfferProvider>
+
+      <section className="pb-16">
+        <Container className="max-w-3xl">
+          <div data-reveal className="border-site-line rounded-3xl border p-6">
+            <h2 className="text-title-sm font-semibold">
               {them.name}
               {translate('maySuitYouBetterIfYou')}
             </h2>
-            <ul className="mt-4 grid gap-2.5 text-body text-muted-foreground">
+            <ul className="mt-3 grid gap-2 text-body text-muted-foreground">
               {them.theirsIf.map((item) => (
                 <li key={item} className="flex gap-2.5">
-                  <Minus aria-hidden className="mt-0.5 size-4 shrink-0" />
+                  <Minus aria-hidden className="mt-1 size-4 shrink-0" />
                   {item}
                 </li>
               ))}
             </ul>
           </div>
-        </Container>
-      </section>
-
-      <section className="py-16">
-        <Container>
-          <SectionHeading eyebrow={translate('sideBySide')} title={translate('featureByFeature')} />
-          <div
-            data-reveal
-            className="border-site-line relative mt-12 overflow-x-auto rounded-3xl border"
-          >
-            <OfferProvider>
-              <table className="w-full min-w-[680px] border-collapse text-left">
-                <caption className="sr-only">
-                  {translate('helvetlyComparedWith')}
-                  {them.name}
-                </caption>
-                <thead className="bg-site-tint">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="w-2/5 p-5 text-body-sm font-medium text-muted-foreground"
-                    >
-                      &nbsp;
-                    </th>
-                    <th scope="col" className="bg-mint/50 w-[30%] p-5 text-title-sm font-semibold">
-                      <span className="flex items-center gap-2.5">
-                        <Logo className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5" />
-                        {translate('helvetly')}
-                      </span>
-                    </th>
-                    <th
-                      scope="col"
-                      className="w-[30%] p-5 text-title-sm font-semibold text-muted-foreground"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <Image
-                          src={them.logo}
-                          alt=""
-                          width={24}
-                          height={24}
-                          className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5"
-                        />
-                        {them.name}
-                      </span>
-                    </th>
-                  </tr>
-                </thead>
-                {ROW_GROUPS.map(({ group, rows }) => (
-                  <tbody key={group}>
-                    <tr key={group} className="border-site-line bg-site-tint border-t">
-                      <th
-                        scope="rowgroup"
-                        colSpan={3}
-                        className="p-5 py-3 text-body-sm font-medium text-muted-foreground"
-                      >
-                        {group}
-                      </th>
-                    </tr>
-                    {rows.map(({ key, label }) => (
-                      <tr key={key} className="border-site-line border-t align-top">
-                        <th scope="row" className="p-5 py-4 text-body font-normal">
-                          {label}
-                        </th>
-                        {/* Helvetly's column is tinted, so it reads as one band down the table. */}
-                        <td className="bg-mint/25 p-5 py-4 font-medium">
-                          {PRICE_ROWS.has(key) ? (
-                            <OfferPrice>
-                              <Value lang={lang} cell={OURS[key]} />
-                            </OfferPrice>
-                          ) : (
-                            <Value lang={lang} cell={OURS[key]} />
-                          )}
-                        </td>
-                        <td className="p-5 py-4 text-muted-foreground">
-                          <Value lang={lang} cell={them.rows[key]} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                ))}
-              </table>
-            </OfferProvider>
-          </div>
-          <p className="mx-auto mt-6 max-w-3xl text-center text-body-sm text-muted-foreground">
+          <p className="mt-6 text-center text-body-sm text-muted-foreground">
             {translate('what')}
             {them.name}
             {translate('offersComesFromItsPublicWebsite')}{' '}
@@ -230,7 +155,7 @@ export default async function ComparePage({ params }: Props) {
               rel="noopener"
               className="underline underline-offset-4 hover:text-foreground"
             >
-              {new URL(them.url).hostname.replace(/^www\./, '')}
+              {site}
             </a>
             {translate('asOf')}
             {them.checked}
