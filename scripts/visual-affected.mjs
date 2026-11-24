@@ -16,8 +16,7 @@ export function affectedStories(paths, graphs) {
   const reached = Object.fromEntries(apps.map((app) => [app, new Set()]))
   for (const path of paths) {
     // The audit's own code; screenshots and stories.spec.ts do not change what it finds.
-    const audit =
-      /^e2e\/visual\/(focus-layout\.spec\.ts|text-centring\.spec\.ts|storybook\.ts|playwright\.config\.ts|run\.sh|serve\.mjs)$/
+    const audit = /^e2e\/visual\/(?!__screenshots__\/|stories\.spec\.ts$)/
     if (
       audit.test(path) ||
       /^(scripts\/visual-affected\.mjs|package\.json|pnpm-.*|apps\/[a-z]+\/\.storybook\/.*)$/.test(
@@ -25,7 +24,7 @@ export function affectedStories(paths, graphs) {
       )
     )
       return null
-    if (!/^(apps\/(platform|portal)|packages\/ui)\//.test(path)) continue
+    if (!/^(apps\/(platform|portal)|packages\/[^/]+)\//.test(path)) continue
     if (/\.test\.tsx?$/.test(path)) continue
     let known = false
     for (const app of apps) {

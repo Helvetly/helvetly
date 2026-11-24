@@ -345,7 +345,7 @@ jobs:
       - *checkout
       - *pnpm
       - *node
-      - *install
+      - run: pnpm --filter @helvetly/e2e... install --frozen-lockfile
       - run: gh run download '${{ github.run_id }}' --name 'storybook-${{ github.sha }}' # gh: see the coverage job
         env: *gh-download-env
       - run: pnpm test:visual # Playwright inside the pinned mcr.microsoft.com/playwright image

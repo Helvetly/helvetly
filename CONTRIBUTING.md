@@ -75,7 +75,7 @@ pnpm check    # format:check, lint, typecheck, test, build
 ```
 
 CI (`.github/workflows/ci.yml`) selects checks by PR scope after a quick gate; drafts run quick checks only.
-Ready-for-review, manual, merge-group and push-to-main runs select the full suite. `CI required` must be green
+Ready-for-review, manual and merge-group runs select the full suite. A push to main selects checks by changed paths only when the previous main commit passed CI. `CI required` must be green
 before merging. CI needs no secrets, so it runs the same for pull requests from forks.
 
 Also, depending on the change:

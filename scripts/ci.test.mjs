@@ -307,16 +307,17 @@ test('releases are built from v<semver> tags only, never overwritten, attested t
   assert.match(release, /attestations: write/)
 })
 
-test("run cancellation targets the closed pull request's own commit", () => {
+test('closing a PR cancels only its own CI group, including on forks', () => {
   const cancel = readFileSync(
     new URL('../.github/workflows/cancel-closed-pr.yml', import.meta.url),
     'utf8',
   )
   assert.match(cancel, /types: \[closed\]/)
-  assert.match(cancel, /--workflow ci.yml/)
-  assert.match(cancel, /--commit "\$HEAD_SHA"/)
-  assert.doesNotMatch(cancel, /--branch/)
-  assert.match(cancel, /timeout-minutes/)
+  assert.ok(cancel.includes('group: ci-pr-${{ github.event.pull_request.number }}'))
+  const ci = readFileSync(new URL('ci.yml', workflowDir), 'utf8')
+  assert.ok(ci.includes("format('ci-pr-{0}', github.event.pull_request.number)"))
+  assert.match(cancel, /cancel-in-progress: true/)
+  assert.match(cancel, /permissions: \{\}/)
 })
 
 test('the Storybook MSW workers never unregister themselves, never hold an event open, and match the installed msw', () => {
