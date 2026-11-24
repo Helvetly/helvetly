@@ -4,12 +4,12 @@ description: Invita colleghi o il tuo contabile via email o link e scegli ruolo 
 category: Team and workspace
 categoryLabel: Team e spazio di lavoro
 order: 4
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Aggiungi colleghi o il tuo contabile allo spazio di lavoro, concedendo solo l’accesso necessario.
 
-Ogni membro che accetta occupa un posto fatturato al prezzo intero del piano. Gli inviti aperti, i clienti nel portale e le persone invitate a firmare non occupano posti.
+Free è per una persona, quindi per invitare qualcuno serve un piano a pagamento. Basic include 1 persona, Pro 2 e Business 5; ogni membro che accetta oltre queste si aggiunge al prezzo mensile. Gli inviti aperti, i clienti nel portale e le persone invitate a firmare non vengono contati.
 
 1. Vai a **Members** e fai clic su **Invite member**.
 2. Inserisci la sua **Email**.

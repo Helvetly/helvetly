@@ -3,7 +3,7 @@ title: Comment choisir un logiciel de back-office
 description: Choisir un logiciel de gestion pour une petite entreprise : clients, factures, dépenses, documents, comptabilité, personnel, IA et besoins locaux.
 category: Choosing software
 categoryLabel: Choisir un logiciel
-updated: 2026-11-20
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -59,7 +59,7 @@ Dans Helvetly, concrètement :
 
 - **Les clients** ont des personnes de contact, des fichiers et des paramètres de facturation par défaut comme la devise, la langue des documents et les conditions de paiement ([ajouter un client](/help/add-a-client)).
 - **Les factures** existent en huit types de documents, de la facture et de la facture partielle à la note de crédit et à la facture pro forma, avec une QR-facture suisse, en allemand, français, italien ou anglais.
-- **Les dépenses** gardent leurs justificatifs et l’impôt préalable (Pro et Business) ; l’IA peut transformer des justificatifs en dépenses.
+- **Les dépenses** gardent leurs justificatifs et l’impôt préalable dans toutes les formules ; avec Pro et Business, l’IA peut transformer des justificatifs en dépenses.
 - **Les documents** sont stockés une seule fois par espace de travail : le même fichier téléversé deux fois est reconnu à son contenu.
 - **Les signatures** sont des signatures électroniques simples avec piste d’audit ; les signatures qualifiées ne sont pas proposées ([envoyer un PDF à signer](/help/send-a-pdf-for-signature)).
 - **Les mandats** suivent les mandats forfaitaires et les heures restantes, et transforment le travail fourni en brouillons de factures.
@@ -79,7 +79,7 @@ Un consultant seul a besoin d’offres et de factures rapides, d’une QR-factur
 | Journal d’audit et périodes clôturées    | Utile                 | Important                         |
 | Portail client                           | Rarement              | Souvent, avec beaucoup de clients |
 
-Regardez aussi le modèle de prix. Certains outils facturent un prix unique quel que soit le nombre d’utilisateurs (Magic Heidi), d’autres incluent un nombre d’utilisateurs par formule (bexio, AbaNinja), et d’autres facturent par personne (Helvetly, où chaque membre de l’équipe est une place payante). Un prix par personne est simple pour une ou deux personnes ; un prix forfaitaire peut être moins cher pour une équipe plus grande.
+Regardez aussi le modèle de prix. Certains outils facturent un prix unique quel que soit le nombre d’utilisateurs (Magic Heidi), d’autres incluent un nombre d’utilisateurs par formule (bexio, AbaNinja), et d’autres incluent quelques personnes et facturent chaque personne supplémentaire (Helvetly : 1 personne avec Basic, 2 avec Pro et 5 avec Business, plus une offre gratuite pour une personne). Comparez ce que coûterait la taille de votre équipe, pas seulement le prix d’entrée.
 
 ## Qu’est-ce qui change quand on a des clients à l’étranger ?
 

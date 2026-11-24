@@ -4,12 +4,12 @@ description: Richten Sie für einen Kunden eine Honorarvereinbarung, ein Stunden
 category: Engagements
 categoryLabel: Engagements
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Bei einem Engagement wird die engagierte Arbeit für einen Kunden erfasst, beispielsweise ein Honorar von 30 Stunden pro Monat.
 
-Basic umfasst bis zu 3 aktive Aufträge, die manuell verwaltet werden; Für geplante Entwürfe und Bekanntmachungen ist **Pro** oder **Business** erforderlich.
+Free umfasst 1 aktiven Auftrag und Basic bis zu 3, manuell verwaltet; für geplante Entwürfe und Bekanntmachungen ist **Pro** oder **Business** erforderlich.
 
 1. Gehen Sie zu **Aufträge** und klicken Sie auf **New engagement**.
 2. Wählen Sie unter **Client & service** den **Client** aus und geben Sie einen **Title** ein.

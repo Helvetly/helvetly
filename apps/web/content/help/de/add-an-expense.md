@@ -4,12 +4,12 @@ description: Erfassen Sie eine Ausgabe mit Beleg, Beträgen, Vorsteuer und Zahlu
 category: Expenses
 categoryLabel: Ausgaben
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Bewahren Sie alle Geschäftskosten zusammen mit der Quittung auf.
 
-Ausgaben benötigen **Pro** oder **Business**.
+Ausgaben sind in jedem Plan enthalten, im Rahmen seines monatlichen Kontingents.
 
 1. Gehen Sie zu **Expenses** und klicken Sie auf **New expense**.
 2. Legen Sie unter **Receipt** die Quittungsdatei ab oder klicken Sie, um sie auszuwählen. Ein PDF oder ein Foto reicht jeweils bis zu 25 MB.

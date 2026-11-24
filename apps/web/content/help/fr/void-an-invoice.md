@@ -4,12 +4,12 @@ description: Annulez une facture émise au moyen d’une note de crédit intégr
 category: Invoices and getting paid
 categoryLabel: Factures et encaissements
 order: 9
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 L’annulation neutralise une facture émise : plus aucun montant n’est dû.
 
-L’annulation d’une facture émise nécessite **Pro** ou **Business**. Avec Basic, vous pouvez toujours modifier ou supprimer un brouillon.
+L’annulation d’une facture émise nécessite **Pro** ou **Business**. Avec Free et Basic, vous pouvez toujours modifier ou supprimer un brouillon.
 
 1. Ouvrez la facture émise et son menu **…**.
 2. Choisissez **Void** et confirmez avec **Void invoice**.

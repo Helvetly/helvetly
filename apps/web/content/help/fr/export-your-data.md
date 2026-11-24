@@ -4,12 +4,12 @@ description: Téléchargez un export complet de l’espace de travail au format 
 category: Team and workspace
 categoryLabel: Équipe et espace de travail
 order: 7
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Vos données vous appartiennent. Emportez-en une copie complète quand vous le souhaitez.
 
-Le ZIP de l’espace de travail et les listes CSV nécessitent **Pro** ou **Business**. Avec Basic, vous pouvez toujours ouvrir et télécharger chaque document existant, comme le PDF d’une facture ; chacun peut télécharger ses données personnelles.
+Le ZIP de l’espace de travail et les listes CSV nécessitent **Pro** ou **Business**. Avec Free et Basic, vous pouvez toujours ouvrir et télécharger chaque document existant, comme le PDF d’une facture ; chacun peut télécharger ses données personnelles.
 
 1. Pour exporter tout un espace de travail (propriétaires uniquement), ouvrez **Settings → Workspace → Export all data** et cliquez sur **Download export**. Vous obtenez un ZIP contenant chaque enregistrement en JSON et les fichiers conservés.
 2. Pour exporter vos données personnelles, ouvrez **Settings → Account settings → Your data** et cliquez sur **Download my data** (JSON).

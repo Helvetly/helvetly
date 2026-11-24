@@ -1,12 +1,12 @@
 ---
 title: Výběr a změna tarifu
-description: Vyberte Basic, Pro nebo Business, spusťte zkušební dobu, použijte slevový kód a spravujte kartu i faktury Helvetly.
+description: Používejte Helvetly zdarma nebo vyberte Basic, Pro či Business, spusťte zkušební dobu, použijte slevový kód a spravujte kartu i faktury Helvetly.
 category: Team and workspace
 order: 6
-updated: 2026-11-16
+updated: 2026-11-24
 ---
 
-Každý pracovní prostor má vlastní tarif. Takto jej vyberete a spravujete.
+Každý pracovní prostor má vlastní tarif. Pracovní prostor bez placeného tarifu je na **Free**. Takto tarif vyberete a spravujete.
 
 1. V **Settings → Billing** (Plan & billing) uvidíte tarif, stav a limity využití.
 2. V **Plans** zvolte **Monthly** nebo **Yearly** a vyberte **Basic**, **Pro** či **Business**. **Compare plans** zobrazí obsah tarifů a limity vedle sebe. Ceny zahrnují švýcarskou DPH.
@@ -15,11 +15,11 @@ Každý pracovní prostor má vlastní tarif. Takto jej vyberete a spravujete.
 
 ## Co je dobré vědět
 
-- Každý člen týmu má místo za plnou cenu tarifu; další místa nejsou zahrnuta. V aplikaci lze koupit až 25 míst.
-- **Basic** slouží k ruční fakturaci. **Pro** přidává Heidi, výdaje, šablony, podpisy, opravy, přiznání k DPH, účetní knihu, exporty dat a automatizace. **Business** přidává klientský portál a exporty XML e-faktur.
-- Klienti, produkty a zakázky mají pevné limity pracovního prostoru; **Business** je neomezuje, stejně jako faktury, nabídky, výdaje a žádosti o podpis. Ostatní limity jsou za placeného člena týmu a sčítají se do společného fondu. Měsíční limity se obnovují první den měsíce v 00:00 UTC.
+- **Free** nic nestojí, nevyžaduje kartu a nikdy nevyprší; je pro jednu osobu. **Basic** zahrnuje 1 osobu, **Pro** 2 a **Business** 5. Každá další osoba stojí CHF 10, 15 nebo 20 měsíčně. Basic umožňuje až 5 osob, Pro až 25, Business libovolný počet.
+- **Free** a **Basic** pokrývají faktury, nabídky, švýcarské QR faktury, odkaz Revolut, ručně spravované zakázky, výdaje a plánování s menšími limity a do e-mailů klientům a PDF přidávají „Sent with Helvetly“. **Pro** přidává Heidi, import pomocí AI, automatizace a upomínky, splátky, podpisy, šablony a smlouvy, opravy, přiznání k DPH, účetní knihu, exporty dat a API, bez tohoto řádku. **Business** přidává klientský portál (i na vlastní doméně), XML e-faktur, zaměstnance a mzdovou evidenci a schvalování dokumentů.
+- Klienti, produkty, zakázky a naplánované schůzky mají pevné limity pracovního prostoru; **Business** je neomezuje, stejně jako faktury, nabídky, výdaje a žádosti o podpis. Ostatní limity jsou za osobu a sčítají se do společného fondu; tarif vždy počítá alespoň osoby, které zahrnuje. Měsíční limity se obnovují první den měsíce v 00:00 UTC.
 - Po vyčerpání limitu se zastaví pouze nová akce, která jej potřebuje; nic se nemaže ani nedoplácí.
-- Nové zkušební doby při splnění podmínek zahrnují pouze Pro na 7 dní až pro 2 členy s menšími sdílenými limity pro celou zkoušku. Je nutná karta. Zkušební limity se neobnovují ani nerostou s týmem. Dříve poskytnuté zkoušky zachovávají původní podmínky.
-- Bezplatný tarif neexistuje. Bez aktivního tarifu je pracovní prostor jen pro čtení: nic se nemaže a po výběru tarifu se znovu otevře.
+- Nové zkušební doby při splnění podmínek dávají Pro na 14 dní až pro 2 osoby. Je nutná karta. Během zkoušky máte limity Pro pro jednu osobu a neobnovují se. Dříve poskytnuté zkoušky zachovávají původní podmínky.
+- Bez placeného tarifu, například po zkoušce nebo zrušení, je pracovní prostor na Free: nic se nemaže a vše zůstává čitelné, ale nové položky nad limity Free počkají, až tarif vyberete.
 - Tarif mohou měnit jen vlastníci a správci.
 - Při dosažení limitu se zobrazí výzva **See plans**.

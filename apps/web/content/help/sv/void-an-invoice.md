@@ -4,12 +4,12 @@ description: Makulera en utfärdad faktura med en fullständig kreditnota och l�
 category: Invoices and getting paid
 categoryLabel: Fakturor och betalningar
 order: 9
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Makulering upphäver en utfärdad faktura så att inget längre ska betalas.
 
-Makulering av en utfärdad faktura kräver **Pro** eller **Business**. I Basic kan du fortfarande redigera eller radera ett utkast.
+Makulering av en utfärdad faktura kräver **Pro** eller **Business**. I Free och Basic kan du fortfarande redigera eller radera ett utkast.
 
 1. Öppna den utfärdade fakturan och menyn **…**.
 2. Välj **Void** och bekräfta med **Void invoice**.

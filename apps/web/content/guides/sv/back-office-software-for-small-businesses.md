@@ -3,7 +3,7 @@ title: Så väljer du back office-programvara
 description: Välj företagsprogram för ett småföretag: kunder, fakturor, utgifter, dokument, bokföring, personalregister, AI och stöd för lokala krav.
 category: Choosing software
 categoryLabel: Välja programvara
-updated: 2026-11-20
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -59,7 +59,7 @@ I Helvetly, mer exakt:
 
 - **Kunder** har kontaktpersoner, filer och faktureringsstandarder som valuta, dokumentspråk och betalningsvillkor ([lägg till en kund](/help/add-a-client)).
 - **Fakturor** finns i åtta dokumenttyper, från faktura och delfaktura till kreditnota och proforma, med schweizisk QR-faktura, på tyska, franska, italienska eller engelska.
-- **Utlägg** behåller sina kvitton och ingående moms (Pro och Business); AI kan göra om kvitton till utlägg.
+- **Utlägg** behåller sina kvitton och ingående moms i alla planer; i Pro och Business kan AI göra om kvitton till utlägg.
 - **Dokument** lagras en gång per arbetsyta: samma fil som laddas upp två gånger känns igen på sitt innehåll.
 - **Signaturer** är enkla elektroniska signaturer med revisionsspår; kvalificerade signaturer erbjuds inte ([skicka en PDF för signering](/help/send-a-pdf-for-signature)).
 - **Uppdrag (engagements)** följer retainers och återstående timmar och gör levererat arbete till fakturautkast.
@@ -79,7 +79,7 @@ En ensam konsult behöver snabba offerter och fakturor, en QR-faktura, påminnel
 | Revisionslogg och stängda perioder   | Bra att ha      | Viktigt                                      |
 | Kundportal                           | Sällan          | Ofta, med många kunder                       |
 
-Titta också på prismodellen. Vissa verktyg tar ett pris oavsett hur många som använder det (Magic Heidi), vissa inkluderar ett antal användare per nivå (bexio, AbaNinja) och vissa tar betalt per person (Helvetly, där varje teammedlem är en betald plats). Ett pris per person är enkelt för en eller två personer; ett fast pris kan vara billigare för ett större team.
+Titta också på prismodellen. Vissa verktyg tar ett pris oavsett hur många som använder det (Magic Heidi), vissa inkluderar ett antal användare per nivå (bexio, AbaNinja) och vissa inkluderar några personer och tar betalt för varje ytterligare (Helvetly: 1 person i Basic, 2 i Pro och 5 i Business, plus en gratisplan för en person). Jämför vad ditt teams storlek skulle kosta, inte bara ingångspriset.
 
 ## Vad ändras när du har kunder utomlands?
 

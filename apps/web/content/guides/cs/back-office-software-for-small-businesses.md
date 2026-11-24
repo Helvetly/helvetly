@@ -2,7 +2,7 @@
 title: Jak vybrat software pro zázemí firmy
 description: Jak vybrat software pro malou firmu: klienti, faktury, výdaje, dokumenty, účetnictví, personální evidence, AI a podpora místních požadavků.
 category: Choosing software
-updated: 2026-11-20
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -58,7 +58,7 @@ Konkrétně v Helvetly:
 
 - **Klienti** mají kontaktní osoby, soubory a výchozí fakturační údaje, jako je měna, jazyk dokladů a platební podmínky ([přidání klienta](/help/add-a-client)).
 - **Faktury** existují v osmi typech dokladů, od faktury a dílčí faktury po dobropis a proformu, se švýcarským QR účtem, v němčině, francouzštině, italštině nebo angličtině.
-- **Výdaje** uchovávají své účtenky a DPH na vstupu (Pro a Business); AI umí z účtenek vytvořit výdaje.
+- **Výdaje** uchovávají své účtenky a DPH na vstupu v každém tarifu; v Pro a Business umí AI z účtenek vytvořit výdaje.
 - **Dokumenty** se ukládají jednou na pracovní prostor: stejný soubor nahraný dvakrát se pozná podle obsahu.
 - **Podpisy** jsou jednoduché elektronické podpisy se záznamem auditu; kvalifikované podpisy se nenabízejí ([odeslání PDF k podpisu](/help/send-a-pdf-for-signature)).
 - **Zakázky** sledují paušály a zbývající hodiny a z odvedené práce vytvářejí návrhy faktur.
@@ -78,7 +78,7 @@ Samostatný konzultant potřebuje rychlé nabídky a faktury, QR účet, upomín
 | Auditní záznam a uzavřená období     | Příjemné mít          | Důležité                           |
 | Klientský portál                     | Zřídka                | Často, s mnoha klienty             |
 
-Podívejte se i na cenový model. Některé nástroje účtují jednu cenu bez ohledu na počet lidí (Magic Heidi), některé zahrnují počet uživatelů v každé úrovni (bexio, AbaNinja) a některé účtují za osobu (Helvetly, kde je každý člen týmu placené místo). Cena za osobu je jednoduchá pro jednoho nebo dva lidi; paušální cena může být pro větší tým levnější.
+Podívejte se i na cenový model. Některé nástroje účtují jednu cenu bez ohledu na počet lidí (Magic Heidi), některé zahrnují počet uživatelů v každé úrovni (bexio, AbaNinja) a některé zahrnují několik lidí a účtují každého dalšího (Helvetly: 1 osoba v Basic, 2 v Pro a 5 v Business, navíc bezplatný tarif pro jednu osobu). Porovnejte, kolik by stála velikost vašeho týmu, nejen vstupní cenu.
 
 ## Co se změní, když máte klienty v zahraničí?
 

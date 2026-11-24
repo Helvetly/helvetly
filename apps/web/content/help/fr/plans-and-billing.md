@@ -1,13 +1,13 @@
 ---
 title: Choisir une formule ou en changer
-description: Choisissez Basic, Pro ou Business, commencez un essai, utilisez un code promotionnel et gérez votre carte et vos factures Helvetly.
+description: Utilisez Helvetly gratuitement ou choisissez Basic, Pro ou Business, commencez un essai, utilisez un code promotionnel et gérez votre carte et vos factures Helvetly.
 category: Team and workspace
 categoryLabel: Équipe et espace de travail
 order: 6
-updated: 2026-11-16
+updated: 2026-11-24
 ---
 
-Chaque espace de travail dispose de sa propre formule. Voici comment la choisir et la gérer.
+Chaque espace de travail dispose de sa propre formule. Un espace de travail sans formule payante est sur **Free**. Voici comment choisir et gérer une formule.
 
 1. Ouvrez **Settings → Billing** (Plan & billing) pour voir votre formule, son statut et votre consommation par rapport aux limites.
 2. Sous **Plans**, choisissez **Monthly** ou **Yearly**, puis **Basic**, **Pro** ou **Business**. **Compare plans** présente côte à côte les fonctionnalités et quotas. Les prix comprennent la TVA suisse.
@@ -16,11 +16,11 @@ Chaque espace de travail dispose de sa propre formule. Voici comment la choisir 
 
 ## Bon à savoir
 
-- Chaque membre de l’équipe est facturé au prix complet de la formule ; aucune place supplémentaire n’est incluse. Jusqu’à 25 places peuvent être achetées dans l’application.
-- **Basic** permet de facturer manuellement. **Pro** ajoute Heidi, les dépenses, modèles, signatures, corrections, décomptes TVA, le grand livre, les exports de données et les automatisations. **Business** ajoute le portail client et les exports XML de factures électroniques.
-- Les clients, produits et mandats sont soumis à des plafonds fixes pour l’espace de travail ; **Business** ne fixe aucun plafond pour ces éléments, ni pour les factures, devis, dépenses et demandes de signature. Les autres quotas sont définis par membre payant de l’équipe et s’additionnent dans une réserve commune. Les quotas mensuels sont réinitialisés à 00:00 UTC le premier du mois.
+- **Free** est gratuit, ne demande aucune carte et n’expire jamais ; il est prévu pour une seule personne. **Basic** comprend 1 personne, **Pro** 2 et **Business** 5. Chaque personne supplémentaire coûte CHF 10, 15 ou 20 par mois. Basic accepte jusqu’à 5 personnes, Pro jusqu’à 25, Business sans limite.
+- **Free** et **Basic** couvrent les factures, devis, QR-factures suisses, le lien Revolut, les mandats gérés manuellement, les dépenses et la planification, avec des quotas plus petits, et ajoutent la mention « Envoyé avec Helvetly » aux e-mails et PDF destinés aux clients. **Pro** ajoute Heidi, l’import IA, les automatisations et rappels de paiement, les paiements échelonnés, signatures, modèles et contrats, corrections, décomptes TVA, le grand livre, les exports de données et l’API, sans cette mention. **Business** ajoute le portail client (aussi sur votre propre domaine), les XML de factures électroniques, les employés et un registre des salaires, ainsi que l’approbation des documents.
+- Les clients, produits, mandats et séances planifiées sont soumis à des plafonds fixes pour l’espace de travail ; **Business** ne fixe aucun plafond pour ces éléments, ni pour les factures, devis, dépenses et demandes de signature. Les autres quotas sont définis par personne et s’additionnent dans une réserve commune ; une formule compte toujours au moins les personnes qu’elle comprend. Les quotas mensuels sont réinitialisés à 00:00 UTC le premier du mois.
 - Lorsqu’un quota est épuisé, seule la nouvelle action qui en a besoin est bloquée ; rien n’est supprimé ni facturé en supplément.
-- Les nouveaux essais éligibles comprennent uniquement Pro pendant 7 jours, avec jusqu’à 2 membres et des quotas mutualisés réduits pour l’ensemble de l’essai. Une carte est nécessaire. Les quotas d’essai ne sont ni réinitialisés ni multipliés par la taille de l’équipe. Les essais déjà accordés dans le cadre d’offres antérieures conservent leurs conditions initiales.
-- Il n’existe pas de formule gratuite. Sans formule active, l’espace de travail est en lecture seule : rien n’est supprimé et l’accès en écriture revient dès qu’une formule est choisie.
+- Les nouveaux essais éligibles donnent accès à Pro pendant 14 jours, avec jusqu’à 2 personnes. Une carte est nécessaire. Pendant l’essai, vous disposez des quotas de Pro pour une personne, qui ne sont pas réinitialisés. Les essais déjà accordés dans le cadre d’offres antérieures conservent leurs conditions initiales.
+- Sans formule payante, par exemple après l’essai ou une résiliation, l’espace de travail est sur Free : rien n’est supprimé et tout reste consultable, mais les nouveaux ajouts au-delà des limites de Free attendent que vous choisissiez une formule.
 - Seuls les propriétaires et administrateurs peuvent changer la formule.
 - Lorsque vous atteignez une limite, une invite s’affiche avec **See plans**.

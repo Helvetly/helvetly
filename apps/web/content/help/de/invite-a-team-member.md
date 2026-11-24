@@ -4,12 +4,12 @@ description: Laden Sie Kollegen oder Ihren Buchhalter per E-Mail oder Link ein u
 category: Team and workspace
 categoryLabel: Team und Arbeitsbereich
 order: 4
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Bringen Sie Kollegen oder Ihren Buchhalter mit genau dem Zugriff, den sie benötigen, in Ihren Arbeitsbereich.
 
-Jedem akzeptierten Mitglied wird ein Sitzplatz zum vollen Preis Ihres Plans in Rechnung gestellt. Offene Einladungen, Kunden im Portal und Personen, die zur Unterschrift aufgefordert werden, nehmen keinen Platz ein.
+Free ist für eine Person, Einladungen brauchen deshalb einen bezahlten Plan. Basic enthält 1 Person, Pro 2 und Business 5; jedes akzeptierte Mitglied darüber hinaus erhöht den Monatspreis. Offene Einladungen, Kunden im Portal und Personen, die zur Unterschrift aufgefordert werden, zählen nicht.
 
 1. Gehen Sie zu **Members** und klicken Sie auf **Invite member**.
 2. Geben Sie ihren **Email** ein.

@@ -3,12 +3,12 @@ title: Een teamlid uitnodigen
 description: Nodig collega's of je boekhouder uit per e-mail of link en kies hun rol en toegang.
 category: Team and workspace
 order: 4
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Geef collega's of je boekhouder toegang tot je werkruimte met precies de rechten die nodig zijn.
 
-Elk geaccepteerd lid is een gebruiker waarvoor de volledige abonnementsprijs wordt gerekend. Openstaande uitnodigingen, klanten in het portaal en personen die moeten ondertekenen nemen geen gebruikersplaats in.
+Free is voor één persoon, dus voor een uitnodiging heb je een betaald abonnement nodig. Basic bevat 1 persoon, Pro 2 en Business 5; elk geaccepteerd lid daarboven verhoogt de maandprijs. Openstaande uitnodigingen, klanten in het portaal en personen die moeten ondertekenen tellen niet mee.
 
 1. Ga naar **Members** en klik op **Invite member**.
 2. Voer het **Email**-adres in.

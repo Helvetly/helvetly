@@ -4,12 +4,12 @@ description: Ladda upp flera kvitton och låt AI läsa varje kvitto till ett utg
 category: Expenses
 categoryLabel: Utgifter
 order: 2
-updated: 2026-11-16
+updated: 2026-11-24
 ---
 
 Slipp skriva av: ladda upp kvitton så gör AI dem till utgiftsutkast.
 
-Utgifter och kvittoimport kräver **Pro** eller **Business**.
+Utgifter ingår i alla planer; att läsa kvitton med AI kräver **Pro** eller **Business**.
 
 1. Gå till **Expenses** och klicka på **Upload receipts**, eller släpp filer på sidan.
 2. Klicka på **Read files**. AI läser varje kvitto till ett utgiftsutkast.

@@ -3,12 +3,12 @@ title: Přidání výdaje s účtenkou
 description: Zaznamenejte výdaj, účtenku, částky, daň na vstupu a stav platby a uložte návrh nebo jej zaúčtujte.
 category: Expenses
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Uchovávejte firemní náklad společně s účtenkou.
 
-Výdaje vyžadují **Pro** nebo **Business**.
+Výdaje jsou v každém tarifu, v rámci jeho měsíčního limitu.
 
 1. Přejděte do **Expenses** a klikněte na **New expense**.
 2. Do části **Receipt** přetáhněte účtenku nebo ji vyberte kliknutím. Lze použít PDF či fotografii do 25 MB na soubor.

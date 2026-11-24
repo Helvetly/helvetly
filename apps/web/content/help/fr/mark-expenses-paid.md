@@ -4,12 +4,12 @@ description: Suivez les dépenses impayées et avancées personnellement, indiqu
 category: Expenses
 categoryLabel: Dépenses
 order: 3
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Suivez les dépenses réglées et les personnes qui attendent encore un remboursement.
 
-Les dépenses nécessitent **Pro** ou **Business**.
+Les dépenses sont disponibles dans toutes les formules, dans la limite de leur quota mensuel.
 
 1. Ouvrez **Expenses**. Utilisez les onglets **To review**, **Unpaid** et **To reimburse** pour trouver les éléments à traiter.
 2. Sélectionnez des dépenses et cliquez sur **Mark paid** ou **Mark unpaid**. Vous pouvez aussi en ouvrir une, cliquer sur **Edit** et modifier **Payment**.

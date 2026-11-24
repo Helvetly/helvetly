@@ -4,12 +4,12 @@ description: Bjud in kollegor eller en redovisningskonsult via mejl eller länk 
 category: Team and workspace
 categoryLabel: Team och arbetsyta
 order: 4
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Bjud in kollegor eller din redovisningskonsult till arbetsytan med precis den åtkomst de behöver.
 
-Varje accepterad medlemsplats faktureras till planens fulla pris. Öppna inbjudningar, kunder i portalen och personer som ombeds signera tar ingen plats.
+Free är för en person, så för att bjuda in någon behövs en betald plan. Basic inkluderar 1 person, Pro 2 och Business 5; varje accepterad medlem utöver dem höjer månadspriset. Öppna inbjudningar, kunder i portalen och personer som ombeds signera räknas inte.
 
 1. Gå till **Members** och klicka på **Invite member**.
 2. Ange **Email**.

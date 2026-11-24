@@ -3,12 +3,12 @@ title: Pozvání člena týmu
 description: Pozvěte kolegy nebo účetního e-mailem či odkazem a zvolte jejich roli a přístup.
 category: Team and workspace
 order: 4
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Přizvěte kolegy nebo účetního do pracovního prostoru právě s tím přístupem, který potřebují.
 
-Každý člen po přijetí pozvánky obsazuje místo účtované plnou cenou tarifu. Otevřené pozvánky, klienti v portálu a lidé požádaní o podpis místo neobsazují.
+Free je pro jednu osobu, takže pozvat někoho lze jen s placeným tarifem. Basic zahrnuje 1 osobu, Pro 2 a Business 5; každý přijatý člen nad tento počet zvyšuje měsíční cenu. Otevřené pozvánky, klienti v portálu a lidé požádaní o podpis se nepočítají.
 
 1. Přejděte do **Members** a klikněte na **Invite member**.
 2. Zadejte jejich **Email**.

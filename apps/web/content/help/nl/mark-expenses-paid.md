@@ -3,12 +3,12 @@ title: Kosten als betaald of vergoed markeren
 description: Volg onbetaalde en voorgeschoten kosten, markeer ze als betaald of onbetaald en leg vast wanneer ze zijn vergoed.
 category: Expenses
 order: 3
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Houd bij welke kosten zijn betaald en wie nog geld terug moet krijgen.
 
-Kosten vereisen **Pro** of **Business**.
+Kosten zitten in elk abonnement, binnen het maandtegoed ervan.
 
 1. Ga naar **Expenses**. Gebruik **To review**, **Unpaid** en **To reimburse** om te vinden wat aandacht nodig heeft.
 2. Selecteer kostenposten en klik op **Mark paid** of **Mark unpaid**. Of open een kostenpost, klik op **Edit** en wijzig **Payment**.

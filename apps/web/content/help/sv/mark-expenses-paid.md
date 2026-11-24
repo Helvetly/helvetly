@@ -4,12 +4,12 @@ description: Följ obetalda utgifter och egna utlägg, markera dem som betalda e
 category: Expenses
 categoryLabel: Utgifter
 order: 3
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Håll reda på vilka utgifter som betalats och vem som fortfarande ska få ersättning.
 
-Utgifter kräver **Pro** eller **Business**.
+Utgifter ingår i alla planer, inom planens månadskvot.
 
 1. Gå till **Expenses**. Använd flikarna **To review**, **Unpaid** och **To reimburse** för att hitta det som behöver åtgärdas.
 2. Markera utgifter och klicka på **Mark paid** eller **Mark unpaid**. Du kan också öppna en utgift, klicka på **Edit** och ändra **Payment**.

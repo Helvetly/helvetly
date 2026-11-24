@@ -3,7 +3,7 @@ title: Alternatives à bexio en Suisse
 description: Magic Heidi, KLARA, Banana, CashCtrl, AbaNinja et Helvetly comparés à bexio : prix, points forts et à qui chacun convient.
 category: Choosing software
 categoryLabel: Choisir un logiciel
-updated: 2026-11-19
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -31,7 +31,7 @@ Pour un indépendant avec une comptabilité simple et peu de factures, Magic Hei
 
 ## Quelle est la meilleure alternative à bexio pour une petite équipe ?
 
-Pour une petite équipe qui veut comptabilité, salaires et facturation chez un seul fournisseur suisse, KLARA et AbaNinja sont les alternatives les plus proches de bexio. Pour une équipe qui doit surtout être payée et travailler avec ses clients, Helvetly est conçu pour cela : chacun travaille en même temps dans les mêmes données, avec des rôles de propriétaire, d’administrateur et de membre dans chaque formule.
+Pour une petite équipe qui veut comptabilité, salaires et facturation chez un seul fournisseur suisse, KLARA et AbaNinja sont les alternatives les plus proches de bexio. Pour une équipe qui doit surtout être payée et travailler avec ses clients, Helvetly est conçu pour cela : chacun travaille en même temps dans les mêmes données, avec des rôles de propriétaire, d’administrateur et de membre dans chaque formule payante.
 
 - **KLARA** réunit comptabilité, salaires, caisse et boutique en ligne sous forme de forfaits et de modules, avec des rôles d’administrateur, de fiduciaire, de salaires, de comptabilité et d’autres. Elle convient aux commerces et établissements qui ont besoin d’une caisse avec terminaux de paiement par carte.
 - **AbaNinja** regroupe facturation, comptabilité et salaires issus de l’univers Abacus dans une seule application, avec des groupes d’utilisateurs et des droits par domaine. Elle convient aux équipes qui ont besoin de salaires avec ELM et certificats de salaire, ou qui prévoient de passer plus tard à Abacus ERP.
@@ -41,7 +41,7 @@ Pour une petite équipe qui veut comptabilité, salaires et facturation chez un 
 
 ## Comment les alternatives à bexio se comparent-elles sur le prix ?
 
-Les options les moins chères sont les offres gratuites de Magic Heidi, Banana, CashCtrl et AbaNinja, chacune avec des limites. La formule payante la moins chère est Banana Professional, à CHF 89 par an. Helvetly n’a pas d’offre gratuite et facture par personne et par mois.
+Les options les moins chères sont les offres gratuites de Magic Heidi, Banana, CashCtrl, AbaNinja et Helvetly, chacune avec des limites. La formule payante la moins chère est Banana Professional, à CHF 89 par an. Les formules payantes de Helvetly comprennent 1, 2 ou 5 personnes et facturent chaque personne supplémentaire ; pour cinq personnes, elles coûtent CHF 59 par mois avec Basic, CHF 94 avec Pro et CHF 149 avec Business, TVA comprise.
 
 | Produit     | Formules et prix                                                                                                                                                          | TVA          |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
@@ -51,13 +51,13 @@ Les options les moins chères sont les offres gratuites de Magic Heidi, Banana, 
 | Banana      | Gratuit jusqu’à 70 écritures ; Professional CHF 89 par an ; Advanced CHF 179 par an, par utilisateur                                                                      | Non précisée |
 | CashCtrl    | Gratuit pour 1 utilisateur ; PRO CHF 350 par an avec 3 utilisateurs, 2 organisations et 1 Go                                                                              | Incluse      |
 | AbaNinja    | Starter gratuit (1 utilisateur, 1,000 documents par an) ; Basic CHF 21 par mois (3 utilisateurs, 2,100 documents) ; Pro CHF 49 par mois (5 utilisateurs, 5,000 documents) | Non précisée |
-| Helvetly    | Basic, Pro et Business, par personne et par mois ; chaque membre de l’équipe paie le plein tarif                                                                          | Incluse      |
+| Helvetly    | Gratuit pour 1 personne ; Basic CHF 19 par mois avec 1 personne, Pro CHF 49 avec 2, Business CHF 149 avec 5 ; chaque personne supplémentaire CHF 10, 15 ou 20             | Incluse      |
 
-Les prix actuels de Helvetly figurent sur la [page des tarifs](/pricing). Il n’y a pas d’offre gratuite ; un essai de 7 jours de Pro demande une carte, et sans formule active, un espace de travail passe en lecture seule, sans rien supprimer.
+Les prix actuels de Helvetly figurent sur la [page des tarifs](/pricing). Free ne demande aucune carte et n’expire jamais ; un essai de 14 jours de Pro demande une carte. Basic accepte jusqu’à 5 personnes et Pro jusqu’à 25, et le paiement annuel coûte 20 % de moins. Un espace de travail sans formule payante passe sur Free : rien n’est supprimé, seuls les nouveaux enregistrements au-delà des limites de Free sont refusés.
 
 ## Quelles alternatives à bexio proposent une offre gratuite ?
 
-Magic Heidi, Banana, CashCtrl et AbaNinja ont des offres gratuites ; bexio, KLARA et Helvetly n’en ont pas. Les offres gratuites sont limitées : Magic Heidi à 3 factures et 3 justificatifs, Banana à 70 écritures, CashCtrl à 1 utilisateur et AbaNinja à 1 utilisateur et 1,000 documents par an.
+Magic Heidi, Banana, CashCtrl, AbaNinja et Helvetly ont des offres gratuites ; bexio et KLARA n’en ont pas. Les offres gratuites sont limitées : Magic Heidi à 3 factures et 3 justificatifs, Banana à 70 écritures, CashCtrl à 1 utilisateur, AbaNinja à 1 utilisateur et 1,000 documents par an, et Helvetly à 1 personne, 5 clients et 3 factures et 3 offres par mois.
 
 Si vous n’envoyez que quelques factures par an, une offre gratuite est difficile à battre. Dès que vous facturez chaque semaine ou que vous travaillez en équipe, comparez ce qu’incluent les formules payantes plutôt que le prix d’entrée.
 
@@ -73,7 +73,7 @@ Restez chez bexio si vous avez besoin de la comptabilité complète et des compt
 
 ## Que fait Helvetly différemment de bexio ?
 
-Helvetly se concentre sur le back-office autour de l’encaissement, à un prix par personne, alors que bexio est une suite large avec comptabilité, salaires et place de marché. Helvetly propose les points suivants, que nous n’avons pas trouvés sur le site de bexio :
+Helvetly se concentre sur le back-office autour de l’encaissement, avec quelques personnes comprises dans chaque formule, alors que bexio est une suite large avec comptabilité, salaires et place de marché. Helvetly propose les points suivants, que nous n’avons pas trouvés sur le site de bexio :
 
 - Du XML de facture électronique pour l’Allemagne, la Pologne, la Roumanie et Peppol : fichiers XRechnung, Peppol BIS, KSeF et e-Factura (Business). Ils sont exportés sous forme de fichiers ; Helvetly ne les transmet pas via les réseaux.
 - Des contrats remplis à partir de modèles et envoyés pour signature électronique simple (Pro et Business) ; les signatures qualifiées ne sont pas proposées.
@@ -81,7 +81,7 @@ Helvetly se concentre sur le back-office autour de l’encaissement, à un prix 
 - Des mandats forfaitaires avec les heures restantes, et des plans de paiement échelonné avec une QR-facture pour chaque part.
 - Heidi, un assistant intégré, qui répond à partir de vos propres données et n’agit qu’après votre confirmation (Pro et Business).
 
-Ce qui manque à Helvetly par rapport à bexio : les comptes annuels, le calcul des salaires, la gestion de stock, des applications mobiles natives (Helvetly est une application web pour tous les appareils) et une offre gratuite.
+Ce qui manque à Helvetly par rapport à bexio : les comptes annuels, le calcul des salaires, la gestion de stock et des applications mobiles natives (Helvetly est une application web pour tous les appareils).
 
 ## Comment passer de bexio à un autre outil ?
 

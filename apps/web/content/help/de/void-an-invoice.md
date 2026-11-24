@@ -4,12 +4,12 @@ description: Stornieren Sie eine ausgestellte Rechnung mit vollständiger Gutsch
 category: Invoices and getting paid
 categoryLabel: Rechnungen und Bezahlung
 order: 9
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Durch das Stornieren wird eine ausgestellte Rechnung storniert, sodass nichts mehr geschuldet wird.
 
-Für die Stornierung einer ausgestellten Rechnung ist **Pro** oder **Business** erforderlich. In Basic können Sie einen Entwurf weiterhin bearbeiten oder löschen.
+Für die Stornierung einer ausgestellten Rechnung ist **Pro** oder **Business** erforderlich. In Free und Basic können Sie einen Entwurf weiterhin bearbeiten oder löschen.
 
 1. Öffnen Sie die ausgestellte Rechnung und öffnen Sie das Menü **…**.
 2. Wählen Sie **Void** und bestätigen Sie mit **Void invoice**.

@@ -4,12 +4,12 @@ description: Registra una spesa con ricevuta, importi, imposta precedente e stat
 category: Expenses
 categoryLabel: Spese
 order: 1
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Conserva ogni costo aziendale insieme alla sua ricevuta.
 
-Le spese richiedono **Pro** o **Business**.
+Le spese sono incluse in ogni piano, entro la sua disponibilità mensile.
 
 1. Vai a **Expenses** e fai clic su **New expense**.
 2. In **Receipt**, trascina il file della ricevuta oppure fai clic per sceglierlo. Puoi usare PDF o foto, fino a 25 MB ciascuno.

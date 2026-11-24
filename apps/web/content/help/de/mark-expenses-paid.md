@@ -4,12 +4,12 @@ description: Verfolgen Sie unbezahlte Ausgaben und Auslagen, kennzeichnen Sie si
 category: Expenses
 categoryLabel: Ausgaben
 order: 3
-updated: 2026-11-15
+updated: 2026-11-24
 ---
 
 Behalten Sie den Überblick darüber, welche Ausgaben bezahlt wurden und wer noch eine Rückerstattung leisten muss.
 
-Ausgaben benötigen **Pro** oder **Business**.
+Ausgaben sind in jedem Plan enthalten, im Rahmen seines monatlichen Kontingents.
 
 1. Gehen Sie zu **Expenses**. Verwenden Sie die Registerkarten **To review**, **Unpaid** und **To reimburse**, um herauszufinden, was Massnahmen erfordern.
 2. Wählen Sie Ausgaben aus und klicken Sie auf **Mark paid** oder **Mark unpaid**. Oder öffnen Sie eines, klicken Sie auf **Edit** und ändern Sie **Payment**.

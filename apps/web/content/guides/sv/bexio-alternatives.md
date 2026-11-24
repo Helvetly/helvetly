@@ -3,7 +3,7 @@ title: Alternativ till bexio i Schweiz
 description: Magic Heidi, KLARA, Banana, CashCtrl, AbaNinja och Helvetly jämförda med bexio: priser, styrkor och vem varje program passar.
 category: Choosing software
 categoryLabel: Välja programvara
-updated: 2026-11-19
+updated: 2026-11-24
 readingMinutes: 7
 ---
 
@@ -31,7 +31,7 @@ För en frilansare med enkel bokföring och få fakturor passar Magic Heidi bäs
 
 ## Vilket är det bästa alternativet till bexio för ett litet team?
 
-För ett litet team som vill ha bokföring, löner och fakturering från en schweizisk leverantör är KLARA och AbaNinja de närmaste alternativen till bexio. För ett team som främst behöver få betalt och arbeta med kunder är Helvetly byggt för det: alla arbetar i samma uppgifter samtidigt, med roller för ägare, administratörer och medlemmar i varje plan.
+För ett litet team som vill ha bokföring, löner och fakturering från en schweizisk leverantör är KLARA och AbaNinja de närmaste alternativen till bexio. För ett team som främst behöver få betalt och arbeta med kunder är Helvetly byggt för det: alla arbetar i samma uppgifter samtidigt, med roller för ägare, administratörer och medlemmar i varje betald plan.
 
 - **KLARA** samlar bokföring, löner, kassa och webbutik som paket och moduler, med roller för administratörer, revisorer, löner, bokföring med mera. Passar butiker och lokaler som behöver en kassa med kortterminaler.
 - **AbaNinja** samlar fakturering, bokföring och löner från Abacus värld i en app, med användargrupper och behörigheter per område. Passar team som behöver löner med ELM och lönebesked, eller räknar med att senare gå över till Abacus ERP.
@@ -41,7 +41,7 @@ För ett litet team som vill ha bokföring, löner och fakturering från en schw
 
 ## Hur jämför sig alternativen till bexio i pris?
 
-De billigaste alternativen är gratisplanerna hos Magic Heidi, Banana, CashCtrl och AbaNinja, alla med begränsningar. Den billigaste betalplanen är Banana Professional för CHF 89 per år. Helvetly har ingen gratisplan och tar betalt per person och månad.
+De billigaste alternativen är gratisplanerna hos Magic Heidi, Banana, CashCtrl, AbaNinja och Helvetly, alla med begränsningar. Den billigaste betalplanen är Banana Professional för CHF 89 per år. Helvetlys betalplaner inkluderar 1, 2 eller 5 personer och tar betalt för varje ytterligare person; för fem personer kostar de CHF 59 per månad i Basic, CHF 94 i Pro och CHF 149 i Business, inklusive moms.
 
 | Produkt     | Paket och pris                                                                                                                                                | Moms       |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
@@ -51,13 +51,13 @@ De billigaste alternativen är gratisplanerna hos Magic Heidi, Banana, CashCtrl 
 | Banana      | Gratis upp till 70 transaktioner; Professional CHF 89 per år; Advanced CHF 179 per år, per användare                                                          | Anges inte |
 | CashCtrl    | Gratis för 1 användare; PRO CHF 350 per år med 3 användare, 2 organisationer och 1 GB                                                                         | Inklusive  |
 | AbaNinja    | Starter gratis (1 användare, 1,000 dokument per år); Basic CHF 21 per månad (3 användare, 2,100 dokument); Pro CHF 49 per månad (5 användare, 5,000 dokument) | Anges inte |
-| Helvetly    | Basic, Pro och Business, per person och månad; varje teammedlem betalar fullt pris                                                                            | Inklusive  |
+| Helvetly    | Gratis för 1 person; Basic CHF 19 per månad med 1 person, Pro CHF 49 med 2, Business CHF 149 med 5; varje ytterligare person CHF 10, 15 eller 20              | Inklusive  |
 
-Helvetlys aktuella priser finns på [prissidan](/pricing). Det finns ingen gratisplan; en provperiod på 7 dagar av Pro kräver kort, och utan aktiv plan blir en arbetsyta skrivskyddad, utan att något raderas.
+Helvetlys aktuella priser finns på [prissidan](/pricing). Free kräver inget kort och upphör aldrig; en provperiod på 14 dagar av Pro kräver kort. Basic tillåter upp till 5 personer och Pro upp till 25, och årsbetalning kostar 20 % mindre. En arbetsyta utan betald plan går över till Free: ingenting raderas, bara nya poster utöver Frees gränser avvisas.
 
 ## Vilka alternativ till bexio har en gratisplan?
 
-Magic Heidi, Banana, CashCtrl och AbaNinja har gratisplaner; bexio, KLARA och Helvetly har det inte. Gratisplanerna är begränsade: Magic Heidi till 3 fakturor och 3 kvitton, Banana till 70 transaktioner, CashCtrl till 1 användare och AbaNinja till 1 användare och 1,000 dokument per år.
+Magic Heidi, Banana, CashCtrl, AbaNinja och Helvetly har gratisplaner; bexio och KLARA har det inte. Gratisplanerna är begränsade: Magic Heidi till 3 fakturor och 3 kvitton, Banana till 70 transaktioner, CashCtrl till 1 användare, AbaNinja till 1 användare och 1,000 dokument per år, och Helvetly till 1 person, 5 kunder samt 3 fakturor och 3 offerter per månad.
 
 Om du bara skickar några få fakturor om året är en gratisplan svår att slå. När du skickar fakturor varje vecka eller arbetar i team bör du jämföra vad betalplanerna innehåller i stället för ingångspriset.
 
@@ -73,7 +73,7 @@ Stanna hos bexio om du behöver full bokföring och årsbokslut i samma verktyg,
 
 ## Vad gör Helvetly annorlunda än bexio?
 
-Helvetly fokuserar på back office kring att få betalt, till ett pris per person, medan bexio är ett brett system med bokföring, löner och en marknadsplats. Helvetly erbjuder följande, som vi inte hittade på bexios webbplats:
+Helvetly fokuserar på back office kring att få betalt, med några personer inkluderade i varje plan, medan bexio är ett brett system med bokföring, löner och en marknadsplats. Helvetly erbjuder följande, som vi inte hittade på bexios webbplats:
 
 - E-faktura-XML för Tyskland, Polen, Rumänien och Peppol: filer för XRechnung, Peppol BIS, KSeF och e-Factura (Business). De exporteras som filer; Helvetly levererar dem inte via näten.
 - Avtal som fylls i från mallar och skickas för enkel elektronisk signatur (Pro och Business); kvalificerade signaturer erbjuds inte.
@@ -81,7 +81,7 @@ Helvetly fokuserar på back office kring att få betalt, till ett pris per perso
 - Retainers med återstående timmar och delbetalningsplaner med en QR-faktura för varje del.
 - Heidi, en inbyggd assistent som svarar utifrån dina egna uppgifter och agerar först när du har bekräftat (Pro och Business).
 
-Det Helvetly saknar jämfört med bexio: årsbokslut, löneberäkning, lagerhantering, egna mobilappar (Helvetly är en webbapp för alla enheter) och en gratisplan.
+Det Helvetly saknar jämfört med bexio: årsbokslut, löneberäkning, lagerhantering och egna mobilappar (Helvetly är en webbapp för alla enheter).
 
 ## Hur byter du från bexio?
 
