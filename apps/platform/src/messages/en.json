@@ -5980,5 +5980,6 @@
   "afterThatTheWorkspaceMovesToFreeToRenew": "After that the workspace moves to Free; nothing is deleted. {ASK} to renew.",
   "theWorkspaceMovesToFree": "the workspace moves to Free",
   "thenTheWorkspaceMovesToFree": "Then the workspace moves to Free.",
-  "planTierLine": "{price} for {included, plural, one {# person} other {# people}}{extra, plural, =0 {} one { + # person at {extraPrice}} other { + # people at {extraPrice} each}}"
+  "planTierLine": "{price} for {included, plural, one {# person} other {# people}}{extra, plural, =0 {} one { + # person at {extraPrice}} other { + # people at {extraPrice} each}}",
+  "youSavePerPersonPerYear": "You save {amount} per person per year vs monthly"
 }

@@ -5980,5 +5980,6 @@
   "afterThatTheWorkspaceMovesToFreeToRenew": "Danach wechselt der Arbeitsbereich zu Free; es wird nichts gelöscht. {ASK}, um zu verlängern.",
   "theWorkspaceMovesToFree": "wechselt der Arbeitsbereich zu Free",
   "thenTheWorkspaceMovesToFree": "Danach wechselt der Arbeitsbereich zu Free.",
-  "planTierLine": "{price} für {included, plural, one {# Person} other {# Personen}}{extra, plural, =0 {} one { + # Person zu {extraPrice}} other { + # Personen zu je {extraPrice}}}"
+  "planTierLine": "{price} für {included, plural, one {# Person} other {# Personen}}{extra, plural, =0 {} one { + # Person zu {extraPrice}} other { + # Personen zu je {extraPrice}}}",
+  "youSavePerPersonPerYear": "Sie sparen {amount} pro Person und Jahr gegenüber monatlich"
 }

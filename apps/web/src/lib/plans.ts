@@ -1,8 +1,16 @@
-import { localeDetails } from '@helvetly/i18n'
+import { type Locale, localeDetails } from '@helvetly/i18n'
 import { type PlanId, PLAN_IDS } from '@helvetly/ui/lib/plan-features'
-import { type Price, YEARLY_DISCOUNT_PERCENT, yearOf } from '@helvetly/ui/lib/price'
+import {
+  formatAmount,
+  formatPrice,
+  monthOf,
+  type Price,
+  savingOf,
+  YEARLY_DISCOUNT_PERCENT,
+  yearOf,
+} from '@helvetly/ui/lib/price'
 // The one place the website keeps what each plan costs and includes: offer helvetly-v1's public projection (tiered
-// prices, the business comparison, the plan features and the commercial allowances). Every page, card, table, FAQ and
+// prices, the business comparison, plan features and the commercial allowances). Every page, card, table, FAQ and
 // comparison reads it from here. Prices are checked against apps/api/internal/billing/plans.go in plans.test.ts.
 // These values are the build-time copy of the offer on sale: lib/offer.ts shows prices only once the API's public
 // offer confirms them, and offer.test.ts ties this module to the API through public-offer.golden.json.
@@ -139,9 +147,12 @@ export const OFFER_FEATURE_KEYS = Object.keys(OFFER_FEATURES).filter((key): key 
   Object.hasOwn(OFFER_FEATURES, key),
 )
 /** The comparison's bundles that callers name as one feature: templates and signatures, corrections and VAT. */
-export type Feature = OfferFeature | 'templates_signatures' | 'corrections_vat'
+export type Feature = OfferFeature | 'templates_signatures' | 'corrections_vat' | 'api_access'
 
-const offerFeature = (feature: Feature): OfferFeature =>
+/** API & MCP tokens: an internal key of the offer (not in its public `features`), Pro and Business (00065). */
+const API_FROM: PlanId = 'pro'
+
+const offerFeature = (feature: Exclude<Feature, 'api_access'>): OfferFeature =>
   feature === 'templates_signatures'
     ? 'simple_signatures'
     : feature === 'corrections_vat'
@@ -149,7 +160,7 @@ const offerFeature = (feature: Feature): OfferFeature =>
       : feature
 
 export function has(plan: PlanId, feature: Feature): boolean {
-  const from = OFFER_FEATURES[offerFeature(feature)]
+  const from = feature === 'api_access' ? API_FROM : OFFER_FEATURES[offerFeature(feature)]
   return from !== null && PLAN_IDS.indexOf(plan) >= PLAN_IDS.indexOf(from)
 }
 
@@ -206,6 +217,17 @@ export function extraPersonOf(plan: Plan, interval: Interval, currency = 'chf'):
 export function totalOf(plan: Plan, interval: Interval, people: number, currency = 'chf'): Price {
   const extra = Math.max(people - plan.includedPeople, 0) * extraPersonOf(plan, interval).amount
   return { amount: priceOf(plan, interval).amount + extra, currency }
+}
+
+/** A plan's yearly price as the cards word it: what it comes to a month, the year billed and what it saves. */
+export function yearlyTerms(plan: Plan, language: Locale, currency = 'chf') {
+  const locale = localeDetails(language).numberLocale
+  const year = priceOf(plan, 'year', currency)
+  return {
+    perMonth: formatAmount(monthOf(year), locale),
+    billed: formatPrice(year, locale),
+    saving: formatPrice(savingOf(priceOf(plan, 'month', currency)), locale),
+  }
 }
 
 /** Everything the plans say in words, in one language. */

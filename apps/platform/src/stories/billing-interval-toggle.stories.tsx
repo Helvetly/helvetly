@@ -3,7 +3,7 @@ import {
   BillingIntervalToggle,
 } from '@helvetly/ui/components/billing-interval-toggle'
 import { translate } from '@helvetly/ui/lib/i18n'
-import { formatPrice, YEARLY_DISCOUNT_PERCENT, yearlySaving } from '@helvetly/ui/lib/price'
+import { formatPrice, YEARLY_DISCOUNT_PERCENT, savingOf } from '@helvetly/ui/lib/price'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import { expect, userEvent, within } from 'storybook/test'
@@ -20,7 +20,7 @@ type Story = StoryObj<typeof meta>
 const BASIC_MONTH = { amount: 1900, currency: 'chf' }
 const saving = translate('planYearlySaving', {
   percent: YEARLY_DISCOUNT_PERCENT,
-  amount: formatPrice(yearlySaving(BASIC_MONTH)),
+  amount: formatPrice(savingOf(BASIC_MONTH)),
   plan: 'Basic',
 })
 

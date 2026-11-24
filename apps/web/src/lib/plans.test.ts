@@ -18,6 +18,7 @@ import {
   TRIAL,
   USAGE_DETAILS,
   YEARLY_DISCOUNT_PERCENT,
+  yearlyTerms,
 } from './plans'
 
 const { BENEFITS, bytes, LIMITS, PLANS, plansWith, tokens, planById } = plansIn('en')
@@ -193,5 +194,43 @@ describe('offer helvetly-v1 public projection', () => {
     expect(bytes(1_000_000_000)).toBe('1 GB')
     expect(tokens(250_000)).toBe('250’000')
     expect(tokens(20_000_000)).toBe('20M')
+  })
+})
+
+/** "CHF 1'413", "1.431", "15.25", "39,25" back to rappen: a separator before exactly two digits at the end is the decimal one. */
+const rappen = (shown: string) => {
+  const digits = shown.replace(/[^\d.,]/g, '')
+  const cents = /[.,](\d{2})$/.exec(digits)
+  const whole = (cents ? digits.slice(0, -3) : digits).replace(/[.,]/g, '')
+  return Number(whole) * 100 + Number(cents?.[1] ?? 0)
+}
+
+const PAID = PLANS.filter((plan) => plan.id !== 'free')
+
+describe('yearly prices as the cards show them', () => {
+  it.each(PAID.map((plan) => [plan.id, plan] as const))(
+    '%s: twelve of the month shown make the year billed, to the rappen, and the saving is the difference',
+    (_, plan) => {
+      for (const language of ['en', 'de', 'nl'] as const) {
+        const { perMonth, billed, saving } = yearlyTerms(plan, language)
+        const year = priceOf(plan, 'year').amount
+        expect(Math.abs(rappen(perMonth) * 12 - year)).toBeLessThanOrEqual(12)
+        expect(rappen(billed)).toBe(year)
+        expect(rappen(saving)).toBe(priceOf(plan, 'month').amount * 12 - year)
+      }
+    },
+  )
+
+  it('words them with rappen and in the page language', () => {
+    expect(PAID.map((plan) => yearlyTerms(plan, 'en'))).toEqual([
+      { perMonth: '15.25', billed: 'CHF 183', saving: 'CHF 45' },
+      { perMonth: '39.25', billed: 'CHF 471', saving: 'CHF 117' },
+      { perMonth: '119.25', billed: "CHF 1'431", saving: 'CHF 357' },
+    ])
+    expect(PAID.map((plan) => yearlyTerms(plan, 'de', 'eur').saving)).toEqual([
+      'EUR 45',
+      'EUR 117',
+      'EUR 357',
+    ])
   })
 })

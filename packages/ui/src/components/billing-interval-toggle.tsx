@@ -43,7 +43,7 @@ export function BillingIntervalToggle({
         <span
           aria-hidden
           className={cn(
-            'absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full border border-border bg-card shadow-[0_1px_2px_rgb(0_0_0/0.06)] transition-transform duration-300 ease-out motion-reduce:transition-none dark:border-white/8 dark:bg-white/10',
+            'absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full border border-border bg-card transition-transform duration-300 ease-out motion-reduce:transition-none dark:border-white/8 dark:bg-white/10',
             value === 'year' && 'translate-x-full',
           )}
         />

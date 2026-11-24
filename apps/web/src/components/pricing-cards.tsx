@@ -4,7 +4,7 @@ import { Callout } from '@helvetly/ui/components/callout'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
 import { PlanCard, PlanPrice } from '@helvetly/ui/components/plan-card'
 import { planCards, planFootnote } from '@helvetly/ui/lib/plan-features'
-import { formatPrice, yearlySaving } from '@helvetly/ui/lib/price'
+import { formatPrice, savingOf } from '@helvetly/ui/lib/price'
 import { Ban, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
 
 import { Cta } from '@/components/cta'
@@ -95,7 +95,7 @@ export function PricingCards() {
   const basic = planById('basic')
   const saving = ui('planYearlySaving', {
     percent: YEARLY_DISCOUNT_PERCENT,
-    amount: formatPrice(yearlySaving(priceOf(basic, 'month', currency))),
+    amount: formatPrice(savingOf(priceOf(basic, 'month', currency))),
     plan: basic.name,
   })
 
