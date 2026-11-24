@@ -4,6 +4,7 @@ import {
 } from '@helvetly/ui/components/billing-interval-toggle'
 import {
   FreePlanRow,
+  PlanHeadPrice,
   PlanCard,
   PlanPrice,
   type PlanPrices,
@@ -182,21 +183,54 @@ export const Cards: Story = {
   },
 }
 
-/** The comparison table below the cards: every row, grouped as the cards, with a (?) where it helps. */
+function ComparisonView() {
+  const [interval, setInterval] = useState<BillingInterval>('year')
+  return (
+    <div className="grid gap-8">
+      <BillingIntervalToggle value={interval} onValueChange={setInterval} className="mx-auto" />
+      <PlanComparison
+        groups={planComparison(OFFER, 'en')}
+        featured="pro"
+        plans={OFFER.plans.map((plan) => ({
+          ...plan,
+          head: (
+            <>
+              <PlanHeadPrice prices={PRICES[plan.id]} interval={interval} currency="chf" />
+              <span className="mt-3 block whitespace-nowrap">
+                {button(plan.id === 'pro' ? 'Try Pro free' : `Choose ${plan.name}`)}
+              </span>
+            </>
+          ),
+        }))}
+      />
+    </div>
+  )
+}
+
+/**
+ * The comparison table below the cards: a calm pinned head (name, a month's price, the people in one muted line, a
+ * one-line call to action; the year's total stays on the cards), then every row, grouped as the cards, with a (?)
+ * where it helps.
+ */
 export const Comparison: Story = {
-  render: () => (
-    <PlanComparison
-      groups={planComparison(OFFER, 'en')}
-      featured="pro"
-      plans={OFFER.plans.map((plan) => ({
-        ...plan,
-        head: <span className="mt-3 block">{button(`Choose ${plan.name}`)}</span>,
-      }))}
-    />
-  ),
+  render: () => <ComparisonView />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const table = canvas.getByRole('table', { name: 'Compare every feature' })
+    const head = (name: string) =>
+      within(table).getByRole('columnheader', { name: new RegExp(`^${name}`) })
+    await expect(head('Pro')).toHaveTextContent('CHF 39.25 / month')
+    await expect(head('Pro')).toHaveTextContent('2 people incl., +CHF 15 each')
+    await expect(head('Free')).toHaveTextContent('1 person · free forever')
+    await expect(table.querySelector('thead')?.textContent).not.toMatch(/year|save/i)
+    // Every column's call to action is one line, at the same height.
+    const heights = within(table)
+      .getAllByRole('button', { name: /^(Try|Choose)/ })
+      .map((cta) => cta.getBoundingClientRect().height)
+    await expect(new Set(heights).size).toBe(1)
+    await userEvent.click(canvas.getByRole('radio', { name: 'Monthly' }))
+    await expect(head('Pro')).toHaveTextContent('CHF 49 / month')
+
     const row = (name: string) =>
       within(within(table).getByRole('rowheader', { name }).closest('tr') ?? table)
         .getAllByRole('cell')

@@ -445,7 +445,7 @@ export const PlansTrialSwitch: Story = {
     // A subscription keeps its own interval; Yearly still shows its discount, the saving only once chosen.
     await expect(canvas.getByRole('radio', { name: 'Monthly' })).toBeChecked()
     await expect(canvas.getByRole('radio', { name: 'Yearly' })).toHaveAccessibleDescription('−20%')
-    await expect(canvas.getByText('Save CHF 45 a year on Basic')).not.toBeVisible()
+    await expect(canvas.getByText('Pay yearly: over 2 months of Pro free')).not.toBeVisible()
     const proCard = card(canvas, 'Pro')
     await expect(canvas.getByRole('article', { name: 'Pro' })).toHaveTextContent(
       '2 people incl. · +CHF 15 / person',
@@ -756,7 +756,7 @@ export const PlansFreeEuro: Story = {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
     await expect(canvas.getByRole('article', { name: 'Pro' })).toHaveTextContent('EUR')
-    await expect(canvas.getByText('Save EUR 45 a year on Basic')).toBeVisible()
+    await expect(canvas.getByText('Pay yearly: over 2 months of Pro free')).toBeVisible()
     await expect(canvas.getByText(/Prices incl\. VAT/)).toBeVisible()
     await expect(canvas.queryByText(/Swiss VAT|CHF/)).toBeNull()
   },

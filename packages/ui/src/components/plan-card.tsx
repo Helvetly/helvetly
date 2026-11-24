@@ -18,6 +18,48 @@ export type PlanPrices = {
 }
 
 /**
+ * A plan's price in the comparison's pinned head, two short lines: what a month costs on the chosen interval (yearly:
+ * its share of the year), then, muted, its people: "2 people incl., +CHF 15 each" (the extra person at its monthly
+ * price, as on the cards), or Free's "1 person · free forever". The year's total and saving stay on the cards.
+ */
+export function PlanHeadPrice({
+  prices,
+  interval,
+  currency,
+}: {
+  prices: PlanPrices
+  interval: BillingInterval
+  currency: string
+}) {
+  const translate = useTranslate()
+  const month =
+    interval === 'year'
+      ? monthOf({ amount: prices.year, currency })
+      : { amount: prices.month, currency }
+  return (
+    <div data-slot="plan-head-price" className="mt-1 text-body-sm tabular-nums">
+      <p className="whitespace-nowrap">
+        <span className="font-semibold text-foreground">{formatPrice(month)}</span>{' '}
+        <span className="text-muted-foreground">{translate('planPerMonth')}</span>
+      </p>
+      {/* Two lines kept in the table, so every column's call to action sits at the same height. */}
+      <p className="mt-0.5 text-balance text-muted-foreground lg:min-h-[2lh]">
+        {prices.month === 0
+          ? translate('planFreeForever', { count: prices.included_people })
+          : translate('planPeopleShort', {
+              count: prices.included_people,
+              // A no-break space keeps "CHF 15" on one line.
+              extra: formatPrice({ amount: prices.extra_person_month, currency }).replace(
+                ' ',
+                '\u00a0',
+              ),
+            })}
+      </p>
+    </div>
+  )
+}
+
+/**
  * How a paid plan's people and billing read, under its price, each on one line: "1 person incl. · +CHF 10 / person"
  * (the extra person at its monthly price), then, muted, "CHF 470 / year · save CHF 118" or "Billed monthly".
  * `people` false leaves "1 person incl." out.

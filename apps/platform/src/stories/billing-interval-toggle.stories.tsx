@@ -3,7 +3,7 @@ import {
   BillingIntervalToggle,
 } from '@helvetly/ui/components/billing-interval-toggle'
 import { translate } from '@helvetly/ui/lib/i18n'
-import { formatPrice, YEARLY_DISCOUNT_PERCENT, savingOf } from '@helvetly/ui/lib/price'
+import { YEARLY_DISCOUNT_PERCENT, yearlyFreeMonths } from '@helvetly/ui/lib/price'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import { expect, userEvent, within } from 'storybook/test'
@@ -16,12 +16,13 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-// Basic's base price in the offer (rappen): what yearly saves is computed from it, never written down.
-const BASIC_MONTH = { amount: 1900, currency: 'chf' }
-const saving = translate('planYearlySaving', {
-  amount: formatPrice(savingOf(BASIC_MONTH)),
-  plan: 'Basic',
-})
+// The offer's base prices (rappen): the free months are computed from Pro's, never written down.
+const freeMonths = yearlyFreeMonths([
+  { id: 'basic', name: 'Basic', month: 1900, year: 18300 },
+  { id: 'pro', name: 'Pro', month: 4900, year: 47100 },
+])
+const saving =
+  freeMonths && translate('planYearlyFreeMonths', { ...freeMonths, over: String(freeMonths.over) })
 
 function Toggle() {
   const [value, setValue] = useState<BillingInterval>('year')
@@ -51,7 +52,7 @@ export const Default: Story = {
     await expect(canvas.getByRole('radiogroup', { name: 'Billing interval' })).toBeVisible()
     await expect(yearly).toBeChecked()
     await expect(yearly).toHaveAccessibleDescription('−20%')
-    const saved = canvas.getByText('Save CHF 45 a year on Basic')
+    const saved = canvas.getByText('Pay yearly: over 2 months of Pro free')
     await expect(saved).toBeVisible()
     const toggle = canvasElement.querySelector('[data-slot=billing-interval]')
     const height = toggle?.getBoundingClientRect().height

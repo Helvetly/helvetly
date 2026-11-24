@@ -5,7 +5,7 @@ import { Callout } from '@helvetly/ui/components/callout'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
 import { FreePlanRow, PlanCard, PlanPrice } from '@helvetly/ui/components/plan-card'
 import { freePlanFacts, planCards, planFootnote } from '@helvetly/ui/lib/plan-features'
-import { formatPrice, savingOf } from '@helvetly/ui/lib/price'
+import { formatPrice, yearlyFreeMonths } from '@helvetly/ui/lib/price'
 import { ArrowDown, Ban, Globe, RefreshCw, Sparkles, UsersRound } from 'lucide-react'
 import Link from 'next/link'
 
@@ -16,14 +16,7 @@ import { cn } from '@/lib/cn'
 import { useCurrency } from '@/lib/currency'
 import { translatorFor } from '@/lib/i18n'
 import { planCatalogue, projectPlans } from '@/lib/offer'
-import {
-  type PlanId,
-  plansIn,
-  priceOf,
-  RECOMMENDED,
-  TRIAL,
-  YEARLY_DISCOUNT_PERCENT,
-} from '@/lib/plans'
+import { type PlanId, plansIn, RECOMMENDED, TRIAL, YEARLY_DISCOUNT_PERCENT } from '@/lib/plans'
 import { siteIn, SUPPORT_EMAIL } from '@/lib/site'
 import { type Tone, TONES } from '@/lib/tones'
 
@@ -52,10 +45,13 @@ export function publishedPrices(plan: PlanId) {
 export function PlanCta({
   plan,
   arrow,
+  short = false,
   className,
 }: {
   plan: PlanId
   arrow?: boolean
+  /** The comparison's one-line label: "Try Pro free", no trial length (the cards above say it). */
+  short?: boolean
   className?: string
 }) {
   const language = useLanguage()
@@ -67,13 +63,15 @@ export function PlanCta({
       href={siteIn(language).START_URL}
       disabled={unavailable && plan !== 'free'}
       variant={plan === RECOMMENDED ? 'primary' : 'outline'}
-      arrow={arrow}
-      className={cn('w-full', className)}
+      arrow={short ? false : arrow}
+      className={cn('w-full', short && 'whitespace-nowrap', className)}
     >
       {plan === 'free'
         ? translate('planStartFree')
         : plan === TRIAL.plan
-          ? translate('planTryFree', { plan: name, days: TRIAL.days })
+          ? short
+            ? translate('planTryFreeShort', { plan: name })
+            : translate('planTryFree', { plan: name, days: TRIAL.days })
           : translate('planChoose', { plan: name })}
     </Cta>
   )
@@ -105,12 +103,16 @@ export function PricingCards() {
   const currency = useCurrency()
   const offer = useOfferStatus()
   const unavailable = offer.status === 'unavailable'
-  // What yearly saves on the cheapest paid plan, from the catalogue.
-  const basic = planById('basic')
-  const saving = ui('planYearlySaving', {
-    amount: formatPrice(savingOf(priceOf(basic, 'month', currency))),
-    plan: basic.name,
-  })
+  // What yearly gives as free months of Pro, from the published prices.
+  const freeMonths = yearlyFreeMonths(
+    PUBLISHED.map((plan) => ({
+      ...publishedPrices(plan.id),
+      id: plan.id,
+      name: planById(plan.id).name,
+    })),
+  )
+  const saving =
+    freeMonths && ui('planYearlyFreeMonths', { ...freeMonths, over: String(freeMonths.over) })
 
   return (
     <div className="flex flex-col items-center">

@@ -36,3 +36,24 @@ export function formatAmount({ amount }: Price, locale = numberLocale): string {
 export function formatPrice(price: Price, locale = numberLocale): string {
   return `${price.currency.toUpperCase()} ${formatAmount(price, locale)}`
 }
+
+/** A plan's base prices for its included people, in minor units of one currency. */
+export type PlanPricePair = { id: string; name: string; month: number; year: number }
+
+/**
+ * What yearly billing gives as free months, for the toggle's line: Pro's (the plan we promote), else the plan saving
+ * the most. Whole months, never rounded up; `over` when part of another month is saved too. None under one month.
+ */
+export function yearlyFreeMonths(
+  plans: PlanPricePair[],
+): { plan: string; months: number; over: boolean } | undefined {
+  const saved = (plan: PlanPricePair) => plan.month * 12 - plan.year
+  const sold = plans.filter((plan) => plan.month > 0)
+  const best =
+    sold.find((plan) => plan.id === 'pro') ??
+    sold.toSorted((a, b) => saved(b) - saved(a) || a.month - b.month)[0]
+  if (!best) return undefined
+  const months = Math.floor(saved(best) / best.month)
+  if (months < 1) return undefined
+  return { plan: best.name, months, over: saved(best) % best.month !== 0 }
+}

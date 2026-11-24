@@ -11,6 +11,7 @@ import { useTranslate } from '@helvetly/ui/components/language-provider'
 import {
   FreePlanRow,
   PlanCard,
+  PlanHeadPrice,
   PlanPrice,
   type PlanPrices,
 } from '@helvetly/ui/components/plan-card'
@@ -24,6 +25,7 @@ import {
   type PlanCardData,
   type PlanCatalogue,
 } from '@helvetly/ui/lib/plan-features'
+import { yearlyFreeMonths } from '@helvetly/ui/lib/price'
 import { useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, Check, ChevronDown, Lock, Sparkles } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
@@ -42,7 +44,6 @@ import {
   isPaid,
   isUpgrade,
   limitNoun,
-  monthOf,
   offerNoun,
   paymentFailed,
   people,
@@ -245,18 +246,15 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer: PublicO
   const catalogue = catalogueOf(offer, billing)
   const cards = planCards(catalogue, locale).map((card) => (ai ? card : withoutAI(card)))
   const free = cards.find((card) => card.plan === 'free')
-  // What yearly saves on the cheapest plan sold, from its own prices.
+  // Yearly's discount on the cheapest plan sold, and the free months it gives on Pro, from their own prices.
   const cheapest = billing.plans.find((plan) => yearlySaving(plan) > 0)
+  const freeMonths = yearlyFreeMonths(
+    billing.plans.flatMap(({ id, name, prices: { month, year } }) =>
+      month && year ? [{ id, name, month: month.amount, year: year.amount }] : [],
+    ),
+  )
   const saving =
-    cheapest?.prices.month && cheapest.prices.year
-      ? ui('planYearlySaving', {
-          amount: formatPrice({
-            amount: cheapest.prices.month.amount * 12 - cheapest.prices.year.amount,
-            currency: billing.currency,
-          }),
-          plan: cheapest.name,
-        })
-      : undefined
+    freeMonths && ui('planYearlyFreeMonths', { ...freeMonths, over: String(freeMonths.over) })
   const groups = planComparison(catalogue, locale).map((group) => ({
     ...group,
     rows: ai ? group.rows : group.rows.filter((row) => !AI_LINES.has(row.key)),
@@ -350,11 +348,7 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer: PublicO
             plans={offer.plans.map((plan) => ({
               id: plan.id,
               name: plan.name,
-              head: (
-                <span className="mt-1 block text-body-sm font-normal text-muted-foreground tabular-nums">
-                  {headPrice(plan.id, billing, interval)}
-                </span>
-              ),
+              head: <HeadPrice id={plan.id} billing={billing} offer={offer} interval={interval} />,
             }))}
           />
         </div>
@@ -389,13 +383,24 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer: PublicO
   )
 }
 
-/** A plan's month in the comparison's pinned head: "CHF 49 / month" (yearly: its share of the year), Free "CHF 0". */
-function headPrice(id: string, billing: Billing, interval: BillingInterval): string {
-  const plan = billing.plans.find((entry) => entry.id === id)
-  if (!plan) return formatPrice({ amount: 0, currency: billing.currency })
-  const price = plan.prices[interval]
-  if (!price) return '—'
-  return `${formatPrice(interval === 'year' ? monthOf(price) : price)} / ${translate('dynamicMonth')}`
+/** A column's price in the comparison: the workspace's own prices of a plan it can buy, else the offer's (Free). */
+function HeadPrice({
+  id,
+  billing,
+  offer,
+  interval,
+}: {
+  id: string
+  billing: Billing
+  offer: PublicOffer
+  interval: BillingInterval
+}) {
+  const sold = billing.plans.find((entry) => entry.id === id)
+  const prices = sold
+    ? pricesOf(sold)
+    : offer.plans.find((entry) => entry.id === id)?.prices[billing.currency.toUpperCase()]
+  if (!prices) return <p className="mt-1 text-body-sm text-muted-foreground">—</p>
+  return <PlanHeadPrice prices={prices} interval={interval} currency={billing.currency} />
 }
 
 /** Free while the workspace is on it: the shared compact row with its few facts, no way to choose it. */

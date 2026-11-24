@@ -198,7 +198,7 @@ export function useBilling(refetchInterval: number | false = false) {
 }
 
 /** The offer on sale, as the public pricing page reads it: plans, prices, features and allowances for one person. */
-export type PublicOffer = PlanCatalogue & {
+export type PublicOffer = Omit<PlanCatalogue, 'plans'> & {
   offer_id: string
   plans: {
     id: CatalogueId
