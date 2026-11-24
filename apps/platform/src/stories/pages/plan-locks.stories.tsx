@@ -16,7 +16,9 @@ import type { Billing } from '@/lib/billing'
 
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone } from './frame'
 
-const basic = billingFixture({
+// Basic as an earlier offer sold it, without expenses: a subscription keeps its offer's terms, so the lock still shows.
+const withoutExpenses = (features: string[]) => features.filter((key) => key !== 'expenses')
+const current = billingFixture({
   plan: 'basic',
   status: 'active',
   interval: 'month',
@@ -24,6 +26,13 @@ const basic = billingFixture({
   locked: false,
   has_customer: true,
 })
+const basic: Billing = {
+  ...current,
+  features: withoutExpenses(current.features),
+  plans: current.plans.map((plan) =>
+    plan.id === 'basic' ? { ...plan, features: withoutExpenses(plan.features) } : plan,
+  ),
+}
 const billingIs = (billing: Billing) =>
   http.get('/api/v1/billing', () => HttpResponse.json({ data: billing }))
 
@@ -49,7 +58,7 @@ const toastShows = async (text: string) => {
 }
 
 /**
- * Basic has no expenses or Heidi: the page says so with the way to Pro, adds nothing new and keeps what there is; the
+ * Basic (on an earlier offer) has no expenses, and no Heidi: the page says so with the way to Pro, adds nothing new and keeps what there is; the
  * sidebar tags both entry points with the plan that has them, and Heidi's opens a toast instead of her panel.
  */
 export const ExpensesOnBasic: Story = {

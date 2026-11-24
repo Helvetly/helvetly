@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, screen, userEvent, within } from 'storybook/test'
 
-import { billingFixture } from '@/components/billing/billing-fixture'
+import { noPlanBillingFixture } from '@/components/billing/billing-fixture'
 import { ChoosePlan } from '@/components/shell/plan-gate'
 import type { Billing } from '@/lib/billing'
 
@@ -22,7 +22,7 @@ const meta = {
     layout: 'fullscreen',
     ownMain: true,
     nextjs: { navigation: { pathname: '/choose-plan' } },
-    msw: { handlers: handlers(billingFixture()) },
+    msw: { handlers: handlers(noPlanBillingFixture()) },
   },
 } satisfies Meta
 export default meta
@@ -35,7 +35,10 @@ const phone = {
 }
 const mobile = { globals: { viewport: { value: 'phone' } } }
 
-/** A new workspace: the picker with the trial on Basic, and nothing below the plans but the comparison-free footer. */
+/**
+ * A workspace without any plan (not even Free; the API no longer answers it, the gate still guards it): the picker
+ * with the trial on Pro.
+ */
 export const NewWorkspace: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -54,13 +57,13 @@ export const NewWorkspace: Story = {
       canvas.queryByRole('heading', { name: 'Every plan includes' }),
     ).not.toBeInTheDocument()
     await expect(canvas.queryByRole('heading', { name: 'Questions' })).not.toBeInTheDocument()
-    const pro = within(canvas.getByRole('region', { name: 'Pro' }))
+    const pro = within(canvas.getByRole('article', { name: 'Pro' }))
     await expect(pro.getByText('Recommended')).toBeVisible()
     // Seats follow the workspace's people: a total for them, no control to pick another number.
     await expect(canvas.queryByRole('button', { name: 'More people' })).not.toBeInTheDocument()
     await expect(
-      canvas.getByRole('region', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
-    ).toHaveTextContent('For 3 peopleCHF 147 / month')
+      canvas.getByRole('article', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
+    ).toHaveTextContent('For 3 peopleCHF 615 / year')
   },
 }
 
@@ -71,11 +74,13 @@ export const NewWorkspaceMobile: Story = { ...NewWorkspace, parameters: phone, .
 /** A workspace whose plan lapsed: past the plans, its settings and, for its owner, deleting it in place. */
 export const Lapsed: Story = {
   parameters: {
-    msw: { handlers: handlers(billingFixture({ has_customer: true, payment_overdue: true })) },
+    msw: {
+      handlers: handlers(noPlanBillingFixture({ has_customer: true, payment_overdue: true })),
+    },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('region', { name: 'Pro' })).toBeVisible()
+    await expect(await canvas.findByRole('article', { name: 'Pro' })).toBeVisible()
     await expect(
       canvas.getByRole('link', { name: 'Workspace settings' }).getAttribute('href'),
     ).toMatch(/^\/settings\/workspace\/?$/)
@@ -100,7 +105,9 @@ export const LapsedMobile: Story = {
 
 /** An admin sees the workspace settings too, but deleting stays the owner's. */
 export const LapsedAdmin: Story = {
-  parameters: { msw: { handlers: handlers(billingFixture({ has_customer: true }), 'admin') } },
+  parameters: {
+    msw: { handlers: handlers(noPlanBillingFixture({ has_customer: true }), 'admin') },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('link', { name: 'Workspace settings' })).toBeVisible()

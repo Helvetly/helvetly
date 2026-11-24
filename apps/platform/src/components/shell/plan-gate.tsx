@@ -85,13 +85,13 @@ export function ChoosePlan() {
   }, [router])
 
   if (!session) return null
-  if (!data || open) {
+  if (!data || !offer.data || open) {
     return (
       <PlanScreen workspace={<WorkspaceSwitcher session={session} />} action={<SignOutButton />}>
-        {billing.error ? (
+        {billing.error || offer.error ? (
           <p role="alert" className="mt-16 text-center text-sm text-muted-foreground">
             {translate('plansCouldnTBeLoaded')}
-            {errorMessage(billing.error)}
+            {errorMessage(billing.error ?? offer.error)}
           </p>
         ) : (
           <Loader label={translate('loadingPlans')} className="min-h-96" />

@@ -126,10 +126,10 @@ const mobile = { globals: { viewport: { value: 'phone' } } }
 const price = (canvas: HTMLElement) => canvas.querySelector('[data-slot=plan-price]')
 const nextStep = (canvas: HTMLElement) => canvas.querySelector('[data-slot=plan-next]')
 const card = (canvas: ReturnType<typeof within>, name: string) =>
-  within(canvas.getByRole('region', { name }))
+  within(canvas.getByRole('article', { name }))
 /** The plans page loads its billing first. */
 const plansLoaded = (canvas: ReturnType<typeof within>) =>
-  canvas.findByRole('region', { name: 'Basic' })
+  canvas.findByRole('article', { name: 'Basic' })
 const plansPage = (billing: Billing) => ({
   render: () => <ChangePlan />,
   parameters: {
@@ -148,14 +148,14 @@ export const Trial: Story = {
     await expect(await summary.findByRole('heading', { name: 'Business' })).toBeVisible()
     await expect(summary.getByText('Trial', { exact: true })).toBeVisible()
     await expect(summary.getByText(/^Trial ends on \d+ \w+ \d{4}$/)).toBeVisible()
-    await expect(summary.getByText('Day 3 of 7')).toBeVisible()
-    // The total with how it adds up, then what is charged after the trial.
+    await expect(summary.getByText('Day 10 of 14')).toBeVisible()
+    // The total with how it adds up (Business includes five people), then what is charged after the trial.
     await expect(price(canvasElement)).toHaveTextContent(
-      /CHF 99 per person × 2 people\s*CHF 198\s*\/ month/,
+      /CHF 149 for 5 people\s*CHF 149\s*\/ month/,
     )
-    await expect(nextStep(canvasElement)).toHaveTextContent('Then CHF 198 is charged.')
+    await expect(nextStep(canvasElement)).toHaveTextContent('Then CHF 149 is charged.')
     // The plans are a page of their own: no tiles here, one way there.
-    await expect(canvas.queryByRole('region', { name: 'Pro' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('article', { name: 'Pro' })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('radio', { name: /^Yearly/ })).not.toBeInTheDocument()
     // A trial on Business: nothing above it, so one way to the plans page.
     await changePlanLink(summary)
@@ -188,7 +188,11 @@ export const ActiveMonthly: Story = {
     const summary = within(await canvas.findByRole('region', { name: 'Plan' }))
     await expect(await summary.findByText('Renews on 1 Dec 2026')).toBeVisible()
     await expect(summary.getByText('Active', { exact: true })).toBeVisible()
-    await expect(nextStep(canvasElement)).toHaveTextContent('Next charge CHF 57.')
+    // Basic includes one person; the other two add CHF 10 each.
+    await expect(price(canvasElement)).toHaveTextContent(
+      /CHF 19 for 1 person \+ 2 people at CHF 10 each\s*CHF 39\s*\/ month/,
+    )
+    await expect(nextStep(canvasElement)).toHaveTextContent('Next charge CHF 39.')
     await changePlanLink(summary, 'Upgrade to Pro')
     const payment = within(canvas.getByRole('region', { name: 'Payment method' }))
     // One row: brand and last four digits, the expiry under them, Update on the right.
@@ -271,8 +275,8 @@ export const WithDiscount: Story = {
     // The promotion code itself is never shown.
     await expect(summary.queryByText(/WELCOME20/)).not.toBeInTheDocument()
     // The total stays the list price; the next charge has the discount taken off.
-    await expect(price(canvasElement)).toHaveTextContent(/CHF 57\s*\/ month/)
-    await expect(nextStep(canvasElement)).toHaveTextContent('Next charge CHF 45.60.')
+    await expect(price(canvasElement)).toHaveTextContent(/CHF 39\s*\/ month/)
+    await expect(nextStep(canvasElement)).toHaveTextContent('Next charge CHF 31.20.')
   },
 }
 
@@ -386,28 +390,41 @@ export const NoPermission: Story = {
   },
 }
 
-export const NoPlan: Story = {
-  // The API still counts usage without a plan, against no limits.
+/** Free: its name and that it is free for good, Pro's trial offered, its usage against Free's limits, the way up. */
+export const FreePlan: Story = {
   parameters: {
     msw: {
-      handlers: handlers(billingFixture({ usage: [{ limit: 'clients', used: 0, max: null }] })),
+      handlers: handlers(
+        billingFixture({
+          usage: [
+            { limit: 'clients', used: 4, max: 5 },
+            { limit: 'invoices_per_month', used: 1, max: 3 },
+          ],
+        }),
+      ),
     },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('heading', { name: 'No plan' })).toBeVisible()
-    await expect(canvas.getByRole('region', { name: 'Read-only' })).toHaveTextContent(
-      'Try Pro free for 7 days with up to 2 people; until then nothing can be changed.',
+    const summary = within(await canvas.findByRole('region', { name: 'Plan' }))
+    await expect(await summary.findByRole('heading', { name: 'Free' })).toBeVisible()
+    await expect(summary.getByText('Free forever for one person · no card needed')).toBeVisible()
+    await expect(canvas.queryByText(/read-only/i)).not.toBeInTheDocument()
+    await expect(summary.getByRole('region', { name: '14 days free on Pro' })).toHaveTextContent(
+      'Try Pro free for 14 days with up to 2 people. Until you choose a plan, the workspace stays on Free.',
     )
-    // No limits without a plan, so no "0 of unlimited" rows.
-    await expect(canvas.queryByRole('heading', { name: 'Usage' })).not.toBeInTheDocument()
-    await changePlanLink(canvas, 'Choose a plan')
+    // Free's limits are measured like any plan's.
+    const clients = within(canvas.getByRole('region', { name: 'Usage' }))
+      .getByText('Clients', { exact: true })
+      .closest('[data-slot=usage-meter]')
+    await expect(clients).toHaveTextContent('4 of 5')
+    await changePlanLink(summary, 'Upgrade to Basic')
   },
 }
 
-export const NoPlanMobile: Story = {
-  ...NoPlan,
-  parameters: { ...NoPlan.parameters, ...phone },
+export const FreePlanMobile: Story = {
+  ...FreePlan,
+  parameters: { ...FreePlan.parameters, ...phone },
   ...mobile,
 }
 
@@ -425,34 +442,26 @@ export const PlansTrialSwitch: Story = {
       'href',
       '/settings/billing/',
     )
+    // A subscription keeps its own interval; yearly says what it saves.
+    await expect(canvas.getByRole('radio', { name: 'Monthly' })).toBeChecked()
+    await expect(canvas.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
     const proCard = card(canvas, 'Pro')
-    await expect(proCard.getByText('CHF 49')).toBeVisible()
+    await expect(canvas.getByRole('article', { name: 'Pro' })).toHaveTextContent(
+      '2 people included · +CHF 15 per extra person',
+    )
     await expect(
-      proCard.getByText('CHF 471', { selector: 'strong' }).parentElement,
-    ).toHaveTextContent('or CHF 471 a year, save 20%')
+      canvas.getByRole('article', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
+    ).toHaveTextContent('For 2 peopleCHF 49 / month')
+    // Its limits as a small table, and what it adds over Basic, nothing it lacks.
     await expect(
-      canvas.getByRole('region', { name: 'Pro' }).querySelector('[data-slot=team-total]'),
-    ).toHaveTextContent('For 2 peopleCHF 98 / month')
-    // Limits read number first.
-    await waitFor(() =>
-      expect(proCard.getByRole('list', { name: 'Pro includes' })).toHaveTextContent(/300 clients/),
-    )
-    // Pro lists what it adds over Basic once the public offer has loaded, and nothing it lacks.
-    await waitFor(() =>
-      expect(proCard.getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
-        /Heidi, your AI assistant/,
-      ),
-    )
-    await expect(proCard.getByRole('list', { name: 'Pro includes' })).not.toHaveTextContent(
-      /Client portal/,
-    )
+      within(proCard.getByLabelText('Limits')).getByText('Clients').nextSibling,
+    ).toHaveTextContent('300')
+    await expect(proCard.getByText('Heidi, your AI assistant')).toBeVisible()
+    await expect(proCard.queryByText(/client portal/)).toBeNull()
     await expect(proCard.getByText('Your trial ends now and Pro is charged today.')).toBeVisible()
     const businessCard = card(canvas, 'Business')
     await expect(businessCard.getByText('Current')).toBeVisible()
     await expect(businessCard.getByRole('button', { name: 'Current plan' })).toBeDisabled()
-    // The yearly saving sits in the Yearly segment itself.
-    await expect(canvas.getByRole('radio', { name: 'Yearly −20%' })).toBeInTheDocument()
-    await expect(canvas.getByText('Every member is a paid seat')).toBeVisible()
 
     await userEvent.click(proCard.getByRole('button', { name: 'Switch to Pro' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
@@ -460,7 +469,7 @@ export const PlansTrialSwitch: Story = {
     await waitFor(() =>
       expect(
         dialog.getByText(
-          'Your trial ends now and Pro is charged today: CHF 49 per person a month, incl. VAT (CHF 98 for 2 people).',
+          'Your trial ends now and Pro is charged today: CHF 49 a month for 2 people, incl. VAT.',
         ),
       ).toBeVisible(),
     )
@@ -550,14 +559,17 @@ export const PlansYearly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
-    const proCard = card(canvas, 'Pro')
-    await expect(
-      (await proCard.findByText('CHF 471', { selector: 'strong' })).parentElement,
-    ).toHaveTextContent('CHF 471 a year, billed yearly')
-    await expect(proCard.getByText('CHF 39.25', { exact: true })).toBeVisible()
-    await userEvent.click(proCard.getByRole('button', { name: 'Upgrade to Pro' }))
+    await expect(canvas.getByRole('radio', { name: 'Yearly' })).toBeChecked()
+    const proCard = canvas.getByRole('article', { name: 'Pro' })
+    // A yearly price reads as its month, with the year's price and saving under it.
+    await expect(proCard).toHaveTextContent('39.25')
+    await expect(proCard).toHaveTextContent('Billed CHF 471 yearly · you save CHF 117')
+    await expect(proCard.querySelector('[data-slot=team-total]')).toHaveTextContent(
+      'For 3 peopleCHF 615 / year',
+    )
+    await userEvent.click(within(proCard).getByRole('button', { name: 'Upgrade to Pro' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
-    await waitFor(() => expect(dialog.getByText(/CHF 471 per person a year/)).toBeVisible())
+    await waitFor(() => expect(dialog.getByText(/CHF 615 a year for 3 people/)).toBeVisible())
     await userEvent.click(dialog.getByRole('button', { name: 'Upgrade' }))
     await waitFor(() =>
       expect(checkoutRequest).toHaveBeenCalledWith({
@@ -573,14 +585,12 @@ export const PlansSwitchToYearly: Story = {
   ...plansPage(basicMonthly),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await plansLoaded(canvas)
-    await canvas.findByRole('region', { name: 'Basic' })
-    await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
-    const basic = card(canvas, 'Basic')
-    await expect(
-      basic.getByText('CHF 183', { selector: 'strong' }).parentElement,
-    ).toHaveTextContent('CHF 183 a year, billed yearly')
-    await userEvent.click(basic.getByRole('button', { name: 'Switch yearly' }))
+    await canvas.findByRole('article', { name: 'Basic' })
+    await userEvent.click(canvas.getByRole('radio', { name: 'Yearly' }))
+    await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent(
+      'Billed CHF 183 yearly · you save CHF 45',
+    )
+    await userEvent.click(card(canvas, 'Basic').getByRole('button', { name: 'Switch yearly' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
     await waitFor(() => expect(dialog.getByText('Switch to Basic yearly?')).toBeVisible())
     await userEvent.click(dialog.getByRole('button', { name: 'Switch plan' }))
@@ -598,21 +608,24 @@ export const PlansProToBusiness: Story = {
   ...plansPage(pro),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await plansLoaded(canvas)
-    await canvas.findByRole('region', { name: 'Business' })
+    await canvas.findByRole('article', { name: 'Business' })
     const businessCard = card(canvas, 'Business')
     // Pro is the recommendation; a workspace already on it sees no badge
     await expect(canvas.queryByText('Recommended')).not.toBeInTheDocument()
-    await expect(businessCard.getByText('CHF 99')).toBeVisible()
-    // Business has no cap on records, invoices or quotes: ∞, read out as "Unlimited", never a number or -1
-    const includes = await businessCard.findByRole('list', { name: 'Business includes' })
-    await expect(includes).toHaveTextContent(/∞Unlimited clients/)
-    await expect(includes).toHaveTextContent(/∞Unlimited invoices \/ month/)
-    await expect(includes).toHaveTextContent(/∞Unlimited quotes \/ month/)
-    await expect(includes).not.toHaveTextContent(/NaN|-1/)
-    await expect(card(canvas, 'Pro').getByRole('list', { name: 'Pro includes' })).toHaveTextContent(
-      /100 quotes \/ month/,
+    await expect(canvas.getByRole('article', { name: 'Business' })).toHaveTextContent(
+      '5 people included · +CHF 20 per extra person',
     )
+    // Business has no cap on people, clients, invoices or quotes: "Unlimited", never ∞, a number or -1
+    const limits = within(businessCard.getByLabelText('Limits'))
+    await Promise.all(
+      ['People', 'Clients', 'Invoices / month', 'Quotes / month'].map((row) =>
+        expect(limits.getByText(row).nextSibling).toHaveTextContent('Unlimited'),
+      ),
+    )
+    await expect(businessCard.getByLabelText('Limits')).not.toHaveTextContent(/NaN|-1|∞/)
+    await expect(
+      within(card(canvas, 'Pro').getByLabelText('Limits')).getByText('Quotes / month').nextSibling,
+    ).toHaveTextContent('100')
     await expect(
       card(canvas, 'Basic').getByRole('button', { name: 'Switch to Basic' }),
     ).toBeEnabled()
@@ -684,7 +697,7 @@ export const PlansBusinessTop: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
-    await canvas.findByRole('region', { name: 'Business' })
+    await canvas.findByRole('article', { name: 'Business' })
     await expect(canvas.queryByRole('button', { name: /^Upgrade/ })).not.toBeInTheDocument()
     await expect(canvas.queryByText('Recommended')).not.toBeInTheDocument()
     await expect(card(canvas, 'Business').getByText('Current')).toBeVisible()
@@ -704,53 +717,66 @@ export const PlansPastDue: Story = {
   },
 }
 
-export const PlansNoPlan: Story = {
+/** A workspace on Free: Free as its current plan, the paid plans as upgrades, yearly first; the trial is on Pro. */
+export const PlansFree: Story = {
   ...plansPage(billingFixture()),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
-    await expect(await canvas.findByRole('heading', { name: 'Choose a plan' })).toBeVisible()
-    // The trial is on Pro, for a small team, and its allowances last the whole trial.
+    await expect(canvas.getByRole('heading', { name: 'Choose a plan' })).toBeVisible()
+    await expect(canvasElement.querySelector('[data-slot=current-plan-pill]')).toHaveTextContent(
+      'You’re on Free',
+    )
+    const free = canvas.getByRole('region', { name: 'Free' })
+    await expect(free).toHaveTextContent('Your current plan')
+    await expect(within(free).queryByRole('button')).toBeNull()
+    await expect(canvas.getByRole('radio', { name: 'Yearly' })).toBeChecked()
     const proCard = card(canvas, 'Pro')
+    await expect(proCard.getByText('Recommended')).toBeVisible()
     await expect(
       proCard.getByText(
-        'Pro free for 7 days, up to 2 people, card required. Full Pro limits, shared by the team. Then CHF 49 per person a month.',
+        'Pro free for 14 days, up to 2 people, card required. Full Pro limits, shared by the team. Then CHF 615 a year for 3 people.',
       ),
     ).toBeVisible()
     await expect(card(canvas, 'Basic').getByRole('button', { name: 'Choose Basic' })).toBeVisible()
-    await userEvent.click(proCard.getByRole('button', { name: 'Start 7-day free trial' }))
+    await userEvent.click(proCard.getByRole('button', { name: 'Start 14-day free trial' }))
     await waitFor(() =>
       expect(checkoutRequest).toHaveBeenCalledWith({
         plan: 'pro',
-        interval: 'month',
+        interval: 'year',
         language: 'en',
       }),
     )
   },
 }
 
+export const PlansFreeMobile: Story = {
+  ...PlansFree,
+  parameters: { ...PlansFree.parameters, ...phone },
+  ...mobile,
+}
+
 /** A workspace in the EU: the plans in euros, with VAT and no mention of Swiss VAT. */
-export const PlansNoPlanEuro: Story = {
+export const PlansFreeEuro: Story = {
   ...plansPage(billingFixture({ currency: 'eur' })),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
-    const proCard = card(canvas, 'Pro')
-    await expect(await proCard.findByText('EUR 49')).toBeVisible()
-    await expect(proCard.getByText('per person / month')).toBeVisible()
+    await expect(canvas.getByRole('article', { name: 'Pro' })).toHaveTextContent('EUR')
+    await expect(canvas.getByText('Save 20% — EUR 45 a year on Basic')).toBeVisible()
     await expect(canvas.getByText(/Prices incl\. VAT/)).toBeVisible()
-    await expect(canvas.queryByText(/Swiss VAT/)).toBeNull()
+    await expect(canvas.queryByText(/Swiss VAT|CHF/)).toBeNull()
   },
 }
 
 /** Anywhere else: the plans in dollars, tax included. */
-export const PlansNoPlanDollar: Story = {
+export const PlansFreeDollar: Story = {
   ...plansPage(billingFixture({ currency: 'usd' })),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await plansLoaded(canvas)
-    await expect(await card(canvas, 'Basic').findByText('USD 19')).toBeVisible()
-    await expect(card(canvas, 'Basic').getByText('per person / month')).toBeVisible()
+    await userEvent.click(canvas.getByRole('radio', { name: 'Monthly' }))
+    await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent('USD19')
     await expect(canvas.getByText(/Prices incl\. tax/)).toBeVisible()
   },
 }

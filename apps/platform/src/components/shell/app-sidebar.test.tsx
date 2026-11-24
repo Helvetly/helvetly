@@ -214,7 +214,7 @@ test('each workspace row shows its own plan, never a role', async () => {
   await userEvent.click(screen.getByRole('button', { name: /Muster GmbH/ }))
   expect((await rowOf(/Muster GmbH/)).getByText('Business')).toBeInTheDocument()
   expect((await rowOf(/Other AG/)).getByText('Pro')).toBeInTheDocument()
-  expect((await rowOf(/Frozen AG/)).getByText('No plan · Read-only')).toBeInTheDocument()
+  expect((await rowOf(/Frozen AG/)).getByText('Free')).toBeInTheDocument()
   const unbilled = await screen.findByRole('menuitem', { name: /Unbilled AG/ })
   expect(unbilled.textContent).toBe('UUnbilled AG') // the mark's initial and the name, no plan line
   const menu = await screen.findByRole('menu')

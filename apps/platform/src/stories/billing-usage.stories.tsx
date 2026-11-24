@@ -70,7 +70,7 @@ export const Normal: Story = {
     await expect(row(canvasElement, 'Quotes sent')).toHaveTextContent('2 of 5')
     await expect(row(canvasElement, 'Storage')).toHaveTextContent('120 MB of 500 MB')
     // What the plan does not include has no row.
-    await expect(within(canvasElement).queryByText('Expenses')).toBeNull()
+    await expect(within(canvasElement).queryByText('Signature requests')).toBeNull()
     await expect(within(canvasElement).queryByText('Automated actions')).toBeNull()
     await expect(within(canvasElement).queryByText(/Not included/)).toBeNull()
   },

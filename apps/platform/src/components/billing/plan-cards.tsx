@@ -1,15 +1,25 @@
 'use client'
 import { locale } from '@helvetly/i18n'
 import { Badge } from '@helvetly/ui/components/badge'
+import {
+  BillingIntervalToggle,
+  type BillingInterval,
+} from '@helvetly/ui/components/billing-interval-toggle'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
-import { PlanFeatureText } from '@helvetly/ui/components/plan-feature-text'
-import { Segmented } from '@helvetly/ui/components/segmented'
+import { useTranslate } from '@helvetly/ui/components/language-provider'
+import { PlanCard, PlanPrice, type PlanPrices } from '@helvetly/ui/components/plan-card'
+import { PlanComparison } from '@helvetly/ui/components/plan-comparison'
 import { formatDate } from '@helvetly/ui/lib/format'
-import { planFeatureLines, planFootnote } from '@helvetly/ui/lib/plan-features'
-import { cn } from '@helvetly/ui/lib/utils'
+import {
+  planCards,
+  planComparison,
+  planFootnote,
+  type PlanCardData,
+  type PlanCatalogue,
+} from '@helvetly/ui/lib/plan-features'
 import { useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, Lock, Sparkles } from 'lucide-react'
+import { CalendarClock, Check, ChevronDown, Lock, Sparkles } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -19,26 +29,27 @@ import { errorMessage } from '@/lib/api'
 import {
   ANY_PEOPLE,
   billingKeys,
-  formatLimit,
+  describeDiscount,
   discounted,
+  formatLimit,
   formatPrice,
+  isPaid,
   isUpgrade,
+  limitNoun,
   monthOf,
+  offerNoun,
   paymentFailed,
   people,
-  seatsCost,
   promoApplies,
+  seatsCost,
   taxNote,
   taxNoteLong,
   useCheckout,
   yearlySaving,
   type Billing,
-  limitNoun,
-  offerNoun,
   type Interval,
   type LimitKey,
   type Plan,
-  type PlanPrice,
   type Promotion,
   type PublicOffer,
 } from '@/lib/billing'
@@ -46,14 +57,8 @@ import { translate } from '@/lib/i18n'
 
 import { PromoCodeEntry } from './promo-code-popover'
 
-const TAGLINES: Record<Plan['id'], string> = {
-  basic: translate('startInvoicingForFreelancersWithASmallClient'),
-  pro: translate('runYourBusinessWithHeidiExpensesSignaturesAnd'),
-  business: translate('workWithClientsAtScaleTheClientPortal'),
-}
-
-/** The plan lines that offer AI: none on an installation without it. */
-const AI_LINES = new Set(['ai_import', 'heidi'])
+/** The card and comparison rows that offer AI: none on an installation without it. */
+const AI_LINES = new Set(['ai_import', 'ai_filing', 'heidi'])
 
 /** A product recommendation, not measured popularity. */
 const RECOMMENDED: Plan['id'] = 'pro'
@@ -103,18 +108,12 @@ export function limitLine(key: LimitKey, value: number | null): string {
   })
 }
 
-/** The seats a change bills: the subscription's paid seats, else the people in the workspace now. */
-const billedSeats = (billing: Billing) => billing.paid_seats ?? billing.seats
-
-/** "Up to 25 people" for self-service plans: the most seats a plan here sells (members besides the owner + 1). */
-export function selfServiceSeats(plans: Plan[]): number | null {
-  const caps = plans.map((plan) => plan.limits.members)
-  return caps.length > 0 && caps.every((cap) => cap !== null) ? Math.max(...caps) + 1 : null
-}
+/** The people a change bills: the subscription's paid seats, else the people in the workspace now (at least one). */
+const billedSeats = (billing: Billing) => Math.max(1, billing.paid_seats ?? billing.seats)
 
 /** The way to a plan from the workspace's: start the trial, choose, upgrade or switch. */
 export function choiceLabel(billing: Billing, plan: Plan, interval: Interval): string {
-  if (billing.plan === '')
+  if (!isPaid(billing.plan))
     return billing.trial_available && plan.id === billing.trial_plan
       ? translate('startDayFreeTrial', { trial_days: billing.trial_days })
       : translate('choose', { name: plan.name })
@@ -154,23 +153,16 @@ export function usePlanCheckout() {
   return { start, busy: checkout.isPending }
 }
 
-/** What a change costs, for its confirmation: per person, and for the people in the workspace now. */
+/** What a change costs, for its confirmation: the plan's price for the people in the workspace now. */
 export function confirmBody(billing: Billing, plan: Plan, interval: Interval): string {
   const price = plan.prices[interval]
   const seats = billedSeats(billing)
-  const total =
-    price && seats > 0
-      ? translate('for2', {
-          value1: formatPrice(seatsCost(price, seats)),
-          value2: people(seats),
-        })
-      : ''
   const charge = price
-    ? translate('perPersonA', {
-        value1: formatPrice(price),
-        interval: interval,
-        value3: taxNote(billing.currency),
-        total: total,
+    ? translate('planChargeLine', {
+        price: formatPrice(seatsCost(price, seats)),
+        interval,
+        people: people(seats),
+        tax: taxNote(billing.currency),
       })
     : ''
   if (billing.status === 'trialing')
@@ -181,266 +173,136 @@ export function confirmBody(billing: Billing, plan: Plan, interval: Interval): s
   return translate('planDowngradeCredit', { name: plan.name, charge })
 }
 
+/** The offer's catalogue with the paid plans' features as the workspace gets them (a live subscription keeps its own). */
+function catalogueOf(offer: PublicOffer, billing: Billing): PlanCatalogue {
+  const own = (key: string, id: string) =>
+    billing.plans.find((plan) => plan.id === id)?.features.includes(key)
+  const features = Object.fromEntries(
+    Object.entries(offer.features).map(([key, plans]) => [
+      key,
+      plans && {
+        ...plans,
+        basic: own(key, 'basic') ?? plans.basic,
+        pro: own(key, 'pro') ?? plans.pro,
+        business: own(key, 'business') ?? plans.business,
+      },
+    ]),
+  )
+  return { ...offer, features }
+}
+
+const withoutAILines = <T extends { key: string }>(lines: T[]) =>
+  lines.filter((line) => !AI_LINES.has(line.key))
+
+/** An installation without AI never offers it. */
+function withoutAI(card: PlanCardData): PlanCardData {
+  return {
+    ...card,
+    heroes: withoutAILines(card.heroes),
+    groups: card.groups
+      .map((group) => ({ ...group, lines: withoutAILines(group.lines) }))
+      .filter((group) => group.lines.length > 0),
+  }
+}
+
+/** A plan's prices as the shared price block reads them; null when it is not sold in the currency. */
+function pricesOf(plan: Plan): PlanPrices | null {
+  const { month, year } = plan.prices
+  if (!month || !year) return null
+  return {
+    month: month.amount,
+    year: year.amount,
+    included_people: month.included_people,
+    extra_person_month: month.extra_person,
+    extra_person_year: year.extra_person,
+  }
+}
+
 /**
- * Basic, Pro and Business side by side, with a monthly / yearly switch: the recommended plan
- * lifted, the current one marked, a big price per person, what the workspace's people pay in
- * total (seats follow the members, nobody picks them), the yearly saving, one way to each plan (a live subscription
- * confirms first) and what each plan includes (the shared plan lines: the offer's numbers, each plan over the one
- * before).
+ * The plans to choose from, the website's cards: a monthly / yearly toggle (yearly first) with what yearly saves,
+ * Free as a compact strip while the workspace is on it, then Basic, Pro and Business with their tiered price, what
+ * the workspace's people pay in total, one way to each plan (a live subscription confirms first) and what each
+ * includes over the plan before. Every feature side by side opens in place under them.
  */
-export function PlanCards({ billing, offer }: { billing: Billing; offer?: PublicOffer }) {
-  const [interval, setPeriod] = useState<Interval>(billing.interval || 'month')
+export function PlanCards({ billing, offer }: { billing: Billing; offer: PublicOffer }) {
+  const ui = useTranslate()
+  const [interval, setInterval] = useState<Interval>(billing.interval || 'year')
   const searchParams = useSearchParams()
-  // the subscription bills the workspace's people, kept in step by the API as members join or leave
-  const team = Math.max(1, billedSeats(billing))
-  const most = selfServiceSeats(billing.plans)
+  const team = billedSeats(billing)
   const [confirm, setConfirm] = useState<Plan | null>(null)
   const [promo, setPromo] = useState<Promotion | null>(null)
+  const [comparing, setComparing] = useState(false)
   const { start, busy } = usePlanCheckout()
-  const saving = Math.max(...billing.plans.map(yearlySaving))
+  const ai = useAI().available
 
   const choose = (plan: Plan) => {
     const promotion_code = promo && promoApplies(promo, plan.id) ? promo.code : undefined
     start({ plan: plan.id, interval, promotion_code })
   }
-  const subscribed = billing.plan !== ''
-  const trialing = subscribed && billing.status === 'trialing'
-  const pastDue = subscribed && billing.status === 'past_due'
+  const subscribed = isPaid(billing.plan)
   // The plan a link asked for (?plan=, e.g. "Buy more" AI), else Pro, unless the workspace already has it or more
   const asked = billing.plans.find((plan) => plan.id === searchParams?.get('plan'))?.id
   const wanted = asked ?? RECOMMENDED
   const recommended = isUpgrade(billing.plan, wanted) ? wanted : undefined
-  // the offer on sale gives the numbers; the workspace's plans name the plans and their features
-  const ai = useAI().available
-  const lines = (
-    offer
-      ? planFeatureLines(
-          { ...offer, plans: billing.plans },
-          (id) => billing.plans.find((plan) => plan.id === id)?.features ?? [],
-          locale,
-        )
-      : []
-  ).map((entry) =>
-    // An installation without AI never offers it.
-    ai ? entry : { ...entry, lines: entry.lines.filter((line) => !AI_LINES.has(line.key)) },
-  )
+
+  const catalogue = catalogueOf(offer, billing)
+  const cards = planCards(catalogue, locale).map((card) => (ai ? card : withoutAI(card)))
+  const free = cards.find((card) => card.plan === 'free')
+  // What yearly saves on the cheapest plan sold, from its own prices.
+  const cheapest = billing.plans.find((plan) => yearlySaving(plan) > 0)
+  const saving =
+    cheapest?.prices.month && cheapest.prices.year
+      ? ui('planYearlySaving', {
+          percent: yearlySaving(cheapest),
+          amount: formatPrice({
+            amount: cheapest.prices.month.amount * 12 - cheapest.prices.year.amount,
+            currency: billing.currency,
+          }),
+          plan: cheapest.name,
+        })
+      : undefined
+  const groups = planComparison(catalogue, locale).map((group) => ({
+    ...group,
+    rows: ai ? group.rows : group.rows.filter((row) => !AI_LINES.has(row.key)),
+  }))
 
   return (
-    <div className="grid gap-10">
+    <div className="grid gap-8">
       <div className="flex flex-col items-center gap-3">
-        <Segmented
-          size="sm"
-          label={translate('billingPeriod')}
-          value={interval}
-          options={[
-            { value: 'month', label: translate('monthly2') },
-            {
-              value: 'year',
-              label: (
-                <>
-                  {translate('yearly3')}
-                  {/* The space is for the spoken name: "Yearly −20%". */}
-                  {saving > 0 && ' '}
-                  {saving > 0 && (
-                    <Badge tone="green" size="sm" className="ml-1.5">
-                      −{saving}%
-                    </Badge>
-                  )}
-                </>
-              ),
-            },
-          ]}
-          onChange={setPeriod}
-        />
+        <BillingIntervalToggle value={interval} onValueChange={setInterval} saving={saving} />
         {billing.can_manage && billing.enabled && (
           <PromoCodeEntry promo={promo} onChange={setPromo} />
         )}
       </div>
 
-      <div className="grid items-stretch gap-4 md:grid-cols-3 lg:gap-5">
+      {/* The page's heading is an h1 and the cards' names are h3s. */}
+      <h2 className="sr-only">{translate('plans')}</h2>
+      {billing.plan === 'free' && free && <FreeStrip card={free} />}
+
+      <div className="grid items-stretch gap-4 md:grid-cols-3">
         {billing.plans.map((plan) => {
-          const included = lines.find((entry) => entry.plan === plan.id)
-          const onPlan = billing.plan === plan.id
-          const current = onPlan && billing.interval === interval
-          const scheduled =
-            billing.pending_plan === plan.id && billing.pending_interval === interval
-          // choosing the current plan again cancels the scheduled change
-          const keep = current && billing.pending_plan !== null
-          const price = plan.prices[interval]
-          const promoted =
-            promo && promoApplies(promo, plan.id) && price ? discounted(price, promo) : null
-          const highlight = plan.id === recommended
-          const trial = !subscribed && billing.trial_available && plan.id === billing.trial_plan
-          const label = choiceLabel(billing, plan, interval)
-          const shown = promoted ?? price
-          const per = interval === 'year' ? translate('aYear2') : translate('aMonth')
-          // a yearly price reads as its month, like the website; the year's price is shown under it
-          const perMonth = (p: PlanPrice) => (interval === 'year' ? monthOf(p) : p)
-          let note = ''
-          if (keep) note = translate('cancelsTheScheduledChange')
-          else if (scheduled && billing.pending_at)
-            note = translate('startsOnDate', { date: formatDate(billing.pending_at) })
-          else if (pastDue && !current) note = translate('updateThePaymentMethodFirst')
-          else if (trialing && !current)
-            note = translate('yourTrialEndsNowAndIsChargedToday', { name: plan.name })
-          else if (trial && shown)
-            note = translate('trialNote', {
-              plan: plan.name,
-              trial_days: billing.trial_days,
-              trial_seats: billing.trial_seats,
-              value2: formatPrice(shown),
-              per: per,
-            })
-          else if (!subscribed) note = translate('chargedToday')
-          const disabled =
-            (current && !keep) ||
-            scheduled ||
-            busy ||
-            pastDue ||
-            !billing.enabled ||
-            !billing.can_manage ||
-            !price
+          const card = cards.find((entry) => entry.plan === plan.id)
+          if (!card) return null
           return (
-            <section
+            <PaidPlan
               key={plan.id}
-              aria-label={plan.name}
-              data-current={onPlan || undefined}
-              data-recommended={highlight || undefined}
-              className={cn(
-                'relative flex flex-col overflow-hidden rounded-2xl bg-card shadow-elevation-1',
-                highlight && 'shadow-elevation-2 ring-2 ring-brand-solid md:-my-3',
-                onPlan && !highlight && 'ring-1 ring-brand-solid/40',
-              )}
-            >
-              {highlight && (
-                <p className="flex items-center justify-center gap-1.5 bg-brand-surface py-1.5 text-caption font-medium text-brand">
-                  <Sparkles className="size-3" aria-hidden />
-                  {translate('recommended')}
-                </p>
-              )}
-              <div className={cn('flex flex-1 flex-col p-6 lg:p-7', highlight && 'md:pb-10')}>
-                <div className="flex min-h-6 items-center justify-between gap-2">
-                  <h2 className="text-title font-semibold tracking-[-0.01em]">{plan.name}</h2>
-                  {onPlan && (
-                    <Badge tone="blue" size="sm">
-                      <Check className="size-3" aria-hidden />
-                      {translate('current')}
-                    </Badge>
-                  )}
-                  {scheduled && !onPlan && (
-                    <Badge size="sm">
-                      <CalendarClock className="size-3" aria-hidden />
-                      {translate('scheduled')}
-                    </Badge>
-                  )}
-                </div>
-                <p className="mt-1 min-h-[2lh] text-body-sm text-pretty text-muted-foreground">
-                  {!ai && plan.id === 'pro'
-                    ? translate('runYourBusinessWithExpensesSignaturesAnd')
-                    : TAGLINES[plan.id]}
-                </p>
-
-                <div data-slot="plan-price" className="mt-5 grid gap-1">
-                  <p className="flex flex-wrap items-baseline gap-x-2 tabular-nums">
-                    <span className="text-display font-semibold tracking-[-0.035em]">
-                      {shown ? formatPrice(perMonth(shown)) : '—'}
-                    </span>
-                    {promoted && price && (
-                      <s className="text-body text-muted-foreground">
-                        {formatPrice(perMonth(price))}
-                      </s>
-                    )}
-                  </p>
-                  <p className="text-body-sm text-muted-foreground">
-                    {translate('perPerson')}
-                    {translate('dynamicMonth')}
-                  </p>
-                </div>
-                <p className="mt-3 flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1">
-                  {interval === 'year' && shown ? (
-                    <span className="text-caption text-muted-foreground tabular-nums">
-                      <strong className="font-semibold text-foreground">
-                        {formatPrice(shown)}
-                      </strong>
-                      {translate('aYearBilledYearly')}
-                    </span>
-                  ) : interval === 'month' && plan.prices.year && yearlySaving(plan) > 0 ? (
-                    <span className="text-caption text-muted-foreground tabular-nums">
-                      {translate('or')}
-                      <strong className="font-semibold text-foreground">
-                        {formatPrice(plan.prices.year)}
-                      </strong>
-                      {translate('aYearSave')}
-                      {yearlySaving(plan)}%
-                    </span>
-                  ) : null}
-                </p>
-
-                <div
-                  data-slot="team-total"
-                  className="mt-4 flex items-baseline justify-between gap-3 rounded-xl bg-muted/60 px-4 py-3 text-body-sm"
-                >
-                  <span className="text-muted-foreground">
-                    {translate('for')}
-                    {people(team)}
-                  </span>
-                  <span className="tabular-nums">
-                    <span className="text-title-sm font-semibold">
-                      {shown ? formatPrice(seatsCost(shown, team)) : '—'}
-                    </span>
-                    <span className="text-muted-foreground"> / {interval}</span>
-                  </span>
-                </div>
-
-                <Button
-                  size="xl"
-                  className="mt-5 w-full"
-                  variant={!current && (highlight || trial) && !pastDue ? 'default' : 'outline'}
-                  disabled={disabled}
-                  onClick={() =>
-                    keep
-                      ? start(
-                          { plan: plan.id, interval },
-                          translate('youStayOnPlan', { name: plan.name }),
-                        )
-                      : subscribed
-                        ? setConfirm(plan)
-                        : choose(plan)
-                  }
-                >
-                  {keep
-                    ? translate('keepPlan', { name: plan.name })
-                    : scheduled
-                      ? translate('scheduled')
-                      : current
-                        ? translate('currentPlan')
-                        : label}
-                </Button>
-                <p className="mt-2.5 min-h-[2lh] text-center text-caption text-pretty text-muted-foreground">
-                  {note}
-                </p>
-
-                {included && (
-                  <div className="mt-4 border-t pt-5 text-body-sm">
-                    {included.basis && <p className="mb-2.5 font-medium">{included.basis}</p>}
-                    <ul
-                      aria-label={translate('includes', { name: plan.name })}
-                      className="grid gap-2.5"
-                    >
-                      {included.lines.map((line) => (
-                        <li key={line.key} className="flex items-baseline gap-2.5">
-                          <Check
-                            className="size-3.5 shrink-0 translate-y-0.5 text-brand"
-                            aria-hidden
-                          />
-                          <PlanFeatureText line={line} className="min-w-0 text-pretty" />
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </section>
+              billing={billing}
+              plan={plan}
+              card={
+                card.plan === 'pro' && !ai
+                  ? { ...card, bestFor: translate('runYourBusinessWithExpensesSignaturesAnd') }
+                  : card
+              }
+              interval={interval}
+              team={team}
+              promo={promo}
+              recommended={plan.id === recommended}
+              busy={busy}
+              onChoose={() => (subscribed ? setConfirm(plan) : choose(plan))}
+              onKeep={() =>
+                start({ plan: plan.id, interval }, translate('youStayOnPlan', { name: plan.name }))
+              }
+            />
           )
         })}
       </div>
@@ -453,11 +315,6 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
       </p>
 
       <div className="flex flex-col items-center gap-3 text-center text-body-sm text-muted-foreground">
-        {billing.pricing !== 'flat' && (
-          <p data-slot="seat-rule" className="text-caption">
-            {translate('everyMemberIsAPaidSeat', { most: most ?? 'none' })}
-          </p>
-        )}
         <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-caption">
           <Lock className="size-3" aria-hidden />
           {translate('securePaymentByStripe')}
@@ -470,7 +327,39 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
         {!billing.can_manage && billing.enabled && (
           <p>{translate('onlyAnOwnerOrAdminCanChangeTheWorkspace')}</p>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          aria-expanded={comparing}
+          aria-controls="plan-comparison"
+          onClick={() => setComparing((open) => !open)}
+        >
+          {ui('planCompareTitle')}
+          <ChevronDown
+            data-icon="inline-end"
+            aria-hidden
+            className={comparing ? 'rotate-180 transition-transform' : 'transition-transform'}
+          />
+        </Button>
       </div>
+
+      {comparing && (
+        <div id="plan-comparison">
+          <PlanComparison
+            groups={groups}
+            featured={recommended}
+            plans={offer.plans.map((plan) => ({
+              id: plan.id,
+              name: plan.name,
+              head: (
+                <span className="mt-1 block text-body-sm font-normal text-muted-foreground tabular-nums">
+                  {headPrice(plan.id, billing, interval)}
+                </span>
+              ),
+            }))}
+          />
+        </div>
+      )}
 
       {confirm && (
         <ConfirmDialog
@@ -498,5 +387,195 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer?: Public
         />
       )}
     </div>
+  )
+}
+
+/** A plan's month in the comparison's pinned head: "CHF 49 / month" (yearly: its share of the year), Free "CHF 0". */
+function headPrice(id: string, billing: Billing, interval: BillingInterval): string {
+  const plan = billing.plans.find((entry) => entry.id === id)
+  if (!plan) return formatPrice({ amount: 0, currency: billing.currency })
+  const price = plan.prices[interval]
+  if (!price) return '—'
+  return `${formatPrice(interval === 'year' ? monthOf(price) : price)} / ${translate('dynamicMonth')}`
+}
+
+/** Free while the workspace is on it: one compact row with what it includes, no way to choose it. */
+function FreeStrip({ card }: { card: PlanCardData }) {
+  const ui = useTranslate()
+  return (
+    <section
+      aria-labelledby="plan-free-current"
+      data-slot="free-plan"
+      data-current
+      className="grid gap-4 rounded-2xl border bg-card px-5 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-8"
+    >
+      <div className="grid min-w-0 gap-1">
+        <p className="flex flex-wrap items-center gap-2">
+          <span id="plan-free-current" className="text-title-sm font-semibold">
+            {card.name}
+          </span>
+          <Badge tone="blue" size="sm">
+            <Check className="size-3" aria-hidden />
+            {translate('yourCurrentPlan')}
+          </Badge>
+        </p>
+        <p className="text-body-sm text-pretty text-muted-foreground">
+          {ui('planFreeForever', { count: 1 })} · {translate('upgradeAnyTimeNothingIsLost')}
+        </p>
+      </div>
+      <dl
+        aria-label={ui('planLimitsTitle')}
+        className="grid grid-cols-2 gap-x-5 gap-y-1 text-body-sm sm:grid-cols-4"
+      >
+        {card.limits.map((limit) => (
+          <div key={limit.key} className="flex items-baseline justify-between gap-2">
+            <dt className="text-muted-foreground">{limit.label}</dt>
+            <dd className="font-medium tabular-nums">{limit.amount}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
+/** One paid plan as the shared card: its tiered price, the team's total, the way to it and a note under it. */
+function PaidPlan({
+  billing,
+  plan,
+  card,
+  interval,
+  team,
+  promo,
+  recommended,
+  busy,
+  onChoose,
+  onKeep,
+}: {
+  billing: Billing
+  plan: Plan
+  card: PlanCardData
+  interval: Interval
+  team: number
+  promo: Promotion | null
+  recommended: boolean
+  busy: boolean
+  onChoose: () => void
+  onKeep: () => void
+}) {
+  const subscribed = isPaid(billing.plan)
+  const trialing = subscribed && billing.status === 'trialing'
+  const pastDue = subscribed && billing.status === 'past_due'
+  const onPlan = billing.plan === plan.id
+  const current = onPlan && billing.interval === interval
+  const scheduled = billing.pending_plan === plan.id && billing.pending_interval === interval
+  // choosing the current plan again cancels the scheduled change
+  const keep = current && billing.pending_plan !== null
+  const price = plan.prices[interval]
+  const prices = pricesOf(plan)
+  const total = price ? seatsCost(price, team) : null
+  const promoted = promo && promoApplies(promo, plan.id) && total ? discounted(total, promo) : null
+  const trial = !subscribed && billing.trial_available && plan.id === billing.trial_plan
+  const per = interval === 'year' ? translate('aYear2') : translate('aMonth')
+
+  let note = ''
+  if (keep) note = translate('cancelsTheScheduledChange')
+  else if (scheduled && billing.pending_at)
+    note = translate('startsOnDate', { date: formatDate(billing.pending_at) })
+  else if (pastDue && !current) note = translate('updateThePaymentMethodFirst')
+  else if (trialing && !current)
+    note = translate('yourTrialEndsNowAndIsChargedToday', { name: plan.name })
+  else if (trial && total)
+    note = translate('trialNote', {
+      plan: plan.name,
+      trial_days: billing.trial_days,
+      trial_seats: billing.trial_seats,
+      value2: formatPrice(promoted ?? total),
+      per,
+      people: people(team),
+    })
+  else if (!subscribed) note = translate('chargedToday')
+  const disabled =
+    (current && !keep) ||
+    scheduled ||
+    busy ||
+    pastDue ||
+    !billing.enabled ||
+    !billing.can_manage ||
+    !price
+
+  const badge = onPlan ? (
+    <Badge tone="blue" size="sm">
+      <Check className="size-3" aria-hidden />
+      {translate('current')}
+    </Badge>
+  ) : scheduled ? (
+    <Badge size="sm">
+      <CalendarClock className="size-3" aria-hidden />
+      {translate('scheduled')}
+    </Badge>
+  ) : recommended ? (
+    <Badge tone="violet" size="sm">
+      <Sparkles className="size-3" aria-hidden />
+      {translate('recommended')}
+    </Badge>
+  ) : undefined
+
+  return (
+    <PlanCard
+      data={card}
+      featured={recommended}
+      className="rounded-2xl"
+      badge={badge}
+      price={
+        prices ? (
+          <>
+            <PlanPrice prices={prices} interval={interval} currency={billing.currency} />
+            {total && (
+              <div
+                data-slot="team-total"
+                className="mt-3 flex items-baseline justify-between gap-3 rounded-xl bg-muted/60 px-3.5 py-2.5 text-body-sm"
+              >
+                <span className="text-muted-foreground">
+                  {translate('for')}
+                  {people(team)}
+                </span>
+                <span className="tabular-nums">
+                  {promoted && <s className="mr-1.5 text-muted-foreground">{formatPrice(total)}</s>}
+                  <span className="font-semibold">{formatPrice(promoted ?? total)}</span>
+                  <span className="text-muted-foreground"> / {interval}</span>
+                </span>
+              </div>
+            )}
+            {promoted && promo && (
+              <p className="mt-1.5 text-caption text-success">{describeDiscount(promo)}</p>
+            )}
+          </>
+        ) : (
+          <p className="text-display font-semibold">—</p>
+        )
+      }
+      cta={
+        <>
+          <Button
+            size="xl"
+            className="w-full"
+            variant={!current && (recommended || trial) && !pastDue ? 'default' : 'outline'}
+            disabled={disabled}
+            onClick={keep ? onKeep : onChoose}
+          >
+            {keep
+              ? translate('keepPlan', { name: plan.name })
+              : scheduled
+                ? translate('scheduled')
+                : current
+                  ? translate('currentPlan')
+                  : choiceLabel(billing, plan, interval)}
+          </Button>
+          <p className="mt-2 min-h-[2lh] text-center text-caption text-pretty text-muted-foreground">
+            {note}
+          </p>
+        </>
+      }
+    />
   )
 }

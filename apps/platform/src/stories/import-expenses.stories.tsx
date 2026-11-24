@@ -107,7 +107,11 @@ let categories = startingCategories
 /** Every request the drawer and its record editor make besides the import's own. */
 const drawerHandlers = [
   sessionHandler(),
-  http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture() })),
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({
+      data: billingFixture({ plan: 'business', status: 'active', interval: 'month' }),
+    }),
+  ),
   http.get('/api/v1/expense-categories', () => HttpResponse.json({ data: categories })),
   http.post<never, { name: string; account_code: string }>(
     '/api/v1/expense-categories',

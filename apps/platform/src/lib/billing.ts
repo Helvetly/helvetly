@@ -2,13 +2,18 @@
 import { languageTag, locale, numberLocale } from '@helvetly/i18n'
 // Plans, usage and Stripe billing, typed by hand from docs/billing-contract.md.
 import { meterTone } from '@helvetly/ui/components/meter'
+import type { PlanPrices } from '@helvetly/ui/components/plan-card'
+import type { PlanCatalogue, PlanId as CatalogueId } from '@helvetly/ui/lib/plan-features'
 import { formatPrice, monthOf, type Price } from '@helvetly/ui/lib/price'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { ApiError, request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 
+/** A paid plan, sold through Stripe; Free is what a workspace has without one. */
 export type PlanId = 'basic' | 'pro' | 'business'
+/** The workspace has a paid plan. */
+export const isPaid = (plan: Billing['plan']): plan is PlanId => plan !== '' && plan !== 'free'
 export type Interval = 'month' | 'year'
 export type LimitKey =
   | 'members'
@@ -77,7 +82,8 @@ export type Entitlement = {
   used: number | null
   reset_at: string | null
 }
-export type PlanPrice = Price
+/** A plan's price in an interval: `amount` for up to `included_people`, `extra_person` for each further one. */
+export type PlanPrice = Price & { included_people: number; extra_person: number }
 export { formatPrice, monthOf }
 export type Plan = {
   id: PlanId
@@ -85,7 +91,7 @@ export type Plan = {
   limits: Record<LimitKey, number | null>
   /** Every feature the plan includes, gated or not. */
   features: string[]
-  /** Per person (seat) for the interval. */
+  /** For the interval; null when not sold in the workspace's currency. */
   prices: Record<Interval, PlanPrice | null>
 }
 export type Discount = {
@@ -104,10 +110,10 @@ export type Promotion = Omit<Discount, 'ends_at'> & {
 }
 export type Billing = {
   enabled: boolean
-  /** Billing on and no active plan: the workspace is read-only. */
+  /** Billing on and no plan at all (not even Free): the workspace is read-only. The API no longer answers it. */
   locked: boolean
-  /** `''` when the workspace has no plan. */
-  plan: PlanId | ''
+  /** `free` without a paid plan while billing is on; `''` with billing off. */
+  plan: PlanId | 'free' | ''
   status: string
   interval: Interval | ''
   current_period_end: string | null
@@ -153,7 +159,7 @@ export type Billing = {
   ai_tokens_bought: number
   /** A payment of the workspace is in a chargeback that is not closed yet. */
   disputed: boolean
-  /** The renewal stayed unpaid past the grace (three days after the paid period): read-only until it is paid. */
+  /** The renewal stayed unpaid past the grace (three days after the paid period): on Free until it is paid. */
   payment_overdue: boolean
 }
 export type BillingInvoice = {
@@ -190,29 +196,15 @@ export function useBilling(refetchInterval: number | false = false) {
   return useQuery({ queryKey: billingKeys.overview, queryFn: fetchBilling, refetchInterval })
 }
 
-/** The offer on sale, as the public pricing page reads it: the business comparison and allowances for one person. */
-export type PublicOffer = {
+/** The offer on sale, as the public pricing page reads it: plans, prices, features and allowances for one person. */
+export type PublicOffer = PlanCatalogue & {
   offer_id: string
-  comparison: {
-    key: string
-    label: string
-    note?: string
-    limit_keys: string[]
-    plans: Record<PlanId, boolean>
+  plans: {
+    id: CatalogueId
+    name: string
+    /** By currency code ("CHF"), in minor units, tax included. */
+    prices: Record<string, PlanPrices>
   }[]
-  usage_details: string[]
-  /** The most people a workspace can have, the owner included; null: no cap. */
-  max_self_service_seats: Record<PlanId, number | null>
-  limits: Record<
-    string,
-    {
-      unit: string
-      period: string | null
-      /** Each paid person adds the value to one pool; else a fixed cap for the workspace. */
-      per_person: boolean
-      plans: Record<PlanId, { included: boolean; value: number | null }>
-    }
-  >
 }
 
 /** GET /api/v1/public/offers/current: the same catalogue as the website, for the plan comparison. */
@@ -540,27 +532,38 @@ export function formatReset(iso: string): string {
 /** "1 person", "3 people". */
 export const people = (count: number) => `${count} ${count === 1 ? 'person' : 'people'}`
 
-/** A per-person price for that many people. */
+/** What a plan costs for that many people: its price for the included ones, plus each further person. */
 export const seatsCost = (price: PlanPrice, seats: number): PlanPrice => ({
   ...price,
-  amount: price.amount * seats,
+  amount: price.amount + Math.max(0, seats - price.included_people) * price.extra_person,
 })
 
-/** What one more (or one fewer) person costs on the live per-seat subscription; null otherwise. */
-export function seatPrice(billing: Billing): PlanPrice | null {
-  if (billing.pricing !== 'per_seat' || billing.plan === '' || billing.interval === '') return null
+/** The live subscription's plan price in its interval; null without a per-seat one. */
+function livePrice(billing: Billing): PlanPrice | null {
+  if (billing.pricing !== 'per_seat' || !isPaid(billing.plan) || billing.interval === '')
+    return null
   return billing.plans.find((plan) => plan.id === billing.plan)?.prices[billing.interval] ?? null
+}
+
+/**
+ * What the person who makes the team `team` strong adds (or, leaving, saves) on the live per-seat subscription:
+ * the price of an extra person; null within the people the price includes, or without such a subscription.
+ */
+export function seatPrice(billing: Billing, team = billing.seats + 1): Price | null {
+  const price = livePrice(billing)
+  if (!price || team <= price.included_people) return null
+  return { amount: price.extra_person, currency: price.currency }
 }
 
 /** What the live per-seat subscription charges for the people in the workspace now; null otherwise. */
 export function seatTotal(billing: Billing): PlanPrice | null {
-  const price = seatPrice(billing)
+  const price = livePrice(billing)
   return price && seatsCost(price, billing.seats)
 }
 
-/** One person's price as a line: "CHF 49 / month incl. VAT"; null unless billing is on and per seat. */
-export function seatCostLabel(billing: Billing): string | null {
-  const price = seatPrice(billing)
+/** What a person adds as a line: "CHF 15 / month incl. VAT"; null unless billing is on and they cost more. */
+export function seatCostLabel(billing: Billing, team?: number): string | null {
+  const price = seatPrice(billing, team)
   return billing.enabled && price
     ? `${formatPrice(price)} / ${billing.interval} ${taxNote(price.currency)}`
     : null
@@ -576,8 +579,8 @@ export function taxNoteLong(currency: string): string {
   return currency === 'chf' ? translate('inclSwissVAT') : taxNote(currency)
 }
 
-const RANK: Record<PlanId | '', number> = { '': 0, basic: 1, pro: 2, business: 3 }
-export const isUpgrade = (from: PlanId | '', to: PlanId) => RANK[to] > RANK[from]
+const RANK: Record<Billing['plan'], number> = { '': 0, free: 0, basic: 1, pro: 2, business: 3 }
+export const isUpgrade = (from: Billing['plan'], to: PlanId) => RANK[to] > RANK[from]
 
 /** Whether the code covers the plan. */
 export const promoApplies = (promo: Promotion | Discount, plan: PlanId) =>
@@ -622,7 +625,7 @@ export function yearlySaving(plan: Plan): number {
   return Math.round((1 - year.amount / (month.amount * 12)) * 100)
 }
 
-/** The plan one step above the workspace's, if there is one (none without a plan). */
+/** The plan one step above the workspace's, if there is one (Basic above Free; none with billing off). */
 export function nextPlan(billing: Billing): Plan | undefined {
   if (billing.plan === '') return undefined
   const current = billing.plan
@@ -695,11 +698,11 @@ export function billingPeriod(
   return { start, end, days, left }
 }
 
-/** What the plan costs per interval now: per seat × people, or the legacy flat price; null without one. */
+/** What the plan costs per interval now: its tiered price for the people, or the legacy flat price; null on Free. */
 export function planTotal(billing: Billing): PlanPrice | null {
   const total = seatTotal(billing)
   if (total) return total
-  if (billing.pricing !== 'flat' || billing.plan === '' || billing.interval === '') return null
+  if (billing.pricing !== 'flat' || !isPaid(billing.plan) || billing.interval === '') return null
   return billing.plans.find((plan) => plan.id === billing.plan)?.prices[billing.interval] ?? null
 }
 
@@ -714,7 +717,7 @@ export function nextCharge(
   | { kind: 'trial' | 'renewal'; amount: PlanPrice | null; date: string }
   | { kind: 'ends'; date: string }
   | null {
-  if (billing.plan === '') return null
+  if (!isPaid(billing.plan)) return null
   const trial = billing.status === 'trialing' && billing.trial_end
   const date = trial ? billing.trial_end : billing.current_period_end
   if (!date) return null

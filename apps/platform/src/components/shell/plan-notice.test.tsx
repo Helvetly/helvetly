@@ -11,11 +11,12 @@ import { planLabel, planNotice, SidebarPlanNotice } from './plan-notice'
 const NOW = Date.parse('2026-11-12T10:00:00Z')
 const live = (over: Partial<Billing>) =>
   billingFixture({ locked: false, plan: 'basic', status: 'active', can_manage: true, ...over })
-const trial = live({ status: 'trialing', trial_end: '2026-11-16T12:00:00Z', trial_days: 7 })
+const trial = live({ status: 'trialing', trial_end: '2026-11-16T12:00:00Z', trial_days: 14 })
 
 test.each<[string, Partial<Billing> | undefined, string | null]>([
   ['billing off', { enabled: false }, null],
   ['no plan', { locked: true, plan: '' }, 'No plan · Read-only'],
+  ['free', { plan: 'free', status: '' }, 'Free'],
   ['trial', { status: 'trialing' }, 'Basic'],
   ['past due', { plan: 'pro', status: 'past_due' }, 'Pro · Payment due'],
   ['unpaid', { status: 'unpaid' }, 'Basic · Payment due'],
@@ -31,6 +32,7 @@ test('planLabel is null while billing loads', () => {
 test.each<[string, Partial<Billing>, ReturnType<typeof planNotice>]>([
   ['billing off', { enabled: false }, null],
   ['a paid plan', {}, null],
+  ['Free: no read-only banner', { plan: 'free', status: '' }, null],
   [
     'a read-only workspace',
     { locked: true, plan: '', status: 'canceled' },
@@ -57,24 +59,24 @@ test.each<[string, Partial<Billing>, ReturnType<typeof planNotice>]>([
   ],
   [
     'a trial',
-    { status: 'trialing', trial_end: '2026-11-16T12:00:00Z', trial_days: 7 },
+    { status: 'trialing', trial_end: '2026-11-16T12:00:00Z', trial_days: 14 },
     expect.objectContaining({
       kind: 'trial',
       title: 'Trial · 5 days left',
-      progress: { left: 5, of: 7 },
+      progress: { left: 5, of: 14 },
       dismissable: true,
       action: { label: 'Upgrade', href: '/settings/billing/plans' },
     }),
   ],
   [
     'the trial’s last day',
-    { status: 'trialing', trial_end: '2026-11-12T20:00:00Z', trial_days: 7 },
+    { status: 'trialing', trial_end: '2026-11-12T20:00:00Z', trial_days: 14 },
     expect.objectContaining({ title: 'Trial · 1 day left' }),
   ],
   [
     'a trial already over',
-    { status: 'trialing', trial_end: '2026-11-11T20:00:00Z', trial_days: 7 },
-    expect.objectContaining({ title: 'Trial ends today', progress: { left: 0, of: 7 } }),
+    { status: 'trialing', trial_end: '2026-11-11T20:00:00Z', trial_days: 14 },
+    expect.objectContaining({ title: 'Trial ends today', progress: { left: 0, of: 14 } }),
   ],
   [
     'a cancelled plan still running',
@@ -128,10 +130,10 @@ test.each<[string, Partial<Billing>, string]>([
   expect(planNotice({ ...trial, ...over, can_manage: false }, NOW)?.action).toBeNull()
 })
 
-test('a cancelled trial keeps its read-only warning despite a code', () => {
+test('a cancelled trial keeps its warning that the workspace moves to Free despite a code', () => {
   expect(
     planNotice({ ...trial, discount: lifetime, cancel_at_period_end: true }, NOW)?.text,
-  ).toMatch(/turns read-only/)
+  ).toMatch(/moves to Free/)
 })
 
 const renderNotice = (billing: Billing) =>
@@ -164,16 +166,18 @@ test('the trial card links to the plans and hides for the session', async () => 
   expect(screen.queryByRole('region', { name: 'Plan' })).not.toBeInTheDocument()
 })
 
-test('a renewal unpaid past the grace says to pay the open invoice', () => {
-  const notice = planNotice(
-    live({ locked: true, plan: '', status: 'past_due', payment_overdue: true }),
-    NOW,
-  )
+test('a renewal unpaid past the grace says the workspace is on Free until the open invoice is paid', () => {
+  const notice = planNotice(live({ plan: 'free', status: 'past_due', payment_overdue: true }), NOW)
   expect(notice).toMatchObject({
-    kind: 'locked',
+    kind: 'payment',
+    tone: 'danger',
+    dismissable: false,
     action: { label: 'Update payment', href: '/settings/billing' },
   })
-  expect(notice?.text).toMatch(/Pay the open invoice/)
+  expect(notice?.text).toMatch(/on Free until the open invoice is paid/)
+  expect(
+    planNotice(live({ plan: 'free', payment_overdue: true, can_manage: false }), NOW)?.text,
+  ).toMatch(/Ask an owner or admin to pay the open invoice/)
 })
 
 test('a failed payment cannot be hidden', () => {

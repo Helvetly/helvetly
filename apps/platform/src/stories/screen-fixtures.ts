@@ -100,7 +100,11 @@ export const screenHandlers = [
   // The person's background ZIPs: none.
   http.get('/api/v1/documents/exports', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/doc_story/content', () => new HttpResponse(null, { status: 204 })),
-  http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture() })),
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({
+      data: billingFixture({ plan: 'business', status: 'active', interval: 'month' }),
+    }),
+  ),
   http.get('/api/v1/public/offers/current', () => HttpResponse.json({ data: publicOffer })),
   http.get('/api/v1/documents/folders', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/members', () => HttpResponse.json({ data: [] })),

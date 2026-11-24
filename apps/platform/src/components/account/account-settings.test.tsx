@@ -32,7 +32,9 @@ const server = setupServer(
   http.get('/api/v1/auth/config', () =>
     HttpResponse.json({ google: true, email: true, passkey: true, dev_codes: false }),
   ),
-  http.get('/api/v1/billing', () => HttpResponse.json({ data: billingFixture() })),
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({ data: billingFixture({ plan: 'business', status: 'active' }) }),
+  ),
   http.get('/api/v1/account/passkeys', () => HttpResponse.json({ data: [] })),
   ...accountHandlers,
   ...schedulingSettingsHandlers,

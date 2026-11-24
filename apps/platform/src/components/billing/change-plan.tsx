@@ -6,7 +6,14 @@ import Link from 'next/link'
 
 import { PlanScreen } from '@/components/shell/plan-gate'
 import { errorMessage } from '@/lib/api'
-import { people, trialDaysLeft, useBilling, usePublicOffer, type Billing } from '@/lib/billing'
+import {
+  isPaid,
+  people,
+  trialDaysLeft,
+  useBilling,
+  usePublicOffer,
+  type Billing,
+} from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
 import { PlanCards } from './plan-cards'
@@ -19,6 +26,7 @@ export function ChangePlan() {
   const billing = useBilling()
   const offer = usePublicOffer()
   const data = billing.data
+  const error = billing.error ?? offer.error
   return (
     <PlanScreen
       action={
@@ -32,10 +40,10 @@ export function ChangePlan() {
     >
       <div className="grid max-w-2xl justify-items-center gap-4 text-center">
         <h1 className="text-display font-semibold tracking-[-0.035em] text-balance">
-          {data?.plan ? translate('changeYourPlan') : translate('chooseAPlan')}
+          {data && isPaid(data.plan) ? translate('changeYourPlan') : translate('chooseAPlan')}
         </h1>
         <p className="max-w-xl text-title-sm text-pretty text-muted-foreground">
-          {translate('onePricePerPersonTheWholeTeamIncluded')}
+          {translate('eachPlanIncludesSomePeople')}
           {data && data.seats > 0
             ? translate('inThisWorkspaceNow', { value1: people(data.seats) })
             : ''}
@@ -44,12 +52,12 @@ export function ChangePlan() {
         {data && <CurrentPlanPill billing={data} />}
       </div>
       <div className="mt-12 w-full max-w-[1080px]">
-        {billing.error ? (
+        {error ? (
           <p role="alert" className="text-center text-sm text-muted-foreground">
             {translate('plansCouldnTBeLoaded')}
-            {errorMessage(billing.error)}
+            {errorMessage(error)}
           </p>
-        ) : !data ? (
+        ) : !data || !offer.data ? (
           <Loader label={translate('loadingPlans')} className="min-h-96" />
         ) : (
           <PlanCards billing={data} offer={offer.data} />
@@ -61,8 +69,12 @@ export function ChangePlan() {
 
 /** Where the workspace stands, in the hero's words: the plan, its status and the trial's days left. */
 function CurrentPlanPill({ billing }: { billing: Billing }) {
-  const plan = billing.plans.find((entry) => entry.id === billing.plan)
-  if (!plan) return null
+  // Free is not among the plans sold.
+  const name =
+    billing.plan === 'free'
+      ? translate('planFree')
+      : billing.plans.find((entry) => entry.id === billing.plan)?.name
+  if (!name) return null
   const trial = billing.status === 'trialing' && billing.trial_end
   const left = trial ? trialDaysLeft(billing.trial_end ?? '') : 0
   return (
@@ -73,7 +85,7 @@ function CurrentPlanPill({ billing }: { billing: Billing }) {
       <span className="size-2 rounded-full bg-brand-solid" aria-hidden />
       <span>
         {translate('youReOn')}
-        <span className="font-medium">{plan.name}</span>
+        <span className="font-medium">{name}</span>
       </span>
       {trial && (
         <>

@@ -8,6 +8,7 @@
       "plans": {
         "basic": true,
         "business": true,
+        "free": true,
         "pro": true
       }
     },
@@ -18,6 +19,7 @@
       "plans": {
         "basic": true,
         "business": true,
+        "free": true,
         "pro": true
       }
     },
@@ -29,6 +31,7 @@
       "plans": {
         "basic": true,
         "business": true,
+        "free": true,
         "pro": true
       }
     },
@@ -40,6 +43,18 @@
       "plans": {
         "basic": true,
         "business": true,
+        "free": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "scheduling",
+      "label": "Scheduling, booking links and calendar sync",
+      "limit_keys": ["scheduled_events_per_month"],
+      "plans": {
+        "basic": true,
+        "business": true,
+        "free": true,
         "pro": true
       }
     },
@@ -50,6 +65,7 @@
       "plans": {
         "basic": false,
         "business": true,
+        "free": false,
         "pro": true
       }
     },
@@ -60,6 +76,7 @@
       "plans": {
         "basic": false,
         "business": true,
+        "free": false,
         "pro": true
       }
     },
@@ -70,16 +87,29 @@
       "plans": {
         "basic": false,
         "business": true,
+        "free": false,
         "pro": false
       }
     },
     {
       "key": "expenses",
-      "label": "Expenses and AI receipt import",
+      "label": "Expenses and receipts",
       "limit_keys": ["expenses_per_month"],
+      "plans": {
+        "basic": true,
+        "business": true,
+        "free": true,
+        "pro": true
+      }
+    },
+    {
+      "key": "ai_import",
+      "label": "AI import of receipts, invoices and documents",
+      "limit_keys": ["ai_automation_tokens_per_month"],
       "plans": {
         "basic": false,
         "business": true,
+        "free": false,
         "pro": true
       }
     },
@@ -90,6 +120,7 @@
       "plans": {
         "basic": false,
         "business": true,
+        "free": false,
         "pro": true
       }
     },
@@ -100,6 +131,7 @@
       "plans": {
         "basic": false,
         "business": true,
+        "free": false,
         "pro": true
       }
     },
@@ -111,6 +143,7 @@
       "plans": {
         "basic": false,
         "business": true,
+        "free": false,
         "pro": false
       }
     },
@@ -122,6 +155,7 @@
       "plans": {
         "basic": false,
         "business": true,
+        "free": false,
         "pro": true
       }
     },
@@ -133,23 +167,271 @@
       "plans": {
         "basic": false,
         "business": true,
+        "free": false,
         "pro": false
+      }
+    },
+    {
+      "key": "remove_branding",
+      "label": "No “Sent with Helvetly” on email and PDFs",
+      "limit_keys": [],
+      "plans": {
+        "basic": false,
+        "business": true,
+        "free": false,
+        "pro": true
       }
     }
   ],
-  "usage_details": [
-    "clients",
-    "products",
-    "invoices_per_month",
-    "quotes_per_month",
-    "expenses_per_month",
-    "signatures_per_month",
-    "storage_bytes",
-    "emails_per_month",
-    "ai_tokens_per_month",
-    "automation_actions_per_month"
-  ],
+  "currencies": ["CHF", "EUR", "USD"],
+  "features": {
+    "ai_import": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "automations": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "bank_sync": {
+      "basic": false,
+      "business": false,
+      "free": false,
+      "pro": false
+    },
+    "client_portal": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": false
+    },
+    "clients_contacts": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "custom_portal_domain": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": false
+    },
+    "dashboard_reports": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "data_export": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "document_approvals": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": false
+    },
+    "document_library": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "document_templates": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "einvoice_network_delivery": {
+      "basic": false,
+      "business": false,
+      "free": false,
+      "pro": false
+    },
+    "einvoice_xml": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": false
+    },
+    "employees": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": false
+    },
+    "engagement_automation": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "engagement_management": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "expenses": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "heidi": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "invoice_corrections": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "invoice_delivery": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "invoice_documents": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "invoice_instalments": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "invoice_payments": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "invoice_reminders": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "ledger_exports": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "payroll_inventory": {
+      "basic": false,
+      "business": false,
+      "free": false,
+      "pro": false
+    },
+    "products_catalog": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "qualified_signatures": {
+      "basic": false,
+      "business": false,
+      "free": false,
+      "pro": false
+    },
+    "quotes": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "receivables_card_checkout": {
+      "basic": false,
+      "business": false,
+      "free": false,
+      "pro": false
+    },
+    "recipient_document_access": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "remove_branding": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "revolut_payment_link": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "scheduling": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "simple_signatures": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    },
+    "swiss_qr": {
+      "basic": true,
+      "business": true,
+      "free": true,
+      "pro": true
+    },
+    "vat_returns": {
+      "basic": false,
+      "business": true,
+      "free": false,
+      "pro": true
+    }
+  },
   "limits": {
+    "ai_automation_tokens_per_month": {
+      "unit": "token",
+      "period": "calendar_month_utc",
+      "per_person": true,
+      "plans": {
+        "basic": {
+          "included": false,
+          "value": 0
+        },
+        "business": {
+          "included": true,
+          "value": 20000000
+        },
+        "free": {
+          "included": false,
+          "value": 0
+        },
+        "pro": {
+          "included": true,
+          "value": 5000000
+        }
+      }
+    },
     "ai_tokens_per_month": {
       "unit": "token",
       "period": "calendar_month_utc",
@@ -162,6 +444,10 @@
         "business": {
           "included": true,
           "value": 20000000
+        },
+        "free": {
+          "included": false,
+          "value": 0
         },
         "pro": {
           "included": true,
@@ -182,6 +468,10 @@
           "included": true,
           "value": 6000
         },
+        "free": {
+          "included": false,
+          "value": 0
+        },
         "pro": {
           "included": true,
           "value": 1500
@@ -200,6 +490,10 @@
         "business": {
           "included": true,
           "value": null
+        },
+        "free": {
+          "included": true,
+          "value": 5
         },
         "pro": {
           "included": true,
@@ -220,6 +514,10 @@
           "included": true,
           "value": 2000
         },
+        "free": {
+          "included": true,
+          "value": 20
+        },
         "pro": {
           "included": true,
           "value": 500
@@ -239,6 +537,10 @@
           "included": true,
           "value": null
         },
+        "free": {
+          "included": true,
+          "value": 1
+        },
         "pro": {
           "included": true,
           "value": 20
@@ -251,12 +553,16 @@
       "per_person": true,
       "plans": {
         "basic": {
-          "included": false,
-          "value": 0
+          "included": true,
+          "value": 10
         },
         "business": {
           "included": true,
           "value": null
+        },
+        "free": {
+          "included": true,
+          "value": 1
         },
         "pro": {
           "included": true,
@@ -277,6 +583,10 @@
           "included": true,
           "value": null
         },
+        "free": {
+          "included": true,
+          "value": 3
+        },
         "pro": {
           "included": true,
           "value": 100
@@ -295,6 +605,10 @@
         "business": {
           "included": true,
           "value": null
+        },
+        "free": {
+          "included": true,
+          "value": 10
         },
         "pro": {
           "included": true,
@@ -315,6 +629,33 @@
           "included": true,
           "value": null
         },
+        "free": {
+          "included": true,
+          "value": 3
+        },
+        "pro": {
+          "included": true,
+          "value": 100
+        }
+      }
+    },
+    "scheduled_events_per_month": {
+      "unit": "scheduled_event",
+      "period": "calendar_month_utc",
+      "per_person": false,
+      "plans": {
+        "basic": {
+          "included": true,
+          "value": 10
+        },
+        "business": {
+          "included": true,
+          "value": null
+        },
+        "free": {
+          "included": true,
+          "value": 3
+        },
         "pro": {
           "included": true,
           "value": 100
@@ -333,6 +674,10 @@
         "business": {
           "included": true,
           "value": null
+        },
+        "free": {
+          "included": false,
+          "value": 0
         },
         "pro": {
           "included": true,
@@ -353,6 +698,10 @@
           "included": true,
           "value": 20000000000
         },
+        "free": {
+          "included": true,
+          "value": 100000000
+        },
         "pro": {
           "included": true,
           "value": 5000000000
@@ -363,6 +712,133 @@
   "max_self_service_seats": {
     "basic": 5,
     "business": null,
+    "free": 1,
     "pro": 25
-  }
+  },
+  "plans": [
+    {
+      "id": "free",
+      "name": "Free",
+      "prices": {
+        "CHF": {
+          "month": 0,
+          "year": 0,
+          "included_people": 1,
+          "extra_person_month": 0,
+          "extra_person_year": 0
+        },
+        "EUR": {
+          "month": 0,
+          "year": 0,
+          "included_people": 1,
+          "extra_person_month": 0,
+          "extra_person_year": 0
+        },
+        "USD": {
+          "month": 0,
+          "year": 0,
+          "included_people": 1,
+          "extra_person_month": 0,
+          "extra_person_year": 0
+        }
+      }
+    },
+    {
+      "id": "basic",
+      "name": "Basic",
+      "prices": {
+        "CHF": {
+          "month": 1900,
+          "year": 18300,
+          "included_people": 1,
+          "extra_person_month": 1000,
+          "extra_person_year": 9600
+        },
+        "EUR": {
+          "month": 1900,
+          "year": 18300,
+          "included_people": 1,
+          "extra_person_month": 1000,
+          "extra_person_year": 9600
+        },
+        "USD": {
+          "month": 1900,
+          "year": 18300,
+          "included_people": 1,
+          "extra_person_month": 1000,
+          "extra_person_year": 9600
+        }
+      }
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "prices": {
+        "CHF": {
+          "month": 4900,
+          "year": 47100,
+          "included_people": 2,
+          "extra_person_month": 1500,
+          "extra_person_year": 14400
+        },
+        "EUR": {
+          "month": 4900,
+          "year": 47100,
+          "included_people": 2,
+          "extra_person_month": 1500,
+          "extra_person_year": 14400
+        },
+        "USD": {
+          "month": 4900,
+          "year": 47100,
+          "included_people": 2,
+          "extra_person_month": 1500,
+          "extra_person_year": 14400
+        }
+      }
+    },
+    {
+      "id": "business",
+      "name": "Business",
+      "prices": {
+        "CHF": {
+          "month": 14900,
+          "year": 143100,
+          "included_people": 5,
+          "extra_person_month": 2000,
+          "extra_person_year": 19200
+        },
+        "EUR": {
+          "month": 14900,
+          "year": 143100,
+          "included_people": 5,
+          "extra_person_month": 2000,
+          "extra_person_year": 19200
+        },
+        "USD": {
+          "month": 14900,
+          "year": 143100,
+          "included_people": 5,
+          "extra_person_month": 2000,
+          "extra_person_year": 19200
+        }
+      }
+    }
+  ],
+  "price_per": "plan",
+  "tax_inclusive": true,
+  "usage_details": [
+    "clients",
+    "products",
+    "invoices_per_month",
+    "quotes_per_month",
+    "expenses_per_month",
+    "signatures_per_month",
+    "storage_bytes",
+    "emails_per_month",
+    "ai_tokens_per_month",
+    "automation_actions_per_month",
+    "engagements",
+    "scheduled_events_per_month"
+  ]
 }

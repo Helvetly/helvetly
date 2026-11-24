@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { PlanScreen } from '@/components/shell/plan-gate'
-import { useBilling, useSyncBilling } from '@/lib/billing'
+import { isPaid, useBilling, useSyncBilling } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 
 export const ACTIVATING_PATH = '/activating'
@@ -29,8 +29,8 @@ export function Activating({ slowAfter = 60_000 }: { slowAfter?: number }) {
   const [slow, setSlow] = useState(false)
   const billing = useBilling(slow ? false : POLL_MS)
   const data = billing.data
-  // Self-hosted (billing off) or already active: nothing to wait for.
-  const open = Boolean(data && !(data.enabled && data.locked))
+  // Self-hosted (billing off) or the paid plan is in: nothing to wait for. Until then the workspace is on Free.
+  const open = Boolean(data && (!data.enabled || isPaid(data.plan)))
   const synced = useRef(false)
 
   useEffect(() => {

@@ -368,11 +368,11 @@ function NewTag() {
   )
 }
 
-/** A workspace's own plan in its list row: nothing without a billing record, "no plan" when it has none. */
+/** A workspace's own plan in its list row: nothing without a billing record, Free when it has no paid plan. */
 function rowPlan(workspace: WorkspaceItem, billing: Billing | undefined): string | null {
   // Billing off (or not yet known) hides plans: records from when it was on would be stale.
   if (!billing?.enabled || workspace.plan == null) return null
-  if (workspace.plan === '') return translate('noPlanReadOnly')
+  if (workspace.plan === '') return translate('planFree')
   return (
     billing?.plans.find((plan) => plan.id === workspace.plan)?.name ?? capitalize(workspace.plan)
   )

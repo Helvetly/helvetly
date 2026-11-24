@@ -5,9 +5,8 @@ import { delay, http, HttpResponse } from 'msw'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { AccountSettings } from '@/components/account/account-settings'
-import { billingFixture } from '@/components/billing/billing-fixture'
+import { billingFixture, publicOfferFixture } from '@/components/billing/billing-fixture'
 import { PlanCards } from '@/components/billing/plan-cards'
-import publicOffer from '@/components/billing/public-offer.fixture.json'
 import { ClientsPage } from '@/components/clients/clients-page'
 import { Dashboard } from '@/components/dashboard/dashboard'
 import { DocumentsPage } from '@/components/documents/documents-page'
@@ -235,22 +234,24 @@ export const AccountProfile: Story = {
 }
 
 export const BillingPeriod: Story = {
-  render: () => <PlanCards billing={billingFixture()} offer={publicOffer} />,
+  render: () => <PlanCards billing={billingFixture()} offer={publicOfferFixture} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
     await expect(canvas.getByRole('radio', { name: /^Yearly/ })).toBeChecked()
-    await expect(canvas.getByRole('region', { name: 'Basic' })).toHaveTextContent('CHF 183')
-    await expect(canvas.getByRole('region', { name: 'Pro' })).toHaveTextContent(
-      '7 days, up to 2 people, card required',
+    await expect(canvas.getByRole('article', { name: 'Basic' })).toHaveTextContent('CHF 183')
+    await expect(canvas.getByRole('article', { name: 'Pro' })).toHaveTextContent(
+      '14 days, up to 2 people, card required',
     )
-    await expect(canvas.getByRole('region', { name: 'Business' })).toHaveTextContent(
+    await expect(canvas.getByRole('article', { name: 'Business' })).toHaveTextContent(
       'Everything in Pro, plus:',
     )
   },
 }
 export const BillingReadOnly: Story = {
-  render: () => <PlanCards billing={billingFixture({ can_manage: false })} offer={publicOffer} />,
+  render: () => (
+    <PlanCards billing={billingFixture({ can_manage: false })} offer={publicOfferFixture} />
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
@@ -265,7 +266,10 @@ export const BillingReadOnly: Story = {
 }
 export const BillingCancelChange: Story = {
   render: () => (
-    <PlanCards billing={billingFixture({ plan: 'basic', interval: 'month', status: 'active' })} />
+    <PlanCards
+      billing={billingFixture({ plan: 'basic', interval: 'month', status: 'active' })}
+      offer={publicOfferFixture}
+    />
   ),
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: 'Upgrade to Pro' }))

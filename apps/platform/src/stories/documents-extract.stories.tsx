@@ -110,7 +110,10 @@ const review: ImportBatch = {
 }
 
 let started: string[][] = []
-const page = (start: Parameters<typeof http.post>[1], billing = billingFixture()) => [
+const page = (
+  start: Parameters<typeof http.post>[1],
+  billing = billingFixture({ plan: 'business', status: 'active', interval: 'month' }),
+) => [
   http.get('/api/v1/documents/folders', () => HttpResponse.json({ data: [contracts] })),
   http.get('/api/v1/documents', () =>
     HttpResponse.json({

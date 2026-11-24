@@ -8,9 +8,8 @@ import { toast } from 'sonner'
 
 import type { Billing } from '@/lib/billing'
 
-import { billingFixture as billing } from './billing-fixture'
-import { choiceLabel, confirmBody, limitLine, PlanCards, selfServiceSeats } from './plan-cards'
-import offerFixture from './public-offer.fixture.json'
+import { billingFixture as billing, publicOfferFixture } from './billing-fixture'
+import { choiceLabel, confirmBody, limitLine, PlanCards } from './plan-cards'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
 
@@ -88,90 +87,97 @@ const renderCards = (value: Billing) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
       <TooltipProvider>
-        <PlanCards billing={value} offer={offerFixture} />
+        <PlanCards billing={value} offer={publicOfferFixture} />
       </TooltipProvider>
     </QueryClientProvider>,
   )
 
-const card = (name: string) => screen.getByRole('region', { name })
+const card = (name: string) => screen.getByRole('article', { name })
+const total = (name: string) => card(name).querySelector('[data-slot=team-total]')
+const monthly = () => userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
 
-const list = (name: string) => within(card(name)).getByRole('list', { name: `${name} includes` })
-
-test('a card lists the shared plan lines: Basic in full, the others over the plan before', () => {
+test('a card leads with its bold features, then what it adds over the plan before, then its limits', () => {
   renderCards(billing())
-  expect(list('Basic')).toHaveTextContent('5 team members')
-  expect(list('Basic')).toHaveTextContent('30 clients')
-  expect(list('Basic')).toHaveTextContent('100 emails to clients / month')
-  expect(list('Basic')).not.toHaveTextContent('Client portal')
-  expect(card('Pro')).toHaveTextContent('Everything in Basic, plus:')
-  expect(list('Pro')).toHaveTextContent('5M AI tokens / month for Heidi, your AI assistant')
-  expect(list('Pro')).not.toHaveTextContent('Swiss QR bills')
-  expect(card('Business')).toHaveTextContent('Everything in Pro, plus:')
-  const business = list('Business')
-  expect(business).toHaveTextContent('Client portal: clients view and pay invoices')
-  expect(business).toHaveTextContent('Your portal on your own domain (portal.yourcompany.ch)')
-  expect(business).toHaveTextContent('Approvals before invoices go out')
-  expect(business).not.toHaveTextContent('Heidi, your AI assistant5M')
-  // Unlimited is the ∞ glyph, read out as "Unlimited".
-  const people = within(business).getByText('team members', { exact: false })
-  expect(people).toHaveTextContent('∞Unlimited team members')
-  expect(within(people).getByText('∞')).toHaveAttribute('aria-hidden', 'true')
-  expect(within(people).getByText('Unlimited')).toHaveClass('sr-only')
+  expect(card('Basic')).toHaveTextContent('Everything in Free, with more room:')
+  const pro = card('Pro')
+  expect(pro).toHaveTextContent('Everything in Basic, plus:')
+  expect(pro).toHaveTextContent('Heidi, your AI assistant')
+  expect(pro).toHaveTextContent('No “Sent with Helvetly” on your emails and PDFs')
+  expect(pro).not.toHaveTextContent('Calendar, booking links and calendar sync')
+  expect(card('Business')).toHaveTextContent('White-labelled client portal on your own domain')
+  const limits = within(card('Business')).getByLabelText('Limits')
+  expect(within(limits).getByText('People').nextSibling).toHaveTextContent('Unlimited')
+  expect(
+    within(within(card('Pro')).getByLabelText('Limits')).getByText('People').nextSibling,
+  ).toHaveTextContent('25')
+  expect(document.body.textContent).not.toContain('∞')
 })
 
-test('without the offer the cards still show prices and the way to each plan', () => {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TooltipProvider>
-        <PlanCards billing={billing()} />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  )
-  expect(within(card('Basic')).queryByRole('list')).toBeNull()
-  expect(within(card('Basic')).getByRole('button', { name: 'Choose Basic' })).toBeEnabled()
+test('on Free, Free is the current plan as one compact strip with its limits and no way to choose it', () => {
+  renderCards(billing())
+  const free = screen.getByRole('region', { name: 'Free' })
+  expect(free).toHaveTextContent('Your current plan')
+  expect(free).toHaveTextContent('1 person · free forever')
+  expect(within(free).queryByRole('button')).toBeNull()
+  expect(
+    within(within(free).getByLabelText('Limits')).getByText('Clients').nextSibling,
+  ).toHaveTextContent('5')
+  expect(screen.queryByRole('article', { name: 'Free' })).toBeNull()
+})
+
+test('a paid workspace sees no Free strip', () => {
+  renderCards(billing({ plan: 'pro', status: 'active', interval: 'month' }))
+  expect(screen.queryByRole('region', { name: 'Free' })).toBeNull()
+})
+
+test('the toggle starts on yearly with what yearly saves, a subscription on its own interval', async () => {
+  const { unmount } = renderCards(billing())
+  expect(screen.getByRole('radio', { name: 'Yearly' })).toBeChecked()
+  expect(screen.getByText('Save 20% — CHF 45 a year on Basic')).toBeVisible()
+  expect(card('Basic')).toHaveTextContent('15.25')
+  expect(card('Basic')).toHaveTextContent('Billed CHF 183 yearly · you save CHF 45')
+  expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 375 / year')
+  await monthly()
+  expect(screen.getByRole('radio', { name: 'Monthly' })).toBeChecked()
+  expect(card('Basic')).toHaveTextContent('1 person included · +CHF 10 per extra person')
+  unmount()
+  renderCards(billing({ plan: 'pro', status: 'active', interval: 'month' }))
+  expect(screen.getByRole('radio', { name: 'Monthly' })).toBeChecked()
 })
 
 test('only Pro offers the trial, with its line; the others are charged today', async () => {
   renderCards(billing())
+  await monthly()
   const pro = card('Pro')
-  expect(within(pro).getByRole('button', { name: 'Start 7-day free trial' })).toBeEnabled()
+  expect(within(pro).getByRole('button', { name: 'Start 14-day free trial' })).toBeEnabled()
   expect(pro).toHaveTextContent(
-    'Pro free for 7 days, up to 2 people, card required. Full Pro limits, shared by the team. Then CHF 49 per person a month.',
+    'Pro free for 14 days, up to 2 people, card required. Full Pro limits, shared by the team. Then CHF 64 a month for 3 people.',
   )
+  expect(pro).toHaveTextContent('2 people included · +CHF 15 per extra person')
   expect(within(card('Business')).getByRole('button', { name: 'Choose Business' })).toBeEnabled()
   expect(card('Business')).toHaveTextContent('Charged today.')
   const basic = card('Basic')
   expect(within(basic).getByRole('button', { name: 'Choose Basic' })).toBeEnabled()
   expect(basic).toHaveTextContent('Charged today.')
-  expect(basic).toHaveTextContent('per person / month')
   expect(basic).not.toHaveTextContent('incl. VAT')
-  expect(basic.querySelector('[data-slot=team-total]')).toHaveTextContent(
-    'For 3 peopleCHF 57 / month',
-  )
-  await userEvent.click(screen.getByRole('radio', { name: /^Yearly/ }))
-  expect(card('Basic')).toHaveTextContent('CHF 183')
-  expect(card('Basic')).toHaveTextContent('CHF 15.25per person / month')
-  expect(card('Basic')).toHaveTextContent('CHF 183 a year, billed yearly')
-  expect(card('Basic')).not.toHaveTextContent('Save CHF')
-  expect(card('Basic').querySelector('[data-slot=team-total]')).toHaveTextContent(
-    'For 3 peopleCHF 549 / year',
-  )
-  await userEvent.click(within(card('Pro')).getByRole('button', { name: /Start 7-day/ }))
+  expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 39 / month')
+  expect(total('Business')).toHaveTextContent('For 3 peopleCHF 149 / month')
+  await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
+  await userEvent.click(within(card('Pro')).getByRole('button', { name: /Start 14-day/ }))
   await waitFor(() => expect(assign).toHaveBeenCalledWith('https://checkout.stripe.test/c'))
   expect(checkout).toEqual({ plan: 'pro', interval: 'year', language: 'en' })
 })
 
-test('the picker shows the workspace currency and what its prices include', () => {
+test('the picker shows the workspace currency and what its prices include', async () => {
   const { unmount } = renderCards(billing({ currency: 'eur' }))
-  expect(card('Pro')).toHaveTextContent('EUR 49')
-  expect(card('Pro')).toHaveTextContent('per person / month')
+  expect(card('Pro')).toHaveTextContent('EUR')
   expect(screen.getByText(/Prices incl. VAT/)).toBeVisible()
   expect(screen.queryByText(/CHF|Swiss VAT/)).toBeNull()
   unmount()
 
   renderCards(billing({ currency: 'usd' }))
-  expect(card('Pro')).toHaveTextContent('Then USD 49 per person a month.')
-  expect(card('Basic')).toHaveTextContent('per person / month')
+  await monthly()
+  expect(card('Pro')).toHaveTextContent('Then USD 64 a month for 3 people.')
   expect(screen.getByText(/Prices incl. tax/)).toBeVisible()
 })
 
@@ -192,7 +198,7 @@ test('while trialing, another plan says the trial ends and the plan is charged n
   expect(await screen.findByText('Upgrade to Pro?')).toBeInTheDocument()
   expect(
     screen.getByText(
-      'Your trial ends now and Pro is charged today: CHF 49 per person a month, incl. VAT (CHF 147 for 3 people).',
+      'Your trial ends now and Pro is charged today: CHF 64 a month for 3 people, incl. VAT.',
     ),
   ).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'Upgrade' }))
@@ -258,15 +264,14 @@ test('an unpaid upgrade says why and offers Stripe’s page to pay', async () =>
 test('a subscribed workspace can move down', async () => {
   renderCards(billing({ plan: 'business', status: 'active', interval: 'month' }))
   expect(within(card('Pro')).getByRole('button', { name: 'Switch to Pro' })).toBeEnabled()
-  await userEvent.click(screen.getByRole('radio', { name: /^Yearly/ }))
+  await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
   expect(within(card('Business')).getByRole('button', { name: 'Switch yearly' })).toBeEnabled()
 })
 
-test('the yearly saving sits in the Yearly segment, and the promotion code just under the switch', () => {
+test('the promotion code sits just under the toggle, above the cards', () => {
   renderCards(billing())
-  const yearly = screen.getByRole('radio', { name: 'Yearly −20%' })
+  const yearly = screen.getByRole('radio', { name: 'Yearly' })
   const promo = screen.getByRole('button', { name: 'Have a promotion code?' })
-  // Under the switch, above the first card.
   expect(yearly.closest('fieldset')?.compareDocumentPosition(promo)).toBe(
     Node.DOCUMENT_POSITION_FOLLOWING,
   )
@@ -275,18 +280,18 @@ test('the yearly saving sits in the Yearly segment, and the promotion code just 
 
 test('a valid promotion code discounts the plans it covers and goes with the checkout', async () => {
   renderCards(billing({ trial_available: false }))
+  await monthly()
   await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
   await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'launch20')
   await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
   expect((await screen.findByText('LAUNCH20')).parentElement).toHaveTextContent(
     'LAUNCH20 · −20% for 3 months',
   )
-  const pro = card('Pro')
-  expect(pro).toHaveTextContent('CHF 39.20')
-  expect(pro.querySelector('s')).toHaveTextContent('CHF 49')
-  expect(card('Business').querySelector('s')).toBeNull()
-  expect(card('Business')).toHaveTextContent('CHF 99')
-  await userEvent.click(within(pro).getByRole('button', { name: 'Choose Pro' }))
+  expect(total('Pro')).toHaveTextContent('CHF 51.20')
+  expect(total('Pro')?.querySelector('s')).toHaveTextContent('CHF 64')
+  expect(total('Business')?.querySelector('s')).toBeNull()
+  expect(total('Business')).toHaveTextContent('CHF 149')
+  await userEvent.click(within(card('Pro')).getByRole('button', { name: 'Choose Pro' }))
   await waitFor(() =>
     expect(checkout).toEqual({
       plan: 'pro',
@@ -334,19 +339,22 @@ test('a refused code shows the reason the API gives', async () => {
 
 test('an amount off takes the amount the API gives in the workspace currency', async () => {
   renderCards(billing({ trial_available: false }))
+  await monthly()
   await userEvent.click(screen.getByRole('button', { name: 'Have a promotion code?' }))
   await userEvent.type(screen.getByLabelText(/^Code\*?$/), 'TENOFF')
   await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
   expect((await screen.findByText('TENOFF')).parentElement).toHaveTextContent(
     'TENOFF · −CHF 10 once',
   )
-  expect(card('Pro')).toHaveTextContent('CHF 39')
-  expect(card('Pro').querySelector('s')).toHaveTextContent('CHF 49')
+  expect(total('Pro')).toHaveTextContent('CHF 54')
+  expect(total('Pro')?.querySelector('s')).toHaveTextContent('CHF 64')
 })
 
 test('people who cannot manage billing see the plans without the way to change them', () => {
   renderCards(billing({ can_manage: false }))
-  expect(within(card('Pro')).getByRole('button', { name: 'Start 7-day free trial' })).toBeDisabled()
+  expect(
+    within(card('Pro')).getByRole('button', { name: 'Start 14-day free trial' }),
+  ).toBeDisabled()
   expect(screen.getByText(/Only an owner or admin/)).toBeInTheDocument()
   expect(screen.queryByText('Have a promotion code?')).toBeNull()
 })
@@ -367,8 +375,8 @@ test('a plan the workspace is over is refused with the reason, and Checkout does
           error: {
             code: 'plan_limits_exceeded',
             message:
-              'Basic allows 2 members besides the owner; this workspace has 3. Remove 1 member first.',
-            details: { plan: 'basic', overages: [{ limit: 'members', used: 3, max: 2 }] },
+              'Basic allows 4 members besides the owner; this workspace has 5. Remove 1 member first.',
+            details: { plan: 'basic', overages: [{ limit: 'members', used: 5, max: 4 }] },
           },
         },
         { status: 409 },
@@ -379,7 +387,7 @@ test('a plan the workspace is over is refused with the reason, and Checkout does
   await userEvent.click(within(card('Basic')).getByRole('button', { name: 'Choose Basic' }))
   await waitFor(() =>
     expect(toast.error).toHaveBeenCalledWith(
-      'Basic allows 2 members besides the owner; this workspace has 3. Remove 1 member first.',
+      'Basic allows 4 members besides the owner; this workspace has 5. Remove 1 member first.',
     ),
   )
   expect(assign).not.toHaveBeenCalled()
@@ -388,7 +396,7 @@ test('a plan the workspace is over is refused with the reason, and Checkout does
 test('choiceLabel names the way to each plan from the workspace’s', () => {
   const [basic, pro, business] = billing().plans
   if (!basic || !pro || !business) throw new Error('fixture plans missing')
-  expect(choiceLabel(billing(), pro, 'month')).toBe('Start 7-day free trial')
+  expect(choiceLabel(billing(), pro, 'month')).toBe('Start 14-day free trial')
   expect(choiceLabel(billing(), basic, 'month')).toBe('Choose Basic')
   expect(choiceLabel(billing(), business, 'month')).toBe('Choose Business')
   expect(choiceLabel(billing({ trial_available: false }), pro, 'month')).toBe('Choose Pro')
@@ -401,7 +409,6 @@ test('choiceLabel names the way to each plan from the workspace’s', () => {
 test('the current plan and the next step up are marked; Business has nothing above it', () => {
   const { unmount } = renderCards(billing({ plan: 'basic', status: 'active', interval: 'month' }))
   expect(within(card('Basic')).getByText('Current')).toBeInTheDocument()
-  expect(card('Pro')).toHaveAttribute('data-recommended', 'true')
   expect(within(card('Pro')).getByText('Recommended')).toBeInTheDocument()
   unmount()
   renderCards(billing({ plan: 'business', status: 'active', interval: 'month' }))
@@ -417,34 +424,41 @@ test('while a payment fails no plan can be chosen', () => {
   expect(card('Business')).toHaveTextContent('Update the payment method first.')
 })
 
-const proTotal = () => card('Pro').querySelector('[data-slot=team-total]')
-
-test('every card totals the workspace’s people, with no control to pick them', () => {
+test('every card totals the workspace’s people, with no control to pick them', async () => {
   renderCards(billing())
-  expect(proTotal()).toHaveTextContent('For 3 peopleCHF 147 / month')
+  await monthly()
+  expect(total('Pro')).toHaveTextContent('For 3 peopleCHF 64 / month')
   expect(screen.queryByRole('group', { name: 'Team size' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /people/ })).not.toBeInTheDocument()
 })
 
-test('a workspace with no seats counted yet is totalled for one person', () => {
+test('a workspace with no seats counted yet is totalled for one person', async () => {
   renderCards(billing({ seats: 0 }))
-  expect(proTotal()).toHaveTextContent('For 1 personCHF 49 / month')
+  await monthly()
+  expect(total('Pro')).toHaveTextContent('For 1 personCHF 49 / month')
 })
 
-test('one footnote says whose allowances they are, the yearly amount is bold and a percent has no space', async () => {
+test('one footnote says whose allowances they are, and a percent has no space', () => {
   renderCards(billing({ trial_available: false }))
   expect(screen.getAllByText(/shared by the whole team/)).toHaveLength(1)
-  expect(document.body.textContent).not.toMatch(/per team member/i)
-  // Monthly view: "or CHF … a year, save 20%".
-  const monthly = card('Pro').querySelector('[data-slot=plan-price] ~ p strong')
-  expect(monthly?.textContent).toMatch(/^CHF/)
-  expect(card('Pro').textContent).toMatch(/save \d+%/)
-  await userEvent.click(screen.getByRole('radio', { name: /^Yearly/ }))
-  expect(card('Pro').querySelector('[data-slot=plan-price] ~ p strong')?.textContent).toMatch(
-    /^CHF/,
-  )
-  // Cards and the Yearly segment's "−20%" alike: no space between a number and its percent sign.
   expect(document.body.textContent).not.toMatch(/\d %/)
+})
+
+test('every feature side by side opens in place under the cards', async () => {
+  renderCards(billing())
+  const compare = screen.getByRole('button', { name: 'Compare every feature' })
+  expect(compare).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('table')).toBeNull()
+  await userEvent.click(compare)
+  expect(compare).toHaveAttribute('aria-expanded', 'true')
+  const table = screen.getByRole('table', { hidden: true })
+  for (const name of ['Free', 'Basic', 'Pro', 'Business'])
+    expect(
+      within(table).getByRole('columnheader', { name: new RegExp(`^${name}`), hidden: true }),
+    ).toBeInTheDocument()
+  expect(table).toHaveTextContent('CHF 0')
+  await userEvent.click(compare)
+  expect(screen.queryByRole('table', { hidden: true })).toBeNull()
 })
 
 const scheduledDowngrade = (over: Partial<Billing> = {}) =>
@@ -490,7 +504,7 @@ test('a scheduled downgrade marks its plan; the current plan can be kept, which 
 test('yearly to monthly on the same plan is scheduled on the monthly side', async () => {
   renderCards(scheduledDowngrade({ interval: 'year', pending_plan: 'business' }))
   expect(within(card('Business')).getByRole('button', { name: 'Keep Business' })).toBeEnabled()
-  await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
+  await monthly()
   expect(within(card('Business')).getByRole('button', { name: 'Scheduled' })).toBeDisabled()
 })
 
@@ -510,19 +524,9 @@ test('a downgrade made in place says it waits for the period end', async () => {
   )
 })
 
-test('cards total the paid seats of a per-seat subscription, and every member is a paid seat', () => {
+test('cards total the paid seats of a per-seat subscription', () => {
   renderCards(billing({ plan: 'pro', status: 'active', interval: 'month', paid_seats: 4 }))
-  expect(proTotal()).toHaveTextContent('For 4 peopleCHF 196 / month')
-  expect(screen.getByText('Every member is a paid seat')).toBeVisible()
-})
-
-test('the seat line names the most people a plan here sells', () => {
-  const capped = billing()
-  capped.plans = capped.plans.map((plan) => ({ ...plan, limits: { ...plan.limits, members: 24 } }))
-  expect(selfServiceSeats(capped.plans)).toBe(25)
-  expect(selfServiceSeats(billing().plans)).toBeNull()
-  renderCards(capped)
-  expect(screen.getByText('Every member is a paid seat · up to 25 people in the app')).toBeVisible()
+  expect(total('Pro')).toHaveTextContent('For 4 peopleCHF 79 / month')
 })
 
 test('more seats than self-service sells is refused with the API’s reason', async () => {
@@ -537,7 +541,9 @@ test('more seats than self-service sells is refused with the API’s reason', as
     ),
   )
   renderCards(billing())
-  await userEvent.click(within(card('Pro')).getByRole('button', { name: 'Start 7-day free trial' }))
+  await userEvent.click(
+    within(card('Pro')).getByRole('button', { name: 'Start 14-day free trial' }),
+  )
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message))
   expect(assign).not.toHaveBeenCalled()
 })

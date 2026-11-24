@@ -277,7 +277,7 @@ export function MembersPage() {
       {editing && <AccessDialog member={editing} onClose={() => setEditing(null)} />}
       {pending && (
         <ConfirmDialog
-          {...confirmText(pending, billing && seatCostLabel(billing))}
+          {...confirmText(pending, billing && seatCostLabel(billing, billing.seats))}
           tone="destructive"
           onDecide={decide}
         />
