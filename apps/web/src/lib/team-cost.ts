@@ -1,7 +1,8 @@
 import { type Locale, localeDetails } from '@helvetly/i18n'
-import { formatPrice, monthOf, savingOf } from '@helvetly/ui/lib/price'
+import { formatPrice, savingOf, yearOf } from '@helvetly/ui/lib/price'
 
-import { type Interval, type Plan, priceOf, SELF_SERVICE_SEATS } from '@/lib/plans'
+import { type Interval, type Plan, SELF_SERVICE_SEATS } from '@/lib/plans'
+import { monthlyFor } from '@/lib/team-pricing'
 
 /** The team sizes the comparisons' cost section offers. */
 export const TEAM_SIZE = { min: 1, max: 10, start: 3 }
@@ -10,26 +11,26 @@ export type TeamCost =
   | { fits: false; seats: number }
   | { fits: true; total: string; perPersonMonth: string; saving: string | null }
 
-/** What a team pays for a plan in an interval, as the API charges it: every person in the workspace pays the price. */
+/** The team's cost including extra people, with savings against twelve monthly payments. */
 export function teamCost(
   plan: Plan,
   people: number,
   interval: Interval,
   language: Locale,
-  currency = 'chf',
 ): TeamCost {
   const seats = SELF_SERVICE_SEATS[plan.id]
   if (seats !== null && people > seats) return { fits: false, seats }
   const locale = localeDetails(language).numberLocale
-  const each = priceOf(plan, interval, currency)
-  const saving = savingOf(priceOf(plan, 'month', currency))
+  const month = { amount: monthlyFor(plan.id, people) * 100, currency: 'chf' }
+  const total = interval === 'year' ? yearOf(month) : month
+  const months = interval === 'year' ? 12 : 1
   return {
     fits: true,
-    total: formatPrice({ ...each, amount: each.amount * people }, locale),
-    perPersonMonth: formatPrice(interval === 'year' ? monthOf(each) : each, locale),
-    saving:
-      interval === 'year'
-        ? formatPrice({ ...saving, amount: saving.amount * people }, locale)
-        : null,
+    total: formatPrice(total, locale),
+    perPersonMonth: formatPrice(
+      { ...total, amount: Math.round(total.amount / (months * people)) },
+      locale,
+    ),
+    saving: interval === 'year' ? formatPrice(savingOf(month), locale) : null,
   }
 }

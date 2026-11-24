@@ -358,30 +358,48 @@ describe('pricing page', () => {
 describe('comparison with Magic Heidi', () => {
   beforeEach(() => serve())
 
-  it('leads with what Helvetly includes and marks what was not compared', async () => {
+  it('says where each product is ahead, in short cells with the detail behind a (?)', async () => {
     await renderPage(
       await ComparePage({ params: Promise.resolve({ lang: 'en', slug: 'magic-heidi' }) }),
     )
-    const table = screen.getByRole('table')
-    const groups = within(table)
-      .getAllByRole('rowheader')
-      .map((r) => r.textContent)
-    expect(groups.slice(0, 4)).toEqual([
-      'What Helvetly includes',
-      'Swiss QR bill',
-      'E-invoices: XRechnung, ZUGFeRD / Factur-X',
-      'Client portal on your own domain',
-    ])
-    const portal = screen.getByRole('rowheader', { name: 'Client portal on your own domain' })
+    const portal = screen.getByRole('rowheader', { name: 'Client portal' }).closest('tr')!
+    expect(within(portal).getByText('Yes')).toBeTruthy()
+    expect(within(portal).getByText('Not offered')).toBeTruthy()
+    expect(within(portal).getByRole('button', { name: 'About: Client portal' })).toBeTruthy()
+    const sessions = screen
+      .getByRole('rowheader', { name: 'Client sessions and booking' })
+      .closest('tr')!
+    expect(within(sessions).getByText('Not compared')).toBeTruthy()
+    expect(sessions.dataset.win).toBeUndefined()
+    const features = within(portal.closest('table')!)
     expect(
-      within(portal.closest('tr')!).getByText('In Business, also on your own domain'),
-    ).toBeTruthy()
-    expect(within(portal.closest('tr')!).getByText('Not offered')).toBeTruthy()
-    const scheduling = screen.getByRole('rowheader', { name: 'Scheduling with calendar sync' })
-    expect(within(scheduling.closest('tr')!).getByText('Not compared')).toBeTruthy()
+      features
+        .getAllByRole('rowheader')
+        .slice(0, 2)
+        .map((row) => row.textContent),
+    ).toEqual(['What Helvetly includes', 'Swiss QR bill'])
+    expect(features.queryByText(/CHF/)).toBeNull()
+    expect(portal.dataset.win).toBe('true')
+    const feeds = screen.getByRole('rowheader', { name: 'Bank feeds' }).closest('tr')!
+    expect(feeds.dataset.win).toBeUndefined()
     expect(screen.getByText(/as of 11 November 2026/)).toBeTruthy()
-    // No prices in the feature table: they have their own section.
-    expect(within(table).queryByText(/CHF/)).toBeNull()
+  })
+
+  it('prices a year for 1, 3 and 5 people side by side', async () => {
+    await renderPage(
+      await ComparePage({ params: Promise.resolve({ lang: 'en', slug: 'magic-heidi' }) }),
+    )
+    const year = screen.getByRole('table', { name: 'A year by team size' })
+    const pro = within(year).getByRole('rowheader', { name: 'Helvetly Pro' }).closest('tr')!
+    expect(
+      within(pro)
+        .getAllByRole('cell')
+        .map((c) => c.textContent),
+    ).toEqual(['CHF 471', 'CHF 615', 'CHF 903'])
+    const theirs = within(year)
+      .getByRole('rowheader', { name: /^Magic Heidi Pro/ })
+      .closest('tr')!
+    expect(within(theirs).getAllByText('CHF 299')).toHaveLength(3)
   })
 
   it('shows the cost for a team apart, with their prices as published', async () => {
@@ -390,20 +408,20 @@ describe('comparison with Magic Heidi', () => {
     expect(screen.getByRole('heading', { name: 'What it costs for your team' })).toBeTruthy()
     expect(screen.getByText('Team of 3 people')).toBeTruthy()
     const pro = document.querySelector('[data-plan="pro"]')!
-    expect(pro).toHaveTextContent("CHF 1'413 / year")
-    expect(pro).toHaveTextContent('CHF 39.25 per person / month · saves CHF 351 a year vs monthly')
-    expect(screen.getByText(/^Basic CHF 35, Advanced CHF 42/)).toBeTruthy()
+    expect(pro).toHaveTextContent('CHF 615 / year')
+    expect(pro).toHaveTextContent('CHF 17.08 / person / month · saves CHF 153 a year vs monthly')
+    expect(screen.getByText(/Advanced CHF 504/)).toBeTruthy()
     expect(screen.getByText(/As published on 15 November 2026/)).toBeTruthy()
     await userEvent.click(screen.getByRole('radio', { name: 'Monthly' }))
-    expect(pro).toHaveTextContent('CHF 147 / month')
-    const payroll = screen.getByRole('rowheader', { name: 'Employees and payroll register' })
-    expect(within(payroll.closest('tr')!).getByText('Paid add-on')).toBeTruthy()
+    expect(pro).toHaveTextContent('CHF 64 / month')
+    const payroll = screen.getByRole('rowheader', { name: 'Employees and payroll' })
+    expect(within(payroll.closest('tr')!).getByText('Payroll as an add-on')).toBeTruthy()
   })
 
   it.each(COMPETITORS.map((c) => c.slug))('has a page for %s with a dated source', async (slug) => {
     await renderPage(await ComparePage({ params: Promise.resolve({ lang: 'en', slug }) }))
     const them = COMPETITORS.find((c) => c.slug === slug)!
-    expect(screen.getByRole('columnheader', { name: them.name })).toBeTruthy()
+    expect(screen.getAllByRole('columnheader', { name: them.name })).toHaveLength(2)
     // The table's sources and the prices' source.
     expect(
       screen.getAllByRole('link', { name: new URL(them.url).hostname.replace(/^www\./, '') }),

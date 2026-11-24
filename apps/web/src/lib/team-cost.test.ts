@@ -7,18 +7,18 @@ const { planById } = plansIn('en')
 const amount = (text: string) => Number(text.replace(/[^\d.]/g, ''))
 
 describe('team cost', () => {
-  it('charges every person the plan price, monthly or yearly', () => {
+  it('charges for the team with its extra people, monthly or yearly', () => {
     expect(teamCost(planById('pro'), 3, 'month', 'en')).toEqual({
       fits: true,
-      total: 'CHF 147',
-      perPersonMonth: 'CHF 49',
+      total: 'CHF 64',
+      perPersonMonth: 'CHF 21.33',
       saving: null,
     })
     expect(teamCost(planById('pro'), 3, 'year', 'en')).toEqual({
       fits: true,
-      total: "CHF 1'413",
-      perPersonMonth: 'CHF 39.25',
-      saving: 'CHF 351',
+      total: 'CHF 615',
+      perPersonMonth: 'CHF 17.08',
+      saving: 'CHF 153',
     })
   })
 
@@ -41,8 +41,8 @@ describe('team cost', () => {
 
   it('formats in the page language', () => {
     expect(teamCost(planById('business'), 10, 'year', 'de')).toMatchObject({
-      total: "CHF 9'510",
-      perPersonMonth: 'CHF 79.25',
+      total: "CHF 2'391",
+      perPersonMonth: 'CHF 19.93',
     })
     expect(teamCost(planById('pro'), 1, 'year', 'nl')).toMatchObject({
       perPersonMonth: 'CHF 39,25',

@@ -7,10 +7,10 @@ import { useState } from 'react'
 import { useOfferStatus } from '@/components/offer-provider'
 import { IntervalSwitch } from '@/components/pricing-cards'
 import { cn } from '@/lib/cn'
-import { useCurrency } from '@/lib/currency'
 import { translatorFor } from '@/lib/i18n'
-import { type Interval, plansIn, RECOMMENDED, TRIAL } from '@/lib/plans'
+import { type Interval, plansIn, RECOMMENDED } from '@/lib/plans'
 import { TEAM_SIZE, teamCost } from '@/lib/team-cost'
+import { PRO_TRIAL_DAYS } from '@/lib/team-pricing'
 
 /** The other product's prices as read on its site, quoted beside ours rather than recomputed for a team. */
 export type TheirPrices = {
@@ -26,7 +26,6 @@ export function TeamCost({ them }: { them: TheirPrices }) {
   const language = useLanguage()
   const translate = translatorFor(language)
   const { PLANS } = plansIn(language)
-  const currency = useCurrency()
   const unavailable = useOfferStatus().status === 'unavailable'
   const [people, setPeople] = useState(TEAM_SIZE.start)
   const [interval, setInterval] = useState<Interval>('year')
@@ -51,7 +50,7 @@ export function TeamCost({ them }: { them: TheirPrices }) {
         />
         <ul className="mt-7 grid gap-3">
           {PLANS.map((plan) => {
-            const cost = teamCost(plan, people, interval, language, currency)
+            const cost = teamCost(plan, people, interval, language)
             return (
               <li
                 key={plan.id}
@@ -68,9 +67,10 @@ export function TeamCost({ them }: { them: TheirPrices }) {
                   </span>
                 ) : cost.fits ? (
                   <span className="text-right tabular-nums">
-                    <span className="text-title-sm font-semibold">{cost.total}</span>
-                    <span className="text-body text-muted-foreground">
-                      {interval === 'year' ? translate('cmpPerYear') : translate('cmpPerMonth')}
+                    <span className="text-title-sm font-semibold">
+                      {translate(interval === 'year' ? 'cmpPerYear' : 'cmpPerMonth', {
+                        price: cost.total,
+                      })}
                     </span>
                     <span className="block text-body-sm text-muted-foreground">
                       {translate('cmpPerPersonMonth', { price: cost.perPersonMonth })}
@@ -87,7 +87,7 @@ export function TeamCost({ them }: { them: TheirPrices }) {
           })}
         </ul>
         <p className="mt-5 text-body-sm text-muted-foreground">
-          {translate('cmpOurPriceExplained', { days: TRIAL.days })}{' '}
+          {translate('cmpOurPriceExplained', { days: PRO_TRIAL_DAYS })}{' '}
           <a
             href={localizedHref('/pricing', language)}
             className="underline underline-offset-4 hover:text-foreground"
