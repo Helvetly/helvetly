@@ -385,6 +385,7 @@ describe('comparison with Magic Heidi', () => {
   })
 
   it('shows the cost for a team apart, with their prices as published', async () => {
+    serve({ trace: 'loc=CH' })
     await renderPage(await ComparePage({ params: Promise.resolve({ lang: 'en', slug: 'bexio' }) }))
     expect(screen.getByRole('heading', { name: 'What it costs for your team' })).toBeTruthy()
     expect(screen.getByText('Team of 3 people')).toBeTruthy()
