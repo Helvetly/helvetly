@@ -1,11 +1,13 @@
 import type { NextConfig } from 'next'
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants'
+
+import slugs from '../../packages/i18n/src/route-slugs.json'
+import { publicRedirects } from './src/lib/public-redirects'
 
 const config: NextConfig = {
   agentRules: false, // the root AGENTS.md is the only agent guide
   devIndicators: false,
   allowedDevOrigins: ['*.helvetly.com'], // pnpm dev:tunnel (scripts/dev-tunnel.sh)
-  // Static files only (out/): every page is known at build time. Served by Cloudflare Workers Static Assets at helvetly.com.
-  output: 'export',
   images: { unoptimized: true }, // no image server in a static export
   // One build serves every language: English at the root, the others under /<language> (app/[lang]).
   transpilePackages: ['@helvetly/ui', '@helvetly/i18n'],
@@ -17,4 +19,15 @@ const config: NextConfig = {
   },
 }
 
-export default config
+export default function webConfig(phase: string): NextConfig {
+  if (phase === PHASE_DEVELOPMENT_SERVER) {
+    // next dev does not serve Cloudflare's _redirects. Comparison pages keep the competitor's slug.
+    const paths = Object.keys(slugs).filter((path) => path !== '/help/topic')
+    return {
+      ...config,
+      skipTrailingSlashRedirect: true,
+      redirects: async () => publicRedirects([...paths, '/compare/:brand']),
+    }
+  }
+  return { ...config, output: 'export' }
+}
