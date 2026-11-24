@@ -503,7 +503,7 @@ export const ChangePlanYearly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('heading', { name: 'Change your plan' })).toBeVisible()
-    await userEvent.click(canvas.getByRole('radio', { name: /^Yearly/ }))
+    await userEvent.click(await canvas.findByRole('radio', { name: /^Yearly/ }))
     await waitFor(() => expect(canvas.getByRole('radio', { name: /^Yearly/ })).toBeChecked())
     // The picker ends with the plan cards: no comparison table, no feature grid, no questions.
     await expect(canvas.queryByRole('heading', { name: 'Compare plans' })).not.toBeInTheDocument()
