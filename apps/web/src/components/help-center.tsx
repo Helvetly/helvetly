@@ -1,5 +1,5 @@
 'use client'
-import { localizedHref } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import { HeidiOrb } from '@helvetly/ui/components/heidi-mark'
 import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { ArrowRight, BookOpen, Search, X } from 'lucide-react'
@@ -53,7 +53,7 @@ function ArticleRow({ entry }: { entry: HelpEntry }) {
   const language = useLanguage()
   return (
     <Link
-      href={localizedHref(`/help/${entry.slug}`, language)}
+      href={publicHref(`/help/${entry.slug}`, language)}
       className="group border-site-line flex items-start gap-4 rounded-2xl border bg-card p-4 transition-colors hover:border-foreground/20"
     >
       <TopicIcon category={entry.category} size="sm" />
@@ -155,7 +155,7 @@ export function HelpCenter({ entries }: { entries: HelpEntry[] }) {
                 return (
                   <Link
                     key={topic.name}
-                    href={localizedHref(`/help/topic/${topicSlug(topic.name)}`, language)}
+                    href={publicHref(`/help/topic/${topicSlug(topic.name)}`, language)}
                     className={cn(
                       'group flex flex-col rounded-3xl border p-5 transition-colors hover:border-foreground/20',
                       TONES[topic.tone].tile,

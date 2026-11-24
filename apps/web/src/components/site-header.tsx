@@ -1,5 +1,5 @@
 'use client'
-import { localizedHref } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { Logo } from '@helvetly/ui/components/logo'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@helvetly/ui/components/sheet'
@@ -43,7 +43,7 @@ export function SiteHeader() {
         )}
       >
         <Link
-          href={localizedHref('/', language)}
+          href={publicHref('/', language)}
           className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <Logo className="size-7" />

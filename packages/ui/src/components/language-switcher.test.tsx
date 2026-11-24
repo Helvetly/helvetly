@@ -30,6 +30,34 @@ test('shows language flags independently of Swiss regional formatting', async ()
   }
 })
 
+test('opens the alternate page on the current host and keeps the query and anchor', async () => {
+  const user = userEvent.setup()
+  const assign = vi.fn<Location['assign']>()
+  const alternate = document.createElement('link')
+  alternate.rel = 'alternate'
+  alternate.hreflang = 'it'
+  alternate.href = 'https://www.helvetly.com/it/guide/software-gestionale-per-piccole-imprese'
+  document.head.append(alternate)
+  vi.stubGlobal('location', {
+    ...window.location,
+    pathname: '/de/ratgeber/backoffice-software-fuer-kleinunternehmen',
+    search: '?ref=mail',
+    hash: '#intro',
+    assign,
+  })
+  try {
+    render(<LanguageSwitcher />)
+    await user.click(screen.getByRole('button', { name: 'Change language' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Italiano' }))
+    expect(assign).toHaveBeenCalledWith(
+      '/it/guide/software-gestionale-per-piccole-imprese?ref=mail#intro',
+    )
+  } finally {
+    alternate.remove()
+    vi.unstubAllGlobals()
+  }
+})
+
 test('keeps the Swiss country flag for the origin badge', () => {
   const { container } = render(<Flag region="CH" />)
 

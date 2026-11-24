@@ -126,17 +126,23 @@ export function localizedHref(
   return language === defaultLocale ? path : `/${language}${path === '/' ? '/' : path}`
 }
 
-export function localizedAlternates(path: string, language: Locale) {
+export function localizedAlternates(
+  path: string,
+  language: Locale,
+  hrefFor: (path: string, language: Locale) => string = localizedHref,
+) {
   return {
-    canonical: localizedHref(path, language),
+    canonical: hrefFor(path, language),
     languages: {
       ...Object.fromEntries(
-        Object.entries(locales).flatMap(([code, details]) => [
-          [code, localizedHref(path, code)],
-          [details.languageTag, localizedHref(path, code)],
-        ]),
+        Object.keys(locales)
+          .filter(isLocale)
+          .flatMap((code) => [
+            [code, hrefFor(path, code)],
+            [localeDetails(code).languageTag, hrefFor(path, code)],
+          ]),
       ),
-      'x-default': localizedHref(path, defaultLocale),
+      'x-default': hrefFor(path, defaultLocale),
     },
   }
 }

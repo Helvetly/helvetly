@@ -27,9 +27,17 @@ const languageFlags: Record<string, string> = { de: 'DE', en: 'GB', fr: 'FR', it
 /** Reloads the page in `language`, so module-level labels change too. */
 function switchLanguage(language: string) {
   const path = window.location.pathname + window.location.search + window.location.hash
-  window.location.assign(
-    browserLanguage ? languageHref(path, language) : localizedHref(path, language),
+  if (browserLanguage) {
+    window.location.assign(languageHref(path, language))
+    return
+  }
+  const alternate = document.querySelector<HTMLLinkElement>(
+    `link[rel="alternate"][hreflang="${language}"]`,
   )
+  const publicUrl = alternate
+    ? new URL(alternate.href).pathname + window.location.search + window.location.hash
+    : localizedHref(path, language)
+  window.location.assign(publicUrl)
 }
 
 function LanguageMenuItems() {

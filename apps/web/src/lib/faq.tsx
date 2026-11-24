@@ -1,5 +1,5 @@
-import { localizedHref } from '@helvetly/i18n'
 import { formatPrice } from '@helvetly/ui/lib/price'
+import { publicHref } from '@helvetly/i18n/public-href'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
@@ -72,9 +72,9 @@ export const faqIn = perLanguage((translate, language) => {
       a: (
         <>
           {translate('offerHeidiDataDetails', { plans: plansWith('heidi', 'conjunction') })}
-          <Link href={localizedHref('/privacy', language)}>{translate('privacyPolicy')}</Link>
+          <Link href={publicHref('/privacy', language)}>{translate('privacyPolicy')}</Link>
           {translate('andThe3')}
-          <Link href={localizedHref('/subprocessors', language)}>
+          <Link href={publicHref('/subprocessors', language)}>
             {translate('listOfSubprocessors')}
           </Link>
           .

@@ -69,7 +69,7 @@ describe('WebMCP tools', () => {
       /Unknown page/,
     )
     expect(open).toHaveBeenCalledExactlyOnceWith('/pricing')
-    expect(pageUrl('security', 'de')).toBe('/de/security')
+    expect(pageUrl('security', 'de')).toBe('/de/sicherheit')
     expect(pageUrl('sign_up', 'de')).toMatch(/\/login\?lang=de$|\/de\/login$/)
   })
 

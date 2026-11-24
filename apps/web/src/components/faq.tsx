@@ -1,4 +1,5 @@
-import { type Locale, localizedHref } from '@helvetly/i18n'
+import { type Locale } from '@helvetly/i18n'
+import { publicHref } from '@helvetly/i18n/public-href'
 import { HeidiOrb } from '@helvetly/ui/components/heidi-mark'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
@@ -19,7 +20,7 @@ export function FaqTeaser({ lang, teaser }: { lang: Locale; teaser: 'home' | 'pr
         <FaqItem key={item.id} item={item} index={i} />
       ))}
       <Link
-        href={localizedHref('/faq', lang)}
+        href={publicHref('/faq', lang)}
         className="block px-5 py-3.5 text-body-sm font-medium text-link underline underline-offset-4 outline-none hover:no-underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset sm:px-6"
       >
         {translate('seeAllQuestions', { count: all.length })}
