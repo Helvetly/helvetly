@@ -39,7 +39,7 @@ func NewMedia(origin string, secret []byte) (*Media, error) {
 
 // mediaClaims: what a link may download (the version recorded when it was signed) and how, until Expires (Unix s).
 type mediaClaims struct {
-	Workspace   string `json:"w,omitempty"` // whose download allowance each GET counts against
+	Workspace   string `json:"w,omitempty"`
 	Key         string `json:"k"`
 	Version     string `json:"v,omitempty"`
 	Filename    string `json:"n"`

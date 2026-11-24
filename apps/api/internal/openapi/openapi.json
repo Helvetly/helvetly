@@ -2058,7 +2058,7 @@
         "operationId": "download_client_file",
         "tags": ["Clients"],
         "summary": "Download a client file",
-        "description": "Downloads the file. By default answers 302 with a Location header pointing to a presigned URL valid for 5 minutes; when the server streams downloads (S3_PROXY_DOWNLOADS) it answers 200 with the file bytes and the file's content type. Follow the redirect without the Authorization header. Read-only. On a workspace with a plan, the bytes are counted against its monthly downloads and never presigned (302 to the MEDIA_URL link, or 200 with the bytes); when the downloads are used up it answers 402 with limit_reached.",
+        "description": "Downloads the file. A 302 response redirects to a signed MEDIA_URL link or a presigned storage URL, valid for 5 minutes. Follow the redirect without the Authorization header. With no MEDIA_URL and S3_PROXY_DOWNLOADS enabled, the API returns the file bytes and their content type directly. Downloads are unmetered.",
         "parameters": [
           {
             "name": "id",
@@ -2092,7 +2092,7 @@
             }
           },
           "302": {
-            "description": "Redirect to a presigned download URL, valid for 5 minutes.",
+            "description": "Redirect to a signed media link or presigned storage URL, valid for 5 minutes.",
             "headers": {
               "Location": {
                 "schema": {
@@ -5661,7 +5661,7 @@
         "operationId": "download_document",
         "tags": ["Documents"],
         "summary": "Download a document",
-        "description": "Answers 302 with a Location header, a presigned URL valid for 5 minutes that saves the file under its current name; when the server proxies downloads (S3_PROXY_DOWNLOADS) it answers 200 with the bytes. Also works for a document in the Trash. On a workspace with a plan, the bytes are counted against its monthly downloads and never presigned (302 to the MEDIA_URL link, or 200 with the bytes); when the downloads are used up it answers 402 with limit_reached.",
+        "description": "Downloads the document under its current name, including from Trash. A 302 response redirects to a signed MEDIA_URL link or a presigned storage URL, valid for 5 minutes. With no MEDIA_URL and S3_PROXY_DOWNLOADS enabled, the API returns the file bytes directly. Downloads are unmetered.",
         "parameters": [
           {
             "name": "id",
@@ -5675,7 +5675,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Redirect to a 5-minute presigned download URL.",
+            "description": "Redirect to a signed media link or presigned storage URL, valid for 5 minutes.",
             "headers": {
               "Location": {
                 "schema": {
@@ -6296,7 +6296,7 @@
         "operationId": "download_expense_receipt",
         "tags": ["Expenses"],
         "summary": "Download a receipt",
-        "description": "Answers 302 with a Location header, a presigned URL valid for 5 minutes that saves the file under its name; when the server proxies downloads (S3_PROXY_DOWNLOADS) it answers 200 with the bytes instead. With inline=1 the bytes are always returned with Content-Disposition inline and the stored content type (PDF or image). On a workspace with a plan, the bytes are counted against its monthly downloads and never presigned (302 to the MEDIA_URL link, or 200 with the bytes); when the downloads are used up it answers 402 with limit_reached.",
+        "description": "Downloads the receipt under its file name. A 302 response redirects to a signed MEDIA_URL link or a presigned storage URL, valid for 5 minutes. With no MEDIA_URL and S3_PROXY_DOWNLOADS enabled, the API returns the file bytes directly. With inline=1 the API serves the PDF or image directly with Content-Disposition: inline. Downloads are unmetered.",
         "parameters": [
           {
             "name": "id",
@@ -6329,7 +6329,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Redirect to a 5-minute presigned download URL.",
+            "description": "Redirect to a signed media link or presigned storage URL, valid for 5 minutes.",
             "headers": {
               "Location": {
                 "schema": {
