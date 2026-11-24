@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
+	"strings"
 	"time"
 
 	"helvetly.com/api/internal/recur"
+	"helvetly.com/api/internal/schedpolicy"
 	"helvetly.com/api/internal/store"
 )
 
@@ -22,28 +25,70 @@ const (
 	reasonMonthlyRule    = "monthly_rule"    // the rule repeats on a day of the month, which cannot move by days
 )
 
-// moveChoices are what the person chose for the sessions a series move cannot simply take along, by occurrence id.
-type moveChoices struct {
-	keep    []string // stay where they are, off the rule
-	cancel  []string // cancelled (on time, the business's change)
-	include []string // changed on their own, moved with the others all the same
-	dryRun  bool     // only the preview: the edit is rolled back and nothing outside the database is asked
+// What the person decided for a session a series move lists (decisions, by occurrence id).
+const (
+	decideKeep       = "keep"        // stays where it is, off the rule
+	decideSkip       = "skip"        // cancelled on time (the business's change)
+	decideMoveAnyway = "move_anyway" // goes to its new time all the same, a day off or a conflict there
+	decideWithSeries = "with_series" // changed on its own, it moves with the others all the same
+	decideMoveTo     = "move_to"     // goes to a time of the person's own (move_to:<RFC 3339 instant>)
+)
+
+type decision struct {
+	kind string
+	at   time.Time // move_to
 }
 
-var choiceFields = []string{"dry_run", "keep", "cancel", "include"}
+// moveChoices are the person's decisions for the sessions a series move cannot simply take along.
+type moveChoices struct {
+	decisions map[string]decision
+	dryRun    bool // only the preview: the edit is rolled back and nothing outside the database is asked
+}
 
-func choicesOf(body map[string]json.RawMessage) (moveChoices, error) {
-	ch := moveChoices{dryRun: flagOf(body, "dry_run")}
+var choiceFields = []string{"dry_run", "decisions"}
+
+func (s *Service) choicesOf(body map[string]json.RawMessage) (moveChoices, error) {
+	ch := moveChoices{dryRun: flagOf(body, "dry_run"), decisions: map[string]decision{}}
 	f := form{}
-	for key, ids := range map[string]*[]string{"keep": &ch.keep, "cancel": &ch.cancel, "include": &ch.include} {
-		if raw, ok := body[key]; ok && (json.Unmarshal(raw, ids) != nil || len(*ids) > 1000) {
-			f.fail(key, "Send a list of session ids.")
+	if raw, ok := body["decisions"]; ok {
+		var given map[string]string
+		if json.Unmarshal(raw, &given) != nil || len(given) > 1000 {
+			f.fail("decisions", "Send a decision for each session: keep, skip, move_anyway, with_series or move_to:<time>.")
+		}
+		for id, v := range given {
+			kind, at, _ := strings.Cut(v, ":")
+			d := decision{kind: kind}
+			switch kind {
+			case decideKeep, decideSkip, decideMoveAnyway, decideWithSeries:
+				if at != "" {
+					f.fail("decisions", "Unknown decision "+v+".")
+				}
+			case decideMoveTo:
+				t, err := time.Parse(time.RFC3339, at)
+				if err != nil {
+					f.fail("decisions", "Enter a time such as move_to:2026-12-01T09:00:00Z.")
+				} else if !t.After(s.now()) {
+					f.fail("decisions", "Pick a time that has not passed.")
+				}
+				d.at = t.UTC()
+			default:
+				f.fail("decisions", "Unknown decision "+v+".")
+			}
+			ch.decisions[id] = d
 		}
 	}
 	for _, k := range choiceFields {
 		delete(body, k)
 	}
 	return ch, f.err()
+}
+
+// pin moves the session the person dragged to where it was dropped, whatever it was before (changed on its own
+// too), unless they decided otherwise for it.
+func (ch *moveChoices) pin(id string, at time.Time) {
+	if _, ok := ch.decisions[id]; !ok {
+		ch.decisions[id] = decision{kind: decideMoveTo, at: at}
+	}
 }
 
 // MovePreview is what a series edit would do (dry_run): how many sessions move, the first few, and the sessions that
@@ -58,11 +103,12 @@ type MoveItem struct {
 	OccurrenceID string     `json:"occurrence_id"`
 	StartsAt     time.Time  `json:"starts_at"`
 	EndsAt       time.Time  `json:"ends_at"`
-	MovesTo      *time.Time `json:"moves_to"` // the new start when it moves, else null
+	MovesTo      *time.Time `json:"moves_to"` // its new start by the rule (whether or not it goes there), null when it has none
 	Status       string     `json:"status"`
 	Reason       string     `json:"reason"`
-	Moves        bool       `json:"moves"`             // a warning: it moves unless kept
+	Moves        bool       `json:"moves"`             // a warning: it moves unless decided otherwise
 	DayOff       string     `json:"day_off,omitempty"` // the day off's name
+	Conflicts    []Conflict `json:"conflicts,omitempty"`
 }
 
 // errDryRun rolls a previewed edit back.
@@ -74,13 +120,8 @@ const sampleSize = 3
 // inside the edit's transaction. o is the session the edit was made on, at from on ("following"); only sessions that
 // have not ended count.
 func (s *Service) preview(ctx context.Context, q store.Q, ws store.Workspace, o store.SchedOccurrence, before []store.SchedOccurrence,
-	following bool) (MovePreview, error) {
+	following bool, ed edit) (MovePreview, error) {
 	out := MovePreview{Sample: []MoveItem{}, Items: []MoveItem{}}
-	moved, err := q.SchedOccurrence(ctx, ws.ID, o.ID, false)
-	if err != nil {
-		return out, err
-	}
-	delta := moved.StartsAt.Sub(o.StartsAt)
 	list, err := q.SchedulingHolidays(ctx, ws.ID, "", "")
 	if err != nil {
 		return out, err
@@ -107,13 +148,22 @@ func (s *Service) preview(ctx context.Context, q store.Q, ws store.Workspace, o 
 		case s.timeLocked(b):
 			item.Reason = reasonStarted
 		case !isOpen(a.Status):
-			item.Reason, item.DayOff = reasonOutsideSeries, dayOffAt(b.StartsAt.Add(delta))
-			if item.DayOff != "" {
-				item.Reason = reasonDayOff
+			item.Reason = reasonOutsideSeries
+			if to, ok := ed.proposed[b.ID]; ok {
+				item.MovesTo, item.DayOff = &to, dayOffAt(to)
+				if item.DayOff != "" {
+					item.Reason = reasonDayOff
+				}
+				if item.Conflicts, err = s.moveConflicts(ctx, q, ws, a, to); err != nil {
+					return out, err
+				}
 			}
 		case a.StartsAt.Equal(b.StartsAt):
-			if b.IsException && delta != 0 {
-				item.Reason = reasonException
+			if to, ok := ed.proposed[b.ID]; ok && b.IsException && !to.Equal(b.StartsAt) {
+				item.Reason, item.MovesTo = reasonException, &to
+				if item.Conflicts, err = s.moveConflicts(ctx, q, ws, a, to); err != nil {
+					return out, err
+				}
 			}
 		default:
 			to := a.StartsAt
@@ -122,7 +172,7 @@ func (s *Service) preview(ctx context.Context, q store.Q, ws store.Workspace, o 
 			if len(out.Sample) < sampleSize {
 				out.Sample = append(out.Sample, item)
 			}
-			if item.Reason, err = s.moveWarning(ctx, q, ws, a, dayOffAt(a.StartsAt)); err != nil {
+			if item.Reason, item.Conflicts, err = s.moveWarning(ctx, q, ws, a, dayOffAt(a.StartsAt)); err != nil {
 				return out, err
 			}
 			if item.Reason == reasonDayOff {
@@ -137,22 +187,61 @@ func (s *Service) preview(ctx context.Context, q store.Q, ws store.Workspace, o 
 }
 
 // moveWarning is why a session that moves deserves a look, "" for none: the day off it lands on, a request of the
-// client still open, the host busy then.
-func (s *Service) moveWarning(ctx context.Context, q store.Q, ws store.Workspace, a store.SchedOccurrence, dayOff string) (string, error) {
+// client still open, someone busy then (with what).
+func (s *Service) moveWarning(ctx context.Context, q store.Q, ws store.Workspace, a store.SchedOccurrence, dayOff string) (string, []Conflict, error) {
+	cs, err := s.moveConflicts(ctx, q, ws, a, a.StartsAt)
+	if err != nil {
+		return "", nil, err
+	}
 	if dayOff != "" {
-		return reasonDayOff, nil
+		return reasonDayOff, cs, nil
 	}
 	if _, err := q.OpenSchedRequest(ctx, ws.ID, a.ID); err == nil {
-		return reasonRequestPending, nil
+		return reasonRequestPending, cs, nil
 	} else if !isNotFound(err) {
-		return "", err
+		return "", nil, err
 	}
-	cs, err := s.conflicts(ctx, q, ws, a.HostUserID, a.StartsAt, a.EndsAt, a.ID)
-	if err != nil || len(cs) == 0 {
-		return "", err
+	if len(cs) == 0 {
+		return "", nil, nil
 	}
-	return reasonConflict, nil
+	return reasonConflict, cs, nil
 }
+
+// moveConflicts are what a's session would overlap at start: the host's other sessions and busy times from their
+// calendars, and the client's sessions with other members (kind client). Days off and working hours are told
+// apart (the day off is its own reason).
+func (s *Service) moveConflicts(ctx context.Context, q store.Q, ws store.Workspace, a store.SchedOccurrence, start time.Time) ([]Conflict, error) {
+	end := start.Add(a.EndsAt.Sub(a.StartsAt))
+	cs, err := s.conflicts(ctx, q, ws, a.HostUserID, start, end, a.ID)
+	if err != nil {
+		return nil, err
+	}
+	out := slices.DeleteFunc(cs, func(c Conflict) bool {
+		return c.Kind != string(schedpolicy.ConflictEvent) && c.Kind != string(schedpolicy.ConflictBusy)
+	})
+	from, to := start.Add(-schedpolicy.MaxDuration), end
+	theirs, err := q.SchedOccurrences(ctx, ws.ID, store.SchedOccurrenceFilter{From: &from, To: &to, ClientID: a.ClientID})
+	if err != nil {
+		return nil, err
+	}
+	for _, x := range theirs {
+		if x.ID == a.ID || x.EventID == a.EventID || !isOpen(x.Status) || !x.EndsAt.After(start) ||
+			a.HostUserID != nil && x.HostUserID != nil && *x.HostUserID == *a.HostUserID { // the host's own: already there
+			continue
+		}
+		title := ""
+		if x.Title != nil {
+			title = *x.Title
+		} else if e, err := q.SchedEvent(ctx, ws.ID, x.EventID, false); err == nil {
+			title = e.Title
+		}
+		out = append(out, Conflict{Kind: conflictClient, StartsAt: x.StartsAt, EndsAt: x.EndsAt, OccurrenceID: x.ID, Title: title})
+	}
+	return out, nil
+}
+
+// conflictClient: the client has a session with another member then.
+const conflictClient = "client"
 
 // rulePreview is the preview of a move the series' rule cannot make: nothing moves.
 func rulePreview(o store.SchedOccurrence) MovePreview {

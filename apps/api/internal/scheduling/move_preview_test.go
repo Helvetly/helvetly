@@ -95,7 +95,8 @@ func TestSeriesMovePreview(t *testing.T) {
 					item = &got.Items[i]
 				}
 			}
-			if item == nil || item.Reason != tc.reason || item.Moves != tc.moves || (item.MovesTo != nil) != tc.moves {
+			if item == nil || item.Reason != tc.reason || item.Moves != tc.moves ||
+				(item.MovesTo == nil) != (tc.reason == reasonStarted || tc.reason == reasonClosed) {
 				t.Fatalf("session %d: %+v, want %s (moves %v); items %+v", tc.item, item, tc.reason, tc.moves, got.Items)
 			}
 			if after := e.occurrence(b, occs[tc.item].ID); !after.StartsAt.Equal(before.StartsAt) || after.Status != before.Status ||
@@ -133,7 +134,7 @@ func TestSeriesMoveWithChoices(t *testing.T) {
 				"duration_minutes": 60, "recurrence": map[string]any{"freq": "weekly", "count": 6}}).Data.Occurrences
 			e.do(b, "PATCH", path+occs[4].ID, map[string]any{"scope": "this", "starts_local": "2026-12-29T13:00"}, 200, nil)
 			e.do(b, "PATCH", path+occs[2].ID, map[string]any{"scope": scope, "starts_local": "2026-12-17T11:00", "duration_minutes": 60,
-				"keep": []string{occs[3].ID}, "cancel": []string{occs[5].ID}, "include": []string{occs[4].ID}}, 200, nil)
+				"decisions": map[string]string{occs[3].ID: "keep", occs[5].ID: "skip", occs[4].ID: "with_series"}}, 200, nil)
 			for i, o := range occs {
 				after := e.occurrence(b, o.ID)
 				switch {
@@ -153,5 +154,5 @@ func TestSeriesMoveWithChoices(t *testing.T) {
 			}
 		})
 	}
-	e.fails(b, "PATCH", path+"soc_x", map[string]any{"scope": "all", "keep": "soc_y"}, 422, "validation_failed")
+	e.fails(b, "PATCH", path+"soc_x", map[string]any{"scope": "all", "decisions": []string{"soc_y"}}, 422, "validation_failed")
 }

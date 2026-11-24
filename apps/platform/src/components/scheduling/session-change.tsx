@@ -6,6 +6,8 @@ import { toast } from 'sonner'
 import { translate } from '@/lib/i18n'
 import {
   changeErrorMessage,
+  instantOf,
+  minutesOf,
   localOf,
   schedulingApi,
   schedulingKeys,
@@ -25,6 +27,12 @@ export function toastSaved(kept: number | undefined) {
   toast.success(
     kept ? translate('schedSavedKept', { count: kept }) : translate('schedSessionSaved'),
   )
+}
+
+/** The instant of a wall clock "2026-12-17T20:30" in zone. */
+const instantOfLocal = (local: string, zone: string) => {
+  const [date = '', time = '00:00'] = local.split('T')
+  return instantOf(date, minutesOf(time), zone).toISOString()
 }
 
 type Change = { occurrence: Occurrence; body: Partial<EventInput>; zone: string; done?: () => void }
@@ -133,8 +141,11 @@ export function useSessionChange({
       {blocked && (
         <MoveConflictsDialog
           preview={blocked.preview}
-          startsLocal={blocked.body.starts_local ?? ''}
+          from={blocked.occurrence.starts_at}
+          to={instantOfLocal(blocked.body.starts_local ?? '', blocked.zone)}
+          scope={blocked.scope}
           zone={blocked.zone}
+          hostId={blocked.body.host_id ?? blocked.occurrence.host?.id}
           pending={patch.isPending}
           onCancel={() => setBlocked(null)}
           onMove={(choices) => commit(blocked, blocked.scope, choices)}

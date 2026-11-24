@@ -377,33 +377,46 @@ const blockedItem = (
   occurrence_id: id,
   starts_at: '2026-12-22T08:00:00Z',
   ends_at: '2026-12-22T09:00:00Z',
-  moves_to: null,
+  moves_to: '2026-12-22T09:00:00Z',
   status: 'scheduled',
   reason,
   moves: false,
   ...extra,
 })
+// Far ahead: a time picked by hand must not have passed, whenever the stories run.
+const OWN_AT = '2030-01-08T12:00:00Z'
 const BLOCKED: MovePreview = {
   moving: 9,
   sample: [],
   items: [
-    blockedItem('soc_off', 'day_off', {
-      moves: true,
-      moves_to: '2026-12-24T09:00:00Z',
-      day_off: 'Christmas Eve',
-    }),
+    blockedItem('soc_off', 'day_off', { day_off: 'Closing day' }),
     blockedItem('soc_own', 'exception', {
-      starts_at: '2026-12-29T12:00:00Z',
+      starts_at: OWN_AT,
+      ends_at: '2030-01-08T13:00:00Z',
+      moves_to: '2030-01-08T09:00:00Z',
       status: 'rescheduled',
     }),
-    blockedItem('soc_now', 'started', { starts_at: '2026-12-01T08:00:00Z' }),
-    blockedItem('soc_busy', 'conflict', { moves: true, moves_to: '2027-01-05T09:00:00Z' }),
+    blockedItem('soc_now', 'started', { starts_at: '2026-12-01T08:00:00Z', moves_to: null }),
+    blockedItem('soc_busy', 'conflict', {
+      moves: true,
+      starts_at: '2027-01-05T08:00:00Z',
+      ends_at: '2027-01-05T09:00:00Z',
+      moves_to: '2027-01-05T09:00:00Z',
+      conflicts: [
+        {
+          kind: 'event',
+          title: 'Strategy call',
+          starts_at: '2027-01-05T08:30:00Z',
+          ends_at: '2027-01-05T09:30:00Z',
+        },
+      ],
+    }),
   ],
 }
 const MONTHLY: MovePreview = {
   moving: 0,
   sample: [],
-  items: [blockedItem('soc_series_2', 'monthly_rule')],
+  items: [blockedItem('soc_series_2', 'monthly_rule', { moves_to: null })],
 }
 const patched = fn()
 /** Answers the move's preview with `preview`; the save itself goes on to the fake. */
@@ -414,8 +427,27 @@ const previewWith = (preview: MovePreview) =>
     if (body.dry_run) return HttpResponse.json({ data: preview })
     return undefined
   })
+/** A time picked by hand at 11:00 on 8 Jan 2030 overlaps a team meeting; any other is free. */
+const pickedCheck = http.get('/api/v1/scheduling/conflicts', ({ request }) => {
+  const at = new URL(request.url).searchParams.get('starts_at')
+  return HttpResponse.json({
+    data:
+      at === '2030-01-08T10:00:00.000Z'
+        ? [
+            {
+              kind: 'event',
+              title: 'Team meeting',
+              starts_at: '2030-01-08T10:00:00Z',
+              ends_at: '2030-01-08T11:00:00Z',
+            },
+          ]
+        : [],
+  })
+})
 const blockedParameters = (preview: MovePreview) => ({
-  msw: { handlers: [previewWith(preview), team, clients, ...schedulingHandlers(state)] },
+  msw: {
+    handlers: [previewWith(preview), pickedCheck, team, clients, ...schedulingHandlers(state)],
+  },
 })
 /** Edits the series' session to 10:00 and applies it to all sessions: the preview answers. */
 const moveAll = async () => {
@@ -435,50 +467,95 @@ const blockedRow = (reason: string) => {
   if (!row) throw new Error(`No ${reason} row`)
   return within(row)
 }
+const DECIDE = '3 sessions need your decision'
+const summary = () => document.querySelector('[data-move-summary]')
 
-/** Some sessions can't go along: each says why, with the proposed way out; "Move the others" saves those choices. */
-export const SeriesMoveBlocked: Story = {
+/**
+ * Sessions that need a look: each shows where it is, where it would go and why in plain words, with a decision.
+ * Move anyway onto the day off, keep the overlapping one, pick another time for the one moved on its own (checked as
+ * it changes), and the footer counts it all; Apply saves the decisions with the move.
+ */
+export const SeriesMoveDecisions: Story = {
   parameters: blockedParameters(BLOCKED),
   render: () => <Drawer start={{ kind: 'view', id: 'soc_series_2' }} />,
   play: async () => {
     await moveAll()
-    const dialog = within(await screen.findByRole('dialog', { name: "Some sessions can't move" }))
-    await expect(dialog.getByText("8 sessions will move to Tuesday 10:00. 3 can't.")).toBeVisible()
+    const dialog = within(await screen.findByRole('dialog', { name: DECIDE }))
     await expect(
-      blockedRow('day_off').getByText('Would land on a day off (Christmas Eve).'),
+      dialog.getByText(
+        'Moving the series from Tuesday 09:00 to Tuesday 10:00. 8 sessions move without problems.',
+      ),
     ).toBeVisible()
+    await expect(summary()).toHaveTextContent('8 move · 1 moved anyway · 1 kept · 1 skipped')
+    // No status badge: the old "Moved" is gone, the reason says it.
+    await expect(dialog.queryByText('Moved')).not.toBeInTheDocument()
+
+    // Day off: skipped as the series does, unless moved anyway.
+    const off = blockedRow('day_off')
+    await expect(off.getByText('Tue 22 Dec, 09:00')).toBeVisible()
+    await expect(off.getByText('Tue 22 Dec, 10:00')).toBeVisible()
     await expect(
-      blockedRow('day_off').getByRole('button', { name: 'Keep on its original day' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    await expect(
-      blockedRow('day_off').getByRole('button', { name: 'Skip this date' }),
+      off.getByText('Tue 22 Dec is a day off (Closing day), and this series skips days off.'),
     ).toBeVisible()
-    await expect(blockedRow('exception').getByText('Moved')).toBeVisible()
+    await expect(off.getByRole('button', { name: 'Skip this date' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await userEvent.click(off.getByRole('button', { name: 'Move anyway' }))
+
+    // Started: only told.
     await expect(
-      blockedRow('exception').getByRole('button', { name: 'Leave as it is' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    // Started sessions are only told: no choice.
-    await expect(blockedRow('started').getByText('Has started: it keeps its time.')).toBeVisible()
+      blockedRow('started').getByText('This session has already started, so it keeps its time.'),
+    ).toBeVisible()
     await expect(blockedRow('started').queryByRole('button')).not.toBeInTheDocument()
+
+    // An overlap names what it overlaps; keep it on its day.
+    const busy = blockedRow('conflict')
+    await expect(busy.getByText('Overlaps “Strategy call”, 09:30–10:30.')).toBeVisible()
+    await userEvent.click(busy.getByRole('button', { name: 'Keep on Tuesday' }))
+
+    // Moved on its own: pick another time, checked live.
+    const own = blockedRow('exception')
     await expect(
-      blockedRow('conflict').getByRole('button', { name: 'Move anyway' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    // Keyboard: the changed session moves too, and the summary follows.
-    blockedRow('exception').getByRole('button', { name: 'Move it too' }).focus()
-    await userEvent.keyboard('{Enter}')
-    await expect(dialog.getByText("9 sessions will move to Tuesday 10:00. 2 can't.")).toBeVisible()
-    await userEvent.click(dialog.getByRole('button', { name: 'Move the others' }))
-    await toastShows('Saved. 1 changed session kept its own time.')
+      own.getByText('You already moved this session on its own to Tue 8 Jan, 13:00.'),
+    ).toBeVisible()
+    await userEvent.click(own.getByRole('button', { name: 'Pick another time…' }))
+    await expect(await own.findByText('Free at this time.')).toBeVisible()
+    fireEvent.change(own.getByLabelText('New time'), { target: { value: '11:00' } })
+    await expect(await own.findByText('Overlaps “Team meeting”, 11:00–12:00.')).toBeVisible()
+    fireEvent.change(own.getByLabelText('New time'), { target: { value: '12:00' } })
+    await expect(await own.findByText('Free at this time.')).toBeVisible()
+
+    await expect(summary()).toHaveTextContent('8 move · 1 moved anyway · 1 kept · 1 rescheduled')
+    await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: DECIDE })).toBeNull())
     await expect(patched).toHaveBeenLastCalledWith(
       expect.objectContaining({
         scope: 'all',
         starts_local: '2026-12-08T10:00',
-        keep: ['soc_off'],
-        cancel: [],
-        include: ['soc_own'],
+        decisions: {
+          soc_off: 'move_anyway',
+          soc_busy: 'keep',
+          soc_own: 'move_to:2030-01-08T11:00:00.000Z',
+        },
       }),
     )
     await expect(patched.mock.lastCall?.[0]).not.toHaveProperty('dry_run')
+  },
+}
+
+/** A time picked by hand that has passed is refused before saving. */
+export const SeriesMovePickedTimePassed: Story = {
+  parameters: blockedParameters(BLOCKED),
+  render: () => <Drawer start={{ kind: 'view', id: 'soc_series_2' }} />,
+  play: async () => {
+    await moveAll()
+    const dialog = within(await screen.findByRole('dialog', { name: DECIDE }))
+    const own = blockedRow('exception')
+    await userEvent.click(own.getByRole('button', { name: 'Pick another time…' }))
+    fireEvent.change(own.getByLabelText('New date'), { target: { value: '2020-01-07' } })
+    await expect(await own.findByText("Pick a time that hasn't passed.")).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Apply' })).toBeDisabled()
   },
 }
 
@@ -488,11 +565,9 @@ export const SeriesMoveBlockedCancel: Story = {
   render: () => <Drawer start={{ kind: 'view', id: 'soc_series_2' }} />,
   play: async () => {
     await moveAll()
-    const dialog = within(await screen.findByRole('dialog', { name: "Some sessions can't move" }))
+    const dialog = within(await screen.findByRole('dialog', { name: DECIDE }))
     await userEvent.click(dialog.getByRole('button', { name: 'Cancel' }))
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: "Some sessions can't move" })).toBeNull(),
-    )
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: DECIDE })).toBeNull())
     await expect(patched).toHaveBeenCalledTimes(1)
     await expect(patched.mock.lastCall?.[0]).toHaveProperty('dry_run', true)
   },
@@ -504,9 +579,8 @@ export const SeriesMoveMonthlyRule: Story = {
   render: () => <Drawer start={{ kind: 'view', id: 'soc_series_2' }} />,
   play: async () => {
     await moveAll()
-    const dialog = within(await screen.findByRole('dialog', { name: "Some sessions can't move" }))
-    await expect(dialog.getByText("No session will move to Tuesday 10:00. 1 can't.")).toBeVisible()
-    await expect(dialog.getByRole('button', { name: 'Move the others' })).toBeDisabled()
+    const dialog = within(await screen.findByRole('dialog', { name: 'Check these sessions first' }))
+    await expect(dialog.getByRole('button', { name: 'Apply' })).toBeDisabled()
     await userEvent.click(dialog.getByRole('button', { name: 'Change the repeat rule…' }))
     await waitFor(() => expect(document.activeElement).toBe(field('repeat')))
   },
