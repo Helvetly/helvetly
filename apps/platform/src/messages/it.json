@@ -5987,5 +5987,6 @@
   "kmu8900": "Imposte dirette",
   "emailDigestSettings": "Impostazioni del riepilogo e-mail",
   "dailyEMailDigestHelp": "Ogni mattina dopo le 07:00, nel fuso orario dell’area di lavoro, un’e-mail per te (mai per i tuoi clienti): cosa deve essere fatturato, cosa sta per scadere e i solleciti inviati nell’ultimo giorno. Inviata solo se c’è qualcosa da segnalare. Per titolari e amministratori; richiede l’automazione degli incarichi nel piano.",
-  "dailyEMailDigestKept": "Puoi sempre disattivarlo."
+  "dailyEMailDigestKept": "Puoi sempre disattivarlo.",
+  "youSavePerPersonPerYear": "Risparmi {amount} a persona all’anno rispetto al mensile"
 }

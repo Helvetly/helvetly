@@ -18,16 +18,21 @@ export function monthOf(year: Price): Price {
   return { ...year, amount: Math.round(year.amount / 12) }
 }
 
-/** The number alone, Swiss style: "19", "18.50", "1'140". */
-export function formatAmount({ amount }: Price): string {
+/** What paying a year at once saves against twelve monthly payments, e.g. CHF 45 on Basic. */
+export function savingOf(month: Price): Price {
+  return { ...month, amount: month.amount * 12 - yearOf(month).amount }
+}
+
+/** The number alone, Swiss style: "19", "18.50", "1'140"; `locale` for a page in another language. */
+export function formatAmount({ amount }: Price, locale = numberLocale): string {
   const value = amount / 100
-  return value.toLocaleString(numberLocale, {
+  return value.toLocaleString(locale, {
     minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
     maximumFractionDigits: 2,
   })
 }
 
 /** A price with its currency, e.g. "CHF 19" or "CHF 18.50". */
-export function formatPrice(price: Price): string {
-  return `${price.currency.toUpperCase()} ${formatAmount(price)}`
+export function formatPrice(price: Price, locale = numberLocale): string {
+  return `${price.currency.toUpperCase()} ${formatAmount(price, locale)}`
 }

@@ -1,4 +1,5 @@
 import { defaultLocale, type Locale, localizedHref } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Logo } from '@helvetly/ui/components/logo'
 import { Check, Minus } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -6,10 +7,11 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 
 import { Cta } from '@/components/cta'
-import { OfferPrice, OfferProvider } from '@/components/offer-provider'
+import { OfferProvider } from '@/components/offer-provider'
 import { PageHero } from '@/components/page-hero'
 import { Container, SectionHeading } from '@/components/section'
-import { type Cell, compareIn, PRICE_ROWS } from '@/lib/compare'
+import { TeamCost } from '@/components/team-cost'
+import { type Cell, compareIn } from '@/lib/compare'
 import { languageOf, translatorFor } from '@/lib/i18n'
 import { pageMetadata } from '@/lib/metadata'
 import { TRIAL } from '@/lib/plans'
@@ -38,8 +40,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : {}
 }
 
-function Value({ lang, cell }: { lang: Locale; cell: Cell }) {
+/** A cell: a tick, a dash, a paid add-on, a note, or (`undefined`) a row not compared for that product yet. */
+function Value({ lang, cell }: { lang: Locale; cell: Cell | undefined }) {
   const translate = translatorFor(lang)
+  if (cell === undefined)
+    return <span className="text-body-sm text-placeholder">{translate('cmpNotCompared')}</span>
+  if (typeof cell === 'object' && cell !== null)
+    return (
+      <span className="flex flex-col items-start gap-1.5">
+        <Badge tone="amber" size="sm">
+          {translate('cmpPaidAddOn')}
+        </Badge>
+        {cell.addon && <span className="text-body">{cell.addon}</span>}
+      </span>
+    )
   if (cell === null)
     return (
       <>
@@ -148,78 +162,70 @@ export default async function ComparePage({ params }: Props) {
             data-reveal
             className="border-site-line relative mt-12 overflow-x-auto rounded-3xl border"
           >
-            <OfferProvider>
-              <table className="w-full min-w-[680px] border-collapse text-left">
-                <caption className="sr-only">
-                  {translate('helvetlyComparedWith')}
-                  {them.name}
-                </caption>
-                <thead className="bg-site-tint">
-                  <tr>
+            <table className="w-full min-w-[680px] border-collapse text-left">
+              <caption className="sr-only">
+                {translate('helvetlyComparedWith')}
+                {them.name}
+              </caption>
+              <thead className="bg-site-tint">
+                <tr>
+                  <th
+                    scope="col"
+                    className="w-2/5 p-5 text-body-sm font-medium text-muted-foreground"
+                  >
+                    &nbsp;
+                  </th>
+                  <th scope="col" className="bg-mint/50 w-[30%] p-5 text-title-sm font-semibold">
+                    <span className="flex items-center gap-2.5">
+                      <Logo className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5" />
+                      {translate('helvetly')}
+                    </span>
+                  </th>
+                  <th
+                    scope="col"
+                    className="w-[30%] p-5 text-title-sm font-semibold text-muted-foreground"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <Image
+                        src={them.logo}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5"
+                      />
+                      {them.name}
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              {ROW_GROUPS.map(({ group, rows }) => (
+                <tbody key={group}>
+                  <tr key={group} className="border-site-line bg-site-tint border-t">
                     <th
-                      scope="col"
-                      className="w-2/5 p-5 text-body-sm font-medium text-muted-foreground"
+                      scope="rowgroup"
+                      colSpan={3}
+                      className="p-5 py-3 text-body-sm font-medium text-muted-foreground"
                     >
-                      &nbsp;
-                    </th>
-                    <th scope="col" className="bg-mint/50 w-[30%] p-5 text-title-sm font-semibold">
-                      <span className="flex items-center gap-2.5">
-                        <Logo className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5" />
-                        {translate('helvetly')}
-                      </span>
-                    </th>
-                    <th
-                      scope="col"
-                      className="w-[30%] p-5 text-title-sm font-semibold text-muted-foreground"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <Image
-                          src={them.logo}
-                          alt=""
-                          width={24}
-                          height={24}
-                          className="size-6 rounded-md bg-white p-0.5 ring-1 ring-black/5"
-                        />
-                        {them.name}
-                      </span>
+                      {group}
                     </th>
                   </tr>
-                </thead>
-                {ROW_GROUPS.map(({ group, rows }) => (
-                  <tbody key={group}>
-                    <tr key={group} className="border-site-line bg-site-tint border-t">
-                      <th
-                        scope="rowgroup"
-                        colSpan={3}
-                        className="p-5 py-3 text-body-sm font-medium text-muted-foreground"
-                      >
-                        {group}
+                  {rows.map(({ key, label }) => (
+                    <tr key={key} className="border-site-line border-t align-top">
+                      <th scope="row" className="p-5 py-4 text-body font-normal">
+                        {label}
                       </th>
+                      {/* Helvetly's column is tinted, so it reads as one band down the table. */}
+                      <td className="bg-mint/25 p-5 py-4 font-medium">
+                        <Value lang={lang} cell={OURS[key]} />
+                      </td>
+                      <td className="p-5 py-4 text-muted-foreground">
+                        <Value lang={lang} cell={them.rows[key]} />
+                      </td>
                     </tr>
-                    {rows.map(({ key, label }) => (
-                      <tr key={key} className="border-site-line border-t align-top">
-                        <th scope="row" className="p-5 py-4 text-body font-normal">
-                          {label}
-                        </th>
-                        {/* Helvetly's column is tinted, so it reads as one band down the table. */}
-                        <td className="bg-mint/25 p-5 py-4 font-medium">
-                          {PRICE_ROWS.has(key) ? (
-                            <OfferPrice>
-                              <Value lang={lang} cell={OURS[key]} />
-                            </OfferPrice>
-                          ) : (
-                            <Value lang={lang} cell={OURS[key]} />
-                          )}
-                        </td>
-                        <td className="p-5 py-4 text-muted-foreground">
-                          <Value lang={lang} cell={them.rows[key]} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                ))}
-              </table>
-            </OfferProvider>
+                  ))}
+                </tbody>
+              ))}
+            </table>
           </div>
           <p className="mx-auto mt-6 max-w-3xl text-center text-body-sm text-muted-foreground">
             {translate('what')}
@@ -236,10 +242,33 @@ export default async function ComparePage({ params }: Props) {
             {them.checked}
             {translate('andItsPricesAndPackagesAsOf')}
             {them.pricesChecked}
-            {translate('aDashMeansItIsNotOfferedOrWe2')}
+            {translate('cmpDashMeans')}
             {them.name}
             {translate('andItsLogoAreTrademarksOfTheirOwnerWhich')}
           </p>
+        </Container>
+      </section>
+
+      <section className="py-16">
+        <Container>
+          <SectionHeading
+            eyebrow={translate('cmpCostEyebrow')}
+            title={translate('cmpCostTitle')}
+            lead={translate('cmpCostLead', { name: them.name })}
+          />
+          <div className="mt-12">
+            <OfferProvider>
+              <TeamCost
+                them={{
+                  name: them.name,
+                  url: them.url,
+                  price: them.price,
+                  pricingModel: them.pricingModel,
+                  pricesChecked: them.pricesChecked,
+                }}
+              />
+            </OfferProvider>
+          </div>
         </Container>
       </section>
     </main>

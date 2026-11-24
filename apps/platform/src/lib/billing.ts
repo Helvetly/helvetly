@@ -622,6 +622,13 @@ export function yearlySaving(plan: Plan): number {
   return Math.round((1 - year.amount / (month.amount * 12)) * 100)
 }
 
+/** What a person saves in a year on the yearly price against twelve monthly payments, as the catalogue prices them. */
+export function yearlySavingAmount(plan: Plan): PlanPrice | null {
+  const { month, year } = plan.prices
+  if (!month || !year || month.amount * 12 <= year.amount) return null
+  return { ...year, amount: month.amount * 12 - year.amount }
+}
+
 /** The plan one step above the workspace's, if there is one (none without a plan). */
 export function nextPlan(billing: Billing): Plan | undefined {
   if (billing.plan === '') return undefined

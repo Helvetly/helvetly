@@ -5987,5 +5987,6 @@
   "kmu8900": "Direct taxes",
   "emailDigestSettings": "Email digest settings",
   "dailyEMailDigestHelp": "Each morning after 07:00 in the workspace’s time zone, an email to you (never to your clients) with what needs invoicing, what is ending soon and the dunning notices sent in the last day. Only sent when there is something to report. Owners and admins; needs engagement automation on your plan.",
-  "dailyEMailDigestKept": "You can still switch it off."
+  "dailyEMailDigestKept": "You can still switch it off.",
+  "youSavePerPersonPerYear": "You save {amount} per person per year vs monthly"
 }
