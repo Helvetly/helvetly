@@ -56,9 +56,11 @@ type Story = StoryObj<typeof meta>
 
 const body = within(document.body)
 const chooseCategory = async (n: number, name: RegExp) => {
-  await userEvent.click(body.getByRole('button', { name: `Actions for item ${n}` }))
+  const actions = { name: `Actions for item ${n}` }
+  await userEvent.click(body.getByRole('button', actions))
   await userEvent.click(await body.findByRole('menuitem', { name: 'Category' }))
   await userEvent.click(await body.findByRole('menuitemradio', { name }))
+  await body.findByRole('button', actions)
 }
 const itemise = async () => {
   await userEvent.click(await body.findByRole('radio', { name: 'Items' }))
@@ -268,12 +270,15 @@ export const DeleteFromMenu: Story = {
     await userEvent.type(body.getByRole('textbox', { name: 'Line 1 description' }), 'Cable')
     await userEvent.click(body.getByRole('button', { name: 'Actions for item 1' }))
     await userEvent.click(await body.findByRole('menuitem', { name: 'Duplicate item' }))
-    await expect(body.getByRole('textbox', { name: 'Line 2 description' })).toHaveValue('Cable')
-    await userEvent.type(body.getByRole('textbox', { name: 'Line 2 description' }), ' 2')
+    const duplicate = await body.findByRole('textbox', { name: 'Line 2 description' })
+    await expect(duplicate).toHaveValue('Cable')
+    await userEvent.type(duplicate, ' 2')
     await userEvent.click(body.getByRole('button', { name: 'Actions for item 1' }))
     await userEvent.click(await body.findByRole('menuitem', { name: 'Delete item' }))
     await waitFor(() => expect(body.getAllByTestId('expense-item')).toHaveLength(1))
-    await expect(body.getByRole('textbox', { name: 'Line 1 description' })).toHaveValue('Cable 2')
+    await expect(await body.findByRole('textbox', { name: 'Line 1 description' })).toHaveValue(
+      'Cable 2',
+    )
     await expect(body.queryByRole('button', { name: /^Remove line/ })).toBeNull()
   },
 }
