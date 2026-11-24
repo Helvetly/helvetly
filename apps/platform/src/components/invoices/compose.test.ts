@@ -18,6 +18,12 @@ test.each([
     { id: null, kind: 'prepayment', client: 'cli_1' },
   ],
   ['/invoices/edit', 'id=inv_7', { id: 'inv_7', kind: 'invoice', client: null }],
+  [
+    '/invoices/new/',
+    'client=cli_1&kind=prepayment',
+    { id: null, kind: 'prepayment', client: 'cli_1' },
+  ],
+  ['/invoices/edit/', 'id=inv_7', { id: 'inv_7', kind: 'invoice', client: null }],
 ])('%s?%s opens %j', (path, query, expected) => {
   expect(parseCompose(path, q(query))).toEqual(expected)
 })

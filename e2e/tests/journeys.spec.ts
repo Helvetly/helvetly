@@ -116,6 +116,15 @@ test('catalogue creates a priced item through the actual form', async ({ page, a
   expect(object(rows[0]).unit_price_gross).toBe('100.00')
 })
 
+test('new invoice link opens the editor with its client selected', async ({ page, api }) => {
+  const client = await api.client()
+  await page.goto(`/invoices/new/?client=${text(client.id)}`)
+  const editor = page.getByRole('dialog', { name: 'New invoice' })
+  await expect(
+    editor.getByRole('button', { name: /Change$/ }).filter({ hasText: text(client.name) }),
+  ).toBeVisible()
+})
+
 test('issued invoice, payment, credit and refund agree with the browser and historical PDF', async ({
   page,
   api,
@@ -125,17 +134,24 @@ test('issued invoice, payment, credit and refund agree with the browser and hist
   const invoice = await api.draft(client)
   const path = `/invoices/${text(invoice.id)}`
   await page.goto(`/invoices/edit?id=${text(invoice.id)}`)
-  await expect(page.getByRole('button', { name: /^Issue/ }).first()).toBeVisible()
   await page
-    .getByRole('button', { name: /^Issue/ })
-    .first()
+    .getByRole('dialog', { name: 'Edit invoice' })
+    .getByRole('button', { name: 'Issue invoice', exact: true })
     .click()
-  await page
-    .getByRole('dialog', { name: 'Issue this invoice?' })
-    .getByRole('button', { name: 'Issue', exact: true })
-    .click()
-  await expect.poll(async () => (await api.read(path)).status).toBe('open')
+  const [issueResponse] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `/api/v1${path}/issue` &&
+        response.request().method() === 'POST',
+    ),
+    page
+      .getByRole('dialog', { name: 'Issue this invoice?' })
+      .getByRole('button', { name: 'Issue invoice', exact: true })
+      .click(),
+  ])
+  expect(issueResponse.status()).toBe(200)
   const issued = await api.read(path)
+  expect(issued.status).toBe('open')
   expect(issued.payable_total).toBe('1081.00')
   const originalPDF = await api.request.get(`/api/v1${path}/pdf`)
   await expect(originalPDF).toBeOK()

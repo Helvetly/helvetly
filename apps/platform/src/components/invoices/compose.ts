@@ -12,7 +12,7 @@ export const CREATABLE: InvoiceKind[] = [
 /** What the editor drawer shows: a new document (id null) or the draft `id`. */
 export type Compose = { id: string | null; kind: InvoiceKind; client: string | null }
 
-const LEGACY = /\/invoices\/(?:new|edit)$/
+const LEGACY = /\/invoices\/(?:new|edit)\/?$/
 
 /** /invoices/new and /invoices/edit?id=… are older links (Heidi, client pages): they open the same drawer. */
 export const isLegacyEditorPath = (pathname: string) => LEGACY.test(pathname)
