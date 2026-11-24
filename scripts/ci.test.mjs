@@ -79,6 +79,13 @@ test('PR diff includes older commits, deletions and both sides of a rename; erro
     git('commit', '-qm', 'documentation follow-up')
     const head = git('rev-parse', 'HEAD')
     assert.deepEqual(detectChecks('pull_request', event, head, cwd), frontend)
+    // Retargeting the PR leaves its head alone but changes the comparison base.
+    const retargeted = {
+      action: 'edited',
+      changes: { base: { ref: { from: 'main' } }, body: { from: 'old description' } },
+      pull_request: { base: { sha: git('rev-parse', 'HEAD^') } },
+    }
+    assert.deepEqual(detectChecks('pull_request', retargeted, head, cwd), docs)
     assert.deepEqual(
       detectChecks('pull_request', { ...event, action: 'ready_for_review' }, head, cwd),
       full,
@@ -210,6 +217,48 @@ test('required gate rejects drafts, missing selection and every failed, cancelle
   assert.throws(() => verifyResults(needs, false), /Missing selection/)
 })
 
+test('metadata edits cannot cancel PR verification or publish any of its check names', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8')
+  assert.match(workflow, /types: \[[^\]]*\bedited\b/)
+  const verify =
+    "github.event.action != 'edited' || github.event.changes.base != null || (github.event.changes.title == null && github.event.changes.body == null)"
+  const verifyingPR = `github.event_name == 'pull_request' && (${verify})`
+  assert.ok(workflow.includes(`cancel-in-progress: \${{ ${verifyingPR} }}`))
+  assert.ok(
+    workflow.includes(
+      `group: \${{ ${verifyingPR} && format('ci-pr-{0}', github.event.pull_request.number) || format('ci-run-{0}', github.run_id) }}`,
+    ),
+  )
+
+  const jobs = workflow
+    .split('\njobs:\n')[1]
+    .split(/^  (?=[a-z0-9-]+:$)/m)
+    .slice(1)
+  const edit =
+    "github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.title != null || github.event.changes.body != null)"
+  for (const job of jobs) {
+    const id = job.slice(0, job.indexOf(':'))
+    const name = job.match(/^    name: (.+)$/m)[1]
+    const suffixCondition =
+      id === 'changes' || id === 'required' ? edit : "needs.changes.result == 'skipped'"
+    assert.ok(name.endsWith(`\${{ ${suffixCondition} && ' (metadata only)' || '' }}`), id)
+    if (id === 'changes') {
+      assert.ok(job.includes(`if: \${{ ${verify} }}`))
+    } else if (id === 'required') {
+      assert.ok(name.startsWith('CI required${{'))
+      assert.ok(job.includes(`if: \${{ always() && (${verify}) }}`))
+    } else {
+      assert.match(job, /^    needs: (?:changes$|\[changes[,\]])/m, id)
+      assert.doesNotMatch(
+        job.match(/^    if: .+$/m)?.[0] ?? '',
+        /always\(|cancelled\(|failure\(/,
+        id,
+      )
+    }
+  }
+  assert.ok(jobs.some((job) => job.startsWith('required:\n')))
+})
+
 test('workflow keeps event transitions, shards, permissions and expensive jobs behind the quick gate', () => {
   const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8')
   for (const event of [
@@ -220,9 +269,6 @@ test('workflow keeps event transitions, shards, permissions and expensive jobs b
     'merge_group:',
   ])
     assert.ok(workflow.includes(event), event)
-  // Only PR runs are cancelled by a newer commit; every other run has a group of its own.
-  assert.match(workflow, /cancel-in-progress: \$\{\{ github.event_name == 'pull_request' \}\}/)
-  assert.match(workflow, /format\('ci-run-\{0\}', github.run_id\)/)
   assert.match(workflow, /actions: read/)
   // Chromium's system libraries come with the runner image; apt runs only when the browser cannot start.
   assert.doesNotMatch(workflow, /install --with-deps/)
@@ -242,7 +288,6 @@ test('workflow keeps event transitions, shards, permissions and expensive jobs b
   assert.match(workflow, /coverage:\n[\s\S]*?needs: \[changes, quick, vitest\]/)
   // The visual shards test the Storybooks the storybook job built once, and are skipped on drafts with it.
   assert.match(workflow, /\n  visual:\n[^]*?needs: \[changes, quick, storybook\]/)
-  assert.match(workflow, /required:\n[\s\S]*?if: \$\{\{ always\(\) \}\}/)
   assert.equal(workflow.match(/shard: \['1\/2', '2\/2'\]/g)?.length, 1)
   assert.equal(workflow.match(/shard: \['1\/3', '2\/3', '3\/3'\]/g)?.length, 1)
   assert.equal(workflow.match(/shard: \['1\/5', '2\/5', '3\/5', '4\/5', '5\/5'\]/g)?.length, 1)

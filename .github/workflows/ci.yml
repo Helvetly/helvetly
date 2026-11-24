@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
   merge_group:
 
-# A newer commit supersedes a PR's run. Every other run (push to main, merge group, manual) has a
-# group of its own: never cancelled, and never dropped as a superseded pending run either.
+# Retargeting a PR changes its diff. Editing its title or body leaves the current verification running.
+# Unrecognised or missing edit details still verify. Other runs have their own group.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || format('ci-run-{0}', github.run_id) }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null || (github.event.changes.title == null && github.event.changes.body == null)) && format('ci-pr-{0}', github.event.pull_request.number) || format('ci-run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null || (github.event.changes.title == null && github.event.changes.body == null)) }}
 
 permissions:
   contents: read
@@ -29,8 +29,10 @@ env:
   GIT_CONFIG_VALUE_0: main
 
 jobs:
+  # GitHub publishes skipped jobs as checks too. Keep metadata edits out of every protected check name.
   changes:
-    name: Select checks
+    name: Select checks${{ github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.title != null || github.event.changes.body != null) && ' (metadata only)' || '' }}
+    if: ${{ github.event.action != 'edited' || github.event.changes.base != null || (github.event.changes.title == null && github.event.changes.body == null) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -53,7 +55,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
   quick:
-    name: Quick checks
+    name: Quick checks${{ needs.changes.result == 'skipped' && ' (metadata only)' || '' }}
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -99,7 +101,7 @@ jobs:
 
   static:
     # Preserve the existing check name for repositories that already require it.
-    name: Format, lint, typecheck, build
+    name: Format, lint, typecheck, build${{ needs.changes.result == 'skipped' && ' (metadata only)' || '' }}
     needs: [changes, quick]
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.build == 'true' }}
     runs-on: ubuntu-latest
@@ -143,7 +145,7 @@ jobs:
           retention-days: 7
 
   go:
-    name: Go tests (${{ matrix.shard }})
+    name: Go tests (${{ matrix.shard }})${{ needs.changes.result == 'skipped' && ' (metadata only)' || '' }}
     needs: [changes, quick]
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
@@ -185,7 +187,7 @@ jobs:
           go list ./... | awk -v s="$shard" -v n="$shards" 'NR % n == s % n' | xargs go test -race
 
   einvoice:
-    name: XSD and KoSIT validation
+    name: XSD and KoSIT validation${{ needs.changes.result == 'skipped' && ' (metadata only)' || '' }}
     needs: [changes, quick]
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
@@ -232,7 +234,7 @@ jobs:
           retention-days: 7
 
   vitest:
-    name: Unit and Storybook tests (${{ matrix.shard }})
+    name: Unit and Storybook tests (${{ matrix.shard }})${{ needs.changes.result == 'skipped' && ' (metadata only)' || '' }}
     needs: [changes, quick]
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
@@ -269,7 +271,7 @@ jobs:
           retention-days: 1
 
   coverage:
-    name: Coverage report
+    name: Coverage report${{ needs.changes.result == 'skipped' && ' (metadata only)' || '' }}
     needs: [changes, quick, vitest]
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
@@ -299,7 +301,7 @@ jobs:
           retention-days: 7
 
   storybook:
-    name: Build Storybooks
+    name: Build Storybooks${{ needs.changes.result == 'skipped' && ' (metadata only)' || '' }}
     needs: [changes, quick]
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
@@ -329,7 +331,7 @@ jobs:
           retention-days: 1
 
   visual:
-    name: Visual regression (${{ matrix.shard }})
+    name: Visual regression (${{ matrix.shard }})${{ needs.changes.result == 'skipped' && ' (metadata only)' || '' }}
     needs: [changes, quick, storybook]
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
@@ -362,7 +364,7 @@ jobs:
           retention-days: 7
 
   e2e:
-    name: E2E (${{ matrix.shard }})
+    name: E2E (${{ matrix.shard }})${{ needs.changes.result == 'skipped' && ' (metadata only)' || '' }}
     needs: [changes, quick]
     if: ${{ !github.event.pull_request.draft && needs.changes.outputs.e2e == 'true' }}
     runs-on: ubuntu-latest
@@ -394,9 +396,9 @@ jobs:
           retention-days: 7
 
   required:
-    name: CI required
+    name: CI required${{ github.event.action == 'edited' && github.event.changes.base == null && (github.event.changes.title != null || github.event.changes.body != null) && ' (metadata only)' || '' }}
     needs: [changes, quick, static, go, einvoice, vitest, coverage, storybook, visual, e2e]
-    if: ${{ always() }}
+    if: ${{ always() && (github.event.action != 'edited' || github.event.changes.base != null || (github.event.changes.title == null && github.event.changes.body == null)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
