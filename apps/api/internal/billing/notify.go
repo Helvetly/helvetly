@@ -26,6 +26,32 @@ func subscriptionNews(eventType string, before store.Billing, after store.Subscr
 	return "billing.subscription_changed", data
 }
 
+// adminSubscriptionNews follows the accepted Stripe subscription across webhooks and direct syncs.
+func adminSubscriptionNews(before store.Billing, after store.Subscription) []string {
+	if !paid(after.Plan) {
+		return nil
+	}
+
+	same := before.SubscriptionID == after.ID
+	previouslyStarted := same && (live(before.Status) || before.Status == "unpaid" || before.Status == "paused")
+
+	var titles []string
+	switch {
+	case previouslyStarted && after.Status == "canceled":
+		titles = append(titles, "Subskrypcja zakończona")
+	case after.Status == "trialing" && !previouslyStarted:
+		titles = append(titles, "Nowa subskrypcja (okres próbny)")
+	case after.Status == "active" && (!previouslyStarted || before.Status == "trialing"):
+		titles = append(titles, "Nowa aktywna subskrypcja")
+	}
+
+	if live(after.Status) && after.CancelAtPeriodEnd && (!same || !before.CancelAtPeriodEnd) {
+		titles = append(titles, "Zaplanowano anulowanie subskrypcji")
+	}
+
+	return titles
+}
+
 func or(a, b string) string {
 	if a != "" {
 		return a

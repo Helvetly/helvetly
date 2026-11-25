@@ -132,6 +132,12 @@ func TestLoad(t *testing.T) {
 		{"no fallback model", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return c.AI.FallbackModel == "" }},
 		{"fallback model without a rate card", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_FALLBACK_MODEL": "gpt-4-turbo"}, "OPENAI_FALLBACK_MODEL", nil},
 		{"fallback model same as the model", map[string]string{"AUTH_DEV_SIGNIN": "true", "OPENAI_MODEL": "gpt-6.1-sol", "OPENAI_FALLBACK_MODEL": "gpt-6.1-sol"}, "OPENAI_FALLBACK_MODEL", nil},
+		{"telegram configured", map[string]string{"AUTH_DEV_SIGNIN": "true", "TELEGRAM_BOT_TOKEN": "123:example-token", "TELEGRAM_ADMIN_CHAT_ID": "123456789012"}, "", func(c Config) bool {
+			return c.TelegramAdminChatID == 123456789012
+		}},
+		{"telegram missing chat", map[string]string{"AUTH_DEV_SIGNIN": "true", "TELEGRAM_BOT_TOKEN": "123:example-token"}, "must be set together", nil},
+		{"telegram invalid token", map[string]string{"AUTH_DEV_SIGNIN": "true", "TELEGRAM_BOT_TOKEN": "123:invalid/token", "TELEGRAM_ADMIN_CHAT_ID": "123"}, "TELEGRAM_BOT_TOKEN has an invalid format", nil},
+		{"telegram group chat", map[string]string{"AUTH_DEV_SIGNIN": "true", "TELEGRAM_BOT_TOKEN": "123:example-token", "TELEGRAM_ADMIN_CHAT_ID": "-123"}, "ID of a private chat", nil},
 		{"feedback email", map[string]string{"AUTH_DEV_SIGNIN": "true", "FEEDBACK_EMAIL": "team@helvetly.test"}, "", func(c Config) bool {
 			return c.FeedbackEmail == "team@helvetly.test"
 		}},
@@ -191,7 +197,7 @@ func TestLoad(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, k := range []string{"HTTP_ADDR", "DATABASE_URL", "PUBLIC_URL", "PORTAL_URL", "DOCS_URL", "MEDIA_URL", "SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 				"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_TLS", "MAIL_FROM", "SESSION_TTL", "COOKIE_SECURE", "AUTH_DEV_SIGNIN", "S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "DOCUMENTS_MAX_UPLOAD_MB", "S3_OBJECT_LOCK_DAYS", "S3_OBJECT_LOCK_MODE", "S3_PROXY_DOWNLOADS", "S3_ADDRESSING",
-				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_FALLBACK_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "ADDRESS_SUGGEST_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ZONE_ID", "CUSTOM_DOMAIN_TARGET", "CLOUDFLARE_API_URL", "HELVETLY_E2E_FAKE_DOMAINS",
+				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_FALLBACK_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "ADDRESS_SUGGEST_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_ADMIN_CHAT_ID", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ZONE_ID", "CUSTOM_DOMAIN_TARGET", "CLOUDFLARE_API_URL", "HELVETLY_E2E_FAKE_DOMAINS",
 				"GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_TENANT",
 				"GOOGLE_CALENDAR_API_URL", "MICROSOFT_GRAPH_URL", "HELVETLY_E2E_FAKE_CALENDARS"} {
 				t.Setenv(k, tc.env[k])

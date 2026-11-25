@@ -239,3 +239,20 @@ func TestPackRefundAndDisputeEventsAreRecorded(t *testing.T) {
 		t.Fatalf("events recorded %d, %v", n, err)
 	}
 }
+
+func TestAdminChargebackAlertOnce(t *testing.T) {
+	c := newChargeback(t)
+	c.e.st.EnableAdminAlerts()
+	c.dispute("evt_dispute", "charge.dispute.created", "ch_sub", "needs_response")
+	c.dispute("evt_dispute", "charge.dispute.created", "ch_sub", "needs_response")
+	c.dispute("evt_update", "charge.dispute.updated", "ch_sub", "under_review")
+
+	var count int
+	var message string
+	if err := c.e.raw.QueryRow(context.Background(), `SELECT count(*), coalesce(max(message), '') FROM admin_alerts`).Scan(&count, &message); err != nil {
+		t.Fatal(err)
+	}
+	if want := "Nowy spór o płatność (Stripe)\nSpór: dp_1\nWorkspace: " + c.ws; count != 1 || message != want {
+		t.Fatalf("queued %d alerts, last %q, want one %q", count, message, want)
+	}
+}
