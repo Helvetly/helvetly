@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"errors"
-	"html"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -194,7 +193,7 @@ func factorLockedMessage(to, publicURL string) mailer.Message {
 	text := "Someone entered too many wrong two-factor codes for your Helvetly account, so two-factor verification is paused for a while.\n\n" +
 		"If it was you, wait and try again. If it was not, someone knows your first sign-in step: sign in, end your other sessions and review your sign-in methods.\n\n" +
 		"Helvetly · " + publicURL + "\n"
-	body := "<p>" + strings.ReplaceAll(html.EscapeString(strings.TrimSpace(strings.ReplaceAll(text, "\n\n", "\n"))), "\n", "</p><p>") + "</p>"
+	body := mailer.NewLetter("en").Message(strings.TrimSuffix(text, "Helvetly · "+publicURL+"\n")).Action("Sign in", publicURL).HTML()
 	return mailer.Message{To: []string{to}, Subject: "Two-factor verification paused on your Helvetly account", Text: text, HTML: body}
 }
 

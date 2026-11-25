@@ -78,11 +78,11 @@ func (s *Service) message(burst []store.Notification) mail.Message {
 
 	var text, body strings.Builder
 	fmt.Fprintf(&text, "%s\n%s\n\n", first.WorkspaceName, subject)
-	fmt.Fprintf(&body, `<p style="font-size:13px;color:#71717a">%s</p>`+"\n"+
-		`<h1 style="font-size:20px;color:#18181b">%s</h1>`+"\n", esc(first.WorkspaceName), esc(subject))
+	fmt.Fprintf(&body, `<p style="margin:0 0 6px;font-size:13px;color:#71717a">%s</p>`+"\n", esc(first.WorkspaceName))
+	body.WriteString(mail.Title(subject))
 	if summary != "" {
 		fmt.Fprintf(&text, "%s\n\n", summary)
-		fmt.Fprintf(&body, "<p>%s</p>\n", esc(summary))
+		fmt.Fprintf(&body, `<p style="margin:0 0 16px">%s</p>`+"\n", esc(summary))
 	}
 	if len(rows) > 1 {
 		body.WriteString("<ul>\n")

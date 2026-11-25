@@ -647,7 +647,7 @@ func TestGenerateEmail(t *testing.T) {
 	m = e.mail.sent[1]
 	if *out.EmailedTo != "ana@example.com, ben@example.com" || !slices.Equal(m.To, []string{"ana@example.com", "ben@example.com"}) ||
 		!slices.Equal(m.Cc, []string{"cy@example.com"}) || !slices.Equal(m.Bcc, []string{"di@example.com"}) || m.Subject != "Ihr Vertrag" ||
-		m.Language != "de" || !strings.Contains(m.HTML, "<p>Guten Tag</p>") || !strings.Contains(m.HTML, "<p>Anbei der Vertrag.</p>") {
+		m.Language != "de" || !strings.Contains(m.HTML, ">Guten Tag</p>") || !strings.Contains(m.HTML, ">Anbei der Vertrag.</p>") {
 		t.Fatalf("email from the send step: %+v", m)
 	}
 	// A language alone: the workspace's document template fills the subject and the message.

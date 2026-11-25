@@ -3,7 +3,6 @@ package invitations
 
 import (
 	"fmt"
-	"html"
 	"time"
 
 	"helvetly.com/api/internal/mail"
@@ -17,9 +16,7 @@ func inviteMessage(to, inviter, workspace, role, url string, expires time.Time) 
 	lead := fmt.Sprintf("%s invited you to join %s on Helvetly as %s.", inviter, workspace, roleArticle[role])
 	expiry := fmt.Sprintf("This invitation expires on %s.", date)
 	text := fmt.Sprintf("Hello,\n\n%s\n\nAccept the invitation here:\n%s\n\n%s\n", lead, url, expiry)
-	htmlBody := fmt.Sprintf(`<p>Hello,</p>
-<p>%s</p>
-%s<p>%s</p>`, html.EscapeString(lead), mail.Button("Accept invitation", url), html.EscapeString(expiry))
+	htmlBody := mail.NewLetter("en").Greeting("").Lead(lead).Action("Accept invitation", url).FinePrint(expiry).HTML()
 	return mail.Message{
 		To:      []string{to},
 		Subject: fmt.Sprintf("%s invited you to %s on Helvetly", inviter, workspace),

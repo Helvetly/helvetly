@@ -54,10 +54,13 @@ func TestLayout(t *testing.T) {
 		want []string
 	}{
 		{"fragment", Message{Subject: "Hi <you>", HTML: "<p>Hi</p>"}, []string{"<!doctype html>", "<title>Hi &lt;you&gt;</title>",
-			`<a href="https://app.example.com" style="color:#18181b;font-size:20px"><strong>Helvetly</strong></a>`, "<p>Hi</p>",
+			`<img src="https://app.example.com/email-logo.png"`, ">Helvetly</strong></a>", ">Hi &lt;you&gt;</h1>", "<p>Hi</p>", "linear-gradient(",
 			`Sent by <a href="https://app.example.com"`}},
-		{"footer, and links in the brand colour", Message{HTML: `<p><a href="y">Go</a></p>`, Footer: "Why <a href=\"x\">you</a>"},
-			[]string{`<a style="color:#0b7268" href="y">Go</a>`, "Why <a href=\"x\">you</a></td>"}},
+		{"footer, and links and buttons in Helvetly's colours", Message{HTML: `<p><a href="y">Go</a></p>` + Button("Open", "z"), Footer: "Why <a href=\"x\">you</a>"},
+			[]string{`<a style="color:#1d4fd1" href="y">Go</a>`, `bgcolor="#2563eb" style="background-color:#2563eb;border-radius`, "Why <a href=\"x\">you</a></td>"}},
+		{"a fragment with its own title keeps it", Message{Subject: "Subject", HTML: "<h1>Own</h1>"}, []string{"<h1>Own</h1>"}},
+		{"a business: neutral, its logo", Message{Subject: "S", HTML: `<p><a href="y">Go</a></p>` + Button("Open", "z"), Brand: &Brand{Name: "Muster", LogoPath: "/l"}},
+			[]string{`<a style="color:#18181b" href="y">Go</a>`, buttonFill, `alt="Muster"`, `bgcolor="#f4f4f5"`}},
 	} {
 		got := layout(c.m, site)
 		for _, w := range c.want {

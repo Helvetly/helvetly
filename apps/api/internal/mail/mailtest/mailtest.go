@@ -16,11 +16,11 @@ import (
 
 var update = flag.Bool("update", false, "rewrite the email golden files in testdata")
 
-// Unsupported is what Mailpit's HTML Check (caniemail) does not count as supported everywhere: email HTML must keep
-// to the rest. bgcolor is among it, so the call to action is a link, never a filled button.
-var Unsupported = regexp.MustCompile(`(?i)<style|<body|<hr|<pre|@media|!important|margin|padding:|border|background|bgcolor|` +
-	`\s(width|height)=|[;"]\s*width:|display:|overflow|line-height|font-weight|letter-spacing|text-decoration|text-align|white-space|word-break|` +
-	`opacity|:last-child|font:`)
+// Unsupported is what email HTML never uses (layout.go): style blocks, <body> CSS, external CSS, scripts, SVG, frames
+// and forms, web fonts, CSS positioning, floats, flex and grid. Inline padding, borders, rounded corners, backgrounds
+// over a solid colour, widths and bgcolor are allowed: Outlook for Windows ignores some of them and stays readable.
+var Unsupported = regexp.MustCompile(`(?i)<style|<body|<link|<script|<svg|<iframe|<object|<embed|<form|@media|@import|@font-face|!important|` +
+	`javascript:|[;"]\s*(position|float|flex[a-z-]*|grid[a-z-]*)\s*:|display:\s*(inline-)?(flex|grid)`)
 
 // PublicURL and Brand are the fixtures every golden email is rendered with.
 const PublicURL = "https://app.helvetly.example"
