@@ -226,7 +226,7 @@ export const MeetConnectLink: Story = {
     const connect = await sheet.findByRole('link', {
       name: /Connect your Microsoft 365 calendar/,
     })
-    await expect(connect).toHaveAttribute('href', '/account#calendars')
+    await expect(connect).toHaveAttribute('href', '/settings/scheduling#calendars')
     await expect(sheet.queryByRole('button', { name: 'Microsoft Teams' })).not.toBeInTheDocument()
     await userEvent.click(sheet.getByRole('button', { name: 'Google Meet' }))
     await expect(sheet.getByRole('button', { name: 'Google Meet' })).toHaveAttribute(

@@ -295,6 +295,8 @@ const ROUTES: [string, Resource][] = [
   ['/settings/billing', 'billing'],
   ['/settings/company', 'invoice-settings'],
   ['/settings/invoices', 'invoice-settings'],
+  // Your signature for contracts made from quotes: whoever reads quotes.
+  ['/settings/documents', 'invoices'],
   // Owners and admins only: the settings tabs also check the role (members can hold `*:*`).
   ['/settings/approvals', 'workspace'],
   ['/settings/emails', 'invoice-settings'],

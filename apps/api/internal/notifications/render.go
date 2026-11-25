@@ -133,7 +133,7 @@ func words(event string, d data) message {
 		return schedulingWords(event, d)
 	case "scheduling.calendar_disconnected":
 		return message{title: "Your " + providerName(d.s("provider")) + " calendar was disconnected",
-			body: strings.TrimSpace(d.s("account_email") + " · Connect it again so your sessions stay in your calendar."), href: "/account"}
+			body: strings.TrimSpace(d.s("account_email") + " · Connect it again so your sessions stay in your calendar."), href: "/settings/scheduling#calendars"}
 	case "portal.first_sign_in":
 		return message{title: or(d.s("contact_name"), "The client") + " signed in to the client portal for the first time",
 			body: or(d.s("client_name"), "The client") + " can now see its invoices and shared documents there.",

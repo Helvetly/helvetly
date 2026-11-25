@@ -13,7 +13,7 @@ import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { LanguageDialogButton, useCurrentLanguage } from '@helvetly/ui/components/language-switcher'
 import { Loader } from '@helvetly/ui/components/loader'
-import { Download, FileSignature, Languages, UserRound, Trash2 } from 'lucide-react'
+import { Download, Languages, UserRound, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
@@ -36,15 +36,14 @@ import { changeSession, type User } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
-import { Calendars } from './calendars'
-import { ContractSignatureEditor } from './contract-signature'
 import { DeletedWorkspaces } from './deleted-workspaces'
 import { ProfilePhoto } from './profile-photo'
 import { Sessions } from './sessions'
 import { SignInMethods } from './sign-in-methods'
 import { TwoFactor } from './two-factor'
 
-/** The person's own settings, the same in every workspace: profile, sign-in, 2FA, sessions. API tokens: Settings → API & MCP. */
+/** The person's own settings, the same in every workspace: profile, sign-in, 2FA, sessions. API tokens: Settings → API & MCP;
+ * calendars and hours: Settings → Scheduling; the contract signature: Settings → Documents (both per workspace). */
 export function AccountSettings() {
   const user = useSession().data?.user
   // Notifications were a section of this page: old links (emails, the bell) open their drawer.
@@ -59,17 +58,8 @@ export function AccountSettings() {
         {user ? (
           <>
             <Profile user={user} />
-            <SettingsSection
-              id="contract-signature"
-              icon={FileSignature}
-              title={translate('yourSignatureForContracts')}
-              description={translate('yourSignatureForContractsText')}
-            >
-              <ContractSignatureEditor name={user.name || user.email} />
-            </SettingsSection>
             <Language />
             <SignInMethods email={user.email} />
-            <Calendars userId={user.id} />
             <TwoFactor />
             <Sessions />
             <DeletedWorkspaces />

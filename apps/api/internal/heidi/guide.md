@@ -353,6 +353,15 @@ Pages: /settings/invoices
 4. Set **Defaults** (currency, document language, payment terms), **Instalments**, **Dunning** and the **Footer**.
    Only owners and admins can change these. Numbers are given at issue, without gaps, and restart every year when the format has a year. There is one number sequence, and credit notes get their own numbers.
 
+## Add your signature for contracts
+
+Keywords: contract signature, my signature, sign contracts, unterschrift, place of signing, signature image, document settings
+Pages: /settings/documents
+
+1. Go to **Settings → Documents**.
+2. Under **Your signature for contracts**, click **Draw or type** or **Upload image**, and set the **Place of signing** (your workspace's city by default).
+3. Contracts you create from quotes then print it on your side with the place and the date; the client signs alone. It is yours only: nobody else in the workspace sees or uses it.
+
 ## Require approval before invoices are issued (approvals, approver groups)
 
 Keywords: approval, approve, approver, four-eyes, Vier-Augen-Prinzip, sign-off, review before issuing, approval groups, needs my approval, reject
@@ -653,7 +662,8 @@ Pages: /scheduling
 Keywords: scheduling settings, booking rules, cancellation policy, event type, holiday, day off, reminder, buffer, notice, late cancellation
 Pages: /settings/scheduling
 
-1. Go to **Settings → Scheduling**. Only owners and admins change these; others can read them.
+1. Go to **Settings → Scheduling**. The first sections are your own: **Your calendars** connects Google Calendar or Outlook so your sessions appear there and busy times block slots, **Calendar feed** gives a private link for any calendar app, and **Weekly hours** sets when you work. Everyone who can use scheduling changes their own.
+   The workspace's rules below them only owners and admins change; others can read them.
 2. **Booking** sets who schedules (only your team, or clients too), whether client requests are confirmed automatically or reviewed, the minimum notice, how far ahead clients can book and buffers around sessions.
 3. **Cancellation policy** sets until when a session can be cancelled or moved for free, an optional weekday cut-off, and whether late cancellations and no-shows count as used.
 4. **Reminders** sets when clients and hosts are reminded. **Holidays and days off** blocks days from booking; **Suggest holidays** adds your canton's public holidays.

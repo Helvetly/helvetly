@@ -82,7 +82,7 @@ const DURATION_CHOICES = 'session-duration-choices'
 /** Focuses a field a click has just revealed, once it is rendered. */
 const focusSoon = (id: string) => requestAnimationFrame(() => document.getElementById(id)?.focus())
 /** Where a person connects their own calendar; a new tab, so the form in the drawer stays as it is. */
-const CONNECT_CALENDAR = '/account#calendars'
+const CONNECT_CALENDAR = '/settings/scheduling#calendars'
 
 /** The session's fields; `excludeId` keeps the session itself out of its conflicts. */
 export function SessionFields({

@@ -16,7 +16,7 @@ import { FormField } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
 import { CalendarSync, Lock, RefreshCw, Unplug } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
@@ -33,12 +33,18 @@ import {
   type Provider,
 } from '@/lib/scheduling-settings'
 
+import { GoogleCalendarMark, OutlookMark } from './calendar-marks'
 import { CalendarFeed } from './calendars-feed'
 import { WeeklyHours } from './calendars-hours'
 
 const PROVIDER_NAME: Record<Provider, () => string> = {
   google: () => translate('schedulingSettingsGoogleCalendar'),
   microsoft: () => translate('schedulingSettingsMicrosoftCalendar'),
+}
+
+const PROVIDER_MARK: Record<Provider, () => ReactNode> = {
+  google: () => <GoogleCalendarMark />,
+  microsoft: () => <OutlookMark />,
 }
 
 const CALLBACK_ERRORS: Record<string, () => string> = {
@@ -69,7 +75,7 @@ export function useCalendarCallbackToast() {
   }, [])
 }
 
-/** Account → Calendars and availability: the person's calendar connections, iCal feed and weekly hours. */
+/** Settings → Scheduling, your own part: the person's calendar connections, iCal feed and weekly hours in this workspace. */
 export function Calendars({ userId }: { userId: string }) {
   useCalendarCallbackToast()
   const calendars = useCalendars()
@@ -140,7 +146,7 @@ function Providers({
           {open.map((provider) => (
             <SettingsRow
               key={provider}
-              icon={<CalendarSync />}
+              icon={PROVIDER_MARK[provider]()}
               title={PROVIDER_NAME[provider]()}
               meta={translate('schedulingSettingsNotConnected')}
             >

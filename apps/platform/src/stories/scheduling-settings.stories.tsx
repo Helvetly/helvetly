@@ -1,11 +1,12 @@
 import { SidebarInset, SidebarProvider } from '@helvetly/ui/components/sidebar'
+import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
-import { Calendars } from '@/components/account/calendars'
 import { billingFixture } from '@/components/billing/billing-fixture'
+import { Calendars } from '@/components/scheduling/settings/calendars'
 import { SchedulingSettingsPage } from '@/components/scheduling/settings/scheduling-settings'
 import {
   googleConnection,
@@ -129,9 +130,10 @@ export const NoticePresets: Story = {
   },
 }
 
-/** Everyone else reads the settings but cannot change them. */
+/** Everyone else reads the workspace's settings but cannot change them; their own calendars, feed and hours come first and stay theirs to edit. */
 export const ReadOnlyForMembers: Story = {
   parameters: page('member'),
+  beforeEach: () => resetSchedulingSettings({ providers: ['google'] }),
   render: () => (
     <Shell>
       <SchedulingSettingsPage />
@@ -143,6 +145,35 @@ export const ReadOnlyForMembers: Story = {
     await expect(
       canvas.getByRole('switch', { name: 'Late cancellations count as used' }),
     ).toBeDisabled()
+    const regions = canvas.getAllByRole('region')
+    await expect(regions[0]).toHaveAccessibleName('Your calendars')
+    await expect(await canvas.findByRole('link', { name: 'Connect' })).toHaveAttribute(
+      'href',
+      '/api/v1/scheduling/calendars/google/connect',
+    )
+    await userEvent.click(await canvas.findByRole('button', { name: 'Create feed' }))
+    await expect(await canvas.findByRole('textbox', { name: 'Feed address' })).toBeVisible()
+  },
+}
+
+/** The provider's redirect lands here (`?calendar=connected`): a toast says so and the address is cleaned. */
+export const CalendarConnectedToast: Story = {
+  parameters: page('owner'),
+  beforeEach: () => {
+    resetSchedulingSettings({ providers: ['google'], connections: [googleConnection] })
+    const url = new URL(window.location.href)
+    url.searchParams.set('calendar', 'connected')
+    window.history.replaceState(null, '', url)
+  },
+  render: () => (
+    <Shell>
+      <SchedulingSettingsPage />
+      <Toaster />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    await expect(await body(canvasElement).findByText('Calendar connected.')).toBeInTheDocument()
+    await expect(new URLSearchParams(window.location.search).get('calendar')).toBeNull()
   },
 }
 
@@ -274,8 +305,8 @@ export const EventTypeDrawer: Story = {
   },
 }
 
-/** Account page: only configured providers offer a button; a connection can be synced and disconnected. */
-export const AccountCalendars: Story = {
+/** Your calendars: only configured providers offer a button; a connection can be synced and disconnected. */
+export const YourCalendars: Story = {
   parameters: page('owner'),
   beforeEach: () =>
     resetSchedulingSettings({ providers: ['google'], connections: [googleConnection] }),
@@ -319,6 +350,10 @@ export const ConnectOffersConfiguredProviders: Story = {
       '/api/v1/scheduling/calendars/microsoft/connect',
     )
     await expect(canvas.queryByText('Google Calendar')).toBeNull()
+    // The provider's own logo, not a generic calendar icon.
+    await expect(
+      canvasElement.querySelector('[data-slot="row-icon"] svg[data-mark="microsoft"]'),
+    ).not.toBeNull()
   },
 }
 
