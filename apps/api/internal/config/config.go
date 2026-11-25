@@ -64,7 +64,9 @@ type Config struct {
 	AddressSuggestURL string
 	AI                AI
 	// FeedbackEmail receives Help & feedback reports (FEEDBACK_EMAIL); empty = reports are stored only.
-	FeedbackEmail string
+	FeedbackEmail       string
+	TelegramBotToken    string
+	TelegramAdminChatID int64
 	// GoogleAnalyticsID: the GA4 measurement id of the platform's page views (GOOGLE_ANALYTICS_ID, G-...); empty = off,
 	// so an installation sends nothing to Google unless its operator sets it.
 	GoogleAnalyticsID string
@@ -244,6 +246,21 @@ func Load() (Config, error) {
 			FakeImportModel: boolean("HELVETLY_E2E_FAKE_AI", false)},
 		FeedbackEmail:     env("FEEDBACK_EMAIL", ""),
 		GoogleAnalyticsID: env("GOOGLE_ANALYTICS_ID", ""),
+	}
+	c.TelegramBotToken = env("TELEGRAM_BOT_TOKEN", "")
+	chatID := env("TELEGRAM_ADMIN_CHAT_ID", "")
+	if (c.TelegramBotToken == "") != (chatID == "") {
+		fail("TELEGRAM_BOT_TOKEN and TELEGRAM_ADMIN_CHAT_ID must be set together")
+	}
+	if c.TelegramBotToken != "" {
+		if ok, _ := regexp.MatchString(`^[0-9]+:[A-Za-z0-9_-]+$`, c.TelegramBotToken); !ok {
+			fail("TELEGRAM_BOT_TOKEN has an invalid format")
+		}
+		id, err := strconv.ParseInt(chatID, 10, 64)
+		if err != nil || id <= 0 {
+			fail("TELEGRAM_ADMIN_CHAT_ID must be the numeric ID of a private chat")
+		}
+		c.TelegramAdminChatID = id
 	}
 	if c.FeedbackEmail != "" {
 		if a, err := mail.ParseAddress(c.FeedbackEmail); err != nil || a.Name != "" {

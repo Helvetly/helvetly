@@ -147,8 +147,17 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if n >= perHour {
 			return auth.Error(429, "rate_limited", "You can send five reports per hour. Try again later.", nil)
 		}
-		return q.CreateFeedback(r.Context(), store.Feedback{ID: id, WorkspaceID: sess.Workspace.ID, UserID: sess.User.ID, Kind: kind,
-			Description: description, PagePath: pagePath, CreatedAt: now}, files)
+		if err := q.CreateFeedback(r.Context(), store.Feedback{ID: id, WorkspaceID: sess.Workspace.ID, UserID: sess.User.ID, Kind: kind,
+			Description: description, PagePath: pagePath, CreatedAt: now}, files); err != nil {
+			return err
+		}
+
+		title := "Sugestia funkcji"
+		if kind == "problem" {
+			title = "Zgłoszenie problemu"
+		}
+
+		return q.QueueAdminAlert(r.Context(), title+"\nZgłoszenie: "+id+"\nWorkspace: "+sess.Workspace.ID)
 	})
 	if err != nil {
 		s.cleanup(r.Context(), files)

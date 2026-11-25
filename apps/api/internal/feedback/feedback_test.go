@@ -151,6 +151,7 @@ func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
 
 func TestCreateStoresAndEmails(t *testing.T) {
 	f := setup(t)
+	f.db.EnableAdminAlerts()
 	rec := post(f, valid(), pngBytes(t, 1), pngBytes(t, 2))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body)
@@ -179,6 +180,11 @@ func TestCreateStoresAndEmails(t *testing.T) {
 	if m.To[0] != "team@helvetly.test" || m.ReplyTo != "ana@example.test" || m.Subject != "Problem: The invoice PDF is blank" ||
 		len(m.Attachments) != 2 || !strings.Contains(m.Text, "Acme (ws_fb)") {
 		t.Fatalf("email %+v", m)
+	}
+
+	_, alert, err := f.db.ClaimAdminAlert(context.Background())
+	if want := "Zgłoszenie problemu\nZgłoszenie: " + out.ID + "\nWorkspace: ws_fb"; err != nil || alert != want {
+		t.Fatalf("Telegram alert = %q, err = %v, want %q", alert, err, want)
 	}
 }
 

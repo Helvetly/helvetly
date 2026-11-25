@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -268,4 +269,23 @@ func TestEmailCodeCooldownReportsRemainingExpiry(t *testing.T) {
 	}
 	// The used code still does not work.
 	e.verifyCode("zoe@example.com", e.devCode("zoe@example.com"), nil, 410, nil)
+}
+
+func TestAdminAlertOnlyOnFirstSignIn(t *testing.T) {
+	e := newEnv(t)
+	e.svc.db.EnableAdminAlerts()
+	ctx := context.Background()
+
+	user := e.session(e.emailSignIn("new@example.com")).User
+	e.clock.add(time.Minute)
+	e.emailSignIn(user.Email)
+
+	var count int
+	var message string
+	if err := e.db.QueryRow(ctx, `SELECT count(*), coalesce(max(message), '') FROM admin_alerts`).Scan(&count, &message); err != nil {
+		t.Fatal(err)
+	}
+	if want := "Nowa rejestracja\nUżytkownik: " + user.ID; count != 1 || message != want {
+		t.Fatalf("queued %d alerts, last %q, want one %q", count, message, want)
+	}
 }

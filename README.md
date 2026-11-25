@@ -232,6 +232,20 @@ do not offer. Without it, anyone holding the bucket's credentials can delete or 
 `helvetly retention status` reports them as not protected. A legal retention duty (for example OR 958f and GeBüV in
 Switzerland) also needs backups, access control and a documented process, which this software alone does not provide.
 
+### Operator alerts on Telegram
+
+Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ADMIN_CHAT_ID` in the API's runtime environment to enable alerts.
+Create a bot with [@BotFather](https://t.me/BotFather), open a private chat with the bot and send `/start`.
+Use the Telegram Bot API's [getUpdates](https://core.telegram.org/bots/api#getupdates) method privately and
+take `message.chat.id` from your own message (the chat type must be `private`). Keep the bot token in your
+deployment's secret store.
+
+The bot reports new accounts, Help & feedback submissions, Stripe subscription starts and cancellations,
+and Stripe disputes when Helvetly first records them as open. Messages are in Polish and contain internal
+IDs instead of email addresses, feedback text or screenshots. Keep `FEEDBACK_EMAIL` configured to receive
+the full reports. Alerts queue in PostgreSQL from the time the integration is enabled, retry for up to seven
+days and may arrive twice if delivery succeeds before the server can confirm it in the database.
+
 ### Billing
 
 Billing is optional. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, prices are read from your Stripe
