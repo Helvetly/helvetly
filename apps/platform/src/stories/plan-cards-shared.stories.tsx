@@ -220,8 +220,9 @@ export const Comparison: Story = {
     const head = (name: string) =>
       within(table).getByRole('columnheader', { name: new RegExp(`^${name}`) })
     await expect(head('Pro')).toHaveTextContent('CHF 39.25 / month')
-    await expect(head('Pro')).toHaveTextContent('2 people incl., +CHF 15 each')
-    await expect(head('Free')).toHaveTextContent('1 person · free forever')
+    await expect(head('Pro')).toHaveTextContent('2 people incl.')
+    await expect(head('Pro')).not.toHaveTextContent('each')
+    await expect(head('Free')).toHaveTextContent('1 person incl.')
     await expect(table.querySelector('thead')?.textContent).not.toMatch(/year|save/i)
     // Every column's call to action is one line, at the same height.
     const heights = within(table)

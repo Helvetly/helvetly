@@ -85,7 +85,6 @@
   "planPerMonth": "/ měsíc",
   "planFreeForever": "{count, plural, one {# osoba} few {# osoby} many {# osoby} other {# osob}} · navždy zdarma",
   "planPeopleIncluded": "{count, plural, one {# osoba v ceně} few {# osoby v ceně} many {# osoby v ceně} other {# osob v ceně}}",
-  "planPeopleShort": "{count, plural, one {# osoba v ceně} few {# osoby v ceně} many {# osoby v ceně} other {# osob v ceně}}, +{extra} za další",
   "planExtraPerson": "+{extra} / osoba",
   "planNoCard": "Bez platební karty",
   "planFreeSummary": "{price} navždy · {count, plural, one {# osoba} few {# osoby} many {# osoby} other {# osob}} · bez platební karty",

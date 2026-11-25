@@ -85,7 +85,6 @@
   "planPerMonth": "/ month",
   "planFreeForever": "{count, plural, one {# person} other {# people}} · free forever",
   "planPeopleIncluded": "{count, plural, one {# person incl.} other {# people incl.}}",
-  "planPeopleShort": "{count, plural, one {# person incl.} other {# people incl.}}, +{extra} each",
   "planExtraPerson": "+{extra} / person",
   "planNoCard": "No card needed",
   "planFreeSummary": "{price} forever · {count, plural, one {# person} other {# people}} · no card needed",

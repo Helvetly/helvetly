@@ -73,6 +73,7 @@ export function PlanComparison({
   plans,
   featured,
   stickyTop = 'top-0',
+  surface = 'bg-background',
 }: {
   groups: ComparisonGroup[]
   plans: ComparisonPlan[]
@@ -80,6 +81,8 @@ export function PlanComparison({
   featured?: PlanId
   /** Where the pinned head stops, below a fixed site header (a `top-*` class). */
   stickyTop?: string
+  /** The pinned head's fill: the page's own background, so the head never shows as a band (a `bg-*` class). */
+  surface?: string
 }) {
   const translate = useTranslate()
   const band = (plan: PlanId) => plan === featured && 'bg-violet-surface/40'
@@ -92,7 +95,8 @@ export function PlanComparison({
             <th
               scope="col"
               className={cn(
-                'sticky z-10 w-[28%] border-b bg-background px-3 pb-4 text-left align-bottom text-title font-semibold',
+                'sticky z-10 w-[28%] border-b px-3 pb-4 text-left align-bottom text-title font-semibold',
+                surface,
                 stickyTop,
               )}
             >
@@ -103,7 +107,8 @@ export function PlanComparison({
                 key={plan.id}
                 scope="col"
                 className={cn(
-                  'sticky z-10 border-b bg-background px-4 pt-4 pb-4 align-top font-normal',
+                  'sticky z-10 border-b px-4 pt-4 pb-4 align-top font-normal',
+                  surface,
                   stickyTop,
                   plan.id === featured && 'rounded-t-2xl bg-violet-surface',
                 )}

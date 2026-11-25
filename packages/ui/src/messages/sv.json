@@ -85,7 +85,6 @@
   "planPerMonth": "/ mån",
   "planFreeForever": "{count, plural, one {# person} other {# personer}} · gratis för alltid",
   "planPeopleIncluded": "{count, plural, one {# person ingår} other {# personer ingår}}",
-  "planPeopleShort": "{count, plural, one {# person ingår} other {# personer ingår}}, +{extra} per extra person",
   "planExtraPerson": "+{extra} / person",
   "planNoCard": "Inget kort behövs",
   "planFreeSummary": "{price} för alltid · {count, plural, one {# person} other {# personer}} · inget kort behövs",

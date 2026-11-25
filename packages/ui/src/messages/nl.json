@@ -85,7 +85,6 @@
   "planPerMonth": "/ maand",
   "planFreeForever": "{count, plural, one {# persoon} other {# personen}} · altijd gratis",
   "planPeopleIncluded": "{count, plural, one {# persoon incl.} other {# personen incl.}}",
-  "planPeopleShort": "{count, plural, one {# persoon incl.} other {# personen incl.}}, +{extra} per extra persoon",
   "planExtraPerson": "+{extra} / persoon",
   "planNoCard": "Geen creditcard nodig",
   "planFreeSummary": "{price} voor altijd · {count, plural, one {# persoon} other {# personen}} · geen creditcard nodig",
