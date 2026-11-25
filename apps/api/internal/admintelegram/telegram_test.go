@@ -36,7 +36,7 @@ func TestQueuedAlertRetriesThenCompletes(t *testing.T) {
 	if !errors.Is(err, rollback) {
 		t.Fatal(err)
 	}
-	if err := db.QueueAdminAlert(ctx, "Nowa rejestracja"); err != nil {
+	if err := db.QueueAdminAlert(ctx, "New sign-up"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -46,7 +46,7 @@ func TestQueuedAlertRetriesThenCompletes(t *testing.T) {
 			ChatID int64  `json:"chat_id"`
 			Text   string `json:"text"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || r.Method != "POST" || body.ChatID != 123456789012 || body.Text != "Helvetly\nNowa rejestracja" {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || r.Method != "POST" || body.ChatID != 123456789012 || body.Text != "Helvetly\nNew sign-up" {
 			t.Errorf("invalid Telegram request: %v, %#v", err, body)
 		}
 		w.Header().Set("Content-Type", "application/json")

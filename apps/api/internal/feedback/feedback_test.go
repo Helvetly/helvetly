@@ -183,8 +183,9 @@ func TestCreateStoresAndEmails(t *testing.T) {
 	}
 
 	_, alert, err := f.db.ClaimAdminAlert(context.Background())
-	if want := "Zgłoszenie problemu\nZgłoszenie: " + out.ID + "\nWorkspace: ws_fb"; err != nil || alert != want {
-		t.Fatalf("Telegram alert = %q, err = %v, want %q", alert, err, want)
+	if want := "Problem report\nReport: " + out.ID + "\nFrom: "; err != nil || !strings.HasPrefix(alert, want) ||
+		!strings.Contains(alert, "ana@example.test") || !strings.HasSuffix(alert, "\nWorkspace: Acme") {
+		t.Fatalf("Telegram alert = %q, err = %v, want %q…ana@example.test…Workspace: Acme", alert, err, want)
 	}
 }
 

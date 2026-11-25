@@ -115,7 +115,7 @@ func (s *Service) upsertUser(ctx context.Context, q store.Q, id identity) (store
 			if err := q.CreateUser(ctx, u, now); err != nil {
 				return store.User{}, err
 			}
-			if err := q.QueueAdminAlert(ctx, "Nowa rejestracja\nUżytkownik: "+u.ID); err != nil {
+			if err := q.QueueAdminAlert(ctx, "New sign-up\nUser: "+store.NameAndEmail(u.Name, u.Email)); err != nil {
 				return store.User{}, err
 			}
 		} else if err != nil {

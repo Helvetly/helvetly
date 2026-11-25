@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"helvetly.com/api/internal/store"
 )
 
 func (e *env) sendCode(email string, want int) map[string]int {
@@ -285,7 +287,7 @@ func TestAdminAlertOnlyOnFirstSignIn(t *testing.T) {
 	if err := e.db.QueryRow(ctx, `SELECT count(*), coalesce(max(message), '') FROM admin_alerts`).Scan(&count, &message); err != nil {
 		t.Fatal(err)
 	}
-	if want := "Nowa rejestracja\nUżytkownik: " + user.ID; count != 1 || message != want {
+	if want := "New sign-up\nUser: " + store.NameAndEmail(user.Name, user.Email); count != 1 || message != want {
 		t.Fatalf("queued %d alerts, last %q, want one %q", count, message, want)
 	}
 }

@@ -151,7 +151,11 @@ func (s *Service) dispute(ctx context.Context, ev event, id string) error {
 			return err
 		}
 		if fresh && disputeOpen(d.Status) {
-			if err := q.QueueAdminAlert(ctx, "Nowy spór o płatność (Stripe)\nSpór: "+d.ID+"\nWorkspace: "+ws); err != nil {
+			who, err := q.AlertWorkspace(ctx, ws)
+			if err != nil {
+				return err
+			}
+			if err := q.QueueAdminAlert(ctx, "New payment dispute (Stripe)\nDispute: "+d.ID+"\n"+who); err != nil {
 				return err
 			}
 

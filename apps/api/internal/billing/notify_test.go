@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -122,11 +123,11 @@ func TestAdminSubscriptionAlerts(t *testing.T) {
 		cancel       bool
 	}{
 		{"incomplete", "", false},
-		{"trialing", "Nowa subskrypcja (okres próbny)", false},
-		{"active", "Nowa aktywna subskrypcja", false},
-		{"active", "Zaplanowano anulowanie subskrypcji", true},
+		{"trialing", "New subscription (trial)", false},
+		{"active", "New active subscription", false},
+		{"active", "Subscription set to cancel at period end", true},
 		{"active", "", true},
-		{"canceled", "Subskrypcja zakończona", false},
+		{"canceled", "Subscription ended", false},
 		{"canceled", "", false},
 	} {
 		e.stripe.put("sub_admin", ws, "cus_admin", step.status, "price_bm")
@@ -152,9 +153,44 @@ func TestAdminSubscriptionAlerts(t *testing.T) {
 			}
 			continue
 		}
-		if count != 1 || !strings.HasPrefix(message, step.want+"\n") || !strings.Contains(message, "sub_admin") {
+		if count != 1 || !strings.HasPrefix(message, step.want+"\nWorkspace: Acme\nOwner: ") || !strings.Contains(message, "\nPlan: ") ||
+			strings.Contains(message, "sub_admin") || strings.Contains(message, ws) {
 			t.Fatalf("unexpected alerts for %s: %d, %q, want %q", step.status, count, message, step.want)
 		}
 		e.exec(`DELETE FROM admin_alerts`)
+	}
+}
+
+func TestDiscountText(t *testing.T) {
+	pct := func(v float64) *float64 { return &v }
+	months := func(v int) *int { return &v }
+	amount := func(v int64) *int64 { return &v }
+	chf := "chf"
+	end := time.Date(2027, 2, 25, 0, 0, 0, 0, time.UTC).Unix()
+	for _, c := range []struct {
+		name   string
+		coupon stripeCoupon
+		code   string
+		end    *int64
+		want   string
+	}{
+		{"none", stripeCoupon{}, "", nil, ""},
+		{"forever with a code", stripeCoupon{PercentOff: pct(100), Duration: "forever"}, `{"code":"BIZ-LIFE"}`, nil, "100 % off forever (code BIZ-LIFE)"},
+		{"for months", stripeCoupon{PercentOff: pct(20), Duration: "repeating", DurationInMonths: months(3)}, `"promo_1"`, &end, "20 % off for 3 months, until 2027-02-25"},
+		{"one month", stripeCoupon{PercentOff: pct(12.5), Duration: "repeating", DurationInMonths: months(1)}, "", nil, "12.5 % off for 1 month"},
+		{"amount once", stripeCoupon{AmountOff: amount(1000), Currency: &chf, Duration: "once"}, "", nil, "CHF 10.00 off on the first invoice"},
+	} {
+		sub := subscription{Currency: "chf"}
+		if c.want != "" {
+			d := stripeDiscount{PromotionCode: json.RawMessage(c.code), End: c.end}
+			if c.code == "" {
+				d.PromotionCode = nil
+			}
+			d.Source.Coupon = c.coupon
+			sub.Discounts = []stripeDiscount{d}
+		}
+		if got := discountText(sub); got != c.want {
+			t.Errorf("%s: %q, want %q", c.name, got, c.want)
+		}
 	}
 }
