@@ -44,6 +44,15 @@ it.each(['en', 'de', 'fr', 'it'] satisfies Locale[])(
   },
 )
 
+it('keeps the Pro comparison header to its name, price, people and trial link', () => {
+  render(<PlanTable />)
+  const header = within(screen.getByRole('table')).getByRole('columnheader', { name: /^Pro\b/ })
+  expect(header).toHaveAccessibleName(
+    /^Pro (?:CHF|EUR|USD) 39\.25 \/ month 2 people incl\. Try Pro free$/,
+  )
+  expect(within(header).getByRole('link', { name: 'Try Pro free' })).toHaveAttribute('href')
+})
+
 it('explains a row in its (?) popover', async () => {
   render(<PlanTable />)
   const table = screen.getByRole('table')

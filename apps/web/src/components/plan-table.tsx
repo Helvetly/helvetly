@@ -34,6 +34,7 @@ export function PlanTable() {
         groups={planComparison(planCatalogue(language), language)}
         featured={RECOMMENDED}
         stickyTop="top-20"
+        surface="bg-(--site)"
         plans={PLANS.map((plan) => ({
           id: plan.id,
           name: plan.name,

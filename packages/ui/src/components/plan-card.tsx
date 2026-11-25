@@ -18,9 +18,9 @@ export type PlanPrices = {
 }
 
 /**
- * A plan's price in the comparison's pinned head, two short lines: what a month costs on the chosen interval (yearly:
- * its share of the year), then, muted, its people: "2 people incl., +CHF 15 each" (the extra person at its monthly
- * price, as on the cards), or Free's "1 person · free forever". The year's total and saving stay on the cards.
+ * A plan's price in the comparison's pinned head, two one-line rows: what a month costs on the chosen interval (yearly:
+ * its share of the year), then, muted, the people it includes: "2 people incl.". The price of a further person and
+ * the year's total and saving stay on the cards.
  */
 export function PlanHeadPrice({
   prices,
@@ -42,18 +42,8 @@ export function PlanHeadPrice({
         <span className="font-semibold text-foreground">{formatPrice(month)}</span>{' '}
         <span className="text-muted-foreground">{translate('planPerMonth')}</span>
       </p>
-      {/* Two lines kept in the table, so every column's call to action sits at the same height. */}
-      <p className="mt-0.5 text-balance text-muted-foreground lg:min-h-[2lh]">
-        {prices.month === 0
-          ? translate('planFreeForever', { count: prices.included_people })
-          : translate('planPeopleShort', {
-              count: prices.included_people,
-              // A no-break space keeps "CHF 15" on one line.
-              extra: formatPrice({ amount: prices.extra_person_month, currency }).replace(
-                ' ',
-                '\u00a0',
-              ),
-            })}
+      <p className="mt-0.5 whitespace-nowrap text-muted-foreground">
+        {translate('planPeopleIncluded', { count: prices.included_people })}
       </p>
     </div>
   )
