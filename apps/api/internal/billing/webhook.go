@@ -221,10 +221,15 @@ func (s *Service) apply(ctx context.Context, sub subscription, ev event) error {
 			}
 			resync = after.Seats != max(seats, 1)
 		}
-		for _, title := range adminSubscriptionNews(b, after) {
-			message := fmt.Sprintf("%s\nPlan: %s\nStripe: %s\nWorkspace: %s", title, planNames[after.Plan], after.ID, ws)
-			if err := q.QueueAdminAlert(ctx, message); err != nil {
+		if titles := adminSubscriptionNews(b, after); len(titles) > 0 {
+			who, err := q.AlertWorkspace(ctx, ws)
+			if err != nil {
 				return err
+			}
+			for _, title := range titles {
+				if err := q.QueueAdminAlert(ctx, title+"\n"+who+"\n"+adminSubscriptionDetails(sub, after)); err != nil {
+					return err
+				}
 			}
 		}
 		if event, data := subscriptionNews(ev.Type, b, after); event != "" {

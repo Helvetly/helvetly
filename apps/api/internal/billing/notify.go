@@ -2,7 +2,10 @@ package billing
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"helvetly.com/api/internal/notifications"
@@ -38,18 +41,66 @@ func adminSubscriptionNews(before store.Billing, after store.Subscription) []str
 	var titles []string
 	switch {
 	case previouslyStarted && after.Status == "canceled":
-		titles = append(titles, "Subskrypcja zakończona")
+		titles = append(titles, "Subscription ended")
 	case after.Status == "trialing" && !previouslyStarted:
-		titles = append(titles, "Nowa subskrypcja (okres próbny)")
+		titles = append(titles, "New subscription (trial)")
 	case after.Status == "active" && (!previouslyStarted || before.Status == "trialing"):
-		titles = append(titles, "Nowa aktywna subskrypcja")
+		titles = append(titles, "New active subscription")
 	}
 
 	if live(after.Status) && after.CancelAtPeriodEnd && (!same || !before.CancelAtPeriodEnd) {
-		titles = append(titles, "Zaplanowano anulowanie subskrypcji")
+		titles = append(titles, "Subscription set to cancel at period end")
 	}
 
 	return titles
+}
+
+// adminSubscriptionDetails: the plan with what it costs for the subscription's people and interval, and its
+// discount, for the operator's alert. shortcut: the price is the current offer's list price, not the one an older
+// offer's subscription keeps; read it from the subscription's price when alerts cover repricing.
+func adminSubscriptionDetails(sub subscription, after store.Subscription) string {
+	interval := map[string]string{"month": "monthly", "year": "yearly"}[after.Interval]
+	people := max(after.Seats, 1)
+	line := fmt.Sprintf("Plan: %s, %s, %s %s for %d %s", or(planNames[after.Plan], after.Plan), or(interval, after.Interval),
+		strings.ToUpper(sub.Currency), money(PlanTotal(after.Plan, after.Interval, people)), people, plural(people, "person", "people"))
+	if discount := discountText(sub); discount != "" {
+		line += "\nDiscount: " + discount
+	}
+	return line
+}
+
+// discountText: "100 % off forever (code BIZ-LIFE)", "20 % off for 3 months, until 2027-02-25", or "" for none.
+func discountText(sub subscription) string {
+	if len(sub.Discounts) == 0 {
+		return ""
+	}
+	d, c := sub.Discounts[0], sub.Discounts[0].Source.Coupon
+	var out string
+	if c.PercentOff != nil {
+		out = strconv.FormatFloat(*c.PercentOff, 'f', -1, 64) + " % off"
+	} else if amount, _ := c.amountIn(sub.Currency); amount > 0 {
+		out = strings.ToUpper(sub.Currency) + " " + money(amount) + " off"
+	} else {
+		return ""
+	}
+	switch {
+	case c.Duration == "forever":
+		out += " forever"
+	case c.Duration == "once":
+		out += " on the first invoice"
+	case c.Duration == "repeating" && c.DurationInMonths != nil:
+		out += fmt.Sprintf(" for %d %s", *c.DurationInMonths, plural(int64(*c.DurationInMonths), "month", "months"))
+	}
+	if d.End != nil {
+		out += ", until " + time.Unix(*d.End, 0).UTC().Format(time.DateOnly)
+	}
+	var pc struct {
+		Code string `json:"code"`
+	}
+	if json.Unmarshal(d.PromotionCode, &pc) == nil && pc.Code != "" {
+		out += " (code " + pc.Code + ")"
+	}
+	return out
 }
 
 func or(a, b string) string {

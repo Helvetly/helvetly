@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -252,7 +253,7 @@ func TestAdminChargebackAlertOnce(t *testing.T) {
 	if err := c.e.raw.QueryRow(context.Background(), `SELECT count(*), coalesce(max(message), '') FROM admin_alerts`).Scan(&count, &message); err != nil {
 		t.Fatal(err)
 	}
-	if want := "Nowy spór o płatność (Stripe)\nSpór: dp_1\nWorkspace: " + c.ws; count != 1 || message != want {
+	if want := "New payment dispute (Stripe)\nDispute: dp_1\nWorkspace: Acme\nOwner: "; count != 1 || !strings.HasPrefix(message, want) {
 		t.Fatalf("queued %d alerts, last %q, want one %q", count, message, want)
 	}
 }

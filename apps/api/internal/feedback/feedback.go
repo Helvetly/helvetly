@@ -152,12 +152,15 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return err
 		}
 
-		title := "Sugestia funkcji"
+		title := "Feature suggestion"
 		if kind == "problem" {
-			title = "Zgłoszenie problemu"
+			title = "Problem report"
 		}
-
-		return q.QueueAdminAlert(r.Context(), title+"\nZgłoszenie: "+id+"\nWorkspace: "+sess.Workspace.ID)
+		who, err := q.AlertWorkspace(r.Context(), sess.Workspace.ID)
+		if err != nil {
+			return err
+		}
+		return q.QueueAdminAlert(r.Context(), title+"\nReport: "+id+"\nFrom: "+store.NameAndEmail(sess.User.Name, sess.User.Email)+"\n"+who)
 	})
 	if err != nil {
 		s.cleanup(r.Context(), files)
