@@ -2,6 +2,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
@@ -31,7 +32,7 @@ const keepKeys = (event: KeyboardEvent) => event.stopPropagation()
 
 const isMode = (value: string): value is HoursChoice['mode'] => value === 'full' || value === 'work'
 
-/** The one view control: the period, calendar or list, and for a day or week the hours shown. Named by the layout when it is the list. */
+/** The one view control: the period, calendar or list, for a day or week the hours shown, and on the calendar whether cancelled sessions show. Named by the layout when it is the list. */
 export function ViewMenu({
   view,
   layout,
@@ -39,6 +40,8 @@ export function ViewMenu({
   onView,
   onLayout,
   onHours,
+  showCancelled,
+  onShowCancelled,
 }: {
   view: View
   layout: Layout
@@ -46,6 +49,8 @@ export function ViewMenu({
   onView: (view: View) => void
   onLayout: (layout: Layout) => void
   onHours: (hours: HoursChoice) => void
+  showCancelled: boolean
+  onShowCancelled: (show: boolean) => void
 }) {
   const { from, to } = hours.work
   const Icon = layout === 'list' ? List : CalendarDays
@@ -143,6 +148,17 @@ export function ViewMenu({
                 </NativeSelect>
               </div>
             )}
+          </>
+        )}
+        {layout === 'calendar' && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={showCancelled}
+              onCheckedChange={(checked) => onShowCancelled(checked === true)}
+            >
+              {translate('schedShowCancelled')}
+            </DropdownMenuCheckboxItem>
           </>
         )}
       </DropdownMenuContent>

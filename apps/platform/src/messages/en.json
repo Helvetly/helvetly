@@ -5164,6 +5164,7 @@
   "schedView": "Calendar view",
   "schedShowHours": "Show hours",
   "schedFullDay": "Full day",
+  "schedShowCancelled": "Show cancelled sessions",
   "schedWorkingHours": "Working hours",
   "schedHoursFrom": "From",
   "schedHoursTo": "To",
