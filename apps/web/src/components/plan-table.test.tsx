@@ -15,7 +15,7 @@ const cellsOf = (table: HTMLElement, name: string) =>
     .getAllByRole('cell')
     .map((c) => c.textContent)
 
-it.each(['en', 'de', 'fr', 'it'] satisfies Locale[])(
+it.each(['en', 'de', 'fr', 'it', 'nl', 'cs', 'sv'] satisfies Locale[])(
   '%s shows allowances with their unit, unlimited in words',
   (language) => {
     const translate = translatorFor(language)
@@ -25,6 +25,7 @@ it.each(['en', 'de', 'fr', 'it'] satisfies Locale[])(
       </LanguageProvider>,
     )
     const table = screen.getByRole('table')
+    expect(cellsOf(table, translate('planRowIncludedPeople'))).toEqual(['1', '1', '2', '5'])
     const month = translate('planPerMonth')
     expect(cellsOf(table, translate('planRowInvoices'))).toEqual([
       `3 ${month}`,
@@ -44,12 +45,10 @@ it.each(['en', 'de', 'fr', 'it'] satisfies Locale[])(
   },
 )
 
-it('keeps the Pro comparison header to its name, price, people and trial link', () => {
+it('keeps the Pro comparison header to its name, price and trial link', () => {
   render(<PlanTable />)
   const header = within(screen.getByRole('table')).getByRole('columnheader', { name: /^Pro\b/ })
-  expect(header).toHaveAccessibleName(
-    /^Pro (?:CHF|EUR|USD) 39\.25 \/ month 2 people incl\. Try Pro free$/,
-  )
+  expect(header).toHaveAccessibleName(/^Pro (?:CHF|EUR|USD) 39\.25 \/ month Try Pro free$/)
   expect(within(header).getByRole('link', { name: 'Try Pro free' })).toHaveAttribute('href')
 })
 

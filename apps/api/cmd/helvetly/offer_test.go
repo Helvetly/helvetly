@@ -50,9 +50,10 @@ func TestOfferCommand(t *testing.T) {
 
 	out, err := run("catalog")
 	var c billing.StripeCatalog
-	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != "helvetly-v1" || len(c.Plans) != 3 ||
+	if err != nil || json.Unmarshal([]byte(out), &c) != nil || c.OfferID != cur.ID || len(c.Plans) != 3 ||
 		c.Plans[1].Amounts["month"] != 4900 || c.Plans[1].Amounts["year"] != 47100 || c.Plans[1].IncludedPeople != 2 ||
-		c.Plans[1].ExtraPerson["month"] != 1500 || c.Plans[2].LookupKeys["year"] != "helvetly-v1_business_year" ||
+		c.Plans[1].ExtraPerson["month"] != 1500 || c.Plans[2].LookupKeys["year"] != billing.LookupKey(cur.ID, billing.Business, "year") ||
+		c.Plans[2].Amounts["month"] != 9900 || c.Plans[2].Amounts["year"] != 95100 ||
 		c.BillingScheme != "tiered" || c.TiersMode != "graduated" || c.TaxBehavior != "inclusive" || strings.Join(c.CurrencyOptions, ",") != "eur,usd" {
 		t.Fatalf("catalog: %q %v", out, err)
 	}

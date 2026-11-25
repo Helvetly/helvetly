@@ -12,7 +12,7 @@ import { useCurrency } from '@/lib/currency'
 import { planCatalogue } from '@/lib/offer'
 import { type PlanId, plansIn, RECOMMENDED } from '@/lib/plans'
 
-/** The price in a column's pinned head: a month's price on the chosen interval and the people, two short lines. */
+/** The monthly equivalent in a column header. */
 function HeadPrice({ plan }: { plan: PlanId }) {
   const translate = useTranslate()
   const [interval] = useBillingInterval()
@@ -27,11 +27,15 @@ function HeadPrice({ plan }: { plan: PlanId }) {
 /** Every feature and allowance of the plans side by side, from the same rows as the cards. */
 export function PlanTable() {
   const language = useLanguage()
-  const { PLANS } = plansIn(language)
+  const { PLANS, planById } = plansIn(language)
   return (
     <div className="flex flex-col gap-6">
       <PlanComparison
-        groups={planComparison(planCatalogue(language), language)}
+        groups={planComparison(
+          planCatalogue(language),
+          language,
+          (id) => planById(id).includedPeople,
+        )}
         featured={RECOMMENDED}
         stickyTop="top-20"
         surface="bg-(--site)"

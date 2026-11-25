@@ -37,7 +37,7 @@ func TestPublicCurrentOffer(t *testing.T) {
 		t.Fatalf("price basis: %v %v", d["price_per"], d["tax_inclusive"])
 	}
 	want := map[string][5]float64{Free: {0, 0, 1, 0, 0}, Basic: {1900, 18300, 1, 1000, 9600}, Pro: {4900, 47100, 2, 1500, 14400},
-		Business: {14900, 143100, 5, 2000, 19200}}
+		Business: {9900, 95100, 5, 2000, 19200}}
 	plans, _ := d["plans"].([]any)
 	for _, p := range plans {
 		p, _ := p.(map[string]any)

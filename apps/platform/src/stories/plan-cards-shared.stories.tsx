@@ -31,7 +31,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-// The offer helvetly-v1 as the API publishes it (apps/web/src/lib/public-offer.golden.json), trimmed to what the
+// The offer helvetly-v2 as the API publishes it (apps/web/src/lib/public-offer.golden.json), trimmed to what the
 // cards and the table read.
 const CHEAPEST: Partial<Record<string, PlanId>> = {
   heidi: 'pro',
@@ -112,7 +112,7 @@ const PRICES: Record<PlanId, PlanPrices> = {
   free: price(0, 0, 1, 0, 0),
   basic: price(1900, 18300, 1, 1000, 9600),
   pro: price(4900, 47100, 2, 1500, 14400),
-  business: price(14900, 143100, 5, 2000, 19200),
+  business: price(9900, 95100, 5, 2000, 19200),
 }
 
 const button = (label: string) => (
@@ -189,7 +189,7 @@ function ComparisonView() {
     <div className="grid gap-8">
       <BillingIntervalToggle value={interval} onValueChange={setInterval} className="mx-auto" />
       <PlanComparison
-        groups={planComparison(OFFER, 'en')}
+        groups={planComparison(OFFER, 'en', (id) => PRICES[id].included_people)}
         featured="pro"
         plans={OFFER.plans.map((plan) => ({
           ...plan,
@@ -208,8 +208,8 @@ function ComparisonView() {
 }
 
 /**
- * The comparison table below the cards: a calm pinned head (name, a month's price, the people in one muted line, a
- * one-line call to action; the year's total stays on the cards), then every row, grouped as the cards, with a (?)
+ * The comparison table below the cards shows the plan name, monthly equivalent and call to action in the header.
+ * Team & compliance lists included people. Rows have a (?)
  * where it helps.
  */
 export const Comparison: Story = {
@@ -220,9 +220,8 @@ export const Comparison: Story = {
     const head = (name: string) =>
       within(table).getByRole('columnheader', { name: new RegExp(`^${name}`) })
     await expect(head('Pro')).toHaveTextContent('CHF 39.25 / month')
-    await expect(head('Pro')).toHaveTextContent('2 people incl.')
-    await expect(head('Pro')).not.toHaveTextContent('each')
-    await expect(head('Free')).toHaveTextContent('1 person incl.')
+    await expect(head('Pro')).toHaveAccessibleName('Pro CHF 39.25 / month Try Pro free')
+    await expect(head('Free')).toHaveAccessibleName('Free CHF 0 / month Choose Free')
     await expect(table.querySelector('thead')?.textContent).not.toMatch(/year|save/i)
     // Every column's call to action is one line, at the same height.
     const heights = within(table)
@@ -236,6 +235,8 @@ export const Comparison: Story = {
       within(within(table).getByRole('rowheader', { name }).closest('tr') ?? table)
         .getAllByRole('cell')
         .map((cell) => cell.textContent)
+    await expect(row('People included')).toEqual(['1', '1', '2', '5'])
+    await expect(row('Maximum team size')).toEqual(['1', '5', '25', 'Unlimited'])
     await expect(row('Invoices')).toEqual(['3 / month', '15 / month', '100 / month', 'Unlimited'])
     await expect(row('E-signatures')).toEqual([
       'Not included',

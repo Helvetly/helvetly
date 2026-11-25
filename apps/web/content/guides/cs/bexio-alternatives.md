@@ -40,7 +40,7 @@ Pro malý tým, který chce účetnictví, mzdy a fakturaci od jednoho švýcars
 
 ## Jak se alternativy k bexio srovnávají cenou?
 
-Nejlevnější jsou bezplatné tarify Magic Heidi, Banana, CashCtrl, AbaNinja a Helvetly, každý s limity. Nejlevnějším placeným tarifem je Banana Professional za CHF 89 ročně. Placené tarify Helvetly zahrnují 1, 2 nebo 5 osob a účtují každou další osobu; pro pět osob stojí CHF 59 měsíčně v Basic, CHF 94 v Pro a CHF 149 v Business, včetně DPH.
+Nejlevnější jsou bezplatné tarify Magic Heidi, Banana, CashCtrl, AbaNinja a Helvetly, každý s limity. Nejlevnějším placeným tarifem je Banana Professional za CHF 89 ročně. Placené tarify Helvetly zahrnují 1, 2 nebo 5 osob a účtují každou další osobu; pro pět osob stojí CHF 59 měsíčně v Basic, CHF 94 v Pro a CHF 99 v Business, včetně DPH.
 
 | Produkt     | Balíčky a cena                                                                                                                                       | DPH        |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
@@ -50,7 +50,7 @@ Nejlevnější jsou bezplatné tarify Magic Heidi, Banana, CashCtrl, AbaNinja a 
 | Banana      | Zdarma do 70 transakcí; Professional CHF 89 ročně; Advanced CHF 179 ročně, za uživatele                                                              | Včetně DPH |
 | CashCtrl    | Zdarma pro 1 uživatele; PRO CHF 350 ročně se 3 uživateli, 2 organizacemi a 1 GB                                                                      | S DPH      |
 | AbaNinja    | Starter zdarma (1 uživatel, 1,000 dokladů ročně); Basic CHF 21 měsíčně (3 uživatelé, 2,100 dokladů); Pro CHF 49 měsíčně (5 uživatelů, 5,000 dokladů) | Neuvedeno  |
-| Helvetly    | Zdarma pro 1 osobu; Basic CHF 19 měsíčně s 1 osobou, Pro CHF 49 se 2, Business CHF 149 s 5; každá další osoba CHF 10, 15 nebo 20                     | S DPH      |
+| Helvetly    | Zdarma pro 1 osobu; Basic CHF 19 měsíčně s 1 osobou, Pro CHF 49 se 2, Business CHF 99 s 5; každá další osoba CHF 10, 15 nebo 20                      | S DPH      |
 
 Běžnou cenu pro svůj tým najdete v oficiálních cenících (24. listopadu 2026): [Magic Heidi](https://magicheidi.ch/pricing), [bexio](https://www.bexio.com/en-CH/packages-and-prices), [KLARA](https://www.klara.ch/en/business), [Banana](https://www.banana.ch/en/prices), [CashCtrl](https://cashctrl.com/en/info/pro), [AbaNinja](https://www.abaninja.ch/en/#pricing).
 

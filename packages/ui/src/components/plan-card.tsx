@@ -17,11 +17,7 @@ export type PlanPrices = {
   extra_person_year: number
 }
 
-/**
- * A plan's price in the comparison's pinned head, two one-line rows: what a month costs on the chosen interval (yearly:
- * its share of the year), then, muted, the people it includes: "2 people incl.". The price of a further person and
- * the year's total and saving stay on the cards.
- */
+/** Monthly equivalent for the selected interval in the comparison header. */
 export function PlanHeadPrice({
   prices,
   interval,
@@ -41,9 +37,6 @@ export function PlanHeadPrice({
       <p className="whitespace-nowrap">
         <span className="font-semibold text-foreground">{formatPrice(month)}</span>{' '}
         <span className="text-muted-foreground">{translate('planPerMonth')}</span>
-      </p>
-      <p className="mt-0.5 whitespace-nowrap text-muted-foreground">
-        {translate('planPeopleIncluded', { count: prices.included_people })}
       </p>
     </div>
   )

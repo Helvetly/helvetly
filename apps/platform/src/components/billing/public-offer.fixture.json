@@ -1,5 +1,5 @@
 {
-  "offer_id": "helvetly-v1",
+  "offer_id": "helvetly-v2",
   "comparison": [
     {
       "key": "invoicing",
@@ -808,22 +808,22 @@
       "name": "Business",
       "prices": {
         "CHF": {
-          "month": 14900,
-          "year": 143100,
+          "month": 9900,
+          "year": 95100,
           "included_people": 5,
           "extra_person_month": 2000,
           "extra_person_year": 19200
         },
         "EUR": {
-          "month": 14900,
-          "year": 143100,
+          "month": 9900,
+          "year": 95100,
           "included_people": 5,
           "extra_person_month": 2000,
           "extra_person_year": 19200
         },
         "USD": {
-          "month": 14900,
-          "year": 143100,
+          "month": 9900,
+          "year": 95100,
           "included_people": 5,
           "extra_person_month": 2000,
           "extra_person_year": 19200

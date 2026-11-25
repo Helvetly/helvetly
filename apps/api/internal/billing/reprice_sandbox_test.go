@@ -14,7 +14,7 @@ import (
 
 // TestRepriceInTheStripeSandbox runs Reprice against Stripe test mode when HELVETLY_STRIPE_SANDBOX_KEY holds an
 // sk_test_ key (never in CI): a customer with a 100 % coupon for good on a flat per-seat price is moved onto a tiered
-// price with helvetly-v1's Business lookup key, and keeps its coupon. When the sandbox has no such price yet the test
+// price with the current Business lookup key, and keeps its coupon. When the sandbox has no such price yet the test
 // makes one and afterwards deactivates it and frees its lookup key for the catalogue export; its customer (with the
 // subscription), coupon, prices and product go too.
 func TestRepriceInTheStripeSandbox(t *testing.T) {
@@ -57,7 +57,7 @@ func TestRepriceInTheStripeSandbox(t *testing.T) {
 	} else {
 		var tiered obj
 		call(http.MethodPost, "/v1/prices", url.Values{"product": {product.ID}, "currency": {"chf"}, "billing_scheme": {"tiered"},
-			"tiers_mode": {"graduated"}, "tiers[0][up_to]": {"5"}, "tiers[0][flat_amount]": {"14900"}, "tiers[0][unit_amount]": {"0"},
+			"tiers_mode": {"graduated"}, "tiers[0][up_to]": {"5"}, "tiers[0][flat_amount]": {"9900"}, "tiers[0][unit_amount]": {"0"},
 			"tiers[1][up_to]": {"inf"}, "tiers[1][unit_amount]": {"2000"}, "recurring[interval]": {"month"}, "tax_behavior": {"inclusive"},
 			"lookup_key": {lookup}, "metadata[helvetly_plan]": {Business}, "metadata[helvetly_interval]": {"month"},
 			"metadata[" + PricingKey + "]": {PerSeat}}, &tiered)

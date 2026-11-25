@@ -45,10 +45,10 @@ confirms that they may bind it. The [data processing agreement](dpa.md) and the
   person in the workspace (owner, admins and members, whatever their access) counts. An open
   invitation counts only once it is accepted, and clients in the portal and people asked to sign a
   document do not count. Per month: Basic CHF 19 with 1 person, each further person CHF 10, up to
-  5 people; Pro CHF 49 with 2 people, each further person CHF 15, up to 25 people; Business CHF 149
+  5 people; Pro CHF 49 with 2 people, each further person CHF 15, up to 25 people; Business CHF 99
   with 5 people, each further person CHF 20. Paying yearly costs twelve months less 20 %, rounded up
   to a whole franc (Basic CHF 183 and CHF 96 per further person, Pro CHF 471 and CHF 144, Business
-  CHF 1,431 and CHF 192 a year).
+  CHF 951 and CHF 192 a year).
 - Prices are shown and charged in **CHF** in Switzerland and Liechtenstein, in **EUR** in the EU and
   in **USD** everywhere else, with the same figures (Basic EUR 19 or USD 19 a month, and so on); your location decides which. Once you have paid, Stripe keeps that currency for your later
   payments.

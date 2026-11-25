@@ -6,13 +6,13 @@ test('a year is twelve months less 20 %, up to a whole franc', () => {
   expect([1900, 4900, 9900].map((m) => yearOf(chf(m)).amount)).toEqual([18300, 47100, 95100])
   expect(yearOf(chf(2500)).amount).toBe(24000)
   // The tiered plans' bases and extra people (plans.go): Basic, Pro, Business.
-  expect([14900, 1000, 1500, 2000].map((m) => yearOf(chf(m)).amount)).toEqual([
-    143100, 9600, 14400, 19200,
+  expect([9900, 1000, 1500, 2000].map((m) => yearOf(chf(m)).amount)).toEqual([
+    95100, 9600, 14400, 19200,
   ])
 })
 
 test('yearly saves twelve months less the year', () => {
-  expect([1900, 4900, 14900].map((m) => savingOf(chf(m)).amount)).toEqual([4500, 11700, 35700])
+  expect([1900, 4900, 9900].map((m) => savingOf(chf(m)).amount)).toEqual([4500, 11700, 23700])
 })
 
 test('a yearly price a month is exact, so twelve of it are the year', () => {
@@ -50,7 +50,7 @@ test('yearly free months: Pro first, whole months, "over" with a remainder', () 
     over: false,
   })
   // Without Pro, the plan saving the most.
-  const business = { id: 'business', name: 'Business', month: 14900, year: 143100 }
+  const business = { id: 'business', name: 'Business', month: 9900, year: 95100 }
   expect(yearlyFreeMonths([basic, business])).toEqual({ plan: 'Business', months: 2, over: true })
   // Free, or less than a month saved: no line.
   expect(yearlyFreeMonths([{ id: 'free', name: 'Free', month: 0, year: 0 }])).toBeUndefined()

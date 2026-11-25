@@ -40,7 +40,7 @@ For a small team that wants accounting, payroll and invoicing from one Swiss ven
 
 ## How do bexio alternatives compare on price?
 
-The cheapest options are the free plans of Magic Heidi, Banana, CashCtrl, AbaNinja and Helvetly, each with limits. The lowest paid plan is Banana Professional at CHF 89 a year. Helvetly's paid plans include 1, 2 or 5 people and charge for each further person; for five people they cost CHF 59 a month on Basic, CHF 94 on Pro and CHF 149 on Business, VAT included.
+The cheapest options are the free plans of Magic Heidi, Banana, CashCtrl, AbaNinja and Helvetly, each with limits. The lowest paid plan is Banana Professional at CHF 89 a year. Helvetly's paid plans include 1, 2 or 5 people and charge for each further person; for five people they cost CHF 59 a month on Basic, CHF 94 on Pro and CHF 99 on Business, VAT included.
 
 | Product     | Packages and price                                                                                                                            | VAT        |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
@@ -50,7 +50,7 @@ The cheapest options are the free plans of Magic Heidi, Banana, CashCtrl, AbaNin
 | Banana      | Free up to 70 transactions; Professional CHF 89 a year; Advanced CHF 179 a year, per user                                                     | Included   |
 | CashCtrl    | Free for 1 user; PRO CHF 350 a year with 3 users, 2 organisations and 1 GB                                                                    | Included   |
 | AbaNinja    | Starter free (1 user, 1,000 documents a year); Basic CHF 21 a month (3 users, 2,100 documents); Pro CHF 49 a month (5 users, 5,000 documents) | Not stated |
-| Helvetly    | Free for 1 person; Basic CHF 19 a month with 1 person, Pro CHF 49 with 2, Business CHF 149 with 5; each further person CHF 10, 15 or 20       | Included   |
+| Helvetly    | Free for 1 person; Basic CHF 19 a month with 1 person, Pro CHF 49 with 2, Business CHF 99 with 5; each further person CHF 10, 15 or 20        | Included   |
 
 Check the regular price for your team on the official price lists (24 November 2026): [Magic Heidi](https://magicheidi.ch/pricing), [bexio](https://www.bexio.com/en-CH/packages-and-prices), [KLARA](https://www.klara.ch/en/business), [Banana](https://www.banana.ch/en/prices), [CashCtrl](https://cashctrl.com/en/info/pro), [AbaNinja](https://www.abaninja.ch/en/#pricing).
 

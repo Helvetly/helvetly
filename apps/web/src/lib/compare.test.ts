@@ -64,6 +64,6 @@ it('prices a year for 1, 3 and 5 people as the offer does', () => {
   expect(Object.fromEntries(HELVETLY_YEARLY.map((p) => [p.id, p.prices]))).toEqual({
     basic: ['CHF 183', 'CHF 375', 'CHF 567'],
     pro: ['CHF 471', 'CHF 615', 'CHF 903'],
-    business: ['CHF 1’431', 'CHF 1’431', 'CHF 1’431'],
+    business: ['CHF 951', 'CHF 951', 'CHF 951'],
   })
 })

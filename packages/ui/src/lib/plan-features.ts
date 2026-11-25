@@ -297,6 +297,11 @@ const ROWS: RowDef[] = [
 
   // Team & compliance
   {
+    key: 'included_people',
+    group: 'team_compliance',
+    label: 'planRowIncludedPeople',
+  },
+  {
     key: 'people',
     group: 'team_compliance',
     label: 'planRowPeople',
@@ -547,9 +552,17 @@ export type ComparisonRow = {
 export type ComparisonGroup = { group: PlanGroup; title: string; rows: ComparisonRow[] }
 
 /** Every row, grouped as the cards are: ✓ or – per plan, or the allowance where the row has one. */
-export function planComparison(offer: PlanCatalogue, language: Locale): ComparisonGroup[] {
+export function planComparison(
+  offer: PlanCatalogue,
+  language: Locale,
+  includedPeople: (plan: PlanId) => number | undefined,
+): ComparisonGroup[] {
   const translate = translatorFor(language)
   const cell = (row: RowDef, plan: PlanId): ComparisonCell => {
+    if (row.key === 'included_people') {
+      const count = includedPeople(plan)
+      return count === undefined ? { kind: 'no' } : { kind: 'amount', amount: String(count) }
+    }
     if (!hasRow(offer, row, plan)) return { kind: 'no' }
     if (!row.limit) return { kind: 'yes' }
     const allowance = planAllowance(offer, row.limit, plan, language)

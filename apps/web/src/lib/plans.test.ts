@@ -68,12 +68,12 @@ describe('plans', () => {
   })
 
   it('price a base, an extra person and a team as the API charges them, in rappen', () => {
-    expect(PLANS.map((plan) => priceOf(plan, 'month').amount)).toEqual([0, 1900, 4900, 14900])
-    expect(PLANS.map((plan) => priceOf(plan, 'year').amount)).toEqual([0, 18300, 47100, 143100])
+    expect(PLANS.map((plan) => priceOf(plan, 'month').amount)).toEqual([0, 1900, 4900, 9900])
+    expect(PLANS.map((plan) => priceOf(plan, 'year').amount)).toEqual([0, 18300, 47100, 95100])
     expect(PLANS.map((plan) => extraPersonOf(plan, 'year').amount)).toEqual([0, 9600, 14400, 19200])
     // Pro for 4 people: the base for 2, and 2 more.
     expect(totalOf(planById('pro'), 'month', 4).amount).toBe(4900 + 2 * 1500)
-    expect(totalOf(planById('business'), 'year', 3).amount).toBe(143100)
+    expect(totalOf(planById('business'), 'year', 3).amount).toBe(95100)
   })
 
   it('keep the trial the offer seeds', () => {
@@ -109,7 +109,7 @@ describe('plans', () => {
   })
 })
 
-describe('offer helvetly-v1 public projection', () => {
+describe('offer helvetly-v2 public projection', () => {
   it('compares the sixteen business benefits', () => {
     expect(BENEFITS.map((b) => b.key)).toEqual([
       'invoicing',
@@ -225,12 +225,12 @@ describe('yearly prices as the cards show them', () => {
     expect(PAID.map((plan) => yearlyTerms(plan, 'en'))).toEqual([
       { perMonth: '15.25', billed: 'CHF 183', saving: 'CHF 45' },
       { perMonth: '39.25', billed: 'CHF 471', saving: 'CHF 117' },
-      { perMonth: '119.25', billed: "CHF 1'431", saving: 'CHF 357' },
+      { perMonth: '79.25', billed: 'CHF 951', saving: 'CHF 237' },
     ])
     expect(PAID.map((plan) => yearlyTerms(plan, 'de', 'eur').saving)).toEqual([
       'EUR 45',
       'EUR 117',
-      'EUR 357',
+      'EUR 237',
     ])
   })
 })

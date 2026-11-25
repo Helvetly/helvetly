@@ -249,11 +249,13 @@ days and may arrive twice if delivery succeeds before the server can confirm it 
 ### Billing
 
 Billing is optional. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, prices are read from your Stripe
-account by lookup key `<offer>_<basic|pro|business>_<month|year>` (such as `helvetly-v1_pro_month`): recurring,
+account by lookup key `<offer>_<basic|pro|business>_<month|year>` (such as `helvetly-v2_pro_month`): recurring,
 graduated tiered prices (a flat amount for the people the plan includes, then each further person) whose quantity is
 the workspace's people, with the metadata `helvetly_pricing=per_seat`. Create those prices in your own Stripe account;
 `helvetly offer catalog` prints them from the published offer, and `helvetly billing reprice -workspace ID [-apply]`
-moves a live subscription onto the current offer's price. A workspace without a paid plan is on Free (one person,
+moves a live subscription onto the current offer's price. Before deploying a release that publishes a new offer
+in a migration, export its catalogue from a staging database on that release and provision its lookup keys in
+Stripe. A workspace without a paid plan is on Free (one person,
 no card, no end; nothing is deleted, additions beyond Free's limits are refused). Plan features and limits come from a
 published offer: `limits` defines every key, `offer_versions` keeps each published offer (never changed afterwards),
 `limit_plans` its values per plan (a feature enabled or disabled, a limit limited or unlimited, growing with every

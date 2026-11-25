@@ -8,7 +8,7 @@ import (
 )
 
 // TestRepriceKeepsTheLifetimeDiscount: the owner's workspace with a 100 % coupon for good, on an earlier offer's flat
-// per-seat Business price, is moved onto helvetly-v1's tiered Business price only with -apply: same subscription,
+// per-seat Business price, is moved onto the current tiered Business price only with -apply: same subscription,
 // its people as the quantity, nothing prorated, the coupon kept. A coupon for other products refuses the move.
 func TestRepriceKeepsTheLifetimeDiscount(t *testing.T) {
 	ctx := context.Background()
@@ -31,7 +31,7 @@ func TestRepriceKeepsTheLifetimeDiscount(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := Reprice(ctx, e.st, e.svc.stripe, ws, false, &out); err != nil || !strings.Contains(out.String(), "dry run") ||
-		!strings.Contains(out.String(), "price_v15_business_month × 2 -> price_xm (helvetly-v1_business_month) × 2, 149.00 total") ||
+		!strings.Contains(out.String(), "price_v15_business_month × 2 -> price_xm ("+currentOffer+"_business_month) × 2, 99.00 total") ||
 		!strings.Contains(out.String(), "[owner_lifetime]") {
 		t.Fatalf("dry run: %v %s", err, out.String())
 	}
@@ -45,7 +45,7 @@ func TestRepriceKeepsTheLifetimeDiscount(t *testing.T) {
 	}
 	f := e.stripe.form("POST /v1/subscriptions/sub_" + ws)
 	if f.Get("items[0][id]") != "si_1" || f.Get("items[0][price]") != "price_xm" || f.Get("items[0][quantity]") != "2" ||
-		f.Get("proration_behavior") != "none" || f.Get("metadata[offer_id]") != "helvetly-v1" || f.Has("discounts[0][coupon]") {
+		f.Get("proration_behavior") != "none" || f.Get("metadata[offer_id]") != currentOffer || f.Has("discounts[0][coupon]") {
 		t.Fatalf("move form %v", f)
 	}
 	out.Reset()
