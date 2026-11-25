@@ -221,6 +221,12 @@ func (s *Service) apply(ctx context.Context, sub subscription, ev event) error {
 			}
 			resync = after.Seats != max(seats, 1)
 		}
+		for _, title := range adminSubscriptionNews(b, after) {
+			message := fmt.Sprintf("%s\nPlan: %s\nStripe: %s\nWorkspace: %s", title, planNames[after.Plan], after.ID, ws)
+			if err := q.QueueAdminAlert(ctx, message); err != nil {
+				return err
+			}
+		}
 		if event, data := subscriptionNews(ev.Type, b, after); event != "" {
 			return notifications.Notify(ctx, q, ws, event, data, store.NotifyTo{Roles: notifications.Owners}, s.now())
 		}

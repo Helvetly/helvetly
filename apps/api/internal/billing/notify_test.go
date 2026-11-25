@@ -2,7 +2,9 @@ package billing
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -106,5 +108,53 @@ func TestLimitNearNotifiesManagersOnce(t *testing.T) {
 		if got := e.events(b.workspace, role); len(got) != want || want == 1 && got[0] != "billing.limit_near" {
 			t.Fatalf("%s: %v", role, got)
 		}
+	}
+}
+
+func TestAdminSubscriptionAlerts(t *testing.T) {
+	e := newEnv(t, true)
+	e.st.EnableAdminAlerts()
+	ws := e.workspace().workspace
+	ctx := context.Background()
+
+	for i, step := range []struct {
+		status, want string
+		cancel       bool
+	}{
+		{"incomplete", "", false},
+		{"trialing", "Nowa subskrypcja (okres próbny)", false},
+		{"active", "Nowa aktywna subskrypcja", false},
+		{"active", "Zaplanowano anulowanie subskrypcji", true},
+		{"active", "", true},
+		{"canceled", "Subskrypcja zakończona", false},
+		{"canceled", "", false},
+	} {
+		e.stripe.put("sub_admin", ws, "cus_admin", step.status, "price_bm")
+		e.stripe.mu.Lock()
+		e.stripe.subs["sub_admin"]["cancel_at_period_end"] = step.cancel
+		e.stripe.mu.Unlock()
+
+		id := fmt.Sprintf("evt_%d", i)
+		for range 2 {
+			if code := e.event(id, "customer.subscription.updated", map[string]any{"id": "sub_admin"}); code != http.StatusOK {
+				t.Fatalf("event %s: HTTP %d", id, code)
+			}
+		}
+
+		var count int
+		var message string
+		if err := e.raw.QueryRow(ctx, `SELECT count(*), coalesce(max(message), '') FROM admin_alerts`).Scan(&count, &message); err != nil {
+			t.Fatal(err)
+		}
+		if step.want == "" {
+			if count != 0 {
+				t.Fatalf("unexpected alert for %s: %q", step.status, message)
+			}
+			continue
+		}
+		if count != 1 || !strings.HasPrefix(message, step.want+"\n") || !strings.Contains(message, "sub_admin") {
+			t.Fatalf("unexpected alerts for %s: %d, %q, want %q", step.status, count, message, step.want)
+		}
+		e.exec(`DELETE FROM admin_alerts`)
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"helvetly.com/api/internal/addresses"
+	"helvetly.com/api/internal/admintelegram"
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/aiwrite"
 	"helvetly.com/api/internal/approvals"
@@ -119,6 +120,11 @@ func run() error {
 		return err
 	}
 	bg := &jobs{restartDelay: time.Minute}
+	if cfg.TelegramBotToken != "" {
+		db.EnableAdminAlerts()
+		sender := admintelegram.New(cfg.TelegramBotToken, cfg.TelegramAdminChatID)
+		bg.Go(ctx, "admin Telegram alerts", func(ctx context.Context) { sender.Run(ctx, db, slog.Default()) })
+	}
 	authSvc, err := auth.New(cfg, db, slog.Default())
 	if err != nil {
 		return err
