@@ -150,10 +150,8 @@ export const Trial: Story = {
     await expect(summary.getByText(/^Trial ends on \d+ \w+ \d{4}$/)).toBeVisible()
     await expect(summary.getByText('Day 10 of 14')).toBeVisible()
     // The total with how it adds up (Business includes five people), then what is charged after the trial.
-    await expect(price(canvasElement)).toHaveTextContent(
-      /CHF 149 for 5 people\s*CHF 149\s*\/ month/,
-    )
-    await expect(nextStep(canvasElement)).toHaveTextContent('Then CHF 149 is charged.')
+    await expect(price(canvasElement)).toHaveTextContent(/CHF 99 for 5 people\s*CHF 99\s*\/ month/)
+    await expect(nextStep(canvasElement)).toHaveTextContent('Then CHF 99 is charged.')
     // The plans are a page of their own: no tiles here, one way there.
     await expect(canvas.queryByRole('article', { name: 'Pro' })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('radio', { name: /^Yearly/ })).not.toBeInTheDocument()

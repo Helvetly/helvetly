@@ -217,8 +217,8 @@ are the reference.
   sessions left in a package) with `session` records and `open_session`; creating or changing sessions through Heidi
   is not built. Settings, holidays, event-type writes, host hours, calendars, the feed, request decisions and
   invoicing sessions are session-only.
-- **Plans and offer** (`internal/billing`, `plans.go`, `offer.go`): one offer on sale, `helvetly-v1` (00065 reset the
-  earlier ids; a new version is published with `helvetly offer publish`, never edited). Plans Free, Basic, Pro, Business;
+- **Plans and offer** (`internal/billing`, `plans.go`, `offer.go`): one offer on sale, `helvetly-v2` (00067 lowered the
+  Business base price to 99 monthly and 951 yearly; operators can publish a new version with `helvetly offer publish`). Plans Free, Basic, Pro, Business;
   only the paid ones are sold through Stripe (`planOrder`). Prices are tiered and include VAT, the same figures in CHF,
   EUR and USD: a plan's price covers its included people (Basic 1, Pro 2, Business 5), each further person adds a fixed
   amount; a year is twelve months less 20 %, rounded up to a whole franc per part. Stripe has one graduated tiered price

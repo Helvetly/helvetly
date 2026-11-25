@@ -33,9 +33,8 @@ func clone(t *testing.T, o Offer) Offer {
 	return c
 }
 
-// currentOffer is the offer on sale in the seeded database, the one 00051 publishes (00007 published helvetly-v1,
-// 00017 … 00051 helvetly-v1.1 … v1.5, which 00065 reset to one offer).
-const currentOffer = "helvetly-v1"
+// currentOffer is the offer on sale in the seeded database.
+const currentOffer = "helvetly-v2"
 
 func recordOf(o *Offer, key string) *OfferRecord {
 	return &o.Records[slices.IndexFunc(o.Records, func(r OfferRecord) bool { return r.Key == key })]

@@ -41,7 +41,7 @@ describe('team cost', () => {
 
   it('formats in the page language', () => {
     expect(teamCost(planById('business'), 10, 'year', 'de')).toMatchObject({
-      total: "CHF 2'391",
+      total: "CHF 1'911",
       extraPerson: 'CHF 20',
     })
     expect(teamCost(planById('pro'), 1, 'year', 'nl')).toMatchObject({ total: 'CHF 471' })

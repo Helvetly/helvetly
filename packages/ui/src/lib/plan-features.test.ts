@@ -82,7 +82,8 @@ const offer: PlanCatalogue = {
   },
 }
 const cards = planCards(offer, 'en')
-const table = planComparison(offer, 'en')
+const includedPeople = { free: 1, basic: 1, pro: 2, business: 5 }
+const table = planComparison(offer, 'en', (id) => includedPeople[id])
 const card = (plan: PlanId) => cards.find((c) => c.plan === plan)
 const featureLabels = (plan: PlanId) => card(plan)?.features.map((l) => l.label)
 

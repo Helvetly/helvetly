@@ -14,12 +14,12 @@ describe('team prices', () => {
       monthlyFor('business', 1),
       monthlyFor('business', 5),
       monthlyFor('business', 6),
-    ]).toEqual([149, 149, 169])
+    ]).toEqual([99, 99, 119])
   })
 
   it('bill a year with 20 % off, rounded up to the franc', () => {
     expect(year('basic')).toEqual([183, 375, 567])
     expect(year('pro')).toEqual([471, 615, 903])
-    expect(year('business')).toEqual([1431, 1431, 1431])
+    expect(year('business')).toEqual([951, 951, 951])
   })
 })

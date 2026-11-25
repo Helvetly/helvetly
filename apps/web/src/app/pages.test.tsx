@@ -37,7 +37,7 @@ function serve({ offer = true, trace = '' } = {}) {
   const fetch = vi.fn<typeof globalThis.fetch>(async (input) => {
     if (String(input) !== OFFER_URL) return new Response(trace)
     if (!offer) throw new TypeError('Failed to fetch')
-    return new Response(JSON.stringify({ data: { offer_id: 'helvetly-v1', ...golden } }))
+    return new Response(JSON.stringify({ data: { offer_id: 'helvetly-v2', ...golden } }))
   })
   vi.stubGlobal('fetch', fetch)
   return fetch
@@ -233,7 +233,7 @@ describe('pricing page', () => {
         await waitFor(() => expect(fetch).toHaveBeenCalledWith(OFFER_URL, expect.anything()))
         expect(container.textContent?.match(/\S*\s+%/gu) ?? []).toEqual([])
         expect(container.textContent).toContain('20%')
-        for (const [index, amount] of ['CHF 183', 'CHF 471', 'CHF 1’431'].entries())
+        for (const [index, amount] of ['CHF 183', 'CHF 471', 'CHF 951'].entries())
           expect(card(index + 1).textContent?.replaceAll("'", '’')).toContain(amount)
       })
     },
@@ -295,7 +295,7 @@ describe('pricing page', () => {
     const again = vi.fn<typeof globalThis.fetch>(async (input) => {
       await answered.promise
       return String(input) === OFFER_URL
-        ? new Response(JSON.stringify({ data: { offer_id: 'helvetly-v1', ...golden } }))
+        ? new Response(JSON.stringify({ data: { offer_id: 'helvetly-v2', ...golden } }))
         : new Response('')
     })
     vi.stubGlobal('fetch', again)
@@ -355,7 +355,7 @@ describe('pricing page', () => {
       expect.stringMatching(/^FreeCHF 0/),
       expect.stringMatching(/^BasicCHF 15.25/),
       expect.stringMatching(/^ProCHF 39.25/),
-      expect.stringMatching(/^BusinessCHF 119.25/),
+      expect.stringMatching(/^BusinessCHF 79.25/),
     ])
     expect(cells(table, 'Clients')).toEqual(['5', '30', '300', 'Unlimited'])
     expect(cells(table, 'Quotes')).toEqual(['3 / month', '5 / month', '100 / month', 'Unlimited'])

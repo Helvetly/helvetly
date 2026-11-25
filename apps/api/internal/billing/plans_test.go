@@ -24,7 +24,7 @@ func TestPricesByLookupKey(t *testing.T) {
 			id           string
 			month, year  float64
 			yearDeployed bool
-		}{{"basic", 1900, 18300, true}, {"pro", 4900, 47100, true}, {"business", 14900, 0, false}} {
+		}{{"basic", 1900, 18300, true}, {"pro", 4900, 47100, true}, {"business", 9900, 0, false}} {
 			p, _ := list[i].(map[string]any)
 			prices, _ := p["prices"].(map[string]any)
 			month, _ := prices["month"].(map[string]any)
@@ -356,9 +356,9 @@ func TestPlanAmountYearly(t *testing.T) {
 		plan        string
 		month, year int64
 	}{
-		{Basic, 1900, 18300},      // 182.40 rounds up to 183
-		{Pro, 4900, 47100},        // 470.40 rounds up to 471
-		{Business, 14900, 143100}, // 1430.40 rounds up to 1431
+		{Basic, 1900, 18300},    // 182.40 rounds up to 183
+		{Pro, 4900, 47100},      // 470.40 rounds up to 471
+		{Business, 9900, 95100}, // 950.40 rounds up to 951
 	} {
 		if got := PlanAmount(tt.plan, "month"); got != tt.month {
 			t.Errorf("%s monthly = %d, want %d", tt.plan, got, tt.month)

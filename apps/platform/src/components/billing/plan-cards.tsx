@@ -255,7 +255,11 @@ export function PlanCards({ billing, offer }: { billing: Billing; offer: PublicO
   )
   const saving =
     freeMonths && ui('planYearlyFreeMonths', { ...freeMonths, over: String(freeMonths.over) })
-  const groups = planComparison(catalogue, locale).map((group) => ({
+  const groups = planComparison(
+    catalogue,
+    locale,
+    (id) => offer.plans.find((plan) => plan.id === id)?.prices.CHF?.included_people,
+  ).map((group) => ({
     ...group,
     rows: ai ? group.rows : group.rows.filter((row) => !AI_LINES.has(row.key)),
   }))

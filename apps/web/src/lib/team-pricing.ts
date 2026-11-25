@@ -1,6 +1,6 @@
 import { yearOf } from '@helvetly/ui/lib/price'
 
-// Helvetly's prices by team size, as the offer helvetly-v1 sells them (CHF, VAT included): each plan includes some
+// Helvetly's prices by team size, as the offer helvetly-v2 sells them (CHF, VAT included): each plan includes some
 // people and charges a fixed amount for every person beyond them. The comparisons read Helvetly's prices only from
 // here; the yearly figures come from yearOf, so they round up to the franc exactly as the API charges.
 
@@ -17,7 +17,7 @@ export type TieredPlan = {
 export const TIERED_PLANS: Record<TieredPlanId, TieredPlan> = {
   basic: { monthly: 19, includedPeople: 1, extraPerson: 10 },
   pro: { monthly: 49, includedPeople: 2, extraPerson: 15 },
-  business: { monthly: 149, includedPeople: 5, extraPerson: 20 },
+  business: { monthly: 99, includedPeople: 5, extraPerson: 20 },
 }
 
 /** The Free plan: one person, these allowances a month, no card. */

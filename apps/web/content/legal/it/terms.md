@@ -48,9 +48,9 @@ ne fanno parte. Le tue condizioni generali non si applicano.
   indipendentemente dall’accesso). Un invito aperto conta solo una volta accettato; clienti nel
   portale e persone invitate a firmare un documento non contano. Al mese: Basic CHF 19 con 1
   persona, ogni persona in più CHF 10, fino a 5 persone; Pro CHF 49 con 2 persone, ogni persona in
-  più CHF 15, fino a 25 persone; Business CHF 149 con 5 persone, ogni persona in più CHF 20. Il
+  più CHF 15, fino a 25 persone; Business CHF 99 con 5 persone, ogni persona in più CHF 20. Il
   pagamento annuale costa dodici mesi meno il 20 %, arrotondato al franco intero superiore (Basic
-  CHF 183 e CHF 96 per persona in più, Pro CHF 471 e CHF 144, Business CHF 1,431 e CHF 192
+  CHF 183 e CHF 96 per persona in più, Pro CHF 471 e CHF 144, Business CHF 951 e CHF 192
   all’anno).
 - I prezzi vengono mostrati e addebitati in **CHF** in Svizzera e Liechtenstein, in **EUR** nell’UE
   e in **USD** nel resto del mondo, con le stesse cifre (Basic EUR 19 o USD 19 al mese, e così

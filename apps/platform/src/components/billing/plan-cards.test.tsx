@@ -164,7 +164,7 @@ test('only Pro offers the trial, with its line; the others are charged today', a
   expect(basic).toHaveTextContent('Charged today.')
   expect(basic).not.toHaveTextContent('incl. VAT')
   expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 39 / month')
-  expect(total('Business')).toHaveTextContent('For 3 peopleCHF 149 / month')
+  expect(total('Business')).toHaveTextContent('For 3 peopleCHF 99 / month')
   await userEvent.click(screen.getByRole('radio', { name: 'Yearly' }))
   await userEvent.click(within(card('Pro')).getByRole('button', { name: /Start 14-day/ }))
   await waitFor(() => expect(assign).toHaveBeenCalledWith('https://checkout.stripe.test/c'))
@@ -293,7 +293,7 @@ test('a valid promotion code discounts the plans it covers and goes with the che
   expect(total('Pro')).toHaveTextContent('CHF 51.20')
   expect(total('Pro')?.querySelector('s')).toHaveTextContent('CHF 64')
   expect(total('Business')?.querySelector('s')).toBeNull()
-  expect(total('Business')).toHaveTextContent('CHF 149')
+  expect(total('Business')).toHaveTextContent('CHF 99')
   await userEvent.click(within(card('Pro')).getByRole('button', { name: 'Choose Pro' }))
   await waitFor(() =>
     expect(checkout).toEqual({

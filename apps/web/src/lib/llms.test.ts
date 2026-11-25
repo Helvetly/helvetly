@@ -34,7 +34,7 @@ describe('llms.txt', () => {
     expect(text).toContain(
       'Pro: CHF 49 a month (CHF 471 a year) for 2 people, CHF 15 (CHF 144 a year) per extra person, up to 25 people',
     )
-    expect(text).toContain('Business: CHF 149 a month')
+    expect(text).toContain('Business: CHF 99 a month')
     expect(text).toContain(`free for ${TRIAL.days} days`)
     expect(text).not.toMatch(/per person and month|7-day/)
   })

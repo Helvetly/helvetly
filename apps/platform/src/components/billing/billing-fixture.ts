@@ -93,7 +93,7 @@ const features: Record<PlanId | 'free', Gated[]> = {
     'employees',
   ],
 }
-/** A plan's tiered prices: `month` for its included people, each further one `extra` (offer helvetly-v1). */
+/** A plan's tiered prices: `month` for its included people, each further one `extra` (offer helvetly-v2). */
 const prices = (month: number, included: number, extra: number, currency: string) => ({
   month: { amount: month, currency, included_people: included, extra_person: extra },
   year: {
@@ -105,7 +105,7 @@ const prices = (month: number, included: number, extra: number, currency: string
 })
 
 /**
- * `GET /api/v1/billing` for a workspace on Free (no paid plan); paid plans priced as offer helvetly-v1. With billing
+ * `GET /api/v1/billing` for a workspace on Free (no paid plan); paid plans priced as offer helvetly-v2. With billing
  * off (`enabled: false`) as a self-hosted installation answers: no plan and every feature.
  */
 export const billingFixture = (over: Partial<Billing> = {}): Billing => ({
@@ -158,7 +158,7 @@ export const billingFixture = (over: Partial<Billing> = {}): Billing => ({
       name: 'Business',
       limits: business,
       features: features.business,
-      prices: prices(14900, 5, 2000, over.currency ?? 'chf'),
+      prices: prices(9900, 5, 2000, over.currency ?? 'chf'),
     },
   ],
   ...over,
@@ -271,7 +271,7 @@ export function entitlementsFixture(
 
 const isCatalogueId = (id: string): id is CatalogueId => (PLAN_IDS as string[]).includes(id)
 
-/** GET /api/v1/public/offers/current of offer helvetly-v1, typed (the JSON is the API's golden file). */
+/** GET /api/v1/public/offers/current of offer helvetly-v2, typed (the JSON is the API's golden file). */
 export const publicOfferFixture: PublicOffer = {
   ...publicOffer,
   plans: publicOffer.plans.map((plan) => {

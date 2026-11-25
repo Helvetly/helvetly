@@ -9,7 +9,7 @@ import {
   YEARLY_DISCOUNT_PERCENT,
   yearOf,
 } from '@helvetly/ui/lib/price'
-// The one place the website keeps what each plan costs and includes: offer helvetly-v1's public projection (tiered
+// The one place the website keeps what each plan costs and includes: offer helvetly-v2's public projection (tiered
 // prices, the business comparison, plan features and the commercial allowances). Every page, card, table, FAQ and
 // comparison reads it from here. Prices are checked against apps/api/internal/billing/plans.go in plans.test.ts.
 // These values are the build-time copy of the offer on sale: lib/offer.ts shows prices only once the API's public
@@ -460,7 +460,7 @@ export const plansIn = perLanguage((translate, language) => {
     {
       id: 'business',
       name: PLAN_NAMES.business,
-      monthly: 149,
+      monthly: 99,
       includedPeople: 5,
       extraMonthly: 20,
     },

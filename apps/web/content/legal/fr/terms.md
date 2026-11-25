@@ -52,9 +52,9 @@ en font partie. Vos propres conditions générales ne s’appliquent pas.
   acceptation ; les clients du portail et les personnes invitées à signer un document ne comptent
   pas. Par mois : Basic CHF 19 avec 1 personne, chaque personne supplémentaire CHF 10, jusqu’à
   5 personnes ; Pro CHF 49 avec 2 personnes, chaque personne supplémentaire CHF 15, jusqu’à
-  25 personnes ; Business CHF 149 avec 5 personnes, chaque personne supplémentaire CHF 20. Le
+  25 personnes ; Business CHF 99 avec 5 personnes, chaque personne supplémentaire CHF 20. Le
   paiement annuel correspond à douze mois moins 20 %, arrondis au franc entier supérieur (Basic
-  CHF 183 et CHF 96 par personne supplémentaire, Pro CHF 471 et CHF 144, Business CHF 1,431 et
+  CHF 183 et CHF 96 par personne supplémentaire, Pro CHF 471 et CHF 144, Business CHF 951 et
   CHF 192 par an).
 - Les prix sont affichés et facturés en **CHF** en Suisse et au Liechtenstein, en **EUR** dans l’UE
   et en **USD** partout ailleurs, avec les mêmes montants (Basic EUR 19 ou USD 19 par

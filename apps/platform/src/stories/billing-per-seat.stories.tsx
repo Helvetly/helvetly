@@ -155,7 +155,7 @@ export const PlanTilesPerPerson: Story = {
     )
     await expect(total('Basic')).toHaveTextContent('For 3 peopleCHF 39 / month')
     await expect(total('Pro')).toHaveTextContent('For 3 peopleCHF 64 / month')
-    await expect(total('Business')).toHaveTextContent('For 3 peopleCHF 149 / month')
+    await expect(total('Business')).toHaveTextContent('For 3 peopleCHF 99 / month')
     // How many people each plan takes is one of its lead features.
     await expect(tile(canvas, 'Basic').getByText('Up to 5 people')).toBeVisible()
     // Seats follow the workspace's people: nobody picks a number here.

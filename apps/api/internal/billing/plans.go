@@ -47,7 +47,7 @@ func paid(plan string) bool { return slices.Contains(planOrder, plan) }
 // Tiered prices in minor units, VAT included: a plan's monthly price covers its included people, each further
 // person adds extraMonthly; a year is twelve months less 20 %, rounded up to a whole franc, of each.
 var (
-	monthly      = map[string]int64{Basic: 1900, Pro: 4900, Business: 14900}
+	monthly      = map[string]int64{Basic: 1900, Pro: 4900, Business: 9900}
 	included     = map[string]int64{Free: 1, Basic: 1, Pro: 2, Business: 5}
 	extraMonthly = map[string]int64{Basic: 1000, Pro: 1500, Business: 2000}
 )

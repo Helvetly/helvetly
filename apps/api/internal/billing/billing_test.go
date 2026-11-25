@@ -45,7 +45,7 @@ func lookupKeyOf(id string) string {
 	for k, v := range priceIDs {
 		if v == id {
 			plan, interval, _ := strings.Cut(k, "_")
-			return LookupKey("helvetly-v1", plan, interval)
+			return LookupKey(currentOffer, plan, interval)
 		}
 	}
 	return ""
@@ -55,7 +55,7 @@ func catalog() map[string]map[string]any {
 	out := map[string]map[string]any{}
 	for key, id := range priceIDs {
 		plan, interval, _ := strings.Cut(key, "_")
-		out[key] = map[string]any{"id": id, "lookup_key": LookupKey("helvetly-v1", plan, interval), "currency": "chf", "unit_amount": PlanAmount(plan, interval), "product": "prod_" + plan,
+		out[key] = map[string]any{"id": id, "lookup_key": LookupKey(currentOffer, plan, interval), "currency": "chf", "unit_amount": PlanAmount(plan, interval), "product": "prod_" + plan,
 			"currency_options": options(PlanAmount(plan, interval))}
 	}
 	return out

@@ -48,7 +48,7 @@ func TestTieredPricesForOneToTenPeople(t *testing.T) {
 	want := map[string]map[string]tier{
 		Basic:    {"month": {1900, 1, 1000}, "year": {18300, 1, 9600}},
 		Pro:      {"month": {4900, 2, 1500}, "year": {47100, 2, 14400}},
-		Business: {"month": {14900, 5, 2000}, "year": {143100, 5, 19200}},
+		Business: {"month": {9900, 5, 2000}, "year": {95100, 5, 19200}},
 	}
 	for plan, byInterval := range want {
 		for interval, w := range byInterval {
@@ -61,7 +61,7 @@ func TestTieredPricesForOneToTenPeople(t *testing.T) {
 		}
 	}
 	// Spot checks in francs: Basic for 3 people is 19 + 2 × 10 a month; Pro for 4 a year is 471 + 2 × 144.
-	if PlanTotal(Basic, "month", 3) != 3900 || PlanTotal(Pro, "year", 4) != 75900 || PlanTotal(Business, "month", 10) != 24900 {
+	if PlanTotal(Basic, "month", 3) != 3900 || PlanTotal(Pro, "year", 4) != 75900 || PlanTotal(Business, "month", 10) != 19900 {
 		t.Fatal("spot checks")
 	}
 	if PlanTotal(Free, "month", 1) != 0 || PlanTotal(Free, "year", 1) != 0 {
@@ -116,7 +116,7 @@ func TestPooledAllowancesForEveryPaidSeat(t *testing.T) {
 	}{
 		{Pro, "price_pm", 2, 4900, 10 * gb, 10_000_000, 6_000_000, 0, 300},
 		{Pro, "price_pm", 3, 6400, 15 * gb, 15_000_000, 9_000_000, 0, 300},
-		{Business, "price_xm", 5, 14900, 100 * gb, 100_000_000, 60_000_000, 0, Unlimited},
+		{Business, "price_xm", 5, 9900, 100 * gb, 100_000_000, 60_000_000, 0, Unlimited},
 	} {
 		t.Run(fmt.Sprint(tc.plan, tc.seats), func(t *testing.T) {
 			e := newEnv(t, true)
