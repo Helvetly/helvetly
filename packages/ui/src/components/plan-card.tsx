@@ -244,7 +244,7 @@ export function FreePlanRow({
       data-slot="free-plan"
       data-plan="free"
       className={cn(
-        'grid w-full gap-4 rounded-2xl border border-violet-solid/15 bg-linear-to-r from-violet-surface/60 via-card to-card px-5 py-4 text-left md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-6',
+        'grid w-full gap-4 rounded-3xl border bg-card px-5 py-4 text-left md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-6',
         className,
       )}
     >
