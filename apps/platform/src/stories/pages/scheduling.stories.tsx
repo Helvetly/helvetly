@@ -34,6 +34,7 @@ const meta = {
     localStorage.removeItem(VIEW_KEY)
     localStorage.removeItem(LAYOUT_KEY)
     localStorage.removeItem(HOURS_KEY)
+    localStorage.removeItem(CANCELLED_KEY)
   },
   parameters: withState(shared),
   render: () => (
@@ -48,6 +49,7 @@ type Story = StoryObj<typeof meta>
 
 const VIEW_KEY = 'helvetly.scheduling.view'
 const LAYOUT_KEY = 'helvetly.scheduling.layout'
+const CANCELLED_KEY = 'helvetly.scheduling.showCancelled'
 const body = () => within(document.body)
 const pastCount = () => document.querySelectorAll('[data-past]').length
 /** Opens the one view menu, named by the current view. */
@@ -254,6 +256,35 @@ export const ViewMenuSwitches: Story = {
     // The calendar exports the sessions of the range it shows.
     await expect(await exportedCsv()).toContain('Strategy session')
     await expect(localStorage.getItem(VIEW_KEY)).toBe('day')
+  },
+}
+
+/** Cancelled sessions stay off the calendar until the view menu shows them; the choice is remembered. */
+export const CancelledHiddenOnCalendar: Story = {
+  parameters: withState(
+    sampleState({
+      events: [event()],
+      occurrences: [
+        occurrence({ id: 'soc_1', starts_at: '2026-12-02T10:00:00Z' }),
+        occurrence({
+          id: 'soc_2',
+          title: 'Called off',
+          starts_at: '2026-12-02T13:00:00Z',
+          status: 'cancelled_on_time',
+        }),
+      ],
+    }),
+  ),
+  play: async () => {
+    const page = body()
+    await page.findByRole('button', { name: /Strategy session/ })
+    await expect(page.queryByRole('button', { name: /Called off/ })).not.toBeInTheDocument()
+    await userEvent.click(
+      (await viewMenu()).getByRole('menuitemcheckbox', { name: 'Show cancelled sessions' }),
+    )
+    await expect(await page.findByRole('button', { name: /Called off/ })).toBeVisible()
+    await expect(localStorage.getItem(CANCELLED_KEY)).toBe('true')
+    await closeMenu()
   },
 }
 

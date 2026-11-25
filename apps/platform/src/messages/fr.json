@@ -5164,6 +5164,7 @@
   "schedView": "Vue du calendrier",
   "schedShowHours": "Heures affichées",
   "schedFullDay": "Journée entière",
+  "schedShowCancelled": "Afficher les séances annulées",
   "schedWorkingHours": "Heures de travail",
   "schedHoursFrom": "De",
   "schedHoursTo": "À",

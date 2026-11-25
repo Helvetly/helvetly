@@ -55,6 +55,7 @@ import { ViewMenu, type Layout } from './view-menu'
 const isView = (value: string | null): value is View => VIEWS.some((view) => view === value)
 const VIEW_KEY = 'helvetly.scheduling.view'
 const LAYOUT_KEY = 'helvetly.scheduling.layout'
+const CANCELLED_KEY = 'helvetly.scheduling.showCancelled'
 // The last chosen view and layout are a per-browser convenience; storage may be unavailable.
 const stored = (key: string) => {
   try {
@@ -113,6 +114,11 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
     return id ? { kind: 'view', id } : null
   })
   const [requestsOpen, setRequestsOpen] = useState(false)
+  const [showCancelled, setShowCancelled] = useState(() => stored(CANCELLED_KEY) === 'true')
+  const chooseShowCancelled = (next: boolean) => {
+    setShowCancelled(next)
+    store(CANCELLED_KEY, String(next))
+  }
   const [savedHours, setSavedHours] = useState(storedHours)
   // Until a range is chosen, working hours suggest the host's own (they load after the first render).
   const hoursChoice: HoursChoice = savedHours ?? { mode: 'full', work: workingHours(profile) }
@@ -191,6 +197,10 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
   const listed = layout === 'list' || toMark
   // The calendar has no list filters: it exports the range and people it shows.
   const shown = listed ? filterOccurrences(list, listFilter, listSearch) : list
+  // The list filters by status itself; the calendar leaves cancelled sessions out unless asked.
+  const onCalendar = showCancelled
+    ? list
+    : list.filter((entry) => !entry.status.startsWith('cancelled'))
   const waiting = requests.data?.length ?? 0
   const toMarkCount = unmarked.data?.length ?? 0
 
@@ -307,6 +317,8 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
               onView={choose}
               onLayout={chooseLayout}
               onHours={chooseHours}
+              showCancelled={showCancelled}
+              onShowCancelled={chooseShowCancelled}
             />
             <PeopleMenu
               mode={hostMode}
@@ -384,7 +396,7 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
             month={date.slice(0, 7)}
             zone={zone}
             today={today}
-            occurrences={list}
+            occurrences={onCalendar}
             daysOff={daysOff}
             canWrite={canWrite}
             onOpen={(entry) => openSession(entry.id)}
@@ -395,7 +407,7 @@ export function SchedulingPage({ now: fixedNow }: { now?: Date }) {
             key={range.from}
             days={shownDays}
             zone={zone}
-            occurrences={list}
+            occurrences={onCalendar}
             daysOff={daysOff}
             busy={busy.data ?? []}
             lanes={lanes}
