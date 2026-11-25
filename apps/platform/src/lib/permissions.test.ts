@@ -92,6 +92,7 @@ test.each([
   ['/employees', 'employees'],
   ['/employees/payroll', 'payroll'],
   ['/settings/employment', 'employees'],
+  ['/settings/documents', 'invoices'],
   ['/account', null],
   ['/', null],
   ['/clientsx', null],
@@ -189,6 +190,8 @@ test.each([
   [['read:clients'], '/clients', true],
   [['read:clients'], '/books/ledger', false],
   [[], '/account', true],
+  [['read:invoices'], '/settings/documents', true],
+  [['read:clients'], '/settings/documents', false],
 ] as const)('canReadPath(%j, %s) is %s', (scopes, path, expected) => {
   expect(canReadPath(scopes, path)).toBe(expected)
 })

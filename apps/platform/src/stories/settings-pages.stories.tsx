@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { AccountSettings } from '@/components/account/account-settings'
+import { DocumentSettingsPage } from '@/components/settings/document-settings'
 import { CompanySettingsPage, InvoiceSettingsPage } from '@/components/settings/invoice-settings'
 import { WorkspaceSettings } from '@/components/settings/workspace-settings'
 import { accountHandlers as accountMock, resetAccountMock } from '@/mocks/account'
@@ -206,6 +207,18 @@ export const Account: Story = {
     await sectionsAreBands(canvasElement)
     await headerRuled(canvasElement)
     await dangerZoneBoxed(canvasElement, 'Delete account')
+    // Grouped by what they do: two-factor right under the sign-in methods and passkeys; calendars and the
+    // contract signature live on Scheduling and Documents.
+    const titles = [...canvasElement.querySelectorAll('[data-slot="settings-section"] h2')].map(
+      (title) => title.textContent,
+    )
+    await expect(titles.slice(titles.indexOf('Sign-in methods'), -1).slice(0, 3)).toEqual([
+      'Sign-in methods',
+      'Passkeys',
+      'Two-factor authentication',
+    ])
+    await expect(canvas.queryByRole('region', { name: 'Your calendars' })).toBeNull()
+    await expect(canvas.queryByRole('region', { name: 'Your signature for contracts' })).toBeNull()
     // Signing out everywhere else is a red outline button under the list, and asks first.
     const sessions = within(canvas.getByRole('region', { name: 'Active sessions' }))
     const all = sessions.getByRole('button', { name: 'Sign out of all other sessions' })
@@ -217,6 +230,31 @@ export const Account: Story = {
     })
     await userEvent.click(within(confirm).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(confirm).not.toBeInTheDocument())
+  },
+}
+
+/** Settings → Documents: your own signature for contracts made from quotes. */
+export const Documents: Story = {
+  parameters: {
+    nextjs: { navigation: { pathname: '/settings/documents' } },
+    msw: { handlers: [...accountMock, ...screenHandlers] },
+  },
+  beforeEach: () => resetAccountMock(),
+  render: () => <DocumentSettingsPage />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const section = within(
+      await canvas.findByRole('region', { name: 'Your signature for contracts' }),
+    )
+    await tabMarked(canvasElement, 'Documents')
+    await headerRuled(canvasElement)
+    await expect(section.getByText(/Only you see it here/)).toBeVisible()
+    await expect(await section.findByRole('button', { name: 'Upload image' })).toBeEnabled()
+    const place = section.getByRole('textbox', { name: /^Place/ })
+    await userEvent.clear(place)
+    await userEvent.type(place, 'Winterthur')
+    await userEvent.tab()
+    await waitFor(() => expect(place).toHaveValue('Winterthur'))
   },
 }
 

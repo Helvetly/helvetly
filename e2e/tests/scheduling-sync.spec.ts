@@ -31,7 +31,7 @@ test('a host connects Google: the session is pushed, a move in Google comes back
   test.setTimeout(150_000)
   // The connect flow goes to the provider and back: state and PKCE in the cookie, the account checked on return.
   const landed = await page.request.get('/api/v1/scheduling/calendars/google/connect')
-  expect(new URL(landed.url()).pathname).toBe('/account')
+  expect(new URL(landed.url()).pathname).toBe('/settings/scheduling')
   expect(new URL(landed.url()).searchParams.get('calendar')).toBe('connected')
   const calendars = object(await (await api.request.get('/api/v1/scheduling/calendars')).json())
   expect(calendars.providers).toEqual(expect.arrayContaining(['google', 'microsoft']))
@@ -86,8 +86,8 @@ test('a host connects Google: the session is pushed, a move in Google comes back
   expect(moved).toMatchObject({ status: 'rescheduled', is_exception: false })
   expect(Number(moved.sequence)).toBeGreaterThan(Number(occurrence.sequence))
 
-  // The account page shows the connected calendar.
-  await page.goto('/account')
+  // Settings → Scheduling shows the connected calendar.
+  await page.goto('/settings/scheduling')
   await expect(page.getByText('host@gmail.test').first()).toBeVisible()
 
   // Another workspace sees no connection of this one and cannot remove it.

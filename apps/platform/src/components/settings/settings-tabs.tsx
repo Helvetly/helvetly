@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Building2,
   CreditCard,
+  FileText,
   PlugZap,
   ReceiptText,
   ScrollText,
@@ -24,12 +25,13 @@ import { useSession } from '@/lib/queries'
 
 export type Page = { label: string; href: string; icon: LucideIcon }
 
-/** The workspace and its company first, then your own settings (the same in every workspace), invoices, employment, then the rest of the workspace's. */
+/** The workspace and its company first, then your own settings (the same in every workspace), invoices, documents, employment, then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
   { label: translate('workspace'), href: '/settings/workspace', icon: Building2 },
   { label: translate('company'), href: '/settings/company', icon: Store },
   { label: translate('account'), href: '/account', icon: UserRound },
   { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
+  { label: translate('documents'), href: '/settings/documents', icon: FileText },
   { label: translate('approvals'), href: '/settings/approvals', icon: BadgeCheck },
   { label: translate('employment'), href: '/settings/employment', icon: BriefcaseBusiness },
   { label: translate('schedulingSettingsTitle'), href: '/settings/scheduling', icon: CalendarDays },

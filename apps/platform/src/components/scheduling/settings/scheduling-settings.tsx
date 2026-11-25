@@ -32,6 +32,7 @@ import {
   type SchedulingSettings,
 } from '@/lib/scheduling-settings'
 
+import { Calendars } from './calendars'
 import { DurationSelect } from './duration-select'
 import { EventTypesSection } from './event-types'
 import { HolidaysSection } from './holidays'
@@ -86,10 +87,14 @@ export function settingsProblems(values: SchedulingSettings) {
   return problems
 }
 
-/** Settings → Scheduling: how clients book and cancel, reminders, event types and holidays. Owners and admins edit. */
+/**
+ * Settings → Scheduling: first your own calendars, feed and hours (per workspace and member, everyone who opens the
+ * page edits them), then how clients book and cancel, reminders, event types and holidays, which owners and admins edit.
+ */
 export function SchedulingSettingsPage() {
   const canRead = useCan('read:scheduling')
-  const manager = isManager(useSession().data?.role)
+  const session = useSession().data
+  const manager = isManager(session?.role)
   return (
     <>
       <SettingsHeader />
@@ -98,7 +103,10 @@ export function SchedulingSettingsPage() {
         description={translate('schedulingSettingsPageDescription')}
       >
         {canRead ? (
-          <Settings canEdit={manager} />
+          <>
+            {session && <Calendars userId={session.user.id} />}
+            <Settings canEdit={manager} />
+          </>
         ) : (
           <SettingsEmpty icon={<CalendarDays />} title={translate('schedulingSettingsNoAccess')}>
             {translate('schedulingSettingsNoAccessBody')}

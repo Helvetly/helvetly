@@ -56,7 +56,7 @@ func (s *Service) connect(w http.ResponseWriter, r *http.Request, sess store.Ses
 	return nil
 }
 
-// Callback outcomes, as /account?calendar_error=<code>.
+// Callback outcomes, as /settings/scheduling?calendar_error=<code>.
 const (
 	errCancelled = "cancelled"
 	errScopes    = "scopes_missing"
@@ -77,9 +77,9 @@ func (s *Service) callback(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	s.setStateCookie(w, "", -1) // single use, whatever happens next
 	code := s.complete(r.Context(), p, sess, sealed, r.URL.Query())
-	target := "/account?calendar=connected"
+	target := "/settings/scheduling?calendar=connected"
 	if code != "" {
-		target = "/account?calendar_error=" + code
+		target = "/settings/scheduling?calendar_error=" + code
 	}
 	http.Redirect(w, r, target, http.StatusFound)
 	return nil

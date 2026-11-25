@@ -24,7 +24,6 @@ import {
 import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
 
-import { ContractSignatureEditor } from '@/components/account/contract-signature'
 import { useAIApproval } from '@/components/ai/ai-approval'
 import { AIBudgetUsedUp } from '@/components/ai/ai-budget'
 import { NativeSelect } from '@/components/clients/fields'
@@ -58,6 +57,8 @@ import {
   type GoverningLaw,
   type Template,
 } from '@/lib/templates'
+
+import { ContractSignatureEditor } from './contract-signature'
 
 export type ContractMode = 'ai' | 'example' | 'template'
 type Stage = 'way' | 'instructions' | 'review' | 'send'

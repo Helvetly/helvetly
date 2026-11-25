@@ -100,7 +100,7 @@ func TestConnectAndPush(t *testing.T) {
 			b := e.workspace(pro, "member")
 			start := e.clock.Add(48 * time.Hour)
 			occ := e.session(b, b.userID, start)
-			if got := e.connect(b, provider); got != "/account?calendar=connected" {
+			if got := e.connect(b, provider); got != "/settings/scheduling?calendar=connected" {
 				t.Fatalf("landed on %q", got)
 			}
 			c := e.connection(b, provider)
@@ -219,7 +219,7 @@ func TestConnectRefused(t *testing.T) {
 		e := newEnv(t)
 		b := e.workspace(pro, "member")
 		e.request(b, "GET", e.srv.URL+"/api/v1/scheduling/calendars/google/connect", nil).Body.Close()
-		if got := e.land(b, e.srv.URL+"/api/v1/scheduling/calendars/google/callback?error=access_denied"); got != "/account?calendar_error=cancelled" {
+		if got := e.land(b, e.srv.URL+"/api/v1/scheduling/calendars/google/callback?error=access_denied"); got != "/settings/scheduling?calendar_error=cancelled" {
 			t.Fatal(got)
 		}
 	})
@@ -227,7 +227,7 @@ func TestConnectRefused(t *testing.T) {
 		e := newEnv(t)
 		b := e.workspace(pro, "member")
 		e.fake.Account("google", FakeAccount{Subject: "g-1", Email: "a@gmail.test", Scope: "openid email " + scopeEvents})
-		if got := e.connect(b, "google"); got != "/account?calendar_error=scopes_missing" {
+		if got := e.connect(b, "google"); got != "/settings/scheduling?calendar_error=scopes_missing" {
 			t.Fatal(got)
 		}
 		if list, _ := e.st.CalendarConnections(context.Background(), b.ws, b.userID); len(list) != 0 {
@@ -249,10 +249,10 @@ func TestConnectRefused(t *testing.T) {
 				other.c.Jar.SetCookies(mustURL(e.srv.URL+statePath), []*http.Cookie{{Name: c.Name, Value: c.Value, Path: statePath}})
 			}
 		}
-		if got := e.land(other, callback); got != "/account?calendar_error=expired" {
+		if got := e.land(other, callback); got != "/settings/scheduling?calendar_error=expired" {
 			t.Fatalf("another session: %s", got)
 		}
-		if got := e.land(b, callback+"x"); got != "/account?calendar_error=expired" { // the cookie was spent
+		if got := e.land(b, callback+"x"); got != "/settings/scheduling?calendar_error=expired" { // the cookie was spent
 			t.Fatalf("replayed: %s", got)
 		}
 	})
@@ -261,11 +261,11 @@ func TestConnectRefused(t *testing.T) {
 		b := e.workspace(pro, "member")
 		other := e.member(b.ws, "member")
 		e.connect(b, "google")
-		if got := e.connect(other, "google"); got != "/account?calendar_error=account_in_use" {
+		if got := e.connect(other, "google"); got != "/settings/scheduling?calendar_error=account_in_use" {
 			t.Fatal(got)
 		}
 		e.fake.Account("google", FakeAccount{Subject: "g-200", Email: "second@gmail.test"})
-		if got := e.connect(b, "google"); got != "/account?calendar_error=already_connected" {
+		if got := e.connect(b, "google"); got != "/settings/scheduling?calendar_error=already_connected" {
 			t.Fatal(got)
 		}
 	})
@@ -313,7 +313,7 @@ func TestReconnectAfterRevoked(t *testing.T) {
 		t.Fatalf("revoked %+v, notified %d", c, e.notifications(b.userID, "scheduling.calendar_disconnected"))
 	}
 	e.clock = e.clock.Add(pushLease) // the failed push's lease ran out
-	if got := e.connect(b, "microsoft"); got != "/account?calendar=connected" {
+	if got := e.connect(b, "microsoft"); got != "/settings/scheduling?calendar=connected" {
 		t.Fatal(got)
 	}
 	again := e.connection(b, "microsoft")

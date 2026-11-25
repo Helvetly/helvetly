@@ -10,7 +10,6 @@ import { billingFixture } from '@/components/billing/billing-fixture'
 import { settingsPageAt } from '@/components/settings/settings-tabs'
 import type { Session } from '@/lib/api'
 import { accountHandlers, resetAccountMock } from '@/mocks/account'
-import { schedulingSettingsHandlers } from '@/mocks/scheduling-settings'
 
 import { AccountSettings } from './account-settings'
 
@@ -37,7 +36,6 @@ const server = setupServer(
   ),
   http.get('/api/v1/account/passkeys', () => HttpResponse.json({ data: [] })),
   ...accountHandlers,
-  ...schedulingSettingsHandlers,
 )
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 beforeEach(resetAccountMock)
@@ -147,6 +145,7 @@ test('the settings tabs mark this page and open another one', async () => {
     'Company',
     'Account',
     'Invoices',
+    'Documents',
     'Approvals',
     'Employment',
     'Scheduling',

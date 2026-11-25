@@ -634,7 +634,7 @@ func TestRenderScheduling(t *testing.T) {
 			"Tue, 1 Dec 2026, 09:00–10:00 (Europe/Zurich)", "/scheduling?occurrence=soc_1", "Open the session"},
 		{"scheduling.calendar_disconnected", `{"provider":"google","account_email":"ana@example.com"}`,
 			"Your Google calendar was disconnected", "ana@example.com · Connect it again so your sessions stay in your calendar.",
-			"/account", "Connect it again"},
+			"/settings/scheduling#calendars", "Connect it again"},
 		{"scheduling.event_detached", `{"occurrence_id":"soc_2","provider":"microsoft","starts_at":"2026-12-01T08:00:00Z"}`,
 			"A session was removed from your Microsoft calendar",
 			"The session still takes place: push it to your calendar again or cancel it in Scheduling.", "/scheduling?occurrence=soc_2",
