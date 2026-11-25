@@ -98,7 +98,7 @@ func TestInvitationInTheClientsLanguageAndZone(t *testing.T) {
 			t.Fatalf("%q: %+v", c.lang, m)
 		}
 		contains(t, c.lang+" text", m.Text, c.lead, c.date, "Bahnhofstrasse 1, Zürich", "Bring the contract", "https://portal.example.com/w/muster/sessions")
-		contains(t, c.lang+" html", m.HTML, "<p>"+c.lead+"</p>", "https://portal.example.com/w/muster/sessions",
+		contains(t, c.lang+" html", m.HTML, ">"+c.lead+"</p>", "https://portal.example.com/w/muster/sessions",
 			`href="https://maps.google.com/?q=Bahnhofstrasse+1%2C+Z%C3%BCrich"`)
 		occ := out.Data.Occurrences[0]
 		if m.CalendarMethod != "REQUEST" || len(m.Attachments) != 1 || m.Attachments[0].Name != "invite.ics" ||

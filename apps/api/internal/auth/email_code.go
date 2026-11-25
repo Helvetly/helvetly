@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"html"
 	"math"
 	"math/big"
 	"net/http"
@@ -279,11 +278,9 @@ func signInCodeMessage(to, code, publicURL string) mailer.Message {
 		"Type it on the sign-in page you came from. It works once and expires in 10 minutes.\n\n"+
 		"Didn't try to sign in? You can ignore this email: nobody can sign in without this code. Never share it with anyone.\n\n"+
 		"Helvetly · %s\n", code, publicURL)
-	link := html.EscapeString(publicURL)
-	body := `<p style="font-size:16px">Here is your code to sign in to <a href="` + link + `">Helvetly</a>:</p>
-<p style="font-size:32px;font-family:ui-monospace,Menlo,Consolas,monospace"><strong>` + code + `</strong></p>
-<p style="font-size:14px;color:#57534e">Type it on the sign-in page you came from. It works <strong>once</strong> and expires in <strong>10 minutes</strong>.</p>
-<p style="font-size:14px;color:#57534e">Didn't try to sign in? You can ignore this email: nobody can sign in without this code. <strong>Never share it</strong> with anyone.</p>`
+	body := mailer.Title("Your sign-in code") + mailer.NewLetter("en").Lead("Here is your code to sign in to Helvetly:").Code(code).
+		Lead("Type it on the sign-in page you came from. It works once and expires in 10 minutes.").
+		FinePrint("Didn't try to sign in? You can ignore this email: nobody can sign in without this code. Never share it with anyone.").HTML()
 	return mailer.Message{To: []string{to}, Subject: code + " is your Helvetly sign-in code", Text: text, HTML: body}
 }
 

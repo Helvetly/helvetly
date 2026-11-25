@@ -10,12 +10,15 @@ func TestLetter(t *testing.T) {
 		Summary(Row{Label: "Wann", Value: "Di, 1. Dez.\nMi, 2. Dez."}, Row{Label: "Leer"}, Row{Label: "Wo", Value: "Weg 1", Link: "https://m.example/?q=a&b", LinkText: "Karte"}).
 		Action("Öffnen", "https://x.example/a?b=1&c=2").Note("Bitte <pünktlich>").FinePrint("", "Angehängt")
 	h := l.HTML()
-	for _, w := range []string{"<p>Guten Tag Anna,</p>", "<p>Line &lt;1&gt;<br>line 2</p>", "<p>One</p>\n<p>Two</p>", "Di, 1. Dez.<br>Mi, 2. Dez.",
-		`href="https://m.example/?q=a&amp;b"`, `<a style="color:#0b7268" href="https://x.example/a?b=1&amp;c=2"><strong>Öffnen →</strong>`,
+	for _, w := range []string{para + "Guten Tag Anna,</p>", para + "Line &lt;1&gt;<br>line 2</p>", para + "One</p>\n" + para + "Two</p>", "Di, 1. Dez.<br>Mi, 2. Dez.",
+		`href="https://m.example/?q=a&amp;b"`, `<a style="color:#ffffff;text-decoration:none" href="https://x.example/a?b=1&amp;c=2"><strong style="font-weight:600">Öffnen</strong>`, buttonFill,
 		"<em>“Bitte &lt;pünktlich&gt;”</em>", ">Angehängt</p>"} {
 		if !strings.Contains(h, w) {
 			t.Errorf("no %q in\n%s", w, h)
 		}
+	}
+	if c := NewLetter("en").Code("123 456"); !strings.Contains(c.HTML(), ">123 456</td>") || c.Text() != "123 456\n" {
+		t.Errorf("code %q", c.Text())
 	}
 	if strings.Contains(h, "Leer") {
 		t.Error("an empty row is shown")

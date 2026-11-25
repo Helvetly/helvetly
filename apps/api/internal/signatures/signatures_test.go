@@ -630,7 +630,7 @@ func TestEmailsFromTemplates(t *testing.T) {
 	req := e.create(b, body)
 	invite := e.mail.to("one@example.com")[0]
 	if invite.Language != "de" || !strings.Contains(invite.Subject, "bittet Sie, «Vertrag» zu unterschreiben") ||
-		!strings.Contains(invite.HTML, "<p>Guten Tag</p>") || !strings.Contains(invite.HTML, "Prüfen und unterschreiben") ||
+		!strings.Contains(invite.HTML, ">Guten Tag</p>") || !strings.Contains(invite.HTML, "Prüfen und unterschreiben") ||
 		!strings.Contains(invite.HTML, "ZertES") || !strings.Contains(invite.Text, "Bitte unterschreiben.") {
 		t.Fatalf("invitation: %+v", invite)
 	}
@@ -646,7 +646,7 @@ func TestEmailsFromTemplates(t *testing.T) {
 	}
 	e.do(b, "POST", "/api/v1/signatures/email-preview", map[string]any{"title": "Offerte", "message": "Hallo", "language": "fr"}, http.StatusOK, &preview)
 	if !strings.Contains(preview.Data.Subject, "« Offerte »") || !strings.Contains(preview.Data.HTML, "Vérifier et signer") ||
-		!strings.Contains(preview.Data.HTML, "<p>Hallo</p>") {
+		!strings.Contains(preview.Data.HTML, ">Hallo</p>") {
 		t.Fatalf("preview: %+v", preview.Data)
 	}
 	e.code(b, "POST", "/api/v1/signatures/email-preview", map[string]any{"title": "x", "language": "pl"}, http.StatusUnprocessableEntity)
