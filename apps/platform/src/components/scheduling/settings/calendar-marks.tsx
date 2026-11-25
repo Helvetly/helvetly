@@ -31,18 +31,18 @@ export function GoogleCalendarMark() {
   )
 }
 
-/** Microsoft Outlook's own icon: the calendar and envelope behind the blue "O" tile. */
+/** Outlook Calendar's own icon: the blue door with the "O" in front of the calendar. */
 export function OutlookMark() {
   return (
     <svg viewBox="0 0 32 32" aria-hidden data-mark="microsoft">
-      <path fill="#0364B8" d="M12 3h4.67v7H10V5a2 2 0 0 1 2-2Z" />
-      <path fill="#0078D4" d="M16.67 3h6.66v7h-6.66zM10 10h6.67v11H10z" />
-      <path fill="#28A8EA" d="M23.33 3H28a2 2 0 0 1 2 2v5h-6.67zM16.67 10h6.66v11h-6.66z" />
-      <path fill="#50D9FF" d="M23.33 10H30v11h-6.67z" />
-      <path fill="#1490DF" d="m10 15.5 10 5.5 10-5.5V25a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2Z" />
-      <path fill="#28A8EA" d="M30 15.5V25a2 2 0 0 1-2 2H12.2Z" />
-      <rect width="16" height="16" x="2" y="8" fill="#0A63C9" rx="2" />
-      <ellipse cx="10" cy="16" fill="none" stroke="#fff" strokeWidth="2.3" rx="3.6" ry="4.5" />
+      <path fill="#1565C0" d="M16.5 6.5h12a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1h-12z" />
+      <path fill="#fff" d="M17.5 10h11v14h-11z" />
+      <path
+        fill="#1565C0"
+        d="M20.9 11h1.9v1.9h-1.9zM23.4 11h1.9v1.9h-1.9zM25.9 11h1.9v1.9h-1.9zM18.4 13.5h1.9v1.9h-1.9zM20.9 13.5h1.9v1.9h-1.9zM23.4 13.5h1.9v1.9h-1.9zM25.9 13.5h1.9v1.9h-1.9zM18.4 16h1.9v1.9h-1.9zM20.9 16h1.9v1.9h-1.9zM23.4 16h1.9v1.9h-1.9zM25.9 16h1.9v1.9h-1.9zM18.4 18.5h1.9v1.9h-1.9zM20.9 18.5h1.9v1.9h-1.9zM23.4 18.5h1.9v1.9h-1.9z"
+      />
+      <path fill="#1976D2" d="M2.5 5.2 18 2v28l-15.5-3.2z" />
+      <ellipse cx="10.2" cy="16" fill="none" stroke="#fff" strokeWidth="2.4" rx="3.2" ry="4.4" />
     </svg>
   )
 }
