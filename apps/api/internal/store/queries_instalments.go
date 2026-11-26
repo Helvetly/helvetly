@@ -251,7 +251,7 @@ func (q Q) UnsentPlanPartials(ctx context.Context, now time.Time) ([]UnsentParti
 	rows, err := q.db.Query(ctx, `SELECT i.workspace_id, w.name, w.timezone, i.id
 		FROM invoices i JOIN instalment_plans p ON p.id = i.plan_id JOIN workspaces w ON w.id = i.workspace_id
 			JOIN clients c ON c.id = i.client_id
-		WHERE i.status = 'open' AND i.plan_id IS NOT NULL AND i.sent_at IS NULL AND i.issued_at > $1::timestamptz - interval '7 days'
+		WHERE i.status = 'open' AND i.plan_id IS NOT NULL AND i.sent_at IS NULL AND i.send_uncertain_at IS NULL AND i.send_started_at IS NULL AND i.issued_at > $1::timestamptz - interval '7 days'
 			AND p.auto_send AND p.status IN ('active', 'done') AND w.deleted_at IS NULL
 			AND COALESCE(c.billing_email, c.email, i.buyer->>'email') IS NOT NULL
 		ORDER BY i.issued_at, i.id`, now)
@@ -268,14 +268,14 @@ func (q Q) UnsentPlanPartials(ctx context.Context, now time.Time) ([]UnsentParti
 // ClaimPlanSend claims the automatic send of an unsent invoice at now; false when it was sent or another run holds a
 // claim younger than 15 minutes.
 func (q Q) ClaimPlanSend(ctx context.Context, invoiceID string, now time.Time) (bool, error) {
-	tag, err := q.db.Exec(ctx, `UPDATE invoices SET send_claimed_at = $2 WHERE id = $1 AND sent_at IS NULL
+	tag, err := q.db.Exec(ctx, `UPDATE invoices SET send_claimed_at = $2 WHERE id = $1 AND status = 'open' AND sent_at IS NULL AND send_uncertain_at IS NULL AND send_started_at IS NULL
 		AND (send_claimed_at IS NULL OR send_claimed_at < $2::timestamptz - interval '15 minutes')`, invoiceID, now)
 	return tag.RowsAffected() == 1, err
 }
 
 // ReleasePlanSend gives up a claim after a failed send, so the next run retries.
-func (q Q) ReleasePlanSend(ctx context.Context, invoiceID string) error {
-	_, err := q.db.Exec(ctx, `UPDATE invoices SET send_claimed_at = NULL WHERE id = $1`, invoiceID)
+func (q Q) ReleasePlanSend(ctx context.Context, invoiceID string, claimedAt time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE invoices SET send_claimed_at = NULL WHERE id = $1 AND send_claimed_at = $2`, invoiceID, claimedAt)
 	return err
 }
 
@@ -312,7 +312,7 @@ func openInstalments(where string) string {
 // remind_before_days ahead of the due date until it, "after" for the largest remind_after_days already passed. Targets
 // are open instalments of scheduled invoices and open partial invoices issued by a plan, with reminders on for the
 // workspace (settings "instalments"), the invoice and the plan.
-func (q Q) DueReminders(ctx context.Context, now time.Time) ([]ReminderTarget, error) {
+func (q Q) DueReminders(ctx context.Context, now time.Time, invoiceID string) ([]ReminderTarget, error) {
 	rows, err := q.db.Query(ctx, `WITH ws AS (
 			SELECT w.id, ($1::timestamptz AT TIME ZONE w.timezone)::date AS today,
 				COALESCE((s.settings->'instalments'->>'remind_before_days')::int, 5) AS before_days,
@@ -321,13 +321,13 @@ func (q Q) DueReminders(ctx context.Context, now time.Time) ([]ReminderTarget, e
 					ELSE ARRAY[3, 10] END AS after_days
 			FROM workspaces w LEFT JOIN invoice_settings s ON s.workspace_id = w.id
 			WHERE w.deleted_at IS NULL AND COALESCE((s.settings->'instalments'->>'reminders_enabled')::boolean, true)),
-		inst AS (`+openInstalments("true")+`),
+		inst AS (`+openInstalments("($2 = '' OR scheduled.id = $2)")+`),
 		targets AS (
 			SELECT invoice_id, seq, due_date, cnt, open FROM inst
 			UNION ALL
 			SELECT i.id, i.plan_seq, i.due_date, p.count, GREATEST(0, i.total + i.rounding_amount - i.amount_paid - i.amount_credited)
 			FROM invoices i JOIN instalment_plans p ON p.id = i.plan_id
-			WHERE i.status = 'open' AND i.reminders_enabled AND p.reminders_enabled)
+			WHERE ($2 = '' OR i.id = $2) AND i.status = 'open' AND i.reminders_enabled AND p.reminders_enabled)
 		SELECT i.workspace_id, t.invoice_id, t.seq, t.cnt, r.kind, r.off, t.due_date::text, t.open,
 			COALESCE((SELECT cc.email FROM client_contacts cc WHERE cc.client_id = i.client_id AND cc.is_primary), c.billing_email, c.email, ''),
 			i.language, COALESCE(i.number, ''), ws.today::text
@@ -338,7 +338,7 @@ func (q Q) DueReminders(ctx context.Context, now time.Time) ([]ReminderTarget, e
 			SELECT 'after', max(a) FROM unnest(ws.after_days) a WHERE ws.today >= t.due_date + a HAVING max(a) IS NOT NULL) r
 		WHERE t.open > 0 AND i.reminders_enabled AND NOT EXISTS (SELECT 1 FROM reminder_log l
 			WHERE l.target_id = t.invoice_id AND l.seq = t.seq AND l.kind = r.kind AND l.offset_days = r.off)
-		ORDER BY i.workspace_id, t.invoice_id, t.seq, r.kind`, now)
+		ORDER BY i.workspace_id, t.invoice_id, t.seq, r.kind`, now, invoiceID)
 	if err != nil {
 		return nil, err
 	}
@@ -350,9 +350,9 @@ func (q Q) DueReminders(ctx context.Context, now time.Time) ([]ReminderTarget, e
 	})
 }
 
-// LogReminder records a reminder as sent; false when its key was already logged (it went out before).
+// LogReminder claims an unconfirmed reminder before transport. An existing attempt keeps the same step from retrying.
 func (q Q) LogReminder(ctx context.Context, t ReminderTarget, at time.Time) (bool, error) {
-	tag, err := q.db.Exec(ctx, `INSERT INTO reminder_log (workspace_id, target_id, seq, kind, offset_days, sent_at) VALUES ($1, $2, $3, $4, $5, $6)
+	tag, err := q.db.Exec(ctx, `INSERT INTO reminder_log (workspace_id, target_id, seq, kind, offset_days, sent_at, confirmed) VALUES ($1, $2, $3, $4, $5, $6, false)
 		ON CONFLICT DO NOTHING`, t.WorkspaceID, t.InvoiceID, t.Seq, t.Kind, t.OffsetDays, at)
 	return tag.RowsAffected() == 1, err
 }
@@ -426,4 +426,15 @@ func (q Q) InstalmentDigestWorkspaces(ctx context.Context, now time.Time) ([]Wor
 		err := r.Scan(&w.ID, &w.Name, &w.Timezone)
 		return w, err
 	})
+}
+
+// FinishReminder confirms a recorded attempt or releases it after a definite refusal.
+func (q Q) FinishReminder(ctx context.Context, t ReminderTarget, sent bool) error {
+	statement := "DELETE FROM reminder_log"
+	if sent {
+		statement = "UPDATE reminder_log SET confirmed = true"
+	}
+	_, err := q.db.Exec(ctx, statement+` WHERE workspace_id = $1 AND target_id = $2 AND seq = $3 AND kind = $4 AND offset_days = $5 AND NOT confirmed`,
+		t.WorkspaceID, t.InvoiceID, t.Seq, t.Kind, t.OffsetDays)
+	return err
 }

@@ -269,7 +269,7 @@ func TestDueRemindersOffsets(t *testing.T) {
 	}
 	keys := func() []string {
 		t.Helper()
-		list, err := q.DueReminders(ctx, typesNow)
+		list, err := q.DueReminders(ctx, typesNow, "")
 		if err != nil {
 			t.Fatal(err)
 		}

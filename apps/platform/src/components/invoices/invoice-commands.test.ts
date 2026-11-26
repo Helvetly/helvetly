@@ -28,3 +28,20 @@ test.each(['credit_note', 'proforma', 'self_billed'] as const)(
     expect(availableCommands(invoice, true).refund).toBe(false)
   },
 )
+
+test('a correction draft cannot be split into independent partial invoices', () => {
+  expect(
+    availableCommands(
+      sampleInvoice({ kind: 'corrected', status: 'draft', instalments: null }),
+      true,
+    ).plan,
+  ).toBe(false)
+  expect(
+    availableCommands(sampleInvoice({ kind: 'invoice', status: 'draft', instalments: null }), true)
+      .plan,
+  ).toBe(true)
+})
+
+test.each(['void', 'replaced'] as const)('a %s invoice cannot be emailed', (status) => {
+  expect(availableCommands(listItem(sampleInvoice({ status })), true).send).toBe(false)
+})

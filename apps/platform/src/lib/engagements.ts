@@ -119,6 +119,8 @@ export type EngagementSummary = {
 }
 
 export type Entry = {
+  historical_estimate?: boolean
+  invoiced_quantity?: Decimal
   id: string
   period_id: string
   date: string

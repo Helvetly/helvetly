@@ -38,6 +38,7 @@ const draftHandlers = () =>
 const draftOf = async (path: string) => (await (await fetch(path)).json()).data
 
 function open(kind: 'invoice' | 'quote', handlers: Parameters<typeof server.use> = []) {
+  const onClose = vi.fn<() => void>()
   const queries = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const posted: { body: Record<string, unknown> | null } = { body: null }
   server.use(
@@ -58,17 +59,40 @@ function open(kind: 'invoice' | 'quote', handlers: Parameters<typeof server.use>
     <QueryClientProvider client={queries}>
       <TooltipProvider>
         {kind === 'invoice' ? (
-          <SendDialog invoice={invoice} onClose={() => {}} />
+          <SendDialog invoice={invoice} onClose={onClose} />
         ) : (
           <QuoteSendDialog quote={quote} onClose={() => {}} />
         )}
       </TooltipProvider>
     </QueryClientProvider>,
   )
-  return Object.assign(posted, { queries })
+  return Object.assign(posted, { queries, onClose })
 }
 
 const field = (name: RegExp) => screen.getByRole('textbox', { name })
+
+test('the reviewed balance accompanies the send and an uncertain delivery closes the composer', async () => {
+  let balance: string | undefined
+  const { onClose } = open('invoice', [
+    http.get('/api/v1/invoices/:id/email', () =>
+      HttpResponse.json({ data: { ...fakeDraft, amount_due: '200.00' } }),
+    ),
+    http.post<never, { expected_amount_due: string }>(
+      '/api/v1/invoices/:id/send',
+      async ({ request }) => {
+        balance = (await request.json()).expected_amount_due
+        return HttpResponse.json(
+          { error: { code: 'delivery_uncertain', message: 'Check with the recipient.' } },
+          { status: 502 },
+        )
+      },
+    ),
+  ])
+  await waitFor(() => expect(field(/^Subject/)).toHaveValue(fakeDraft.subject))
+  await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+  await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  expect(balance).toBe('200.00')
+})
 
 test.each([
   ['invoice', '/api/v1/invoices/inv_1/email'],

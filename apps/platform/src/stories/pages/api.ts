@@ -663,7 +663,13 @@ export const shellHandlers = [
   http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
   legalFormsHandler,
   nextNumbersHandler,
-  http.get('/api/v1/invoices/summary', () => HttpResponse.json({ data: sampleSummary })),
+  http.get('/api/v1/invoices/summary', ({ request }) => {
+    const { currency, outstanding, overdue } = sampleSummary
+    const open_balances = new URL(request.url).searchParams.has('client_id')
+      ? [{ currency, outstanding, overdue }]
+      : undefined
+    return HttpResponse.json({ data: { ...sampleSummary, open_balances } })
+  }),
   // The draft's lines add up to the canned 2'900.00 net, so the server's totals match them.
   http.post('/api/v1/invoices/preview', () => HttpResponse.json({ data: draftInvoice })),
   http.get('/api/v1/invoices/:id', one(invoices)),

@@ -30,10 +30,6 @@ func (s *Service) addRefund(w http.ResponseWriter, r *http.Request, sess store.S
 		if !Receivable(inv.Kind) || inv.RefundDue <= 0 {
 			return invalidState("Nothing is due to be refunded on this invoice.")
 		}
-		credited, err := q.LastCreditDate(ctx, id)
-		if err != nil {
-			return err
-		}
 		p := newParser()
 		ref := store.Refund{RefundedOn: s.today(sess.Workspace)}
 		if body.RefundedOn != nil {
@@ -42,8 +38,15 @@ func (s *Service) addRefund(w http.ResponseWriter, r *http.Request, sess store.S
 		switch {
 		case ref.RefundedOn > s.today(sess.Workspace):
 			p.fail("refunded_on", "The refund date cannot be in the future.")
-		case ref.RefundedOn != "" && ref.RefundedOn < credited:
-			p.fail("refunded_on", "The refund cannot be before the credit note ("+swissDate(credited)+").")
+		case ref.RefundedOn != "" && p.invalid["refunded_on"] == "":
+			available, err := q.RefundAvailableOn(ctx, id, ref.RefundedOn, inv.Payable())
+			if err != nil {
+				return err
+			}
+			if available == 0 {
+				p.fail("refunded_on", "There was no refundable balance available on this date.")
+			}
+			inv.RefundDue = min(inv.RefundDue, available)
 		}
 		if body.Amount == nil {
 			p.fail("amount", "Enter the amount.")

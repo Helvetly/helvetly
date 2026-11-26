@@ -128,7 +128,7 @@ export function availableCommands(invoice: CommandTarget, canManage: boolean) {
   return {
     edit: editable,
     issue: editable,
-    send: !draft,
+    send: issued,
     payment: open && payable && isPositive(invoice.amount_due),
     duplicate: ['invoice', 'partial', 'prepayment', 'proforma', 'self_billed'].includes(
       invoice.kind,
@@ -143,7 +143,7 @@ export function availableCommands(invoice: CommandTarget, canManage: boolean) {
     void: canManage && invoice.kind !== 'credit_note' && open,
     delete: editable,
     // A draft has a schedule or a plan, never both; list rows don't know which, so only the drawer offers it.
-    plan: editable && receivable && invoice.instalments === null,
+    plan: editable && receivable && invoice.kind !== 'corrected' && invoice.instalments === null,
   }
 }
 

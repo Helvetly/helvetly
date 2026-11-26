@@ -12,6 +12,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, MailCheck, MailX } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -35,6 +36,7 @@ import { translate } from '@/lib/i18n'
 import {
   documentName,
   formatMoney,
+  invoiceKeys,
   MISSING_LABELS,
   parseDecimalInput,
   settingsFix,
@@ -476,6 +478,7 @@ export function SendDialog({
 }) {
   const client = useClient(invoice.client.id).data
   const draft = useInvoiceEmailDraft(invoice.id)
+  const queryClient = useQueryClient()
   const fallback = client?.billing_email ?? client?.email ?? ''
   // null = untouched: the draft shows through, and what the user typed is never replaced by it.
   const [to, setTo] = useState<string | null>(null)
@@ -501,6 +504,12 @@ export function SendDialog({
         onError: (error) => {
           if (error instanceof ApiError && error.code === 'mail_unavailable')
             return setMailDown(true)
+          if (error instanceof ApiError && error.code === 'delivery_uncertain') {
+            toast.error(translate('reminderDeliveryUnconfirmed'))
+            void queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(invoice.id) })
+            return onClose()
+          }
+          if (error instanceof ApiError && error.status === 409) void draft.refetch()
           const fromServer = fieldErrors(error)
           if (Object.keys(fromServer).length) setErrors(fromServer)
           else toast.error(errorMessage(error))
@@ -522,7 +531,9 @@ export function SendDialog({
         to: list,
         ...(emails(cc).length ? { cc: emails(cc) } : {}),
         ...(emails(bcc).length ? { bcc: emails(bcc) } : {}),
-        // Left empty (draft failed), the server writes both in the invoice's language.
+        ...(draft.data?.amount_due !== undefined
+          ? { expected_amount_due: draft.data.amount_due }
+          : {}),
         ...(shownSubject.trim() ? { subject: shownSubject.trim() } : {}),
         ...(shownMessage.trim() ? { message: shownMessage.trim() } : {}),
       },

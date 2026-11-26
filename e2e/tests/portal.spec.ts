@@ -175,8 +175,12 @@ test('a client signs in with its email, reads shared data, asks for a change and
     expect(asked.status()).toBe(201)
     const pending = await api.request.get(`/api/v1/clients/${clientId}/change-request`)
     await expect(pending).toBeOK()
-    expect(object(object(object(await pending.json()).data).fields).city).toBe('Bern')
-    const approved = await api.write(`/clients/${clientId}/change-request/approve`)
+    const reviewed = object(object(await pending.json()).data)
+    expect(object(reviewed.fields).city).toBe('Bern')
+    const approved = await api.write(`/clients/${clientId}/change-request/approve`, {
+      request_id: reviewed.id,
+      created_at: reviewed.created_at,
+    })
     await expect(approved).toBeOK()
     expect((await api.read(`/clients/${clientId}`)).city).toBe('Bern')
     expect(

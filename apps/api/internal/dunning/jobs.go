@@ -197,8 +197,12 @@ func (s *Service) DigestSection(ctx context.Context, ws store.Workspace, now tim
 		if r.Title != nil { // as sent: the step's name or the standard title in the invoice's language
 			title = *r.Title
 		}
-		lines[i] = engagements.DigestLine{Text: fmt.Sprintf("%s sent for %s, %s: %s %s",
-			title, r.Number, r.ClientName, r.Currency, r.Total.Swiss("'")),
+		outcome := "sent"
+		if !r.Confirmed {
+			outcome = "delivery unconfirmed"
+		}
+		lines[i] = engagements.DigestLine{Text: fmt.Sprintf("%s %s for %s, %s: %s %s",
+			title, outcome, r.Number, r.ClientName, r.Currency, r.Total.Swiss("'")),
 			Path: "/invoices?id=" + url.QueryEscape(r.InvoiceID)}
 	}
 	return "Dunning", lines, nil

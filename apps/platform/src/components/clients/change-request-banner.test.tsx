@@ -100,7 +100,11 @@ test('approve sends only the checked changes and closes the review', async () =>
   expect(await screen.findByText('Changes applied')).toBeTruthy()
   expect(screen.getByText(/other changes were discarded/)).toBeTruthy()
   expect(screen.queryByRole('dialog')).toBeNull()
-  expect(posted(fetchMock, '/approve')).toEqual({ fields: ['name'] })
+  expect(posted(fetchMock, '/approve')).toEqual({
+    request_id: pending.id,
+    created_at: pending.created_at,
+    fields: ['name'],
+  })
   await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
   expect(screen.queryByRole('status')).toBeNull()
 })
@@ -124,7 +128,11 @@ test('reject asks first, takes an optional reason, then calls the API', async ()
   await userEvent.type(confirm.getByLabelText('Reason for the client'), ' Wrong VAT ')
   await userEvent.click(confirm.getByRole('button', { name: 'Reject' }))
   expect(await screen.findByText('Request rejected')).toBeTruthy()
-  expect(posted(fetchMock, '/reject')).toEqual({ reason: 'Wrong VAT' })
+  expect(posted(fetchMock, '/reject')).toEqual({
+    request_id: pending.id,
+    created_at: pending.created_at,
+    reason: 'Wrong VAT',
+  })
   expect(screen.queryByRole('region', { name: 'Change request' })).toBeNull()
 })
 
@@ -140,4 +148,26 @@ test('renders nothing without a pending request', async () => {
   const fetchMock = setup(true, 0)
   await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
   expect(screen.queryByRole('region')).toBeNull()
+})
+
+test('a changed request reopens the current values for a fresh decision', async () => {
+  const fetchMock = setup(true)
+  const drawer = await openReview()
+  const latest = {
+    ...pending,
+    fields: { name: 'Updated AG' },
+    created_at: new Date().toISOString(),
+  }
+  fetchMock.mockImplementation(async (_url, init) =>
+    init?.method === 'POST'
+      ? Response.json(
+          { error: { code: 'request_changed', message: 'Review the updated request.' } },
+          { status: 409 },
+        )
+      : Response.json({ data: latest }),
+  )
+  await userEvent.click(drawer.getByRole('button', { name: /Approve 2 changes/ }))
+  expect(await drawer.findByText('Updated AG')).toBeVisible()
+  expect(drawer.queryByText('Alpenglow AG')).not.toBeInTheDocument()
+  expect(posted(fetchMock, '/approve')).toMatchObject({ created_at: pending.created_at })
 })

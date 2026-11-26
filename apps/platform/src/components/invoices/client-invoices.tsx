@@ -25,7 +25,9 @@ import { usePlans } from './plan-card'
 /** The client's invoices (GET /invoices?client_id=…), newest first, with a "New invoice" start. */
 export function ClientInvoices({ clientId }: { clientId: string }) {
   const list = useInvoiceList({ ...DEFAULT_PARAMS, client: clientId })
-  const summary = useInvoiceSummary(clientId).data
+  const summaryQuery = useInvoiceSummary(clientId)
+  const summary = summaryQuery.data
+  const balances = summary?.open_balances ?? []
   const rows = list.data?.data ?? []
   const total = list.data?.meta.total ?? 0
 
@@ -58,25 +60,31 @@ export function ClientInvoices({ clientId }: { clientId: string }) {
   return (
     <div className="grid gap-3">
       <section className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-xl bg-card px-4 py-3.5 shadow-elevation-1">
-        {summary && summary.outstanding.count > 0 ? (
-          <div className="grid gap-0.5">
-            <span className="text-[12px] text-muted-foreground">
-              {translate('open2')}
-              {summary.outstanding.count} {summary.outstanding.count === 1 ? 'invoice' : 'invoices'}
-            </span>
-            <span className="text-[18px] tracking-[-0.01em] tabular-nums">
-              {formatMoney(summary.outstanding.amount, summary.currency)}
-            </span>
-            {summary.overdue.count > 0 && (
-              <span className="text-[12px] text-[#b5544f] tabular-nums dark:text-rose-300">
-                {formatMoney(summary.overdue.amount, summary.currency)}
-                {translate('overdue2')}
+        {balances.length > 0 ? (
+          balances.map((balance) => (
+            <div key={balance.currency} className="grid gap-0.5">
+              <span className="text-[12px] text-muted-foreground">
+                {translate('open2')}
+                {translate('importInvoiceCount', { count: balance.outstanding.count })}
               </span>
-            )}
-          </div>
+              <span className="text-[18px] tracking-[-0.01em] tabular-nums">
+                {formatMoney(balance.outstanding.amount, balance.currency)}
+              </span>
+              {balance.overdue.count > 0 && (
+                <span className="text-[12px] text-[#b5544f] tabular-nums dark:text-rose-300">
+                  {formatMoney(balance.overdue.amount, balance.currency)}
+                  {translate('overdue2')}
+                </span>
+              )}
+            </div>
+          ))
         ) : (
           <span className="text-[13.5px] text-muted-foreground">
-            {summary ? translate('nothingOpenEveryInvoiceIsSettled') : translate('loading')}
+            {summaryQuery.error
+              ? errorMessage(summaryQuery.error)
+              : summary
+                ? translate('nothingOpenEveryInvoiceIsSettled')
+                : translate('loading')}
           </span>
         )}
         {summary && toCents(summary.paid_this_month.amount) > 0n && (

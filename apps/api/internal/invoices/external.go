@@ -29,8 +29,11 @@ func (s *Service) CreateDraft(ctx context.Context, q store.Q, sess store.Session
 		return "", err
 	}
 	inv, _ := newDraft(&c, set, s.today(sess.Workspace))
-	inv.PaymentMethods = defaultMethods(set, inv.Currency)
 	fill(&inv)
+	if _, msg := twoDecimalCurrency(inv.Currency); msg != "" {
+		return "", validationFailed(map[string]string{"currency": msg})
+	}
+	inv.PaymentMethods = defaultMethods(set, inv.Currency)
 	for i := range inv.Lines {
 		l := &inv.Lines[i]
 		l.ID, l.Position = auth.NewID("lin"), i+1

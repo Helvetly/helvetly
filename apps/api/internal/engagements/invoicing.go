@@ -45,7 +45,8 @@ func billable(e store.Engagement, p PeriodSummary, entries []store.EngagementEnt
 	var open []store.EngagementEntry // newest first, as listed
 	var total invoicecalc.Quantity
 	for _, en := range entries {
-		if en.Invoice == nil {
+		en.Quantity -= en.InvoicedQuantity
+		if en.Quantity > 0 {
 			open = append(open, en)
 			total += en.Quantity
 		}
@@ -137,6 +138,7 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 	title := e.Title + " · " + swiss(p.StartsOn) + " – " + swiss(p.EndsOn)
 	var lines func(mode string) []store.InvoiceLine
 	var covered []store.EngagementEntry
+	var quantities []invoicecalc.Quantity
 	if kind == "advance" {
 		if e.Billing != "advance" {
 			return "", validationFailed(map[string]string{"kind": "Only advance engagements have an advance invoice."})
@@ -156,7 +158,7 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 		if len(picked) == 0 {
 			return "", errNothingToInvoice
 		}
-		covered = picked
+		covered, quantities = picked, qty
 		price := p.UnitPrice
 		if e.Billing == "advance" {
 			price = p.OverageUnitPrice
@@ -188,6 +190,7 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 		}
 	}
 	invoiceID, err := s.inv.CreateDraft(ctx, q, sess, e.ClientID, func(inv *store.Invoice) {
+		inv.Currency = e.Currency
 		inv.Reference = e.Reference
 		inv.ServiceDate, inv.ServiceDateEnd = &p.StartsOn, &p.EndsOn
 		inv.Lines = lines(inv.VATMode)
@@ -203,7 +206,7 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 		for j, en := range covered {
 			ids[j] = en.ID
 		}
-		if err := q.LinkEntries(ctx, ids, invoiceID); err != nil {
+		if err := q.LinkEntries(ctx, ids, quantities, invoiceID); err != nil {
 			return "", err
 		}
 	}

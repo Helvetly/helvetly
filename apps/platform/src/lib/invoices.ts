@@ -233,6 +233,8 @@ export type Invoice = Totals & {
   }
   seller: Party | null
   buyer: Party | null
+  send_uncertain_at?: string
+  unconfirmed_reminders?: { seq: number; at: string; kind: string; offset_days: number }[]
   issued_at: string | null
   sent_at: string | null
   created_at: string
@@ -451,10 +453,16 @@ export type Delivery = {
   id: string
   to: string[]
   sent_at: string
-  sent_by: { id: string; name: string }
+  sent_by: { id: string; name: string } | null
 }
 
+type CurrencyBalance = {
+  currency: string
+  outstanding: { amount: Decimal; count: number }
+  overdue: { amount: Decimal; count: number }
+}
 export type Summary = {
+  open_balances?: CurrencyBalance[]
   currency: string
   outstanding: { amount: Decimal; count: number }
   overdue: { amount: Decimal; count: number }
@@ -526,6 +534,7 @@ export type SettingsInput = Omit<
 >
 
 export type SendInput = {
+  expected_amount_due?: Decimal
   to?: string[]
   cc?: string[]
   /** Hidden copies: delivered, in no header the others see. */

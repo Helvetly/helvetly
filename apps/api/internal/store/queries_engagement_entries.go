@@ -9,9 +9,7 @@ import (
 	"helvetly.com/api/internal/invoicecalc"
 )
 
-// The delivery log of an engagement (docs/engagements-contract.md). An entry is covered by an invoice through
-// invoice_id; a void invoice is ignored when reading, so it releases its entries.
-
+// The delivery log of an engagement. An entry's allocations retain each invoice and billed quantity.
 type UserRef struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
@@ -31,21 +29,28 @@ type EngagementEntry struct {
 	Invoice              *EngagementInvoice `json:"invoice"`
 	CreatedAt            time.Time          `json:"created_at"`
 	CreatedBy            *UserRef           `json:"created_by"`
+
+	InvoicedQuantity   invoicecalc.Quantity `json:"invoiced_quantity"`
+	HistoricalEstimate bool                 `json:"historical_estimate,omitempty"`
 }
 
-var entryColumns = `en.id, en.period_id, to_char(en.date, ` + dateFmt + `), en.quantity, en.note, en.client_performance, en.client_performance_on_invoice,
+var entryColumns = `coalesce(a.covered, 0), coalesce(a.estimate, false), en.id, en.period_id, to_char(en.date, ` + dateFmt + `), en.quantity, en.note, en.client_performance, en.client_performance_on_invoice,
 	pu.id, pu.name, ` + avatarOf("pu") + `, i.id, i.number, i.status, coalesce(ei.kind, 'usage'), en.created_at, cu.id, cu.name, ` + avatarOf("cu")
 
 const entryFrom = ` FROM engagement_entries en
 	LEFT JOIN users pu ON pu.id = en.performed_by
 	LEFT JOIN users cu ON cu.id = en.created_by
-	LEFT JOIN invoices i ON i.id = en.invoice_id AND i.status <> 'void'
+	LEFT JOIN LATERAL (SELECT sum(x.quantity) AS covered, bool_or(x.historical_estimate) AS estimate,
+		(array_agg(b.id ORDER BY b.created_at DESC, b.id DESC))[1] AS latest
+		FROM engagement_entry_allocations x JOIN invoices b ON b.id = x.invoice_id
+		WHERE x.entry_id = en.id AND b.status <> 'void') a ON true
+	LEFT JOIN invoices i ON i.id = a.latest
 	LEFT JOIN engagement_invoices ei ON ei.period_id = en.period_id AND ei.invoice_id = i.id`
 
 func scanEntry(row interface{ Scan(...any) error }) (EngagementEntry, error) {
 	var e EngagementEntry
 	var pID, pName, pAvatar, cID, cName, cAvatar, invID, invNumber, invStatus, invKind *string
-	err := row.Scan(&e.ID, &e.PeriodID, &e.Date, &e.Quantity, &e.Note, &e.ClientPerformance, &e.PerformanceOnInvoice, &pID, &pName, &pAvatar, &invID, &invNumber, &invStatus, &invKind,
+	err := row.Scan(&e.InvoicedQuantity, &e.HistoricalEstimate, &e.ID, &e.PeriodID, &e.Date, &e.Quantity, &e.Note, &e.ClientPerformance, &e.PerformanceOnInvoice, &pID, &pName, &pAvatar, &invID, &invNumber, &invStatus, &invKind,
 		&e.CreatedAt, &cID, &cName, &cAvatar)
 	if err != nil {
 		return e, err
@@ -132,8 +137,9 @@ func (q Q) Entries(ctx context.Context, engagementID, periodID string) ([]Engage
 }
 
 // LinkEntries points the entries at the invoice that covers them.
-func (q Q) LinkEntries(ctx context.Context, entryIDs []string, invoiceID string) error {
-	_, err := q.db.Exec(ctx, `UPDATE engagement_entries SET invoice_id = $2 WHERE id = ANY($1)`, entryIDs, invoiceID)
+func (q Q) LinkEntries(ctx context.Context, entryIDs []string, quantities []invoicecalc.Quantity, invoiceID string) error {
+	_, err := q.db.Exec(ctx, `INSERT INTO engagement_entry_allocations (entry_id, quantity, invoice_id)
+		SELECT id, qty, $3 FROM unnest($1::text[], $2::bigint[]) AS a(id, qty)`, entryIDs, quantities, invoiceID)
 	return err
 }
 
@@ -169,7 +175,7 @@ func (q Q) LinkableInvoice(ctx context.Context, workspaceID, id string) (Linkabl
 // the invoice: those links were made by invoicing the usage and belong to it. A missing link is ErrNotFound.
 func (q Q) UnlinkPeriodInvoice(ctx context.Context, engagementID, invoiceID string) (bool, error) {
 	var entries int
-	if err := q.db.QueryRow(ctx, `SELECT count(*) FROM engagement_entries WHERE engagement_id = $1 AND invoice_id = $2`,
+	if err := q.db.QueryRow(ctx, `SELECT count(*) FROM engagement_entry_allocations a JOIN engagement_entries e ON e.id = a.entry_id WHERE e.engagement_id = $1 AND a.invoice_id = $2`,
 		engagementID, invoiceID).Scan(&entries); err != nil || entries > 0 {
 		return false, err
 	}

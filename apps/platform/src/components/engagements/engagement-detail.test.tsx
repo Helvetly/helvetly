@@ -241,11 +241,23 @@ describe('quick log', () => {
 describe('entries', () => {
   it('locks an invoiced entry, links the invoice, and shows notes as text', async () => {
     entries = [
-      entry({ invoice: { id: 'inv_3', number: '2026-003', status: 'open', kind: 'usage' } }),
+      entry({
+        invoice: { id: 'inv_3', number: '2026-003', status: 'open', kind: 'usage' },
+        invoiced_quantity: '0.5',
+      }),
+      entry({
+        id: 'ent_old',
+        note: 'Old lesson',
+        invoice: { id: 'inv_old', number: '2026-001', status: 'paid', kind: 'usage' },
+        historical_estimate: true,
+        invoiced_quantity: '1.5',
+      }),
     ]
     open()
     const link = await screen.findByRole('link', { name: /2026-003/ })
     expect(link).toHaveAttribute('href', '/invoices?id=inv_3')
+    expect(screen.getByText('Already invoiced · 0.5 h')).toBeInTheDocument()
+    expect(screen.getByText(/The original billed quantity is uncertain/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Edit entry')).toBeNull()
     expect(screen.queryByLabelText('Delete entry')).toBeNull()
     expect(screen.getByText(/<b>Grammar<\/b> & Umlaute äöü/)).toBeInTheDocument()

@@ -19,6 +19,21 @@ func (e *env) request(b *browser, clientID string, fields map[string]any) {
 	}
 }
 
+func (e *env) reviewed(b *browser, id string, body any) map[string]any {
+	e.t.Helper()
+	var view struct {
+		Data struct {
+			ID        string `json:"id"`
+			CreatedAt string `json:"created_at"`
+		}
+	}
+	e.do(b, "GET", "/api/v1/clients/"+id+"/change-request", nil, 200, &view)
+	m, _ := body.(map[string]any)
+	result := map[string]any{"request_id": view.Data.ID, "created_at": view.Data.CreatedAt}
+	maps.Copy(result, m)
+	return result
+}
+
 func TestParseProfile(t *testing.T) {
 	raw := func(s string) map[string]json.RawMessage {
 		return map[string]json.RawMessage{"city": json.RawMessage(s)}
@@ -61,7 +76,7 @@ func TestApproveAppliesAndDecides(t *testing.T) {
 		t.Fatalf("request = %+v", got)
 	}
 	var out struct{ Data struct{ Name, City string } }
-	e.do(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/approve", nil, 200, &out)
+	e.do(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/approve", e.reviewed(b, c.ID, nil), 200, &out)
 	if out.Data.Name != "Acme AG" || out.Data.City != "Bern" {
 		t.Fatalf("client = %+v", out.Data)
 	}
@@ -79,7 +94,7 @@ func TestApproveInvalidKeepsPending(t *testing.T) {
 	b := e.workspace()
 	c := e.create(b, address("Acme"))
 	e.request(b, c.ID, map[string]any{"billing_email": "nope"})
-	e.fails(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/approve", nil, 422, "validation_failed", "billing_email")
+	e.fails(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/approve", e.reviewed(b, c.ID, nil), 422, "validation_failed", "billing_email")
 	e.do(b, "GET", "/api/v1/clients/"+c.ID+"/change-request", nil, 200, nil)
 }
 
@@ -107,7 +122,7 @@ func TestRejectKeepsClient(t *testing.T) {
 	b := e.workspace()
 	c := e.create(b, address("Acme"))
 	e.request(b, c.ID, map[string]any{"city": "Bern"})
-	e.do(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/reject", nil, 204, nil)
+	e.do(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/reject", e.reviewed(b, c.ID, nil), 204, nil)
 	var out struct{ Data struct{ City string } }
 	e.do(b, "GET", "/api/v1/clients/"+c.ID, nil, 200, &out)
 	if out.Data.City != "Zürich" {
@@ -145,10 +160,10 @@ func TestApproveChosenFields(t *testing.T) {
 			c := e.create(b, address("Acme"))
 			e.request(b, c.ID, requested)
 			if tc.status != 200 {
-				e.fails(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/approve", tc.body, tc.status, "invalid_request")
+				e.fails(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/approve", e.reviewed(b, c.ID, tc.body), tc.status, "invalid_request")
 				e.do(b, "GET", "/api/v1/clients/"+c.ID+"/change-request", nil, 200, nil)
 			} else {
-				e.do(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/approve", tc.body, 200, nil)
+				e.do(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/approve", e.reviewed(b, c.ID, tc.body), 200, nil)
 			}
 			var out struct{ Data struct{ Name, City string } }
 			e.do(b, "GET", "/api/v1/clients/"+c.ID, nil, 200, &out)
@@ -187,11 +202,11 @@ func TestRejectReason(t *testing.T) {
 			e.request(b, c.ID, map[string]any{"city": "Bern"})
 			if tc.status != 204 {
 				code := map[int]string{422: "validation_failed", 400: "invalid_request"}[tc.status]
-				e.fails(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/reject", tc.body, tc.status, code)
+				e.fails(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/reject", e.reviewed(b, c.ID, tc.body), tc.status, code)
 				e.do(b, "GET", "/api/v1/clients/"+c.ID+"/change-request", nil, 200, nil)
 				return
 			}
-			e.do(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/reject", tc.body, 204, nil)
+			e.do(b, "POST", "/api/v1/clients/"+c.ID+"/change-request/reject", e.reviewed(b, c.ID, tc.body), 204, nil)
 			got, err := e.st.LastDecidedChangeRequest(context.Background(), b.workspace, c.ID)
 			if err != nil || got.Status != "rejected" || got.Applied != nil {
 				t.Fatalf("decided = %+v, %v", got, err)
@@ -211,7 +226,7 @@ func TestListPendingChangeRequest(t *testing.T) {
 	decided := e.create(b, address("Gamma"))
 	e.request(b, asked.ID, map[string]any{"city": "Bern"})
 	e.request(b, decided.ID, map[string]any{"city": "Bern"})
-	e.do(b, "POST", "/api/v1/clients/"+decided.ID+"/change-request/reject", nil, 204, nil)
+	e.do(b, "POST", "/api/v1/clients/"+decided.ID+"/change-request/reject", e.reviewed(b, decided.ID, nil), 204, nil)
 	var out struct{ Data []store.Client }
 	e.do(b, "GET", "/api/v1/clients", nil, 200, &out)
 	got := map[string]bool{}

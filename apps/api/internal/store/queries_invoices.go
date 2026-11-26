@@ -115,6 +115,13 @@ type PaymentMethods struct {
 	Revolut bool `json:"revolut"`
 }
 
+type UnconfirmedReminder struct {
+	Seq        int       `json:"seq"`
+	Kind       string    `json:"kind"`
+	OffsetDays int       `json:"offset_days"`
+	At         time.Time `json:"at"`
+}
+
 type Invoice struct {
 	ID               string              `json:"id"`
 	Kind             string              `json:"kind"`
@@ -179,6 +186,9 @@ type Invoice struct {
 	ContractReference   *string      `json:"contract_reference"` // BT-12
 	ContractDocument    *DocumentRef `json:"contract_document"`  // a document of the workspace, never printed
 	ApprovalState       *string      `json:"approval_state"`     // of a draft's latest approval request (internal/approvals)
+
+	SendUncertainAt      *time.Time            `json:"send_uncertain_at,omitempty"`
+	UnconfirmedReminders []UnconfirmedReminder `json:"unconfirmed_reminders,omitempty"`
 }
 
 // IssuedElsewhere: an invoice an import brought in as issued by another system.
@@ -352,7 +362,10 @@ var invoiceColumns = `i.id, i.kind, i.number, i.status, ` + fmt.Sprintf(isOverdu
 	i.vat_mode, i.reference, i.intro, i.footer, i.note, i.discount_percent, i.subtotal, i.discount_amount, i.net_total,
 	i.vat_breakdown, i.vat_total, i.total, i.rounding_amount, i.amount_paid, i.amount_credited, ` + amountDue + `, i.amount_refunded,
 	` + refundDue + `, i.iban,
-	COALESCE(i.reference_type, 'NON'), i.payment_reference, i.qr_bill, i.revolut_url, i.pay_qr_bill, i.pay_revolut, i.seller, i.buyer, i.issued_at, i.sent_at, i.created_at,
+	COALESCE(i.reference_type, 'NON'), i.payment_reference, i.qr_bill, i.revolut_url, i.pay_qr_bill, i.pay_revolut, i.seller, i.buyer, i.issued_at, i.sent_at,
+	coalesce(CASE WHEN i.send_started_at < now() - interval '15 minutes' THEN i.send_started_at END, i.send_uncertain_at),
+	(SELECT jsonb_agg(jsonb_build_object('seq', l.seq, 'kind', l.kind, 'offset_days', l.offset_days, 'at', l.sent_at) ORDER BY l.sent_at)
+	 FROM reminder_log l WHERE l.target_id = i.id AND l.workspace_id = i.workspace_id AND NOT l.confirmed), i.created_at,
 	i.updated_at, i.pdf_key, i.prepaid_total, di.id, di.number, i.reminders_enabled, i.instalment_interval, pl.id, COALESCE(i.plan_seq, 0), pl.count,
 	trim_scale(i.tax_currency_rate)::text, i.origin, i.source_document_id, i.client_number_display, i.contract_reference,
 	i.contract_document_id, ` + fmt.Sprintf(contractDocumentName, "i") + `, ` + approvalState
@@ -382,7 +395,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&i.VATMode, &i.Reference, &i.Intro, &i.Footer, &i.Note, &i.DiscountPercent, &i.Subtotal, &i.DiscountAmount, &i.NetTotal,
 		&i.VATBreakdown, &i.VATTotal, &i.Total, &i.RoundingAmount, &i.AmountPaid, &i.AmountCredited, &i.AmountDue, &i.AmountRefunded, &i.RefundDue, &i.Payment.IBAN,
 		&i.Payment.ReferenceType, &i.Payment.Reference, &i.Payment.QRBill, &i.Payment.RevolutURL, &i.PaymentMethods.QRBill,
-		&i.PaymentMethods.Revolut, &i.Seller, &i.Buyer, &i.IssuedAt, &i.SentAt, &i.CreatedAt,
+		&i.PaymentMethods.Revolut, &i.Seller, &i.Buyer, &i.IssuedAt, &i.SentAt, &i.SendUncertainAt, &i.UnconfirmedReminders, &i.CreatedAt,
 		&i.UpdatedAt, &i.PDFKey, &i.PrepaidTotal, &deductedID, &deductedNumber, &i.RemindersEnabled, &interval, &planID, &planSeq, &planCount,
 		&i.TaxCurrencyRate, &i.Origin, &i.SourceDocumentID, &i.ClientNumberDisplay, &i.ContractReference, &contractDocID, &contractDocName, &i.ApprovalState)
 	i.Client.ID = i.ClientID
@@ -697,12 +710,37 @@ func (q Q) RefreshBalance(ctx context.Context, id string, now time.Time) error {
 	return err
 }
 
-// TryLockInvoiceSend takes the invoice's send lock until the transaction ends; false when another send of the same
-// invoice holds it.
-func (q Q) TryLockInvoiceSend(ctx context.Context, invoiceID string) (bool, error) {
-	var ok bool
-	err := q.db.QueryRow(ctx, `SELECT pg_try_advisory_xact_lock(hashtextextended('invoice_send:' || $1, 0))`, invoiceID).Scan(&ok)
-	return ok, err
+// BeginInvoiceSend commits an intent before SMTP. Workers never retry an unconfirmed intent.
+func (q Q) BeginInvoiceSend(ctx context.Context, ws string, inv Invoice, manual bool, at time.Time) (bool, error) {
+	tag, err := q.db.Exec(ctx, `UPDATE invoices i SET send_uncertain_at = coalesce(i.send_started_at, i.send_uncertain_at), send_started_at = $7
+		WHERE i.id = $1 AND i.workspace_id = $2 AND i.status = $3 AND i.status NOT IN ('draft','void','replaced')
+		AND `+amountDue+` = $4 AND i.sent_at IS NOT DISTINCT FROM $5::timestamptz
+		AND CASE WHEN $6::boolean THEN
+		    (i.send_started_at IS NULL OR i.send_started_at < $7::timestamptz - interval '15 minutes') AND
+		    (i.sent_at IS NOT NULL OR i.send_claimed_at IS NULL OR i.send_claimed_at < $7::timestamptz - interval '15 minutes')
+		    ELSE i.status = 'open' AND i.sent_at IS NULL AND i.send_uncertain_at IS NULL AND i.send_started_at IS NULL END
+		AND pg_try_advisory_xact_lock(hashtextextended('invoice_send:' || i.id, 0))`,
+		inv.ID, ws, inv.Status, inv.AmountDue, inv.SentAt, manual, at)
+	return tag.RowsAffected() == 1, err
+}
+
+// LockInvoiceSend checks that the prepared message is still current and keeps overlapping sends and payments out of SMTP.
+func (q Q) LockInvoiceSend(ctx context.Context, inv Invoice, at time.Time) (bool, error) {
+	if _, err := q.db.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('invoice_send:' || $1, 0))`, inv.ID); err != nil {
+		return false, err
+	}
+	var current bool
+	err := q.db.QueryRow(ctx, `SELECT i.send_started_at IS NOT DISTINCT FROM $2::timestamptz AND i.status = $3
+		AND `+amountDue+` = $4 AND i.sent_at IS NOT DISTINCT FROM $5::timestamptz FROM invoices i WHERE i.id = $1 FOR UPDATE`,
+		inv.ID, at, inv.Status, inv.AmountDue, inv.SentAt).Scan(&current)
+	return current, err
+}
+
+func (q Q) FinishInvoiceSend(ctx context.Context, id string, at time.Time, uncertain bool) error {
+	_, err := q.db.Exec(ctx, `UPDATE invoices SET send_started_at = NULL, send_claimed_at = NULL,
+		send_uncertain_at = CASE WHEN $3 THEN $2::timestamptz ELSE send_uncertain_at END
+		WHERE id = $1 AND send_started_at = $2`, id, at, uncertain)
+	return err
 }
 
 func (q Q) MarkSent(ctx context.Context, id string, now time.Time) error {
@@ -777,15 +815,17 @@ func (q Q) DeleteRefund(ctx context.Context, invoiceID, id string) (bool, error)
 	return tag.RowsAffected() == 1, err
 }
 
-// LastCreditDate: the issue date of the invoice's latest issued credit note, "" when it has none.
-func (q Q) LastCreditDate(ctx context.Context, invoiceID string) (string, error) {
-	var d *string
-	err := q.db.QueryRow(ctx, `SELECT max(issue_date)::text FROM invoices WHERE credited_invoice_id = $1 AND kind = 'credit_note' AND status <> 'draft'`,
-		invoiceID).Scan(&d)
-	return str(d), err
+// RefundAvailableOn also protects any later refunds that would otherwise overdraw their day's balance.
+func (q Q) RefundAvailableOn(ctx context.Context, id, day string, payable Money) (Money, error) {
+	var available Money
+	err := q.db.QueryRow(ctx, `WITH changes(day, amount) AS (
+		SELECT paid_on, amount FROM invoice_payments WHERE invoice_id = $1 UNION ALL
+		SELECT issue_date, total + rounding_amount FROM invoices WHERE credited_invoice_id = $1 AND kind = 'credit_note' AND status <> 'draft' UNION ALL
+		SELECT refunded_on, -amount FROM invoice_refunds WHERE invoice_id = $1 UNION ALL SELECT $2::date, 0
+	), balances AS (SELECT day, sum(sum(amount)) OVER (ORDER BY day) AS balance FROM changes GROUP BY day)
+	SELECT greatest(0, min(balance) - $3::bigint) FROM balances WHERE day >= $2::date`, id, day, payable).Scan(&available)
+	return available, err
 }
-
-// ---- deliveries ----
 
 // CreateDelivery records a send; userID is nil when the system sent it (an instalment plan).
 func (q Q) CreateDelivery(ctx context.Context, invoiceID string, userID *string, d Delivery) error {
@@ -970,11 +1010,18 @@ type MonthTotals struct {
 	Paid     Money  `json:"paid"`
 }
 
+type CurrencyBalance struct {
+	Currency    string `json:"currency"`
+	Outstanding Amount `json:"outstanding"`
+	Overdue     Amount `json:"overdue"`
+}
+
 type InvoiceSummary struct {
-	Currency      string `json:"currency"`
-	Outstanding   Amount `json:"outstanding"`
-	Overdue       Amount `json:"overdue"`
-	PaidThisMonth Amount `json:"paid_this_month"`
+	OpenBalances  []CurrencyBalance `json:"open_balances,omitempty"`
+	Currency      string            `json:"currency"`
+	Outstanding   Amount            `json:"outstanding"`
+	Overdue       Amount            `json:"overdue"`
+	PaidThisMonth Amount            `json:"paid_this_month"`
 	PaidLastMonth struct {
 		Amount Money `json:"amount"`
 	} `json:"paid_last_month"`
@@ -1057,6 +1104,23 @@ func (q Q) InvoiceSummary(ctx context.Context, workspaceID, currency, today, cli
 	s, err := q.InvoiceMetrics(ctx, workspaceID, currency, today, clientID)
 	if err != nil {
 		return s, err
+	}
+	if clientID != "" {
+		rows, err := q.db.Query(ctx, `SELECT i.currency, count(*), sum(`+amountDue+`),
+			count(*) FILTER (WHERE `+fmt.Sprintf(overdueAmount, 3)+` > 0), sum(`+fmt.Sprintf(overdueAmount, 3)+`)
+			FROM invoices i WHERE i.workspace_id = $1 AND i.client_id = $2 AND i.status = 'open'
+			AND i.kind IN `+receivableKinds+` AND `+amountDue+` > 0 GROUP BY i.currency ORDER BY i.currency`, workspaceID, clientID, today)
+		if err != nil {
+			return s, err
+		}
+		s.OpenBalances, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (CurrencyBalance, error) {
+			var b CurrencyBalance
+			err := row.Scan(&b.Currency, &b.Outstanding.Count, &b.Outstanding.Amount, &b.Overdue.Count, &b.Overdue.Amount)
+			return b, err
+		})
+		if err != nil {
+			return s, err
+		}
 	}
 	// inMonth: money moved (table t: invoice_payments or invoice_refunds, dated by col) in the month $5 away from today.
 	inMonth := func(table, col string) string {

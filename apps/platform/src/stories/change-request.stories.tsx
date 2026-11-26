@@ -131,7 +131,11 @@ export const ApproveOneField: Story = {
     await userEvent.click(drawer.getByRole('button', { name: 'Approve 1 change' }))
     await expect(await within(canvasElement).findByText('Changes applied')).toBeVisible()
     await expect(body.queryByRole('dialog')).toBeNull()
-    await expect(decided).toHaveBeenCalledWith('approve', { fields: ['name'] })
+    await expect(decided).toHaveBeenCalledWith('approve', {
+      request_id: oneField.id,
+      created_at: oneField.created_at,
+      fields: ['name'],
+    })
     await expect(within(canvasElement).queryByRole('region', { name: 'Change request' })).toBeNull()
   },
 }
@@ -153,7 +157,11 @@ export const ChooseWhichToApply: Story = {
     await expect(
       await within(canvasElement).findByText(/other changes were discarded/),
     ).toBeVisible()
-    await expect(decided).toHaveBeenCalledWith('approve', { fields: ['name', 'billing_email'] })
+    await expect(decided).toHaveBeenCalledWith('approve', {
+      request_id: severalFields.id,
+      created_at: severalFields.created_at,
+      fields: ['name', 'billing_email'],
+    })
   },
 }
 
@@ -188,6 +196,8 @@ export const RejectWithReason: Story = {
     await userEvent.click(confirm.getByRole('button', { name: 'Reject' }))
     await expect(await within(canvasElement).findByText('Request rejected')).toBeVisible()
     await expect(decided).toHaveBeenCalledWith('reject', {
+      request_id: severalFields.id,
+      created_at: severalFields.created_at,
       reason: 'The VAT number belongs to another company.',
     })
   },
