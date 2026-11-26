@@ -425,3 +425,48 @@ export const HoursFollowWorkspaceZone: Story = {
     await waitFor(() => expect(zone).toHaveTextContent('Zurich'))
   },
 }
+
+export const BulkWeeklyHours: Story = {
+  parameters: page('owner'),
+  beforeEach: () =>
+    resetSchedulingSettings({
+      providers: [],
+      hours: { weekly: [{ day: 7, start: '10:00', end: '11:00' }] },
+    }),
+  render: () => (
+    <Shell>
+      <Calendars userId="usr_story" />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const days = await canvas.findByRole('group', { name: 'Days to add hours to' })
+    const sunday = within(days).getByRole('button', { name: 'Sun' })
+    const add = canvas.getByRole('button', { name: 'Add to selected days' })
+    await expect(sunday).toHaveAttribute('aria-pressed', 'false')
+    const dayButton = (name: string) => within(days).getByRole('button', { name })
+    await userEvent.click(dayButton('Mon'))
+    await userEvent.click(dayButton('Tue'))
+    await userEvent.click(dayButton('Wed'))
+    await userEvent.click(dayButton('Thu'))
+    await userEvent.click(dayButton('Fri'))
+    await expect(add).toBeDisabled()
+    await userEvent.click(canvas.getByRole('button', { name: 'Every day' }))
+    await expect(sunday).toHaveAttribute('aria-pressed', 'true')
+    // One conflict makes the entire add a no-op, including the days that were free.
+    await userEvent.click(add)
+    await expect(canvas.queryByLabelText('From, Monday')).not.toBeInTheDocument()
+    await expect(canvas.queryByText('Unsaved changes')).not.toBeInTheDocument()
+    await userEvent.click(sunday)
+    await userEvent.click(add)
+
+    await expect(canvas.getByLabelText('From, Monday')).toHaveValue('09:00')
+    await expect(canvas.getByLabelText('From, Saturday')).toHaveValue('09:00')
+    await expect(canvas.getByLabelText('From, Sunday')).toHaveValue('10:00')
+    await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(schedulingCalls()).toContain('PUT /scheduling/hosts/usr_story'))
+    await waitFor(() => expect(canvas.queryByText('Unsaved changes')).not.toBeInTheDocument())
+    await expect(canvas.getByLabelText('From, Saturday')).toHaveValue('09:00')
+    await expect(canvas.getByLabelText('From, Sunday')).toHaveValue('10:00')
+  },
+}

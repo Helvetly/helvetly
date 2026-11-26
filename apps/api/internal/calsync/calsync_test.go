@@ -771,7 +771,17 @@ func TestTeamsMeeting(t *testing.T) {
 
 func TestFeed(t *testing.T) {
 	e := newEnv(t)
+	// After the Zurich spring clock change, local midnight is 22:00 UTC.
+	e.clock = time.Date(2027, 3, 28, 23, 30, 0, 0, time.UTC)
 	b := e.workspace(pro, "member")
+	if err := e.st.UpdateWorkspace(context.Background(), store.Workspace{ID: b.ws, Name: "Firma " + b.ws, Timezone: "Europe/Zurich"}); err != nil {
+		t.Fatal(err)
+	}
+	midnight := time.Date(2027, 3, 28, 22, 0, 0, 0, time.UTC)
+	atStart := e.session(b, b.userID, midnight)
+	beforeStart := e.session(b, b.userID, midnight.Add(-time.Second))
+	beforeEnd := e.session(b, b.userID, e.clock.Add(horizon-time.Second))
+	atEnd := e.session(b, b.userID, e.clock.Add(horizon))
 	other := e.member(b.ws, "member")
 	start := e.clock.Add(24 * time.Hour)
 	e.session(b, b.userID, start)
@@ -805,9 +815,15 @@ func TestFeed(t *testing.T) {
 	}
 	res, body := get(feedURL, nil)
 	if res.StatusCode != 200 || !strings.HasPrefix(res.Header.Get("Content-Type"), "text/calendar") || res.Header.Get("Cache-Control") != "private, max-age=300" ||
-		res.Header.Get("Referrer-Policy") != "no-referrer" || strings.Count(body, "BEGIN:VEVENT") != 1 || !strings.Contains(body, "METHOD:PUBLISH") ||
+		res.Header.Get("Referrer-Policy") != "no-referrer" || strings.Count(body, "BEGIN:VEVENT") != 3 || !strings.Contains(body, "METHOD:PUBLISH") ||
 		!strings.Contains(body, "Lesson · Müller AG") {
 		t.Fatalf("%d %v\n%s", res.StatusCode, res.Header, body)
+	}
+	if !strings.Contains(body, "UID:"+atStart.ID+"@") || strings.Contains(body, "UID:"+beforeStart.ID+"@") {
+		t.Fatal("feed should include local midnight and exclude the second before it")
+	}
+	if !strings.Contains(body, "UID:"+beforeEnd.ID+"@") || strings.Contains(body, "UID:"+atEnd.ID+"@") {
+		t.Fatal("feed should stop before the end of its horizon")
 	}
 	if res304, _ := get(feedURL, map[string]string{"If-None-Match": res.Header.Get("ETag")}); res304.StatusCode != 304 {
 		t.Fatalf("etag: %d", res304.StatusCode)
