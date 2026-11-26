@@ -7,7 +7,9 @@ test.each([
   ['/settings/billing', 'billing'],
   ['/settings/billing/plans', 'billing'],
   ['/settings/invoices', 'settings'],
-  ['/books/ledger', 'settings'],
+  ['/books/ledger', 'books'],
+  ['/scheduling', 'scheduling'],
+  ['/quotes', 'quotes'],
   ['/nowhere', 'dashboard'],
 ])('%s asks Heidi from %s', (path, page) => {
   expect(pageOf(path).page).toBe(page)

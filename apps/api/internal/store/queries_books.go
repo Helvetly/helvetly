@@ -55,6 +55,9 @@ func eventHash(prev []byte, e FinancialEvent) ([]byte, error) {
 // LogEvent appends e to its workspace's chain. Called on a transaction it commits or rolls back with it; the
 // advisory lock on the workspace's chain head keeps concurrent writers gapless.
 func (q Q) LogEvent(ctx context.Context, e FinancialEvent) error {
+	if err := checkAuditKind(e.Kind); err != nil {
+		return err
+	}
 	if len(e.Payload) == 0 {
 		e.Payload = json.RawMessage(`{}`)
 	}
@@ -145,7 +148,14 @@ type AuditFilter struct {
 	Since    *time.Time
 	Before   *time.Time
 	Search   string // number, client or supplier, person, kind or any payload text
+	Origin   string // "imported": only entries an import made
 }
+
+// eventOrigin is where an entry came from when not from a person's own step: the payload's origin, else (for
+// payments an invoice import recorded before payments carried it) "imported" when the payment was written in the
+// same instant as its imported invoice.
+const eventOrigin = `coalesce(e.payload->>'origin', CASE WHEN e.kind = 'payment.added' AND s.origin = 'imported'
+	AND s.issued_at = e.at THEN 'imported' END)`
 
 // AuditEntry is an event with what a reader needs to make a sentence of it, read from the records as they are now:
 // the record's number, its client or supplier and currency (nil when the record is gone or is not one of these).
@@ -155,6 +165,7 @@ type AuditEntry struct {
 	Number   *string
 	Party    *string
 	Currency *string
+	Origin   *string
 }
 
 // AuditEntries reads a filtered page of the log. Read-only: the chained rows are only joined, never touched.
@@ -183,23 +194,26 @@ func (q Q) AuditEntries(ctx context.Context, workspaceID string, f AuditFilter, 
 	if f.Before != nil {
 		where = append(where, "e.at < "+arg(*f.Before))
 	}
+	if f.Origin != "" {
+		where = append(where, eventOrigin+" = "+arg(f.Origin))
+	}
 	if f.Search != "" {
 		like := arg("%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(f.Search) + "%")
 		where = append(where, fmt.Sprintf(`(s.number ILIKE %[1]s OR s.party ILIKE %[1]s OR u.name ILIKE %[1]s
 			OR e.kind ILIKE %[1]s OR e.payload::text ILIKE %[1]s)`, like))
 	}
 	rows, err := q.db.Query(ctx, `SELECT e.workspace_id, e.seq, e.kind, e.subject_type, e.subject_id, e.actor_id, e.at,
-		e.payload::text, e.prev_hash, e.hash, `+eventCategory+`, s.number, s.party, s.currency
+		e.payload::text, e.prev_hash, e.hash, `+eventCategory+`, s.number, s.party, s.currency, `+eventOrigin+`
 		FROM financial_events e
 		LEFT JOIN users u ON u.id = e.actor_id
 		LEFT JOIN LATERAL (
-			SELECT i.number, c.name AS party, i.currency FROM invoices i JOIN clients c ON c.id = i.client_id
+			SELECT i.number, c.name AS party, i.currency, i.origin, i.issued_at FROM invoices i JOIN clients c ON c.id = i.client_id
 			WHERE e.subject_type = 'invoice' AND i.workspace_id = e.workspace_id AND i.id = e.subject_id
 			UNION ALL
-			SELECT t.number, c.name, t.currency FROM quotes t JOIN clients c ON c.id = t.client_id
+			SELECT t.number, c.name, t.currency, NULL, NULL FROM quotes t JOIN clients c ON c.id = t.client_id
 			WHERE e.subject_type = 'quote' AND t.workspace_id = e.workspace_id AND t.id = e.subject_id
 			UNION ALL
-			SELECT x.number::text, x.supplier_name, x.currency FROM expenses x
+			SELECT x.number::text, x.supplier_name, x.currency, NULL, NULL FROM expenses x
 			WHERE e.subject_type = 'expense' AND x.workspace_id = e.workspace_id AND x.id = e.subject_id
 			LIMIT 1
 		) s ON true
@@ -214,7 +228,7 @@ func (q Q) AuditEntries(ctx context.Context, workspaceID string, f AuditFilter, 
 		var payload string
 		var prev, hash []byte
 		if err := rows.Scan(&a.WorkspaceID, &a.Seq, &a.Kind, &a.SubjectType, &a.SubjectID, &a.ActorID, &a.At, &payload,
-			&prev, &hash, &a.Category, &a.Number, &a.Party, &a.Currency); err != nil {
+			&prev, &hash, &a.Category, &a.Number, &a.Party, &a.Currency, &a.Origin); err != nil {
 			return nil, fmt.Errorf("audit entries: %w", err)
 		}
 		a.Payload = json.RawMessage(payload)

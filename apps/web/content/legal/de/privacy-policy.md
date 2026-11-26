@@ -48,6 +48,7 @@ Heidi beantwortet viele Fragen aus den Aufzeichnungen Ihres Arbeitsbereichs ohne
 Folgende Daten werden übermittelt:
 
 - Heidi sendet die Nachricht, die Sie schreiben, bis zu 20 frühere Nachrichten aus diesem Gespräch (die die von Heidi Ihnen angezeigten Zahlen enthalten können) und Dateien, die Sie an diese Nachricht anhängen. Eine kurze Überprüfung, ob die Nachricht sich um Helvetly oder Ihr Unternehmen handelt, wird ebenfalls an OpenAI gesendet.
+- Je nach Anfrage sendet Heidi auch begrenzte Ergebnisse aus für Sie zugänglichen Arbeitsbereichsdaten (einschliesslich Geschäfts- und Kundendaten), den Inhalt eines Dokuments, das sie auf Ihren Wunsch liest, die Kennungen der aktuellen Seite und ihrer verfügbaren Bedienelemente sowie Ihren gewählten Antwortstil.
 - Beim KI-Import werden die Inhalte der ausgewählten Dateien abschnittsweise übermittelt. Bei der Belegerkennung wird der von Ihnen ausgewählte Beleg übermittelt.
 - Für den Vorschlag eines Arbeitsbereichsnamens wird nur der eingegebene Firmenname übermittelt.
 - **Automatische Ablage:** Nachdem Sie eine Datei in die Dokumente hochgeladen haben, sendet Helvetly im Hintergrund den Namen und die Art der Datei, den Anfang ihres Textes (bis zu etwa 6.000 Bytes) oder, wenn kein lesbarer Text vorhanden ist, die PDF-Datei oder das Bild selbst (bis zu 4 MiB; eine grössere Datei nur nach ihrem Namen), zusammen mit den Namen von bis zu 200 Ordnern des Arbeitsbereichs und bis zu 50 verwendeten Tags. Das Modell schlägt Tags und einen Ordner vor; Sie können das Ergebnis rückgängig machen.
@@ -56,6 +57,8 @@ Folgende Daten werden übermittelt:
 Helvetly holt keine Mitarbeiter- oder Gehaltsabrechnungsdaten ab oder die mit einem Mitarbeiter gespeicherten Dateien für KI-Anfragen, und Gehaltsabrechnungs-Importe werden ohne KI gelesen. Wenn Sie solche Daten in eine Nachricht einfügen, anhängen oder an Dokumente hochladen, anstatt die Mitarbeiterdaten zu verwenden, werden sie wie jeder andere Inhalt gesendet, also tun Sie dies bitte nicht.
 
 Wir bitten OpenAI, Anfragen und Antworten nicht als gespeicherten Anwendungszustand (`store: false`) zu speichern. Dies ist unabhängig von der eigenen Speicherung von OpenAI: Gemäss den API-Bedingungen von OpenAI können API-Daten bis zu 30 Tage lang gespeichert werden, um Missbrauch zu erkennen, und sie werden nicht zum Trainieren von Modellen verwendet, es sei denn, der API-Kunde stimmt zu, Daten mit OpenAI zu teilen. Helvetly speichert seine eigenen Daten separat: Heidi-Konversationen werden in Helvetly gespeichert, ohne eine feste Löschfrist, bis Sie Ihr Konto löschen (in einem gelöschten Arbeitsbereich bleiben sie mit seinen anderen Aufzeichnungen gespeichert); importierte Dateien, Aufzeichnungen und eingereichte Dokumente bleiben im Arbeitsbereich wie alle anderen Daten. Heidi wird als KI-Assistentin gekennzeichnet; ihre Antworten, importierten Aufzeichnungen und eingereichten Vorschläge können falsch sein und sind Vorschläge, die Sie überprüfen sollten.
+
+Helvetly zählt die Themen abgeschlossener Abfragen und Aktionen, um Ihnen in weiteren Chats dieses Arbeitsbereichs passende Fragen vorzuschlagen. In den Kontoeinstellungen können Sie diese Zähler und Ihren Antwortstil einsehen und löschen oder das Gedächtnis ausschalten. Die Zähler bleiben in Helvetly.
 
 ## 5. Empfänger und Datenübermittlung ins Ausland
 

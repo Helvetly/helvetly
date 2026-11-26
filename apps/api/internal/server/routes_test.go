@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,6 +18,10 @@ import (
 
 // signedOut answers 401 like auth.SignedIn without a session, so a registered route is told from the 404 catch-all.
 type signedOut struct{}
+
+func (signedOut) CookieSession(context.Context, store.Q, *http.Request) (store.Session, error) {
+	return store.Session{}, errors.New("signed out")
+}
 
 func (signedOut) SignedIn(func(http.ResponseWriter, *http.Request, store.Session)) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusUnauthorized) }

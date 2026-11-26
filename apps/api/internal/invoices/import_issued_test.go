@@ -311,6 +311,43 @@ func TestImportIssuedElsewhereScheduleWithoutFeature(t *testing.T) {
 	}
 }
 
+// The audit log tells what an import wrote: the invoice and its payments carry the origin, and a payment the import
+// wrote before payments carried it is told apart by the instant it shares with the imported invoice.
+func TestImportedEventsOrigin(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	sess, docID := e.importSession(b)
+	ctx := context.Background()
+	id, err := importOnce(e, sess, clientID, importData(t, map[string]any{"paid_amount": "500.00", "paid_on": "2025-10-15"}), &docID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.do(b, "POST", "/api/v1/invoices/"+id+"/mark-paid", map[string]any{"paid_on": "2025-11-01"}, http.StatusOK, nil)
+	events, err := e.st.Events(ctx, b.workspace, 0, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.LogEvent(ctx, store.FinancialEvent{WorkspaceID: b.workspace, Kind: "payment.added", SubjectType: "invoice",
+		SubjectID: id, ActorID: &sess.User.ID, At: events[0].At, Payload: []byte(`{"amount": "1.00"}`)}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := e.st.AuditEntries(ctx, b.workspace, store.AuditFilter{}, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	origins := []string{}
+	for _, a := range entries {
+		origins = append(origins, a.Kind+"="+deref(a.Origin))
+	}
+	if !slices.Equal(origins, []string{"invoice.issued=imported", "payment.added=imported", "payment.added=", "payment.added=imported"}) {
+		t.Fatalf("origins %v", origins)
+	}
+	imported, err := e.st.AuditEntries(ctx, b.workspace, store.AuditFilter{Origin: "imported"}, 10)
+	if err != nil || len(imported) != 3 {
+		t.Fatalf("imported filter: %d %v", len(imported), err)
+	}
+}
+
 func TestImportIssuedElsewhere(t *testing.T) {
 	e := newEnv(t)
 	b, clientID := e.ready()
@@ -359,7 +396,6 @@ func TestImportIssuedElsewhere(t *testing.T) {
 	e.fails(b, "POST", "/api/v1/invoices/"+id+"/send", map[string]any{"to": []string{"ap@kunde.ch"}}, http.StatusConflict, "issued_elsewhere")
 	// It is an ordinary receivable otherwise: the rest can be paid in Helvetly.
 	e.do(b, "POST", "/api/v1/invoices/"+id+"/mark-paid", map[string]any{"paid_on": "2025-11-01"}, http.StatusOK, nil)
-
 	tests := []struct {
 		name     string
 		extra    map[string]any

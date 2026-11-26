@@ -138,7 +138,7 @@ func (s *Service) sessionAnswer(ctx context.Context, q store.Q, sess store.Sessi
 		if err != nil {
 			return turn{}, err
 		}
-		out := turn{Statuses: []string{"Looking up packages"}}
+		out := turn{memoryTopic: "list_engagements", Statuses: []string{"Looking up packages"}}
 		var lines []string
 		for i, e := range list {
 			if i == maxRecords {
@@ -171,7 +171,7 @@ func (s *Service) clientsNamed(ctx context.Context, q store.Q, sess store.Sessio
 }
 
 func (s *Service) sessionTurn(lead, status string, list []scheduling.Occurrence, zone *time.Location) turn {
-	out := turn{Text: lead, Statuses: []string{status}}
+	out := turn{memoryTopic: "list_sessions", Text: lead, Statuses: []string{status}}
 	for i, o := range list {
 		if i == maxRecords {
 			out.Text += fmt.Sprintf(" Here are the first %d; open Scheduling for the rest.", maxRecords)

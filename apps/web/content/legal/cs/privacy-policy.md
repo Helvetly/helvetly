@@ -85,6 +85,7 @@ pracovního prostoru a **automatické třídění** nahraných dokumentů použ�
 Co se odesílá:
 
 - Heidi odesílá napsanou zprávu, až 20 předchozích zpráv dané konverzace (mohou obsahovat hodnoty, které vám Heidi ukázala) a soubory přiložené ke zprávě. Do OpenAI se posílá také krátká kontrola, zda zpráva souvisí s Helvetly nebo vaším podnikáním.
+- Podle vašeho požadavku Heidi odesílá také omezené výsledky z údajů pracovního prostoru, ke kterým máte přístup (včetně firemních údajů a údajů klientů), obsah dokumentu, o jehož přečtení požádáte, identifikátory aktuální stránky a dostupných ovládacích prvků a zvolený styl odpovědi.
 - Import pomocí AI odesílá obsah vybraných souborů po částech; čtení účtenek odesílá vybranou účtenku.
 - Návrh názvu pracovního prostoru odesílá pouze zadaný název firmy.
 - **Automatické třídění:** po nahrání souboru do Dokumentů Helvetly na pozadí odesílá název a typ souboru, začátek jeho textu (až přibližně 6 000 bajtů), nebo pokud nemá čitelný text, samotné PDF či obrázek (do 4 MiB; větší soubor pouze názvem), spolu s názvy až 200 složek pracovního prostoru a až 50 používanými štítky. Model navrhne štítky a složku; výsledek můžete vrátit zpět.
@@ -102,6 +103,8 @@ se ukládají v Helvetly, zatím bez pevné lhůty výmazu, do smazání účtu 
 prostoru zůstávají uloženy s ostatními záznamy); importované soubory, záznamy a roztříděné dokumenty
 zůstávají v pracovním prostoru jako jiná data. Heidi je označena jako asistentka AI; její odpovědi,
 importované záznamy a návrhy třídění mohou být chybné a jsou návrhy k vaší kontrole.
+
+Helvetly pro jednotlivá témata počítá dokončená vyhledávání a provedené akce, aby vám v dalších konverzacích v tomto pracovním prostoru mohla nabízet vhodné otázky. V nastavení účtu můžete tyto počty a styl odpovědi zobrazit a vymazat nebo paměť vypnout. Počty zůstávají v Helvetly.
 
 ## 5. Příjemci a předávání do zahraničí
 

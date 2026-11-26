@@ -890,6 +890,7 @@ export const auditEvents: FinancialEvent[] = samples.map(
     subject_id,
     subject: number ? { number, party: party ?? null, currency: currency ?? null } : null,
     actor,
+    origin: payload.origin === 'imported' ? 'imported' : null,
     at: at(days, clock),
     payload,
     prev_hash: i === 0 ? '' : hex(i),

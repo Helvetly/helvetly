@@ -8,7 +8,9 @@ import { useAIApproval } from '@/components/ai/ai-approval'
 import { ApiError, errorMessage } from '@/lib/api'
 import { expenseKeys } from '@/lib/expenses'
 import {
+  chatReadable,
   goesToImport,
+  MAX_FILES,
   heidiApi,
   heidiErrorText,
   readEvents,
@@ -24,7 +26,15 @@ import { importsApi } from '@/lib/imports'
 import { invoiceKeys } from '@/lib/invoices'
 import { queryKeys } from '@/lib/queries'
 
+import {
+  bindScreenAction,
+  captureScreen,
+  type BoundScreenAction,
+  type ScreenSnapshot,
+} from './screen-controls'
+
 export type ChatMessage = {
+  screen?: BoundScreenAction
   id: string
   role: 'user' | 'assistant'
   text: string
@@ -110,7 +120,9 @@ export function affectedQueries(statuses: string[]): QueryKey[] {
 export { usageKey }
 
 /** One conversation with Heidi: sending, streaming, stopping, retrying and confirmations. */
-export function useHeidiChat(page: HeidiPage, scope: string) {
+const noScreens: readonly string[] = []
+
+export function useHeidiChat(page: HeidiPage, scope: string, paths: readonly string[] = noScreens) {
   const queryClient = useQueryClient()
   const storageKey = `${STORAGE}:${scope}`
   // The conversation to pick up again, read once from this browser.
@@ -151,7 +163,7 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
             role: message.role,
             text: message.text,
             attachments: message.attachments ?? [],
-            actions: message.actions ?? [],
+            actions: (message.actions ?? []).filter((action) => action.id !== 'screen_action'),
             records: message.records,
             form: message.form,
             importId: message.import_id,
@@ -186,7 +198,11 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
 
   /** Streams one turn into the assistant message `id`; resolves with how it ended. */
   const run = useCallback(
-    async (id: string, start: (signal: AbortSignal) => Promise<Response>) => {
+    async (
+      id: string,
+      start: (signal: AbortSignal) => Promise<Response>,
+      screen?: ScreenSnapshot,
+    ) => {
       const controller = new AbortController()
       abort.current = controller
       setBusy(true)
@@ -209,7 +225,11 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
               }))
               break
             case 'actions':
-              update(id, () => ({ actions: event.actions }))
+              {
+                const control = event.actions.find((action) => action.id === 'screen_action')
+                const bound = control && screen ? bindScreenAction(control, screen) : undefined
+                update(id, () => ({ actions: event.actions, screen: bound }))
+              }
               break
             case 'records':
               update(id, () => ({ records: event.records }))
@@ -285,6 +305,10 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
         for (const key of affectedQueries(statuses))
           void queryClient.invalidateQueries({ queryKey: key })
         void queryClient.invalidateQueries({ queryKey: usageKey })
+        if (outcome.ended === 'done') {
+          void queryClient.invalidateQueries({ queryKey: ['heidi', 'memory'] })
+          void queryClient.invalidateQueries({ queryKey: ['heidi', 'suggestions'] })
+        }
       }
       return outcome.ended
     },
@@ -292,28 +316,35 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
   )
 
   const post = useCallback(
-    (assistantId: string, text: string, files: File[]) =>
-      run(assistantId, async (signal) => {
-        const form = new FormData()
-        form.set('message', text)
-        form.set('conversation_id', conversationId)
-        form.set('page', page)
-        // The screen it is asked from, so "what is this page?" has an answer.
-        form.set('path', window.location.pathname)
-        // Heidi answers in the message's language; the interface's is its fallback for one too short to tell.
-        form.set('lang', locale)
-        if (goesToImport(text, files)) {
-          // The files go to an import that works out what they are; the answer then follows it.
-          update(assistantId, () => ({
-            status: 'Uploading files',
-            steps: [translate('uploadingFiles')],
-          }))
-          const batch = await importsApi.upload('auto', files)
-          form.set('import_id', batch.id)
-        } else for (const file of files) form.append('files[]', file)
-        return heidiApi.chat(form, signal)
-      }),
-    [run, conversationId, page, update],
+    (assistantId: string, text: string, files: File[]) => {
+      const screen = captureScreen(paths)
+      return run(
+        assistantId,
+        async (signal) => {
+          const form = new FormData()
+          form.set('message', text)
+          form.set('conversation_id', conversationId)
+          form.set('page', page)
+          form.set('controls', [...screen.navigation, ...screen.controls.keys()].join(','))
+          // The screen it is asked from, so "what is this page?" has an answer.
+          form.set('path', window.location.pathname)
+          // Heidi answers in the message's language; the interface's is its fallback for one too short to tell.
+          form.set('lang', locale)
+          if (goesToImport(text, files)) {
+            // The files go to an import that works out what they are; the answer then follows it.
+            update(assistantId, () => ({
+              status: 'Uploading files',
+              steps: [translate('uploadingFiles')],
+            }))
+            const batch = await importsApi.upload('auto', files)
+            form.set('import_id', batch.id)
+          } else for (const file of files) form.append('files[]', file)
+          return heidiApi.chat(form, signal)
+        },
+        screen,
+      )
+    },
+    [run, conversationId, page, paths, update],
   )
 
   /** Sends a message once the person has approved AI use; false when nothing was sent (keep the draft). */
@@ -321,6 +352,13 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
     async (text: string, files: File[] = []) => {
       const message = text.trim()
       if (!message || busy || abort.current || restoring || asking.current) return false
+      if (
+        !goesToImport(message, files) &&
+        (files.length > MAX_FILES || !files.every(chatReadable))
+      ) {
+        toast.error(translate('heidiFilesReadLimit'))
+        return false
+      }
       asking.current = true
       const approved = await ensure().finally(() => {
         asking.current = false
@@ -378,13 +416,16 @@ export function useHeidiChat(page: HeidiPage, scope: string) {
         ),
       )
       if (ended === 'done') {
-        if (approved) toast.success(translate('done2', { confirm_label: open.confirm_label }))
-        else toast(translate('cancelledNothingWasChanged'))
+        if (approved) {
+          // Confirmed operations use the normal API for any business area. Refresh its visible views.
+          void queryClient.invalidateQueries()
+          toast.success(translate('done2', { confirm_label: open.confirm_label }))
+        } else toast(translate('cancelledNothingWasChanged'))
       } else if (ended === 'error') {
         toast.error(translate('heidiCouldnTFinishThatNothingWasConfirmedTwice'))
       }
     },
-    [confirmation, conversationId, run, update],
+    [confirmation, conversationId, run, update, queryClient],
   )
 
   const stop = useCallback(() => {

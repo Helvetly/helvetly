@@ -20,10 +20,23 @@ const server = setupServer(
   }),
   http.post('/api/v1/imports', () => {
     uploads++
-    return HttpResponse.json({ data: { id: 'imp_1' } }, { status: 201 })
+    return HttpResponse.json(
+      {
+        data: {
+          id: 'imp_1',
+          kind: 'auto',
+          status: 'extracting',
+          created_at: '2026-11-26',
+          files: [],
+          records: [],
+        },
+      },
+      { status: 201 },
+    )
   }),
 )
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
+beforeEach(() => localStorage.clear())
 afterEach(() => {
   chats = uploads = 0
   ensure.mockReset()
@@ -58,4 +71,25 @@ test('approval sends the message once', async () => {
   expect(sent).toBe(true)
   await vi.waitFor(() => expect(chats).toBe(1))
   expect(ensure).toHaveBeenCalledTimes(1)
+})
+
+test('a request to read an archive or five attachments keeps the draft and starts no import', async () => {
+  ensure.mockResolvedValue(true)
+  const { result } = renderHook(() => useHeidiChat('documents', 'user:workspace'), { wrapper })
+  const archive = new File(['zip'], 'records.zip')
+  const files = Array.from({ length: 5 }, (_, index) => new File(['pdf'], index + '.pdf'))
+  const large = new File(['pdf'], 'large.pdf')
+  Object.defineProperty(large, 'size', { value: 8 * 1024 * 1024 + 1 })
+  for (const group of [[archive], files, [large]]) {
+    await act(async () =>
+      expect(await result.current.send('Compare the totals', group)).toBe(false),
+    )
+  }
+  expect(chats + uploads).toBe(0)
+  expect(ensure).not.toHaveBeenCalled()
+  expect(result.current.messages).toEqual([])
+  await act(async () => expect(await result.current.send('Import', [archive])).toBe(true))
+  await vi.waitFor(() => expect(chats).toBe(1))
+  expect(uploads).toBe(1)
+  expect(ensure).toHaveBeenCalledOnce()
 })

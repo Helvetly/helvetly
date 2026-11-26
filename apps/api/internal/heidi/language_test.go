@@ -5,34 +5,42 @@ import (
 	"context"
 	"mime/multipart"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
 	"helvetly.com/api/internal/aimodel"
 )
 
-func TestReplyLanguage(t *testing.T) {
-	german := []aimodel.Turn{
-		{Role: "user", Text: "Zeig mir die offenen Rechnungen"},
-		{Role: "assistant", Text: "You have 3 overdue invoices: INV-2026-001, INV-2026-002 and INV-2026-003."},
+func TestReplyLanguageUsesTheOriginalMessages(t *testing.T) {
+	_, mux, p, _ := modelFixture(t)
+	var answered ProviderRequest
+	p.answer = func(_ context.Context, req ProviderRequest) (ProviderReply, error) {
+		answered = req
+		return ProviderReply{Text: "An earlier English assistant answer", Tokens: new(int64(1))}, nil
 	}
-	tests := []struct {
-		name, message string
-		history       []aimodel.Turn
-		ui, want      string
-	}{
-		{"Polish message, English interface", "Które faktury są przeterminowane?", nil, "en", "pl"},
-		{"English message, German interface", "Which invoices are overdue?", nil, "de", "en"},
-		{"ok after German messages", "ok", german, "en", "de"},
-		{"an invoice number after German messages", "INV-2026-002", german, "fr", "de"},
-		{"English record data in the answers does not count", "42", []aimodel.Turn{{Role: "assistant", Text: "The invoices are overdue."}}, "it", "it"},
-		{"empty history: the interface's", "ok", nil, "fr", "fr"},
-		{"a language the hints do not know: the model follows the message", "¿Cuántas facturas están vencidas hoy?", german, "en", ""},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := replyLanguage(tc.message, tc.history, tc.ui); got != tc.want {
-				t.Errorf("got %q, want %q", got, tc.want)
+	for _, tc := range []struct{ id, previous, message string }{
+		{"spanish", "", "¿Cuál es la última factura?"},
+		{"portuguese", "", "Qual é a última fatura?"},
+		{"explicit", "", "Explain this quote in Swahili."},
+		{"mixed", "", "請查一下 Müller AG 的發票。"},
+		{"followup", "請求書について教えてください", "ok"},
+		{"german", "Zeig mir die offenen Rechnungen", "INV-2026-002"},
+	} {
+		t.Run(tc.id, func(t *testing.T) {
+			if tc.previous != "" {
+				w := chat(t, mux, tc.id, tc.previous)
+				if w.Code != 200 {
+					t.Fatal(w.Body)
+				}
+			}
+			answered = ProviderRequest{}
+			w := chat(t, mux, tc.id, tc.message)
+			if w.Code != 200 || answered.Message != tc.message || !strings.HasSuffix(answered.Instructions, replyInstruction("en")) {
+				t.Fatalf("message %q, language instructions missing, reply %d", answered.Message, w.Code)
+			}
+			if tc.previous != "" && !slices.Contains(answered.History, aimodel.Turn{Role: "user", Text: tc.previous}) {
+				t.Fatalf("earlier user's words missing: %#v", answered.History)
 			}
 		})
 	}
@@ -41,8 +49,10 @@ func TestReplyLanguage(t *testing.T) {
 func TestUILanguage(t *testing.T) {
 	tests := []struct{ form, header, want string }{
 		{"de", "fr-CH,fr;q=0.9", "de"},
-		{"", "fr-CH,fr;q=0.9", "fr"},
-		{"xx", "es-ES, pl;q=0.8", "pl"},
+		{"", "fr-CH,fr;q=0.9", "fr-CH"},
+		{"xx", "es-ES, pl;q=0.8", "es-ES"},
+		{"ja", "fr-CH", "ja"},
+		{"zh-Hant", "", "zh-Hant"},
 		{"", "", "en"},
 	}
 	for _, tc := range tests {
@@ -80,9 +90,15 @@ func TestTheAnswerFollowsTheMessageLanguage(t *testing.T) {
 	if w := call(mux, "POST", "/api/v1/heidi/chat", b.String(), form.FormDataContentType()); w.Code != 200 {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
-	want := "# Reply language\n\nAlways answer in Polish, the language of the user's last message."
-	if i := strings.LastIndex(answered.Instructions, "\n\n# "); i < 0 || !strings.HasPrefix(answered.Instructions[i+2:], want) ||
-		!strings.Contains(answered.Instructions, "earlier messages, else in English.") {
-		t.Fatalf("instructions end ...%q", answered.Instructions[max(0, len(answered.Instructions)-400):])
+	if !strings.HasSuffix(answered.Instructions, replyInstruction("en")) || answered.Message != "wytłumacz mi o co tu chodzi" {
+		t.Fatalf("lost the original Polish request or language policy: %q", answered.Message)
+	}
+}
+
+func TestLanguageInstructionDoesNotCopyPrivateExtensions(t *testing.T) {
+	for _, tag := range []string{"de-CH-x-freemsg", "x-freemsg", "ru; freemsg"} {
+		if strings.Contains(replyInstruction(tag), "freemsg") {
+			t.Errorf("untrusted language tag: %q", tag)
+		}
 	}
 }

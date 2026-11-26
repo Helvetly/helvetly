@@ -138,7 +138,7 @@ restano impregiudicate le sue disposizioni imperative.
 - **Accesso del personale:** la piattaforma non offre accesso agli spazi di lavoro per assistenza
   o amministrazione; l’accesso ai sistemi di produzione è limitato a chi gestisce il servizio.
 - **Fornitore IA:** vengono inviati solo il messaggio corrente, fino a 20 messaggi precedenti e i file
-  esplicitamente allegati (Heidi), i file selezionati (importazione IA e lettura delle ricevute),
+  esplicitamente allegati, risultati limitati dei dati accessibili dello spazio di lavoro, compresi i dati dei clienti, i documenti di cui chiedi espressamente la lettura, gli identificativi della pagina e dei comandi e lo stile di risposta scelto (Heidi), i file selezionati (importazione IA e lettura delle ricevute),
   il nome dell’azienda (suggerimento del nome dello spazio), oppure nome, tipo e inizio del testo di
   un file caricato o il file stesso fino a 4 MiB, con i nomi delle cartelle e i tag in uso
   (archiviazione automatica), lo stesso contenuto anche per il conteggio dei token; solo dopo

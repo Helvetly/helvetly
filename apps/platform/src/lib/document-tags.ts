@@ -23,6 +23,8 @@ const kinds = new Map<string, Parameters<typeof translate>[0]>([
   ['bank-statement', 'bankStatement'],
   ['tax-document', 'documentTagTaxDocument'],
 ] as const)
+/** Every kind tag, for callers that must cover each one. */
+export const documentKinds = [...kinds.keys()]
 const date = /^year-(\d{4}(?:-(?:0[1-9]|1[0-2]))?)$/
 
 /** A tag only the record or filing sets (a kind, signed, a date): nobody types it onto a file. */
