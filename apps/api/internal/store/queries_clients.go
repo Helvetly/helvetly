@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -87,15 +88,15 @@ type Contact struct {
 }
 
 type ClientFile struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Size        int64     `json:"size"`
-	ContentType string    `json:"content_type"`
-	CreatedAt   time.Time `json:"created_at"`
-	UploadedBy  *Uploader `json:"uploaded_by"` // null once the person's account is gone
-	ObjectKey   string    `json:"-"`
-	SHA256      string    `json:"-"` // hex, "" when not computed
-	Contract    bool      `json:"-"` // filed in the client's Documents/<year>/Contracts instead
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	Size         int64              `json:"size"`
+	ContentType  string             `json:"content_type"`
+	CreatedAt    time.Time          `json:"created_at"`
+	UploadedBy   *Uploader          `json:"uploaded_by"` // null once the person's account is gone
+	ObjectKey    string             `json:"-"`
+	SHA256       string             `json:"-"` // hex, "" when not computed
+	DocumentType ClientDocumentType `json:"-"`
 }
 
 type Uploader struct {
@@ -485,16 +486,49 @@ func scanClientFile(row interface{ Scan(...any) error }) (ClientFile, error) {
 	return f, err
 }
 
-// CreateClientFile files the upload in Clients/<client>/Documents/<year>, under a free name (f.Name is updated), and
-// links it to the client. Run it in a transaction.
-func (q Q) createClientFile(ctx context.Context, workspaceID, clientID, uploaderID string, f *ClientFile) error {
-	folderOf := q.ClientRecordFolder
-	if f.Contract {
-		folderOf = func(ctx context.Context, ws, c, _ string, year int, user string, now time.Time) (string, error) {
-			return q.ContractsFolder(ctx, ws, c, year, user, now)
-		}
+type ClientDocumentType string
+
+const ClientDocumentContract ClientDocumentType = "contract"
+
+var clientDocumentFolders = map[ClientDocumentType]string{
+	ClientDocumentContract: ContractsFolderName,
+	"consent":              "Consents",
+	"power_of_attorney":    "Powers of Attorney",
+	"other":                "Other",
+}
+
+func (t ClientDocumentType) Valid() bool {
+	_, ok := clientDocumentFolders[t]
+	return ok
+}
+
+func (q Q) clientFileFolder(ctx context.Context, workspaceID, clientID, uploaderID string, f *ClientFile) (string, error) {
+	year := f.CreatedAt.Year()
+	if f.DocumentType == ClientDocumentContract {
+		return q.ContractsFolder(ctx, workspaceID, clientID, year, uploaderID, f.CreatedAt)
 	}
-	folder, err := folderOf(ctx, workspaceID, clientID, "documents", f.CreatedAt.Year(), uploaderID, f.CreatedAt)
+	folder, err := q.ClientRecordFolder(ctx, workspaceID, clientID, "documents", year, uploaderID, f.CreatedAt)
+	if err != nil || f.DocumentType == "" {
+		return folder, err
+	}
+	name, ok := clientDocumentFolders[f.DocumentType]
+	if !ok {
+		return "", fmt.Errorf("unknown client document type %q", f.DocumentType)
+	}
+	if err := q.LockContainer(ctx, workspaceID, &folder); err != nil {
+		return "", err
+	}
+	id, err := q.FolderNameTaken(ctx, workspaceID, &folder, name, "")
+	if err != nil || id != "" {
+		return id, err
+	}
+	id = "fld_" + strings.ToLower(rand.Text())
+	return id, q.CreateFolder(ctx, workspaceID, id, name, &folder, uploaderID, f.CreatedAt)
+}
+
+// createClientFile files and links a client document, picking a free name in its destination.
+func (q Q) createClientFile(ctx context.Context, workspaceID, clientID, uploaderID string, f *ClientFile) error {
+	folder, err := q.clientFileFolder(ctx, workspaceID, clientID, uploaderID, f)
 	if err != nil {
 		return err
 	}

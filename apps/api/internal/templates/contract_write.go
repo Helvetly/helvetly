@@ -859,7 +859,7 @@ func (s *Service) fileContract(ctx context.Context, sess store.Session, src cont
 	}
 
 	now := s.now()
-	file = store.ClientFile{ID: auth.NewID("doc"), ContentType: "application/pdf", CreatedAt: now, Contract: true}
+	file = store.ClientFile{ID: auth.NewID("doc"), ContentType: "application/pdf", CreatedAt: now, DocumentType: store.ClientDocumentContract}
 	file.ObjectKey = "workspaces/" + ws + "/documents/" + file.ID + "/contract.pdf"
 	printed = contractpdf.Result{PDF: example}
 	// The number is printed on the contract, so it is taken, printed and stored in the transaction that files it:

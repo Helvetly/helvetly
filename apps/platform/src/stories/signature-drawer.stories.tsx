@@ -259,8 +259,10 @@ export const TemplatePath: Story = {
     onSent.mockClear()
     generated = null
     await userEvent.click(await body().findByRole('button', { name: /From a template/ }))
-    await userEvent.click(await body().findByRole('button', { name: /Mandate agreement/ }))
-    await userEvent.click(await body().findByRole('button', { name: /Alpenglow AG/ }))
+    await userEvent.click(await body().findByRole('button', { name: /^Template / }))
+    await userEvent.click(await body().findByRole('option', { name: /Mandate agreement/ }))
+    await userEvent.click(body().getByRole('button', { name: /^Client / }))
+    await userEvent.click(await body().findByRole('option', { name: /Alpenglow AG/ }))
     await userEvent.click(body().getByRole('button', { name: 'Next' }))
 
     await expect(await body().findByText('Check the details')).toBeVisible()

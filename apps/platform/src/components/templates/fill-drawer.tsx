@@ -1,6 +1,7 @@
 'use client'
 import { locale } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
+import { Combobox } from '@helvetly/ui/components/combobox'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
 import { segmentLabels } from '@helvetly/ui/components/segmented'
@@ -9,7 +10,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
-  Building2,
   FileDown,
   FileSignature,
   LayoutTemplate,
@@ -63,6 +63,7 @@ import {
   type GenerateRequest,
   type Template,
   type TemplateDraftField,
+  type TemplateDocumentType,
   ROLE_LANE,
 } from '@/lib/templates'
 
@@ -84,6 +85,13 @@ export type ContractSource = {
 }
 
 /** What the drawer says about how the quote's details were filled. */
+const DOCUMENT_TYPES = [
+  { value: 'contract', label: translate('contract') },
+  { value: 'consent', label: translate('templateConsent') },
+  { value: 'power_of_attorney', label: translate('templatePowerOfAttorney') },
+  { value: 'other', label: translate('other') },
+] satisfies { value: TemplateDocumentType; label: string }[]
+
 const AI_NOTES: Partial<Record<ContractDraft['ai'], string>> = {
   unavailable: translate('contractAiUnavailable'),
   skipped: translate('contractAiSkipped'),
@@ -121,8 +129,9 @@ export function FillTemplateDrawer({
   const [language, setLanguage] = useState<EmailLanguage>(
     emailLanguage(initialClient?.language, emailLanguage(locale)),
   )
-  // Opened from a client: that client is the one, until "Change" asks for the picker.
-  const [changingClient, setChangingClient] = useState(!initialClient)
+  const [documentType, setDocumentType] = useState<TemplateDocumentType | ''>(
+    contract ? 'contract' : '',
+  )
   const [signers, setSigners] = useState<DraftSigner[]>([])
   const [order, setOrder] = useState<SigningOrder>('parallel')
   // A template without signing fields: everyone signs on a page added at the end, or the person places the fields
@@ -170,6 +179,7 @@ export function FillTemplateDrawer({
       : {}
   const problem =
     generateProblem(step, state) ??
+    (step === 0 && !documentType ? translate('templateDocumentTypeRequired') : null) ??
     Object.values(addressErrors)[0] ??
     (step === 3 && delivery === 'email' && !email.subject.trim()
       ? translate('emailSubjectRequired')
@@ -220,7 +230,10 @@ export function FillTemplateDrawer({
   }
   const next = async () => {
     setTried(true)
-    if (problem) return
+    if (problem) {
+      if (step === 0) toast.error(problem)
+      return
+    }
     setTried(false)
     if (step === 0 && template && client && `${template.id}:${client.id}` !== preparedFor) {
       const draft = contract ? await contractDraft(template.id) : null
@@ -245,6 +258,7 @@ export function FillTemplateDrawer({
     if (problem || !template || !client) return
     const body: GenerateRequest = {
       client_id: client.id,
+      ...(documentType && { document_type: documentType }),
       ...(contract && { quote_id: contract.quoteId }),
       title: title.trim(),
       values: valuesByField(template, values),
@@ -378,23 +392,40 @@ export function FillTemplateDrawer({
               text={translate('theClientSNameAddressAndContactFillThe')}
             />
           )}
-          <TemplatePicker selected={template} onPick={setTemplate} />
-          {contract ? null : changingClient || !client ? (
-            <ClientPicker selected={client} onPick={setClient} />
-          ) : (
-            <p className="flex min-w-0 items-center gap-2 text-body">
-              <Building2 className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-              <span className="min-w-0 truncate">
-                {translate('forClient', { name: client.name })}
-              </span>
-              <button
-                type="button"
-                className="shrink-0 cursor-pointer rounded-sm text-body-sm text-muted-foreground underline underline-offset-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-                onClick={() => setChangingClient(true)}
+          <TemplatePicker
+            selected={template}
+            onPick={setTemplate}
+            error={tried && !template ? translate('chooseATemplate') : undefined}
+          />
+          {!contract && (
+            <>
+              <FormField
+                id="template-document-type"
+                label={translate('templateDocumentType')}
+                required
+                error={
+                  tried && !documentType ? translate('templateDocumentTypeRequired') : undefined
+                }
               >
-                {translate('change')}
-              </button>
-            </p>
+                <Combobox
+                  id="template-document-type"
+                  value={documentType}
+                  options={DOCUMENT_TYPES}
+                  placeholder={translate('templateDocumentTypePlaceholder')}
+                  invalid={tried && !documentType}
+                  onChange={(value) =>
+                    setDocumentType(
+                      DOCUMENT_TYPES.find((option) => option.value === value)?.value ?? '',
+                    )
+                  }
+                />
+              </FormField>
+              <ClientPicker
+                selected={client}
+                onPick={setClient}
+                error={tried && !client ? translate('chooseTheClient') : undefined}
+              />
+            </>
           )}
         </Split>
       )}

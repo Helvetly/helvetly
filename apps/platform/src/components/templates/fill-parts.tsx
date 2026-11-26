@@ -1,13 +1,23 @@
 'use client'
+import { Button } from '@helvetly/ui/components/button'
+import { Command, CommandInput, CommandItem, CommandList } from '@helvetly/ui/components/command'
 import { FormField } from '@helvetly/ui/components/form-field'
 import { Input } from '@helvetly/ui/components/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Building2, Check, LayoutTemplate, Search, Sparkles, type LucideIcon } from 'lucide-react'
-import { useState } from 'react'
+import {
+  Building2,
+  Check,
+  ChevronsUpDown,
+  LayoutTemplate,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react'
+import { useId, useRef, useState } from 'react'
 
 import { useClientSearch, type Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
@@ -32,162 +42,232 @@ export function templateCaption(field: TemplateDraftField) {
   return field.kind === 'custom' ? field.label : DATA_LABELS[field.kind]
 }
 
-const pickRow =
-  'flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-foreground/[0.04] aria-pressed:bg-brand-solid/[0.08]'
+type PickerItem = { id: string; name: string; hint: string }
+
+function FillPicker({
+  label,
+  placeholder,
+  icon: Icon,
+  selected,
+  options,
+  onPick,
+  error,
+  search,
+  empty,
+}: {
+  label: string
+  placeholder: string
+  icon: LucideIcon
+  selected: PickerItem | null
+  options: PickerItem[]
+  onPick: (id: string) => void
+  error?: string
+  search?: { label: string; term: string; setTerm: (term: string) => void }
+  empty: string
+}) {
+  const id = useId()
+  const [open, setOpen] = useState(false)
+  const commandRef = useRef<HTMLDivElement>(null)
+
+  return (
+    <FormField
+      id={id}
+      label={label}
+      labelNode={<span id={`${id}-label`}>{label}</span>}
+      required
+      error={error}
+    >
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) search?.setTerm('')
+        }}
+      >
+        <PopoverTrigger asChild>
+          <Button
+            id={id}
+            type="button"
+            variant="outline"
+            aria-labelledby={`${id}-label ${id}-value`}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${id}-error` : undefined}
+            className={cn(
+              fieldSurface,
+              'h-auto min-h-10 w-full cursor-pointer gap-2 rounded-lg px-2.5 py-1 text-left font-normal aria-invalid:border-destructive',
+            )}
+          >
+            <span id={`${id}-value`} className="flex min-w-0 flex-1 items-center gap-2">
+              {selected ? (
+                <PickerRow icon={Icon} item={selected} />
+              ) : (
+                <span className="text-body">{placeholder}</span>
+              )}
+            </span>
+            <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          aria-label={label}
+          className="w-[var(--radix-popover-trigger-width)] p-0"
+          onOpenAutoFocus={(event) => {
+            if (search) return
+            event.preventDefault()
+            commandRef.current?.focus()
+          }}
+        >
+          <Command ref={commandRef} shouldFilter={false} aria-label={label} tabIndex={-1}>
+            {search && (
+              <CommandInput
+                aria-label={search.label}
+                placeholder={search.label}
+                value={search.term}
+                onValueChange={search.setTerm}
+              />
+            )}
+            <CommandList>
+              {options.length === 0 && (
+                <CommandItem
+                  value="empty"
+                  disabled
+                  className="px-3 py-3 data-[disabled=true]:opacity-100"
+                >
+                  {empty}
+                </CommandItem>
+              )}
+              {options.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  value={item.id}
+                  data-current={item.id === selected?.id ? 'true' : undefined}
+                  className="mx-1 min-h-12 gap-3 rounded-lg px-2.5 py-1.5 data-[current=true]:bg-brand-solid/[0.08]"
+                  onSelect={() => {
+                    onPick(item.id)
+                    setOpen(false)
+                    search?.setTerm('')
+                  }}
+                >
+                  <PickerRow icon={Icon} item={item} />
+                  {item.id === selected?.id && <Check className="size-4 shrink-0 text-brand" />}
+                </CommandItem>
+              ))}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </FormField>
+  )
+}
+
+function PickerRow({ icon: Icon, item }: { icon: LucideIcon; item: PickerItem }) {
+  return (
+    <>
+      <Icon className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-body">{item.name}</span>
+        <span className="block truncate text-caption text-muted-foreground">{item.hint}</span>
+      </span>
+    </>
+  )
+}
+
+function templateItem(template: Template): PickerItem {
+  const signature = translate(template.signers.length ? 'asksForSignatures' : 'noSignatures')
+  const used = template.last_used_at
+    ? translate('used', { value1: formatRelative(template.last_used_at) })
+    : ''
+  return {
+    id: template.id,
+    name: template.name,
+    hint: [signature, used].filter(Boolean).join(' · '),
+  }
+}
+
+function clientItem(client: Client): PickerItem {
+  return {
+    id: client.id,
+    name: client.name,
+    hint: [`#${client.number}`, client.city, client.email].filter(Boolean).join(' · '),
+  }
+}
 
 export function TemplatePicker({
   selected,
   onPick,
+  error,
 }: {
   selected: Template | null
   onPick: (template: Template) => void
+  error?: string
 }) {
   const list = useTemplates()
   const [term, setTerm] = useState('')
   const templates = pickableTemplates(list.data ?? [], term)
+
   return (
-    <section className="grid gap-2">
-      <h3 className="text-body-sm font-medium">{translate('template2')}</h3>
-      {(list.data?.length ?? 0) > 5 && (
-        <label
-          data-field-surface
-          className={cn(
-            fieldSurface,
-            'flex h-9 items-center gap-2 px-2.5 text-muted-foreground focus-within:text-foreground',
-          )}
-        >
-          <Search className="size-4 shrink-0 stroke-[1.5]" />
-          <input
-            type="search"
-            aria-label={translate('searchTemplates')}
-            placeholder={translate('searchTemplates')}
-            value={term}
-            onChange={(event) => setTerm(event.target.value)}
-            className="w-full bg-transparent text-body text-foreground outline-none placeholder:text-placeholder"
-          />
-        </label>
-      )}
-      <div
-        aria-label={translate('templates')}
-        className="grid max-h-64 overflow-y-auto rounded-xl border p-1"
-      >
-        {templates.map((template) => (
-          <button
-            key={template.id}
-            type="button"
-            aria-pressed={template.id === selected?.id}
-            onClick={() => onPick(template)}
-            className={pickRow}
-          >
-            <LayoutTemplate className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-body">{template.name}</span>
-              <span className="block truncate text-caption text-muted-foreground">
-                {template.signers.length > 0
-                  ? translate('asksForSignatures')
-                  : translate('noSignatures')}
-                {template.last_used_at &&
-                  translate('used', { value1: formatRelative(template.last_used_at) })}
-              </span>
-            </span>
-            {template.id === selected?.id && <Check className="size-4 text-brand" />}
-          </button>
-        ))}
-        {templates.length === 0 && (
-          <p className="px-3 py-6 text-center text-body-sm text-muted-foreground">
-            {list.isPending
-              ? translate('loading')
-              : term
-                ? translate('noTemplateMatches')
-                : translate('noTemplatesYetMakeOneInDocumentsTemplates')}
-          </p>
-        )}
-      </div>
-    </section>
+    <FillPicker
+      label={translate('template2')}
+      placeholder={translate('templateChoosePlaceholder')}
+      icon={LayoutTemplate}
+      selected={selected && templateItem(selected)}
+      options={templates.map(templateItem)}
+      onPick={(id) => {
+        const template = templates.find((one) => one.id === id)
+        if (template) onPick(template)
+      }}
+      error={error}
+      search={
+        (list.data?.length ?? 0) > 5
+          ? { label: translate('searchTemplates'), term, setTerm }
+          : undefined
+      }
+      empty={
+        list.isPending
+          ? translate('loading')
+          : term
+            ? translate('noTemplateMatches')
+            : translate('noTemplatesYetMakeOneInDocumentsTemplates')
+      }
+    />
   )
 }
 
 export function ClientPicker({
   selected,
   onPick,
+  error,
 }: {
   selected: Client | null
   onPick: (client: Client) => void
+  error?: string
 }) {
   const [term, setTerm] = useState('')
   const search = useClientSearch(term)
-  const clients = search.data?.data ?? []
+  const matches = search.data?.data ?? []
+  const clients =
+    !term && selected && !matches.some((one) => one.id === selected.id)
+      ? [selected, ...matches]
+      : matches
+
   return (
-    <section className="grid gap-2">
-      <h3 className="text-body-sm font-medium">{translate('client')}</h3>
-      <label
-        data-field-surface
-        className={cn(
-          fieldSurface,
-          'flex h-9 items-center gap-2 px-2.5 text-muted-foreground focus-within:text-foreground',
-        )}
-      >
-        <Search className="size-4 shrink-0 stroke-[1.5]" />
-        <input
-          type="search"
-          aria-label={translate('searchClients')}
-          placeholder={translate('searchClients')}
-          value={term}
-          onChange={(event) => setTerm(event.target.value)}
-          className="w-full bg-transparent text-body text-foreground outline-none placeholder:text-placeholder"
-        />
-      </label>
-      <div
-        aria-label={translate('clients')}
-        className="grid max-h-64 overflow-y-auto rounded-xl border p-1"
-      >
-        {selected && !clients.some((client) => client.id === selected.id) && (
-          <ClientRow client={selected} selected onPick={() => {}} />
-        )}
-        {clients.map((client) => (
-          <ClientRow
-            key={client.id}
-            client={client}
-            selected={client.id === selected?.id}
-            onPick={() => onPick(client)}
-          />
-        ))}
-        {clients.length === 0 && !selected && (
-          <p className="px-3 py-6 text-center text-body-sm text-muted-foreground">
-            {search.isPending ? translate('searching') : translate('noClientMatches')}
-          </p>
-        )}
-      </div>
-    </section>
+    <FillPicker
+      label={translate('client')}
+      placeholder={translate('chooseAClient')}
+      icon={Building2}
+      selected={selected && clientItem(selected)}
+      options={clients.map(clientItem)}
+      onPick={(id) => {
+        const client = clients.find((one) => one.id === id)
+        if (client) onPick(client)
+      }}
+      error={error}
+      search={{ label: translate('searchClients'), term, setTerm }}
+      empty={search.isPending ? translate('searching') : translate('noClientMatches')}
+    />
   )
 }
 
-function ClientRow({
-  client,
-  selected,
-  onPick,
-}: {
-  client: Client
-  selected: boolean
-  onPick: () => void
-}) {
-  return (
-    <button type="button" aria-pressed={selected} onClick={onPick} className={pickRow}>
-      <Building2 className="size-4 shrink-0 stroke-[1.5] text-muted-foreground" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-body">{client.name}</span>
-        <span className="block truncate text-caption text-muted-foreground">
-          <span className="font-code">#{client.number}</span>
-          {client.city && ` · ${client.city}`}
-          {client.email && ` · ${client.email}`}
-        </span>
-      </span>
-      {selected && <Check className="size-4 text-brand" />}
-    </button>
-  )
-}
-
-/** Templates matching the search, the most recently used first, then by name. */
 export function pickableTemplates(templates: Template[], term: string) {
   const words = term.trim().toLowerCase().split(/\s+/).filter(Boolean)
   return templates
