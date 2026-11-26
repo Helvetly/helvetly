@@ -25,11 +25,12 @@ import (
 )
 
 type generateBody struct {
-	ClientID string            `json:"client_id"`
-	QuoteID  string            `json:"quote_id"` // optional: the quote the document is the contract of
-	Title    string            `json:"title"`
-	Values   map[string]string `json:"values"`
-	Delivery struct {
+	DocumentType store.ClientDocumentType `json:"document_type"`
+	ClientID     string                   `json:"client_id"`
+	QuoteID      string                   `json:"quote_id"` // optional: the quote the document is the contract of
+	Title        string                   `json:"title"`
+	Values       map[string]string        `json:"values"`
+	Delivery     struct {
 		Type          string                   `json:"type"`
 		To            string                   `json:"to"` // one address, or several separated by commas
 		Cc            []string                 `json:"cc"`
@@ -98,6 +99,12 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 		return nil
 	}
 	bad := map[string]string{}
+	if b.DocumentType != "" && !b.DocumentType.Valid() {
+		bad["document_type"] = "Choose a document type."
+	}
+	if b.QuoteID != "" && b.DocumentType != "" && b.DocumentType != store.ClientDocumentContract {
+		bad["document_type"] = "A quote's document must be a contract."
+	}
 	title, msg := signatures.PlainText(b.Title, maxNameLen)
 	if msg != "" {
 		bad["title"] = msg
@@ -250,7 +257,7 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 	sum := sha256.Sum256(filled)
 	now := s.now()
 	file := store.ClientFile{ID: auth.NewID("doc"), Name: fileName(title) + ".pdf", Size: int64(len(filled)),
-		ContentType: "application/pdf", SHA256: hex.EncodeToString(sum[:]), CreatedAt: now}
+		ContentType: "application/pdf", SHA256: hex.EncodeToString(sum[:]), CreatedAt: now, DocumentType: b.DocumentType}
 	file.ObjectKey = "workspaces/" + ws + "/documents/" + file.ID + "/filled.pdf"
 	contractNumber := ""
 	// stored before the transaction, so no row lock waits on the upload; no row points at it until the commit
@@ -277,7 +284,7 @@ func (s *Service) generate(w http.ResponseWriter, r *http.Request, sess store.Se
 			if contractNumber, err = s.contractNumber(ctx, q, ws, now.Format(time.DateOnly), seq); err != nil {
 				return err
 			}
-			file.Name, file.Contract = fileName(contractNumber)+".pdf", true
+			file.Name, file.DocumentType = fileName(contractNumber)+".pdf", store.ClientDocumentContract
 		}
 		if err := q.CreateClientFile(ctx, ws, b.ClientID, sess.User.ID, &file); err != nil {
 			return err

@@ -124,17 +124,20 @@ export const Toolbar: Story = {
 
     await userEvent.click(await top.findByRole('button', { name: 'Prepare document' }))
     const drawer = within(await body.findByRole('dialog', { name: 'New document from a template' }))
-    // The drawer starts with this client fixed; Change lists the others once its reads answer.
-    await expect(drawer.getByText('For: Alpenglow Studio GmbH')).toBeVisible()
-    await expect(drawer.queryByRole('searchbox', { name: 'Search clients' })).toBeNull()
-    await userEvent.click(drawer.getByRole('button', { name: 'Change' }))
-    await expect(await drawer.findByRole('button', { name: /Bergblick AG/ })).toBeVisible()
-    await expect(drawer.getByRole('button', { name: /Alpenglow Studio GmbH/ })).toHaveAttribute(
-      'aria-pressed',
+    // The client's dropdown starts selected when the wizard is opened from their record.
+    const client = drawer.getByRole('button', { name: /^Client / })
+    await expect(client).toHaveTextContent('Alpenglow Studio GmbH')
+    await expect(body.queryByPlaceholderText('Search clients')).toBeNull()
+    await userEvent.click(client)
+    await expect(await body.findByRole('option', { name: /^Bergblick AG/ })).toBeVisible()
+    await expect(body.getByRole('option', { name: /^Alpenglow Studio GmbH/ })).toHaveAttribute(
+      'data-current',
       'true',
     )
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(drawer.getByRole('button', { name: /^Template / }))
     await expect(
-      await drawer.findByText('No templates yet. Make one in Documents → Templates.'),
+      await body.findByText('No templates yet. Make one in Documents → Templates.'),
     ).toBeVisible()
   },
 }

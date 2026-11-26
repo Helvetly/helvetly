@@ -134,7 +134,8 @@ export const CreateFromTemplate: Story = {
     await waitFor(() => expect(item).not.toHaveAttribute('data-disabled'))
     await userEvent.click(item)
     const drawer = within(await body.findByRole('dialog', { name: 'New document from a template' }))
-    await expect(await drawer.findByText('Power of attorney')).toBeVisible()
+    await userEvent.click(drawer.getByRole('button', { name: /^Template / }))
+    await expect(await body.findByRole('option', { name: /^Power of attorney/ })).toBeVisible()
   },
 }
 

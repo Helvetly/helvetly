@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -705,14 +707,42 @@ func TestGenerateWithoutMail(t *testing.T) {
 	e.generate(b, tpl, generate(client, tpl, obj{"type": "save"}))
 }
 
+func TestGenerateTypedDocument(t *testing.T) {
+	e := newEnv(t, true)
+	b := e.workspace()
+	tpl := e.create(b, templateInput(e.document(b, samplePDF(t, 2), "application/pdf")))
+	client := e.client(b)
+	body := generate(client, tpl, obj{"type": "save"})
+	body["document_type"] = "../Custom"
+	e.fail(b, "POST", "/api/v1/templates/"+tpl.ID+"/documents", body, http.StatusUnprocessableEntity)
+
+	body["document_type"] = "consent"
+	first := e.mustDoc(b, e.generate(b, tpl, body).Document.ID)
+	second := e.mustDoc(b, e.generate(b, tpl, body).Document.ID)
+	if first.Folder == nil || first.Folder.Name != "Consents" || second.Folder == nil || first.Folder.ID != second.Folder.ID {
+		t.Fatalf("consents should share their category folder: %+v, %+v", first.Folder, second.Folder)
+	}
+	ctx := context.Background()
+	folder, err := e.st.DocumentFolder(ctx, b.workspace, first.Folder.ID)
+	if err != nil || folder.ParentID == nil {
+		t.Fatalf("category folder: %+v, %v", folder, err)
+	}
+	year, err := e.st.DocumentFolder(ctx, b.workspace, *folder.ParentID)
+	if err != nil || year.SystemKind == nil || *year.SystemKind != "year" {
+		t.Fatalf("category should be inside the year folder: %+v, %v", year, err)
+	}
+}
+
 func TestGenerateSignature(t *testing.T) {
 	e := newEnv(t, true)
 	b := e.workspace()
 	tpl := e.create(b, templateInput(e.document(b, samplePDF(t, 2), "application/pdf"), "Client", "Director"))
 	client := e.client(b)
 
-	out := e.generate(b, tpl, generate(client, tpl, obj{"type": "signature", "message": "Please sign.", "signing_order": "sequential",
-		"expires_in_days": 14, "signers": []obj{{"name": "Ana Client", "email": "ana@example.com"}, {"name": "Bo Director", "email": "bo@example.com"}}}))
+	body := generate(client, tpl, obj{"type": "signature", "message": "Please sign.", "signing_order": "sequential",
+		"expires_in_days": 14, "signers": []obj{{"name": "Ana Client", "email": "ana@example.com"}, {"name": "Bo Director", "email": "bo@example.com"}}})
+	body["document_type"] = "contract"
+	out := e.generate(b, tpl, body)
 	if out.SignatureRequestID == nil || out.EmailedTo != nil {
 		t.Fatalf("generated: %+v", out)
 	}
@@ -723,6 +753,10 @@ func TestGenerateSignature(t *testing.T) {
 	if req.Document == nil || req.Document.ID != out.Document.ID || req.Title != "Agreement Müller" || req.SigningOrder != "sequential" ||
 		len(req.Signers) != 2 || req.Signers[1].Email != "bo@example.com" || len(req.Fields) != 4 || req.PageCount != 2 {
 		t.Fatalf("signature request: %+v", req)
+	}
+	filed := e.mustDoc(b, out.Document.ID)
+	if filed.Folder == nil || filed.Folder.Name != "Contracts" || req.FolderID == nil || *req.FolderID != filed.Folder.ID {
+		t.Fatalf("contract and final signature should use the same Contracts folder: %+v, %v", filed.Folder, req.FolderID)
 	}
 	for _, f := range req.Fields {
 		if f.Page != 2 || (f.Kind == "text" && (f.Label == nil || *f.Label != "Place")) {
@@ -739,6 +773,37 @@ func TestGenerateSignature(t *testing.T) {
 	// Sequential: only the first signer has a link so far.
 	if len(e.mail.sent) != 1 || e.mail.sent[0].To[0] != "ana@example.com" {
 		t.Fatalf("invitations: %d", len(e.mail.sent))
+	}
+
+	link := regexp.MustCompile(`/sign#([A-Z2-7]+)`)
+	image := "data:image/png;base64," + base64.StdEncoding.EncodeToString(signaturePNG(t))
+	for _, signer := range req.Signers {
+		var token string
+		for _, msg := range e.mail.sent {
+			if match := link.FindStringSubmatch(msg.Text); match != nil && slices.Contains(msg.To, signer.Email) {
+				token = match[1]
+			}
+		}
+		if token == "" {
+			t.Fatalf("missing signing link for %s", signer.Email)
+		}
+		values := map[string]string{}
+		for _, field := range req.Fields {
+			if field.SignerID == signer.ID && field.Kind == "text" {
+				values[field.ID] = "Zurich"
+			}
+		}
+		e.do(b, "POST", "/api/v1/public/sign/"+token, obj{
+			"consent": true, "signature": obj{"method": "drawn", "image": image}, "values": values,
+		}, http.StatusOK, nil)
+	}
+	done, err := e.st.SignatureRequest(context.Background(), b.workspace, req.ID)
+	if err != nil || done.SignedDocument == nil {
+		t.Fatalf("signed contract: %+v, %v", done, err)
+	}
+	signed := e.mustDoc(b, done.SignedDocument.ID)
+	if signed.Folder == nil || signed.Folder.ID != filed.Folder.ID {
+		t.Fatalf("signed contract must stay in Contracts: %+v", signed.Folder)
 	}
 }
 

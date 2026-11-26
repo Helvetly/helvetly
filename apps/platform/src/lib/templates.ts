@@ -129,7 +129,10 @@ export type Delivery =
 /** A written contract's delivery: `signed` prints your stored signature on the contractor's side. */
 export type ContractDelivery = Delivery & { signed?: boolean }
 
+export type TemplateDocumentType = 'contract' | 'consent' | 'power_of_attorney' | 'other'
+
 export type GenerateRequest = {
+  document_type?: TemplateDocumentType
   client_id: string
   /** The quote the document is a contract of: filed in the client's Documents/<year>/Contracts and linked to it. */
   quote_id?: string
