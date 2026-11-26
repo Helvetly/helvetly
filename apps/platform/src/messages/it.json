@@ -1288,6 +1288,8 @@
   "fieldsFor": "Campi per",
   "file": "File",
   "files": "File",
+  "clientFilesSigned": "Documenti firmati",
+  "clientFilesOther": "Altri file",
   "files2": " file",
   "filesSearchOrFilterToFindTheRest": " file. Cerca o filtra per trovare il resto.",
   "filesTemplatesAndSignatures": "File, modelli e firme",
