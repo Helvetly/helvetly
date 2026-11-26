@@ -39,8 +39,8 @@ type Product struct {
 	UpdatedAt      time.Time           `json:"updated_at"`
 }
 
-// Derive sets both prices from the entered one, with the invoice computation for one unit, so a picked line
-// totals exactly as the catalogue says.
+// Derive sets both prices from the entered one, with the invoice computation for one unit. A rounded conversion
+// can give a different gross amount at another quantity.
 func (p *Product) Derive() {
 	mode := invoicecalc.Exclusive
 	if p.PriceBasis == "gross" {

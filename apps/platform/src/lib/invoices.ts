@@ -137,7 +137,12 @@ export type Party = {
   region?: string | null
 }
 
-export type Line = {
+export type CataloguePriceFields = {
+  catalogue_price_basis?: 'gross' | 'net'
+  catalogue_unit_price?: Decimal
+  catalogue_currency?: string
+}
+export type Line = CataloguePriceFields & {
   id: string
   position: number
   description: string
@@ -350,18 +355,19 @@ export type EinvoiceFormat =
 
 export type PaymentMethods = { qr_bill: boolean; revolut: boolean }
 
-export type LineInput = Pick<
-  Line,
-  | 'description'
-  | 'quantity'
-  | 'unit'
-  | 'unit_price'
-  | 'discount_percent'
-  | 'vat_category'
-  | 'vat_rate'
-  | 'vat_exemption_code'
-  | 'vat_exemption_reason'
->
+export type LineInput = CataloguePriceFields &
+  Pick<
+    Line,
+    | 'description'
+    | 'quantity'
+    | 'unit'
+    | 'unit_price'
+    | 'discount_percent'
+    | 'vat_category'
+    | 'vat_rate'
+    | 'vat_exemption_code'
+    | 'vat_exemption_reason'
+  >
 
 export type InvoiceInput = Pick<
   Invoice,
@@ -549,6 +555,7 @@ export type SendInput = {
   sent?: boolean
 }
 export type PaymentInput = {
+  request_id?: string
   amount: Decimal
   paid_on: string
   method: PaymentMethod

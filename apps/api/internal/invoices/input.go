@@ -152,7 +152,7 @@ var invoiceKeys = []string{"client_id", "kind", "prepayment_ids", "issue_date", 
 	"vat_mode", "reference", "client_number_display", "contract_reference", "contract_document_id", "tax_currency_rate", "intro", "footer", "note", "discount_percent", "lines", "payment_methods", "reminders_enabled", "instalments"}
 
 var lineKeys = []string{"description", "quantity", "unit", "unit_price", "discount_percent", "vat_category", "vat_rate",
-	"vat_exemption_code", "vat_exemption_reason"}
+	"vat_exemption_code", "vat_exemption_reason", "catalogue_price_basis", "catalogue_unit_price", "catalogue_currency"}
 
 const (
 	maxDescription = 1201 // a catalogue item's name (200) + "\n" + its description (1000)
@@ -408,6 +408,16 @@ func parseLines(p *parser, raw json.RawMessage, vatMode string, set Settings) ([
 				p.fail(key("unit_price"), "Enter a price up to 100'000'000.00.")
 			}
 			l.UnitPrice = invoicecalc.Money(n)
+		}
+		if m["catalogue_price_basis"] != nil || m["catalogue_unit_price"] != nil || m["catalogue_currency"] != nil {
+			basis := p.required(key("catalogue_price_basis"), m["catalogue_price_basis"], 5, oneOf("net", "gross"), "Choose the catalogue price basis.")
+			currency := p.required(key("catalogue_currency"), m["catalogue_currency"], 3, twoDecimalCurrency, "Choose the catalogue currency.")
+			price, ok := p.decimal(key("catalogue_unit_price"), m["catalogue_unit_price"], parseMoney, "Enter the original catalogue unit price.")
+			if ok && price > maxPrice {
+				p.fail(key("catalogue_unit_price"), "The catalogue unit price exceeds the price limit.")
+			}
+			original := invoicecalc.Money(price)
+			l.CataloguePriceBasis, l.CatalogueUnitPrice, l.CatalogueCurrency = &basis, &original, &currency
 		}
 		if raw, ok := m["discount_percent"]; ok {
 			if n, ok := p.decimal(key("discount_percent"), raw, parsePercent, "Enter a percentage from 0 to 100 with at most two decimals."); ok {

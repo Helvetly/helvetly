@@ -212,6 +212,8 @@ var ExportExcluded = map[string]string{
 	"passkey_challenges":       "sign-in secret, minutes long",
 	"transmission_credentials": "sealed e-invoice channel credentials",
 	"heidi_confirmations":      "pending confirmations of Heidi actions, minutes long; the conversation is in heidi_messages",
+	"digest_deliveries":        "job bookkeeping: per-recipient digest attempts and retry payloads",
+	"invoice_payment_requests": "payment retry receipts: request identities and parameter hashes",
 	"digest_days":              "job bookkeeping: the days the engagements digest was sent",
 	"workspace_deletions":      "the operator's record of a deletion and its archive; a live workspace has none to export",
 	"name_suggestion_uses":     "abuse-cap bookkeeping of one person (ids and times only, kept a week); the suggestion itself is in workspace_name_suggestions",

@@ -58,6 +58,20 @@ test('a quote valid before its date and a bad number are caught before saving', 
   expect(errors[`${first.key}.quantity`]).toBeDefined()
 })
 
+test('a saved quote keeps its catalogue price and accepted unit price independently', () => {
+  const quote = sampleQuote({ currency: 'EUR' })
+  const first = quote.lines[0]!
+  const source = {
+    catalogue_price_basis: 'gross' as const,
+    catalogue_currency: 'EUR',
+    catalogue_unit_price: '0.07',
+  }
+  quote.lines = [{ ...first, ...source, quantity: '1000', unit_price: '0.06' }]
+  const { input, errors } = toQuoteInput(valuesFromQuote(quote, settings))
+  expect(errors).toEqual({})
+  expect(input.lines?.[0]).toMatchObject({ ...source, unit_price: '0.06' })
+})
+
 test('a quote without lines still offers one to type into, and the preview sends it', () => {
   const values = valuesFromQuote(sampleQuote({ lines: [] }), settings)
   expect(values.lines).toHaveLength(1)

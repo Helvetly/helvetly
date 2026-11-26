@@ -28,6 +28,12 @@ import Image from 'next/image'
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { Combobox, inputClass } from '@/components/clients/fields'
+import {
+  catalogueFields,
+  savedCataloguePrice,
+  priceCatalogueLine,
+  unresolvedCataloguePrice,
+} from '@/components/invoices/catalogue-price'
 import { isBlankLine, newLine, type EditorLine } from '@/components/invoices/editor-model'
 import { LinesEditor } from '@/components/invoices/lines-editor'
 import { PdfView } from '@/components/invoices/pdf-view'
@@ -116,6 +122,11 @@ export function editorLinesOf(
     const known = VAT_CATEGORIES.some((option) => option.value === category)
     return {
       ...newLine({ vat_mode: vatMode }, defaultRate),
+      ...savedCataloguePrice(
+        row.catalogue_price_basis,
+        row.catalogue_unit_price,
+        row.catalogue_currency,
+      ),
       description: text(row, 'description'),
       quantity: text(row, 'quantity') || '1',
       unit: UNITS.some((option) => option.value === unit) ? (unit as Unit) : null,
@@ -132,6 +143,7 @@ export function importLinesOf(lines: EditorLine[]): Record<string, string | null
   return lines
     .filter((line) => !isBlankLine(line))
     .map((line) => ({
+      ...catalogueFields(line),
       description: line.description.trim() || null,
       quantity: line.quantity.trim() || null,
       unit: line.unit,
@@ -374,8 +386,13 @@ function InvoiceRecordForm({
       ? String(Math.round((1 - Number(stated) / Number(totals.payable_total)) * 10000) / 100)
       : null
 
+  const changeBasis = (next: VatMode) => {
+    setMode(next)
+    setLines((current) => current.map((line) => priceCatalogueLine(line, next, currency)))
+  }
+  const needsPriceReview = lines.some((line) => unresolvedCataloguePrice(line, mode, currency))
   const save = () => {
-    if (patch.isPending) return
+    if (patch.isPending || needsPriceReview) return
     const changes: RecordChanges = recordChanges(record.data, values, config.toggles ?? [])
     const nextLines = importLinesOf(lines)
     if (
@@ -635,10 +652,11 @@ function InvoiceRecordForm({
                       { value: 'exclusive', label: translate('exclVAT') },
                       { value: 'inclusive', label: translate('inclVAT') },
                     ]}
-                    onChange={(next) => setMode(next)}
+                    onChange={changeBasis}
                   />
                 )}
                 <LinesEditor
+                  onChangeBasis={settings.vat_registered ? changeBasis : undefined}
                   lines={lines}
                   vatMode={mode}
                   defaultRate={defaultRate}
@@ -805,7 +823,7 @@ function InvoiceRecordForm({
             <Button type="button" variant="ghost" onClick={() => onDone(null)}>
               {translate('cancel')}
             </Button>
-            <Button type="submit" disabled={patch.isPending}>
+            <Button type="submit" disabled={patch.isPending || needsPriceReview}>
               {translate('save2')}
             </Button>
           </footer>

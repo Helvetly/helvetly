@@ -35,6 +35,7 @@ import {
   defaultExemptionCode,
   EXEMPTION_CATEGORIES,
   formatAmount,
+  formatMoney,
   parseDecimalInput,
   UNITS,
   VAT_CATEGORIES,
@@ -43,8 +44,10 @@ import {
   type VatMode,
 } from '@/lib/invoices'
 
+import { catalogueSource, priceCatalogueLine, unresolvedCataloguePrice } from './catalogue-price'
 import {
   addPickedLine,
+  isBlankLine,
   lineKey,
   moveLine,
   newLine,
@@ -111,10 +114,12 @@ export function LinesEditor({
   defaultRate,
   amounts,
   amountsFailed = false,
+  onChangeBasis,
   errors,
   onChange,
   currency,
 }: {
+  onChangeBasis?: (mode: VatMode) => void
   lines: EditorLine[]
   vatMode: VatMode
   defaultRate: string
@@ -167,9 +172,18 @@ export function LinesEditor({
       'grid-cols-[14px_minmax(180px,1fr)_72px_76px_136px_84px_120px_28px]',
   )
 
-  const set = (index: number, change: Partial<EditorLine>) =>
-    onChange(lines.map((line, i) => (i === index ? { ...line, ...change } : line)))
-
+  const set = (index: number, change: Partial<EditorLine>) => {
+    const next = lines.map((line, i) => {
+      if (i !== index) return line
+      const updated = { ...line, ...change }
+      if (change.vat_rate !== undefined || change.vat_category !== undefined)
+        return { ...updated, catalogue: undefined }
+      if (change.quantity !== undefined || change.discount_percent !== undefined)
+        return priceCatalogueLine(updated, vatMode, currency)
+      return updated
+    })
+    onChange(next)
+  }
   const insertAfter = (index: number, field: Field = 'description') => {
     const previous = lines[index]
     const line = {
@@ -272,6 +286,7 @@ export function LinesEditor({
       </div>
 
       {lines.map((line, index) => {
+        const review = unresolvedCataloguePrice(line, vatMode, currency)
         const description = errors[`${line.key}.description`]
         return (
           <div
@@ -420,7 +435,9 @@ export function LinesEditor({
                 aria-label={translate('linePrice', { value1: index + 1 })}
                 inputMode="decimal"
                 value={line.unit_price}
-                onChange={(event) => set(index, { unit_price: event.target.value })}
+                onChange={(event) =>
+                  set(index, { unit_price: event.target.value, catalogue: undefined })
+                }
                 onBlur={() => {
                   // Typed "1450" reads back as "1’450.00"; anything unparsable stays for its error.
                   const price = parseDecimalInput(line.unit_price, 2, true)
@@ -526,6 +543,47 @@ export function LinesEditor({
                 />
               </DropdownMenu>
             </span>
+            {review && (
+              <div className="col-span-full flex flex-wrap items-center gap-2 px-2 py-2 text-sm">
+                <output className="w-full">
+                  {translate('catalogueConversionTotals', {
+                    original: formatMoney(review.original, currency),
+                    projected: formatMoney(review.projected, currency),
+                    difference: formatMoney(review.difference, currency),
+                  })}
+                </output>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => set(index, { acceptedConversion: true })}
+                >
+                  {translate('useProjectedPrice', {
+                    amount: formatMoney(review.projected, currency),
+                  })}
+                </Button>
+                {onChangeBasis && lines.every((other) => other === line || isBlankLine(other)) ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      onChangeBasis(vatMode === 'inclusive' ? 'exclusive' : 'inclusive')
+                    }
+                  >
+                    {translate('keepCatalogueTotal', {
+                      amount: formatMoney(review.original, currency),
+                    })}
+                  </Button>
+                ) : (
+                  <span>
+                    {translate(
+                      vatMode === 'exclusive' ? 'keepGrossCatalogueBasis' : 'keepNetCatalogueBasis',
+                    )}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )
       })}
@@ -557,11 +615,16 @@ export function LinesEditor({
             onChange(
               next.lines.map((line) =>
                 line.key === next.key
-                  ? {
-                      ...line,
-                      vat_exemption_code: defaultExemptionCode(line.vat_category),
-                      ...(foreign && { price_currency: product.currency }),
-                    }
+                  ? priceCatalogueLine(
+                      {
+                        ...line,
+                        vat_exemption_code: defaultExemptionCode(line.vat_category),
+                        ...(!foreign && { catalogue: catalogueSource(product) }),
+                        ...(foreign && { price_currency: product.currency }),
+                      },
+                      vatMode,
+                      currency,
+                    )
                   : line,
               ),
             )

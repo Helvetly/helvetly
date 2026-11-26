@@ -63,6 +63,8 @@ func TestInclusiveXMLPriceBasePreservesExactLineAmounts(t *testing.T) {
 		prices, bases []string
 		net           string
 	}{
+		{"catalogue gross, 1000 units", fixture("invoice", invoicecalc.Inclusive, 0,
+			lineSpec{desc: "Precision part", qty: 1_000_000, price: 7, cat: "S", rate: 810}), []string{"64.75"}, []string{"1000"}, "64.75"},
 		{"small amounts, large quantity", smallInclusive(), []string{"0.93"}, []string{"100"}, "0.93"},
 		// Gross 155.88 less 7.79 discount = 148.09; VAT 9.87 leaves 138.22 net.
 		{"global discount and mixed rates", inclusive(), []string{"87.87", "26.36", "23.99"}, []string{"3", "1.5", "1"}, "138.22"},

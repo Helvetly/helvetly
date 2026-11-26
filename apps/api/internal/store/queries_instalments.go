@@ -327,7 +327,8 @@ func (q Q) DueReminders(ctx context.Context, now time.Time, invoiceID string) ([
 			UNION ALL
 			SELECT i.id, i.plan_seq, i.due_date, p.count, GREATEST(0, i.total + i.rounding_amount - i.amount_paid - i.amount_credited)
 			FROM invoices i JOIN instalment_plans p ON p.id = i.plan_id
-			WHERE ($2 = '' OR i.id = $2) AND i.status = 'open' AND i.reminders_enabled AND p.reminders_enabled)
+			WHERE ($2 = '' OR i.id = $2) AND i.status = 'open' AND i.reminders_enabled AND p.reminders_enabled
+				AND (NOT p.auto_send OR i.sent_at IS NOT NULL))
 		SELECT i.workspace_id, t.invoice_id, t.seq, t.cnt, r.kind, r.off, t.due_date::text, t.open,
 			COALESCE((SELECT cc.email FROM client_contacts cc WHERE cc.client_id = i.client_id AND cc.is_primary), c.billing_email, c.email, ''),
 			i.language, COALESCE(i.number, ''), ws.today::text
@@ -389,6 +390,13 @@ func digestRows() string {
 			SELECT 'issued', p.workspace_id, it.invoice_id, i.number, i.client_id, i.buyer, it.seq, p.count, it.due_date, 0, i.currency
 			FROM instalment_plan_items it JOIN instalment_plans p ON p.id = it.plan_id JOIN invoices i ON i.id = it.invoice_id
 			WHERE it.issued_at > $2::timestamptz - interval '24 hours' AND ($1 = '' OR p.workspace_id = $1)
+			UNION ALL
+			SELECT CASE WHEN i.send_uncertain_at IS NOT NULL OR i.send_started_at IS NOT NULL THEN 'check_delivery' ELSE 'send_original' END,
+				i.workspace_id, i.id, i.number, i.client_id, i.buyer, i.plan_seq, p.count, i.due_date, 0, i.currency
+			FROM invoices i JOIN instalment_plans p ON p.id = i.plan_id
+			WHERE p.auto_send AND i.status = 'open' AND i.sent_at IS NULL AND ($1 = '' OR i.workspace_id = $1)
+			  AND (i.send_uncertain_at IS NOT NULL OR i.send_started_at <= $2::timestamptz - interval '15 minutes'
+				    OR i.issued_at <= $2::timestamptz - interval '7 days')
 			UNION ALL
 			SELECT 'not_issued', p.workspace_id, p.source_invoice_id, NULL, i.client_id, i.buyer, it.seq, p.count, it.due_date, 0, i.currency
 			FROM instalment_plan_items it JOIN instalment_plans p ON p.id = it.plan_id JOIN invoices i ON i.id = p.source_invoice_id

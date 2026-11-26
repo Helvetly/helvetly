@@ -436,6 +436,12 @@ function Editor({
                   {/* The padding (cancelled by the margins) leaves room for the controls' focus rings. */}
                   <div className="-mx-1 mt-3 -mb-1 scroll-px-2 overflow-x-auto p-1">
                     <LinesEditor
+                      onChangeBasis={(mode) =>
+                        setValues((current) => ({
+                          ...current,
+                          ...changeVatMode(current, mode, settings.default_vat_rate),
+                        }))
+                      }
                       lines={values.lines}
                       vatMode={values.vat_mode}
                       defaultRate={settings.default_vat_rate}

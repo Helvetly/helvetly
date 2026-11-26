@@ -14,7 +14,7 @@ import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, MailCheck, MailX } from 'lucide-react'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { ClientFixButton, NoClientEmail } from '@/components/clients/client-fix'
@@ -183,13 +183,16 @@ export function PaymentDialog({
   const [method, setMethod] = useState<PaymentMethod>('bank_transfer')
   const [note, setNote] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [requestId] = useState(() => crypto.randomUUID())
+  const attemptedAmount = useRef<string | null>(null)
   const add = useAddPayment()
 
   const submit = () => {
     const value = parseDecimalInput(amount, 2, true)
     const found: Record<string, string> = {}
     if (!value || toCents(value) <= 0n) found.amount = translate('enterAnAmountAbove0')
-    else if (toCents(value) > toCents(amountDue))
+    // The balance may already reflect this request if the first response was lost.
+    else if (value !== attemptedAmount.current && toCents(value) > toCents(amountDue))
       found.amount = translate('atMostIsStillDue', {
         value1: formatMoney(amountDue, invoice.currency),
       })
@@ -197,10 +200,12 @@ export function PaymentDialog({
     else if (paidOn > today()) found.paid_on = translate('thePaymentDateCanTBeInTheFuture')
     setErrors(found)
     if (Object.keys(found).length || !value) return
+    attemptedAmount.current = value
     add.mutate(
       {
         id: invoice.id,
         input: {
+          request_id: requestId,
           amount: value,
           paid_on: paidOn,
           method,

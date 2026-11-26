@@ -2,6 +2,7 @@ package invoices
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"mime"
 	"net/http"
@@ -16,16 +17,11 @@ import (
 
 var paymentMethods = []string{"bank_transfer", "cash", "card", "twint", "other"}
 
-// payable locks an issued invoice that can still take a payment.
-func (s *Service) payable(ctx context.Context, q store.Q, sess store.Session, id string) (store.Invoice, error) {
-	inv, err := q.Invoice(ctx, sess.Workspace.ID, id, s.today(sess.Workspace), true)
-	if err != nil {
-		return inv, err
-	}
+func payable(inv store.Invoice) error {
 	if !takesPayments(inv.Kind) || inv.Status != "open" {
-		return inv, invalidState("Payments can be recorded on open invoices only, never on a proforma or credit note.")
+		return invalidState("Payments can be recorded on open invoices only, never on a proforma or a credit note.")
 	}
-	return inv, nil
+	return nil
 }
 
 func (s *Service) recordPayment(ctx context.Context, q store.Q, sess store.Session, inv store.Invoice, p store.Payment) error {
@@ -68,17 +64,18 @@ func paidOn(p *parser, raw json.RawMessage, today string) string {
 
 func (s *Service) addPayment(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	var body struct {
-		Amount json.RawMessage `json:"amount"`
-		PaidOn json.RawMessage `json:"paid_on"`
-		Method json.RawMessage `json:"method"`
-		Note   json.RawMessage `json:"note"`
+		RequestID json.RawMessage `json:"request_id"`
+		Amount    json.RawMessage `json:"amount"`
+		PaidOn    json.RawMessage `json:"paid_on"`
+		Method    json.RawMessage `json:"method"`
+		Note      json.RawMessage `json:"note"`
 	}
 	if !s.auth.Decode(w, r, &body) {
 		return nil
 	}
 	ctx, id := r.Context(), r.PathValue("id")
 	err := s.db.Tx(ctx, func(q store.Q) error {
-		inv, err := s.payable(ctx, q, sess, id)
+		inv, err := q.Invoice(ctx, sess.Workspace.ID, id, s.today(sess.Workspace), true)
 		if err != nil {
 			return err
 		}
@@ -88,19 +85,45 @@ func (s *Service) addPayment(w http.ResponseWriter, r *http.Request, sess store.
 			p.fail("amount", "Enter the amount.")
 		} else if n, ok := p.decimal("amount", body.Amount, parseMoney, "Enter an amount with at most two decimals."); ok {
 			pay.Amount = invoicecalc.Money(n)
-			switch {
-			case n <= 0:
+			if n <= 0 {
 				p.fail("amount", "Enter an amount above 0.")
-			case pay.Amount > inv.AmountDue:
-				p.fail("amount", "The amount exceeds what is due ("+inv.Currency+" "+inv.AmountDue.String()+").")
 			}
 		}
 		pay.Method = p.required("method", body.Method, 20, oneOf(paymentMethods...), "Choose how it was paid.")
 		if body.Note != nil {
 			pay.Note = p.text("note", body.Note, 200, nil)
 		}
+		var requestID string
+		if body.RequestID != nil {
+			requestID = p.required("request_id", body.RequestID, 128, nil, "Enter a request ID.")
+		}
 		if err := p.err(); err != nil {
 			return err
+		}
+		if requestID != "" {
+			// An omitted date still means the original payment day when a retry crosses midnight.
+			dateParam := pay.PaidOn
+			if body.PaidOn == nil {
+				dateParam = ""
+			}
+			params, err := json.Marshal([]any{pay.Amount, dateParam, pay.Method, pay.Note})
+			if err != nil {
+				return err
+			}
+			hash := sha256.Sum256(params)
+			replay, conflict, err := q.ClaimPaymentRequest(ctx, id, requestID, hash[:])
+			if err != nil || replay {
+				return err
+			}
+			if conflict {
+				return auth.Error(http.StatusConflict, "request_id_conflict", "This payment request ID was already used with different details.", nil)
+			}
+		}
+		if err := payable(inv); err != nil {
+			return err
+		}
+		if pay.Amount > inv.AmountDue {
+			return validationFailed(map[string]string{"amount": "The amount exceeds what is due (" + inv.Currency + " " + inv.AmountDue.String() + ")."})
 		}
 		return s.recordPayment(ctx, q, sess, inv, pay)
 	})
@@ -136,8 +159,11 @@ func (s *Service) markPaid(w http.ResponseWriter, r *http.Request, sess store.Se
 // payDue records, in its own transaction, one payment of everything still due, which settles every instalment.
 func (s *Service) payDue(ctx context.Context, sess store.Session, id, on, method string) error {
 	return s.db.Tx(ctx, func(q store.Q) error {
-		inv, err := s.payable(ctx, q, sess, id)
+		inv, err := q.Invoice(ctx, sess.Workspace.ID, id, s.today(sess.Workspace), true)
 		if err != nil {
+			return err
+		}
+		if err := payable(inv); err != nil {
 			return err
 		}
 		if inv.AmountDue <= 0 {

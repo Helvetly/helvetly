@@ -289,20 +289,39 @@ func TestConcurrentInvoicingInvoicesOnce(t *testing.T) {
 	}
 }
 
-func TestLinePriceByVATMode(t *testing.T) {
+func TestDraftPriceByVATMode(t *testing.T) {
 	net := store.Engagement{PriceBasis: "net", VATCategory: "S", VATRate: 810}
 	gross := store.Engagement{PriceBasis: "gross", VATCategory: "S", VATRate: 810}
 	for _, c := range []struct {
-		e    store.Engagement
-		mode string
-		want invoicecalc.Money
+		e              store.Engagement
+		price          invoicecalc.Money
+		mode, wantMode string
+		want           invoicecalc.Money
 	}{
-		{net, invoicecalc.Exclusive, 10000}, {net, invoicecalc.Inclusive, 10810}, {net, invoicecalc.None, 10000},
-		{gross, invoicecalc.Exclusive, 9251}, {gross, invoicecalc.Inclusive, 10000}, {gross, invoicecalc.None, 9251},
+		{net, 10000, invoicecalc.Exclusive, invoicecalc.Exclusive, 10000},
+		{net, 10000, invoicecalc.Inclusive, invoicecalc.Inclusive, 10810},
+		{net, 10000, invoicecalc.None, invoicecalc.None, 10000},
+		{gross, 10810, invoicecalc.Exclusive, invoicecalc.Exclusive, 10000},
+		{gross, 7, invoicecalc.Exclusive, invoicecalc.Inclusive, 7},
+		{gross, 10000, invoicecalc.Inclusive, invoicecalc.Inclusive, 10000},
+		{gross, 10000, invoicecalc.None, invoicecalc.None, 9251},
 	} {
-		if got := linePrice(c.e, 10000, c.mode); got != c.want {
-			t.Errorf("%s/%s: %d, want %d", c.e.PriceBasis, c.mode, got, c.want)
+		if mode, price := draftPrice(c.e, c.price, c.mode); mode != c.wantMode || price != c.want {
+			t.Errorf("%s %s, %s: got %s %s", c.e.PriceBasis, c.price, c.mode, mode, price)
 		}
+	}
+}
+
+func TestGrossEngagementDraftRetainsAgreedTotal(t *testing.T) {
+	e := newEnv(t)
+	realDrafts(e)
+	b := e.workspace()
+	v := e.create(b, input(e.client(b), map[string]any{"quantity": "1000", "unit_price": "0.07", "currency": "EUR", "price_basis": "gross", "vat_category": "S", "vat_rate": "8.1"}))
+	var result invoiceOut
+	e.do(b, "POST", "/api/v1/engagements/"+v.ID+"/periods/"+v.CurrentPeriod.ID+"/invoice", map[string]any{"kind": "advance"}, 201, &result)
+	inv, err := e.st.Invoice(context.Background(), b.workspace, result.Data.InvoiceID, "2026-11-26", false)
+	if err != nil || inv.VATMode != invoicecalc.Inclusive || inv.Total != 7000 || inv.VATTotal != 525 {
+		t.Fatalf("mode %s, total %s, VAT %s, error %v", inv.VATMode, inv.Total, inv.VATTotal, err)
 	}
 }
 

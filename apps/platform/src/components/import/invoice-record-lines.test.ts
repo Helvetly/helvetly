@@ -53,6 +53,18 @@ describe('invoice record lines', () => {
     expect(line).toMatchObject({ quantity: '1', unit: null, vat_category: 'S', vat_rate: '8.1' })
   })
 
+  it('keeps the agreed catalogue basis when an accepted import row is reopened', () => {
+    const source = {
+      catalogue_price_basis: 'gross',
+      catalogue_currency: 'EUR',
+      catalogue_unit_price: '0.07',
+    }
+    const data = { lines: [{ ...source, description: 'Labels', unit_price: '0.06' }] }
+    const lines = editorLinesOf(data, 'exclusive', '8.1')
+    expect(lines[0]?.acceptedConversion).toBe(true)
+    expect(importLinesOf(lines)[0]).toMatchObject({ ...source, unit_price: '0.06' })
+  })
+
   it('sends no blank rows', () => {
     const lines = editorLinesOf({ lines: [{ description: '', unit_price: '' }] }, 'none', '8.1')
     expect(importLinesOf(lines)).toEqual([])

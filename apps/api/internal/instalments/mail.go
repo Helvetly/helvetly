@@ -130,6 +130,10 @@ func (s *Service) DigestSection(ctx context.Context, ws store.Workspace, now tim
 			text = "Overdue: " + text
 		case "issued":
 			text = fmt.Sprintf("Issued %s, instalment %d/%d, %s", r.Number, r.Seq, r.Count, r.ClientName)
+		case "send_original":
+			text = fmt.Sprintf("Send original invoice %s to %s. Automatic delivery retries have ended.", r.Number, r.ClientName)
+		case "check_delivery":
+			text = fmt.Sprintf("Check delivery of original invoice %s to %s before resending.", r.Number, r.ClientName)
 		case "not_issued":
 			text = fmt.Sprintf("%sinstalment %d/%d, %s, due %s", notIssued, r.Seq, r.Count, r.ClientName, swissDate(r.DueDate))
 		}

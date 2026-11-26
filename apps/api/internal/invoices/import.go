@@ -17,7 +17,7 @@ import (
 var importedKeys = []string{"issue_date", "due_date", "service_date", "service_date_end", "currency", "reference", "contract_reference", "discount_percent"}
 
 // importedLineKeys: the line fields an import reads; anything else the model returned is dropped.
-var importedLineKeys = []string{"description", "quantity", "unit", "unit_price", "discount_percent", "vat_category", "vat_rate"}
+var importedLineKeys = []string{"description", "quantity", "unit", "unit_price", "discount_percent", "vat_category", "vat_rate", "catalogue_price_basis", "catalogue_unit_price", "catalogue_currency"}
 
 // swissRates: the Swiss VAT rates since 2024 (MWSTG Art. 25), the only ones an import accepts for a Swiss seller.
 var swissRates = []invoicecalc.Percent{810, 380, 260}

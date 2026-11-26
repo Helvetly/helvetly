@@ -267,6 +267,8 @@ func TestDueRemindersOffsets(t *testing.T) {
 	if ok, err := q.MarkPlanItemIssued(ctx, "pln_1", 1, "D", typesNow); err != nil || !ok {
 		t.Fatal(ok, err)
 	}
+	// D's original was handed over; its automatic reminders can now start.
+	exec(t, pool, `UPDATE invoices SET sent_at=now() WHERE id='D'`)
 	keys := func() []string {
 		t.Helper()
 		list, err := q.DueReminders(ctx, typesNow, "")

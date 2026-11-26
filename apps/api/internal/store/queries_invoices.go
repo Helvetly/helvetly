@@ -215,18 +215,21 @@ type PrepaymentRef struct {
 func (i Invoice) Payable() Money { return i.Total + i.RoundingAmount }
 
 type InvoiceLine struct {
-	ID                 string   `json:"id"`
-	Position           int      `json:"position"`
-	Description        string   `json:"description"`
-	Quantity           Quantity `json:"quantity"`
-	Unit               *string  `json:"unit"`
-	UnitPrice          Money    `json:"unit_price"`
-	DiscountPercent    Percent  `json:"discount_percent"`
-	VATCategory        string   `json:"vat_category"`
-	VATRate            Percent  `json:"vat_rate"`
-	Amount             Money    `json:"amount"`
-	VATExemptionCode   *string  `json:"vat_exemption_code"` // VATEX code for exempt categories
-	VATExemptionReason *string  `json:"vat_exemption_reason"`
+	CataloguePriceBasis *string  `json:"catalogue_price_basis,omitempty"`
+	CatalogueUnitPrice  *Money   `json:"catalogue_unit_price,omitempty"`
+	CatalogueCurrency   *string  `json:"catalogue_currency,omitempty"`
+	ID                  string   `json:"id"`
+	Position            int      `json:"position"`
+	Description         string   `json:"description"`
+	Quantity            Quantity `json:"quantity"`
+	Unit                *string  `json:"unit"`
+	UnitPrice           Money    `json:"unit_price"`
+	DiscountPercent     Percent  `json:"discount_percent"`
+	VATCategory         string   `json:"vat_category"`
+	VATRate             Percent  `json:"vat_rate"`
+	Amount              Money    `json:"amount"`
+	VATExemptionCode    *string  `json:"vat_exemption_code"` // VATEX code for exempt categories
+	VATExemptionReason  *string  `json:"vat_exemption_reason"`
 }
 
 type Payment struct {
@@ -562,14 +565,14 @@ func (q Q) MarkReplaced(ctx context.Context, workspaceID, id string, now time.Ti
 
 func (q Q) invoiceLines(ctx context.Context, invoiceID string) ([]InvoiceLine, error) {
 	rows, err := q.db.Query(ctx, `SELECT id, position, description, quantity, unit, unit_price, discount_percent, vat_category,
-		vat_rate, amount, vat_exemption_code, vat_exemption_reason FROM invoice_lines WHERE invoice_id = $1 ORDER BY position`, invoiceID)
+		vat_rate, amount, vat_exemption_code, vat_exemption_reason, catalogue_price_basis, catalogue_unit_price, catalogue_currency FROM invoice_lines WHERE invoice_id = $1 ORDER BY position`, invoiceID)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (InvoiceLine, error) {
 		var l InvoiceLine
 		err := r.Scan(&l.ID, &l.Position, &l.Description, &l.Quantity, &l.Unit, &l.UnitPrice, &l.DiscountPercent, &l.VATCategory,
-			&l.VATRate, &l.Amount, &l.VATExemptionCode, &l.VATExemptionReason)
+			&l.VATRate, &l.Amount, &l.VATExemptionCode, &l.VATExemptionReason, &l.CataloguePriceBasis, &l.CatalogueUnitPrice, &l.CatalogueCurrency)
 		return l, err
 	})
 }
@@ -608,10 +611,10 @@ func (q Q) saveDraft(ctx context.Context, workspaceID string, inv Invoice, now t
 	}
 	for _, l := range inv.Lines {
 		if _, err := q.db.Exec(ctx, `INSERT INTO invoice_lines (id, invoice_id, position, description, quantity, unit, unit_price,
-			discount_percent, vat_category, vat_rate, amount, vat_exemption_code, vat_exemption_reason)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+			discount_percent, vat_category, vat_rate, amount, vat_exemption_code, vat_exemption_reason, catalogue_price_basis, catalogue_unit_price, catalogue_currency)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
 			l.ID, inv.ID, l.Position, l.Description, l.Quantity, l.Unit, l.UnitPrice, l.DiscountPercent, l.VATCategory, l.VATRate,
-			l.Amount, l.VATExemptionCode, l.VATExemptionReason); err != nil {
+			l.Amount, l.VATExemptionCode, l.VATExemptionReason, l.CataloguePriceBasis, l.CatalogueUnitPrice, l.CatalogueCurrency); err != nil {
 			return err
 		}
 	}
@@ -765,6 +768,18 @@ func (q Q) UnmarkSent(ctx context.Context, id string, now time.Time) (bool, erro
 }
 
 // ---- payments ----
+
+// ClaimPaymentRequest runs with the invoice locked. Its receipt survives removal of the payment.
+func (q Q) ClaimPaymentRequest(ctx context.Context, invoiceID, requestID string, hash []byte) (replay, conflict bool, err error) {
+	tag, err := q.db.Exec(ctx, `INSERT INTO invoice_payment_requests (invoice_id, request_id, params_hash)
+        VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, invoiceID, requestID, hash)
+	if err != nil || tag.RowsAffected() == 1 {
+		return false, false, err
+	}
+	err = q.db.QueryRow(ctx, `SELECT params_hash = $3 FROM invoice_payment_requests
+        WHERE invoice_id = $1 AND request_id = $2`, invoiceID, requestID, hash).Scan(&replay)
+	return replay, !replay, err
+}
 
 func (q Q) CreatePayment(ctx context.Context, invoiceID, userID string, p Payment) error {
 	_, err := q.db.Exec(ctx, `INSERT INTO invoice_payments (id, invoice_id, amount, paid_on, method, note, created_by, created_at)

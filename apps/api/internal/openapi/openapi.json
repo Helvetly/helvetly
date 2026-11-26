@@ -7860,6 +7860,19 @@
           "unit": {
             "type": ["string", "null"]
           },
+          "catalogue_price_basis": {
+            "type": ["string", "null"],
+            "enum": ["net", "gross", null],
+            "description": "Original catalogue basis. Supply all three catalogue fields together to preserve the source price when editing a draft."
+          },
+          "catalogue_unit_price": {
+            "type": ["string", "null"],
+            "description": "Original catalogue unit price before conversion, in catalogue_currency. The document still uses unit_price."
+          },
+          "catalogue_currency": {
+            "type": ["string", "null"],
+            "description": "Currency of the original catalogue price."
+          },
           "unit_price": {
             "$ref": "#/components/schemas/Money"
           },
@@ -8645,6 +8658,19 @@
             "type": ["string", "null"],
             "enum": ["hour", "day", "piece", "month", "km", "flat", null]
           },
+          "catalogue_price_basis": {
+            "type": "string",
+            "enum": ["net", "gross"],
+            "description": "Original catalogue basis. Supply all three catalogue fields together to preserve the source price when editing a draft."
+          },
+          "catalogue_unit_price": {
+            "type": "string",
+            "description": "Original catalogue unit price before conversion, in catalogue_currency. The document still uses unit_price."
+          },
+          "catalogue_currency": {
+            "type": "string",
+            "description": "Currency of the original catalogue price."
+          },
           "unit_price": {
             "type": ["string", "number"],
             "description": "Net or gross per vat_mode, 2 decimals."
@@ -8795,6 +8821,12 @@
       "PaymentInput": {
         "type": "object",
         "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Use a unique ID for each payment on this invoice. Reuse it with the same details to retry safely and receive the current invoice. Different details return 409 request_id_conflict. Omitting the ID records a new payment on every call."
+          },
           "amount": {
             "type": ["string", "number"],
             "description": "Greater than 0 and at most the amount due."
