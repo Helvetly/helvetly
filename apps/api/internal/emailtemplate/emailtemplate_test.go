@@ -32,50 +32,11 @@ func TestRenderDoesNotRescanValues(t *testing.T) {
 	}
 }
 
-func TestCheckSubjectNewline(t *testing.T) {
-	if got := Check("invoice", Template{Subject: "a\nb", Body: "x"}); got["subject"] == "" || got["body"] != "" {
-		t.Fatalf("got %v", got)
-	}
-}
-
-func TestCheckLimitsRunes(t *testing.T) {
-	ok := func(s, b int) bool {
-		return len(Check("invoice", Template{Subject: strings.Repeat("ä", s), Body: strings.Repeat("ä", b)})) == 0
-	}
-	if !ok(200, MaxTemplate) || ok(201, MaxTemplate) || ok(200, MaxTemplate+1) {
-		t.Fatal("rune limits wrong")
-	}
-}
-
-func TestCheckMessages(t *testing.T) {
-	got := Check("quote", Template{Subject: "Quote {due_date}", Body: ""})
-	want := map[string]string{
-		"subject": "Unknown variable {due_date}. Use {document}, {number}, {client}, {amount}, {company}, {valid_until}.",
-		"body":    "Enter a message of at most 1000 characters.",
-	}
-	if got["body"] != want["body"] || got["subject"] != want["subject"] {
-		t.Fatalf("got %v", got)
-	}
-}
-
-func TestCheckUnknownWinsOverLength(t *testing.T) {
-	got := Check("invoice", Template{Subject: "{x}" + strings.Repeat("a", 300), Body: "{y}"})
-	if !strings.HasPrefix(got["subject"], "Unknown variable {x}") || !strings.HasPrefix(got["body"], "Unknown variable {y}") {
-		t.Fatalf("got %v", got)
-	}
-}
-
-func TestCheckWhitespaceOnlyFails(t *testing.T) {
-	if got := Check("invoice", Template{Subject: "  ", Body: " \n"}); len(got) != 2 {
-		t.Fatalf("got %v", got)
-	}
-}
-
 func TestDefaultUnknownLanguageIsEnglish(t *testing.T) {
 	if Default("invoice", "pl") != Default("invoice", "en") {
 		t.Fatal("pl is not en")
 	}
-	if Default("nope", "en") != (Template{}) || Variables("nope") != nil {
+	if Default("nope", "en") != (Template{}) {
 		t.Fatal("unknown kind")
 	}
 }
@@ -118,11 +79,14 @@ func TestDefaultsMatchToday(t *testing.T) {
 	}
 }
 
-func TestEveryDefaultPassesCheck(t *testing.T) {
+// Every built-in text uses only the variables its sender fills in, so no {name} reaches a client.
+func TestEveryDefaultFillsEveryVariable(t *testing.T) {
+	all := map[string]string{"document": "d", "number": "n", "client": "c", "amount": "a", "company": "co", "due_date": "dd",
+		"valid_until": "vu", "paid_on": "po", "balance": "b", "sender": "s"}
 	for _, kind := range Kinds {
 		for _, lang := range append(Languages, "pl") {
-			if got := Check(kind, Default(kind, lang)); len(got) != 0 {
-				t.Errorf("%s/%s: %v", kind, lang, got)
+			if r := Render(Default(kind, lang), all); r.Subject == "" || strings.Contains(r.Subject+r.Body, "{") {
+				t.Errorf("%s/%s: %+v", kind, lang, r)
 			}
 		}
 	}
@@ -144,9 +108,6 @@ func TestPaymentConfirmationDefaults(t *testing.T) {
 			t.Errorf("%s: %+v", lang, r)
 		}
 		seen[d] = true
-	}
-	if bad := Check("payment_confirmation", Template{Subject: "{number}", Body: "{balance} {paid_on}"}); len(bad) > 0 {
-		t.Errorf("variables refused: %v", bad)
 	}
 }
 
@@ -176,11 +137,5 @@ func TestSignatureDefaults(t *testing.T) {
 	}
 	if got := Render(Default("document", "de"), v).Subject; got != "Vertrag von Muster GmbH" {
 		t.Errorf("document subject %q", got)
-	}
-	if bad := Check("document", Template{Subject: "{document} für {client}", Body: "{sender}"}); len(bad) > 0 {
-		t.Errorf("document variables refused: %v", bad)
-	}
-	if got := Check("signature_request", Template{Subject: "{number}", Body: "x"}); got["subject"] != "Unknown variable {number}. Use {document}, {sender}, {company}." {
-		t.Errorf("got %v", got)
 	}
 }

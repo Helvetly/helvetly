@@ -362,7 +362,7 @@ func addresses(in []string, into *[]string) string {
 }
 
 // emailMessage is the email that sends a filled template. With a language, the subject and message the sender wrote
-// (else the workspace's "document" template) go out as they are; without, the English email of before templates.
+// (else the built-in "document" text) go out as they are; without, the English email of before templates.
 func (s *Service) emailMessage(ctx context.Context, sess store.Session, language, subject, message *string, title, name string, pdf []byte) (mail.Message, error) {
 	from := strings.TrimSpace(sess.User.Name)
 	if from == "" {
@@ -370,11 +370,7 @@ func (s *Service) emailMessage(ctx context.Context, sess store.Session, language
 	}
 	attachments := []mail.Attachment{{Name: name, ContentType: "application/pdf", Data: pdf}}
 	if language != nil {
-		t, err := emailtemplate.Lookup(ctx, s.db.Q, sess.Workspace.ID, "document", *language)
-		if err != nil {
-			return mail.Message{}, err
-		}
-		r := emailtemplate.Render(t, map[string]string{"document": title, "sender": from, "company": sess.Workspace.Name})
+		r := emailtemplate.Render(emailtemplate.Default("document", *language), map[string]string{"document": title, "sender": from, "company": sess.Workspace.Name})
 		if subject != nil {
 			r.Subject = *subject
 		}

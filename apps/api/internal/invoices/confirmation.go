@@ -108,10 +108,7 @@ func (s *Service) sendConfirmation(ctx context.Context, c store.PaymentConfirmat
 		return "skipped", nil
 	}
 	lang := emailLanguage(inv)
-	t, err := template(ctx, s.db.Q, c.WorkspaceID, "payment_confirmation", lang)
-	if err != nil {
-		return "", err
-	}
+	t := emailtemplate.Default("payment_confirmation", lang)
 	var company, client string
 	if inv.Seller != nil {
 		company = inv.Seller.Name

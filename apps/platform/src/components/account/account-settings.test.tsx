@@ -143,6 +143,7 @@ test('the settings tabs mark this page and open another one', async () => {
   expect(names).toEqual([
     'Workspace',
     'Company',
+    'Client emails',
     'Account',
     'Invoices',
     'Documents',

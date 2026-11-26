@@ -67,9 +67,13 @@ export const Settings: Story = {
     saved.body = null
     const page = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(await page.findByRole('switch', { name: 'Send reminders automatically' }))
-    const section = within(page.getByRole('region', { name: 'Dunning' }))
-    await expect(section.getByText('10 days after due · no fee · standard text')).toBeVisible()
+    const section = within(await page.findByRole('region', { name: 'Dunning' }))
+    // Turning reminders on or off lives in Settings → Client emails; the section links there.
+    await expect(section.getByRole('link', { name: 'Client emails' })).toHaveAttribute(
+      'href',
+      '/settings/emails/',
+    )
+    await expect(section.getByText('10 days after due · no fee')).toBeVisible()
     await userEvent.click(section.getByRole('button', { name: 'Edit Reminder 2' }))
     const dialog = within(await body.findByRole('dialog', { name: 'Edit Reminder 2' }))
     const fee = dialog.getByRole('textbox', { name: 'Fee' })
@@ -80,14 +84,12 @@ export const Settings: Story = {
     await userEvent.clear(fee)
     await userEvent.type(fee, '20')
     await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
-    await expect(
-      section.getByText('14 days after the previous · CHF 20.00 fee · standard text'),
-    ).toBeVisible()
+    await expect(section.getByText('14 days after the previous · CHF 20.00 fee')).toBeVisible()
     await expect(section.getByText('Unsaved changes')).toBeVisible()
     await userEvent.click(section.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(lastSaved()?.dunning?.steps[1]?.fee).toBe('20.00'))
+    await waitFor(() => expect(lastSaved()?.dunning?.steps?.[1]?.fee).toBe('20.00'))
     await expect(await section.findByText('Saved')).toBeVisible()
-    await expect(lastSaved()?.dunning?.enabled).toBe(true)
+    await expect(lastSaved()?.dunning).not.toHaveProperty('enabled')
     await userEvent.click(page.getByRole('switch', { name: 'Default interest' }))
     await expect(page.getByRole('radio', { name: 'The first reminder' })).toBeChecked()
   },
@@ -100,7 +102,7 @@ export const SettingsRefused: Story = {
   play: async ({ canvasElement }) => {
     const page = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(await page.findByRole('switch', { name: 'Send reminders automatically' }))
+    await userEvent.click(await page.findByRole('switch', { name: 'Default interest' }))
     const section = within(page.getByRole('region', { name: 'Dunning' }))
     await userEvent.click(section.getByRole('button', { name: 'Save' }))
     await expect(await section.findByText('Enter a fee such as 20.00.')).toBeVisible()
@@ -119,7 +121,6 @@ const draft = (change: Partial<StepDraft>): StepDraft => ({
   timing: 'after_previous',
   days: '14',
   fee: '0.00',
-  text: '',
   qr_bill: true,
   ...change,
 })
@@ -127,8 +128,8 @@ const draft = (change: Partial<StepDraft>): StepDraft => ({
 const full = [
   draft({ name: 'Freundlicher Hinweis', timing: 'before_due', days: '3', qr_bill: false }),
   draft({ timing: 'after_due', days: '10', fee: '0.00' }),
-  draft({ fee: '20.00', text: 'Trotz unserer Erinnerung ist die Rechnung noch offen.' }),
-  draft({ fee: '30.00', text: 'Letzte Aufforderung vor der Betreibung.' }),
+  draft({ fee: '20.00' }),
+  draft({ fee: '30.00' }),
 ]
 
 const NO_ERRORS: FieldErrors = {}
@@ -162,17 +163,13 @@ export const StepsDefault: Story = {
   },
 }
 
-/** A note before the due date and three reminders with fees and own text. */
+/** A note before the due date and three reminders with fees. */
 export const StepsFull: Story = {
   render: () => <Steps initial={full} />,
   play: async ({ canvasElement }) => {
     const page = within(canvasElement)
-    await expect(
-      page.getByText('3 days before due · friendly note · standard text · no QR bill'),
-    ).toBeVisible()
-    await expect(
-      page.getByText('14 days after the previous · CHF 30.00 fee · own text'),
-    ).toBeVisible()
+    await expect(page.getByText('3 days before due · friendly note · no QR bill')).toBeVisible()
+    await expect(page.getByText('14 days after the previous · CHF 30.00 fee')).toBeVisible()
     const items = within(page.getByRole('list', { name: 'Reminders' })).getAllByRole('listitem')
     await expect(items[1]).toHaveTextContent('Due date')
   },
@@ -206,7 +203,7 @@ export const StepsEditing: Story = {
     await userEvent.type(days, '30')
     await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
     await waitFor(() => expect(body.queryByRole('dialog')).toBeNull())
-    await expect(page.getByText('30 days after due · CHF 30.00 fee · own text')).toBeVisible()
+    await expect(page.getByText('30 days after due · CHF 30.00 fee')).toBeVisible()
     await userEvent.click(page.getByRole('button', { name: 'Edit Final reminder' }))
     dialog = within(await body.findByRole('dialog', { name: 'Edit Final reminder' }))
     await userEvent.click(dialog.getByRole('button', { name: 'Remove reminder' }))

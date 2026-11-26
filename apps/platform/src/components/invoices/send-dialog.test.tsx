@@ -6,7 +6,7 @@ import { delay, http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
 import { QuoteSendDialog } from '@/components/quotes/quote-dialogs'
-import { emailTemplateHandlers } from '@/mocks/email-templates'
+import { emailTextHandlers } from '@/mocks/email-texts'
 import { sampleQuote } from '@/mocks/quotes'
 import { listItem, sampleInvoice } from '@/test/invoice-api'
 
@@ -29,7 +29,7 @@ const fakeDraft = {
 /** The fake draft by default, the real mock of the email API with SUPERLITE_REAL=1. */
 const draftHandlers = () =>
   process.env.SUPERLITE_REAL
-    ? emailTemplateHandlers
+    ? emailTextHandlers
     : [
         http.get('/api/v1/invoices/:id/email', () => HttpResponse.json({ data: fakeDraft })),
         http.get('/api/v1/quotes/:id/email', () => HttpResponse.json({ data: fakeDraft })),

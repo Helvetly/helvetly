@@ -1,15 +1,9 @@
 // Package emailtemplate holds the subject and message of the emails sent with invoices and quotes and of the emails
-// asking someone to sign (and reminding them): the built-in
-// defaults per language, the {variable} substitution and the validation of a workspace's own texts. It is pure.
+// asking someone to sign (and reminding them): the built-in wording per language and the {variable} substitution.
+// The wording is Helvetly's; workspaces cannot change it. It is pure.
 package emailtemplate
 
-import (
-	"fmt"
-	"regexp"
-	"slices"
-	"strings"
-	"unicode/utf8"
-)
+import "strings"
 
 // Template is a subject and a message, either with {variables} or already rendered.
 type Template struct {
@@ -18,51 +12,13 @@ type Template struct {
 }
 
 // MaxMessage is the longest message, in characters, of an email sent with a document (invoice, quote, service
-// report) and of a workspace's own message template.
+// report).
 const MaxMessage = 2500
-
-// MaxTemplate is the longest message, in characters, of a workspace's own template, in every language; the email
-// sent from it may grow to MaxMessage once its variables are filled and the sender edits it.
-const MaxTemplate = 1000
-
-const maxSubject = 200
 
 var (
 	Kinds     = []string{"invoice", "credit_note", "proforma", "quote", "payment_confirmation", "document", "signature_request", "signature_reminder"}
 	Languages = []string{"de", "fr", "it", "en"}
 )
-
-var common = []string{"document", "number", "client", "amount", "company"}
-
-// Variables lists the names a kind's texts may use, in the order shown to people.
-func Variables(kind string) []string {
-	switch kind {
-	case "invoice":
-		return append(slices.Clone(common), "due_date")
-	case "quote":
-		return append(slices.Clone(common), "valid_until")
-	case "credit_note", "proforma":
-		return slices.Clone(common)
-	case "payment_confirmation": // amount: what arrived; balance: what is still open after it
-		return append(slices.Clone(common), "paid_on", "balance")
-	case "document":
-		return []string{"document", "client", "sender", "company"}
-	case "signature_request", "signature_reminder":
-		return []string{"document", "sender", "company"}
-	}
-	return nil
-}
-
-// Required lists the variables every text of a kind written by AI must keep: the record it is about.
-func Required(kind string) []string {
-	switch kind {
-	case "invoice", "credit_note", "proforma", "quote", "payment_confirmation":
-		return []string{"number"}
-	case "document", "signature_request", "signature_reminder":
-		return []string{"document"}
-	}
-	return nil
-}
 
 // words is one language: greeting, sign-off, the "from" of the subject and one sentence per kind.
 type words struct {
@@ -209,37 +165,4 @@ func Render(t Template, v map[string]string) Template {
 		Subject: strings.Join(strings.Fields(r.Replace(t.Subject)), " "),
 		Body:    r.Replace(t.Body),
 	}
-}
-
-var placeholder = regexp.MustCompile(`\{([A-Za-z_][A-Za-z0-9_]*)\}`)
-
-// unknown returns the message for the first {name} a kind does not offer, or "".
-func unknown(kind, text string) string {
-	vars := Variables(kind)
-	for _, m := range placeholder.FindAllStringSubmatch(text, -1) {
-		if !slices.Contains(vars, m[1]) {
-			list := make([]string, len(vars))
-			for i, n := range vars {
-				list[i] = "{" + n + "}"
-			}
-			return fmt.Sprintf("Unknown variable {%s}. Use %s.", m[1], strings.Join(list, ", "))
-		}
-	}
-	return ""
-}
-
-// Check validates a workspace's own text; the map holds a message per bad field ("subject", "body").
-func Check(kind string, t Template) map[string]string {
-	bad := map[string]string{}
-	if msg := unknown(kind, t.Subject); msg != "" {
-		bad["subject"] = msg
-	} else if n := utf8.RuneCountInString(t.Subject); strings.TrimSpace(t.Subject) == "" || n > maxSubject || strings.ContainsAny(t.Subject, "\r\n") {
-		bad["subject"] = "Enter a subject of at most 200 characters, on one line."
-	}
-	if msg := unknown(kind, t.Body); msg != "" {
-		bad["body"] = msg
-	} else if n := utf8.RuneCountInString(t.Body); strings.TrimSpace(t.Body) == "" || n > MaxTemplate {
-		bad["body"] = fmt.Sprintf("Enter a message of at most %d characters.", MaxTemplate)
-	}
-	return bad
 }

@@ -78,7 +78,10 @@ export function vatNumber(values: Values) {
 }
 
 /** The settings as read, with the welcome's values on top: what PUT /invoice-settings takes. */
-export function toSettingsInput(settings: InvoiceSettings, values: Values): SettingsInput {
+export function toSettingsInput(
+  settings: InvoiceSettings,
+  values: Values,
+): SettingsInput & Pick<InvoiceSettings, 'seller'> {
   const vatMode = settings.default_vat_mode === 'none' ? 'exclusive' : settings.default_vat_mode
   return {
     ...settings,

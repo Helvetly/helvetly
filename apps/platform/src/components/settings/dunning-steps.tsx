@@ -31,7 +31,6 @@ export type StepDraft = {
   timing: DunningTiming
   days: string
   fee: string
-  text: string
   qr_bill: boolean
 }
 
@@ -123,7 +122,7 @@ const STANDARD = {
   final: translate('invoiceNumberOfDateDueOnDueDateRemains'),
 }
 
-/** The standard sentence the step sends when it has no own text, in English. */
+/** The sentence the step sends, in the person's language (the client gets the invoice's). */
 export function standardText(steps: StepDraft[], index: number): string {
   const title = stepTitle(
     steps.map((step) => ({ ...step, name: '' })),
@@ -145,7 +144,7 @@ const WHEN: Record<DunningTiming, string> = {
   after_previous: translate('afterThePrevious'),
 }
 
-/** One line on a step: "10 days after due · CHF 20.00 fee · own text". */
+/** One line on a step: "10 days after due · CHF 20.00 fee". */
 export function stepSummary(step: StepDraft, currency: string): string {
   const fee = Number(parseDecimalInput(step.fee || '0', 2) ?? 0)
   const parts = [
@@ -155,7 +154,6 @@ export function stepSummary(step: StepDraft, currency: string): string {
       : fee > 0
         ? translate('dynamicFee', { currency: currency, value2: fee.toFixed(2) })
         : translate('noFee'),
-    step.text.trim() ? translate('ownText2') : translate('standardText2'),
   ]
   if (!step.qr_bill) parts.push(translate('noQrBill'))
   return parts.join(' · ')
@@ -171,7 +169,6 @@ function newStep(steps: StepDraft[]): StepDraft {
     timing: after ? 'after_previous' : 'after_due',
     days: after ? '14' : '10',
     fee: '0.00',
-    text: '',
     qr_bill: true,
   }
 }
@@ -471,29 +468,9 @@ function StepDialog({
               onCheckedChange={(qr_bill) => set({ qr_bill })}
             />
           </div>
-          <FormField
-            id={id('text')}
-            label={translate('ownText')}
-            error={errors.text}
-            hint={translate('leaveEmptyForTheStandardTextInTheInvoice')}
-          >
-            <textarea
-              {...describedBy(id('text'), errors.text)}
-              rows={3}
-              maxLength={1000}
-              value={draft.text}
-              onChange={(e) => set({ text: e.target.value })}
-              className={cn(inputClass, 'min-h-20 py-2 text-body')}
-            />
-          </FormField>
-          {!draft.text.trim() && (
-            <SettingsPreview label={translate('standardText')}>
-              <span className="block font-medium text-foreground">
-                {translate('standardTextShownInEnglish')}
-              </span>
-              {standardText(withDraft, at)}
-            </SettingsPreview>
-          )}
+          <SettingsPreview label={translate('standardText')}>
+            {standardText(withDraft, at)}
+          </SettingsPreview>
           <DialogFooter className="items-center sm:justify-between">
             {index !== null && steps.length > 1 ? (
               <Button

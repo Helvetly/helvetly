@@ -84,6 +84,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/workspace/logo", s.auth.SignedIn(s.deleteLogo))
 	mux.HandleFunc("GET /api/v1/workspaces/{id}/logo", s.auth.SignedIn(s.getWorkspaceLogo))
 	s.registerReplyTo(mux)
+	s.registerClientEmails(mux)
 	if s.portal != nil {
 		s.registerPortal(mux)
 	}

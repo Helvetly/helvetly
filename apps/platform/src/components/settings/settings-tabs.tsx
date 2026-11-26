@@ -6,6 +6,7 @@ import {
   Building2,
   CreditCard,
   FileText,
+  Mail,
   PlugZap,
   ReceiptText,
   ScrollText,
@@ -25,10 +26,11 @@ import { useSession } from '@/lib/queries'
 
 export type Page = { label: string; href: string; icon: LucideIcon }
 
-/** The workspace and its company first, then your own settings (the same in every workspace), invoices, documents, employment, then the rest of the workspace's. */
+/** The workspace, its company and its client emails first, then your own settings (the same in every workspace), invoices, documents, employment, then the rest of the workspace's. */
 export const SETTINGS_PAGES: Page[] = [
   { label: translate('workspace'), href: '/settings/workspace', icon: Building2 },
   { label: translate('company'), href: '/settings/company', icon: Store },
+  { label: translate('clientEmails'), href: '/settings/emails', icon: Mail },
   { label: translate('account'), href: '/account', icon: UserRound },
   { label: translate('invoices'), href: '/settings/invoices', icon: ReceiptText },
   { label: translate('documents'), href: '/settings/documents', icon: FileText },

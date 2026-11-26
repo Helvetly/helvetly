@@ -405,23 +405,22 @@ test('reads the dunning levels of an older API as the steps the server makes of 
     dunning: {
       ...dunning,
       levels: [
-        { days: 10, fee: '0.00', text: null },
-        { name: 'Second notice', days: 14, fee: '20.00', text: 'Please pay now.' },
+        { days: 10, fee: '0.00' },
+        { name: 'Second notice', days: 14, fee: '20.00' },
         { days: 7, fee: '30.00' },
       ],
     },
   })
   expect(settings.dunning.steps).toEqual([
-    { name: null, timing: 'after_due', days: 10, fee: '0.00', text: null, qr_bill: true },
+    { name: null, timing: 'after_due', days: 10, fee: '0.00', qr_bill: true },
     {
       name: 'Second notice',
       timing: 'after_previous',
       days: 14,
       fee: '20.00',
-      text: 'Please pay now.',
       qr_bill: true,
     },
-    { name: null, timing: 'after_previous', days: 7, fee: '30.00', text: null, qr_bill: true },
+    { name: null, timing: 'after_previous', days: 7, fee: '30.00', qr_bill: true },
   ])
   expect(settings.dunning).not.toHaveProperty('levels')
   expect(settings.dunning.enabled).toBe(dunning.enabled)

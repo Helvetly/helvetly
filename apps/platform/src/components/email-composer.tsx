@@ -6,7 +6,7 @@ import { Paperclip } from 'lucide-react'
 import { inputClass as fieldClass, NativeSelect } from '@/components/clients/fields'
 import { EmailMessageField } from '@/components/email-message-field'
 import { RecipientFields } from '@/components/recipient-fields'
-import { EMAIL_LANGUAGES, type EmailLanguage, type EmailPreview } from '@/lib/email-templates'
+import { EMAIL_LANGUAGES, type EmailLanguage, type EmailPreview } from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 
 export type Recipients = { to: string; cc: string; bcc: string }

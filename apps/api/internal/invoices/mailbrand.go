@@ -27,9 +27,13 @@ func (s *Service) MailBrand(ctx context.Context, workspaceID string) (mail.Brand
 	if err != nil {
 		return mail.Brand{}, err
 	}
+	emails, err := s.db.WorkspaceClientEmails(ctx, workspaceID)
+	if err != nil {
+		return mail.Brand{}, err
+	}
 	sl := set.Seller
 	b := mail.Brand{Name: strings.TrimSpace(sl.Name), Phone: deref(sl.Phone), Website: deref(sl.Website), Email: deref(sl.Email), VAT: deref(sl.VATNumber),
-		Language: set.Language, ReplyTo: replyAddress(own, set, "")}
+		Language: set.Language, ReplyTo: replyAddress(own, set, ""), Footer: emails.Footer}
 	if b.Name == "" {
 		if b.Name, err = s.db.WorkspaceName(ctx, workspaceID); err != nil {
 			return mail.Brand{}, err

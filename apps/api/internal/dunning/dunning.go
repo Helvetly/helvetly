@@ -334,14 +334,6 @@ func (s *Service) send(ctx context.Context, ws store.Workspace, id string, by *s
 	return true, nil // it went: a confirmation that failed leaves it unconfirmed, never sent twice
 }
 
-// text: the own text of step (1-based), nil for the standard sentence.
-func (st state) text(step int) *string {
-	if step > len(st.set.Steps) {
-		return nil
-	}
-	return st.set.Steps[step-1].Text
-}
-
 // letter renders the PDF of notice n.
 func (s *Service) letter(ctx context.Context, ws store.Workspace, st state, n store.DunningNotice) ([]byte, error) {
 	from := ""
@@ -351,7 +343,7 @@ func (s *Service) letter(ctx context.Context, ws store.Workspace, st state, n st
 	w, title := st.words(n)
 	out, err := s.inv.ReminderPDF(ctx, ws, st.inv, invoicepdf.Notice{Words: w, Title: title, SentOn: n.SentOn, Rate: n.InterestRate,
 		InterestFrom: from, Amounts: dunningcalc.Amounts{Open: n.Open, Fee: n.Fee, Interest: n.Interest, Total: n.Total,
-			Days: dunningcalc.Days(from, n.SentOn)}, Text: st.text(n.Level)}, n.QRBill)
+			Days: dunningcalc.Days(from, n.SentOn)}}, n.QRBill)
 	if err != nil {
 		return nil, fmt.Errorf("reminder pdf: %w", err)
 	}

@@ -103,7 +103,6 @@ func TestRequired(t *testing.T) {
 		{"POST", "/api/v1/quotes/quo_1/invoice", []string{"write:invoices"}},
 		{"PUT", "/api/v1/invoice-settings", []string{"write:invoice-settings"}},
 		{"DELETE", "/api/v1/invoice-settings/logo", []string{"write:invoice-settings"}},
-		{"PUT", "/api/v1/email-templates/quote/fr", []string{"write:invoice-settings"}},
 		{"GET", "/api/v1/transmission-channels", []string{"read:invoice-settings"}},
 		{"GET", "/api/v1/engagement-settings", []string{"read:engagements"}},
 		{"POST", "/api/v1/engagements/eng_1/invoices", []string{"write:engagements", "write:invoices"}},
@@ -170,7 +169,8 @@ func TestRequired(t *testing.T) {
 // unguarded: the /api/v1 prefixes the spec leaves without a scope check (feedback goes to the Helvetly team, any role;
 // the OpenAPI document is public).
 var unguarded = []string{"/api/v1/auth/", "/api/v1/session", "/api/v1/account/", "/api/v1/public/",
-	"/api/v1/invitations/", "/api/v1/workspaces", "/api/v1/notifications", "/api/v1/feedback", "/api/v1/openapi.json"}
+	"/api/v1/invitations/", "/api/v1/workspaces", "/api/v1/notifications", "/api/v1/feedback", "/api/v1/openapi.json",
+	"/api/v1/email-texts"} // Helvetly's own wording of client emails, the same for every workspace
 
 // These authenticated routes cannot require one uniform resource scope: dashboard and suggestions
 // filter each resource, chat checks the requested business action, and transcripts belong to a user.

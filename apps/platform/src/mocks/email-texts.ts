@@ -1,4 +1,4 @@
-// The fake of the email templates and drafts API (T3-T5); in memory, reset per test.
+// The fake of the built-in email texts and the drafts built from them.
 import { delay, http, HttpResponse } from 'msw'
 
 import {
@@ -6,8 +6,8 @@ import {
   EMAIL_LANGUAGES,
   type EmailDraft,
   type EmailKind,
-  type EmailTemplate,
-} from '@/lib/email-templates'
+  type EmailText,
+} from '@/lib/email-texts'
 
 import { sampleQuotes } from './quotes'
 
@@ -21,8 +21,6 @@ const NAMES: Record<EmailKind, string> = {
   signature_request: 'signature request',
   signature_reminder: 'signature reminder',
 }
-const COMMON = ['document', 'number', 'client', 'amount', 'company']
-
 /** The built-in English texts of the emails that send a file or ask for a signature (emailtemplate.go). */
 const FILE_DEFAULTS: Partial<Record<EmailKind, { subject: string; body: string }>> = {
   document: {
@@ -54,41 +52,9 @@ const defaultOf = (kind: EmailKind) =>
           : `Hello\n\nPlease find attached our ${NAMES[kind]} {number} for {amount}.\n\nKind regards\n{company}`,
   }
 
-const variablesOf = (kind: EmailKind) =>
-  kind === 'invoice'
-    ? [...COMMON, 'due_date']
-    : kind === 'quote'
-      ? [...COMMON, 'valid_until']
-      : kind === 'payment_confirmation'
-        ? [...COMMON, 'paid_on', 'balance']
-        : kind === 'document'
-          ? ['document', 'client', 'sender', 'company']
-          : kind.startsWith('signature')
-            ? ['document', 'sender', 'company']
-            : COMMON
-
-const sampleTemplates = (): EmailTemplate[] =>
-  EMAIL_KINDS.flatMap((kind) =>
-    EMAIL_LANGUAGES.map((language): EmailTemplate => {
-      const fallback = defaultOf(kind)
-      return {
-        kind,
-        language,
-        subject: fallback.subject,
-        body: fallback.body,
-        custom: false,
-        default: fallback,
-        variables: variablesOf(kind),
-      }
-    }),
-  )
-
-let templates = sampleTemplates()
-
-/** Every test or story starts from the defaults. */
-export const resetEmailTemplatesMock = () => {
-  templates = sampleTemplates()
-}
+const texts: EmailText[] = EMAIL_KINDS.flatMap((kind) =>
+  EMAIL_LANGUAGES.map((language): EmailText => ({ kind, language, ...defaultOf(kind) })),
+)
 
 type Facts = Record<string, string> & { to: string }
 const invoiceFacts: Record<string, Facts> = {
@@ -128,24 +94,20 @@ const quoteFacts = (id: string): Facts | undefined => {
 }
 
 const draftOf = (kind: EmailKind, { to, ...facts }: Facts): EmailDraft => {
-  const template = templates.find((entry) => entry.kind === kind && entry.language === 'en')
-  const fill = (text: string) => text.replace(/\{(\w+)\}/g, (all, name) => facts[name] ?? all)
+  const text = texts.find((entry) => entry.kind === kind && entry.language === 'en')
+  const fill = (raw: string) => raw.replace(/\{(\w+)\}/g, (all, name) => facts[name] ?? all)
   return {
     to: [to],
-    subject: fill(template?.subject ?? '')
+    subject: fill(text?.subject ?? '')
       .replace(/\s+/g, ' ')
       .trim(),
-    message: fill(template?.body ?? ''),
+    message: fill(text?.body ?? ''),
     reply_to: 'billing@muster.ch',
   }
 }
 
-const fail = (status: number, code: string, message: string, details?: unknown) =>
-  HttpResponse.json({ error: { code, message, ...(details ? { details } : {}) } }, { status })
-const notFound = () => fail(404, 'not_found', 'Not found.')
-
-const find = (kind: string, language: string) =>
-  templates.find((entry) => entry.kind === kind && entry.language === language)
+const notFound = () =>
+  HttpResponse.json({ error: { code: 'not_found', message: 'Not found.' } }, { status: 404 })
 
 /** The preview routes' answer: the message as paragraphs in a plain letter, like the branded email. */
 const previewOf = (subject: string, message: string, extra = '') => ({
@@ -159,7 +121,7 @@ const previewOf = (subject: string, message: string, extra = '') => ({
     .join('')}${extra}</body></html>`,
 })
 
-export const emailTemplateHandlers = [
+export const emailTextHandlers = [
   http.post<never, { title?: string; message?: string; language?: string }>(
     '/api/v1/signatures/email-preview',
     async ({ request }) => {
@@ -182,55 +144,10 @@ export const emailTemplateHandlers = [
       })
     },
   ),
-  http.get('/api/v1/email-templates', async () => {
+  http.get('/api/v1/email-texts', async () => {
     await delay()
-    return HttpResponse.json({ data: templates })
+    return HttpResponse.json({ data: texts })
   }),
-  http.put<{ kind: string; language: string }, { subject?: unknown; body?: unknown }>(
-    '/api/v1/email-templates/:kind/:language',
-    async ({ params, request }) => {
-      const current = find(params.kind, params.language)
-      if (!current) return notFound()
-      const { subject, body } = await request.json()
-      const fields: Record<string, string> = {}
-      const line = typeof subject === 'string' ? subject.trim() : ''
-      if (!line || [...line].length > 200 || /[\r\n]/.test(line))
-        fields.subject = 'Enter a subject of at most 200 characters, on one line.'
-      if (typeof body !== 'string' || !body.trim() || [...body].length > 1000)
-        fields.body = 'Enter a message of at most 1000 characters.'
-      if (Object.keys(fields).length)
-        return fail(400, 'invalid_request', 'Check the fields.', { fields })
-      Object.assign(current, { subject: line, body, custom: true })
-      return HttpResponse.json({ data: current })
-    },
-  ),
-  // Heidi's texts for every language: the current one with a friendlier opening, its variables kept.
-  http.post<
-    { kind: string },
-    { instruction?: string; current?: Record<string, { subject: string; body: string }> }
-  >('/api/v1/email-templates/:kind/ai-write', async ({ params, request }) => {
-    const { current = {} } = await request.json()
-    await delay()
-    const data = Object.fromEntries(
-      EMAIL_LANGUAGES.map((language) => {
-        const text = current[language] ?? find(params.kind, language) ?? defaultOf('quote')
-        return [
-          language,
-          { subject: text.subject, body: text.body.replace(/^[^\n]*/, 'Dear {client}') },
-        ]
-      }),
-    )
-    return HttpResponse.json({ data })
-  }),
-  http.delete<{ kind: string; language: string }>(
-    '/api/v1/email-templates/:kind/:language',
-    ({ params }) => {
-      const current = find(params.kind, params.language)
-      if (!current) return notFound()
-      Object.assign(current, { ...current.default, custom: false })
-      return HttpResponse.json({ data: current })
-    },
-  ),
   http.get<{ id: string }>('/api/v1/invoices/:id/email', ({ params }) => {
     const facts = invoiceFacts[params.id]
     return facts ? HttpResponse.json({ data: draftOf('invoice', facts) }) : notFound()

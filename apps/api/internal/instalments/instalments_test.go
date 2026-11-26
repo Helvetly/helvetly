@@ -412,6 +412,21 @@ func TestRemindersBeforeAfterOnce(t *testing.T) {
 	}
 }
 
+// With instalment reminders off (Settings → Client emails), a plan's invoices get none.
+func TestNoRemindersWhenTurnedOff(t *testing.T) {
+	e := newEnv(t)
+	b := e.ready()
+	e.do(b, "PUT", "/api/v1/invoice-settings", map[string]any{"instalments": map[string]any{"reminders_enabled": false}}, http.StatusOK, nil)
+	e.plan(b, e.client(b, "ap@kunde.ch"), map[string]any{"first_due_date": days(20).In(zone).Format(time.DateOnly), "lead_days": 20, "auto_send": false})
+	e.tick(time.Now())
+	for _, d := range []int{16, 23, 31} {
+		e.tick(days(d))
+	}
+	if got := e.mail.with("Zahlungserinnerung"); len(got) != 0 {
+		t.Fatalf("reminders %+v", got)
+	}
+}
+
 func TestReminderSkipsClientWithoutEmail(t *testing.T) {
 	e := newEnv(t)
 	b := e.ready()

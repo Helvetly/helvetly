@@ -1,7 +1,6 @@
 package signatures
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -47,17 +46,17 @@ func sentBy(req store.SignatureRequest) string {
 	return short(req.CreatedBy.Name)
 }
 
-// emailText is the template of a request's invitation or reminder in its language (the workspace's own, else the
-// built-in one); empty for a request without a language, whose email stays the English one of before templates.
-func (s *Service) emailText(ctx context.Context, req store.SignatureRequest, reminder bool) (emailtemplate.Template, error) {
+// emailText is the built-in text of a request's invitation or reminder in its language; empty for a request without
+// a language, whose email stays the English one of before templates.
+func emailText(req store.SignatureRequest, reminder bool) emailtemplate.Template {
 	if req.Language == nil {
-		return emailtemplate.Template{}, nil
+		return emailtemplate.Template{}
 	}
 	kind := "signature_request"
 	if reminder {
 		kind = "signature_reminder"
 	}
-	return emailtemplate.Lookup(ctx, s.db.Q, req.WorkspaceID, kind, *req.Language)
+	return emailtemplate.Default(kind, *req.Language)
 }
 
 // inviteMessage is a signer's email with their personal link: a lead, the document's summary, the button and the small
@@ -124,13 +123,10 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request, sess store.Ses
 	req := store.SignatureRequest{WorkspaceID: sess.Workspace.ID, WorkspaceName: sess.Workspace.Name, Timezone: sess.Workspace.Timezone,
 		Title: title, Message: body.Message, Language: &lang, ExpiresAt: s.now().AddDate(0, 0, days),
 		CreatedBy: &store.Uploader{Name: sess.User.Name}, SenderEmail: sess.User.Email}
-	text, err := s.emailText(r.Context(), req, false)
-	if err != nil {
-		return err
-	}
-	m := inviteMessage(req, store.Signer{}, s.publicURL+"/sign", false, text)
+	m := inviteMessage(req, store.Signer{}, s.publicURL+"/sign", false, emailText(req, false))
 	var brand mail.Brand
 	if s.brands != nil {
+		var err error
 		if brand, err = s.brands(r.Context(), sess.Workspace.ID); err != nil {
 			return err
 		}
