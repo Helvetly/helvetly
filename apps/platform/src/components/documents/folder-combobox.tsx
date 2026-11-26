@@ -1,6 +1,8 @@
 'use client'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Combobox } from '@helvetly/ui/components/combobox'
+import { fieldSurface } from '@helvetly/ui/lib/field-surface'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ChevronRight, X } from 'lucide-react'
 
@@ -60,6 +62,9 @@ export function FolderPathInput({
 }) {
   const parts = clean(value).split('/').filter(Boolean)
   const labels = pathLabel(parts.join('/')).split('/')
+  const isNew =
+    parts.length > 0 &&
+    !entries.some(({ path }) => path.toLowerCase() === parts.join('/').toLowerCase())
   const optionsAt = (index: number) => {
     const parent = parts.slice(0, index).join('/').toLowerCase()
     return entries.flatMap(({ path, folder }) => {
@@ -85,10 +90,8 @@ export function FolderPathInput({
   return (
     <fieldset
       aria-label={label}
-      className={cn(
-        'flex min-w-0 flex-wrap items-center gap-1 rounded-md border p-1',
-        invalid && 'border-destructive',
-      )}
+      data-field-surface
+      className={cn(fieldSurface, 'flex min-h-9 min-w-0 flex-wrap items-center gap-1 px-1 py-0.5')}
     >
       {parts.map((part, index) => {
         const path = parts.slice(0, index + 1).join('/')
@@ -130,7 +133,13 @@ export function FolderPathInput({
           </div>
         )
       })}
+      {isNew && (
+        <Badge size="sm" tone="violet">
+          {translate('organizeNewFolder')}
+        </Badge>
+      )}
       <Combobox
+        invalid={invalid}
         label={translate('organizeAddFolderSegment')}
         value=""
         options={optionsAt(parts.length)}
