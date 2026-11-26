@@ -6,6 +6,7 @@ import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { AlertCircle, Check, Copy, FileText, RotateCw } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { lazy, Suspense, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -22,13 +23,21 @@ import { ImportCard } from './import-card'
 import { MessageMenu } from './message-menu'
 import { splitQuote } from './quote'
 import { Records, recordsText } from './records'
+import type { BoundScreenAction } from './screen-controls'
 import type { ChatMessage } from './use-heidi'
 
 // react-markdown and remark-gfm load with the first answer, not with every page that has the panel.
 const Markdown = lazy(() => import('./markdown').then((module) => ({ default: module.Markdown })))
 
 /** What an action button does: a page of ours, or (for sending) a confirmation first. */
-function Actions({ actions }: { actions: HeidiAction[] }) {
+function Actions({ actions, screen }: { actions: HeidiAction[]; screen?: BoundScreenAction }) {
+  const [review, setReview] = useState(false)
+  const [used, setUsed] = useState(false)
+  const apply = () => {
+    setReview(false)
+    setUsed(true)
+    if (!screen?.apply()) toast.error(translate('heidiScreenChanged'))
+  }
   const router = useRouter()
   const openHref = useOpenHref()
   const [sending, setSending] = useState<Extract<HeidiAction, { id: 'send_invoice' }> | null>(null)
@@ -36,6 +45,8 @@ function Actions({ actions }: { actions: HeidiAction[] }) {
 
   const run = (action: HeidiAction) => {
     switch (action.id) {
+      case 'screen_action':
+        return setReview(true)
       case 'open_client':
         return openHref(`/clients?id=${encodeURIComponent(action.client_id)}`)
       case 'open_engagement':
@@ -55,11 +66,47 @@ function Actions({ actions }: { actions: HeidiAction[] }) {
 
   return (
     <div className="mt-3 flex flex-wrap gap-2">
-      {actions.slice(0, 2).map((action) => (
-        <Button key={action.label} variant="outline" size="sm" onClick={() => run(action)}>
-          {action.label}
-        </Button>
-      ))}
+      {actions.slice(0, 2).map((action) =>
+        action.id === 'screen_action' && screen?.href && !used ? (
+          <Button key={action.id} variant="outline" size="sm" asChild>
+            <Link
+              href={screen.href}
+              onClick={(event) => {
+                if (!screen.apply()) {
+                  event.preventDefault()
+                  toast.error(translate('heidiScreenChanged'))
+                }
+                setUsed(true)
+              }}
+            >
+              {screen.label}
+            </Link>
+          </Button>
+        ) : (
+          <Button
+            key={action.id}
+            variant="outline"
+            size="sm"
+            disabled={action.id === 'screen_action' && (used || !screen)}
+            onClick={() => run(action)}
+          >
+            {action.id === 'screen_action'
+              ? (screen?.label ?? translate('heidiScreenChanged'))
+              : action.label}
+          </Button>
+        ),
+      )}
+      {review && screen && (
+        <fieldset className="basis-full space-y-2" aria-label={translate('confirm')}>
+          <p className="break-words whitespace-pre-wrap">{screen.review}</p>
+          <Button size="sm" onClick={apply}>
+            {translate('confirm')}
+          </Button>{' '}
+          <Button size="sm" variant="outline" onClick={() => setReview(false)}>
+            {translate('cancel')}
+          </Button>
+        </fieldset>
+      )}
       {sending && (
         <ConfirmDialog
           key={sending.invoice_id}
@@ -258,7 +305,7 @@ export function Message({
             />
           )}
           {message.actions.length > 0 && message.state !== 'streaming' && (
-            <Actions actions={message.actions} />
+            <Actions actions={message.actions} screen={message.screen} />
           )}
           {message.state === 'stopped' && (
             <p className="mt-1 text-body-sm text-muted-foreground">{translate('stopped')}</p>

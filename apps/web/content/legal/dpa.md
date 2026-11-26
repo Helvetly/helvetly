@@ -128,8 +128,7 @@ provisions remain unaffected.
   log. Financial changes and signatures have their own append-only, hash-chained audit trails.
 - **Staff access:** the platform has no support or administrator access to workspaces; access to
   production systems is limited to the people who operate the service.
-- **AI provider:** only the current message, up to 20 earlier turns and explicitly attached files
-  (Heidi), the selected files (AI import and receipt reading), the company name (workspace-name
+- **AI provider:** only the current message, up to 20 earlier turns and explicitly attached files, limited results from accessible workspace records, including client data, documents specifically requested for reading, page and control identifiers, and the chosen reply style (Heidi), the selected files (AI import and receipt reading), the company name (workspace-name
   suggestion), or an uploaded file's name, type and start of its text or the file itself up to
   4 MiB, with folder names and tags in use (automatic filing) are sent, the same content also for
   token counting; only after the member's own approval; requests ask the provider not to keep them

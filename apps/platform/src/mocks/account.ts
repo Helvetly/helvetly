@@ -179,6 +179,7 @@ const signatureView = () => ({
 
 /** Back to the sample data; tests call it between cases. */
 export function resetAccountMock() {
+  memory = { enabled: true, reply_style: 'auto', topics: [] }
   account = sampleAccount()
   sessions = sampleSessions()
   tokens = sampleTokens()
@@ -189,7 +190,29 @@ export function resetAccountMock() {
   } catch {}
 }
 
+let memory: { enabled: boolean; reply_style: string; topics: { title: string; count: number }[] } =
+  { enabled: true, reply_style: 'auto', topics: [] }
+
+const memoryView = () =>
+  HttpResponse.json({
+    ...memory,
+    has_memory: memory.topics.length > 0 || memory.reply_style !== 'auto',
+  })
+
 export const accountHandlers = [
+  http.get('/api/v1/heidi/memory', memoryView),
+  http.patch('/api/v1/heidi/memory', async ({ request }) => {
+    const update = (await request.json()) as Partial<typeof memory>
+    memory =
+      update.enabled === false
+        ? { enabled: false, reply_style: 'auto', topics: [] }
+        : { ...memory, ...update }
+    return memoryView()
+  }),
+  http.delete('/api/v1/heidi/memory', () => {
+    memory = { ...memory, reply_style: 'auto', topics: [] }
+    return memoryView()
+  }),
   // The account page asks for deleted workspaces; none by default (the restore stories bring their own).
   http.get('/api/v1/workspaces/deleted', () => HttpResponse.json({ data: [] })),
   http.put('/api/v1/account/avatar', async ({ request }) => {

@@ -39,7 +39,9 @@ Each item below is implemented and covered by tests in this repository:
 - **Subscription billing (optional)**: a free plan for one person, paid plans with tiered team prices through Stripe
   Checkout and webhooks, and plan limits. Off without a Stripe key.
 - **AI features (optional)**: an assistant (Heidi) and AI-assisted imports through an OpenAI-compatible API, used
-  only after each user approves AI use for themselves in that workspace. Off without an API key.
+  only after each user approves AI use for themselves in that workspace. Heidi answers from permitted workspace
+  records, reads attachments and documents on request, and proposes actions for confirmation. Each member can
+  manage their learned topics and reply style in Account settings. Off without an API key.
 - **Public API and MCP**: personal API tokens for a documented subset of the API (OpenAPI 3.1 at
   `/api/v1/openapi.json`) and a Model Context Protocol endpoint over the same operations.
 

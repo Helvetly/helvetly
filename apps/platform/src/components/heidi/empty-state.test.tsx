@@ -37,7 +37,10 @@ function renderWelcome(
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
-  client.setQueryData(queryKeys.session, { user: { name: 'Piotr K.', email: 'p@example.com' } })
+  client.setQueryData(queryKeys.session, {
+    workspace: { id: 'ws_1' },
+    user: { id: 'usr_1', name: 'Piotr K.', email: 'p@example.com' },
+  })
   render(
     <QueryClientProvider client={client}>
       <EmptyState page={page} wide={false} onPick={onPick} />

@@ -308,6 +308,16 @@ const SUGGESTIONS: (HeidiSuggestion & { pages: HeidiPage[] })[] = [
     prompt: 'Summarize this month’s expenses',
     pages: ['expenses'],
   },
+  {
+    title: 'Create a quote',
+    prompt: 'How do I make a quote and turn it into an invoice?',
+    pages: ['quotes'],
+  },
+  {
+    title: 'Schedule a session',
+    prompt: 'How do I schedule a session with a client?',
+    pages: ['scheduling'],
+  },
   { title: 'Top clients', prompt: 'Who are my top clients this year?', pages: ['clients'] },
   {
     title: 'Hours left',
@@ -332,7 +342,7 @@ const SUGGESTIONS: (HeidiSuggestion & { pages: HeidiPage[] })[] = [
   { title: 'Invite a colleague', prompt: 'How do I invite a colleague?', pages: ['members'] },
   { title: 'Change plan', prompt: 'How do I choose or change my plan?', pages: ['billing'] },
   { title: 'Limits', prompt: 'What happens when I reach a plan limit?', pages: ['billing'] },
-  { title: 'Close a month', prompt: 'How do I close a month?', pages: ['settings'] },
+  { title: 'Close a month', prompt: 'How do I close a month?', pages: ['settings', 'books'] },
   { title: 'VAT return', prompt: 'How do I prepare the Swiss VAT return?', pages: ['settings'] },
 ]
 

@@ -1,10 +1,10 @@
 {
-  "version": "2026-11-18",
-  "sha256": "f17cfdd2b647a7502a1da30c9f62a4c24d7207770d19f3d9263f6685bd5b513b",
+  "version": "2026-11-26",
+  "sha256": "876047493ba1b54170d02d378f2bfffa6f55188288ab92aaad5b202ee72f8ed9",
   "texts": {
     "en": {
       "title": "Use AI in this workspace?",
-      "lead": "Helvetly’s AI features send what you give them to this server’s AI provider (OpenAI by default). You approve once, for yourself, in this workspace; other members and workspaces approve separately.",
+      "lead": "Helvetly’s AI features send the content needed for your request to this server’s AI provider (OpenAI by default). You approve once for yourself in each workspace.",
       "sections": [
         {
           "id": "sent",
@@ -13,6 +13,10 @@
             {
               "id": "messages",
               "text": "Your Heidi message and up to 20 earlier messages in that conversation, including any business figures shown there; content is also sent to check scope and count tokens"
+            },
+            {
+              "id": "workspace",
+              "text": "Depending on your request, Heidi also sends limited results from workspace records you can access (including business and client data), the contents of a document you ask her to read, current page and available control identifiers, and your chosen reply style."
             },
             {
               "id": "files",
@@ -49,6 +53,10 @@
               "text": "Your Heidi conversations are kept by Helvetly, in this workspace."
             },
             {
+              "id": "memory",
+              "text": "Helvetly keeps topic counts for completed lookups and actions to personalise suggestions across your chats in this workspace. In Account settings you can view and clear these counts and your reply style, or turn memory off. The counts stay in Helvetly."
+            },
+            {
               "id": "provider",
               "text": "Default provider: OpenAI (USA). Self-hosted servers may use a different provider and policy."
             }
@@ -72,7 +80,7 @@
     },
     "de": {
       "title": "KI in diesem Arbeitsbereich verwenden?",
-      "lead": "Die KI-Funktionen von Helvetly senden, was Sie ihnen geben, an den KI-Anbieter dieses Servers (standardmässig OpenAI). Sie stimmen einmal für sich selbst in diesem Workspace zu; andere Mitglieder und Workspaces stimmen separat zu.",
+      "lead": "Die KI-Funktionen von Helvetly senden die für Ihre Anfrage benötigten Inhalte an den KI-Anbieter dieses Servers (standardmässig OpenAI). Sie stimmen in jedem Arbeitsbereich einmal für sich selbst zu.",
       "sections": [
         {
           "id": "sent",
@@ -81,6 +89,10 @@
             {
               "id": "messages",
               "text": "Ihre Heidi-Nachricht und bis zu 20 frühere Nachrichten in dieser Konversation, einschliesslich aller dort angezeigten Geschäftszahlen; Es werden auch Inhalte gesendet, um den Umfang zu überprüfen und Token zu zählen"
+            },
+            {
+              "id": "workspace",
+              "text": "Je nach Anfrage sendet Heidi auch begrenzte Ergebnisse aus für Sie zugänglichen Arbeitsbereichsdaten (einschliesslich Geschäfts- und Kundendaten), den Inhalt eines Dokuments, das sie auf Ihren Wunsch liest, die Kennungen der aktuellen Seite und ihrer verfügbaren Bedienelemente sowie Ihren gewählten Antwortstil."
             },
             {
               "id": "files",
@@ -117,6 +129,10 @@
               "text": "Ihre Heidi-Unterhaltungen bewahrt Helvetly in diesem Workspace auf."
             },
             {
+              "id": "memory",
+              "text": "Helvetly zählt die Themen abgeschlossener Abfragen und Aktionen, um Ihnen in weiteren Chats dieses Arbeitsbereichs passende Fragen vorzuschlagen. In den Kontoeinstellungen können Sie diese Zähler und Ihren Antwortstil einsehen und löschen oder das Gedächtnis ausschalten. Die Zähler bleiben in Helvetly."
+            },
+            {
               "id": "provider",
               "text": "Standardanbieter: OpenAI (USA). Selbst gehostete Server verwenden möglicherweise einen anderen Anbieter und eine andere Richtlinie."
             }
@@ -140,7 +156,7 @@
     },
     "fr": {
       "title": "Utiliser l’IA dans cet espace de travail ?",
-      "lead": "Les fonctions d’IA de Helvetly envoient ce que vous leur donnez au fournisseur d’IA de ce serveur (OpenAI par défaut). Vous approuvez une fois, pour vous-même, dans cet espace de travail ; les autres membres et espaces approuvent séparément.",
+      "lead": "Les fonctions d’IA de Helvetly envoient les contenus nécessaires à votre demande au fournisseur d’IA de ce serveur (OpenAI par défaut). Vous donnez votre accord une fois pour vous-même dans chaque espace de travail.",
       "sections": [
         {
           "id": "sent",
@@ -149,6 +165,10 @@
             {
               "id": "messages",
               "text": "Votre message Heidi et jusqu’à 20 messages antérieurs dans cette conversation, y compris les chiffres commerciaux qui y sont affichés ; le contenu est également envoyé pour vérifier la portée et compter les jetons"
+            },
+            {
+              "id": "workspace",
+              "text": "Selon votre demande, Heidi envoie aussi des résultats limités tirés des données de l’espace auxquelles vous avez accès (y compris des données commerciales et des données clients), le contenu du document dont vous demandez la lecture, les identifiants de la page et de ses commandes disponibles, ainsi que le style de réponse choisi."
             },
             {
               "id": "files",
@@ -185,6 +205,10 @@
               "text": "Vos conversations avec Heidi sont conservées par Helvetly, dans cet espace de travail."
             },
             {
+              "id": "memory",
+              "text": "Helvetly compte les consultations et les actions réalisées par sujet pour vous suggérer des questions lors de vos prochaines conversations dans cet espace. Dans les paramètres du compte, vous pouvez consulter et effacer ces compteurs et votre style de réponse, ou désactiver la mémoire. Les compteurs restent dans Helvetly."
+            },
+            {
               "id": "provider",
               "text": "Fournisseur par défaut : OpenAI (USA). Les serveurs auto-hébergés peuvent utiliser un fournisseur et une politique différents."
             }
@@ -208,7 +232,7 @@
     },
     "it": {
       "title": "Utilizzare l’intelligenza artificiale in questo spazio di lavoro?",
-      "lead": "Le funzioni di IA di Helvetly inviano ciò che dai loro al fornitore di IA di questo server (OpenAI per impostazione predefinita). Approvi una volta, per te, in questo workspace; altri membri e workspace approvano separatamente.",
+      "lead": "Le funzioni di IA di Helvetly inviano i contenuti necessari per la tua richiesta al fornitore di IA di questo server (OpenAI per impostazione predefinita). Dai la tua approvazione una volta per te in ogni spazio di lavoro.",
       "sections": [
         {
           "id": "sent",
@@ -217,6 +241,10 @@
             {
               "id": "messages",
               "text": "Il tuo messaggio Heidi e fino a 20 messaggi precedenti in quella conversazione, inclusi eventuali dati aziendali mostrati lì; il contenuto viene inviato anche per verificare l’ambito e contare i token"
+            },
+            {
+              "id": "workspace",
+              "text": "In base alla richiesta, Heidi invia anche risultati limitati dei dati dello spazio di lavoro a cui hai accesso (compresi dati aziendali e dei clienti), il contenuto del documento che le chiedi di leggere, gli identificativi della pagina e dei comandi disponibili e lo stile di risposta scelto."
             },
             {
               "id": "files",
@@ -251,6 +279,10 @@
             {
               "id": "history",
               "text": "Le tue conversazioni con Heidi sono conservate da Helvetly, in questo workspace."
+            },
+            {
+              "id": "memory",
+              "text": "Helvetly conta le consultazioni e le azioni completate per argomento per suggerirti domande nelle chat successive in questo spazio di lavoro. Nelle impostazioni dell’account puoi vedere e cancellare i conteggi e lo stile di risposta oppure disattivare la memoria. I conteggi restano in Helvetly."
             },
             {
               "id": "provider",

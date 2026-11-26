@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"strings"
@@ -346,5 +347,30 @@ func TestText(t *testing.T) {
 		if got := Text(tc.in, tc.limit); got != tc.want {
 			t.Errorf("%s: Text = %q, want %q", tc.name, got, tc.want)
 		}
+	}
+}
+
+func TestChatAttachmentPreservesTextAndRejectsPartialFiles(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		data       []byte
+		kind, text string
+	}{
+		{"clients.csv", []byte("name,amount\nAcme,10\n"), typeText, "name,amount\nAcme,10\n"},
+		{"lessons.docx", docxOf(t, `<w:p><w:r><w:t>会議</w:t></w:r></w:p>`), typeDOCX, "会議\n"},
+		{"sales.xlsx", xlsxOf(t, [][]any{{"name", "price"}, {"Acme", 10}}), typeXLSX, "Sheet: Sheet1\nname,price\nAcme,10\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			kind, f, err := ChatAttachment(tc.name, tc.data, len(tc.text))
+			if err != nil || kind != tc.kind || f.ContentType != typeText || string(f.Bytes) != tc.text || f.Name != tc.name {
+				t.Fatalf("%s %+v %v", kind, f, err)
+			}
+			if _, _, err := ChatAttachment(tc.name, tc.data, len(tc.text)-1); !errors.Is(err, errChatTextLimit) {
+				t.Fatalf("wanted a size error, got %v", err)
+			}
+		})
+	}
+	if _, _, err := ChatAttachment("bundle.zip", zipOf(t, map[string][]byte{"one.csv": []byte("hi")}, zip.Store), 100); err == nil {
+		t.Fatal("plain archive accepted for chat")
 	}
 }

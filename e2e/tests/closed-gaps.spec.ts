@@ -229,6 +229,41 @@ test('current settings never fabricate missing contact on an already-issued docu
     expect(object(object(body).error).code).toBe('einvoice_seller_contact_missing')
 })
 
+test('Heidi answers the latest issued invoice in Polish and remembers the topic across chats', async ({
+  page,
+  api,
+}) => {
+  const client = await api.client()
+  const draft = await api.draft(client)
+  const issued = await api.save(`/invoices/${text(draft.id)}/issue`)
+  await api.draft(await api.client()) // A newer draft must never become the latest issued invoice.
+
+  await page.goto('/invoices')
+  await page.getByRole('button', { name: /^Ask Heidi\b/ }).click()
+  const heidi = page.getByRole('complementary', { name: 'Heidi' })
+  await heidi
+    .getByRole('textbox', { name: 'Message Heidi' })
+    .fill('jaka ostatnio byla wystawiona faktura')
+  await heidi.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(heidi.getByText(/^Ostatnia faktura według daty wystawienia/)).toContainText(
+    text(issued.number),
+  )
+  const card = heidi.getByRole('button').filter({ hasText: text(issued.number) })
+  await expect(card).toContainText(text(client.name))
+  await heidi.getByRole('button', { name: 'New chat', exact: true }).click()
+  await expect(
+    heidi.getByRole('button', { name: 'What was the latest issued invoice?' }),
+  ).toBeVisible()
+
+  await page.goto('/account')
+  const memory = page.getByRole('region', { name: 'Heidi memory' })
+  await expect(memory.getByText('Latest issued invoice · 1 use')).toBeVisible()
+  await memory.getByRole('button', { name: 'Clear memory' }).click()
+  await expect(memory.getByText('You have no learned topics yet.')).toBeVisible()
+  await page.reload()
+  await expect(memory.getByText('You have no learned topics yet.')).toBeVisible()
+})
+
 for (const [message, refusal] of [
   ['Napisz kod w C++ dla ciągu Fibonacciego', 'Mogę pomóc tylko w sprawach Helvetly'],
   ['What is the capital of France?', 'I can only help with Helvetly and your business'],
