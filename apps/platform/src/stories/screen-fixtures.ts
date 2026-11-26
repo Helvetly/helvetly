@@ -53,7 +53,7 @@ export const emptyDashboard: Dashboard = {
   expense_count: 0,
   receipts_matched: 0,
   trends: { outstanding: [], paid: [], spent: [], vat: [] },
-  cash_flow: { '30d': [], '90d': [], '12m': [] },
+  cash_flow: { '30d': [], '90d': [], '12m': [], years: [] },
   unread: { notifications: 0, inbox: 0 },
 }
 export const sessionHandler = (over: Partial<Session> = {}) =>

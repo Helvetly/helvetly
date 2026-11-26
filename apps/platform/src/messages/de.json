@@ -5114,7 +5114,7 @@
   "noExpensesThisMonthYet": "Diesen Monat noch keine Ausgaben.",
   "needsAttentionHelp": "Abzugebende MWST-Abrechnungen, abzuschliessende Monate, fehlende Firmenangaben und offene Rechnungen, das Dringendste zuerst.",
   "nothingNeedsAttentionBody": "Offene Rechnungen, MWST-Abrechnungen und abzuschliessende Monate erscheinen hier, wenn sie Sie brauchen.",
-  "cashFlowHelp": "Rechnungszahlungen und Rückerstattungen gegenüber bezahlten Ausgaben: pro Monat für ein Jahr, pro Tag für 30 und 90 Tage.",
+  "cashFlowHelp": "Rechnungszahlungen und Rückerstattungen gegenüber bezahlten Ausgaben: pro Monat für ein Jahr, pro Tag für 30 und 90 Tage. „Jahre“ vergleicht bis zu fünf Kalenderjahre Monat für Monat.",
   "editFilter": "Filter bearbeiten {label}",
   "searchSuggestions": "Suchvorschläge",
   "filterNot": "nicht {value}",
@@ -6027,5 +6027,12 @@
   "theWorkspaceMovesToFree": "wechselt der Arbeitsbereich zu Free",
   "thenTheWorkspaceMovesToFree": "Danach wechselt der Arbeitsbereich zu Free.",
   "planTierLine": "{price} für {included, plural, one {# Person} other {# Personen}}{extra, plural, =0 {} one { + # Person zu {extraPrice}} other { + # Personen zu je {extraPrice}}}",
-  "youSavePerPersonPerYear": "Sie sparen {amount} pro Person und Jahr gegenüber monatlich"
+  "youSavePerPersonPerYear": "Sie sparen {amount} pro Person und Jahr gegenüber monatlich",
+  "cashFlowYears": "Jahre",
+  "cashFlowNet": "Netto",
+  "cashFlowMeasure": "Kennzahl",
+  "cashFlowYearsShown": "Angezeigte Jahre",
+  "cashFlowYearToDate": "{year} bis heute",
+  "cashFlowYearToDateShort": "{year} bis heute",
+  "cashFlowVsYear": "{change} ggü. {year}"
 }

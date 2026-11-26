@@ -426,6 +426,13 @@ const series = (count: number, stepDays: number, scale: number): CashFlowPoint[]
     }
   })
 
+// January 2024 to November 2026, each year a little busier than the one before.
+const yearsSeries: CashFlowPoint[] = Array.from({ length: 35 }, (_, i) => ({
+  date: new Date(Date.UTC(2024, i, 1)).toISOString().slice(0, 10),
+  income: wave(i, 30_000, 8_000, 0),
+  expenses: wave(i, 21_000, 4_000, 1.4),
+}))
+
 const paid = invoices.filter((invoice) => invoice.status === 'paid')
 const approved = expenses.filter((expense) => expense.status === 'approved')
 
@@ -455,6 +462,7 @@ export const dashboard: Dashboard = {
     '30d': series(30, 1, 1 / 30),
     '90d': series(13, 7, 7 / 30),
     '12m': series(12, 30, 1),
+    years: yearsSeries,
   },
   unread: { notifications: 4, inbox: 1 },
 }

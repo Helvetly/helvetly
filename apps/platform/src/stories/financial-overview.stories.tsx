@@ -61,8 +61,18 @@ export const CashFlowCurrenciesAndPeriods: Story = {
             currencies: ['CHF', 'EUR'],
             cash_flow:
               currency === 'EUR'
-                ? { '30d': cashPoint(20, 5), '90d': cashPoint(70, 20), '12m': cashPoint(100, 35) }
-                : { '30d': cashPoint(50, 20), '90d': cashPoint(90, 40), '12m': cashPoint(200, 50) },
+                ? {
+                    '30d': cashPoint(20, 5),
+                    '90d': cashPoint(70, 20),
+                    '12m': cashPoint(100, 35),
+                    years: [],
+                  }
+                : {
+                    '30d': cashPoint(50, 20),
+                    '90d': cashPoint(90, 40),
+                    '12m': cashPoint(200, 50),
+                    years: [],
+                  },
           })
         }),
         ...screenHandlers,
@@ -86,6 +96,78 @@ export const CashFlowCurrenciesAndPeriods: Story = {
     await waitFor(() => expect(net).toHaveTextContent(/EUR\s*50\s*net/))
     await userEvent.click(canvas.getByRole('radio', { name: '12M' }))
     await expect(net).toHaveTextContent(/EUR\s*65\s*net/)
+  },
+}
+
+const month = (date: string, income: number, expenses: number) => ({ date, income, expenses })
+
+/** Years: two years with data, this year against last year's same months; years switch on and off. */
+export const CashFlowYears: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/reports/key-figures', () =>
+          HttpResponse.json({
+            ...emptyDashboard,
+            cash_flow: {
+              ...emptyDashboard.cash_flow,
+              years: [
+                month('2024-01-01', 0, 0),
+                month('2025-01-01', 100, 40),
+                month('2025-02-01', 100, 40),
+                month('2025-03-01', 500, 0),
+                month('2026-01-01', 150, 10),
+                month('2026-02-01', 90, 30),
+              ],
+            },
+          }),
+        ),
+        ...screenHandlers,
+      ],
+    },
+  },
+  render: () => <Dashboard />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('radio', { name: 'Years' }))
+    const total = canvas.getByLabelText('2026 year to date')
+    await expect(total).toHaveTextContent(/CHF\s*240\s*2026 to date · \+20% vs 2025/)
+    await userEvent.click(canvas.getByRole('radio', { name: 'Net' }))
+    await expect(total).toHaveTextContent(/CHF\s*200.*\+67% vs 2025/)
+    const years = within(canvas.getByRole('group', { name: 'Years shown' }))
+    await expect(years.queryByRole('button', { name: '2024' })).toBeNull()
+    await userEvent.click(years.getByRole('button', { name: '2026' }))
+    await expect(years.getByRole('button', { name: '2026' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    // The last year shown cannot be switched off, and the figure follows the newest year shown.
+    await expect(years.getByRole('button', { name: '2025' })).toBeDisabled()
+    await expect(canvas.getByLabelText('2025 year to date')).toHaveTextContent(/CHF\s*620/)
+  },
+}
+
+/** One year of data: there is nothing to compare, so Years is not offered. */
+export const CashFlowOneYear: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/api/v1/reports/key-figures', () =>
+          HttpResponse.json({
+            ...emptyDashboard,
+            cash_flow: { ...emptyDashboard.cash_flow, years: [month('2026-01-01', 10, 0)] },
+          }),
+        ),
+        ...screenHandlers,
+      ],
+    },
+  },
+  render: () => <Dashboard />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findByRole('radio', { name: '12M' })
+    await waitFor(() => expect(canvas.getByLabelText('Net cash flow')).toHaveTextContent(/net/))
+    await expect(canvas.queryByRole('radio', { name: 'Years' })).toBeNull()
   },
 }
 

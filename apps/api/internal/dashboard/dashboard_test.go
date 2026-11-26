@@ -119,7 +119,7 @@ func TestSeriesAreZeroFilledAndPreviousMonthDoesNotOverflow(t *testing.T) {
 	if got.PaidChange != 0.5 || got.PaidThisMonth != 150 {
 		t.Fatalf("paid change=%v/%v", got.PaidThisMonth, got.PaidChange)
 	}
-	if len(got.CashFlow["30d"]) != 30 || len(got.CashFlow["90d"]) != 90 || len(got.CashFlow["12m"]) != 2 {
+	if len(got.CashFlow["30d"]) != 30 || len(got.CashFlow["90d"]) != 90 || len(got.CashFlow["12m"]) != 2 || len(got.CashFlow["years"]) != 51 || got.CashFlow["years"][0].Date != "2022-01-01" || got.CashFlow["years"][50].Income != 150 {
 		t.Fatalf("ranges=%v", got.CashFlow)
 	}
 	if got.CashFlow["30d"][0].Income != 0 || got.CashFlow["12m"][1].Expenses != 25 {

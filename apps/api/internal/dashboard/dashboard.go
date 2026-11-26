@@ -83,7 +83,8 @@ func (s *Service) read(ctx context.Context, sess store.Session, currency string)
 	today := sess.Workspace.Today(s.now())
 	date, _ := time.Parse(time.DateOnly, today)
 	month := time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, time.UTC)
-	firstMonth := month.AddDate(0, -11, 0)
+	// The years view compares this year with up to four before it, month by month.
+	firstMonth := time.Date(month.Year()-4, time.January, 1, 0, 0, 0, 0, time.UTC)
 	err := s.db.DashboardRead(ctx, func(q store.Q) error {
 		if currency == "" {
 			var settings struct {
@@ -162,7 +163,12 @@ func (out *response) fillSeries(today time.Time, movements []store.DashboardMove
 		total.Expenses += m.Expenses
 		byMonth[m.Date[:7]] = total
 	}
-	out.CashFlow = map[string][]point{"30d": {}, "90d": {}, "12m": {}}
+	out.CashFlow = map[string][]point{"30d": {}, "90d": {}, "12m": {}, "years": {}}
+	thisMonth := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	for d := time.Date(today.Year()-4, time.January, 1, 0, 0, 0, 0, time.UTC); !d.After(thisMonth); d = d.AddDate(0, 1, 0) {
+		m := byMonth[d.Format("2006-01")]
+		out.CashFlow["years"] = append(out.CashFlow["years"], point{Date: d.Format(time.DateOnly), Income: major(m.Income), Expenses: major(m.Expenses)})
+	}
 	for _, rangeDays := range []struct {
 		key  string
 		days int

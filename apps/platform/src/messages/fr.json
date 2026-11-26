@@ -5114,7 +5114,7 @@
   "noExpensesThisMonthYet": "Aucune dépense ce mois-ci pour l’instant.",
   "needsAttentionHelp": "Décomptes TVA à déposer, mois à clôturer, données de l’entreprise à compléter et factures encore impayées, les plus urgents d’abord.",
   "nothingNeedsAttentionBody": "Les factures ouvertes, les décomptes TVA et les mois à clôturer apparaissent ici lorsqu’ils ont besoin de vous.",
-  "cashFlowHelp": "Paiements de factures et remboursements face aux dépenses payées : par mois sur un an, par jour sur 30 et 90 jours.",
+  "cashFlowHelp": "Paiements de factures et remboursements face aux dépenses payées : par mois sur un an, par jour sur 30 et 90 jours. « Années » compare jusqu’à cinq années civiles mois par mois.",
   "editFilter": "Modifier le filtre {label}",
   "searchSuggestions": "Suggestions de recherche",
   "filterNot": "pas {value}",
@@ -6027,5 +6027,12 @@
   "theWorkspaceMovesToFree": "l’espace de travail passe à Free",
   "thenTheWorkspaceMovesToFree": "Ensuite, l’espace de travail passe à Free.",
   "planTierLine": "{price} pour {included, plural, one {# personne} other {# personnes}}{extra, plural, =0 {} one { + # personne à {extraPrice}} other { + # personnes à {extraPrice} chacune}}",
-  "youSavePerPersonPerYear": "Vous économisez {amount} par personne et par an par rapport au mensuel"
+  "youSavePerPersonPerYear": "Vous économisez {amount} par personne et par an par rapport au mensuel",
+  "cashFlowYears": "Années",
+  "cashFlowNet": "Net",
+  "cashFlowMeasure": "Mesure",
+  "cashFlowYearsShown": "Années affichées",
+  "cashFlowYearToDate": "{year} à ce jour",
+  "cashFlowYearToDateShort": "{year} à ce jour",
+  "cashFlowVsYear": "{change} vs {year}"
 }

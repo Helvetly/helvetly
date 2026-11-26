@@ -91,7 +91,13 @@ export type Dashboard = {
   receipts_matched: number
   /** Selected-currency totals, oldest first; outstanding is today's balance by issue month. */
   trends: { outstanding: number[]; paid: number[]; spent: number[]; vat: number[] }
-  cash_flow: { '30d': CashFlowPoint[]; '90d': CashFlowPoint[]; '12m': CashFlowPoint[] }
+  cash_flow: {
+    '30d': CashFlowPoint[]
+    '90d': CashFlowPoint[]
+    '12m': CashFlowPoint[]
+    /** Months from January four years back to this month. */
+    years: CashFlowPoint[]
+  }
   unread: { notifications: number; inbox: number }
 }
 

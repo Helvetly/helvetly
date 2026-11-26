@@ -5114,7 +5114,7 @@
   "noExpensesThisMonthYet": "Ancora nessuna spesa questo mese.",
   "needsAttentionHelp": "Rendiconti IVA da presentare, mesi da chiudere, dati aziendali da completare e fatture ancora da pagare, le più urgenti per prime.",
   "nothingNeedsAttentionBody": "Fatture aperte, rendiconti IVA e mesi da chiudere compaiono qui quando hanno bisogno di te.",
-  "cashFlowHelp": "Pagamenti di fatture e rimborsi rispetto alle spese pagate: per mese su un anno, per giorno su 30 e 90 giorni.",
+  "cashFlowHelp": "Pagamenti di fatture e rimborsi rispetto alle spese pagate: per mese su un anno, per giorno su 30 e 90 giorni. «Anni» confronta fino a cinque anni solari mese per mese.",
   "editFilter": "Modifica filtro {label}",
   "searchSuggestions": "Suggerimenti di ricerca",
   "filterNot": "non {value}",
@@ -6027,5 +6027,12 @@
   "theWorkspaceMovesToFree": "l’area di lavoro passa a Free",
   "thenTheWorkspaceMovesToFree": "Poi l’area di lavoro passa a Free.",
   "planTierLine": "{price} per {included, plural, one {# persona} other {# persone}}{extra, plural, =0 {} one { + # persona a {extraPrice}} other { + # persone a {extraPrice} ciascuna}}",
-  "youSavePerPersonPerYear": "Risparmi {amount} a persona all’anno rispetto al mensile"
+  "youSavePerPersonPerYear": "Risparmi {amount} a persona all’anno rispetto al mensile",
+  "cashFlowYears": "Anni",
+  "cashFlowNet": "Netto",
+  "cashFlowMeasure": "Misura",
+  "cashFlowYearsShown": "Anni mostrati",
+  "cashFlowYearToDate": "{year} da inizio anno",
+  "cashFlowYearToDateShort": "{year} da inizio anno",
+  "cashFlowVsYear": "{change} rispetto al {year}"
 }
