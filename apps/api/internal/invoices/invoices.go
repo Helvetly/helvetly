@@ -102,6 +102,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/invoices/export", s.export)
 	handle("POST /api/v1/invoices/preview", s.preview)
 	handle("POST /api/v1/invoices", s.create)
+	handle("POST /api/v1/invoices/bulk", s.bulk)
 	handle("GET /api/v1/invoices/{id}", s.get)
 	handle("PATCH /api/v1/invoices/{id}", s.update)
 	handle("DELETE /api/v1/invoices/{id}", s.delete)

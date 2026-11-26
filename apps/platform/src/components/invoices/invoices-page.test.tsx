@@ -5,12 +5,13 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
+import { toast } from 'sonner'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import { editorApi, listItem, sampleInvoice, sampleSummary } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
-import { bulkActions, InvoicesPage } from './invoices-page'
+import { bulkActions, InvoicesPage, skipReasons } from './invoices-page'
 
 // The list keeps its state in the URL through the History API (lib/url-query); the URL it sets is
 // the last call's third argument.
@@ -171,14 +172,46 @@ test('no KPI band on the credit notes tab, and only credit notes show negative',
   expect(amounts.filter((amount) => amount.includes('−'))).toHaveLength(1)
 })
 
-test('bulk delete is offered only for drafts in the selection', () => {
+test('the selection bar offers paying, issuing and deleting only when a selected invoice qualifies', () => {
   const run = {
     exportCsv: vi.fn<() => void>(),
     downloadPdfs: vi.fn<() => void>(),
     removeDrafts: vi.fn<() => void>(),
+    markPaid: vi.fn<() => void>(),
+    issue: vi.fn<() => void>(),
   }
-  expect(bulkActions(0, run).map((action) => action.label)).toEqual(['Export CSV', 'Download PDFs'])
-  expect(bulkActions(2, run).at(-1)?.label).toBe('Delete 2 drafts')
+  const labels = (count: { drafts: number; payable: number; issuable: number }) =>
+    bulkActions(count, run).map((action) => action.label)
+  expect(labels({ drafts: 0, payable: 0, issuable: 0 })).toEqual(['Export CSV', 'Download PDFs'])
+  expect(labels({ drafts: 2, payable: 3, issuable: 1 })).toEqual([
+    'Mark 3 invoices paid',
+    'Issue 1 draft',
+    'Export CSV',
+    'Download PDFs',
+    'Delete 2 drafts',
+  ])
+  bulkActions({ drafts: 0, payable: 1, issuable: 0 }, run)[0]?.onClick()
+  expect(run.markPaid).toHaveBeenCalledOnce()
+})
+
+test('skipped invoices are explained once per reason', () => {
+  expect(
+    skipReasons([
+      {
+        id: 'inv_1',
+        ok: false,
+        error: 'approval_required',
+        message: 'This document needs approval first.',
+      },
+      { id: 'inv_2', ok: false, error: 'approval_required' },
+      {
+        id: 'inv_3',
+        ok: false,
+        error: 'period_closed',
+        message: 'This month is closed in the books.',
+      },
+    ]),
+  ).toBe('This draft needs approval first This month is closed in the books.')
 })
 
 test('lists invoices from the API; sorting goes to the URL', async () => {
@@ -242,7 +275,13 @@ test('right-clicking a selected row acts on the whole selection', async () => {
   fireEvent.contextMenu(within(table).getByRole('checkbox', { name: /^Select 2026-002/ }))
   const menu = await screen.findByRole('menu')
   expect(within(menu).getByText('2 selected')).toBeInTheDocument()
-  expect(menuItems()).toEqual(['Export CSV', 'Download PDFs', 'Delete draft'])
+  expect(menuItems()).toEqual([
+    'Mark 1 invoice paid',
+    'Issue 1 draft',
+    'Export CSV',
+    'Download PDFs',
+    'Delete draft',
+  ])
 })
 
 test('right-clicking the page outside the rows offers the page’s actions', async () => {
@@ -290,4 +329,31 @@ test('closing the editor drawer goes back to the plain list URL', async () => {
   await within(drawer).findByLabelText('Line 1 description')
   await userEvent.click(within(drawer).getByRole('button', { name: 'Close editor' }))
   expect(lastUrl()).toBe('/invoices?status=open')
+})
+
+test('marking the selection paid sends the payable ids once and reports what was skipped', async () => {
+  const sent: unknown[] = []
+  server.use(
+    http.post('/api/v1/invoices/bulk', async ({ request }) => {
+      sent.push(await request.json())
+      return HttpResponse.json({
+        data: [
+          { id: 'inv_2', ok: true },
+          { id: 'inv_3', ok: false, error: 'period_closed', message: 'This month is closed.' },
+        ],
+      })
+    }),
+  )
+  const success = vi.spyOn(toast, 'success')
+  const warning = vi.spyOn(toast, 'warning')
+  renderPage()
+  const table = await screen.findByRole('table')
+  for (const name of [/^Select draft for/, /^Select 2026-002/, /^Select 2026-003/])
+    await userEvent.click(within(table).getByRole('checkbox', { name }))
+  const bar = screen.getByRole('toolbar', { name: 'Selected rows' })
+  await userEvent.click(within(bar).getByRole('button', { name: /Mark 2 invoices paid/ }))
+
+  await vi.waitFor(() => expect(success).toHaveBeenCalledWith('1 invoice marked paid.'))
+  expect(sent).toEqual([{ action: 'mark_paid', ids: ['inv_2', 'inv_3'] }])
+  expect(warning).toHaveBeenCalledWith('1 skipped: This month is closed.')
 })

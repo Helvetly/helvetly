@@ -20,7 +20,14 @@ import (
 )
 
 func (s *Service) issue(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	ctx, id := r.Context(), r.PathValue("id")
+	if err := s.issueOne(r.Context(), sess, r.PathValue("id")); err != nil {
+		return err
+	}
+	return s.respond(w, r, sess, http.StatusOK, r.PathValue("id"))
+}
+
+// issueOne issues one draft in its own transaction: approval, numbering, closed periods and the filed PDF.
+func (s *Service) issueOne(ctx context.Context, sess store.Session, id string) error {
 	var pdf string
 	err := s.db.Tx(ctx, func(q store.Q) error {
 		// The settings update may reset approval before this transaction can issue.
@@ -44,10 +51,7 @@ func (s *Service) issue(w http.ResponseWriter, r *http.Request, sess store.Sessi
 		}
 		return s.issueDraft(ctx, q, sess, inv, &pdf)
 	})
-	if err := s.settlePDF(ctx, pdf, err); err != nil {
-		return err
-	}
-	return s.respond(w, r, sess, http.StatusOK, id)
+	return s.settlePDF(ctx, pdf, err)
 }
 
 // settlePDF runs after an issue's transaction: the stored PDF is locked (GeBüV, S3 Object Lock) only once the issue

@@ -119,8 +119,23 @@ func (s *Service) markPaid(w http.ResponseWriter, r *http.Request, sess store.Se
 	if !s.auth.Decode(w, r, &body) {
 		return nil
 	}
-	ctx, id := r.Context(), r.PathValue("id")
-	err := s.db.Tx(ctx, func(q store.Q) error {
+	p := newParser()
+	on, method := paidOn(p, body.PaidOn, s.today(sess.Workspace)), "bank_transfer"
+	if body.Method != nil {
+		method = p.required("method", body.Method, 20, oneOf(paymentMethods...), "Choose how it was paid.")
+	}
+	if err := p.err(); err != nil {
+		return err
+	}
+	if err := s.payDue(r.Context(), sess, r.PathValue("id"), on, method); err != nil {
+		return err
+	}
+	return s.respond(w, r, sess, http.StatusOK, r.PathValue("id"))
+}
+
+// payDue records, in its own transaction, one payment of everything still due, which settles every instalment.
+func (s *Service) payDue(ctx context.Context, sess store.Session, id, on, method string) error {
+	return s.db.Tx(ctx, func(q store.Q) error {
 		inv, err := s.payable(ctx, q, sess, id)
 		if err != nil {
 			return err
@@ -128,20 +143,8 @@ func (s *Service) markPaid(w http.ResponseWriter, r *http.Request, sess store.Se
 		if inv.AmountDue <= 0 {
 			return invalidState("Nothing is due on this invoice.")
 		}
-		p := newParser()
-		pay := store.Payment{Amount: inv.AmountDue, PaidOn: paidOn(p, body.PaidOn, s.today(sess.Workspace)), Method: "bank_transfer"}
-		if body.Method != nil {
-			pay.Method = p.required("method", body.Method, 20, oneOf(paymentMethods...), "Choose how it was paid.")
-		}
-		if err := p.err(); err != nil {
-			return err
-		}
-		return s.recordPayment(ctx, q, sess, inv, pay)
+		return s.recordPayment(ctx, q, sess, inv, store.Payment{Amount: inv.AmountDue, PaidOn: on, Method: method})
 	})
-	if err != nil {
-		return err
-	}
-	return s.respond(w, r, sess, http.StatusOK, id)
 }
 
 func (s *Service) listPayments(w http.ResponseWriter, r *http.Request, sess store.Session) error {
