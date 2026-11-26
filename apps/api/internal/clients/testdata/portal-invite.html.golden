@@ -3,13 +3,13 @@
 <tr><td align="center" style="padding:32px 12px 40px;word-wrap:break-word;overflow-wrap:anywhere">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px">
 <tr><td align="center" style="padding:0 0 24px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:20px;line-height:28px;color:#18181b"><img src="https://app.helvetly.example/api/v1/public/email-logo/ws/logo" alt="" style="vertical-align:middle;border:0">&nbsp;&nbsp;<strong style="vertical-align:middle;font-size:19px;font-weight:600;color:#18181b">Dein Deutsch Coach</strong></td></tr>
-<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid #e7e7ea;border-radius:16px">
-<tr><td height="3" bgcolor="#52525b" style="height:3px;font-size:0;line-height:0;border-radius:16px 16px 0 0;background-color:#52525b">&nbsp;</td></tr>
-<tr><td style="padding:32px 32px 16px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#3f3f46">
+<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid #e7e7ea">
+<tr><td height="3" bgcolor="#52525b" style="height:3px;font-size:0;line-height:0;background-color:#52525b">&nbsp;</td></tr>
+<tr><td style="padding:32px 32px 16px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:26px;color:#3f3f46">
 <h1 style="margin:0 0 20px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;font-weight:600;color:#18181b">Your client portal at Dein Deutsch Coach</h1>
-<p style="margin:0 0 16px">Hello Lea Frei,</p>
-<p style="margin:0 0 16px">Use the portal to find your invoices, engagements and shared documents.</p>
-<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 24px"><tr><td align="center" bgcolor="#18181b" style="background-color:#18181b;border-radius:999px;padding:13px 30px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;font-weight:600"><a style="color:#ffffff;text-decoration:none" href="https://portal.helvetly.example/w/deutsch/"><strong style="font-weight:600">Open the client portal</strong></a></td></tr></table>
+<p style="margin:0 0 18px;line-height:26px">Hello Lea Frei,</p>
+<p style="margin:0 0 18px;line-height:26px">Use the portal to find your invoices, engagements and shared documents.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 24px"><tr><td align="center" bgcolor="#18181b" style="background-color:#18181b;padding:13px 30px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;font-weight:600"><a style="color:#ffffff;text-decoration:none" href="https://portal.helvetly.example/w/deutsch/"><strong style="font-weight:600">Open the client portal</strong></a></td></tr></table>
 <p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#71717a">Enter this email address on the portal and we’ll send you a one-time sign-in code.</p>
 </td></tr>
 </table></td></tr>

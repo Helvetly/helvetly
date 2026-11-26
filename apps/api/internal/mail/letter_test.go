@@ -12,6 +12,9 @@ func TestLongLetterKeepsItsLayout(t *testing.T) {
 	if !strings.Contains(body, "overflow-wrap:anywhere") || strings.Contains(body, "white-space:nowrap") {
 		t.Fatal("long messages and summary labels must wrap inside the card")
 	}
+	if strings.Contains(body, "td valign") || !strings.Contains(body, "Outstanding amount for invoice 2026-042</span><strong") {
+		t.Fatal("summary labels must be above their values")
+	}
 	if !strings.Contains(l.Text(), long) {
 		t.Fatal("the text version must preserve the sender's message")
 	}

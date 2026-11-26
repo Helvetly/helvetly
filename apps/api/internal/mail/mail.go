@@ -36,16 +36,17 @@ type Message struct {
 	// Workspace is the workspace a business email is sent for (an invoice, a reminder, a signature request, a portal
 	// invitation, a report, a notification): Metered counts it against that workspace's allowances. Empty for the
 	// email no business limit may stop: sign-in codes, security notices, invitations to join, feedback to Helvetly.
-	Workspace           string
-	To, Cc              []string
-	Bcc                 []string // envelope recipients only: never written into a header
-	ReplyTo             string   // optional
-	Subject, Text, HTML string
-	Attachments         []Attachment
-	ListUnsubscribe     string // optional: the one-click unsubscribe URL (RFC 8058)
-	Footer              string // optional HTML: why the email came, in Helvetly's own footer; a branded email's whole footer
-	Eyebrow             string // optional: the pill above the title saying what the email is ("Invoice")
-	Tone                Tone
+	Workspace            string
+	To, Cc               []string
+	Bcc                  []string // envelope recipients only: never written into a header
+	ReplyTo              string   // optional
+	Subject, Text, HTML  string
+	Attachments          []Attachment
+	ListUnsubscribe      string // optional: the one-click unsubscribe URL (RFC 8058)
+	NotificationSettings string // optional URL for the shared Helvetly footer
+	Footer               string // optional HTML: why the email came, in Helvetly's own footer; a branded email's whole footer
+	Eyebrow              string // optional: the pill above the title saying what the email is ("Invoice")
+	Tone                 Tone
 	// Uncounted: a workspace's email no business limit may stop or count (a client's portal sign-in code): branded as
 	// the business, never metered.
 	Uncounted bool

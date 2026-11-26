@@ -47,14 +47,14 @@ func TestDraftDefaultsMatchTheBuiltInTexts(t *testing.T) {
 	number := *en.Number
 	if !slices.Equal(got.To, []string{"ap@kunde.ch"}) || got.Subject != "Invoice "+number+" from "+seller ||
 		got.Message != "Hello\n\nPlease find attached our invoice "+number+" for CHF 216.20, payable by "+swissDate(en.DueDate)+
-			".\n\nKind regards\n"+seller {
+			".\n\nThe PDF includes the payment details. If you have a question about the invoice, reply to this email.\n\nKind regards\n"+seller {
 		t.Fatalf("draft %+v", got)
 	}
 	de := e.issued(b, client, map[string]any{"language": "de"})
 	cn := e.invoice(b, "POST", "/api/v1/invoices/"+de.ID+"/credit-note", map[string]any{"lines": []any{line("1", "50.00")}}, http.StatusCreated)
 	cn = e.invoice(b, "POST", "/api/v1/invoices/"+cn.ID+"/issue", nil, http.StatusOK)
 	got = e.draftOf(b, cn.ID, http.StatusOK).Data
-	if want := "Guten Tag\n\nIm Anhang finden Sie unsere Gutschrift " + *cn.Number + " über CHF 54.05.\n\nFreundliche Grüsse\n" + seller; got.Message != want {
+	if want := "Guten Tag\n\nIm Anhang finden Sie unsere Gutschrift " + *cn.Number + " über CHF 54.05.\n\nIm PDF sehen Sie, was gutgeschrieben wurde. Bei Fragen zur Verrechnung antworten Sie auf diese E-Mail.\n\nFreundliche Grüsse\n" + seller; got.Message != want {
 		t.Fatalf("credit note message %q, want %q", got.Message, want)
 	}
 }

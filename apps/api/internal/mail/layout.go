@@ -52,7 +52,7 @@ func layout(m Message, publicURL string) string {
 	if m.HTML == "" || strings.HasPrefix(strings.ToLower(strings.TrimSpace(m.HTML)), "<!doctype") {
 		return m.HTML
 	}
-	lk, footer, header := helvetlyLook, helvetlyFooter(m.Footer), helvetlyHeader(publicURL)
+	lk, footer, header := helvetlyLook, helvetlyFooter(m.Footer, m.NotificationSettings), helvetlyHeader(publicURL)
 	switch {
 	case m.Brand != nil && m.Footer == "":
 		lk, footer, header = businessLook, brandFooter(*m.Brand, m.Language, publicURL), brandHeader(*m.Brand, publicURL)
@@ -87,9 +87,9 @@ func layout(m Message, publicURL string) string {
 		`<tr><td align="center" style="padding:32px 12px 40px;word-wrap:break-word;overflow-wrap:anywhere">` + "\n" +
 		`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px">` + "\n" +
 		`<tr><td align="center" style="padding:0 0 24px;font-family:` + fonts + `;font-size:20px;line-height:28px;color:` + ink + `">` + header + "</td></tr>\n" +
-		`<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid ` + border + `;border-radius:16px">` + "\n" +
-		`<tr><td height="3" bgcolor="` + lk.bar + `" style="height:3px;font-size:0;line-height:0;border-radius:16px 16px 0 0;` + bar + `">&nbsp;</td></tr>` + "\n" +
-		`<tr><td style="padding:32px 32px 16px;font-family:` + fonts + `;font-size:15px;line-height:24px;color:` + text + `">` + "\n" + body + "</td></tr>\n" +
+		`<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid ` + border + `">` + "\n" +
+		`<tr><td height="3" bgcolor="` + lk.bar + `" style="height:3px;font-size:0;line-height:0;` + bar + `">&nbsp;</td></tr>` + "\n" +
+		`<tr><td style="padding:32px 32px 16px;font-family:` + fonts + `;font-size:15px;line-height:26px;color:` + text + `">` + "\n" + body + "</td></tr>\n" +
 		"</table></td></tr>\n" +
 		`<tr><td align="center" style="padding:28px 16px 0;font-family:` + fonts + `;font-size:12px;line-height:20px;color:` + muted + `">` + footer + "</td></tr>\n" +
 		"</table>\n</td></tr>\n</table></html>"
@@ -108,13 +108,13 @@ func eyebrow(s string, tone Tone) string {
 		icon = `<span aria-hidden="true">` + icon + `</span> `
 	}
 	return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px"><tr><td bgcolor="` + bg + `" style="background-color:` + bg +
-		`;border-radius:999px;padding:4px 12px;font-family:` + fonts + `;font-size:12px;line-height:16px;font-weight:600;letter-spacing:0.2px;color:` + color + `">` +
+		`;padding:4px 12px;font-family:` + fonts + `;font-size:12px;line-height:16px;font-weight:600;letter-spacing:0.2px;color:` + color + `">` +
 		icon + html.EscapeString(strings.TrimSpace(s)) + "</td></tr></table>\n"
 }
 
 // helvetlyFooter is the small print under Helvetly's own card: who sends it, why it came (why, HTML, when given), the
 // website's help and legal pages, and the company.
-func helvetlyFooter(why string) string {
+func helvetlyFooter(why, settings string) string {
 	site := html.EscapeString(SiteURL)
 	link := func(label, path string) string {
 		return `<a href="` + site + path + `" style="color:` + muted + `">` + label + `</a>`
@@ -122,6 +122,9 @@ func helvetlyFooter(why string) string {
 	f := `<strong style="font-weight:600;color:` + text + `">Helvetly</strong> &middot; ` + tagline + "<br>"
 	if why != "" {
 		f += why + "<br>"
+	}
+	if settings != "" {
+		f += `<a href="` + html.EscapeString(settings) + `" style="color:` + muted + `">Notification settings</a> &nbsp;&middot;&nbsp; `
 	}
 	return f + link("Help", "/help") + ` &nbsp;&middot;&nbsp; ` + link("Privacy", "/privacy") + ` &nbsp;&middot;&nbsp; ` + link("Terms", "/terms")
 }

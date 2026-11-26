@@ -438,7 +438,7 @@ func TestEmailMessage(t *testing.T) {
 			[]store.Notification{n("client.change_requested", `{"client_id":"cli_1","client_name":"<b>Jo</b>","contact_name":"ana@example.com"}`, 0)},
 			[]string{">Acme &amp; Co</p>", "&lt;b&gt;Jo&lt;/b&gt; asked to change", "ana@example.com sent the change from the client portal",
 				`href="https://app.example.com/clients?id=cli_1"`, ">Review the request</strong></a>"},
-			[]string{"Acme & Co\n", "Review the request: https://app.example.com/clients?id=cli_1", "Unsubscribe: https://app.example.com/unsubscribe#"},
+			[]string{"Acme & Co\n", "Review the request: https://app.example.com/clients?id=cli_1", "Notification settings: https://app.example.com/notifications?prefs=1"},
 			[]string{"<li>", "<b>Jo</b>"}},
 		{"a burst", "2 invoices were paid", []store.Notification{paid("1", "Acme AG", 0), paid("2", "<i>Berg</i>", 40*time.Second)},
 			[]string{"<strong>Invoice RE-1 was paid</strong></a>", "CHF 10.00 received from Acme AG · 14:05</span>", "&lt;i&gt;Berg&lt;/i&gt; · 14:05",
@@ -449,7 +449,7 @@ func TestEmailMessage(t *testing.T) {
 	} {
 		m := s.message(c.burst)
 		if m.Subject != c.subject || m.To[0] != "a@example.com" || !strings.HasPrefix(m.ListUnsubscribe, "https://app.example.com/api/v1/public/notifications/unsubscribe?token=") ||
-			!strings.Contains(m.Footer, "Acme &amp; Co on Helvetly") || !strings.Contains(m.Footer, ">Unsubscribe</a>") {
+			!strings.Contains(m.Footer, "Acme &amp; Co on Helvetly") || m.NotificationSettings != "https://app.example.com/notifications?prefs=1" {
 			t.Fatalf("%s: %+v", c.name, m)
 		}
 		if strings.Count(m.HTML, html.EscapeString(c.subject)) != 1 {
@@ -492,6 +492,23 @@ func TestEmailApprovalOutcome(t *testing.T) {
 			}
 			if !strings.Contains(plain, c.next) {
 				t.Errorf("plain text is missing %q", c.next)
+			}
+		})
+	}
+}
+
+func TestBillingEmailExplainsTheChange(t *testing.T) {
+	s := &Service{publicURL: "https://app.example.com", key: []byte("0123456789abcdef0123456789abcdef")}
+	for _, status := range []string{"active", "trialing", "past_due", "unpaid", "paused", "canceled", "unknown"} {
+		t.Run(status, func(t *testing.T) {
+			n := store.Notification{WorkspaceName: "Acme", Event: "billing.subscription_changed",
+				Data: []byte(`{"plan":"Pro","status":"` + status + `"}`)}
+			m := s.message([]store.Notification{n})
+			body, plain := mail.Render(m, mail.Brand{}, s.publicURL)
+			if !strings.Contains(body, "<strong>Pro plan</strong>") || !strings.Contains(plain, "Open Billing") && status != "unknown" ||
+				!strings.Contains(body, ">Notification settings</a> &nbsp;&middot;&nbsp; <a href=") ||
+				strings.Contains(body, "Unsubscribe</a>") || strings.Contains(plain, "Unsubscribe:") || m.ListUnsubscribe == "" {
+				t.Fatal("billing update must explain the status and show the shared notification settings link")
 			}
 		})
 	}

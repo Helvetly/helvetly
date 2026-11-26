@@ -82,7 +82,7 @@ func TestDefaultUnknownLanguageIsEnglish(t *testing.T) {
 
 func TestDefaultExample(t *testing.T) {
 	want := Template{Subject: "{document} {number} from {company}",
-		Body: "Hello\n\nPlease find attached our invoice {number} for {amount}, payable by {due_date}.\n\nKind regards\n{company}"}
+		Body: "Hello\n\nPlease find attached our invoice {number} for {amount}, payable by {due_date}.\n\nThe PDF includes the payment details. If you have a question about the invoice, reply to this email.\n\nKind regards\n{company}"}
 	if got := Default("invoice", "en"); got != want {
 		t.Fatalf("got %+v", got)
 	}
@@ -110,7 +110,8 @@ func TestDefaultsMatchToday(t *testing.T) {
 			t.Fatal("kinds changed")
 		}
 		for kind, w := range want {
-			if got := Render(Default(kind, lang), vars); got != (Template{Subject: w.Subject, Body: w.Body}) {
+			w.Body = strings.Replace(w.Body, sign, "\n\n"+nextSteps[lang][kind]+sign, 1)
+			if got := Render(Default(kind, lang), vars); got != w {
 				t.Errorf("%s/%s: got %+v want %+v", kind, lang, got, w)
 			}
 		}

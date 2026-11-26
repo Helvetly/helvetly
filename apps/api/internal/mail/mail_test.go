@@ -58,7 +58,7 @@ func TestLayout(t *testing.T) {
 			`bgcolor="#ffffff" style="width:100%;background-color:#ffffff">`, ">Helvetly</strong> &middot; The online back office",
 			`<a href="https://www.helvetly.com/privacy" style="color:#71717a">Privacy</a>`, `>Terms</a></td>`}},
 		{"footer, and links and buttons in Helvetly's colours", Message{HTML: `<p><a href="y">Go</a></p>` + Button("Open", "z"), Footer: "Why <a href=\"x\">you</a>"},
-			[]string{`<a style="color:#0f766e" href="y">Go</a>`, `bgcolor="#0f766e" style="background-color:#0f766e;border-radius`, "Why <a href=\"x\">you</a><br><a href=\"https://www.helvetly.com/help\""}},
+			[]string{`<a style="color:#0f766e" href="y">Go</a>`, `bgcolor="#0f766e" style="background-color:#0f766e;padding:`, "Why <a href=\"x\">you</a><br><a href=\"https://www.helvetly.com/help\""}},
 		{"an eyebrow above the title, the same word dropped from it", Message{Subject: "Invitation: Coaching", Eyebrow: "Invitation", HTML: "<p>x</p>"},
 			[]string{">Invitation</td></tr></table>\n<h1", ">Coaching</h1>"}},
 		{"a fragment with its own title keeps it", Message{Subject: "Subject", HTML: "<h1>Own</h1>"}, []string{"<h1>Own</h1>"}},

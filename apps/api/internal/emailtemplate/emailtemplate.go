@@ -91,6 +91,33 @@ var languages = map[string]words{
 		"quote":       "Please find attached our quote {number} for {amount}, valid until {valid_until}."}},
 }
 
+var nextSteps = map[string]map[string]string{
+	"en": {
+		"invoice":     "The PDF includes the payment details. If you have a question about the invoice, reply to this email.",
+		"credit_note": "The PDF shows what was credited. Reply to this email if you’d like to check how it applies to your invoice.",
+		"proforma":    "Review the items and amounts in the PDF. If anything needs to change, reply before we prepare the final invoice.",
+		"quote":       "The PDF sets out what’s included. Reply if you have questions, want to make a change or are ready to go ahead.",
+	},
+	"de": {
+		"invoice":     "Die Zahlungsangaben stehen im PDF. Bei Fragen zur Rechnung antworten Sie einfach auf diese E-Mail.",
+		"credit_note": "Im PDF sehen Sie, was gutgeschrieben wurde. Bei Fragen zur Verrechnung antworten Sie auf diese E-Mail.",
+		"proforma":    "Prüfen Sie die Positionen und Beträge im PDF. Teilen Sie uns Änderungen mit, bevor wir die endgültige Rechnung erstellen.",
+		"quote":       "Im PDF sehen Sie, welche Leistungen enthalten sind. Antworten Sie bei Fragen, Änderungswünschen oder wenn Sie das Angebot annehmen möchten.",
+	},
+	"fr": {
+		"invoice":     "Les coordonnées de paiement figurent dans le PDF. Pour toute question sur la facture, répondez à cet e-mail.",
+		"credit_note": "Le PDF détaille le crédit accordé. Répondez à cet e-mail si vous souhaitez vérifier son imputation.",
+		"proforma":    "Vérifiez les lignes et les montants dans le PDF. Signalez-nous les modifications avant l’établissement de la facture définitive.",
+		"quote":       "Le PDF détaille les prestations incluses. Répondez à cet e-mail pour poser une question, demander une modification ou accepter l’offre.",
+	},
+	"it": {
+		"invoice":     "Nel PDF trova i dati per il pagamento. Per domande sulla fattura, risponda a questa e-mail.",
+		"credit_note": "Il PDF indica gli importi accreditati. Risponda a questa e-mail per chiarimenti su come si applicano alla fattura.",
+		"proforma":    "Controlli le voci e gli importi nel PDF. Ci segnali eventuali modifiche prima che prepariamo la fattura definitiva.",
+		"quote":       "Il PDF descrive le prestazioni incluse. Risponda per fare una domanda, chiedere una modifica o accettare l’offerta.",
+	},
+}
+
 // signing is the built-in text of the emails that send a document and of the signature emails, per kind and language. Its English subjects are the ones
 // these emails had before they had templates.
 var signing = map[string]map[string]Template{
@@ -102,7 +129,7 @@ var signing = map[string]map[string]Template{
 		"it": {"{document} da {company}",
 			"Buongiorno\n\nIn allegato trova «{document}». Per qualsiasi domanda, risponda semplicemente a questa e-mail.\n\nCordiali saluti\n{sender}\n{company}"},
 		"en": {"{document} from {company}",
-			"Hello\n\nPlease find “{document}” attached. If you have any questions, simply reply to this email.\n\nKind regards\n{sender}\n{company}"},
+			"Hello\n\nThe PDF for “{document}” is attached for your review.\n\nIf you have a question about the document or need a change, reply to this email.\n\nKind regards\n{sender}\n{company}"},
 	},
 	"signature_request": {
 		"de": {"{company} bittet Sie, «{document}» zu unterschreiben",
@@ -112,7 +139,7 @@ var signing = map[string]map[string]Template{
 		"it": {"{company} le chiede di firmare «{document}»",
 			"Buongiorno\n\nLa preghiamo di verificare e firmare «{document}» tramite il link qui sotto. Per qualsiasi domanda, risponda semplicemente a questa e-mail.\n\nCordiali saluti\n{sender}\n{company}"},
 		"en": {"{company} asks you to sign “{document}”",
-			"Hello\n\nPlease review and sign “{document}” using the link below. If you have any questions, simply reply to this email.\n\nKind regards\n{sender}\n{company}"},
+			"Hello\n\nOpen “{document}” using the link below. Take a moment to check the details before signing.\n\nIf you have a question about the document, reply to this email.\n\nKind regards\n{sender}\n{company}"},
 	},
 	"signature_reminder": {
 		"de": {"Erinnerung: {company} bittet Sie, «{document}» zu unterschreiben",
@@ -122,7 +149,7 @@ var signing = map[string]map[string]Template{
 		"it": {"Promemoria: {company} le chiede di firmare «{document}»",
 			"Buongiorno\n\nLe ricordiamo che «{document}» è ancora in attesa della sua firma. Il link qui sotto la porta direttamente al documento.\n\nCordiali saluti\n{sender}\n{company}"},
 		"en": {"Reminder: {company} asks you to sign “{document}”",
-			"Hello\n\nThis is a friendly reminder that “{document}” is still waiting for your signature. The link below takes you straight to it.\n\nKind regards\n{sender}\n{company}"},
+			"Hello\n\n“{document}” is still waiting for your signature.\n\nUse the link below to review it and sign before the deadline shown in this email.\n\nKind regards\n{sender}\n{company}"},
 	},
 }
 
@@ -136,7 +163,8 @@ func Default(kind, language string) Template {
 	}
 	w, ok := languages[language]
 	if !ok {
-		w = languages["en"]
+		language = "en"
+		w = languages[language]
 	}
 	sentence, ok := w.sentence[kind]
 	if !ok {
@@ -144,7 +172,7 @@ func Default(kind, language string) Template {
 	}
 	return Template{
 		Subject: "{document} {number} " + w.from + " {company}",
-		Body:    w.greeting + "\n\n" + sentence + "\n\n" + w.signOff + "\n{company}",
+		Body:    w.greeting + "\n\n" + sentence + "\n\n" + nextSteps[language][kind] + "\n\n" + w.signOff + "\n{company}",
 	}
 }
 

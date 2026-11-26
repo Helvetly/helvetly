@@ -190,8 +190,8 @@ func (s *Service) notifyFactorLocked(ctx context.Context, userID string) {
 }
 
 func factorLockedMessage(to, publicURL string) mailer.Message {
-	l := mailer.NewLetter("en").Lead("Someone entered too many wrong two-factor codes for your Helvetly account, so two-factor verification is paused for a while.").
-		Lead("If it was you, wait and try again. If it was not, someone knows your first sign-in step: sign in, end your other sessions and review your sign-in methods.").
+	l := mailer.NewLetter("en").Lead("We’ve temporarily paused two-factor verification after several incorrect codes. If you were trying to sign in, wait and try again.").
+		Lead("If you don’t recognise the attempt, review your sign-in methods and end any sessions you don’t recognise when you can access your account.").
 		Action("Sign in", publicURL)
 	return mailer.Message{To: []string{to}, Subject: "Two-factor verification paused on your Helvetly account", Text: l.Text(), HTML: l.HTML()}
 }

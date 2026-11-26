@@ -31,7 +31,7 @@ type Link struct{ Label, URL string }
 // Section keeps related links and their context together in a distinct card.
 func (l *Letter) Section(title, icon, description string, links ...Link) *Letter {
 	l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fafafa" style="width:100%;margin:0 0 12px;background-color:#fafafa;border:1px solid ` +
-		line + `;border-radius:12px"><tr><td style="padding:14px 16px"><h2 style="margin:0 0 6px;font-size:16px;line-height:22px;color:` + ink + `">`)
+		line + `"><tr><td style="padding:14px 16px"><h2 style="margin:0 0 6px;font-size:16px;line-height:22px;color:` + ink + `">`)
 	if icon != "" {
 		l.html.WriteString(`<span aria-hidden="true" style="color:` + primary + `">` + html.EscapeString(icon) + `</span> &nbsp;`)
 	}
@@ -41,11 +41,12 @@ func (l *Letter) Section(title, icon, description string, links ...Link) *Letter
 		l.html.WriteString(`<p style="margin:0 0 8px;font-size:13px;line-height:20px;color:` + muted + `">` + lines(description) + "</p>")
 		l.text.WriteString(description + "\n")
 	}
+	l.html.WriteString(`<ul style="margin:8px 0 0;padding-left:20px">`)
 	for _, link := range links {
-		l.html.WriteString(`<p style="margin:6px 0 0"><a href="` + html.EscapeString(link.URL) + `">` + lines(link.Label) + `</a></p>`)
+		l.html.WriteString(`<li style="margin:4px 0"><a href="` + html.EscapeString(link.URL) + `">` + lines(link.Label) + `</a></li>`)
 		l.text.WriteString("- " + link.Label + ": " + link.URL + "\n")
 	}
-	l.html.WriteString("</td></tr></table>\n")
+	l.html.WriteString("</ul></td></tr></table>\n")
 	l.text.WriteString("\n")
 	return l
 }
@@ -73,6 +74,13 @@ func (l *Letter) Lead(s string) *Letter {
 	return l
 }
 
+// Emphasis adds a paragraph with one important value highlighted.
+func (l *Letter) Emphasis(before, value, after string) *Letter {
+	l.html.WriteString(para + html.EscapeString(before) + "<strong>" + html.EscapeString(value) + "</strong>" + html.EscapeString(after) + "</p>\n")
+	l.text.WriteString(before + value + after + "\n\n")
+	return l
+}
+
 // Message is a typed text (an email template, a message the sender wrote): a paragraph per blank-line block.
 func (l *Letter) Message(s string) *Letter {
 	for p := range strings.SplitSeq(strings.ReplaceAll(s, "\r\n", "\n"), "\n\n") {
@@ -81,9 +89,7 @@ func (l *Letter) Message(s string) *Letter {
 	return l
 }
 
-// Summary is the panel of what the email is about: a light grey box of rows, the label muted in a column of its own
-// with room to wrap, the value beside it, thin lines between them. Rows without a value are
-// left out.
+// Summary lists the details in a panel. Each value sits beneath its label, leaving the full width for both.
 func (l *Letter) Summary(rows ...Row) *Letter {
 	var h, t strings.Builder
 	for _, r := range rows {
@@ -106,12 +112,12 @@ func (l *Letter) Summary(rows ...Row) *Letter {
 			rule = "border-top:1px solid " + line + ";"
 		}
 		cell := rule + `font-family:` + fonts + `;font-size:14px;line-height:21px;`
-		h.WriteString(`<tr><td valign="top" style="` + cell + `padding:11px 12px 11px 16px;color:` + muted + `">` + html.EscapeString(r.Label) +
-			`</td><td valign="top" width="100%" style="` + cell + `padding:11px 16px 11px 8px;font-weight:500;color:` + ink + `">` + value + "</td></tr>\n")
+		h.WriteString(`<tr><td style="` + cell + `padding:9px 14px;color:` + ink + `"><span style="display:block;font-size:12px;line-height:18px;color:` + muted + `">` +
+			lines(r.Label) + `</span><strong style="font-weight:600">` + value + "</strong></td></tr>\n")
 	}
 	if h.Len() > 0 {
 		l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="` + panel + `" style="width:100%;margin:4px 0 24px;background-color:` +
-			panel + `;border-radius:12px">` + "\n" + h.String() + "</table>\n")
+			panel + `">` + "\n" + h.String() + "</table>\n")
 		l.text.WriteString(t.String() + "\n")
 	}
 	return l
@@ -135,7 +141,7 @@ func (l *Letter) Details(rows ...Row) *Letter {
 	}
 	if h.Len() > 0 {
 		l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fafafa" style="width:100%;margin:0 0 16px;background-color:#fafafa;border:1px solid ` +
-			line + `;border-radius:10px">` + "\n" + h.String() + `<tr><td height="2" style="height:2px;font-size:0;line-height:0">&nbsp;</td></tr></table>` + "\n")
+			line + `">` + "\n" + h.String() + `<tr><td height="2" style="height:2px;font-size:0;line-height:0">&nbsp;</td></tr></table>` + "\n")
 		l.text.WriteString(t.String() + "\n")
 	}
 	return l
@@ -144,7 +150,7 @@ func (l *Letter) Details(rows ...Row) *Letter {
 // Code is a one-time code, large and set apart so it is easy to read and copy.
 func (l *Letter) Code(code string) *Letter {
 	l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="` + panel + `" style="width:100%;margin:4px 0 24px;background-color:` +
-		panel + `;border-radius:12px"><tr><td align="center" style="padding:18px 16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:32px;line-height:40px;` +
+		panel + `"><tr><td align="center" style="padding:18px 16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:32px;line-height:40px;` +
 		`font-weight:700;letter-spacing:6px;color:` + ink + `">` + html.EscapeString(code) + "</td></tr></table>\n")
 	l.text.WriteString(code + "\n\n")
 	return l
@@ -219,12 +225,12 @@ func (l *Letter) Text() string { return strings.TrimRight(l.text.String(), "\n")
 func Button(label, url string) string {
 	label = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(label), "→"))
 	return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 24px"><tr><td align="center" ` + buttonFill +
-		`;border-radius:999px;padding:13px 30px;font-family:` + fonts + `;font-size:15px;line-height:20px;font-weight:600">` +
+		`;padding:13px 30px;font-family:` + fonts + `;font-size:15px;line-height:20px;font-weight:600">` +
 		`<a style="color:#ffffff;text-decoration:none" href="` + html.EscapeString(url) + `"><strong style="font-weight:600">` + html.EscapeString(label) + "</strong></a></td></tr></table>\n"
 }
 
 // para is a paragraph's opening tag: its own spacing, never the client's default margins.
-const para = `<p style="margin:0 0 16px">`
+const para = `<p style="margin:0 0 18px;line-height:26px">`
 
 // lines escapes s and keeps its line breaks.
 func lines(s string) string {

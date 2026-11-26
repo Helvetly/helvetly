@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"io"
 	"log/slog"
 	"mime/multipart"
@@ -237,9 +236,14 @@ func (s *Service) email(ctx context.Context, sess store.Session, id, kind, descr
 	}
 	label := map[string]string{"problem": "Problem", "feature": "Feature idea"}[kind]
 	from := sess.User.Name + " <" + sess.User.Email + ">"
-	text := fmt.Sprintf("%s from %s\nWorkspace: %s (%s)\nPage: %s\nReport: %s\n\n%s\n", label, from, sess.Workspace.Name, sess.Workspace.ID, pagePath, id, description)
-	m := mail.Message{To: []string{s.to}, ReplyTo: sess.User.Email, Subject: label + ": " + summary(description), Text: text,
-		HTML: "<p>" + strings.ReplaceAll(html.EscapeString(text), "\n", "<br>\n") + "</p>"}
+	l := mail.NewLetter("en").Message(description).Summary(
+		mail.Row{Label: "Reported by", Value: from},
+		mail.Row{Label: "Workspace", Value: sess.Workspace.Name + " (" + sess.Workspace.ID + ")"},
+		mail.Row{Label: "Page", Value: pagePath},
+		mail.Row{Label: "Report ID", Value: id},
+	)
+	m := mail.Message{To: []string{s.to}, ReplyTo: sess.User.Email, Subject: label + ": " + summary(description), Text: l.Text(),
+		HTML: mail.Title(label+" from "+sess.Workspace.Name) + l.HTML()}
 	for _, shot := range shots {
 		m.Attachments = append(m.Attachments, mail.Attachment{Name: shot.name, ContentType: shot.contentType, Data: shot.data})
 	}

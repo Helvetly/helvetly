@@ -257,10 +257,10 @@ are the reference.
   `mail/mailtest` (`go test -update` rewrites `testdata/*.golden`), which also holds it to the email HTML rule and to words that wrap. Sign-in, security and invitation email is neither counted nor branded and stays Helvetly's, except a client's sign-in
   code for a workspace's portal: it comes from that business (Branded, in its language) and is `Uncounted`, which `Metered`
   never counts or refuses.
-  Every email is one layout (`mail/layout.go`): the sender's mark centred above a white rounded card (the subject as
+  Every email is one layout (`mail/layout.go`): the sender's mark centred above a white card (the subject as
   its title unless the body has its own `<h1>`), the footer muted and centred below. Both stand on a white page with a thinly
   bordered card under a thin bar. Two looks: Helvetly's own (the app icon `email-logo.png` and name, a gradient bar,
-  teal buttons, a footer with the tagline, why it came (`Message.Footer`), Help, Privacy and Terms on `NEXT_PUBLIC_WEB_URL`)
+  teal buttons, a footer with the tagline, why it came (`Message.Footer`), Help, Privacy and Terms on `NEXT_PUBLIC_WEB_URL`, and Notification settings with those links for notifications)
   and a business's (its logo and name, a slate bar, near-black buttons and links, no Helvetly colours; its footer's phone spaced by `internal/phone`, contact links muted so mail apps do not
   turn them blue). Email HTML uses inline styles
   only and may use padding, margin, borders, rounded corners, backgrounds (a gradient always over a solid

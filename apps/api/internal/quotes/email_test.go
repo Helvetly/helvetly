@@ -31,7 +31,7 @@ func TestQuoteDraftUsesTemplate(t *testing.T) {
 	var out draftOut
 	e.do(b, "GET", path, nil, http.StatusOK, &out)
 	if out.Data.Subject != "Offerte von Muster GmbH" || out.Data.To[0] != "ap@kunde.ch" || // no number yet: {number} is ""
-		out.Data.Message != "Guten Tag\n\nIm Anhang finden Sie unsere Offerte  über CHF 216.20, gültig bis 16.12.2026.\n\nFreundliche Grüsse\nMuster GmbH" {
+		out.Data.Message != "Guten Tag\n\nIm Anhang finden Sie unsere Offerte  über CHF 216.20, gültig bis 16.12.2026.\n\nIm PDF sehen Sie, welche Leistungen enthalten sind. Antworten Sie bei Fragen, Änderungswünschen oder wenn Sie das Angebot annehmen möchten.\n\nFreundliche Grüsse\nMuster GmbH" {
 		t.Fatalf("default draft: %+v", out.Data)
 	}
 
@@ -58,8 +58,8 @@ func TestQuoteSendDefaultsToDraft(t *testing.T) {
 		lang string
 		want [2]string
 	}{
-		{"de", [2]string{"Offerte Q-2026-001 von Muster GmbH", "Guten Tag\n\nIm Anhang finden Sie unsere Offerte Q-2026-001 über CHF 216.20, gültig bis 16.12.2026.\n\nFreundliche Grüsse\nMuster GmbH"}},
-		{"en", [2]string{"Quote Q-2026-002 from Muster GmbH", "Hello\n\nPlease find attached our quote Q-2026-002 for CHF 216.20, valid until 16.12.2026.\n\nKind regards\nMuster GmbH"}},
+		{"de", [2]string{"Offerte Q-2026-001 von Muster GmbH", "Guten Tag\n\nIm Anhang finden Sie unsere Offerte Q-2026-001 über CHF 216.20, gültig bis 16.12.2026.\n\nIm PDF sehen Sie, welche Leistungen enthalten sind. Antworten Sie bei Fragen, Änderungswünschen oder wenn Sie das Angebot annehmen möchten.\n\nFreundliche Grüsse\nMuster GmbH"}},
+		{"en", [2]string{"Quote Q-2026-002 from Muster GmbH", "Hello\n\nPlease find attached our quote Q-2026-002 for CHF 216.20, valid until 16.12.2026.\n\nThe PDF sets out what’s included. Reply if you have questions, want to make a change or are ready to go ahead.\n\nKind regards\nMuster GmbH"}},
 	} {
 		lang, want := tc.lang, tc.want
 		q := e.quote(b, "POST", "/api/v1/quotes", map[string]any{"client_id": e.client(b), "language": lang, "lines": []any{line("2", "100.00")}}, http.StatusCreated)
