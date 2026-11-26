@@ -24,14 +24,20 @@ func automationClock(e *env, hourUTC int) time.Time {
 
 // failingMailer refuses the addresses in fail and records the rest.
 type failingMailer struct {
-	mu   sync.Mutex
-	fail []string
-	sent []string
+	uncertain         string
+	uncertainAttempts int
+	mu                sync.Mutex
+	fail              []string
+	sent              []string
 }
 
 func (f *failingMailer) Send(_ context.Context, m mail.Message) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.uncertain == m.To[0] {
+		f.uncertainAttempts++
+		return mail.ErrUncertain
+	}
 	if slices.Contains(f.fail, m.To[0]) {
 		return errors.New("smtp refused")
 	}
@@ -123,13 +129,45 @@ func TestAutomationDigestPartialSend(t *testing.T) {
 		if u := e.automationUsage(b.workspace, at); m.count() != 2 || u.Consumed != 4 || u.Reserved != 0 {
 			t.Fatalf("%d sent, %+v", m.count(), u)
 		}
+		m.fail = nil
+		// A new worker reads the original batch from Postgres.
+		worker := New(e.st, e.svc.auth, e.svc.inv, e.svc.log)
+		worker.SetMailer(m, "https://app.example.test")
+		worker.sendDigests(context.Background(), at.Add(time.Hour))
+		if len(m.sent) != 3 || m.sent[2] != emails[1] || m.sent[0] == m.sent[1] || slices.Contains(m.sent[:2], emails[1]) {
+			t.Fatal(m.sent)
+		}
+		if u := e.automationUsage(b.workspace, at); u.Consumed != 5 || u.Reserved != 0 {
+			t.Fatal(u)
+		}
+
+	})
+	t.Run("uncertain and revoked recipients", func(t *testing.T) {
+		e, b, m, emails := automationEnv(t)
+		m.uncertain = emails[0]
+		m.fail = emails[1:2]
+		at := automationClock(e, 9)
+		e.tick(at)
+		// Remove the refused manager's access before the next worker runs.
+		if _, err := e.pool.Exec(context.Background(), `UPDATE workspace_members SET role='member'
+            WHERE workspace_id=$1 AND user_id=(SELECT id FROM users WHERE email=$2)`, b.workspace, emails[1]); err != nil {
+			t.Fatal(err)
+		}
+		m.fail = nil
+		e.tick(at.Add(time.Hour))
+		if m.uncertainAttempts != 1 || !slices.Equal(m.sent, []string{emails[2]}) {
+			t.Fatalf("attempts %d, sent %v", m.uncertainAttempts, m.sent)
+		}
+		if u := e.automationUsage(b.workspace, at); u.Consumed != 4 || u.Reserved != 0 {
+			t.Fatal(u)
+		}
 	})
 	t.Run("all fail", func(t *testing.T) {
 		e, b, m, emails := automationEnv(t)
 		m.fail = emails
 		at := automationClock(e, 9)
 		e.tick(at)
-		if u := e.automationUsage(b.workspace, at); u.Consumed != 2 || u.Reserved != 0 || e.pendingNotices(b.workspace) != 2 {
+		if u := e.automationUsage(b.workspace, at); u.Consumed != 2 || u.Reserved != 0 || e.count("SELECT count(*) FROM digest_deliveries WHERE workspace_id=$1 AND state='pending'", b.workspace) != 3 {
 			t.Fatalf("%+v, pending %d", u, e.pendingNotices(b.workspace))
 		}
 		m.fail = nil

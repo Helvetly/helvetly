@@ -27,17 +27,21 @@ func TestLegacyEntryAllocations(t *testing.T) {
 	_, err := q.InsertPeriod(ctx, EngagementPeriod{ID: "period", EngagementID: e.ID, Index: 1, StartsOn: "2026-01-01", EndsOn: "2026-01-31", Quantity: 30000, UnitPrice: 10000, OverageUnitPrice: 10000})
 	check(err)
 	for _, id := range []string{"original", "issued-summary", "issued-detail", "changed"} {
-		inv := Invoice{ID: id, Kind: "invoice", Status: "draft", ClientID: "client", Currency: "CHF", Language: "en", VATMode: "none", IssueDate: "2026-01-01", DueDate: "2026-01-31",
-			Lines: []InvoiceLine{{ID: "line_" + id, Position: 1, Description: "Hours", Quantity: 5000, UnitPrice: 10000, VATCategory: "Z"}}}
+		inv := Invoice{ID: id, Kind: "invoice", Status: "draft", ClientID: "client", Currency: "CHF", Language: "en", VATMode: "none", IssueDate: "2026-01-01", DueDate: "2026-01-31"}
+		description := "Hours"
 		start, end := "2026-01-01", "2026-01-31"
 		inv.ServiceDate, inv.ServiceDateEnd = &start, &end
 		switch id {
 		case "issued-summary":
-			inv.Lines[0].Description = "Hours · 01.01.2026 – 31.01.2026"
+			description = "Hours · 01.01.2026 – 31.01.2026"
 		case "issued-detail":
-			inv.Lines[0].Description = "Hours · 01.01.2026"
+			description = "Hours · 01.01.2026"
 		}
 		check(q.SaveDraft(ctx, "ws", inv, now))
+		// Seed the columns available in the version 68 database.
+		_, lineErr := pool.Exec(ctx, `INSERT INTO invoice_lines(id, invoice_id, position, description, quantity, unit_price, vat_category, vat_rate, amount, discount_percent)
+            VALUES ('line_' || $1, $1, 1, $2, 5000, 10000, 'Z', 0, 50000, 0)`, id, description)
+		check(lineErr)
 		if id == "issued-summary" || id == "issued-detail" {
 			_, err := pool.Exec(ctx, `UPDATE invoices SET status='open',number=id,issued_at=now() WHERE id=$1`, id)
 			check(err)

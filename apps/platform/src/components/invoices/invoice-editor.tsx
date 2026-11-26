@@ -516,6 +516,7 @@ function Editor({
     setValues((current) => ({ ...current, [field]: value }))
 
   const persist = async () => {
+    if (!valid) throw new Error(translate('fixTheHighlightedFieldsFirst'))
     if (saving.current) return saving.current
     const sent = payload
     const keys = converted.keys
@@ -1046,6 +1047,14 @@ function Editor({
                 {/* The padding (cancelled by the margins) leaves room for the controls' focus rings. */}
                 <div className="-mx-1 mt-3 -mb-1 overflow-x-auto p-1">
                   <LinesEditor
+                    onChangeBasis={
+                      credit
+                        ? undefined
+                        : (mode) =>
+                            setValues((current) =>
+                              changeVatMode(current, mode, settings.default_vat_rate),
+                            )
+                    }
                     lines={values.lines}
                     vatMode={values.vat_mode}
                     defaultRate={settings.default_vat_rate}

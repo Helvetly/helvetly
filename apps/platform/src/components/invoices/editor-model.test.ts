@@ -2,11 +2,13 @@ import type { InvoiceSettings } from '@/lib/invoices'
 import { sampleInvoice, sampleSchedule, sampleSettings } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
+import { priceCatalogueLine, unresolvedCataloguePrice } from './catalogue-price'
 import {
   addPickedLine,
   applyClient,
   changeVatMode,
   emptyValues,
+  editorLine,
   instalmentGap,
   instalmentsSummary,
   lockedInput,
@@ -475,4 +477,42 @@ test.each([
   ],
 ])('instalments summary: %s', (_, schedule, expected) => {
   expect(instalmentsSummary(schedule)).toBe(expected)
+})
+
+test('a saved catalogue snapshot survives a round trip and a quantity change requires fresh consent', () => {
+  const values = emptyValues(sampleSettings())
+  const row = values.lines[0]!
+  const original = {
+    ...row,
+    description: 'Part',
+    quantity: '1000',
+    vat_rate: '8.1',
+    unit_price: '0.06',
+    catalogue: { price_basis: 'gross' as const, unit_price: '0.07', currency: 'EUR' },
+    acceptedConversion: true,
+  }
+  const saved = toInput({ ...values, currency: 'EUR', vat_mode: 'exclusive', lines: [original] })
+    .input.lines![0]!
+  const reopened = editorLine({ ...saved, id: 'line', position: 1, amount: '60.00' })
+  expect(reopened.catalogue).toEqual(original.catalogue)
+  expect(unresolvedCataloguePrice(reopened, 'exclusive', 'EUR')).toBeNull()
+  const taxFree = changeVatMode({ ...values, currency: 'EUR', lines: [reopened] }, 'none', '8.1')
+  expect(taxFree.lines[0]?.unit_price).toBe('0.06')
+  expect(changeVatMode(taxFree, 'inclusive', '8.1').lines[0]?.unit_price).toBe('0.07')
+  expect(
+    unresolvedCataloguePrice(
+      priceCatalogueLine({ ...reopened, quantity: '2000' }, 'exclusive', 'EUR'),
+      'exclusive',
+      'EUR',
+    ),
+  ).toMatchObject({ original: '140.00', projected: '129.72', difference: '-10.28' })
+  const exact = priceCatalogueLine(
+    { ...original, quantity: '0.125', catalogue: { ...original.catalogue, unit_price: '0.12' } },
+    'exclusive',
+    'EUR',
+  )
+  expect(exact.unit_price).toBe('0.12')
+  expect(unresolvedCataloguePrice(exact, 'exclusive', 'EUR')).toBeNull()
+  const manual = { ...original, catalogue: undefined, unit_price: '123.45' }
+  expect(priceCatalogueLine(manual, 'inclusive', 'EUR')).toEqual(manual)
 })

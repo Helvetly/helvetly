@@ -30,6 +30,14 @@ import {
   type VatMode,
 } from '@/lib/invoices'
 
+import {
+  catalogueFields,
+  savedCataloguePrice,
+  priceCatalogueLine,
+  unresolvedCataloguePrice,
+  type CatalogueLine,
+} from './catalogue-price'
+
 export const LANGUAGE_CHOICES: { value: DocLanguage; label: string }[] = [
   { value: 'de', label: 'DE' },
   { value: 'fr', label: 'FR' },
@@ -42,7 +50,7 @@ export const VAT_CHOICES: { value: VatMode; label: string }[] = [
   { value: 'none', label: translate('noVAT') },
 ]
 
-export type EditorLine = {
+export type EditorLine = CatalogueLine & {
   /** Stable while editing (server line ids change on every save). */
   key: string
   description: string
@@ -184,6 +192,11 @@ const trimFractionZeros = (value: string) =>
 
 /** A saved line as typed in the editor (quotes share the invoice line). */
 export const editorLine = (line: Line): EditorLine => ({
+  ...savedCataloguePrice(
+    line.catalogue_price_basis,
+    line.catalogue_unit_price,
+    line.catalogue_currency,
+  ),
   key: lineKey(),
   description: line.description,
   quantity: trimFractionZeros(line.quantity),
@@ -264,6 +277,8 @@ export function toInput(values: EditorValues, forPreview = false): Converted {
       errors[`${line.key}.vat_rate`] = translate('from0To100')
     if (!forPreview && line.price_currency && !line.unit_price.trim())
       errors[`${line.key}.unit_price`] = translate('enterThePrice', { currency: values.currency })
+    if (!forPreview && unresolvedCataloguePrice(line, values.vat_mode, values.currency))
+      errors[`${line.key}.unit_price`] = translate('reviewCataloguePrice')
     const category = values.vat_mode === 'none' ? 'O' : line.vat_category
     const exempt = EXEMPTION_CATEGORIES.includes(category)
     const reason = exempt ? orNull(line.vat_exemption_reason) : null
@@ -271,6 +286,7 @@ export function toInput(values: EditorValues, forPreview = false): Converted {
       errors[`${line.key}.vat_exemption_reason`] = translate('atMost300Characters')
     keys.push(line.key)
     lines.push({
+      ...catalogueFields(line),
       description: line.description.trim(),
       quantity: quantity ?? '0',
       unit: line.unit,
@@ -442,9 +458,13 @@ export function changeVatMode(
             vat_rate: '0',
             vat_exemption_code: defaultExemptionCode('O'),
           }
-        : line.vat_category === 'O'
-          ? { ...line, vat_category: 'S', vat_rate: defaultRate, vat_exemption_code: null }
-          : line,
+        : priceCatalogueLine(
+            line.vat_category === 'O'
+              ? { ...line, vat_category: 'S', vat_rate: defaultRate, vat_exemption_code: null }
+              : line,
+            mode,
+            values.currency,
+          ),
     ),
   }
 }

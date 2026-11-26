@@ -49,8 +49,7 @@ func (q Q) AddNotice(ctx context.Context, n EngagementNotice) (bool, error) {
 }
 
 // ClaimNotices marks the workspace's un-notified notices of live engagements notified at now and returns them, oldest
-// first. Run it in the transaction that sends them: a concurrent claim waits on the rows, then finds them taken, and a
-// rollback (nothing sent) leaves them for the next run.
+// first. Claim them in the same transaction that queues their recipients.
 func (q Q) ClaimNotices(ctx context.Context, workspaceID string, now time.Time) ([]EngagementNotice, error) {
 	rows, err := q.db.Query(ctx, `WITH claimed AS (UPDATE engagement_notices n SET notified_at = $2 FROM engagements e
 			WHERE e.id = n.engagement_id AND e.workspace_id = $1 AND e.deleted_at IS NULL AND n.notified_at IS NULL
@@ -72,8 +71,7 @@ func (q Q) ClaimNotices(ctx context.Context, workspaceID string, now time.Time) 
 	return list, rows.Err()
 }
 
-// ClaimDigestDay records the workspace's digest for day; false when one was already recorded. Like ClaimNotices,
-// run it in the sending transaction.
+// ClaimDigestDay records the workspace's digest day in the transaction that queues its recipients.
 func (q Q) ClaimDigestDay(ctx context.Context, workspaceID, day string) (bool, error) {
 	tag, err := q.db.Exec(ctx, `INSERT INTO digest_days (workspace_id, day) VALUES ($1, $2::date) ON CONFLICT DO NOTHING`,
 		workspaceID, day)
@@ -131,12 +129,14 @@ func (q Q) LiveEngagementIDs(ctx context.Context, workspaceID string) ([]string,
 	return ids, rows.Err()
 }
 
-// DigestWorkspaces lists the live workspaces (id and time zone) with the digest on (the default) and un-notified notices.
+// DigestWorkspaces lists live workspaces with digests enabled and notices or recipients still waiting.
 func (q Q) DigestWorkspaces(ctx context.Context) ([]Workspace, error) {
 	return q.engagementWorkspaces(ctx, `SELECT w.id, w.name, w.timezone FROM workspaces w
 		WHERE w.deleted_at IS NULL AND coalesce((SELECT s.digest FROM engagement_settings s WHERE s.workspace_id = w.id), true)
-		AND EXISTS (SELECT 1 FROM engagement_notices n JOIN engagements e ON e.id = n.engagement_id
-			WHERE e.workspace_id = w.id AND e.deleted_at IS NULL AND n.notified_at IS NULL) ORDER BY w.id`)
+		AND (EXISTS (SELECT 1 FROM engagement_notices n JOIN engagements e ON e.id = n.engagement_id
+			WHERE e.workspace_id = w.id AND e.deleted_at IS NULL AND n.notified_at IS NULL)
+			OR EXISTS (SELECT 1 FROM digest_deliveries d JOIN workspace_members m USING (workspace_id, user_id)
+				WHERE d.workspace_id = w.id AND d.state = 'pending' AND m.role IN ('owner', 'admin'))) ORDER BY w.id`)
 }
 
 // DigestRecipients: the workspace's owners and admins, and their addresses in the same order.

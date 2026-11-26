@@ -106,11 +106,6 @@ func (s *Service) sendDigests(ctx context.Context, now time.Time) {
 	}
 }
 
-// errNotSent rolls back a digest's claims when every send failed, so the next run tries again.
-var errNotSent = errors.New("digest not sent")
-
-// digest claims the pending notices (and, without notices, the day) in the transaction that sends them, so two
-// instances running the job at once send each digest once.
 func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time) error {
 	if on, err := s.db.FeatureAllowed(ctx, ws.ID, store.FeatureEngagementAutomation); err != nil || !on {
 		return err // a scheduled digest is an automation: it waits for a plan with them
@@ -129,66 +124,92 @@ func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time)
 			sections = append(sections, digestSection{heading: heading, icon: "◷", lines: lines})
 		}
 	}
-	_, emails, err := s.db.DigestRecipients(ctx, ws.ID)
-	if err != nil || len(emails) == 0 {
-		return err // no one to tell: the notices wait
-	}
-	var actions []string // one automatic action per recipient
-	err = s.db.Tx(ctx, func(q store.Q) error {
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		settings, err := q.EngagementSettings(ctx, ws.ID)
+		if err != nil || !settings.Digest {
+			return err
+		}
+		users, _, err := q.DigestRecipients(ctx, ws.ID)
+		if err != nil || len(users) == 0 {
+			return err
+		}
 		notices, err := q.ClaimNotices(ctx, ws.ID, now)
 		if err != nil {
 			return err
 		}
-		if len(sections) > 0 { // sections have no notified mark: without notices they go once a day
+		if len(sections) > 0 {
 			first, err := q.ClaimDigestDay(ctx, ws.ID, ws.Today(now))
-			if err != nil {
+			if err != nil || (!first && len(notices) == 0) {
 				return err
-			}
-			if !first && len(notices) == 0 {
-				return nil
 			}
 		}
 		if len(notices) == 0 && len(sections) == 0 {
 			return nil
 		}
+		if err := q.Admit(ctx, ws.ID, store.AutomationActions, int64(len(users))); err != nil {
+			return err
+		}
 		occurrence := ws.Today(now) + ":day"
 		if len(notices) > 0 {
 			occurrence = ws.Today(now) + ":" + notices[0].ID
 		}
-		// Room for every recipient or the digest waits (claims and reservations roll back together). Reserved in this
-		// transaction: a second connection while it holds the claims deadlocks concurrent instances on the pool.
-		for _, to := range emails {
-			actions = append(actions, "engagements.digest:"+occurrence+":"+to)
-			if err := q.ReserveAutomation(ctx, ws.ID, actions[len(actions)-1], now); err != nil {
-				return err
-			}
-		}
-		sent := 0
-		for i, to := range emails {
-			m := digestMessage(to, ws.Name, notices, s.publicURL, sections...)
-			m.Workspace = ws.ID
-			if err := s.mailer.Send(ctx, m); err != nil {
-				s.log.ErrorContext(ctx, "engagement digest mail", "workspace", ws.ID, "error", err)
-				continue
-			}
-			if err := q.SettleAutomation(ctx, ws.ID, actions[i], now); err != nil {
-				return err
-			}
-			sent++
-		}
-		if sent == 0 {
-			return errNotSent
-		}
-		return nil
+		m := digestMessage("", ws.Name, notices, s.publicURL, sections...)
+		return q.QueueDigest(ctx, ws.ID, occurrence, users, store.DigestBody{Subject: m.Subject, Text: m.Text, HTML: m.HTML})
 	})
-	if err == nil || errors.Is(err, errNotSent) || errors.Is(err, store.ErrAdmissionDenied) {
-		// what did not go is given back: a failed recipient is not retried, a digest that waits reserves again
-		for _, a := range actions {
-			if rerr := s.db.ReleaseAutomation(context.WithoutCancel(ctx), ws.ID, a); rerr != nil {
-				return rerr
-			}
+	if err != nil && !errors.Is(err, store.ErrAdmissionDenied) {
+		return err
+	}
+	pending, err := s.db.PendingDigestDeliveries(ctx, ws.ID)
+	if err != nil {
+		return err
+	}
+	for _, d := range pending {
+		if err := s.sendDigestDelivery(ctx, ws.ID, d, now); err != nil {
+			s.log.ErrorContext(ctx, "engagement digest mail", "workspace", ws.ID, "error", err)
 		}
+	}
+	return nil
+}
+
+func (s *Service) sendDigestDelivery(ctx context.Context, workspaceID string, d store.DigestDelivery, now time.Time) error {
+	action := "engagements.digest:" + d.Occurrence + ":" + d.UserID
+	var m mail.Message
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		if err := q.RequireFeature(ctx, workspaceID, store.FeatureEngagementAutomation); err != nil {
+			return err
+		}
+		email, body, err := q.ClaimDigestDelivery(ctx, workspaceID, d)
+		if err != nil {
+			return err
+		}
+		m = mail.Message{Workspace: workspaceID, Members: true, To: []string{email}, Subject: body.Subject, Text: body.Text, HTML: body.HTML}
+		return q.ReserveAutomation(ctx, workspaceID, action, now)
+	})
+	if errors.Is(err, store.ErrNotFound) || errors.Is(err, store.ErrAdmissionDenied) || errors.Is(err, store.ErrFeatureDenied) {
 		return nil
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	sendErr := s.mailer.Send(ctx, m)
+	done := context.WithoutCancel(ctx)
+	err = s.db.Tx(done, func(q store.Q) error {
+		state := "accepted"
+		if sendErr != nil && !errors.Is(sendErr, mail.ErrUncertain) {
+			if err := q.ReleaseAutomation(done, workspaceID, action); err != nil {
+				return err
+			}
+			state = "pending"
+		} else {
+			if err := q.SettleAutomation(done, workspaceID, action, now); err != nil {
+				return err
+			}
+			if sendErr != nil {
+				state = "uncertain"
+			}
+		}
+		return q.FinishDigestDelivery(done, workspaceID, d, state)
+	})
+	return errors.Join(sendErr, err)
 }

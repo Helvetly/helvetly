@@ -28,15 +28,21 @@ func swiss(d string) string {
 	return t.Format("02.01.2006")
 }
 
-// linePrice is a period price (in the engagement's basis) as the draft wants it: net in exclusive and none mode,
-// gross in inclusive mode.
-func linePrice(e store.Engagement, price invoicecalc.Money, mode string) invoicecalc.Money {
+// A new engagement draft contains only this agreed price. Keep the workspace basis when its
+// cent price is exactly equivalent, otherwise use the engagement basis from the outset.
+func draftPrice(e store.Engagement, price invoicecalc.Money, mode string) (string, invoicecalc.Money) {
 	p := store.Product{PriceBasis: e.PriceBasis, UnitPrice: price, VATCategory: e.VATCategory, VATRate: e.VATRate}
 	p.Derive()
-	if mode == invoicecalc.Inclusive {
-		return p.UnitPriceGross
+	if mode != invoicecalc.None && int64(p.UnitPriceNet)*int64(invoicecalc.Hundred+e.VATRate) != int64(p.UnitPriceGross)*int64(invoicecalc.Hundred) {
+		if e.PriceBasis == "gross" {
+			return invoicecalc.Inclusive, price
+		}
+		return invoicecalc.Exclusive, price
 	}
-	return p.UnitPriceNet
+	if mode == invoicecalc.Inclusive {
+		return mode, p.UnitPriceGross
+	}
+	return mode, p.UnitPriceNet
 }
 
 // billable picks the uninvoiced entries a usage invoice covers and the quantity billed for each: all of them for
@@ -136,7 +142,8 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 	}
 	p := v.periods[i]
 	title := e.Title + " · " + swiss(p.StartsOn) + " – " + swiss(p.EndsOn)
-	var lines func(mode string) []store.InvoiceLine
+	price := p.UnitPrice
+	var lines func(unit invoicecalc.Money) []store.InvoiceLine
 	var covered []store.EngagementEntry
 	var quantities []invoicecalc.Quantity
 	if kind == "advance" {
@@ -146,8 +153,8 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 		if p.AdvanceInvoice != nil {
 			return "", errAlreadyInvoiced
 		}
-		lines = func(mode string) []store.InvoiceLine {
-			return []store.InvoiceLine{line(e, title, p.Quantity, linePrice(e, p.UnitPrice, mode))}
+		lines = func(unit invoicecalc.Money) []store.InvoiceLine {
+			return []store.InvoiceLine{line(e, title, p.Quantity, unit)}
 		}
 	} else {
 		all, err := q.Entries(ctx, e.ID, p.ID)
@@ -159,12 +166,10 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 			return "", errNothingToInvoice
 		}
 		covered, quantities = picked, qty
-		price := p.UnitPrice
 		if e.Billing == "advance" {
 			price = p.OverageUnitPrice
 		}
-		lines = func(mode string) []store.InvoiceLine {
-			unit := linePrice(e, price, mode)
+		lines = func(unit invoicecalc.Money) []store.InvoiceLine {
 			if detail == "summary" {
 				var sum invoicecalc.Quantity
 				for _, n := range qty {
@@ -193,7 +198,14 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 		inv.Currency = e.Currency
 		inv.Reference = e.Reference
 		inv.ServiceDate, inv.ServiceDateEnd = &p.StartsOn, &p.EndsOn
-		inv.Lines = lines(inv.VATMode)
+		mode, unit := draftPrice(e, price, inv.VATMode)
+		inv.VATMode, inv.Lines = mode, lines(unit)
+		if e.ProductID != nil && mode != invoicecalc.None {
+			for i := range inv.Lines {
+				l := &inv.Lines[i]
+				l.CataloguePriceBasis, l.CatalogueUnitPrice, l.CatalogueCurrency = &e.PriceBasis, &price, &e.Currency
+			}
+		}
 	})
 	if err != nil {
 		return "", err
