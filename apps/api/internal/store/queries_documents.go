@@ -489,8 +489,8 @@ func (q Q) addLinks(ctx context.Context, docs []Document) error {
 		return err
 	}
 	rows.Close()
-	shares, err := q.db.Query(ctx, `SELECT s.document_id, c.id, c.name, s.created_at FROM document_shares s JOIN clients c ON c.id = s.client_id
-		WHERE s.document_id = ANY($1) AND c.deleted_at IS NULL ORDER BY s.created_at DESC, c.id`, ids)
+	shares, err := q.db.Query(ctx, `SELECT s.document_id, c.id, c.name, s.created_at, s.expires_at FROM document_shares s JOIN clients c ON c.id = s.client_id
+		WHERE s.document_id = ANY($1) AND c.deleted_at IS NULL AND (s.expires_at IS NULL OR s.expires_at > now()) ORDER BY s.created_at DESC, c.id`, ids)
 	if err != nil {
 		return err
 	}
@@ -498,7 +498,7 @@ func (q Q) addLinks(ctx context.Context, docs []Document) error {
 	for shares.Next() {
 		var docID string
 		var sh DocumentShare
-		if err := shares.Scan(&docID, &sh.ClientID, &sh.ClientName, &sh.SharedAt); err != nil {
+		if err := shares.Scan(&docID, &sh.ClientID, &sh.ClientName, &sh.SharedAt, &sh.ExpiresAt); err != nil {
 			return err
 		}
 		docs[at[docID]].SharedWith = append(docs[at[docID]].SharedWith, sh)

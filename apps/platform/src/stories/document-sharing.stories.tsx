@@ -5,7 +5,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { ItemsView } from '@/components/documents/items-view'
 import { fileKey } from '@/components/documents/selection'
 import { ShareDialog } from '@/components/documents/share-dialog'
-import type { DocFile, DocumentShare } from '@/lib/documents'
+import type { DocFile, DocumentShare, DocumentShareLink } from '@/lib/documents'
 
 import { desktop, pageParameters } from './pages/frame'
 
@@ -42,6 +42,7 @@ const keller: DocumentShare = {
 /** The share endpoints over an in-memory list, so a story sees its own writes. */
 const shareHandlers = (start: DocumentShare[]) => {
   let shares = [...start]
+  let links: DocumentShareLink[] = []
   return pageParameters('/documents', {}, [
     http.get('/api/v1/documents/doc_1/shares', () => HttpResponse.json({ data: shares })),
     http.get('/api/v1/clients', () =>
@@ -68,6 +69,29 @@ const shareHandlers = (start: DocumentShare[]) => {
       shares = shares.filter((share) => share.client_id !== client)
       return new HttpResponse(null, { status: 204 })
     }),
+    http.get('/api/v1/documents/doc_1/share-links', () => HttpResponse.json({ data: links })),
+    http.post<never, { single_use: boolean; expires_in_seconds?: number }>(
+      '/api/v1/documents/doc_1/share-links',
+      async ({ request }) => {
+        const body = await request.json()
+        const now = new Date()
+        const link = {
+          id: 'dsl_1',
+          single_use: body.single_use,
+          created_at: now.toISOString(),
+          expires_at: body.expires_in_seconds
+            ? new Date(now.getTime() + body.expires_in_seconds * 1000).toISOString()
+            : null,
+          used_at: null,
+        }
+        links = [link]
+        return HttpResponse.json({ data: { ...link, token: 'A'.repeat(43) } }, { status: 201 })
+      },
+    ),
+    http.delete('/api/v1/documents/doc_1/share-links', () => {
+      links = []
+      return new HttpResponse(null, { status: 204 })
+    }),
   ])
 }
 
@@ -90,7 +114,7 @@ const body = () => within(document.body)
 /** Nobody yet: one muted line; the linked client is preselected and Enter shares with it. */
 export const ShareWithLinkedClient: Story = {
   play: async () => {
-    const dialog = await body().findByRole('dialog', { name: 'Share with client' })
+    const dialog = await body().findByRole('dialog', { name: 'Share document' })
     await expect(await within(dialog).findByText('Not shared with any client yet.')).toBeVisible()
     const share = within(dialog).getByRole('button', { name: 'Share' })
     await waitFor(() => expect(share).toBeEnabled())
@@ -107,7 +131,7 @@ export const ShareWithLinkedClient: Story = {
 export const RemoveWithConfirm: Story = {
   parameters: shareHandlers([keller]),
   play: async () => {
-    const dialog = await body().findByRole('dialog', { name: 'Share with client' })
+    const dialog = await body().findByRole('dialog', { name: 'Share document' })
     await userEvent.click(await within(dialog).findByRole('button', { name: 'Remove Keller AG' }))
     await expect(await body().findByText('Stop sharing with Keller AG?')).toBeVisible()
     await userEvent.click(body().getByRole('button', { name: 'Cancel' }))
@@ -115,6 +139,27 @@ export const RemoveWithConfirm: Story = {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove Keller AG' }))
     await userEvent.click(await body().findByRole('button', { name: 'Remove' }))
     await expect(await within(dialog).findByText('Not shared with any client yet.')).toBeVisible()
+  },
+}
+
+export const TimeLimitedLink: Story = {
+  parameters: shareHandlers([]),
+  play: async () => {
+    const dialog = within(await body().findByRole('dialog', { name: 'Share document' }))
+    await userEvent.click(dialog.getByRole('radio', { name: 'Share by link' }))
+    await userEvent.click(dialog.getByRole('button', { name: /Expires after/ }))
+    await userEvent.click(await body().findByRole('option', { name: 'Hours' }))
+    const duration = dialog.getByRole('spinbutton', { name: 'Duration' })
+    await userEvent.clear(duration)
+    await userEvent.type(duration, '2')
+    await userEvent.click(dialog.getByRole('switch', { name: 'One-time download' }))
+    await userEvent.click(dialog.getByRole('button', { name: 'Create link' }))
+    const url = await dialog.findByRole('textbox', { name: 'Share by link' })
+    await expect(url).toHaveValue(new URL(`/share#${'A'.repeat(43)}`, window.location.origin).href)
+    const createdLinks = await dialog.findByRole('region', { name: 'Created links' })
+    await expect(await within(createdLinks).findByText(/Expires [A-Za-z0-9]/)).toBeVisible()
+    await userEvent.click(dialog.getByRole('button', { name: 'Revoke link' }))
+    await waitFor(() => expect(url).not.toBeInTheDocument())
   },
 }
 
@@ -178,14 +223,14 @@ export const GridCards: Story = {
     await expect(selected?.className).toContain('data-selected:hover:ring-primary')
 
     const shared = canvas.getByRole('button', {
-      name: 'Share Contract with a very long name for Keller AG.pdf with a client',
+      name: 'Share Contract with a very long name for Keller AG.pdf',
     })
     await expect(shared).toHaveAttribute('aria-pressed', 'true')
     await expect(getComputedStyle(shared.parentElement ?? shared).opacity).toBe('1')
     await userEvent.hover(shared)
     await expect(await body().findByRole('tooltip')).toHaveTextContent('Shared with Keller AG')
 
-    const overlaps = canvas.getAllByRole('button', { name: /with a client$/ }).map((button) => {
+    const overlaps = canvas.getAllByRole('button', { name: /^Share / }).map((button) => {
       const card = button.closest<HTMLElement>('.group\\/card')
       const details = card ? within(card).getByText(/2026/) : null
       return details

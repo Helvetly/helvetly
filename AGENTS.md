@@ -115,6 +115,13 @@ are the reference.
   `documents.auto_tags` names them (outlined chips); one no longer computed leaves, one a person removes
   (`SetOwnDocumentTags`) goes to `removed_auto_tags` and never comes back; the app's own tag writes
   (`SetDocumentTags`) keep them, and they take no room of a person's 10.
+- **Document sharing** (`internal/documents/shares.go`, `share_links.go`): client portal shares optionally expire.
+  The portal checks expiry for lists and downloads, and streams time-limited shares directly. Public share links are
+  session-managed and revocable (`document_share_links`), with only a hash of the random token stored. The link puts
+  the token in a URL fragment. The recipient opens the download page and chooses Download, which submits the token
+  in a POST body and streams the complete file without a separate storage URL. A one-time link is claimed atomically
+  on that POST after opening the storage object. Expired, used, revoked and inaccessible links give the same result.
+  HR files cannot be shared. The workspace export omits public share credentials.
 - **Documents grouped views** (`store/queries_document_groups.go`, `documents/groups.go`): Group by type, year or
   client is computed from each file, never stored, and moves nothing. Type: the record it belongs to (an invoice's or
   quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder, its tags, its

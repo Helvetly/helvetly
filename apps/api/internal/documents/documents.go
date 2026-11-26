@@ -99,6 +99,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("POST /api/v1/documents/{id}/links", s.link)
 	handle("DELETE /api/v1/documents/{id}/links/{type}/{target}", s.unlink)
 	s.registerShares(handle)
+	s.registerShareLinks(mux, handle)
 	s.registerOrganize(handle)
 }
 

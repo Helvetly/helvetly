@@ -29,7 +29,8 @@ func (s *Service) listShares(w http.ResponseWriter, r *http.Request, sess store.
 
 func (s *Service) share(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	var body struct {
-		ClientID string `json:"client_id"`
+		ClientID         string `json:"client_id"`
+		ExpiresInSeconds *int64 `json:"expires_in_seconds"`
 	}
 	if !s.auth.Decode(w, r, &body) {
 		return nil
@@ -37,7 +38,12 @@ func (s *Service) share(w http.ResponseWriter, r *http.Request, sess store.Sessi
 	if body.ClientID == "" {
 		return validationFailed(map[string]string{"client_id": "Choose a client."})
 	}
-	if err := s.db.ShareDocument(r.Context(), sess.Workspace.ID, r.PathValue("id"), body.ClientID, sess.User.ID, s.now()); err != nil {
+	now := s.now()
+	expiry, err := shareExpiry(now, body.ExpiresInSeconds)
+	if err != nil {
+		return err
+	}
+	if err := s.db.ShareDocument(r.Context(), sess.Workspace.ID, r.PathValue("id"), body.ClientID, sess.User.ID, now, expiry); err != nil {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)

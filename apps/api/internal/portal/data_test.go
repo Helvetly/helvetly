@@ -212,6 +212,28 @@ func TestDocumentDownloadNotShared404(t *testing.T) {
 	}
 }
 
+func TestPortalShareExpires(t *testing.T) {
+	e := newEnv(t)
+	e.document("doc_expiry", false)
+	e.files.objects["obj/doc_expiry"] = []byte("%PDF-shared")
+	e.exec(`INSERT INTO document_shares (document_id, client_id, workspace_id, created_at, expires_at)
+		VALUES ('doc_expiry','cli_1','wsp_a',now(),now() + interval '1 minute')`)
+	c, _ := e.signIn("ana@acme.ch")
+	const download = "/documents/doc_expiry/download"
+	res, body := e.get(c, download)
+	if res.StatusCode != 200 || body != "%PDF-shared" || res.Header.Get("Location") != "" {
+		t.Fatalf("time-limited share: %d %q", res.StatusCode, body)
+	}
+
+	e.exec(`UPDATE document_shares SET expires_at = now() WHERE document_id = 'doc_expiry'`)
+	if res, _ := e.get(c, download); res.StatusCode != 404 {
+		t.Fatalf("expired download: %d", res.StatusCode)
+	}
+	if res, body := e.get(c, "/documents"); res.StatusCode != 200 || strings.Contains(body, "doc_expiry") {
+		t.Fatalf("expired document listed: %d %q", res.StatusCode, body)
+	}
+}
+
 // quote adds a quote of wsp_a; number nil for a draft, pdfKey nil for none.
 func (e *env) quote(id, client, status string, number, pdfKey any) {
 	e.exec(`INSERT INTO quotes (id, workspace_id, client_id, number, status, issue_date, valid_until, currency, language, vat_mode,

@@ -48,6 +48,32 @@ func TestShareTwiceNoop(t *testing.T) {
 	}
 }
 
+func TestShareDocumentCanRenewExpiredGrant(t *testing.T) {
+	q, _ := sharesDB(t)
+	ctx, now := context.Background(), time.Now().UTC().Truncate(time.Microsecond)
+	expires := now.Add(-time.Minute)
+	if err := q.ShareDocument(ctx, "wsp_a", "doc_1", "cli_1", "", now.Add(-time.Hour), &expires); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := q.SharedDocument(ctx, "wsp_a", "cli_1", "doc_1"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expired share: %v", err)
+	}
+	if shares, err := q.DocumentShares(ctx, "wsp_a", "doc_1"); err != nil || len(shares) != 0 {
+		t.Fatalf("expired management shares: %+v, %v", shares, err)
+	}
+	expires = now.Add(time.Hour)
+	if err := q.ShareDocument(ctx, "wsp_a", "doc_1", "cli_1", "", now, &expires); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.ShareDocument(ctx, "wsp_a", "doc_1", "cli_1", "", now.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	d, err := q.SharedDocument(ctx, "wsp_a", "cli_1", "doc_1")
+	if err != nil || d.ExpiresAt == nil || !d.ExpiresAt.Equal(expires) {
+		t.Fatalf("renewed share: %+v, %v", d, err)
+	}
+}
+
 func TestSharedDocumentTrashedHidden(t *testing.T) {
 	q, pool := sharesDB(t)
 	ctx := context.Background()

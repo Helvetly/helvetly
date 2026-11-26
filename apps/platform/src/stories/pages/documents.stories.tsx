@@ -1281,7 +1281,7 @@ export const FileMenu: Story = {
           `Preview${label}`,
           `Download${label}`,
           '\\|',
-          `Share with client…${label}`,
+          `Share…${label}`,
           `Send for signature…${label}`,
           '\\|',
           `Rename${label}`,

@@ -12596,6 +12596,11 @@
           "shared_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When portal access ends, or absent for a permanent share."
           }
         },
         "required": ["client_id", "client_name", "shared_at"]
@@ -12976,6 +12981,12 @@
           "client_id": {
             "type": "string",
             "description": "A client of the workspace."
+          },
+          "expires_in_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9223372036,
+            "description": "Optional share duration in seconds. Omit it for a permanent share."
           }
         },
         "required": ["client_id"],

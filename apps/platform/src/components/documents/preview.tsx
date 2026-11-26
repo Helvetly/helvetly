@@ -227,7 +227,7 @@ export function Preview({
                       id: 'share',
                       group: 'send',
                       icon: <Share2 />,
-                      label: translate('shareWithClientEllipsis'),
+                      label: translate('documentShareMenu'),
                       onSelect: () => setSharing(true),
                     },
                     {

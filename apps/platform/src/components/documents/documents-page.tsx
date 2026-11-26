@@ -816,7 +816,7 @@ export function DocumentsPage() {
                 id: 'share',
                 group: 'send',
                 icon: <Share2 />,
-                label: translate('shareWithClient'),
+                label: translate('documentShareMenu'),
                 onSelect: () => setShareFrom(file),
               },
             pdf && {
