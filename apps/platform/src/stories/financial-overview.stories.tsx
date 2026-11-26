@@ -130,6 +130,10 @@ export const CashFlowYears: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(await canvas.findByRole('radio', { name: 'Years' }))
+    // Measure and period sit side by side in the card's title row, not stacked.
+    const measureTop = canvas.getByRole('radio', { name: 'Net' }).getBoundingClientRect().top
+    const periodTop = canvas.getByRole('radio', { name: 'Years' }).getBoundingClientRect().top
+    await expect(Math.abs(measureTop - periodTop)).toBeLessThan(2)
     const total = canvas.getByLabelText('2026 year to date')
     await expect(total).toHaveTextContent(/CHF\s*240\s*2026 to date · \+20% vs 2025/)
     await userEvent.click(canvas.getByRole('radio', { name: 'Net' }))
