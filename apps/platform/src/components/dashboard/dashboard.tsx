@@ -562,6 +562,15 @@ function CashFlow() {
               ))}
             </NativeSelect>
           )}
+          {period === 'years' && dashboard.data && (
+            <Segmented
+              size="sm"
+              label={translate('cashFlowMeasure')}
+              value={measure}
+              options={[...MEASURES]}
+              onChange={setMeasure}
+            />
+          )}
           <Segmented
             size="sm"
             label={translate('period')}
@@ -579,7 +588,6 @@ function CashFlow() {
           shown={shownYears}
           onShownChange={setYears}
           measure={measure}
-          onMeasureChange={setMeasure}
           unit={unit}
         />
       ) : (
@@ -723,7 +731,6 @@ function CashFlowYears({
   shown,
   onShownChange,
   measure,
-  onMeasureChange,
   unit,
 }: {
   points: CashFlowPoint[]
@@ -731,7 +738,6 @@ function CashFlowYears({
   shown: number[]
   onShownChange: (years: number[]) => void
   measure: Measure
-  onMeasureChange: (measure: Measure) => void
   unit: string
 }) {
   const latest = shown[0] ?? years[0]
@@ -763,13 +769,6 @@ function CashFlowYears({
               ` · ${translate('cashFlowVsYear', { change: percent.format(change), year: String(latest - 1) })}`}
           </span>
         </output>
-        <Segmented
-          size="sm"
-          label={translate('cashFlowMeasure')}
-          value={measure}
-          options={[...MEASURES]}
-          onChange={onMeasureChange}
-        />
       </div>
       <fieldset className="flex flex-wrap gap-2">
         <legend className="sr-only">{translate('cashFlowYearsShown')}</legend>
