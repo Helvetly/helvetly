@@ -100,10 +100,17 @@ func (s *Service) bulkPortal(ctx context.Context, sess store.Session, ids []stri
 	return result, nil
 }
 
-// invitePortal mails the client the portal link after the change is saved and records when. A failure is logged,
-// never returned.
+// invitePortal mails the client the portal link after the change is saved and records when, unless the workspace
+// turned these invitations off (Settings → Client emails; a resend by hand still goes). A failure is logged, never
+// returned.
 func (s *Service) invitePortal(ctx context.Context, sess store.Session, c store.Client) {
 	if s.mail == nil || PortalLogin(c) == "" {
+		return
+	}
+	if emails, err := s.db.Q.WorkspaceClientEmails(ctx, sess.Workspace.ID); err != nil || !emails.PortalInvitations {
+		if err != nil {
+			s.log.WarnContext(ctx, "check portal invitation", "client", c.ID, "error", err)
+		}
 		return
 	}
 	// A queued invitation may have been revoked or its recipient changed since commit.

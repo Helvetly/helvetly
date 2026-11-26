@@ -25,6 +25,7 @@ type Brand struct {
 	ReplyTo  string // the workspace's reply address, else the company email; empty when it has neither
 	Owner    string // the owner's email: replies go there when neither the brand nor the sender names an address
 	SentWith bool   // ends with a muted "Sent with Helvetly.com" (Free and Basic; plans with remove_branding have none)
+	Footer   string // the workspace's own plain-text lines after its details; empty for none
 }
 
 // Branded sends a workspace's email to its clients as the business: its name in From (the address stays MAIL_FROM's),
@@ -175,6 +176,9 @@ func brandFooter(b Brand, language string) string {
 		}
 		f.WriteString("<br>" + l)
 	}
+	if b.Footer != "" {
+		f.WriteString("<br><br>" + strings.ReplaceAll(html.EscapeString(b.Footer), "\n", "<br>"))
+	}
 	if b.SentWith {
 		w := wordsFor(language)
 		f.WriteString(`<br><br><span style="font-size:11px">` + html.EscapeString(w.sentWith) + ` <a href="` +
@@ -186,6 +190,9 @@ func brandFooter(b Brand, language string) string {
 // brandText is the plain-text part's footer, after the signature delimiter.
 func brandText(b Brand, language string) string {
 	out := "\n\n-- \n" + strings.Join(b.lines(language, false), "\n") + "\n"
+	if b.Footer != "" {
+		out += "\n" + b.Footer + "\n"
+	}
 	if b.SentWith {
 		w := wordsFor(language)
 		out += "\n" + w.sentWith + " " + SiteURL + " · " + w.pitch + "\n"
