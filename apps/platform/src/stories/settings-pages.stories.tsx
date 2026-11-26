@@ -7,13 +7,14 @@ import { AccountSettings } from '@/components/account/account-settings'
 import { DocumentSettingsPage } from '@/components/settings/document-settings'
 import { CompanySettingsPage, InvoiceSettingsPage } from '@/components/settings/invoice-settings'
 import { WorkspaceSettings } from '@/components/settings/workspace-settings'
-import { accountHandlers as accountMock, resetAccountMock } from '@/mocks/account'
+import { accountHandlers as accountMock, heidiMemoryRead, resetAccountMock } from '@/mocks/account'
 import { notificationHandlers } from '@/mocks/notifications'
 import { sampleSettings } from '@/test/invoice-api'
 
 import { screenHandlers, storySession } from './screen-fixtures'
 
 const accountHandlers = [
+  heidiMemoryRead,
   http.get('/api/v1/account', () =>
     HttpResponse.json({
       data: {

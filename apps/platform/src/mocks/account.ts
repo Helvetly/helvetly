@@ -199,8 +199,10 @@ const memoryView = () =>
     has_memory: memory.topics.length > 0 || memory.reply_style !== 'auto',
   })
 
+export const heidiMemoryRead = http.get('/api/v1/heidi/memory', memoryView)
+
 export const accountHandlers = [
-  http.get('/api/v1/heidi/memory', memoryView),
+  heidiMemoryRead,
   http.patch('/api/v1/heidi/memory', async ({ request }) => {
     const update = (await request.json()) as Partial<typeof memory>
     memory =
