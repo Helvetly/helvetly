@@ -4366,6 +4366,7 @@
   "importSectionPaymentsText": "The total printed on the invoice and what the client already paid.",
   "importTotalDiffers": "The lines add up to {lines}. Check the lines, or the total printed on the invoice.",
   "importSectionInstalmentsText": "The payment schedule printed on the invoice. Instalments already past due count as paid on their due date.",
+  "clearImportedInstalments": "Clear instalment schedule",
   "importInstalmentN": "Instalment {n}",
   "importPaid": "Paid",
   "importAddInstalment": "Add instalment",

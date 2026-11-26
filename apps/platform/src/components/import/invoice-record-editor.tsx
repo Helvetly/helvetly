@@ -333,6 +333,7 @@ function InvoiceRecordForm({
     // History, as the import counts it: past due and nothing said about payment means paid in full on the due date.
     return read.issued_elsewhere === translate('yes') &&
       !read.paid_amount &&
+      record.data.has_instalment_schedule !== true &&
       !rowsOf(record.data.instalments).length &&
       due &&
       due < todayDate()
@@ -342,6 +343,7 @@ function InvoiceRecordForm({
   const [mode, setMode] = useState<VatMode>(vatMode)
   const [lines, setLines] = useState(() => editorLinesOf(record.data, vatMode, defaultRate))
   const [instalments, setInstalments] = useState(() => instalmentsOf(record.data, todayDate()))
+  const [discardSchedule, setDiscardSchedule] = useState(false)
   const set = (field: string, value: string) =>
     setValues((current) => ({ ...current, [field]: value }))
   const issues = Object.entries(record.issues)
@@ -406,6 +408,7 @@ function InvoiceRecordForm({
       JSON.stringify(importInstalmentsOf(instalmentsOf(record.data, todayDate())))
     )
       changes.instalments = nextInstalments
+    if (discardSchedule && nextInstalments.length === 0) changes.has_instalment_schedule = false
     if (mode !== vatMode && mode !== 'none')
       changes.price_basis = mode === 'inclusive' ? 'gross' : 'net'
     if (!Object.keys(changes).length) return onDone(null)
@@ -780,9 +783,25 @@ function InvoiceRecordForm({
                   <InstalmentRows
                     rows={instalments}
                     currency={currency}
-                    error={record.issues.instalments}
+                    error={discardSchedule ? undefined : record.issues.instalments}
                     onChange={setInstalments}
                   />
+                  {!discardSchedule &&
+                    record.data.has_instalment_schedule === true &&
+                    record.issues.instalments && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="justify-self-start"
+                        onClick={() => {
+                          setInstalments([])
+                          setDiscardSchedule(true)
+                        }}
+                      >
+                        {translate('clearImportedInstalments')}
+                      </Button>
+                    )}
                 </Block>
               )}
             </div>

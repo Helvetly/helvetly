@@ -100,6 +100,22 @@ func checkImport(ctx context.Context, q store.Q, workspaceID, today, clientID st
 		}
 	}
 	elsewhere := checkIssuedElsewhere(inv, data, today, invalid)
+	var hasSchedule bool
+	_ = json.Unmarshal(data["has_instalment_schedule"], &hasSchedule)
+	if schedule := importedSchedule(data["instalments"], inv); schedule != nil {
+		allowed, err := q.FeatureAllowed(ctx, workspaceID, store.FeatureInvoiceInstalments)
+		if err != nil {
+			return store.Invoice{}, issuedElsewhere{}, nil, err
+		}
+		if allowed {
+			inv.Instalments = schedule
+			syncSchedule(&inv)
+		} else if hasSchedule {
+			invalid["instalments"] = "This plan does not support invoice instalment schedules."
+		}
+	} else if hasSchedule {
+		invalid["instalments"] = "Check the original: enter 2 to 12 instalments with distinct due dates and amounts that add up to the invoice total."
+	}
 	return inv, elsewhere, invalid, nil
 }
 

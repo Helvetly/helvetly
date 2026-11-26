@@ -4366,6 +4366,7 @@
   "importSectionPaymentsText": "Il totale stampato sulla fattura e quanto il cliente ha già pagato.",
   "importTotalDiffers": "Le righe danno {lines}. Controlla le righe o il totale stampato.",
   "importSectionInstalmentsText": "Il piano di pagamento stampato sulla fattura. Le rate già scadute contano come pagate alla loro scadenza.",
+  "clearImportedInstalments": "Rimuovi il piano di rateizzazione",
   "importInstalmentN": "Rata {n}",
   "importPaid": "Pagata",
   "importAddInstalment": "Aggiungi rata",

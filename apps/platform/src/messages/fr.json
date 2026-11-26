@@ -4366,6 +4366,7 @@
   "importSectionPaymentsText": "Le total imprimé sur la facture et ce que le client a déjà payé.",
   "importTotalDiffers": "Les lignes donnent {lines}. Vérifiez les lignes ou le total imprimé.",
   "importSectionInstalmentsText": "L’échéancier imprimé sur la facture. Les échéances passées comptent comme payées à leur date.",
+  "clearImportedInstalments": "Supprimer l’échéancier",
   "importInstalmentN": "Échéance {n}",
   "importPaid": "Payé",
   "importAddInstalment": "Ajouter une échéance",

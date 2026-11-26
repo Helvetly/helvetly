@@ -35,29 +35,36 @@ var invoicesKind = Kind{
 		"is a finished invoice the seller issued, carrying its own invoice number; false for a quote, order, proforma or draft. " +
 		"paid_amount and paid_on only when the document states a payment already received (a document marked paid " +
 		"without an amount was paid in full: paid_amount is the total), else null; paid_on is null when no payment date " +
-		"is stated. instalments is the payment schedule the document shows, one row per instalment with its amount, due " +
-		"date and whether the document marks it paid (paid_on when stated); a document marked paid as a whole has every " +
-		"instalment paid. null without a schedule.",
+		"is stated. Look for a payment schedule across all pages, including payment instructions, tables, and separate " +
+		"payment slips. Set has_instalment_schedule to true if the document divides the invoice total into several payments, " +
+		"even if some dates or amounts are unreadable. Put one row per instalment in instalments, including any deposit or " +
+		"final balance that is part of the schedule. Match each exact amount to its own due date; copy neither the invoice " +
+		"total nor a cumulative balance as an instalment. Do not count repetitions of the same payment twice. Check that " +
+		"the amounts add up to the invoice total. Use null for unreadable values rather than guessing. A single payment " +
+		"deadline or a list of payments already received without a schedule is not a payment schedule. Set paid only when " +
+		"the document gives its payment status, with paid_on only when stated; a document marked paid as a whole has every " +
+		"instalment paid. Use null for instalments when there is no schedule.",
 	Schema: record(withClientDetails(map[string]any{
-		"client_id":          nullable("string", "Always null: the person picks the client"),
-		"client_name":        nullable("string", "The billed party's name"),
-		"client_vat_number":  nullable("string", "The billed party's VAT or UID number"),
-		"client_email":       nullable("string", "The billed party's email address"),
-		"number":             nullable("string", "The invoice's own number"),
-		"reference":          nullable("string", "The buyer's reference or order number"),
-		"contract_reference": nullable("string", "The contract or agreement number the invoice refers to, as printed, e.g. C23-25-CP2302"),
-		"issue_date":         nullable("string", "Invoice date, YYYY-MM-DD"),
-		"due_date":           nullable("string", "Due date, YYYY-MM-DD"),
-		"service_date":       nullable("string", "Service date or start of the service period, YYYY-MM-DD"),
-		"service_date_end":   nullable("string", "End of the service period, YYYY-MM-DD"),
-		"currency":           nullable("string", "ISO 4217 currency code"),
-		"price_basis":        nullable("string", "net or gross"),
-		"total":              nullable("string", "Grand total stated on the document, e.g. 1081.00"),
-		"discount_percent":   nullable("string", "Discount on the whole invoice in percent, e.g. 15"),
-		"issued_elsewhere":   nullable("boolean", "true for a finished invoice the seller issued with its own number"),
-		"paid_amount":        nullable("string", "Amount the document says was already paid, e.g. 500.00"),
-		"paid_on":            nullable("string", "Date that amount was paid, YYYY-MM-DD"),
-		"instalments": map[string]any{"type": []string{"array", "null"}, "description": "The payment schedule, in order",
+		"client_id":               nullable("string", "Always null: the person picks the client"),
+		"client_name":             nullable("string", "The billed party's name"),
+		"client_vat_number":       nullable("string", "The billed party's VAT or UID number"),
+		"client_email":            nullable("string", "The billed party's email address"),
+		"number":                  nullable("string", "The invoice's own number"),
+		"reference":               nullable("string", "The buyer's reference or order number"),
+		"contract_reference":      nullable("string", "The contract or agreement number the invoice refers to, as printed, e.g. C23-25-CP2302"),
+		"issue_date":              nullable("string", "Invoice date, YYYY-MM-DD"),
+		"due_date":                nullable("string", "Due date, YYYY-MM-DD"),
+		"service_date":            nullable("string", "Service date or start of the service period, YYYY-MM-DD"),
+		"service_date_end":        nullable("string", "End of the service period, YYYY-MM-DD"),
+		"currency":                nullable("string", "ISO 4217 currency code"),
+		"price_basis":             nullable("string", "net or gross"),
+		"total":                   nullable("string", "Grand total stated on the document, e.g. 1081.00"),
+		"discount_percent":        nullable("string", "Discount on the whole invoice in percent, e.g. 15"),
+		"issued_elsewhere":        nullable("boolean", "true for a finished invoice the seller issued with its own number"),
+		"paid_amount":             nullable("string", "Amount the document says was already paid, e.g. 500.00"),
+		"paid_on":                 nullable("string", "Date that amount was paid, YYYY-MM-DD"),
+		"has_instalment_schedule": nullable("boolean", "True if the original invoice specifies multiple scheduled payments, even when extraction is incomplete"),
+		"instalments": map[string]any{"type": []string{"array", "null"}, "description": "One row per payment in the invoice's schedule, with the amount and due date paired",
 			"items": record(map[string]any{
 				"amount":   nullable("string", "Amount of this instalment, e.g. 200.00"),
 				"due_date": nullable("string", "Due date of this instalment, YYYY-MM-DD"),

@@ -799,6 +799,45 @@ export const EditInvoiceDrawer: Story = {
   },
 }
 
+const incompleteSchedule = invoiceRecord('imr_detected', {
+  data: { number: 'RE-1001', has_instalment_schedule: true },
+  issues: { instalments: 'Check the dates and amounts on the original invoice.' },
+})
+const scheduleEdits: unknown[] = []
+
+export const ReviewIncompleteSchedule: Story = {
+  beforeEach: () => {
+    scheduleEdits.length = 0
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        sessionHandler(),
+        autoBatches,
+        getBatch(() => ({ ...reading(), status: 'review', records: [incompleteSchedule] })),
+        http.patch('/api/v1/imports/:id/records/:record', async ({ request }) => {
+          scheduleEdits.push(await request.json())
+          return HttpResponse.json({ data: { ...incompleteSchedule, issues: {} } })
+        }),
+        ...editorApi([]),
+      ],
+    },
+  },
+  render: () => <ImportDrawer kind="auto" onClose={() => {}} />,
+  play: async () => {
+    await opened('Import documents')
+    await userEvent.click(await body().findByRole('button', { name: 'Continue import' }))
+    await userEvent.click(await body().findByRole('button', { name: 'Edit RE-1001' }))
+    const editor = within(await body().findByRole('dialog', { name: 'Edit record' }))
+    await userEvent.click(editor.getByRole('button', { name: 'Clear instalment schedule' }))
+    await expect(scheduleEdits).toHaveLength(0)
+    await userEvent.click(editor.getByRole('button', { name: /^Save$/ }))
+    await waitFor(() =>
+      expect(scheduleEdits).toEqual([{ data: { has_instalment_schedule: false } }]),
+    )
+  },
+}
+
 /** The unfinished batch can be discarded right from the offer, after a yes: neither continued nor started over. */
 export const DiscardUnfinished: Story = {
   parameters: {
