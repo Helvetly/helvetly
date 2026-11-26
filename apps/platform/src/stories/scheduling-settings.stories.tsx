@@ -444,7 +444,7 @@ export const BulkWeeklyHours: Story = {
     const sunday = within(days).getByRole('button', { name: 'Sun' })
     const add = canvas.getByRole('button', { name: 'Add to selected days' })
     await expect(sunday).toHaveAttribute('aria-pressed', 'false')
-    const dayButton = (name: string) => within(days).getByRole('button', { name, exact: true })
+    const dayButton = (name: string) => within(days).getByRole('button', { name })
     await userEvent.click(dayButton('Mon'))
     await userEvent.click(dayButton('Tue'))
     await userEvent.click(dayButton('Wed'))
