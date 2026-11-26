@@ -79,6 +79,41 @@ func TestReadOrganize(t *testing.T) {
 	}
 }
 
+func TestReadOrganizeTaggedContract(t *testing.T) {
+	const year = "Clients/Acme AG/Documents/2026"
+	const contracts = year + "/Contracts"
+	names := recordNames{clients: []store.ClientName{{ID: "cli_acme", Name: "Acme AG"}}}
+	folders := []store.Folder{
+		{ID: "root", Name: "Clients"}, {ID: "client", Name: "Acme AG", ParentID: ptr("root")},
+		{ID: "documents", Name: "Documents", ParentID: ptr("client")},
+		{ID: "year", Name: "2026", ParentID: ptr("documents")},
+		{ID: "contracts", Name: "Contracts", ParentID: ptr("year")},
+	}
+	for _, tc := range []struct {
+		name, filename, fromID, suggested, want string
+		tags                                    []string
+		modelChange, wantChange                 bool
+	}{
+		{"already in the year", "2026-C-001.pdf", "year", year, contracts, []string{"year-2026", "contract"}, false, true},
+		{"already in Contracts", "2026-C-001.pdf", "contracts", year, contracts, []string{"contract"}, true, false},
+		{"year found by model", "2026-C-001.pdf", "", year, contracts, []string{"contract"}, true, true},
+		{"explicit draft", "draft-contract.pdf", "year", year, year, []string{"contract"}, false, false},
+		{"tag only suggested by model", "agreement.pdf", "year", year, year, nil, true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := store.Document{ID: "doc", Name: tc.filename, Tags: tc.tags}
+			if tc.fromID != "" {
+				doc.FolderID = &tc.fromID
+			}
+			reply := fmt.Sprintf(`{"proposals":[{"document_id":"doc","folder":%q,"tags":["contract"],"reason":"Could not confirm it was signed.","change":%t}]}`, tc.suggested, tc.modelChange)
+			got, err := readOrganize(reply, []store.Document{doc}, folders, names, nil, "en")
+			if err != nil || len(got) != 1 || got[0].Folder != tc.want || got[0].Change != tc.wantChange {
+				t.Fatalf("got %+v, %v; want folder %q, change %v", got, err, tc.want, tc.wantChange)
+			}
+		})
+	}
+}
+
 func ptr(s string) *string { return &s }
 
 type organizeAnswer struct {

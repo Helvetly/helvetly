@@ -1,111 +1,84 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
-import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { expect, userEvent, within } from 'storybook/test'
 
-import { FolderCombobox, folderProblem } from '@/components/documents/folder-combobox'
+import {
+  FolderPathInput,
+  folderEntries,
+  folderProblem,
+} from '@/components/documents/folder-combobox'
 import type { Folder } from '@/lib/documents'
 
 const folder = (id: string, name: string, parent: string | null, system_kind?: string) =>
   ({ id, name, parent_id: parent, system_kind: system_kind ?? null }) as Folder
-
-const folders = [
+const entries = folderEntries([
   folder('a', 'Clients', null, 'clients'),
   folder('b', 'Acme', 'a', 'client'),
-  folder('c', 'Invoices', 'b', 'invoices'),
+  folder('c', 'Documents', 'b', 'documents'),
   folder('d', '2026', 'c', 'year'),
-  folder('e', 'Contracts', null),
-]
-const existing = new Set(
-  [
-    'Clients',
-    'Clients/Acme',
-    'Clients/Acme/Invoices',
-    'Clients/Acme/Invoices/2026',
-    'Contracts',
-  ].map((path) => path.toLowerCase()),
-)
+  folder('e', 'Contracts', 'd', 'contracts'),
+  folder('f', 'Projects', 'd'),
+  folder('g', '2027', 'c', 'year'),
+  folder('h', 'Contracts', null),
+])
+const existing = new Set(entries.map(({ path }) => path.toLowerCase()))
 
 function Harness({ start }: { start: string }) {
   const [value, setValue] = useState(start)
   const problem = folderProblem(value, existing)
   return (
-    <div className="grid max-w-md gap-1.5 bg-card p-5">
-      <FolderCombobox
-        folders={folders}
+    <div className="grid max-w-lg gap-2 bg-card p-5">
+      <FolderPathInput
+        entries={entries}
         value={value}
         label="Folder for scan.pdf"
         invalid={problem !== null}
         onChange={setValue}
       />
       {problem && <p role="alert">{problem}</p>}
+      <output>{value || 'Top level'}</output>
     </div>
   )
 }
 
-const meta = { title: 'Documents/Folder picker', component: Harness } satisfies Meta<typeof Harness>
+const meta = { title: 'Documents/Folder path', component: Harness } satisfies Meta<typeof Harness>
 export default meta
 type Story = StoryObj<typeof meta>
 
-const field = (canvas: ReturnType<typeof within>) =>
-  canvas.getByRole('button', { name: /Folder for scan.pdf/ })
-
-export const PickExisting: Story = {
-  args: { start: 'Clients/Acme/Invoices/2026' },
+export const EditPath: Story = {
+  args: { start: 'Clients/Acme/Documents/2026/Contracts' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(field(canvas)).toHaveTextContent('Clients › Acme › Invoices › 2026')
-    await userEvent.click(field(canvas))
-    await userEvent.click(await within(document.body).findByRole('option', { name: /Contracts/ }))
-    await waitFor(() => expect(field(canvas)).toHaveTextContent('Contracts'))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: /^Change folder Contracts/ }))
+    const current = await body.findByRole('option', { name: /Contracts/ })
+    await expect(within(current).getByLabelText(/managed by Helvetly/i)).toBeInTheDocument()
+    await expect(body.getAllByRole('option')).toHaveLength(2)
+    await userEvent.click(body.getByRole('option', { name: 'Projects' }))
+    await expect(canvas.getByText('Clients/Acme/Documents/2026/Projects')).toBeVisible()
+
+    await userEvent.click(canvas.getByRole('button', { name: /^Change folder 2026/ }))
+    await userEvent.click(await body.findByRole('option', { name: /2027/ }))
+    await expect(canvas.getByText('Clients/Acme/Documents/2027')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Remove folder Documents from path' }))
+    await expect(canvas.getByText('Clients/Acme')).toBeVisible()
   },
 }
 
-export const Search: Story = {
-  args: { start: '' },
-  play: async ({ canvasElement }) => {
-    await userEvent.click(field(within(canvasElement)))
-    const body = within(document.body)
-    await userEvent.type(await body.findByPlaceholderText(/search/i), 'contr')
-    await waitFor(() => expect(body.getAllByRole('option')).toHaveLength(2))
-    await expect(body.getByRole('option', { name: /Contracts/ })).toBeVisible()
-  },
-}
-
-export const CreateNew: Story = {
-  args: { start: '' },
+export const AddFolder: Story = {
+  args: { start: 'Clients/Acme/Documents/2026' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(field(canvas))
-    const body = within(document.body)
-    await userEvent.type(await body.findByPlaceholderText(/search/i), 'Contracts/2027')
-    await userEvent.click(await body.findByText(/Add “Contracts\/2027”/))
-    await waitFor(() => expect(field(canvas)).toHaveTextContent('Contracts › 2027'))
-    await expect(canvas.queryByRole('alert')).toBeNull()
-  },
-}
-
-export const SystemFolderLock: Story = {
-  args: { start: '' },
-  play: async ({ canvasElement }) => {
-    await userEvent.click(field(within(canvasElement)))
-    const option = await within(document.body).findByRole('option', {
-      name: /^Clients › Acme(?! ›)/,
-    })
-    await expect(within(option).getByLabelText(/managed by Helvetly/i)).toBeInTheDocument()
-    const plain = within(document.body).getByRole('option', { name: /Contracts/ })
-    await expect(within(plain).queryByLabelText(/managed by Helvetly/i)).toBeNull()
-  },
-}
-
-export const ValidationError: Story = {
-  args: { start: '' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.click(field(canvas))
-    const body = within(document.body)
-    await userEvent.type(await body.findByPlaceholderText(/search/i), 'Clients/Newco')
-    await userEvent.click(await body.findByText(/Add “Clients\/Newco”/))
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(/Helvetly manages/)
-    await expect(field(canvas)).toHaveAttribute('aria-invalid', 'true')
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: /^Add folder/ }))
+    await userEvent.click(await body.findByRole('option', { name: /Contracts/ }))
+    await expect(canvas.getByText('Clients/Acme/Documents/2026/Contracts')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Remove folder Clients from path' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Add folder/ }))
+    await userEvent.click(await body.findByRole('option', { name: 'Contracts' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Add folder/ }))
+    await userEvent.type(await body.findByPlaceholderText(/search/i), 'Renewals')
+    await userEvent.click(await body.findByText(/Add “Renewals”/))
+    await expect(canvas.getByText('Contracts/Renewals')).toBeVisible()
   },
 }

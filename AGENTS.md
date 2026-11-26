@@ -105,7 +105,8 @@ are the reference.
   goes to its `Contracts` folder only when the model says it is a completed contract (`is_completed_contract`) and
   neither its name nor its text looks like a template, sample, draft or blanks (`completedContract`); else to the
   client's `Documents/<year>`; the reason is kept (`document_filings.contract_reason`). Imported contracts keep their name. An invoice or quote
-  the model files outside Clients goes to the client's folder when the file names one client (whole name or UID).
+  the model files outside Clients goes to the client's folder when the file names one client (whole name or UID). When organizing existing documents, a contract tag also puts a document in its
+  client's Contracts folder when its client and year are known, unless the file name marks a template, sample or draft.
 - **Automatic tags** (`tags.Auto`, `store/queries_document_autotags.go`): a file's tags say what it is, from its record
   first, then its system folder: the kind (`invoice`, `credit-note`, `debit-note`, `quote`, `contract`, `receipt`,
   `engagement`), `signed` once its signature request completed, `year-<yyyy>`, `client-<name>`, the record's number

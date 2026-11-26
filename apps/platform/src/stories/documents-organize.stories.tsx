@@ -110,13 +110,14 @@ export const ProposeAndApply: Story = {
     // Invoices/2025 does not exist yet; Contracts does.
     await expect(within(table).getAllByText('New folder')).toHaveLength(1)
 
-    // Both changes are ticked; the person renames one folder and drops a tag.
-    await userEvent.click(
-      within(table).getByRole('button', { name: /Folder for lease-office.pdf/ }),
+    // Both changes are ticked; the person extends one folder path and drops a tag.
+    const leasePath = within(
+      within(table).getByRole('group', { name: 'Folder for lease-office.pdf' }),
     )
+    await userEvent.click(leasePath.getByRole('button', { name: /^Add folder/ }))
     const popup = within(document.body)
-    await userEvent.type(await popup.findByPlaceholderText(/search/i), 'Contracts/Office')
-    await userEvent.click(await popup.findByText(/Add “Contracts\/Office”/))
+    await userEvent.type(await popup.findByPlaceholderText(/search/i), 'Office')
+    await userEvent.click(await popup.findByText(/Add “Office”/))
     await userEvent.click(within(table).getByRole('button', { name: 'Remove tag lessons' }))
 
     await userEvent.click(body().getByRole('switch'))
