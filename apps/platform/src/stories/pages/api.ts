@@ -667,7 +667,11 @@ export const shellHandlers = [
   // The draft's lines add up to the canned 2'900.00 net, so the server's totals match them.
   http.post('/api/v1/invoices/preview', () => HttpResponse.json({ data: draftInvoice })),
   http.get('/api/v1/invoices/:id', one(invoices)),
-  http.get('/api/v1/invoices', () => HttpResponse.json(page(invoices.map(listItem)))),
+  http.get('/api/v1/invoices', ({ request }) => {
+    const rows = invoices.map(listItem)
+    const attention = new URL(request.url).searchParams.get('sort') === 'next_due_date'
+    return HttpResponse.json(page(attention ? rows.filter((row) => row.status === 'open') : rows))
+  }),
   http.get('/api/v1/expenses/summary', () => HttpResponse.json({ data: expenseSummary })),
   http.get('/api/v1/expenses/:id/receipts', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/expenses/:id', one(expenses)),
