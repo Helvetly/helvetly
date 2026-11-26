@@ -32,7 +32,6 @@ import { useUpdateWorkspace, type WorkspaceUpdate } from '@/lib/workspaces'
 import { DangerRow, DangerZone } from './danger-zone'
 import { ActionRow, FieldGrid, SettingsPage, SettingsSection } from './layout'
 import { PortalAddressSection } from './portal-address'
-import { ReplyToSection } from './reply-to-email'
 import { SettingsHeader } from './settings-tabs'
 import { WorkspaceLogoSection } from './workspace-logo'
 
@@ -57,7 +56,6 @@ export function WorkspaceSettings() {
               logoUrl={session.workspace.logo_url}
               canEdit={canManage(session.role)}
             />
-            <ReplyToSection canEdit={canManage(session.role)} />
             <PortalAddressSection canEdit={canManage(session.role)} />
             {session.role === 'owner' && <ExportCard />}
             {session.role === 'owner' && <DeleteCard name={session.workspace.name} />}

@@ -83,8 +83,8 @@ export function fillEmailText(
 ): { subject: string; body: string } | null {
   const text = texts?.find((entry) => entry.kind === kind && entry.language === language)
   if (!text) return null
-  const fill = (text: string) =>
-    text.replace(/\{(\w+)\}/g, (all, name: string) => values[name] ?? all)
+  const fill = (raw: string) =>
+    raw.replace(/\{(\w+)\}/g, (all, name: string) => values[name] ?? all)
   return {
     subject: fill(text.subject).replace(/\s+/g, ' ').trim(),
     body: fill(text.body),

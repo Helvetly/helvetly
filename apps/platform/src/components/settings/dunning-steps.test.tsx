@@ -129,9 +129,7 @@ test('edits a step in the dialog; Apply changes the list, Cancel does not', asyn
   await user.click(within(dialog).getByRole('button', { name: 'Apply' }))
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(saved()[1]).toMatchObject({ name: 'Zweite Mahnung', fee: '25', qr_bill: false })
-  expect(
-    screen.getByText('14 days after the previous · CHF 25.00 fee · no QR bill'),
-  ).toBeVisible()
+  expect(screen.getByText('14 days after the previous · CHF 25.00 fee · no QR bill')).toBeVisible()
 
   await user.click(screen.getByRole('button', { name: 'Edit Final reminder' }))
   dialog = screen.getByRole('dialog', { name: 'Edit Final reminder' })

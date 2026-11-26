@@ -373,14 +373,17 @@ Pages: /settings/approvals
 4. A draft then shows **Submit for approval** instead of **Issue**. Approvers are notified and find it under **Needs my approval** on the Invoices page, where they approve it or reject it with a reason. Once approved, the author (or anyone who can edit invoices) issues it.
    The author never approves their own document, one person counts once, and any change to the draft ends the request so it is submitted again. Every step is kept in the audit log.
 
-## Change the email text for invoices and quotes
+## Client emails: text, footer and automatic emails
 
-Keywords: email template, email text, send by email, subject, message, wording, invoice email, quote email, credit note email
+Keywords: email template, email text, send by email, subject, message, wording, invoice email, quote email, credit note email, email footer, signature, automatic emails, payment confirmation, portal invitation, session reminders, turn off emails
+Pages: /settings/emails
 
-Helvetly writes the email that goes with an invoice, credit note, proforma, quote or document in the client's language (German, French, Italian or English); the wording cannot be changed in Settings.
+Helvetly writes every email to your clients in the client's language (German, French, Italian or English); the wording cannot be changed in Settings.
 
-1. Open the document and click **Send by email**.
-2. The dialog opens with the subject and message filled in. Change them as you like before you click **Send**; the change applies to that email only.
+1. To change the text of one email, open the document and click **Send by email**. The dialog opens with the subject and message filled in; change them before you click **Send**. The change applies to that email only.
+2. To turn an automatic email on or off, go to **Settings → Client emails**. Under **Automatic emails** each one has a switch: payment confirmations, instalment invoices when issued, instalment reminders, reminders for overdue invoices, session reminders and portal invitations. Their timing (reminder days, reminder steps, reminder times) stays on its own page, linked from each row.
+3. On the same page, set where clients' replies go and an optional **Email footer**: up to 4 lines of plain text shown under every email, after your company details.
+   Only owners and admins change the footer, the reply address and the portal and session switches; the invoice switches need permission to edit the invoice settings.
 
 ## Close a month (month-end close, periods)
 

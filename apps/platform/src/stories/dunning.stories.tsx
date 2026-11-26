@@ -67,8 +67,12 @@ export const Settings: Story = {
     saved.body = null
     const page = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(await page.findByRole('switch', { name: 'Send reminders automatically' }))
-    const section = within(page.getByRole('region', { name: 'Dunning' }))
+    const section = within(await page.findByRole('region', { name: 'Dunning' }))
+    // Turning reminders on or off lives in Settings → Client emails; the section links there.
+    await expect(section.getByRole('link', { name: 'Client emails' })).toHaveAttribute(
+      'href',
+      '/settings/emails/',
+    )
     await expect(section.getByText('10 days after due · no fee')).toBeVisible()
     await userEvent.click(section.getByRole('button', { name: 'Edit Reminder 2' }))
     const dialog = within(await body.findByRole('dialog', { name: 'Edit Reminder 2' }))
@@ -80,14 +84,12 @@ export const Settings: Story = {
     await userEvent.clear(fee)
     await userEvent.type(fee, '20')
     await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
-    await expect(
-      section.getByText('14 days after the previous · CHF 20.00 fee'),
-    ).toBeVisible()
+    await expect(section.getByText('14 days after the previous · CHF 20.00 fee')).toBeVisible()
     await expect(section.getByText('Unsaved changes')).toBeVisible()
     await userEvent.click(section.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(lastSaved()?.dunning?.steps[1]?.fee).toBe('20.00'))
+    await waitFor(() => expect(lastSaved()?.dunning?.steps?.[1]?.fee).toBe('20.00'))
     await expect(await section.findByText('Saved')).toBeVisible()
-    await expect(lastSaved()?.dunning?.enabled).toBe(true)
+    await expect(lastSaved()?.dunning).not.toHaveProperty('enabled')
     await userEvent.click(page.getByRole('switch', { name: 'Default interest' }))
     await expect(page.getByRole('radio', { name: 'The first reminder' })).toBeChecked()
   },
@@ -100,7 +102,7 @@ export const SettingsRefused: Story = {
   play: async ({ canvasElement }) => {
     const page = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(await page.findByRole('switch', { name: 'Send reminders automatically' }))
+    await userEvent.click(await page.findByRole('switch', { name: 'Default interest' }))
     const section = within(page.getByRole('region', { name: 'Dunning' }))
     await userEvent.click(section.getByRole('button', { name: 'Save' }))
     await expect(await section.findByText('Enter a fee such as 20.00.')).toBeVisible()
@@ -166,12 +168,8 @@ export const StepsFull: Story = {
   render: () => <Steps initial={full} />,
   play: async ({ canvasElement }) => {
     const page = within(canvasElement)
-    await expect(
-      page.getByText('3 days before due · friendly note · no QR bill'),
-    ).toBeVisible()
-    await expect(
-      page.getByText('14 days after the previous · CHF 30.00 fee'),
-    ).toBeVisible()
+    await expect(page.getByText('3 days before due · friendly note · no QR bill')).toBeVisible()
+    await expect(page.getByText('14 days after the previous · CHF 30.00 fee')).toBeVisible()
     const items = within(page.getByRole('list', { name: 'Reminders' })).getAllByRole('listitem')
     await expect(items[1]).toHaveTextContent('Due date')
   },

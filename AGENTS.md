@@ -264,8 +264,18 @@ are the reference.
   email carries its `Workspace` and counts its recipients through `mail.Metered` (one message's attachments are
   capped by `max_email_attachment_bytes`) and goes out as the business through `mail.Branded`: the company name as
   From's display name (the address stays `MAIL_FROM`'s), Reply-To the workspace's reply-to email (`workspaces.reply_to_email`,
-  Settings → Workspace), else the company email, else the member who sends, else the owner, never no-reply; its workspace
-  logo (never the document logo) and name head the email, its seller details (with its website as a link) sign it. Its body
+  Settings → Client emails), else the company email, else the member who sends, else the owner, never no-reply; its workspace
+  logo (never the document logo) and name head the email, its seller details (with its website as a link) sign it,
+  followed by the workspace's optional footer (`workspaces.email_footer`, plain text, at most 4 lines and 300
+  characters, escaped) before "Sent with". The wording of every client email is Helvetly's, per language
+  (`internal/emailtemplate`, read-only to the platform through `GET /api/v1/email-texts`): workspaces cannot change it,
+  and a person edits a subject or message only for the one email in a Send dialog. The rows of `email_templates` from
+  when they could, and a reminder step's former own `text`, are no longer read. Settings → Client emails
+  (`/settings/emails`) is the one place every automatic client email is turned on or off: the invoice settings'
+  `payment_confirmation`, `instalments.plan_auto_send` (the default of new plans), `instalments.reminders_enabled` and
+  `dunning.enabled`, and the workspace's `portal_invitations` (automatic invitations; a resend by hand still goes) and
+  `session_reminders` (the client's; the host's still go), through `GET/PUT /api/v1/workspace/client-emails` (owner or
+  admin, audited `workspace.client_emails_changed`). Timing (reminder days, dunning steps) stays on its own page. Its body
   is built from the `mail.Letter` blocks (greeting, lead, typed message, summary panel, sections, details, code, call to action, note, fine print,
   attachments), which write the HTML and text together. The optional eyebrow pill (`Message.Eyebrow`) above the title uses
   green or red for outcomes and separate tints for reminders and amendments. Conventional sign-offs in document messages go after the details and attachments. Every client email kind has a golden test through

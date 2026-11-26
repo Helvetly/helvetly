@@ -169,7 +169,8 @@ func TestRequired(t *testing.T) {
 // unguarded: the /api/v1 prefixes the spec leaves without a scope check (feedback goes to the Helvetly team, any role;
 // the OpenAPI document is public).
 var unguarded = []string{"/api/v1/auth/", "/api/v1/session", "/api/v1/account/", "/api/v1/public/",
-	"/api/v1/invitations/", "/api/v1/workspaces", "/api/v1/notifications", "/api/v1/feedback", "/api/v1/openapi.json"}
+	"/api/v1/invitations/", "/api/v1/workspaces", "/api/v1/notifications", "/api/v1/feedback", "/api/v1/openapi.json",
+	"/api/v1/email-texts"} // Helvetly's own wording of client emails, the same for every workspace
 
 // These authenticated routes cannot require one uniform resource scope: dashboard and suggestions
 // filter each resource, chat checks the requested business action, and transcripts belong to a user.

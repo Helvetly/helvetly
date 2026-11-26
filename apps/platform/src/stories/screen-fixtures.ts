@@ -7,6 +7,7 @@ import type { Usage } from '@/lib/documents'
 import type { Summary as ExpenseSummary } from '@/lib/expenses'
 import type { Summary } from '@/lib/invoices'
 import { NOT_REQUIRED } from '@/mocks/approvals'
+import { clientEmailsHandlers } from '@/mocks/client-emails'
 import { portalAddressHandlers } from '@/mocks/portal-address'
 import { portalDomainHandlers } from '@/mocks/portal-domain'
 import { replyToHandlers } from '@/mocks/reply-to'
@@ -83,6 +84,7 @@ export const screenHandlers = [
   sessionHandler(),
   ...portalAddressHandlers,
   ...replyToHandlers,
+  ...clientEmailsHandlers,
   ...schedulingSettingsHandlers,
   ...portalDomainHandlers,
   legalFormsHandler,

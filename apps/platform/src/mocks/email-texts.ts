@@ -95,7 +95,7 @@ const quoteFacts = (id: string): Facts | undefined => {
 
 const draftOf = (kind: EmailKind, { to, ...facts }: Facts): EmailDraft => {
   const text = texts.find((entry) => entry.kind === kind && entry.language === 'en')
-  const fill = (text: string) => text.replace(/\{(\w+)\}/g, (all, name) => facts[name] ?? all)
+  const fill = (raw: string) => raw.replace(/\{(\w+)\}/g, (all, name) => facts[name] ?? all)
   return {
     to: [to],
     subject: fill(text?.subject ?? '')

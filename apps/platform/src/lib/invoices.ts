@@ -544,10 +544,13 @@ export type InvoiceSettings = {
   missing_fields: string[]
 }
 
-export type SettingsInput = Omit<
-  InvoiceSettings,
-  'is_complete' | 'missing_fields' | 'logo_file_id' | 'logo_url'
->
+/** What a save sends: a field left out keeps its value (Settings → Client emails saves its switches alone). */
+export type SettingsInput = Partial<
+  Omit<
+    InvoiceSettings,
+    'is_complete' | 'missing_fields' | 'logo_file_id' | 'logo_url' | 'instalments' | 'dunning'
+  >
+> & { instalments?: Partial<InstalmentSettings>; dunning?: Partial<DunningSettings> }
 
 export type SendInput = {
   expected_amount_due?: Decimal

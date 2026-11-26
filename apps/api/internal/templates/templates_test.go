@@ -682,7 +682,9 @@ func TestGenerateEmail(t *testing.T) {
 		Data []struct{ Kind, Language, Subject, Body string }
 	}
 	e.do(b, "GET", "/api/v1/email-texts", nil, http.StatusOK, &texts)
-	i := slices.IndexFunc(texts.Data, func(x struct{ Kind, Language, Subject, Body string }) bool { return x.Kind == "document" && x.Language == "de" })
+	i := slices.IndexFunc(texts.Data, func(x struct{ Kind, Language, Subject, Body string }) bool {
+		return x.Kind == "document" && x.Language == "de"
+	})
 	if len(texts.Data) != 32 || i < 0 || texts.Data[i].Subject != "{document} von {company}" {
 		t.Fatalf("email texts: %+v", texts.Data)
 	}
