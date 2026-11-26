@@ -95,6 +95,12 @@ func TestDraftAppendsRevolutOnce(t *testing.T) {
 	if !strings.HasSuffix(got.Message, "\n\nPay with Revolut: "+url) || strings.Count(got.Message, url) != 1 {
 		t.Fatalf("message %q", got.Message)
 	}
+	e.do(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{}, http.StatusOK, nil)
+	msg := e.mail.sent[len(e.mail.sent)-1]
+	if !strings.Contains(msg.HTML, `href="`+url+`">Pay with Revolut</a>`) ||
+		!strings.Contains(msg.Text, "\nPay with Revolut: "+url+"\n") || strings.Count(msg.Text, url) != 1 {
+		t.Fatalf("Revolut payment link missing: %s\n%s", msg.HTML, msg.Text)
+	}
 	e.setTemplate(b, "invoice", "en", "S", "Pay here: "+url)
 	if got := e.draftOf(b, inv.ID, http.StatusOK).Data; got.Message != "Pay here: "+url {
 		t.Fatalf("message %q, want the link once", got.Message)

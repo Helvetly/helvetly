@@ -161,6 +161,13 @@ func writeEmailContent(l *mail.Letter, n store.Notification, summary string) {
 	_ = json.Unmarshal(n.Data, &d)
 	plan := or(d.s("plan"), "current")
 	switch n.Event {
+	case "portal.domain_active":
+		l.Lead(summary)
+		if host := d.s("hostname"); host != "" {
+			address := "https://" + host + "/"
+			l.Link(address, address)
+		}
+		l.Lead(emailNextStep[n.Event])
 	case "approval.requested":
 		next := "The invoice stays in draft until it receives the required approvals. The sender can issue it after that."
 		switch d.s("doc_type") {

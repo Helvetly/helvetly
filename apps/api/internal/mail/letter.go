@@ -192,7 +192,10 @@ func (l *Letter) Action(label, url string) *Letter {
 func (l *Letter) Link(label, url string) *Letter {
 	if url != "" {
 		l.html.WriteString(para + `<a href="` + html.EscapeString(url) + `">` + lines(label) + "</a></p>\n")
-		l.text.WriteString(label + ": " + url + "\n\n")
+		if label != url {
+			l.text.WriteString(label + ": ")
+		}
+		l.text.WriteString(url + "\n\n")
 	}
 	return l
 }

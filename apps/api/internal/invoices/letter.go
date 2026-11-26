@@ -24,14 +24,14 @@ func withLetter(m mail.Message, inv store.Invoice) mail.Message {
 	message, payment := m.Text, ""
 	if inv.Payment.RevolutURL != nil {
 		if body, ok := strings.CutSuffix(message, "\n\n"+revolutPaymentLine(inv)); ok {
-			message, payment = body, revolutPaymentLine(inv)
+			message, payment = body, *inv.Payment.RevolutURL
 		}
 	}
 	l := mail.NewLetter(inv.Language).DocumentMessage(message, number, total, due).Summary(
 		mail.Row{Label: Title(inv), Value: number},
 		mail.Row{Label: amount, Value: total},
 		mail.Row{Label: w.DueDate, Value: due},
-	).Lead(payment).Attached(names...)
+	).Link(revolutPaymentLabel(inv.Language), payment).Attached(names...)
 	m.Text, m.HTML, m.Eyebrow = l.Text(), l.HTML(), Title(inv)
 	if inv.Kind == "corrected" || inv.Kind == "credit_note" || inv.Kind == "debit_note" {
 		m.Tone = mail.Amended
