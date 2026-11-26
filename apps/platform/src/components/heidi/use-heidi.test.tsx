@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -243,4 +243,41 @@ test('keeps the steps of a turn and how long it took', async () => {
   expect(answer?.status).toBeUndefined()
   expect(answer?.startedAt).toBeUndefined()
   expect(answer?.workedMs).toBeGreaterThanOrEqual(25)
+})
+
+const stream = (event: unknown) =>
+  new HttpResponse('data: ' + JSON.stringify(event) + '\n\n', {
+    headers: { 'Content-Type': 'text/event-stream' },
+  })
+
+test('a successful approved change refreshes the open workspace view', async () => {
+  let customers = ['Ana']
+  const pending = {
+    type: 'confirmation',
+    id: 'cnf_add',
+    title: 'Add Mika?',
+    body: 'Add Mika',
+    confirm_label: 'Add',
+    tone: 'default',
+  }
+  server.use(
+    http.post('/api/v1/heidi/chat', () => stream(pending)),
+    http.post('/api/v1/heidi/chat/confirm', () => {
+      customers = [...customers, 'Mika']
+      return stream({ type: 'done', usage: { tokens: 0 } })
+    }),
+  )
+  const { result } = renderHook(
+    () => ({
+      view: useQuery({ queryKey: ['clients', 'open-view'], queryFn: async () => [...customers] })
+        .data,
+      heidi: useHeidiChat('clients', 'user:workspace'),
+    }),
+    { wrapper },
+  )
+  await waitFor(() => expect(result.current.view).toEqual(['Ana']))
+  await act(() => result.current.heidi.send('Add Mika'))
+  await waitFor(() => expect(result.current.heidi.confirmation?.id).toBe('cnf_add'))
+  await act(() => result.current.heidi.decide(true))
+  await waitFor(() => expect(result.current.view).toEqual(['Ana', 'Mika']))
 })

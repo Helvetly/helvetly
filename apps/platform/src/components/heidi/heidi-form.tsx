@@ -62,6 +62,7 @@ function Choice({
     >
       {field.options.map((option) => {
         const checked = value.includes(option)
+        const kind = field.name === 'kind' ? importKindByLabel(option) : null
         return (
           <button
             key={option}
@@ -80,7 +81,7 @@ function Choice({
               )
             }
           >
-            {option}
+            {kind ? IMPORT_KINDS[kind].label : option}
           </button>
         )
       })}

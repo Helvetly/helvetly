@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/imports"
 	"helvetly.com/api/internal/permissions"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/uploads"
@@ -23,7 +24,10 @@ import (
 
 const maxFileBytes = 8 << 20
 
+const maxAttachmentText = 128 << 10
+
 type upload struct {
+	ModelFile        ProviderFile
 	Header           *multipart.FileHeader
 	Name, Type, Hash string
 	ID, Key          string // set by putUploads
@@ -52,7 +56,7 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 	f := r.MultipartForm
 	bad := func(message string) (input, error) { return input{}, invalid(message) }
 	for k, v := range f.Value {
-		if !slices.Contains([]string{"message", "conversation_id", "page", "path", "import_id", "lang"}, k) || len(v) != 1 {
+		if !slices.Contains([]string{"message", "conversation_id", "page", "path", "import_id", "lang", "controls"}, k) || len(v) != 1 {
 			return bad("The message contains repeated or unknown fields.")
 		}
 	}
@@ -66,6 +70,9 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 			return list[0]
 		}
 		return ""
+	}
+	if _, ok := offeredControls(value("controls")); !ok {
+		return bad("Invalid screen controls.")
 	}
 	message, id := strings.TrimSpace(value("message")), value("conversation_id")
 	if !conversationID.MatchString(id) || message == "" || !utf8.ValidString(message) || utf8.RuneCountInString(message) > 4000 {
@@ -90,6 +97,7 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 	}
 	files := []upload{}
 	sums := map[string]string{}
+	textBudget := maxAttachmentText
 	for _, h := range f.File["files[]"] {
 		if h.Size <= 0 || h.Size > maxFileBytes {
 			return input{}, auth.Error(413, "payload_too_large", "Each attachment must be nonempty and at most 8 MB.", nil)
@@ -102,18 +110,23 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 		if err != nil {
 			return input{}, fmt.Errorf("open Heidi attachment: %w", err)
 		}
-		head := make([]byte, 512)
-		n, readErr := file.Read(head)
+		data, readErr := io.ReadAll(io.LimitReader(file, maxFileBytes+1))
 		closeErr := file.Close()
-		if readErr != nil && !errors.Is(readErr, io.EOF) {
+		if readErr != nil {
 			return input{}, readErr
 		}
 		if closeErr != nil {
 			return input{}, closeErr
 		}
-		ct := http.DetectContentType(head[:n])
-		if !slices.Contains([]string{"application/pdf", "image/png", "image/jpeg", "image/webp", "image/gif"}, ct) {
-			return input{}, auth.Error(400, "unsupported_file", "Use PDF, PNG, JPEG, WEBP or GIF attachments; the bytes must match a supported file type.", nil)
+		if len(data) > maxFileBytes {
+			return input{}, auth.Error(413, "payload_too_large", "Each attachment may be at most 8 MB.", nil)
+		}
+		ct, modelFile, err := imports.ChatAttachment(name, data, textBudget)
+		if err != nil {
+			return input{}, auth.Error(400, "unsupported_file", err.Error(), nil)
+		}
+		if modelFile.ContentType == "text/plain" {
+			textBudget -= len(modelFile.Bytes)
 		}
 		sum, err := uploads.Hash(h)
 		if err != nil {
@@ -122,7 +135,7 @@ func readInput(w http.ResponseWriter, r *http.Request) (input, error) {
 		if err = uploads.CheckBatch(sums, sum, name); err != nil {
 			return input{}, err
 		}
-		files = append(files, upload{Header: h, Name: name, Type: ct, Hash: sum})
+		files = append(files, upload{Header: h, Name: name, Type: ct, Hash: sum, ModelFile: modelFile})
 	}
 	return input{conversation: id, message: message, importID: importID, path: screenPath, lang: value("lang"), files: files}, nil
 }
@@ -302,7 +315,7 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 			result.Provider = false
 		default:
 			progress := func(label string) { _ = st.status(label) }
-			result, err = s.modelAnswer(r.Context(), sess, id, message, in.path, uiLanguage(r, in.lang), files, localVerdict(message) == inScope, progress)
+			result, err = s.modelAnswer(r, sess, id, message, in.path, uiLanguage(r, in.lang), files, localVerdict(message) == inScope, progress)
 			if err != nil {
 				return err
 			}
@@ -311,6 +324,9 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	written := []string{}
 	if err = s.putUploads(r.Context(), sess, files, &written); err == nil {
 		err = s.db.Tx(r.Context(), func(q store.Q) error {
+			if err := s.requireCurrentAccess(r.Context(), q, r, sess); err != nil {
+				return err
+			}
 			if err := s.checkUploads(r.Context(), q, sess, files); err != nil {
 				return err
 			}
@@ -349,9 +365,17 @@ func (s *Service) turn(w http.ResponseWriter, r *http.Request, sess store.Sessio
 				user.Attachments = append(user.Attachments, f.Name)
 			}
 			user.Attachments = append(user.Attachments, result.importFiles...)
-			assistant := Message{ID: auth.NewID("msg"), Role: "assistant", Text: result.Text, Actions: result.Actions, Records: result.Records, Form: result.Form, ImportID: result.ImportID, GeneratedBy: result.generatedBy()}
+			assistant := Message{Access: accessKey(sess), ID: auth.NewID("msg"), Role: "assistant", Text: result.Text, Actions: result.Actions, Records: result.Records, Form: result.Form, ImportID: result.ImportID, GeneratedBy: result.generatedBy()}
+			if result.Confirmation != nil {
+				assistant.ProposalID = result.Confirmation.ID
+			}
 			for _, m := range []Message{user, assistant} {
 				if err := q.AppendHeidiMessage(r.Context(), sess.Workspace.ID, sess.User.ID, id, m.ID, m, s.now()); err != nil {
+					return err
+				}
+			}
+			if result.memoryTopic != "" {
+				if err := s.learn(r.Context(), q, sess, result.memoryTopic); err != nil {
 					return err
 				}
 			}

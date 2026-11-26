@@ -92,6 +92,7 @@ What is sent:
 - Heidi sends the message you write, up to 20 earlier messages of that conversation (which can
   contain figures Heidi showed you) and files you attach to that message. A short check of whether
   the message is about Helvetly or your business is sent to OpenAI as well.
+- Depending on your request, Heidi also sends limited results from workspace records you can access (including business and client data), the contents of a document you ask her to read, current page and available control identifiers, and your chosen reply style.
 - AI import sends the content of the files you choose, part by part; receipt reading sends the
   receipt you choose.
 - The workspace-name suggestion sends only the company name you enter.
@@ -116,6 +117,8 @@ without a fixed deletion period yet, until you delete your account (in a deleted
 stored with its other records); imported files, records and filed documents stay in the workspace
 like any other data. Heidi is labelled as an AI assistant; its answers, imported records and filing
 suggestions can be wrong and are suggestions for you to check.
+
+Helvetly keeps topic counts for completed lookups and actions to personalise suggestions across your chats in this workspace. In Account settings you can view and clear these counts and your reply style, or turn memory off. The counts stay in Helvetly.
 
 ## 5. Recipients and transfers abroad
 

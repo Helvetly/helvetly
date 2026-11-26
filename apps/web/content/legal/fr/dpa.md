@@ -139,7 +139,7 @@ ses dispositions impératives demeurent réservées.
 - **Accès du personnel :** aucun accès de support ou d’administration aux espaces dans la plateforme ;
   accès aux systèmes de production limité aux personnes exploitant le service.
 - **Fournisseur d’IA :** seuls le message actuel, jusqu’à 20 échanges précédents et les fichiers
-  explicitement joints (Heidi), les fichiers sélectionnés (import par IA et lecture des justificatifs),
+  explicitement joints, les résultats limités provenant des données accessibles de l’espace, notamment des données clients, les documents dont la lecture est expressément demandée, les identifiants de la page et de ses commandes et le style de réponse choisi (Heidi), les fichiers sélectionnés (import par IA et lecture des justificatifs),
   le nom d’entreprise (suggestion de nom d’espace), ou le nom, le type et le début du texte d’un
   fichier téléversé ou le fichier lui-même jusqu’à 4 Mio, avec les noms de dossiers et les
   étiquettes utilisées (classement automatique) sont transmis, le même contenu aussi pour le

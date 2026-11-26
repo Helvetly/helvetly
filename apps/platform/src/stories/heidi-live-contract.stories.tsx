@@ -348,3 +348,67 @@ export const ReplyQuotesSelectedText: Story = {
     await expect(canvas.queryByText('Replying to')).not.toBeInTheDocument()
   },
 }
+
+/** Session-only controls stay tied to the current overlay and run through its own click handler. */
+export const ApplyLiveControl: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.post('/api/v1/heidi/chat', async ({ request }) => {
+          const form = await request.formData()
+          const offered = String(form.get('controls') ?? '').split(',')
+          const target = offered.find((key) => key.startsWith('click.save'))
+          if (
+            !target ||
+            offered.includes('click.delete') ||
+            offered.some((key) => key.includes('Private'))
+          ) {
+            return HttpResponse.json(
+              { error: { message: 'Invalid control list' } },
+              { status: 400 },
+            )
+          }
+          const frames = [
+            { type: 'text', value: 'Review the save action.' },
+            { type: 'actions', actions: [{ id: 'screen_action', label: '', control: target }] },
+            { type: 'done', usage: { tokens: 10 } },
+          ]
+          return new HttpResponse(
+            frames.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''),
+            { headers: { 'Content-Type': 'text/event-stream' } },
+          )
+        }),
+        ...fakeApi,
+      ],
+    },
+  },
+  render: function Screen() {
+    const [saved, setSaved] = useState(0)
+    return (
+      <>
+        <div>
+          <Button>Delete</Button>
+          <dialog open aria-label="Account details">
+            <Button onClick={() => setSaved((n) => n + 1)}>Save</Button>
+            <Button disabled>Delete</Button>
+            <Button>Private client 183777</Button>
+            <output>Saved {saved} times</output>
+          </dialog>
+        </div>
+        <Panel />
+      </>
+    )
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Open assistant' }))
+    const box = await canvas.findByRole('textbox', { name: 'Message Heidi' })
+    await userEvent.type(box, 'Zapisz formularz{Enter}')
+    const log = within(await canvas.findByRole('log', { name: 'Conversation' }))
+    await userEvent.click(await log.findByRole('button', { name: 'Save' }))
+    await expect(canvas.getByText('Saved 0 times')).toBeVisible()
+    await userEvent.click(log.getByRole('button', { name: 'Confirm' }))
+    await expect(canvas.getByText('Saved 1 times')).toBeVisible()
+    await expect(log.getByRole('button', { name: 'Save' })).toBeDisabled()
+  },
+}

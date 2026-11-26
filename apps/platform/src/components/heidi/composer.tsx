@@ -154,7 +154,7 @@ export function Composer({
           ref={picker}
           type="file"
           multiple
-          accept={IMPORT_ACCEPT}
+          accept={IMPORT_ACCEPT + ',.gif'}
           className="sr-only"
           tabIndex={-1}
           aria-hidden

@@ -198,3 +198,13 @@ func TestOpenAIReportsTheUsageBreakdownItIsPricedBy(t *testing.T) {
 		}
 	}
 }
+
+func TestExtractedAttachmentIsSeparateUserText(t *testing.T) {
+	p := NewOpenAI("test", "https://api.openai.com/v1", "test", "").(*openAI)
+	req := p.input(Request{Message: "Summarize", Files: []File{{Name: "notes.docx", ContentType: "text/plain", Bytes: []byte("会議")}}})
+	last := req.Input[len(req.Input)-1]
+	var part map[string]string
+	if last.Role != "user" || len(last.Content) != 2 || last.Content[1].Type != "input_text" || json.Unmarshal([]byte(last.Content[1].Text), &part) != nil || part["text"] != "会議" || part["attachment"] != "notes.docx" || last.Content[0].Text != "Summarize" {
+		t.Fatalf("%+v", last)
+	}
+}
