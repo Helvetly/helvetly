@@ -101,10 +101,11 @@ func TestOverdueByInstalment(t *testing.T) {
 		{"paid less than past due", "invoice", "2026-12-31", true, 299, 0, true},
 		{"credit leaves only the past-due part, paid", "invoice", "2026-12-31", true, 300, 600, false},
 		{"credit covers everything", "invoice", "2026-12-31", true, 0, 900, false},
-		{"no schedule, past due", "invoice", "2026-10-31", false, 0, 0, true},
+		{"no schedule, past due", "invoice", "2026-11-01", false, 0, 0, true},
 		{"no schedule, not due", "invoice", "2026-12-31", false, 0, 0, false},
 		{"schedule beats a past invoice due date", "invoice", "2026-10-01", true, 300, 0, false},
 		{"proforma never overdue", "proforma", "2026-12-31", true, 0, 0, false},
+		{"credit reduces the past-due instalment", "invoice", "2026-12-31", true, 0, 700, true},
 	}
 	var wantOverdue []string
 	for i, c := range cases {
@@ -129,14 +130,30 @@ func TestOverdueByInstalment(t *testing.T) {
 	var ids []string
 	for _, i := range list {
 		ids = append(ids, i.ID)
+		if i.ID == "inv_2" {
+			want := []OpenInstalment{
+				{Seq: 1, DueDate: "2026-10-31", Open: 1, IsOverdue: true},
+				{Seq: 2, DueDate: "2026-11-30", Open: 300},
+				{Seq: 3, DueDate: "2026-12-31", Open: 300},
+			}
+			if !slices.Equal(i.OpenInstalments, want) {
+				t.Errorf("open instalments = %+v, want %+v", i.OpenInstalments, want)
+			}
+		}
 	}
 	slices.Sort(ids)
 	if !slices.Equal(ids, wantOverdue) {
 		t.Fatalf("overdue filter = %v, want %v", ids, wantOverdue)
 	}
+	next, total, err := q.ListInvoices(ctx, "wsp_a", today, InvoiceFilter{
+		IDs: []string{"inv_0", "inv_5"}, Sort: "next_due_date",
+	}, 1, 0)
+	if err != nil || total != 2 || len(next) != 1 || next[0].ID != "inv_0" {
+		t.Fatalf("first invoice by next due date = %+v, total %d, error %v", next, total, err)
+	}
 	s, err := q.InvoiceSummary(ctx, "wsp_a", "CHF", today, "")
-	if err != nil || s.Overdue.Count != len(wantOverdue) {
-		t.Fatalf("summary overdue = %d, want %d (%v)", s.Overdue.Count, len(wantOverdue), err)
+	if err != nil || s.Overdue.Count != len(wantOverdue) || s.Overdue.Amount != 1401 {
+		t.Fatalf("summary overdue = %+v, want 14.01 across %d invoices (%v)", s.Overdue, len(wantOverdue), err)
 	}
 }
 

@@ -1484,6 +1484,7 @@
   "inside": " à l’intérieur",
   "instalment": "Acompte",
   "instalmentAmount": "Acompte {value1} montant",
+  "useInstalmentAmount": "Utiliser l’échéance {number} ({amount})",
   "instalmentDueDate": "Acompte {value1} date d’échéance",
   "instalmentIssued": "Acompte émis",
   "instalmentPlan": "Plan de versement · ",

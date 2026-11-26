@@ -1484,6 +1484,7 @@
   "inside": " all’interno",
   "instalment": "Rata",
   "instalmentAmount": "Importo rata {value1}",
+  "useInstalmentAmount": "Usa la rata {number} ({amount})",
   "instalmentDueDate": "Data di scadenza della rata {value1}",
   "instalmentIssued": "Rata emessa",
   "instalmentPlan": "Piano rateale · ",

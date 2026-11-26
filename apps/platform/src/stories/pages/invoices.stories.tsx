@@ -57,6 +57,7 @@ export const Detail: Story = {
     await waitFor(() => expect(sheet.scrollWidth).toBeLessThanOrEqual(sheet.clientWidth))
     // The dates sit in their own column beside the amount, or in a row under it on a phone.
     const summary = await within(sheet).findByRole('region', { name: 'Summary' })
+    await expect(within(summary).getByText('Instalment 2 due date')).toBeVisible()
     const amount = within(summary).getByText('1’081.00').getBoundingClientRect()
     const dates = within(summary).getByText('Issue date').getBoundingClientRect()
     if (window.innerWidth >= 640) await expect(dates.left).toBeGreaterThan(amount.right)
@@ -109,7 +110,7 @@ export const DetailPdf: Story = {
 }
 export const DetailPdfDark = dark(DetailPdf)
 
-/** Record a payment opens on the whole amount due, today, by bank transfer: one click pays it in full, so no second button. */
+/** The amount can be set to the unpaid part of the next instalment before recording it. */
 export const RecordPayment: Story = {
   parameters: Detail.parameters,
   play: async ({ canvasElement }) => {
@@ -122,7 +123,10 @@ export const RecordPayment: Story = {
     )
     await expect(dialog.getByLabelText(/^Paid on/)).toHaveValue(today())
     await expect(dialog.getByRole('radio', { name: 'Bank transfer' })).toBeChecked()
-    await expect(dialog.queryByRole('button', { name: /fully paid/i })).toBeNull()
+    await userEvent.click(
+      await dialog.findByRole('button', { name: 'Use instalment 2 amount (CHF 220.70)' }),
+    )
+    await expect(dialog.getByRole('textbox', { name: /^Amount/ })).toHaveValue('220.70')
     await expect(dialog.getByRole('button', { name: 'Record payment' })).toBeEnabled()
   },
 }

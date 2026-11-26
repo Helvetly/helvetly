@@ -301,10 +301,10 @@ func (q Q) MarkPlanItemIssued(ctx context.Context, planID string, seq int, invoi
 // instalment k is max(0, E(k) − paid) − max(0, E(k−1) − paid), E the cumulated amounts capped by Σ − credited.
 func openInstalments(where string) string {
 	return `SELECT x.invoice_id, x.seq, x.due_date, count(*) OVER whole AS cnt,
-			GREATEST(0, LEAST(sum(x.amount) OVER upto, sum(x.amount) OVER whole - i.amount_credited) - i.amount_paid)
-			- GREATEST(0, LEAST(sum(x.amount) OVER upto - x.amount, sum(x.amount) OVER whole - i.amount_credited) - i.amount_paid) AS open
-		FROM invoice_instalments x JOIN invoices i ON i.id = x.invoice_id
-		WHERE i.status = 'open' AND i.instalment_interval IS NOT NULL AND ` + where + `
+			GREATEST(0, LEAST(sum(x.amount) OVER upto, sum(x.amount) OVER whole - scheduled.amount_credited) - scheduled.amount_paid)
+			- GREATEST(0, LEAST(sum(x.amount) OVER upto - x.amount, sum(x.amount) OVER whole - scheduled.amount_credited) - scheduled.amount_paid) AS open
+		FROM invoice_instalments x JOIN invoices scheduled ON scheduled.id = x.invoice_id
+		WHERE scheduled.status = 'open' AND scheduled.instalment_interval IS NOT NULL AND ` + where + `
 		WINDOW whole AS (PARTITION BY x.invoice_id), upto AS (PARTITION BY x.invoice_id ORDER BY x.seq)`
 }
 
@@ -374,7 +374,7 @@ type DigestRow struct {
 // digestRows: the digest rows of the live workspaces with the digest on; $1 a workspace or ” for all, $2 now.
 func digestRows() string {
 	today := `($2::timestamptz AT TIME ZONE w.timezone)::date`
-	return `WITH inst AS (` + openInstalments("($1 = '' OR i.workspace_id = $1)") + `),
+	return `WITH inst AS (` + openInstalments("($1 = '' OR scheduled.workspace_id = $1)") + `),
 		open_rows AS (
 			SELECT invoice_id, seq, cnt::int AS cnt, due_date, open FROM inst
 			UNION ALL

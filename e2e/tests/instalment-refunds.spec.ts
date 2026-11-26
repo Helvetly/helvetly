@@ -115,7 +115,24 @@ test('instalment schedule: a CHF 600 credit after full payment is refunded and s
   const number = text((await api.read(path)).number)
   await expect(page.getByRole('dialog').getByText(number, { exact: true })).toBeVisible()
 
-  await inTurn(Array(5).fill('200'), (amount) => recordPayment(page, amount))
+  await recordPayment(page, '50')
+  await page.getByRole('button', { name: 'Record payment' }).click()
+  const payment = page.getByRole('dialog', { name: 'Record a payment' })
+  await payment.getByRole('button', { name: 'Use instalment 1 amount (CHF 150.00)' }).click()
+  await expect(payment.getByLabel('Amount')).toHaveValue('150.00')
+  await payment.getByRole('button', { name: 'Record payment' }).click()
+  await expect(payment).toBeHidden()
+  const partiallyPaid = await api.read(path)
+  expect(partiallyPaid).toMatchObject({
+    status: 'open',
+    amount_paid: '200.00',
+    amount_due: '800.00',
+  })
+  expect(instalments(partiallyPaid).slice(0, 2)).toMatchObject([
+    { status: 'paid', open: '0.00' },
+    { paid: '0.00', open: '200.00' },
+  ])
+  await inTurn(Array(4).fill('200'), (amount) => recordPayment(page, amount))
   await expect.poll(async () => (await api.read(path)).amount_paid).toBe('1000.00')
   expect((await api.read(path)).status).toBe('paid')
   await shot(page, 'a1-paid')

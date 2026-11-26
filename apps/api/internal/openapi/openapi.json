@@ -474,7 +474,7 @@
             "name": "sort",
             "in": "query",
             "required": false,
-            "description": "One of number, issue_date, due_date, total, client, created_at; prefix - for descending. Default newest first.",
+            "description": "One of number, issue_date, due_date, next_due_date, total, client, created_at; prefix - for descending. next_due_date uses the earliest open instalment when there is one. Default newest first.",
             "schema": {
               "type": "string"
             }
@@ -2658,7 +2658,7 @@
             "name": "sort",
             "in": "query",
             "required": false,
-            "description": "One of number, issue_date, due_date, total, client, created_at; prefix - for descending.",
+            "description": "One of number, issue_date, due_date, next_due_date, total, client, created_at; prefix - for descending.",
             "schema": {
               "type": "string"
             }
@@ -8217,6 +8217,20 @@
           "amount_due": {
             "$ref": "#/components/schemas/Money"
           },
+          "open_instalments": {
+            "type": "array",
+            "description": "Instalments with an outstanding balance, in schedule order.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seq": { "type": "integer" },
+                "due_date": { "type": "string", "format": "date" },
+                "open": { "$ref": "#/components/schemas/Money" },
+                "is_overdue": { "type": "boolean" }
+              },
+              "required": ["seq", "due_date", "open", "is_overdue"]
+            }
+          },
           "refund_due": {
             "$ref": "#/components/schemas/Money"
           },
@@ -10620,7 +10634,8 @@
             "$ref": "#/components/schemas/InvoiceSummaryAmount"
           },
           "overdue": {
-            "$ref": "#/components/schemas/InvoiceSummaryAmount"
+            "$ref": "#/components/schemas/InvoiceSummaryAmount",
+            "description": "The unpaid balance past its due date. For a scheduled invoice, only past-due instalments contribute to the amount."
           },
           "paid_this_month": {
             "$ref": "#/components/schemas/InvoiceSummaryAmount"
