@@ -88,12 +88,13 @@ func (e *env) get(c *http.Cookie, path string) (*http.Response, string) {
 func TestInvoicesNoDrafts(t *testing.T) {
 	e := newEnv(t)
 	e.invoice("inv_ok", "cli_1", "open", "2026-0001", "pdf/ok")
+	e.exec(`UPDATE invoices SET note='Private context for workspace staff' WHERE id='inv_ok'`)
 	e.invoice("inv_draft", "cli_1", "draft", nil, nil)
 	e.invoice("inv_other", "cli_2", "open", "2026-0002", "pdf/other")
 	c, _ := e.signIn("ana@acme.ch")
 	res, body := e.get(c, "/invoices")
 	if res.StatusCode != 200 || !strings.Contains(body, "inv_ok") || strings.Contains(body, "inv_draft") || strings.Contains(body, "inv_other") ||
-		!strings.Contains(body, `"total":"108.10"`) {
+		strings.Contains(body, "Private context for workspace staff") || !strings.Contains(body, `"total":"108.10"`) {
 		t.Fatalf("got %d %s", res.StatusCode, body)
 	}
 }

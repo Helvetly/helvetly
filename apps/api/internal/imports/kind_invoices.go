@@ -29,21 +29,29 @@ var invoicesKind = Kind{
 		"unit is one of hour, day, piece, month, km, flat. A discount is never a line: a discount on the whole invoice is " +
 		"discount_percent (\"15\"), one on a single line is that line's discount_percent; a discount stated only as an amount " +
 		"is the percentage of the subtotal it represents, rounded to two decimals. contract_reference is the contract or " +
-		"agreement number the invoice refers to, as printed (e.g. C23-25-CP2302), never the order number or the buyer's " +
-		"reference. total is the grand total the document states. Guess nothing: " +
-		"a field the document does not carry is null. client_id is always null; the client_ fields are the billed party's details, read from its address block (\"Billed to\", \"Rechnung an\", \"Facturé à\", \"Fatturato a\" or the address window): its name, street and house number, postal code, city, country, email, phone, VAT and registration numbers, and whether it is a company or a private person; they create that client. issued_elsewhere is true when the document " +
-		"is a finished invoice the seller issued, carrying its own invoice number; false for a quote, order, proforma or draft. " +
-		"paid_amount and paid_on only when the document states a payment already received (a document marked paid " +
-		"without an amount was paid in full: paid_amount is the total), else null; paid_on is null when no payment date " +
-		"is stated. Look for a payment schedule across all pages, including payment instructions, tables, and separate " +
+		"agreement number as printed after a label such as Contract Number or Contract No. (e.g. C23-25-CP2302). " +
+		"Keep it distinct from the order number and buyer's reference. total is the grand total printed. " +
+		"Copy standalone remarks such as lesson dates, payment annotations and material notes verbatim into note. " +
+		"Leave note null without such a remark, including when there are only standard payment instructions or terms. " +
+		"Guess nothing: use null for fields the document does not carry. client_id is always null. " +
+		"Read the buyer's name, street and house number, postcode, city, country, email, phone, VAT and registration " +
+		"numbers, and whether the buyer is a company. Look for its address block (Billed to, Rechnung an, Facturé à, " +
+		"Fatturato a or the address window). The postcode can appear before or after the city. " +
+		"Check the buyer's address on the QR payment slip when part of it is missing from the header. " +
+		"client_country is an ISO 3166-1 alpha-2 code (CH for Switzerland). " +
+		"issued_elsewhere is true for a finished invoice carrying its own number, false for a quote, order, proforma or draft. " +
+		"Set paid_amount and paid_on only for explicit evidence of a payment already received. " +
+		"An invoice marked paid without an amount is paid in full. Leave paid_on null without an actual payment date. " +
+		"An invoice date, past due date, QR payment slip or payment instructions do not show a payment. " +
+		"Look for a payment schedule across all pages, including payment instructions, tables, and separate " +
 		"payment slips. Set has_instalment_schedule to true if the document divides the invoice total into several payments, " +
 		"even if some dates or amounts are unreadable. Put one row per instalment in instalments, including any deposit or " +
 		"final balance that is part of the schedule. Match each exact amount to its own due date; copy neither the invoice " +
 		"total nor a cumulative balance as an instalment. Do not count repetitions of the same payment twice. Check that " +
 		"the amounts add up to the invoice total. Use null for unreadable values rather than guessing. A single payment " +
 		"deadline or a list of payments already received without a schedule is not a payment schedule. Set paid only when " +
-		"the document gives its payment status, with paid_on only when stated; a document marked paid as a whole has every " +
-		"instalment paid. Use null for instalments when there is no schedule.",
+		"the document explicitly confirms each instalment's payment status. Include paid_on when it states the " +
+		"actual payment date. Use null instalments when there is no schedule.",
 	Schema: record(withClientDetails(map[string]any{
 		"client_id":               nullable("string", "Always null: the person picks the client"),
 		"client_name":             nullable("string", "The billed party's name"),
@@ -52,6 +60,7 @@ var invoicesKind = Kind{
 		"number":                  nullable("string", "The invoice's own number"),
 		"reference":               nullable("string", "The buyer's reference or order number"),
 		"contract_reference":      nullable("string", "The contract or agreement number the invoice refers to, as printed, e.g. C23-25-CP2302"),
+		"note":                    nullable("string", "Standalone remark from the invoice for internal use, copied verbatim"),
 		"issue_date":              nullable("string", "Invoice date, YYYY-MM-DD"),
 		"due_date":                nullable("string", "Due date, YYYY-MM-DD"),
 		"service_date":            nullable("string", "Service date or start of the service period, YYYY-MM-DD"),
@@ -64,7 +73,7 @@ var invoicesKind = Kind{
 		"paid_amount":             nullable("string", "Amount the document says was already paid, e.g. 500.00"),
 		"paid_on":                 nullable("string", "Date that amount was paid, YYYY-MM-DD"),
 		"has_instalment_schedule": nullable("boolean", "True if the original invoice specifies multiple scheduled payments, even when extraction is incomplete"),
-		"instalments": map[string]any{"type": []string{"array", "null"}, "description": "One row per payment in the invoice's schedule, with the amount and due date paired",
+		"instalments": map[string]any{"type": []string{"array", "null"}, "description": "The payment schedule, in order",
 			"items": record(map[string]any{
 				"amount":   nullable("string", "Amount of this instalment, e.g. 200.00"),
 				"due_date": nullable("string", "Due date of this instalment, YYYY-MM-DD"),

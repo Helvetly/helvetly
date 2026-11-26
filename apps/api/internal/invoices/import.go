@@ -58,11 +58,22 @@ func checkImport(ctx context.Context, q store.Q, workspaceID, today, clientID st
 		}
 	}
 	p := newParser()
+	var note string
 	if raw, ok := data["number"]; ok {
 		if n := p.text("number", raw, 100, nil); n != nil {
-			note, _ := json.Marshal(ImportedNote(*n))
-			body["note"] = note
+			note = ImportedNote(*n)
 		}
+	}
+	if raw, ok := data["note"]; ok {
+		if text := p.text("note", raw, 1000, nil); text != nil {
+			if note != "" {
+				note += "\n\n"
+			}
+			note += *text
+		}
+	}
+	if note != "" {
+		body["note"], _ = json.Marshal(note)
 	}
 	if raw, ok := data["price_basis"]; ok && inv.VATMode != invoicecalc.None {
 		mode := map[string]string{"net": invoicecalc.Exclusive, "gross": invoicecalc.Inclusive}[deref(p.text("price_basis", raw, 5, oneOf("net", "gross")))]
@@ -100,6 +111,10 @@ func checkImport(ctx context.Context, q store.Q, workspaceID, today, clientID st
 		}
 	}
 	elsewhere := checkIssuedElsewhere(inv, data, today, invalid)
+	if elsewhere.on && client != nil {
+		buyer := importedBuyer(*client, data)
+		inv.Buyer = &buyer
+	}
 	var hasSchedule bool
 	_ = json.Unmarshal(data["has_instalment_schedule"], &hasSchedule)
 	if schedule := importedSchedule(data["instalments"], inv); schedule != nil {

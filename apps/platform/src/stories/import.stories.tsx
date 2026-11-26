@@ -696,14 +696,13 @@ const invoiceRecord = (id: string, over: Partial<ImportRecord> = {}) =>
       ],
       instalments: [
         { due_date: '2026-11-20', amount: '600.00', paid: true, paid_on: '2026-11-18' },
-        { due_date: '2026-12-05', amount: '600.00', paid: false },
+        { due_date: '2026-11-25', amount: '600.00', paid: false },
       ],
       issue_date: '2026-11-05',
       due_date: '2026-12-05',
       currency: 'CHF',
       total: '1200.00',
-      paid_amount: '200.00',
-      paid_on: '',
+      note: 'Confirm materials before the next lesson.',
     },
     issues: { client_id: 'No client matches. Import the client first or pick one.' },
     ...over,
@@ -770,6 +769,9 @@ export const EditInvoiceDrawer: Story = {
     const editor = await body().findByRole('dialog', { name: 'Edit record' })
     await expect(within(editor).getByRole('button', { name: /^Invoice date: / })).toBeVisible()
     await expect(within(editor).getByRole('button', { name: /^Due date: / })).toBeVisible()
+    await expect(within(editor).getByRole('textbox', { name: 'Internal note' })).toHaveValue(
+      'Confirm materials before the next lesson.',
+    )
     // One currency per record, changed beside the total (the instalments show it, fixed).
     await expect(within(editor).getAllByRole('button', { name: /Currency.*CHF/ })).toHaveLength(1)
     // Amounts read as money until focused.

@@ -6,6 +6,7 @@ import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { Switch } from '@helvetly/ui/components/switch'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
+import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate, formatMoney } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -43,7 +44,6 @@ import {
   type RecordChanges,
 } from '@/lib/imports'
 import {
-  today as todayDate,
   UNITS,
   useInvoicePreview,
   useInvoiceSettings,
@@ -71,6 +71,7 @@ const SCALARS = [
   'number',
   'reference',
   'contract_reference',
+  'note',
   'issue_date',
   'due_date',
   'service_date',
@@ -141,22 +142,14 @@ export function importLinesOf(lines: EditorLine[]): Record<string, string | null
     }))
 }
 
-/**
- * The document's instalments. An instalment already past due is history: paid on its due date, as the import counts
- * it too (unless the document says otherwise with a date of its own).
- */
-export const instalmentsOf = (data: ImportRecord['data'], today: string): Instalment[] =>
-  rowsOf(data.instalments).map((row) => {
-    const due = text(row, 'due_date')
-    const past = due !== '' && due < today
-    return {
-      key: instalmentKey(),
-      due_date: due,
-      amount: text(row, 'amount'),
-      paid: row.paid === true || past,
-      paid_on: text(row, 'paid_on') || (past ? due : ''),
-    }
-  })
+export const instalmentsOf = (data: ImportRecord['data']): Instalment[] =>
+  rowsOf(data.instalments).map((row) => ({
+    key: instalmentKey(),
+    due_date: text(row, 'due_date'),
+    amount: text(row, 'amount'),
+    paid: row.paid === true || (row.paid !== false && Boolean(text(row, 'paid_on'))),
+    paid_on: text(row, 'paid_on'),
+  }))
 
 const importInstalmentsOf = (rows: Instalment[]) =>
   rows
@@ -325,24 +318,12 @@ function InvoiceRecordForm({
         : (settings.default_vat_mode ?? 'exclusive')
   const defaultRate = settings.default_vat_rate
   const patch = usePatchImportRecord(batchId)
-  const [values, setValues] = useState<Record<string, string>>(() => {
-    const read: Record<string, string> = Object.fromEntries(
-      SCALARS.map((field) => [field, displayValue(record.data[field])]),
-    )
-    const due = read.due_date || read.issue_date
-    // History, as the import counts it: past due and nothing said about payment means paid in full on the due date.
-    return read.issued_elsewhere === translate('yes') &&
-      !read.paid_amount &&
-      record.data.has_instalment_schedule !== true &&
-      !rowsOf(record.data.instalments).length &&
-      due &&
-      due < todayDate()
-      ? { ...read, paid_amount: read.total ?? '', paid_on: due }
-      : read
-  })
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(SCALARS.map((field) => [field, displayValue(record.data[field])])),
+  )
   const [mode, setMode] = useState<VatMode>(vatMode)
   const [lines, setLines] = useState(() => editorLinesOf(record.data, vatMode, defaultRate))
-  const [instalments, setInstalments] = useState(() => instalmentsOf(record.data, todayDate()))
+  const [instalments, setInstalments] = useState(() => instalmentsOf(record.data))
   const [discardSchedule, setDiscardSchedule] = useState(false)
   const set = (field: string, value: string) =>
     setValues((current) => ({ ...current, [field]: value }))
@@ -405,7 +386,7 @@ function InvoiceRecordForm({
     const nextInstalments = importInstalmentsOf(instalments)
     if (
       JSON.stringify(nextInstalments) !==
-      JSON.stringify(importInstalmentsOf(instalmentsOf(record.data, todayDate())))
+      JSON.stringify(importInstalmentsOf(instalmentsOf(record.data)))
     )
       changes.instalments = nextInstalments
     if (discardSchedule && nextInstalments.length === 0) changes.has_instalment_schedule = false
@@ -629,6 +610,15 @@ function InvoiceRecordForm({
                     {dateField('service_date')}
                     {dateField('service_date_end')}
                   </div>
+                  {field(
+                    'note',
+                    <Textarea
+                      {...describedBy(fieldId('note'), record.issues.note)}
+                      name="note"
+                      value={values.note ?? ''}
+                      onChange={(event) => set('note', event.target.value)}
+                    />,
+                  )}
                 </Block>
               )}
 
@@ -741,7 +731,11 @@ function InvoiceRecordForm({
                     {suggested && ` ${translate('importDiscountExplains', { percent: suggested })}`}
                   </Callout>
                 )}
-                {quote ? null : instalments.length > 0 ? (
+                {quote ? null : instalments.length > 0 &&
+                  !values.paid_amount &&
+                  !values.paid_on &&
+                  !record.issues.paid_amount &&
+                  !record.issues.paid_on ? (
                   <p className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-body-sm">
                     <CalendarClock aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                     {translate('importPaidByInstalments', {
@@ -783,7 +777,7 @@ function InvoiceRecordForm({
                   <InstalmentRows
                     rows={instalments}
                     currency={currency}
-                    error={discardSchedule ? undefined : record.issues.instalments}
+                    issues={discardSchedule ? {} : record.issues}
                     onChange={setInstalments}
                   />
                   {!discardSchedule &&
@@ -834,12 +828,12 @@ function Total({ label, value, strong }: { label: string; value: string; strong?
 function InstalmentRows({
   rows,
   currency,
-  error,
+  issues,
   onChange,
 }: {
   rows: Instalment[]
   currency: string
-  error?: string
+  issues: ImportRecord['issues']
   onChange: (rows: Instalment[]) => void
 }) {
   const update = (index: number, change: Partial<Instalment>) =>
@@ -932,6 +926,7 @@ function InstalmentRows({
                           id={`${row.key}-paid`}
                           label={`${label} · ${translate('paidOn')}`}
                           value={row.paid_on}
+                          error={issues['instalments.' + index + '.paid_on']}
                           onChange={(paid_on) => update(index, { paid_on })}
                         />
                       ) : (
@@ -945,7 +940,7 @@ function InstalmentRows({
                         aria-label={`${label} · ${translate('importPaid')}`}
                         checked={row.paid}
                         onCheckedChange={(paid) =>
-                          update(index, { paid, paid_on: paid ? row.paid_on || row.due_date : '' })
+                          update(index, { paid, paid_on: paid ? row.paid_on : '' })
                         }
                       />
                     </td>
@@ -969,11 +964,13 @@ function InstalmentRows({
           </table>
         </div>
       )}
-      {error && (
-        <p role="alert" className="text-caption text-destructive">
-          {error}
-        </p>
-      )}
+      {Object.entries(issues)
+        .filter(([key]) => key === 'instalments' || key.startsWith('instalments.'))
+        .map(([key, message]) => (
+          <p key={key} role="alert" className="text-caption text-destructive">
+            {message}
+          </p>
+        ))}
       <Button
         type="button"
         variant="outline"

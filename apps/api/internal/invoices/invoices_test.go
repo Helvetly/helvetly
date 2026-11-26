@@ -606,6 +606,30 @@ func TestPaymentsAndCredits(t *testing.T) {
 	}
 }
 
+func TestInternalNoteStaysOffCustomerInvoice(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	const note = "Private context for workspace staff"
+	const intro = "Here is your invoice"
+	inv := e.issued(b, clientID, map[string]any{"note": note, "intro": intro})
+	stored, err := e.st.Invoice(context.Background(), b.workspace, inv.ID, e.today(), false)
+	if err != nil || stored.Note == nil || *stored.Note != note {
+		t.Fatalf("internal note was not stored: %v", err)
+	}
+	text := e.storedPDFText(inv.ID)
+	if strings.Contains(text, pdfUnicode(note)) || !strings.Contains(text, pdfUnicode(intro)) {
+		t.Fatal("customer PDF text does not match the public fields")
+	}
+	e.do(b, "POST", path(inv.ID, "send"), map[string]any{}, http.StatusOK, nil)
+	if len(e.mail.sent) != 1 {
+		t.Fatalf("sent %d messages", len(e.mail.sent))
+	}
+	m := e.mail.sent[0]
+	if strings.Contains(m.Text, note) || strings.Contains(m.HTML, note) {
+		t.Fatal("internal note reached customer email")
+	}
+}
+
 func TestSendListExportSummary(t *testing.T) {
 	e := newEnv(t)
 	b, clientID := e.ready()

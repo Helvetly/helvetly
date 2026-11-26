@@ -13,6 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"helvetly.com/api/internal/addresses"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/uploads"
@@ -27,7 +28,13 @@ const maxListItems = 200 // e.g. the lines of one invoice
 // keeps a list of flat objects cleaned the same way against the items' properties. It is the boundary for the
 // model's output and for a person's edits.
 func clean(k Kind, raw map[string]json.RawMessage) Data {
-	return cleanObject(k.Schema, raw)
+	data := cleanObject(k.Schema, raw)
+	if k.Name == invoicesKind.Name && rawText(data["client_zip"]) == "" {
+		if zip := addresses.SwissPostcode(rawText(data["client_country"]), rawText(data["client_city"])); zip != "" {
+			data["client_zip"], _ = json.Marshal(zip)
+		}
+	}
+	return data
 }
 
 func cleanObject(schema map[string]any, raw map[string]json.RawMessage) Data {
