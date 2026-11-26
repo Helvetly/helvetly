@@ -48,7 +48,12 @@ export function Person({
 }) {
   return (
     <span
-      className={cn('inline-flex max-w-full min-w-0 items-center gap-1.5 align-middle', className)}
+      className={cn(
+        'inline-flex max-w-full min-w-0 items-center gap-1.5 align-middle',
+        // In a line of text the photo overhangs the line instead of making it taller, so nothing below moves.
+        size === 'xs' && '-my-1',
+        className,
+      )}
     >
       <UserAvatar name={person.name} url={person.avatar_url} className={PERSON_SIZES[size]} />
       <span className="truncate">{person.name}</span>
