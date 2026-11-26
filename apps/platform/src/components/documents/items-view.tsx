@@ -31,7 +31,6 @@ import { translate } from '@/lib/i18n'
 import { usePrefetch } from '@/lib/queries'
 import { folderLabel, isSystemFolder } from '@/lib/system-folders'
 
-import { TagChips } from './ai-filing'
 import { endDrag, startDrag, useDropTarget } from './drop-target'
 import { FolderArt, FolderMark } from './folder-art'
 import { InlineRename } from './inline-rename'
@@ -635,7 +634,6 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
               name={row.file.name}
               isFile
               detail={`${formatSize(row.file.size)} · ${KIND_LABELS[row.file.kind]}`}
-              aside={<TagChips tags={row.file.tags} autoTags={row.file.auto_tags} />}
             />
           </span>
         ),
@@ -732,7 +730,6 @@ function NameCell({
   label,
   isFile,
   detail,
-  aside,
 }: {
   props: ItemsProps
   item: ItemKey
@@ -741,8 +738,6 @@ function NameCell({
   label?: ReactNode
   isFile: boolean
   detail: string
-  /** After the detail line's text: a file's tags. */
-  aside?: ReactNode
 }) {
   return (
     <span className="block min-w-0 flex-1">
@@ -757,10 +752,7 @@ function NameCell({
           {label ?? name}
         </span>
       )}
-      <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
-        <span className="shrink-0 truncate">{detail}</span>
-        {aside}
-      </span>
+      <span className="block truncate text-[12px] text-muted-foreground">{detail}</span>
     </span>
   )
 }
