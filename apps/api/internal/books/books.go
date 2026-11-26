@@ -310,6 +310,7 @@ type event struct {
 	SubjectID   string          `json:"subject_id"`
 	Subject     *subject        `json:"subject"`
 	Actor       *person         `json:"actor"`
+	Origin      *string         `json:"origin"` // "imported" for what an import wrote, else null
 	At          time.Time       `json:"at"`
 	Payload     json.RawMessage `json:"payload"`
 	PrevHash    string          `json:"prev_hash"`
@@ -348,7 +349,7 @@ func (s *Service) auditLog(w http.ResponseWriter, r *http.Request, sess store.Se
 		if e.Number != nil || e.Party != nil || e.Currency != nil {
 			sub = &subject{e.Number, e.Party, e.Currency}
 		}
-		out[i] = event{e.Seq, e.Kind, e.Category, e.SubjectType, e.SubjectID, sub, actor, e.At, e.Payload, e.PrevHash, e.Hash}
+		out[i] = event{e.Seq, e.Kind, e.Category, e.SubjectType, e.SubjectID, sub, actor, e.Origin, e.At, e.Payload, e.PrevHash, e.Hash}
 	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": out, "meta": map[string]any{"next_cursor": next}})
 	return nil
@@ -383,6 +384,9 @@ func auditQuery(q url.Values) (store.AuditFilter, int, error) {
 		return f, 0, badQuery("category must be one of " + strings.Join(store.AuditCategories, ", ") + ".")
 	}
 	f.ActorID = q.Get("actor")
+	if f.Origin = q.Get("origin"); f.Origin != "" && f.Origin != "imported" {
+		return f, 0, badQuery("origin must be imported.")
+	}
 	for name, dst := range map[string]**time.Time{"since": &f.Since, "before": &f.Before} {
 		if v := q.Get(name); v != "" {
 			t, err := time.Parse(time.RFC3339, v)
