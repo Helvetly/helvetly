@@ -71,7 +71,7 @@ export function StorageOverview({ usage, onTrash }: { usage: Usage; onTrash: () 
               key={key}
               data-kind={key}
               title={`${label}: ${formatSize(size, 3)}`}
-              className={color}
+              className={cn(color, size > 0 && (used > 0 || key === 'free') && 'min-w-px')}
               style={{
                 flexGrow: usage.size > used && key !== 'free' ? size * (used / usage.size) : size,
               }}
