@@ -453,7 +453,7 @@ func parseFilter(q url.Values) (store.InvoiceFilter, error) {
 		}
 	}
 	if _, ok := store.InvoiceSorts[strings.TrimPrefix(f.Sort, "-")]; f.Sort != "" && !ok {
-		return f, badRequest("sort must be one of number, issue_date, due_date, total, client, created_at, optionally prefixed with -.")
+		return f, badRequest("sort must be one of number, issue_date, due_date, next_due_date, total, client, created_at, optionally prefixed with -.")
 	}
 	return f, nil
 }

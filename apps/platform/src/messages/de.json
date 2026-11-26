@@ -1484,6 +1484,7 @@
   "inside": " drinnen",
   "instalment": "Ratenzahlung",
   "instalmentAmount": "Rate {value1} Betrag",
+  "useInstalmentAmount": "Rate {number} übernehmen ({amount})",
   "instalmentDueDate": "Fälligkeitsdatum der Rate {value1}",
   "instalmentIssued": "Rate ausgestellt",
   "instalmentPlan": "Ratenzahlungsplan · ",

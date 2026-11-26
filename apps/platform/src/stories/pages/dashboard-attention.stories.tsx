@@ -5,7 +5,8 @@ import { expect, waitFor, within } from 'storybook/test'
 import { Dashboard } from '@/components/dashboard/dashboard'
 import { endedMonths } from '@/components/settings/periods-settings'
 import type { Period } from '@/lib/books'
-import { today } from '@/lib/invoices'
+import { dueLabel, today, type InvoiceListItem } from '@/lib/invoices'
+import { scheduledInvoice } from '@/mocks/data'
 import { sampleSettings } from '@/test/invoice-api'
 
 import { sessionHandler, unavailable } from '../screen-fixtures'
@@ -103,6 +104,37 @@ export const EverythingPending: Story = {
     ])
     await expect(links.slice(3).every((href) => href?.startsWith('/invoices'))).toBe(true)
     await expect(links.length).toBeGreaterThan(3)
+  },
+}
+
+export const OverdueInstalments: Story = {
+  parameters: pageParameters('/', {}, [
+    notRegistered,
+    ...attentionHandlers(allClosed),
+    http.get('/api/v1/invoices', () => {
+      const invoice: InvoiceListItem = {
+        ...scheduledInvoice,
+        is_overdue: true,
+        amount_due: '581.00',
+        open_instalments: [
+          { seq: 1, due_date: '2025-11-01', open: '65.00', is_overdue: true },
+          { seq: 2, due_date: '2025-12-01', open: '100.00', is_overdue: true },
+          { seq: 3, due_date: today(), open: '416.00', is_overdue: false },
+        ],
+      }
+      return HttpResponse.json({ data: [invoice] })
+    }),
+  ]),
+  play: async (context) => {
+    const list = await card(context)
+    const first = await list.findByRole('link', { name: /Instalment 1/ })
+    const second = list.getByRole('link', { name: /Instalment 2/ })
+    await expect(first).toHaveTextContent(dueLabel('2025-11-01').toLowerCase())
+    await expect(second).toHaveTextContent(dueLabel('2025-12-01').toLowerCase())
+    await expect(within(first).getByText('65.00')).toBeVisible()
+    await expect(within(second).getByText('100.00')).toBeVisible()
+    await expect(list.queryByText('581.00')).not.toBeInTheDocument()
+    await expect(list.queryByRole('link', { name: /Instalment 3/ })).not.toBeInTheDocument()
   },
 }
 

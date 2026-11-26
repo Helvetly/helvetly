@@ -268,6 +268,15 @@ type InvoiceListItem struct {
 	SentAt         *time.Time     `json:"sent_at"`
 	CreatedAt      time.Time      `json:"created_at"`
 	ApprovalState  *string        `json:"approval_state"`
+
+	OpenInstalments []OpenInstalment `json:"open_instalments,omitempty"`
+}
+
+type OpenInstalment struct {
+	Seq       int    `json:"seq"`
+	DueDate   string `json:"due_date"`
+	Open      Money  `json:"open"`
+	IsOverdue bool   `json:"is_overdue"`
 }
 
 // ---- settings ----
@@ -315,11 +324,15 @@ func (q Q) PutInvoiceSettings(ctx context.Context, workspaceID string, v any, no
 // are credit_note, proforma and self_billed).
 const receivableKinds = `('invoice', 'partial', 'prepayment', 'debit_note', 'corrected')`
 
-// isOverdue: an open receivable or self-billed document past its due date; a proforma is never overdue. With a schedule,
-// what fell due (capped by the instalments less credit notes, which reduce from the last instalment) exceeds what was paid.
-const isOverdue = `(i.status = 'open' AND i.kind <> 'proforma' AND CASE WHEN i.instalment_interval IS NULL THEN i.due_date < $%[1]d::date
-	ELSE (SELECT LEAST(COALESCE(sum(x.amount) FILTER (WHERE x.due_date < $%[1]d::date), 0), COALESCE(sum(x.amount), 0) - i.amount_credited)
-		FROM invoice_instalments x WHERE x.invoice_id = i.id) > i.amount_paid END)`
+// overdueAmount caps the amount that fell due by what is owed after credits, which reduce the last instalments first.
+const overdueAmount = `CASE WHEN i.status <> 'open' OR i.kind = 'proforma' THEN 0
+	WHEN i.instalment_interval IS NOT NULL THEN (SELECT GREATEST(0, LEAST(
+		COALESCE(sum(x.amount) FILTER (WHERE x.due_date < $%[1]d::date), 0),
+		COALESCE(sum(x.amount), 0) - i.amount_credited) - i.amount_paid)
+		FROM invoice_instalments x WHERE x.invoice_id = i.id)
+	WHEN i.due_date < $%[1]d::date THEN ` + amountDue + ` ELSE 0 END`
+
+const isOverdue = `((` + overdueAmount + `) > 0)`
 
 // amountDue: nothing for void or replaced documents and issued credit notes (applied on issue), else what is left
 // after payments and credit notes, ≥ 0. A final invoice's totals are already net of its prepayments.
@@ -801,7 +814,8 @@ func (q Q) Deliveries(ctx context.Context, invoiceID string) ([]Delivery, error)
 
 // InvoiceSorts maps the list's sort keys to their SQL.
 var InvoiceSorts = map[string]string{"number": "i.number", "issue_date": "i.issue_date", "due_date": "i.due_date",
-	"total": "i.total + i.rounding_amount", "client": "lower(" + invoiceClientName + ")", "created_at": "i.created_at"}
+	"next_due_date": "COALESCE(instalments.next_due_date, i.due_date)",
+	"total":         "i.total + i.rounding_amount", "client": "lower(" + invoiceClientName + ")", "created_at": "i.created_at"}
 
 // InvoiceFilter narrows the list and the export; empty fields do not narrow.
 type InvoiceFilter struct {
@@ -891,7 +905,7 @@ func (f InvoiceFilter) orderBy() string {
 func (q Q) ListInvoices(ctx context.Context, workspaceID, today string, f InvoiceFilter, limit, offset int) ([]InvoiceListItem, int, error) {
 	where, args := f.where(workspaceID, today)
 	var total int
-	if err := q.db.QueryRow(ctx, `SELECT count(*)`+invoiceListFrom+where+` AND $2::date IS NOT NULL`, args...).Scan(&total); err != nil {
+	if err := q.db.QueryRow(ctx, `SELECT count(*)`+invoiceListFrom+` WHERE `+where+` AND $2::date IS NOT NULL`, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	list := []InvoiceListItem{}
@@ -899,7 +913,7 @@ func (q Q) ListInvoices(ctx context.Context, workspaceID, today string, f Invoic
 	return list, total, err
 }
 
-const invoiceListFrom = ` FROM invoices i JOIN clients c ON c.id = i.client_id LEFT JOIN invoices di ON di.id = i.deducted_on_invoice_id WHERE `
+const invoiceListFrom = ` FROM invoices i JOIN clients c ON c.id = i.client_id LEFT JOIN invoices di ON di.id = i.deducted_on_invoice_id`
 
 // EachInvoice streams the filtered documents in order to fn (limit 0: every match), so an export holds one row at a time.
 func (q Q) EachInvoice(ctx context.Context, workspaceID, today string, f InvoiceFilter, limit, offset int, fn func(InvoiceListItem) error) error {
@@ -908,11 +922,17 @@ func (q Q) EachInvoice(ctx context.Context, workspaceID, today string, f Invoice
 	if limit > 0 {
 		page = fmt.Sprintf(" LIMIT %d OFFSET %d", limit, offset)
 	}
+	instalments := ` LEFT JOIN LATERAL (
+		SELECT min(b.due_date) AS next_due_date, jsonb_agg(jsonb_build_object(
+			'seq', b.seq, 'due_date', b.due_date, 'open', (b.open::numeric / 100)::numeric(21, 2)::text,
+			'is_overdue', b.due_date < $2::date) ORDER BY b.seq) AS open
+		FROM (` + openInstalments("scheduled.id = i.id") + `) b WHERE b.open > 0
+	) instalments ON true`
 	rows, err := q.db.Query(ctx, `SELECT i.id, i.kind, i.number, i.status, `+fmt.Sprintf(isOverdue, 2)+`, i.client_id,
 		c.number, `+invoiceClientName+`, i.issue_date::text, i.due_date::text, i.currency, i.net_total, i.vat_total, i.total, i.rounding_amount, `+amountDue+`,
 		`+refundDue+`, i.amount_paid, i.reference, i.sent_at, i.created_at, i.pay_qr_bill, i.pay_revolut, i.prepaid_total,
 		di.id, di.number, i.qr_bill AND i.instalment_interval IS NULL, i.pdf_key IS NOT NULL,
-		`+approvalState+invoiceListFrom+where+` ORDER BY `+f.orderBy()+page, args...)
+		`+approvalState+`, instalments.open`+invoiceListFrom+instalments+` WHERE `+where+` ORDER BY `+f.orderBy()+page, args...)
 	if err != nil {
 		return err
 	}
@@ -923,7 +943,7 @@ func (q Q) EachInvoice(ctx context.Context, workspaceID, today string, f Invoice
 		if err := rows.Scan(&i.ID, &i.Kind, &i.Number, &i.Status, &i.IsOverdue, &i.Client.ID, &i.Client.Number, &i.Client.Name,
 			&i.IssueDate, &i.DueDate, &i.Currency, &i.NetTotal, &i.VATTotal, &i.Total, &i.RoundingAmount, &i.AmountDue, &i.RefundDue, &i.Paid, &i.Reference, &i.SentAt,
 			&i.CreatedAt, &i.PaymentMethods.QRBill, &i.PaymentMethods.Revolut, &i.PrepaidTotal, &deductedID, &deductedNumber,
-			&i.ArchivedQR, &i.HasPDF, &i.ApprovalState); err != nil {
+			&i.ArchivedQR, &i.HasPDF, &i.ApprovalState, &i.OpenInstalments); err != nil {
 			return err
 		}
 		i.PayableTotal = i.Total + i.RoundingAmount
@@ -1016,7 +1036,7 @@ func (q Q) InvoiceMetrics(ctx context.Context, workspaceID, currency, today, cli
 	err := q.db.QueryRow(ctx, `SELECT
 		(SELECT COALESCE(sum(`+amountDue+`), 0)`+scope+` AND i.status = 'open'),
 		(SELECT count(*)`+scope+` AND i.status = 'open'),
-		(SELECT COALESCE(sum(`+amountDue+`), 0)`+scope+` AND `+fmt.Sprintf(isOverdue, 3)+`),
+		(SELECT COALESCE(sum(`+fmt.Sprintf(overdueAmount, 3)+`), 0)`+scope+` AND i.status = 'open'),
 		(SELECT count(*)`+scope+` AND `+fmt.Sprintf(isOverdue, 3)+`),
 		(SELECT COALESCE(sum(i.total + i.rounding_amount), 0)`+scope+` AND i.status = 'draft'),
 		(SELECT count(*)`+scope+` AND i.status = 'draft'),

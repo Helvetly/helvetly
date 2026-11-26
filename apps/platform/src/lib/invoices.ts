@@ -420,7 +420,12 @@ export type InvoiceListItem = Pick<
   | 'payment_methods'
   | 'sent_at'
   | 'created_at'
-> & { deducted_on: { id: string; number: string | null } | null }
+> & {
+  deducted_on: { id: string; number: string | null } | null
+  open_instalments?: (Pick<InstalmentItem, 'seq' | 'due_date' | 'open'> & {
+    is_overdue: boolean
+  })[]
+}
 
 export type Payment = {
   id: string
@@ -1283,6 +1288,7 @@ export const SORT_FIELDS = [
   'number',
   'issue_date',
   'due_date',
+  'next_due_date',
   'total',
   'client',
   'created_at',

@@ -43,6 +43,7 @@ import {
   toCents,
   useAddPayment,
   useAddRefund,
+  useInvoice,
   useSendInvoice,
   type InvoiceListItem,
   type IssueReason,
@@ -165,7 +166,6 @@ export const fieldErrors = (error: unknown): Record<string, string> => {
   )
 }
 
-/** Records a payment: it opens on the whole amount due, today, by bank transfer, so one click pays it in full. */
 export function PaymentDialog({
   invoice,
   onClose,
@@ -173,7 +173,10 @@ export function PaymentDialog({
   invoice: InvoiceListItem
   onClose: () => void
 }) {
-  const [amount, setAmount] = useState(invoice.amount_due)
+  const { data: detail } = useInvoice(invoice.id)
+  const amountDue = detail?.amount_due ?? invoice.amount_due
+  const nextInstalment = detail?.instalments?.items.find((item) => toCents(item.open) > 0n)
+  const [amount, setAmount] = useState(amountDue)
   const [paidOn, setPaidOn] = useState(today())
   const [method, setMethod] = useState<PaymentMethod>('bank_transfer')
   const [note, setNote] = useState('')
@@ -184,9 +187,9 @@ export function PaymentDialog({
     const value = parseDecimalInput(amount, 2, true)
     const found: Record<string, string> = {}
     if (!value || toCents(value) <= 0n) found.amount = translate('enterAnAmountAbove0')
-    else if (toCents(value) > toCents(invoice.amount_due))
+    else if (toCents(value) > toCents(amountDue))
       found.amount = translate('atMostIsStillDue', {
-        value1: formatMoney(invoice.amount_due, invoice.currency),
+        value1: formatMoney(amountDue, invoice.currency),
       })
     if (!paidOn) found.paid_on = translate('chooseTheDayItArrived')
     else if (paidOn > today()) found.paid_on = translate('thePaymentDateCanTBeInTheFuture')
@@ -227,12 +230,12 @@ export function PaymentDialog({
         <>
           {documentName(invoice)} · {invoice.client.name} ·{' '}
           <span className="text-foreground tabular-nums">
-            {formatMoney(invoice.amount_due, invoice.currency)}
+            {formatMoney(amountDue, invoice.currency)}
           </span>{' '}
           {translate('due4')}
         </>
       }
-      action="Record payment"
+      action={translate('recordPayment2')}
       pending={add.isPending}
       onSubmit={submit}
       onClose={onClose}
@@ -264,6 +267,24 @@ export function PaymentDialog({
           />
         </FormField>
       </div>
+      {nextInstalment && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="justify-self-start"
+          disabled={add.isPending}
+          onClick={() => {
+            setAmount(nextInstalment.open)
+            setErrors((current) => ({ ...current, amount: '' }))
+          }}
+        >
+          {translate('useInstalmentAmount', {
+            number: nextInstalment.seq,
+            amount: formatMoney(nextInstalment.open, invoice.currency),
+          })}
+        </Button>
+      )}
       <div className="grid gap-1.5">
         <span className="text-[13px] font-medium">{translate('method')}</span>
         <Segmented

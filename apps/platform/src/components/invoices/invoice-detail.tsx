@@ -1049,6 +1049,8 @@ function InvoiceHero({
   credit: boolean
   progress?: ReactNode
 }) {
+  const nextInstalment = invoice.instalments?.items.find((item) => isPositive(item.open))
+  const dueDate = nextInstalment?.due_date ?? invoice.due_date
   return (
     <RecordHero
       progress={progress}
@@ -1073,11 +1075,15 @@ function InvoiceHero({
       </HeroFact>
       {invoice.status === 'open' && !credit && (
         <HeroFact
-          label={translate('dueDate')}
-          note={dueLabel(invoice.due_date)}
+          label={
+            nextInstalment
+              ? translate('instalmentDueDate', { value1: nextInstalment.seq })
+              : translate('dueDate')
+          }
+          note={dueLabel(dueDate)}
           urgent={invoice.is_overdue}
         >
-          {formatDay(invoice.due_date)}
+          {formatDay(dueDate)}
         </HeroFact>
       )}
       {invoice.credited_invoice && (

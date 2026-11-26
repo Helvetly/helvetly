@@ -1,5 +1,6 @@
 'use client'
 import { languageTag } from '@helvetly/i18n'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import {
   ChartContainer,
@@ -19,6 +20,7 @@ import { EmptyState } from '@helvetly/ui/components/empty-state'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { formatDate, formatWhole } from '@helvetly/ui/lib/format'
+import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowRight,
@@ -53,6 +55,7 @@ import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
   DEFAULT_PARAMS,
+  INSTALMENT_STATUS_LABELS,
   SUMMARY_PERIODS,
   dueLabel,
   formatRange,
@@ -243,7 +246,7 @@ const ATTENTION = {
   ...DEFAULT_PARAMS,
   status: ['open' as const, 'refund_due' as const],
   kind: 'invoice' as const,
-  sort: 'due_date' as const,
+  sort: 'next_due_date' as const,
   desc: false,
 }
 
@@ -262,7 +265,21 @@ function NeedsAttention() {
   const closing = useMonthsToClose()
   const legalForm = useLegalFormMissing()
   const invoices = useQuery({ ...invoiceListQuery(ATTENTION), enabled: canReadInvoices })
-  const rows = (invoices.data?.data ?? []).slice(0, 6)
+  const rows = (invoices.data?.data ?? [])
+    .flatMap((invoice) => {
+      const refund = isPositive(invoice.refund_due)
+      const items = refund ? [] : (invoice.open_instalments ?? [])
+      const overdue = items.filter((item) => item.is_overdue)
+      const shown = overdue.length > 0 ? overdue : [items[0] ?? null]
+      return shown.map((instalment) => ({
+        invoice,
+        due: instalment?.due_date ?? invoice.due_date,
+        amount: instalment?.open ?? (refund ? invoice.refund_due : invoice.amount_due),
+        instalment,
+      }))
+    })
+    .toSorted((a, b) => a.due.localeCompare(b.due))
+    .slice(0, 6)
   const months = closing.value ?? []
   const pending =
     vat.pending || closing.pending || (canReadInvoices && !invoices.data && !invoices.error)
@@ -354,8 +371,8 @@ function NeedsAttention() {
               detail={translate('legalFormMissingBody')}
             />
           )}
-          {rows.map((row) => (
-            <li key={row.id}>
+          {rows.map(({ invoice: row, due, amount, instalment }) => (
+            <li key={instalment ? `${row.id}-${instalment.seq}` : row.id}>
               <RecordLink href={`/invoices?id=${encodeURIComponent(row.id)}`} className={LIST_ROW}>
                 <span className="flex min-w-0 items-center gap-3">
                   <Initials name={row.client.name} className="size-9 text-xs" />
@@ -363,19 +380,24 @@ function NeedsAttention() {
                     <span className="truncate">{row.client.name}</span>
                     <span className="truncate text-body-sm text-muted-foreground">
                       <span className="font-code">{row.number}</span> ·{' '}
+                      {instalment && `${translate('importInstalmentN', { n: instalment.seq })} · `}
                       {isPositive(row.refund_due)
                         ? translate('toRefund')
-                        : dueLabel(row.due_date).toLowerCase()}
+                        : dueLabel(due).toLowerCase()}
                     </span>
                   </span>
                 </span>
-                <Money
-                  value={isPositive(row.refund_due) ? row.refund_due : row.amount_due}
-                  currency={row.currency}
-                  className="ml-auto text-right"
-                />
+                <Money value={amount} currency={row.currency} className="ml-auto text-right" />
                 <span className="w-[76px] shrink-0 text-right @max-sm:hidden">
-                  <RowStatus invoice={row} />
+                  {instalment ? (
+                    <Badge
+                      tone={STATUS_TONES.instalment[instalment.is_overdue ? 'overdue' : 'open']}
+                    >
+                      {INSTALMENT_STATUS_LABELS[instalment.is_overdue ? 'overdue' : 'open']}
+                    </Badge>
+                  ) : (
+                    <RowStatus invoice={row} />
+                  )}
                 </span>
               </RecordLink>
             </li>

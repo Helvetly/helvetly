@@ -1484,6 +1484,7 @@
   "inside": " inside",
   "instalment": "Instalment",
   "instalmentAmount": "Instalment {value1} amount",
+  "useInstalmentAmount": "Use instalment {number} amount ({amount})",
   "instalmentDueDate": "Instalment {value1} due date",
   "instalmentIssued": "Instalment issued",
   "instalmentPlan": "Instalment plan · ",
