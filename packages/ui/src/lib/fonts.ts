@@ -1,10 +1,11 @@
 import { Geist_Mono, Instrument_Serif, Inter } from 'next/font/google'
 
-const sans = Inter({ subsets: ['latin', 'latin-ext', 'cyrillic'], variable: '--font-sans' })
-const mono = Geist_Mono({ subsets: ['latin', 'latin-ext', 'cyrillic'], variable: '--font-mono' })
+// next/font preloads the listed subsets; the browser fetches other glyph ranges when used.
+const sans = Inter({ subsets: ['latin'], variable: '--font-sans' })
+const mono = Geist_Mono({ preload: false, variable: '--font-mono' })
 // The serif for an accent word in a headline (`.accent` in globals.css).
 const serif = Instrument_Serif({
-  subsets: ['latin'],
+  preload: false,
   weight: '400',
   style: 'italic',
   variable: '--font-serif',
