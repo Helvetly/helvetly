@@ -13,8 +13,8 @@ func TestScaleEmailLogo(t *testing.T) {
 		name               string
 		w, h, wantW, wantH int
 	}{
-		{"square", 400, 400, 36, 36},
-		{"wide", 800, 200, 144, 36},
+		{"square", 400, 400, 44, 44},
+		{"wide", 800, 200, 176, 44},
 		{"very wide", 4000, 200, 200, 10},
 		{"already small", 64, 30, 64, 30},
 	} {

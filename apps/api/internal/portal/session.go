@@ -105,7 +105,7 @@ func (s *Service) start(w http.ResponseWriter, r *http.Request) {
 	access, err := s.access(r, email)
 	if err == nil {
 		// Every address goes through the same cooldown and limits; only one with access gets the code.
-		err = s.auth.SendEmailCode(r, email, len(access) > 0)
+		err = s.auth.SendEmailCode(r, email, scopeWorkspace(r), len(access) > 0)
 	}
 	if err != nil {
 		s.fail(w, r, err)

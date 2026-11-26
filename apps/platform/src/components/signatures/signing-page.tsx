@@ -658,7 +658,7 @@ function BrandMark({ name, logo }: { name: string; logo: string }) {
   const [broken, setBroken] = useState(false)
   if (logo && !broken)
     return (
-      // The email copy of the logo, already scaled to 36 px high; a static export has no image optimiser. Its width
+      // The email copy of the logo (44 px high, shown at 36); a static export has no image optimiser. Its width
       // is unknown, so both sizes come from CSS (0 x 0 keeps next/image from warning about one changed size).
       <Image
         src={logo}

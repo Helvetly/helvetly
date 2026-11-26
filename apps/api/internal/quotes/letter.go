@@ -22,6 +22,6 @@ func withLetter(m mail.Message, t store.Quote) mail.Message {
 		mail.Row{Label: w.Total, Value: t.Currency + " " + t.PayableTotal.Swiss("'")},
 		mail.Row{Label: w.ValidUntil, Value: swissDate(t.ValidUntil)},
 	).Attached(names...)
-	m.Text, m.HTML = l.Text(), l.HTML()
+	m.Text, m.HTML, m.Eyebrow = l.Text(), l.HTML(), invoicepdf.Title(t.Language, "quote")
 	return m
 }

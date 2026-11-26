@@ -17,7 +17,7 @@ import (
 
 // Auth is what the handlers use of internal/auth: the email codes, and its error and JSON conventions.
 type Auth interface {
-	SendEmailCode(r *http.Request, email string, deliver bool) error
+	SendEmailCode(r *http.Request, email, workspaceID string, deliver bool) error
 	ConsumeEmailCode(ctx context.Context, email, code string) (string, error)
 	WriteError(http.ResponseWriter, *http.Request, error)
 	Decode(http.ResponseWriter, *http.Request, any) bool

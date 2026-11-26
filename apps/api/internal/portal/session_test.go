@@ -29,7 +29,7 @@ type fakeAuth struct {
 	sent int
 }
 
-func (f *fakeAuth) SendEmailCode(_ *http.Request, _ string, deliver bool) error {
+func (f *fakeAuth) SendEmailCode(_ *http.Request, _, _ string, deliver bool) error {
 	if deliver {
 		f.sent++
 	}

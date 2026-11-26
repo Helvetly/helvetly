@@ -73,6 +73,17 @@ type Service struct {
 	// same transaction (internal/invoices holds the settings; auth cannot import it). Nil: onboarding cannot be
 	// finished, so a wiring mistake refuses instead of letting the step be skipped.
 	CompleteOnboarding func(ctx context.Context, workspaceID string, mark func(q store.Q) error) error
+	// PortalBrand is the business a workspace's client portal sign-in code comes from (internal/invoices holds it; main
+	// sets it). Nil: the code is Helvetly's own email.
+	PortalBrand func(ctx context.Context, workspaceID string) (mail.Brand, error)
+}
+
+// SetMailer replaces the plain sender with main's (Metered around Branded), so a portal code goes out as the business;
+// a message without a Workspace passes both as it is.
+func (s *Service) SetMailer(m interface {
+	Send(context.Context, mail.Message) error
+}) {
+	s.mail = m
 }
 
 func New(cfg config.Config, db *store.Store, log *slog.Logger) (*Service, error) {

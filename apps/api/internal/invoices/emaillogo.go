@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	emailLogoHeight   = 36
+	emailLogoHeight   = 44
 	emailLogoMaxWidth = 200
 )
 

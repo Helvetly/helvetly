@@ -35,8 +35,12 @@ type Message struct {
 	Subject, Text, HTML string
 	Attachments         []Attachment
 	ListUnsubscribe     string // optional: the one-click unsubscribe URL (RFC 8058)
-	Footer              string // optional HTML under the card, such as why the email came; else "Sent by Helvetly"
-	Language            string // optional: the email's language (de, fr, it, en) for the business footer
+	Footer              string // optional HTML: why the email came, in Helvetly's own footer; a branded email's whole footer
+	Eyebrow             string // optional: the pill above the title saying what the email is ("Invoice")
+	// Uncounted: a workspace's email no business limit may stop or count (a client's portal sign-in code): branded as
+	// the business, never metered.
+	Uncounted bool
+	Language  string // optional: the email's language (de, fr, it, en) for the business footer
 	// Members: a workspace's email to its own members (notifications, a signer's answer): sent as Helvetly, unbranded.
 	Members bool
 	Brand   *Brand // set by Branded: the business a client email comes from

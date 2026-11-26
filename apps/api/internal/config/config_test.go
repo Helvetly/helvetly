@@ -83,6 +83,9 @@ func TestLoad(t *testing.T) {
 		}},
 		{"fake calendars need dev sign-in", map[string]string{"SECRET_KEY": key, "HELVETLY_E2E_FAKE_CALENDARS": "true"}, "HELVETLY_E2E_FAKE_CALENDARS", nil},
 		{"fake domains need dev sign-in", map[string]string{"SECRET_KEY": key, "HELVETLY_E2E_FAKE_DOMAINS": "true"}, "HELVETLY_E2E_FAKE_DOMAINS", nil},
+		{"website by default", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return c.WebURL == "https://www.helvetly.com" }},
+		{"website origin", map[string]string{"AUTH_DEV_SIGNIN": "true", "NEXT_PUBLIC_WEB_URL": "https://Example.com/"}, "", func(c Config) bool { return c.WebURL == "https://example.com" }},
+		{"public website over plain HTTP", map[string]string{"AUTH_DEV_SIGNIN": "true", "NEXT_PUBLIC_WEB_URL": "http://example.com"}, "NEXT_PUBLIC_WEB_URL must be", nil},
 		{"media off by default", map[string]string{"AUTH_DEV_SIGNIN": "true"}, "", func(c Config) bool { return c.MediaURL == "" }},
 		{"media origin", map[string]string{"SECRET_KEY": key, "PUBLIC_URL": "https://app.helvetly.com", "PORTAL_URL": "https://portal.helvetly.com", "MEDIA_URL": "https://Media.helvetly.com/"}, "",
 			func(c Config) bool { return c.MediaURL == "https://media.helvetly.com" }},
@@ -195,7 +198,7 @@ func TestLoad(t *testing.T) {
 			"MAIL_FROM": "not an address"}, "AUTH_DEV_SIGNIN", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, k := range []string{"HTTP_ADDR", "DATABASE_URL", "PUBLIC_URL", "PORTAL_URL", "DOCS_URL", "MEDIA_URL", "SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
+			for _, k := range []string{"HTTP_ADDR", "DATABASE_URL", "PUBLIC_URL", "PORTAL_URL", "DOCS_URL", "MEDIA_URL", "NEXT_PUBLIC_WEB_URL", "SECRET_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
 				"SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_TLS", "MAIL_FROM", "SESSION_TTL", "COOKIE_SECURE", "AUTH_DEV_SIGNIN", "S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "DOCUMENTS_MAX_UPLOAD_MB", "S3_OBJECT_LOCK_DAYS", "S3_OBJECT_LOCK_MODE", "S3_PROXY_DOWNLOADS", "S3_ADDRESSING",
 				"STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_AUTOMATIC_TAX", "STRIPE_API_BASE", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_FALLBACK_MODEL", "HEIDI_OPENAI_API_KEY", "HEIDI_OPENAI_MODEL", "HEIDI_MONTHLY_TOKENS", "TRUSTED_PROXY_CIDRS", "KSEF_API_URL", "UID_REGISTER_URL", "ADDRESS_SUGGEST_URL", "AI_FAKE_PROVIDER", "HELVETLY_E2E_FAKE_AI", "FEEDBACK_EMAIL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_ADMIN_CHAT_ID", "GOOGLE_ANALYTICS_ID", "PUBLIC_API_URL", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ZONE_ID", "CUSTOM_DOMAIN_TARGET", "CLOUDFLARE_API_URL", "HELVETLY_E2E_FAKE_DOMAINS",
 				"GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET", "MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_TENANT",

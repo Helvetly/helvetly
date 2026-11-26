@@ -241,21 +241,26 @@ are the reference.
   capped by `max_email_attachment_bytes`) and goes out as the business through `mail.Branded`: the company name as
   From's display name (the address stays `MAIL_FROM`'s), Reply-To the workspace's reply-to email (`workspaces.reply_to_email`,
   Settings → Workspace), else the company email, else the member who sends, else the owner, never no-reply; its workspace
-  logo (never the document logo; none: its name) heads the email, its seller details (with its website as a link) sign it. Its body
-  is built from the `mail.Letter` blocks (greeting, lead, typed message, summary panel, code, call to action, note, fine print,
-  attachments), which write the HTML and the text part together; every client email kind has a golden test through
-  `mail/mailtest` (`go test -update` rewrites `testdata/*.golden`), which also holds it to the email HTML rule and to words that wrap. Sign-in, security and invitation email never does either and stays Helvetly's.
+  logo (never the document logo) and name head the email, its seller details (with its website as a link) sign it. Its body
+  is built from the `mail.Letter` blocks (greeting, lead, typed message, summary panel, details, code, call to action, note, fine print,
+  attachments), with an optional eyebrow pill (`Message.Eyebrow`) above the title, which write the HTML and the text part together; every client email kind has a golden test through
+  `mail/mailtest` (`go test -update` rewrites `testdata/*.golden`), which also holds it to the email HTML rule and to words that wrap. Sign-in, security and invitation email is neither counted nor branded and stays Helvetly's, except a client's sign-in
+  code for a workspace's portal: it comes from that business (Branded, in its language) and is `Uncounted`, which `Metered`
+  never counts or refuses.
   Every email is one layout (`mail/layout.go`): the sender's mark centred above a white rounded card (the subject as
-  its title unless the body has its own `<h1>`), the footer muted and centred below. Two looks: Helvetly's own (pastel
-  violet page gradient, the app icon `email-logo.png` and name, a gradient bar on the card, blue buttons) and a
-  business's (grey page, its logo, near-black buttons and links, no Helvetly colours). Email HTML uses inline styles
+  its title unless the body has its own `<h1>`), the footer muted and centred below. Both stand on a white page with a thinly
+  bordered card under a thin bar. Two looks: Helvetly's own (the app icon `email-logo.png` and name, a gradient bar,
+  blue buttons, a footer with the tagline, why it came (`Message.Footer`), Help, Privacy and Terms on `NEXT_PUBLIC_WEB_URL`
+  and the company as the imprint names it) and a business's (its logo and name, a slate bar, near-black buttons and
+  links, no Helvetly colours; its footer's phone spaced by `internal/phone`, contact links muted so mail apps do not
+  turn them blue). Email HTML uses inline styles
   only and may use padding, margin, borders, rounded corners, backgrounds (a gradient always over a solid
   `background-color` and `bgcolor`), widths and max-width, and `bgcolor`/`width`/`align` on tables and cells; buttons are
   filled table cells. Never `<style>` blocks, `<body>` CSS, external CSS, scripts, SVG, web fonts or CSS positioning,
   floats, flex or grid (`mailtest.Unsupported`; `mail.TestEmailSourcesKeepToSupportedHTML` scans every email literal).
   Mailpit's HTML Check therefore scores about 94 %, not 100 %, by choice: Outlook for Windows ignores the corners,
   gradients and max-width and shows the same email square and full width, still readable. The business logo has no
-  size attributes: its email URL serves a copy scaled to 36 px high.
+  size attributes: its email URL serves a copy scaled to 44 px high.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
   and a monthly token budget per pool: Heidi's chat (`ai_tokens_per_month`) and the automation pool of AI import

@@ -20,6 +20,7 @@ import (
 
 	"helvetly.com/api/internal/invoicecalc"
 	"helvetly.com/api/internal/pdffont"
+	phonefmt "helvetly.com/api/internal/phone"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/swissqr"
 )
@@ -411,7 +412,7 @@ func contactLine(email, phone, website *string) string {
 		parts = append(parts, strings.TrimSpace(*email))
 	}
 	if phone != nil && strings.TrimSpace(*phone) != "" {
-		parts = append(parts, displayPhone(*phone))
+		parts = append(parts, phonefmt.Display(*phone))
 	}
 	if website != nil && strings.TrimSpace(*website) != "" {
 		parts = append(parts, websiteDomain(*website))
@@ -446,7 +447,7 @@ func (r *renderer) letterhead(issuer, recipient store.Party, phone *string) {
 		}
 	}
 	if phone != nil {
-		info[len(info)-1] = displayPhone(*phone)
+		info[len(info)-1] = phonefmt.Display(*phone)
 	}
 	if v := r.vatNumber(issuer.VATNumber); v != "" {
 		info = append(info, v)

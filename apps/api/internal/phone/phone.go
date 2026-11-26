@@ -1,4 +1,4 @@
-package invoicepdf
+package phone
 
 import "strings"
 
@@ -11,11 +11,11 @@ func init() {
 	}
 }
 
-// displayPhone spaces an international number as people read it: Switzerland "+41 78 239 09 99", Liechtenstein
+// Display spaces an international number as people read it: Switzerland "+41 78 239 09 99", Liechtenstein
 // "+423 232 12 34", other countries by a generic grouping. Anything it cannot read as an international number
 // (a national number without a country, letters, a wrong length) stays as typed.
 // shortcut: the generic grouping is not each country's own convention, upgrade to a numbering-plan library if one is needed.
-func displayPhone(phone string) string {
+func Display(phone string) string {
 	typed := strings.TrimSpace(phone)
 	s := strings.NewReplacer(" ", "", ".", "", "-", "", "(", "", ")", "", "/", "", " ", "").Replace(typed)
 	switch {

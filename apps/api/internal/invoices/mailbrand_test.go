@@ -119,8 +119,8 @@ func TestEmailLogo(t *testing.T) {
 		}
 		if c.want == http.StatusOK {
 			cfg, err := png.DecodeConfig(resp.Body)
-			if err != nil || cfg.Width != 36 || cfg.Height != 36 {
-				t.Errorf("email logo %dx%d, %v; want 36x36", cfg.Width, cfg.Height, err)
+			if err != nil || cfg.Width != 44 || cfg.Height != 44 {
+				t.Errorf("email logo %dx%d, %v; want 44x44", cfg.Width, cfg.Height, err)
 			}
 		}
 		resp.Body.Close()

@@ -11,7 +11,7 @@ import (
 func TestConsumeEmailCodeSingleUse(t *testing.T) {
 	e := newEnv(t)
 	r := httptest.NewRequest("POST", "/", nil)
-	if err := e.svc.SendEmailCode(r, "ana@acme.ch", true); err != nil {
+	if err := e.svc.SendEmailCode(r, "ana@acme.ch", "", true); err != nil {
 		t.Fatal(err)
 	}
 	code := e.devCode("ana@acme.ch")
@@ -30,7 +30,7 @@ func TestSendEmailCodeIPLimit(t *testing.T) {
 	var err error
 	for i := 0; i < 21 && err == nil; i++ {
 		e.clock.t = e.clock.t.Add(time.Minute) // past the per-address cooldown
-		err = e.svc.SendEmailCode(r, "ana"+string(rune('a'+i))+"@acme.ch", true)
+		err = e.svc.SendEmailCode(r, "ana"+string(rune('a'+i))+"@acme.ch", "", true)
 		if i < 20 && err != nil {
 			t.Fatalf("send %d: %v", i, err)
 		}
