@@ -125,14 +125,10 @@ function QueryInput<P>({
   className,
   inputRef,
   shortcut,
-  onFocus,
-  onBlur,
   onEscape,
 }: SearchProps<P> & {
   inputRef?: RefObject<HTMLInputElement | null>
   shortcut?: string
-  onFocus?: () => void
-  onBlur?: () => void
   /** Escape in an empty field with no suggestions open. */
   onEscape?: () => void
 }) {
@@ -286,11 +282,9 @@ function QueryInput<P>({
             commit(event.target.value, false)
           }}
           onKeyDown={onKeyDown}
-          onFocus={onFocus}
           onBlur={() => {
             setOpen(false)
             setAll(false)
-            onBlur?.()
           }}
           // A full-height input centres its text by the font box, which lands on the icons' centre without a nudge.
           className="h-full w-full min-w-24 flex-1 bg-transparent text-title-sm text-foreground outline-none placeholder:text-placeholder [&::-webkit-search-cancel-button]:hidden"
@@ -438,31 +432,38 @@ const suggestionKey = <P,>(suggestion: Suggestion<P>) =>
   `${suggestion.kind}:${suggestion.field.id}:${suggestion.kind === 'value' ? suggestion.value : ''}`
 
 /**
- * The list's search: a magnifier button in the toolbar that opens a field in its own row below it
- * (`row`), so the toolbar's other content keeps its room ("/" opens it too). It stays open while it
- * holds a query or a field term; Escape clears the query, then closes it.
+ * The Documents magnifier toggles the search row without clearing the query or its chips.
+ * "/" focuses the field; Escape clears the query, then closes the row.
  */
 function CollapsibleSearch<P>({ row, ...props }: SearchProps<P> & { row: HTMLElement | null }) {
   const { label, value, query, className } = props
-  const [open, setOpen] = useState(false)
+  const hasQuery = value !== '' || Boolean(query && termsOf(query.fields, query.params).length)
+  const [expanded, setExpanded] = useState(hasQuery)
+  const panelId = useId()
   const input = useRef<HTMLInputElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const focusInput = useRef(false)
-  const terms = query ? termsOf(query.fields, query.params) : []
-  const expanded = open || value !== '' || terms.length > 0
+  // Filters can also be applied or cleared outside the search row.
+  useEffect(() => {
+    setExpanded(hasQuery || input.current === document.activeElement)
+  }, [hasQuery])
+  const close = () => {
+    button.current?.focus()
+    setExpanded(false)
+  }
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== '/' || event.defaultPrevented || event.metaKey || event.ctrlKey) return
       if (event.altKey || typing(event.target)) return
       event.preventDefault()
-      if (input.current) return input.current.focus()
+      if (expanded) return input.current?.focus()
       focusInput.current = true
-      setOpen(true)
+      setExpanded(true)
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [])
+  }, [expanded])
 
   // Opened by a click or "/": the field opens to be typed in.
   useEffect(() => {
@@ -481,11 +482,13 @@ function CollapsibleSearch<P>({ row, ...props }: SearchProps<P> & { row: HTMLEle
             size="icon"
             aria-label={label}
             aria-keyshortcuts="/"
+            aria-controls={panelId}
             aria-expanded={expanded}
+            onMouseDown={keepFocus}
             onClick={() => {
-              if (input.current) return input.current.focus()
+              if (expanded) return close()
               focusInput.current = true
-              setOpen(true)
+              setExpanded(true)
             }}
             className={cn('text-muted-foreground', className)}
           >
@@ -494,21 +497,25 @@ function CollapsibleSearch<P>({ row, ...props }: SearchProps<P> & { row: HTMLEle
         </TooltipTrigger>
         <TooltipContent>{translate('search')}</TooltipContent>
       </Tooltip>
-      {expanded &&
-        row &&
+      {row &&
         createPortal(
-          <QueryInput
-            {...props}
-            inputRef={input}
-            shortcut="/"
-            className="w-full bg-muted/60 dark:bg-muted/40"
-            onFocus={() => setOpen(true)}
-            onBlur={() => setOpen(false)}
-            onEscape={() => {
-              setOpen(false)
-              button.current?.focus()
+          <div
+            id={panelId}
+            hidden={!expanded}
+            onBlur={(event) => {
+              if (!hasQuery && !event.currentTarget.contains(event.relatedTarget))
+                setExpanded(false)
             }}
-          />,
+            className="border-b bg-card px-2 py-2 md:px-3"
+          >
+            <QueryInput
+              {...props}
+              inputRef={input}
+              shortcut="/"
+              className="w-full bg-card"
+              onEscape={close}
+            />
+          </div>,
           row,
         )}
     </>
