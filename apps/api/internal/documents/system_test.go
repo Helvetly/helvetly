@@ -417,10 +417,14 @@ func TestOrganizeApplyFilesIntoTheSystemFolders(t *testing.T) {
 	a := e.uploaded(b, "a.txt", "a")
 	r := e.uploaded(b, "r.txt", "r")
 	x := e.uploaded(b, "x.txt", "x")
+	c := e.uploaded(b, "contract.pdf", pdf)
+	shortened := e.uploaded(b, "shortened.txt", "shortened")
 	var out applyAnswer
 	e.do(b, "POST", "/api/v1/documents/organize/apply", map[string]any{"items": []map[string]any{
 		{"document_id": a.ID, "folder": "Clients/acme ag/invoices/2024", "tags": []string{}},
 		{"document_id": r.ID, "folder": "Expenses/2023/travel", "tags": []string{}},
+		{"document_id": c.ID, "folder": "Clients/Acme AG/Documents/2026/Contracts", "tags": []string{"contract"}},
+		{"document_id": shortened.ID, "folder": "Clients/Acme AG/Documents", "tags": []string{}},
 		{"document_id": x.ID, "folder": "Clients/Made Up", "tags": []string{}}, // not their structure: stays
 	}}, 200, &out)
 	folders := e.allFolders(b)
@@ -436,6 +440,12 @@ func TestOrganizeApplyFilesIntoTheSystemFolders(t *testing.T) {
 	}
 	if got := path(e.get(b, r.ID)); got != "Expenses/2023/Travel" {
 		t.Fatalf("r in %q", got)
+	}
+	if got := path(e.get(b, c.ID)); got != "Clients/Acme AG/Documents/2026/Contracts" {
+		t.Fatalf("contract in %q", got)
+	}
+	if got := path(e.get(b, shortened.ID)); got != "Clients/Acme AG/Documents" {
+		t.Fatalf("shortened path in %q", got)
 	}
 	if got := e.get(b, x.ID); got.FolderID != nil {
 		t.Fatalf("x moved to %q", path(got))

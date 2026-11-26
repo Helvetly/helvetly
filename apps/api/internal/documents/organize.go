@@ -40,7 +40,8 @@ const organizeInstructions = "You organize a small business's document manager. 
 	"top level. Give 1 " +
 	"to 3 short lower-case tags, the first saying what kind of document it is (such as invoice, contract, receipt, " +
 	"insurance or payslip), preferring tags already in use. Set change to false when the document already sits well " +
-	"where it is with fitting tags. reason is one short sentence. Use only the given information."
+	"where it is with fitting tags. An existing contract tag on a client's document is enough to propose its Contracts " +
+	"folder, unless its name marks it as a template, sample or draft. reason is one short sentence. Use only the given information."
 
 var organizeSchema = &aimodel.Schema{Name: "document_organize", JSON: map[string]any{
 	"type": "object",
@@ -385,9 +386,24 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder, na
 		p.Reason = string(reason[:min(len(reason), 200)])
 		change := a.Change
 		path, _ := splitPath(p.Folder, organizeApplyDepth)
+		taggedContract := slices.ContainsFunc(d.Tags, func(tag string) bool { return folderKind(tag) == "contracts" })
+		if taggedContract {
+			if ok, _ := completedContract(d.Name, "", true, ""); ok {
+				// Prefer the current client's year when the file is already filed under Documents.
+				current, _ := splitPath(from, organizeApplyDepth)
+				if place, _ := recordPath(current, names); place != nil && place.kind == "documents" {
+					path = current
+				}
+				if place, _ := recordPath(path, names); place != nil && place.kind == "documents" {
+					path = append(path[:4], store.ContractsFolderName)
+					p.Folder, change = strings.Join(path, "/"), true
+					p.Reason = "Tagged as a contract, so it belongs in the client's Contracts folder."
+				}
+			}
+		}
 		if _, system := recordPath(path, names); !system {
 			kind, contract := recordKind(path, p.Tags), false
-			if kind == "" && isContract(path, p.Tags) {
+			if kind == "" && (taggedContract || isContract(path, p.Tags)) {
 				kind, contract = "documents", true
 			}
 			if kind != "" {
@@ -493,10 +509,8 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 		moved, tagged, undo = 0, 0, organizeUndo{Previous: []organizePrevious{}, CreatedFolders: []string{}}
 		resolved := map[string]*string{"": nil}
 		resolve := func(path []string) (*string, error) {
-			if place, system := recordPath(path, names); system {
-				if place == nil {
-					return nil, errSkip
-				}
+			place, system := recordPath(path, names)
+			if place != nil {
 				id, err := place.folder(ctx, q, ws, sess.User.ID, s.now())
 				return &id, err
 			}
@@ -515,6 +529,9 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 					return nil, err
 				}
 				if id == "" {
+					if system {
+						return nil, errSkip
+					}
 					id = auth.NewID("fld")
 					if err := q.CreateFolder(ctx, ws, id, name, parent, sess.User.ID, s.now()); err != nil {
 						return nil, err

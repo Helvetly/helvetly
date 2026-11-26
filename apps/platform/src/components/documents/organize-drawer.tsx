@@ -15,27 +15,11 @@ import { toast } from 'sonner'
 import { useAIApproval } from '@/components/ai/ai-approval'
 import { FileIcon } from '@/components/import/import-files'
 import { errorMessage } from '@/lib/api'
-import {
-  docsApi,
-  refreshDocuments,
-  useFolders,
-  type Folder,
-  type OrganizeProposal,
-} from '@/lib/documents'
+import { docsApi, refreshDocuments, useFolders, type OrganizeProposal } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { pathLabel } from '@/lib/system-folders'
 
-import { FolderCombobox, folderProblem } from './folder-combobox'
-
-/** Every folder's path ("Invoices/2025"), lower-cased, to tell a proposed folder that exists from a new one. */
-export function folderPaths(folders: Folder[]): Set<string> {
-  const byId = new Map(folders.map((folder) => [folder.id, folder]))
-  const pathOf = (folder: Folder): string => {
-    const parent = folder.parent_id ? byId.get(folder.parent_id) : undefined
-    return parent ? `${pathOf(parent)}/${folder.name}` : folder.name
-  }
-  return new Set(folders.map((folder) => pathOf(folder).toLowerCase()))
-}
+import { FolderPathInput, folderEntries, folderProblem } from './folder-combobox'
 
 /** A path as people read it: "Invoices › 2025", or "Top level". */
 const shownPath = (path: string | null) =>
@@ -59,7 +43,8 @@ export function OrganizeDrawer({
   const queryClient = useQueryClient()
   const { ensure } = useAIApproval()
   const folders = useFolders().data
-  const existing = useMemo(() => folderPaths(folders ?? []), [folders])
+  const entries = useMemo(() => folderEntries(folders ?? []), [folders])
+  const existing = useMemo(() => new Set(entries.map(({ path }) => path.toLowerCase())), [entries])
   const [rows, setRows] = useState<Row[] | null>(null)
   const [considered, setConsidered] = useState(0)
   const [picked, setPicked] = useState<Set<string>>(new Set())
@@ -147,8 +132,8 @@ export function OrganizeDrawer({
       <div className="grid gap-1.5">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
-            <FolderCombobox
-              folders={folders ?? []}
+            <FolderPathInput
+              entries={entries}
               value={row.folderInput}
               label={translate('organizeFolderFor', { name: row.name })}
               invalid={problem !== null}
