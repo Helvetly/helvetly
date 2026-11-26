@@ -81,6 +81,13 @@ type DocumentRef struct {
 const contractDocumentName = `(SELECT cd.name FROM documents cd WHERE cd.id = %[1]s.contract_document_id
 	AND cd.workspace_id = %[1]s.workspace_id AND NOT cd.hr_private)`
 
+// pdfDocument: the workspace document holding the record's PDF (an imported invoice's original first, else the file
+// sharing its pdf_key), as {id, name}; NULL while there is none in Documents.
+const pdfDocument = `(SELECT jsonb_build_object('id', pd.id, 'name', pd.name) FROM documents pd
+	WHERE pd.workspace_id = %[1]s.workspace_id AND pd.deleted_at IS NULL AND NOT pd.hr_private
+	AND (pd.id = %[2]s OR pd.object_key = %[1]s.pdf_key)
+	ORDER BY pd.id = %[2]s DESC, pd.created_at, pd.id LIMIT 1)`
+
 // DocumentRefOf: the link when the document resolved.
 func DocumentRefOf(id, name *string) *DocumentRef {
 	if id == nil || name == nil {
@@ -185,6 +192,7 @@ type Invoice struct {
 	ClientNumberDisplay *string      `json:"client_number_display"`
 	ContractReference   *string      `json:"contract_reference"` // BT-12
 	ContractDocument    *DocumentRef `json:"contract_document"`  // a document of the workspace, never printed
+	PDFDocument         *DocumentRef `json:"pdf_document"`       // where its PDF sits in Documents; nil when nowhere
 	ApprovalState       *string      `json:"approval_state"`     // of a draft's latest approval request (internal/approvals)
 
 	SendUncertainAt      *time.Time            `json:"send_uncertain_at,omitempty"`
@@ -368,7 +376,8 @@ var invoiceColumns = `i.id, i.kind, i.number, i.status, ` + fmt.Sprintf(isOverdu
 	 FROM reminder_log l WHERE l.target_id = i.id AND l.workspace_id = i.workspace_id AND NOT l.confirmed), i.created_at,
 	i.updated_at, i.pdf_key, i.prepaid_total, di.id, di.number, i.reminders_enabled, i.instalment_interval, pl.id, COALESCE(i.plan_seq, 0), pl.count,
 	trim_scale(i.tax_currency_rate)::text, i.origin, i.source_document_id, i.client_number_display, i.contract_reference,
-	i.contract_document_id, ` + fmt.Sprintf(contractDocumentName, "i") + `, ` + approvalState
+	i.contract_document_id, ` + fmt.Sprintf(contractDocumentName, "i") + `, ` + approvalState + `,
+	` + fmt.Sprintf(pdfDocument, "i", "i.source_document_id")
 
 // approvalState: a draft's latest approval request as pending, approved or rejected; null without one or once it was
 // withdrawn or reset. An issued document shows only approved (one issued after its policy was turned off was not).
@@ -397,7 +406,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&i.Payment.ReferenceType, &i.Payment.Reference, &i.Payment.QRBill, &i.Payment.RevolutURL, &i.PaymentMethods.QRBill,
 		&i.PaymentMethods.Revolut, &i.Seller, &i.Buyer, &i.IssuedAt, &i.SentAt, &i.SendUncertainAt, &i.UnconfirmedReminders, &i.CreatedAt,
 		&i.UpdatedAt, &i.PDFKey, &i.PrepaidTotal, &deductedID, &deductedNumber, &i.RemindersEnabled, &interval, &planID, &planSeq, &planCount,
-		&i.TaxCurrencyRate, &i.Origin, &i.SourceDocumentID, &i.ClientNumberDisplay, &i.ContractReference, &contractDocID, &contractDocName, &i.ApprovalState)
+		&i.TaxCurrencyRate, &i.Origin, &i.SourceDocumentID, &i.ClientNumberDisplay, &i.ContractReference, &contractDocID, &contractDocName, &i.ApprovalState, &i.PDFDocument)
 	i.Client.ID = i.ClientID
 	i.ContractDocument = DocumentRefOf(contractDocID, contractDocName)
 	i.PayableTotal = i.Payable()

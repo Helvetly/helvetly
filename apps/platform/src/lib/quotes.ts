@@ -47,6 +47,8 @@ export type Quote = Totals & {
   contract_reference: string | null
   /** The workspace document the contract is in; never printed. */
   contract_document: { id: string; name: string } | null
+  /** Where the sent PDF sits in Documents; null before sending or once it is gone. */
+  pdf_document: { id: string; name: string } | null
   intro: string | null
   footer: string | null
   /** Internal, never printed or shown in the portal. */

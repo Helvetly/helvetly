@@ -82,6 +82,7 @@ export const sampleQuote = (change: Partial<Quote> = {}): Quote =>
     client_number_display: null,
     contract_reference: null,
     contract_document: null,
+    pdf_document: null,
     intro: null,
     footer: null,
     note: null,
