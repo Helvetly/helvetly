@@ -66,7 +66,7 @@ func TestReceiptIsCopiedToDocumentsAndFollowsCategoryChange(t *testing.T) {
 	list := e.docs(ws)
 	name := cats["6640"].Name
 	if len(list) != 1 || !slices.Equal(list[0].Folder, []string{"Expenses", "2026", name}) || list[0].Name != "train.pdf" ||
-		!slices.Contains(list[0].Tags, "receipt") || !slices.Contains(list[0].Tags, "year-2026") || !slices.Contains(list[0].Tags, catTag(name)) {
+		!slices.Contains(list[0].Tags, "receipt") || !slices.Contains(list[0].Tags, "year-2026-11") || !slices.Contains(list[0].Tags, catTag(name)) {
 		t.Fatalf("documents: %+v", list)
 	}
 	var linked int
@@ -75,6 +75,10 @@ func TestReceiptIsCopiedToDocumentsAndFollowsCategoryChange(t *testing.T) {
 		t.Fatalf("links: %d", linked)
 	}
 
+	e.do(b, "PATCH", "/api/v1/expenses/"+x.ID, map[string]any{"document_date": "2026-02-15"}, 200, nil)
+	if got := e.docs(ws)[0]; got.Name != list[0].Name || !slices.Equal(got.Folder, list[0].Folder) || !slices.Contains(got.Tags, "year-2026-02") || slices.Contains(got.Tags, "year-2026-11") {
+		t.Fatalf("same-year date change: %+v", got)
+	}
 	var other category
 	for code, c := range cats {
 		// a name with a slash gets a different folder name; this checks the move, not the renaming
@@ -87,7 +91,7 @@ func TestReceiptIsCopiedToDocumentsAndFollowsCategoryChange(t *testing.T) {
 	list = e.docs(ws)
 	if len(list) != 1 || !slices.Equal(list[0].Folder, []string{"Expenses", "2025", other.Name}) ||
 		slices.Contains(list[0].Tags, catTag(name)) || !slices.Contains(list[0].Tags, catTag(other.Name)) ||
-		slices.Contains(list[0].Tags, "year-2026") || !slices.Contains(list[0].Tags, "year-2025") || !slices.Contains(list[0].Tags, "receipt") {
+		slices.Contains(list[0].Tags, "year-2026-11") || !slices.Contains(list[0].Tags, "year-2025-12") || !slices.Contains(list[0].Tags, "receipt") {
 		t.Fatalf("after change: %+v", list)
 	}
 

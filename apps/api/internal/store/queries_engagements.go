@@ -130,6 +130,9 @@ func (q Q) createEngagement(ctx context.Context, workspaceID string, e *Engageme
 		return err
 	}
 	e.CreatedAt, e.UpdatedAt = now, now
+	if e.DocumentID != nil {
+		return q.AutoTag(ctx, workspaceID, *e.DocumentID, now)
+	}
 	return nil
 }
 
@@ -145,33 +148,43 @@ func (q Q) Engagement(ctx context.Context, workspaceID, id string, forUpdate boo
 
 // SaveEngagement writes every editable field of a live engagement.
 func (q Q) saveEngagement(ctx context.Context, workspaceID string, e Engagement, now time.Time) error {
-	tag, err := q.db.Exec(ctx, `UPDATE engagements SET title = $3, description = $4, product_id = $5, unit = $6, quantity = $7,
+	var oldDoc *string
+	err := q.db.QueryRow(ctx, `WITH previous AS (SELECT id, document_id FROM engagements WHERE workspace_id=$1 AND id=$2 AND deleted_at IS NULL FOR UPDATE)
+		UPDATE engagements e SET title = $3, description = $4, product_id = $5, unit = $6, quantity = $7,
 		billing = $8, price_basis = $9, unit_price = $10, overage_unit_price = $11, currency = $12, vat_category = $13,
 		vat_rate = $14, start_date = $15, recurrence = $16, interval = $17, end_date = $18, reference = $19, document_id = $20,
-		cancelled_on = $21, rollover = $23, auto_invoice = $24, invoice_detail = $25, updated_at = $22 WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL`,
+		cancelled_on = $21, rollover = $23, auto_invoice = $24, invoice_detail = $25, updated_at = $22 FROM previous WHERE e.id = previous.id RETURNING previous.document_id`,
 		workspaceID, e.ID, e.Title, e.Description, e.ProductID, e.Unit, e.Quantity, e.Billing, e.PriceBasis, e.UnitPrice,
 		e.OverageUnitPrice, e.Currency, e.VATCategory, e.VATRate, e.StartDate, e.Recurrence, e.Interval, e.EndDate, e.Reference,
-		e.DocumentID, e.CancelledOn, now, e.Rollover, e.AutoInvoice, e.InvoiceDetail)
+		e.DocumentID, e.CancelledOn, now, e.Rollover, e.AutoInvoice, e.InvoiceDetail).Scan(&oldDoc)
 	if err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotFound
+	if oldDoc != nil && (e.DocumentID == nil || *oldDoc != *e.DocumentID) {
+		if err := q.AutoTag(ctx, workspaceID, *oldDoc, now); err != nil {
+			return err
+		}
+	}
+	if e.DocumentID != nil {
+		return q.AutoTag(ctx, workspaceID, *e.DocumentID, now)
 	}
 	return nil
 }
 
 // DeleteEngagement soft-deletes a live engagement.
 func (q Q) DeleteEngagement(ctx context.Context, workspaceID, id string, now time.Time) error {
-	tag, err := q.db.Exec(ctx, `UPDATE engagements SET deleted_at = $3, updated_at = $3
-		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL`, workspaceID, id, now)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return q.writeTx(ctx, func(q Q) error {
+		var doc *string
+		err := q.db.QueryRow(ctx, `UPDATE engagements SET deleted_at = $3, updated_at = $3
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL RETURNING document_id`, workspaceID, id, now).Scan(&doc)
+		if err != nil {
+			return err
+		}
+		if doc != nil {
+			return q.AutoTag(ctx, workspaceID, *doc, now)
+		}
+		return nil
+	})
 }
 
 // ListEngagements returns the live engagements matching f in f.Sort order, then newest number first.

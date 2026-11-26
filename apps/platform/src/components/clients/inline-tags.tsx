@@ -20,10 +20,14 @@ export function InlineTagsEditor({
   save,
   onDone,
   known,
+  displayTag,
+  validateTag,
 }: {
   initial: string[]
   save: (tags: string[]) => Promise<unknown>
   onDone: () => void
+  validateTag?: (tag: string) => string | undefined
+  displayTag?: (tag: string) => string
   known?: KnownTag[]
 }) {
   const id = useId()
@@ -69,6 +73,8 @@ export function InlineTagsEditor({
         label={translate('tags')}
         value={tags}
         known={known}
+        displayTag={displayTag}
+        validateTag={validateTag}
         invalid={Boolean(error)}
         onChange={change}
         onLeave={() => void commit()}

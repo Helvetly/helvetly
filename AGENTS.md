@@ -93,7 +93,7 @@ are the reference.
   draft's files that still sit in its folder when its category or year changes, and refuses to rename, move or trash any of them (`409
   system_folder`); people still file into them and make plain folders inside. Typed ones are stored by their English
   name and answered in the asker's language (`?lang`, `Accept-Language`; the platform translates by `system_kind`).
-  A contract made from a quote goes to its `Contracts` folder. Issuing an invoice and sending a quote file their PDF there as a document sharing the record's object (kept while
+  A contract made from a quote goes to its `Contracts` folder. An issuer import and the startup repair file the existing legal original by its invoice client and issue year, leaving files with competing record owners in place. A file retained by a record cannot be moved by a user. Its logical folder is independent of its storage key. Issuing an invoice and sending a quote file their PDF there as a document sharing the record's object (kept while
   `pdf_key` or a sent revision in `quote_revisions` points at it), client uploads go to the client's `Documents/<year>`, receipts to `Expenses/<year>/<category>`;
   `BackfillSystemFolders` (once per start, idempotent) files what came before and turns the earlier
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
@@ -109,12 +109,12 @@ are the reference.
   client's Contracts folder when its client and year are known, unless the file name marks a template, sample or draft.
 - **Automatic tags** (`tags.Auto`, `store/queries_document_autotags.go`): a file's tags say what it is, from its record
   first, then its system folder: the kind (`invoice`, `credit-note`, `debit-note`, `quote`, `contract`, `receipt`,
-  `engagement`), `signed` once its signature request completed, `year-<yyyy>`, `client-<name>`, the record's number
+  `engagement`), `signed` once its signature request completed, `year-<yyyy-mm>` (year only if the month is unknown), `client-<name>`, the record's number
   (`2026-q-001`), `expense-<category>` and `from-quote-<number>`. `store.AutoTag` runs inside the writes that file
   (`CreateDocument`, `UpdateDocument`, `AddDocumentLink`, `AddQuoteContract`, `AddQuoteRevision`,
   `CompleteSignatureRequest`) and at startup for untagged files and previously dismissed protected tags (`BackfillAutoTags`).
   `documents.auto_tags` names them (outlined chips); one no longer computed leaves, one a person removes
-  (`SetOwnDocumentTags`) goes to `removed_auto_tags` and never comes back. The automatic `signed`, `year-<yyyy>`
+  (`SetOwnDocumentTags`) goes to `removed_auto_tags` and never comes back. The automatic record kind, `signed`, date
   and `client-<name>` tags follow the record or folder and cannot be changed by hand. The app's own tag writes
   (`SetDocumentTags`) keep them, and they take no room of a person's 10.
 - **Document sharing** (`internal/documents/shares.go`, `share_links.go`): client portal shares optionally expire.

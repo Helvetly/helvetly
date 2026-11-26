@@ -78,7 +78,7 @@ func (a *autoEnv) contractsFolder(client string, year int) string {
 func (a *autoEnv) contract(quote, number string) store.Document {
 	d := a.file(a.contractsFolder(a.acme, 2026))
 	if err := a.e.st.AddQuoteContract(context.Background(), a.b.workspace, a.quote(a.acme, quote, ""), d.ID,
-		number, "", a.b.user, time.Now()); err != nil {
+		number, "", a.b.user, time.Date(2026, 2, 10, 12, 0, 0, 0, time.UTC)); err != nil {
 		a.e.t.Fatal(err)
 	}
 	return d
@@ -105,7 +105,7 @@ func TestAutoTagsOfEachRecord(t *testing.T) {
 			a.e.invoice(a.b, a.acme, "invoice", "2026/IN/005", 2026, "")
 			a.exec(`UPDATE invoices SET pdf_key = $1 WHERE number = '2026/IN/005'`, a.key(d.ID))
 			return d.ID
-		}, []string{"invoice", "year-2026", "client-acme-ag", "2026-in-005"}},
+		}, []string{"invoice", "year-2026-01", "client-acme-ag", "2026-in-005"}},
 		{"credit note by its link", func() string {
 			d := a.file("")
 			a.e.invoice(a.b, a.beta, "credit_note", "2025/CN/002", 2025, "")
@@ -115,26 +115,26 @@ func TestAutoTagsOfEachRecord(t *testing.T) {
 				t.Fatal(err)
 			}
 			return d.ID
-		}, []string{"credit-note", "year-2025", "client-beta-gmbh", "2025-cn-002"}},
+		}, []string{"credit-note", "year-2025-01", "client-beta-gmbh", "2025-cn-002"}},
 		{"debit note imported from its original", func() string {
 			d := a.file("")
 			a.e.invoice(a.b, a.acme, "debit_note", "D-7", 2024, d.ID)
 			return d.ID
-		}, []string{"debit-note", "year-2024", "client-acme-ag", "d-7"}},
+		}, []string{"debit-note", "year-2024-01", "client-acme-ag", "d-7"}},
 		{"quote by its PDF", func() string {
 			d := a.file(a.e.recordFolder(a.b, a.acme, "quotes", 2026))
 			a.quote(a.acme, "2026/Q/001", a.key(d.ID))
 			return d.ID
-		}, []string{"quote", "year-2026", "client-acme-ag", "2026-q-001"}},
+		}, []string{"quote", "year-2026-03", "client-acme-ag", "2026-q-001"}},
 		{"quote revision", func() string {
 			d := a.file("")
 			q := a.quote(a.beta, "2026/Q/003", "quotes/other.pdf")
 			a.exec(`INSERT INTO quote_revisions (workspace_id, quote_id, revision, sent_to, snapshot, pdf_key, created_at)
-				VALUES ($1, $2, 1, '{}', '{}', $3, now())`, a.b.workspace, q, a.key(d.ID))
+				VALUES ($1, $2, 1, '{}', '{"issue_date":"2025-12-31"}', $3, now())`, a.b.workspace, q, a.key(d.ID))
 			return d.ID
-		}, []string{"quote", "year-2026", "client-beta-gmbh", "2026-q-003"}},
+		}, []string{"quote", "year-2025-12", "client-beta-gmbh", "2026-q-003"}},
 		{"contract from a quote", func() string { return a.contract("2026/Q/002", "2026/C/001").ID },
-			[]string{"contract", "year-2026", "client-acme-ag", "2026-c-001", "from-quote-2026-q-002"}},
+			[]string{"contract", "year-2026-02", "client-acme-ag", "2026-c-001", "from-quote-2026-q-002"}},
 		{"signed copy of a contract", func() string {
 			original := a.contract("2026/Q/004", "2026/C/002")
 			signed := a.file(a.e.recordFolder(a.b, a.acme, "signatures", 2026))
@@ -149,7 +149,7 @@ func TestAutoTagsOfEachRecord(t *testing.T) {
 				t.Fatalf("signed original = %v", got)
 			}
 			return signed.ID
-		}, []string{"contract", "signed", "year-2026", "client-acme-ag", "2026-c-002", "from-quote-2026-q-004"}},
+		}, []string{"contract", "signed", "year-2026-02", "client-acme-ag", "2026-c-002", "from-quote-2026-q-004"}},
 		{"imported completed contract", func() string { return a.file(a.contractsFolder(a.beta, 2025)).ID },
 			[]string{"contract", "year-2025", "client-beta-gmbh"}},
 		{"receipt of an expense", func() string {
@@ -159,7 +159,7 @@ func TestAutoTagsOfEachRecord(t *testing.T) {
 				t.Fatal(err)
 			}
 			return d.ID
-		}, []string{"receipt", "year-2025", "expense-buero-material"}},
+		}, []string{"receipt", "year-2025-05", "expense-buero-material"}},
 		{"engagement document", func() string { return a.file(a.e.recordFolder(a.b, a.beta, "engagements", 2026)).ID },
 			[]string{"engagement", "year-2026", "client-beta-gmbh"}},
 		{"client upload", func() string { return a.file(a.e.recordFolder(a.b, a.acme, "documents", 2026)).ID },
@@ -185,7 +185,7 @@ func TestProtectedAutoTagsStayAfterEditing(t *testing.T) {
 	a.e.invoice(a.b, a.acme, "invoice", "2026/IN/001", 2026, d.ID)
 	a.retag(d.ID)
 	mine := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}
-	locked := []string{"year-2026", "client-acme-ag"}
+	locked := []string{"invoice", "year-2026-01", "client-acme-ag"}
 	path := "/api/v1/documents/" + d.ID
 	a.e.do(a.b, "PATCH", path, map[string]any{"tags": mine}, 200, nil)
 	got := a.e.get(a.b, d.ID)
@@ -193,10 +193,10 @@ func TestProtectedAutoTagsStayAfterEditing(t *testing.T) {
 		t.Fatalf("manual edit changed protected tags: tags %v, automatic %v", got.Tags, got.AutoTags)
 	}
 	a.e.fails(a.b, "PATCH", path, map[string]any{"tags": append(slices.Clone(mine), "k")}, 422, "validation_failed")
-	a.e.fails(a.b, "PATCH", path, map[string]any{"tags": []string{"signed", "year-2027", "client-other"}}, 422, "validation_failed")
+	a.e.fails(a.b, "PATCH", path, map[string]any{"tags": []string{"signed", "year-2026-04", "client-other"}}, 422, "validation_failed")
 
 	// Before protection, a suppressed automatic tag was recorded here.
-	a.exec(`UPDATE documents SET tags = '{}', auto_tags = '{}', removed_auto_tags = ARRAY['year-2026', 'client-acme-ag', 'invoice'] WHERE id = $1`, d.ID)
+	a.exec(`UPDATE documents SET tags = '{}', auto_tags = '{}', record_tags_current = false, removed_auto_tags = ARRAY['year-2026', 'client-acme-ag', 'invoice'] WHERE id = $1`, d.ID)
 	if err := a.e.svc.BackfillAutoTags(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestProtectedAutoTagsStayAfterEditing(t *testing.T) {
 	}
 
 	signed := a.file(a.e.recordFolder(a.b, a.acme, "documents", 2026))
-	now := time.Now()
+	now := time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC)
 	a.exec(`INSERT INTO signature_requests (id, workspace_id, document_id, signed_document_id, title, original_key,
 		original_sha256, page_count, status, signing_order, expires_at, created_at, updated_at)
 		VALUES ('sig_locked', $1, $2, $3, 'tag test', $4, repeat('a', 64), 1, 'pending', 'parallel', $5, $5, $5)`,
@@ -217,7 +217,7 @@ func TestProtectedAutoTagsStayAfterEditing(t *testing.T) {
 	a.e.do(a.b, "PATCH", "/api/v1/documents/"+signed.ID, map[string]any{
 		"folder_id": newFolder, "tags": []string{"urgent"},
 	}, 200, nil)
-	if got := a.e.get(a.b, signed.ID); !slices.Equal(got.Tags, []string{"urgent", "signed", "year-2027", "client-beta-gmbh"}) {
+	if got := a.e.get(a.b, signed.ID); !slices.Equal(got.Tags, []string{"urgent", "signed", "year-2026-04", "client-beta-gmbh"}) {
 		t.Fatalf("tags do not follow signature and updated folder: %v", got.Tags)
 	}
 }
@@ -230,10 +230,10 @@ func TestBackfillAutoTagsIdempotent(t *testing.T) {
 	a.e.invoice(a.b, a.acme, "invoice", "2026/IN/009", 2026, inv.ID)
 	upload := a.file(a.e.recordFolder(a.b, a.beta, "documents", 2025))
 	plain := a.file("")
-	a.exec(`UPDATE documents SET tags = '{invoice,urgent}', auto_tags = '{}', auto_tagged_at = NULL WHERE id = $1`, inv.ID)
+	a.exec(`UPDATE documents SET tags = '{invoice,urgent,year-2026}', auto_tags = '{year-2026}', record_tags_current = false WHERE id = $1`, inv.ID)
 	a.exec(`UPDATE documents SET tags = '{}', auto_tags = '{}', auto_tagged_at = NULL WHERE id = ANY($1)`, []string{upload.ID, plain.ID})
 	want := map[string][2][]string{
-		inv.ID:    {{"invoice", "urgent", "year-2026", "client-acme-ag", "2026-in-009"}, {"year-2026", "client-acme-ag", "2026-in-009"}},
+		inv.ID:    {{"urgent", "invoice", "year-2026-01", "client-acme-ag", "2026-in-009"}, {"invoice", "year-2026-01", "client-acme-ag", "2026-in-009"}},
 		upload.ID: {{"year-2025", "client-beta-gmbh"}, {"year-2025", "client-beta-gmbh"}},
 		plain.ID:  {{}, {}},
 	}
@@ -256,5 +256,38 @@ func TestBackfillAutoTagsIdempotent(t *testing.T) {
 	// tag search finds them as before
 	if p := a.e.list(a.b, "tag=year-2025"); len(p.Data) != 1 || p.Data[0].ID != upload.ID {
 		t.Fatalf("tag search = %+v", p.Data)
+	}
+	for _, filter := range []string{"tag=year-2026", "tag=year-2026-01"} {
+		if p := a.e.list(a.b, filter); len(p.Data) != 1 || p.Data[0].ID != inv.ID {
+			t.Fatalf("%s: %+v", filter, p.Data)
+		}
+	}
+}
+
+func TestEngagementDateAndDocumentChangeRefreshTags(t *testing.T) {
+	a := newAutoEnv(t)
+	ctx, now := t.Context(), time.Now()
+	first, second := a.file(""), a.file("")
+	e := store.Engagement{ID: "eng_sample", ClientID: a.acme, Title: "Example", Quantity: 1000,
+		Billing: "advance", PriceBasis: "net", Currency: "CHF", VATCategory: "S", StartDate: "2024-02-01",
+		Recurrence: "monthly", Interval: 1, InvoiceDetail: "summary", DocumentID: &first.ID}
+	if err := a.e.st.CreateEngagement(ctx, a.b.workspace, &e, now); err != nil {
+		t.Fatal(err)
+	}
+	if tags := a.e.get(a.b, first.ID).AutoTags; !slices.Equal(tags, []string{"engagement", "year-2024-02", "client-acme-ag"}) {
+		t.Fatal(tags)
+	}
+	e.StartDate, e.DocumentID = "2024-07-01", &second.ID
+	if err := a.e.st.SaveEngagement(ctx, a.b.workspace, e, now); err != nil {
+		t.Fatal(err)
+	}
+	if len(a.e.get(a.b, first.ID).AutoTags) != 0 || !slices.Contains(a.e.get(a.b, second.ID).AutoTags, "year-2024-07") {
+		t.Fatal("stale engagement date")
+	}
+	if err := a.e.st.DeleteEngagement(ctx, a.b.workspace, e.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if tags := a.e.get(a.b, second.ID).AutoTags; len(tags) != 0 {
+		t.Fatal(tags)
 	}
 }

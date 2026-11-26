@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -304,6 +305,9 @@ func (s *Service) fileCopy(ctx context.Context, q store.Q, sess store.Session, e
 			if err != nil {
 				return "", err
 			}
+			if doc.MoveLocked(now.Format(time.DateOnly)) {
+				return u.docKey(ws), nil
+			}
 			name, err := q.FreeFileName(ctx, ws, &folder, doc.Name)
 			if err != nil {
 				return "", err
@@ -422,7 +426,7 @@ func (s *Service) deleteReceipt(w http.ResponseWriter, r *http.Request, sess sto
 				continue
 			}
 			if !d.OwnCopy { // a Document that was there before only loses its link
-				if err := q.RemoveDocumentLink(r.Context(), d.ID, "expense", e.ID); err != nil {
+				if err := q.RemoveDocumentLink(r.Context(), sess.Workspace.ID, d.ID, "expense", e.ID, s.now()); err != nil {
 					return err
 				}
 				continue

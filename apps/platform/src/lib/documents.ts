@@ -17,6 +17,8 @@ import { queryKeys } from '@/lib/queries'
 import { folderLabel } from '@/lib/system-folders'
 import { MAX_FILE_BYTES } from '@/lib/upload-packs'
 
+import { documentTagLabel } from './document-tags'
+
 export type Person = { id: string; name: string; avatar_url?: string | null }
 
 export type SystemKind =
@@ -98,6 +100,7 @@ export type DocFile = {
   links: DocLink[]
   /** The clients that see it in their portal, newest first (absent from an older API). */
   shared_with?: DocumentShare[]
+  record_file?: boolean
   retained_until: string | null
   uploaded_by: Person | null
   created_at: string
@@ -467,6 +470,9 @@ export function daysLeft(iso: string, now = Date.now()) {
 export const isRetained = (until: string | null, today = isoDay(new Date())) =>
   until !== null && until >= today
 
+export const isMoveLocked = (file: Pick<DocFile, 'record_file' | 'retained_until'>) =>
+  Boolean(file.record_file) || isRetained(file.retained_until)
+
 /** Where a backlink opens. */
 /** A link as shown: a contract's quote reads "Created from quote 2026/Q/001". */
 export const linkLabel = (link: DocLink) =>
@@ -601,9 +607,12 @@ export type OrganizeUndo = {
 /** The tags in use on the files in view, most used first, for suggestions. */
 export function tagCounts(files: DocFile[]) {
   const counts = new Map<string, number>()
+  const automatic = new Set(files.flatMap((file) => file.auto_tags ?? []))
   for (const file of files) for (const tag of file.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
   return [...counts]
-    .map(([name, count]) => ({ name, count }))
+    .map(([name, count]) =>
+      automatic.has(name) ? { name, count, label: documentTagLabel(name) } : { name, count },
+    )
     .toSorted((a, b) => b.count - a.count || a.name.localeCompare(b.name))
 }
 

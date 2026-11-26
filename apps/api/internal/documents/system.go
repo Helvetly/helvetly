@@ -3,6 +3,7 @@ package documents
 import (
 	"cmp"
 	"context"
+	"errors"
 	"net/http"
 
 	"helvetly.com/api/internal/auth"
@@ -140,6 +141,24 @@ func (s *Service) BackfillSystemFolders(ctx context.Context) error {
 			}
 		}
 		if len(loose) < batch {
+			break
+		}
+	}
+	for after := ""; ; {
+		files, err := s.db.ImportedOriginals(ctx, after, batch)
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			err := s.db.Tx(ctx, func(q store.Q) error {
+				return q.FileImportedOriginal(ctx, f.WorkspaceID, f.ID, "", s.now())
+			})
+			if err != nil && !errors.Is(err, store.ErrNotFound) {
+				return err
+			}
+			after = f.ID
+		}
+		if len(files) < batch {
 			break
 		}
 	}

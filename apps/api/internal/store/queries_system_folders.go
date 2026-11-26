@@ -511,8 +511,9 @@ func (q Q) LooseClientFiles(ctx context.Context, limit int) ([]LooseClientFile, 
 	rows, err := q.db.Query(ctx, `SELECT d.workspace_id, d.id, min(l.target_id), d.name,
 			extract(year FROM d.created_at AT TIME ZONE (SELECT w.timezone FROM workspaces w WHERE w.id = d.workspace_id))::int
 		FROM documents d JOIN document_folders f ON f.id = d.folder_id AND f.system_kind = 'clients' AND f.deleted_at IS NULL
-		JOIN document_links l ON l.document_id = d.id AND l.target_type = 'client'
+		JOIN document_links l ON l.document_id = d.id AND l.workspace_id = d.workspace_id AND l.target_type = 'client'
 		WHERE d.deleted_at IS NULL AND NOT d.hr_private
+			AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.workspace_id = d.workspace_id AND i.source_document_id = d.id)
 		GROUP BY d.workspace_id, d.id, d.name, d.created_at HAVING count(DISTINCT l.target_id) = 1
 		ORDER BY d.workspace_id, d.id LIMIT $1`, limit)
 	if err != nil {

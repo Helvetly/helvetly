@@ -311,7 +311,7 @@ func readHead(h *multipart.FileHeader) ([]byte, error) {
 // stays.
 func (s *Service) moveFromTop(ctx context.Context, q store.Q, sess store.Session, clientID, id string, now time.Time) error {
 	d, err := q.Document(ctx, sess.Workspace.ID, id)
-	if err != nil || d.FolderID != nil {
+	if err != nil || d.FolderID != nil || d.MoveLocked(now.Format(time.DateOnly)) {
 		return err
 	}
 	folder, err := q.ClientRecordFolder(ctx, sess.Workspace.ID, clientID, "documents", now.Year(), sess.User.ID, now)

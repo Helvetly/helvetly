@@ -124,7 +124,8 @@ var invoicesKind = Kind{
 			return "", err
 		}
 		id, err := invoices.CreateImport(ctx, q, sess, clientID, data, doc)
-		if err != nil || doc == nil {
+		// An issued original was filed from the persisted invoice in issueImported. A draft's input may hold many records.
+		if err != nil || doc == nil || string(data["issued_elsewhere"]) == "true" {
 			return id, err
 		}
 		now := time.Now().UTC()

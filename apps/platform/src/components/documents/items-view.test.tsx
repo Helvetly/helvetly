@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 
@@ -41,13 +41,22 @@ const file = (id: string, name: string): DocFile => ({
 const files = [file('a', 'a.txt'), file('b', 'b.txt')]
 const order = files.map((entry) => fileKey(entry.id))
 
-function Harness({ layout }: { layout: 'grid' | 'list' }) {
+function Harness({
+  layout,
+  entries = files,
+  canWrite = true,
+}: {
+  layout: 'grid' | 'list'
+  entries?: DocFile[]
+  canWrite?: boolean
+}) {
   const [selection, setSelection] = useState<Selection>(EMPTY_SELECTION)
   return (
     <ItemsView
+      canWrite={canWrite}
       layout={layout}
       folders={[]}
-      files={files}
+      files={entries}
       selected={selection.keys}
       focused={null}
       renaming={null}
@@ -85,5 +94,31 @@ test.each(['grid', 'list'] as const)(
 
     expect(screen.getByRole('checkbox', { name: 'Select a.txt' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Select b.txt' })).toBeChecked()
+  },
+)
+
+const fileElement = (id: string) => {
+  const node = document.querySelector(`[data-key="file:${id}"]`)
+  if (!node) throw new Error('Missing file')
+  return node
+}
+
+test.each(['list', 'grid'] as const)(
+  'prevents dragging a record or mixed selection in %s',
+  async (layout) => {
+    const locked = { ...file('b', 'b.txt'), retained_until: '2099-12-31' }
+    const view = (canWrite: boolean) => (
+      <QueryClientProvider client={new QueryClient()}>
+        <Harness layout={layout} entries={[file('a', 'a.txt'), locked]} canWrite={canWrite} />
+      </QueryClientProvider>
+    )
+    const { rerender } = render(view(true))
+    expect(fileElement('b')).toHaveAttribute('draggable', 'false')
+    expect(fileElement('a')).toHaveAttribute('draggable', 'true')
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select a.txt' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select b.txt' }))
+    expect(fireEvent.dragStart(fileElement('a'))).toBe(false)
+    rerender(view(false))
+    expect(fileElement('a')).toHaveAttribute('draggable', 'false')
   },
 )

@@ -3,13 +3,12 @@ package tags
 import (
 	"regexp"
 	"slices"
-	"strconv"
 )
 
 // Record: what the app knows about a file of a record, from the record itself or the system folder it sits in.
 type Record struct {
 	Kind      string // invoice, credit-note, debit-note, quote, contract, receipt, engagement; "" for none
-	Year      int    // the record's year, as its folder uses it; 0 for none
+	Period    string // YYYY-MM for a dated record; YYYY when only its year is known
 	Client    string // the client's name
 	Number    string // the record's number, such as 2026/Q/001
 	Category  string // a receipt's expense category
@@ -29,8 +28,8 @@ func Auto(r Record) []string {
 	if r.Signed {
 		add("signed")
 	}
-	if r.Year > 0 {
-		add("year-" + strconv.Itoa(r.Year))
+	if r.Period != "" {
+		add("year-" + r.Period)
 	}
 	add(prefixed("client-", r.Client))
 	add(Slug(r.Number))
@@ -48,7 +47,13 @@ func prefixed(prefix, name string) string {
 }
 
 // ProtectedPattern matches facts set only by the document's record or filing.
-const ProtectedPattern = `^(signed|year-[0-9]{4}|client-.+)$`
+const reservedFacts = `signed|year-[0-9]{4}(-(0[1-9]|1[0-2]))?|client-.+`
+const ReservedPattern = "^(" + reservedFacts + ")$"
+const ProtectedPattern = "^(" + reservedFacts + "|invoice|credit-note|debit-note|quote|contract|receipt|engagement)$"
+
+var reservedTag = regexp.MustCompile(ReservedPattern)
+
+func Reserved(tag string) bool { return reservedTag.MatchString(tag) }
 
 var protectedTag = regexp.MustCompile(ProtectedPattern)
 

@@ -153,9 +153,10 @@ func refuse(status int, code, reason string, details map[string]any) error {
 }
 
 var (
-	errForbidden = refuse(http.StatusForbidden, "forbidden", "Only owners and admins can delete files forever.", nil)
-	errTrashed   = refuse(http.StatusConflict, "trashed", "This is in the Trash. Restore it first.", nil)
-	errRetained  = refuse(http.StatusConflict, "retained",
+	errForbidden  = refuse(http.StatusForbidden, "forbidden", "Only owners and admins can delete files forever.", nil)
+	errTrashed    = refuse(http.StatusConflict, "trashed", "This is in the Trash. Restore it first.", nil)
+	errRecordMove = refuse(http.StatusConflict, "record_move_locked", "This business record must stay in its folder.", nil)
+	errRetained   = refuse(http.StatusConflict, "retained",
 		"This file is a business record linked to a booked invoice or expense, so it is kept for 10 years.", nil)
 	errNotInTrash = refuse(http.StatusConflict, "not_trashed", "It isn't in the Trash.", nil)
 )
@@ -518,6 +519,15 @@ func onConflict(raw string) (string, error) {
 // placeFile decides a file's name in folder (it may be new there): a clash fails (409 with a suggestion), keeps both
 // under a free name, or replaces the other file by moving it to the Trash. Run it in a transaction.
 func (s *Service) placeFile(q store.Q, ctx context.Context, sess store.Session, id, name string, folder *string, mode string) (string, error) {
+	if id != "" {
+		locked, err := q.DocumentMoveLocked(ctx, sess.Workspace.ID, id, folder, s.today())
+		if err != nil {
+			return "", err
+		}
+		if locked {
+			return "", errRecordMove
+		}
+	}
 	if err := q.LockContainer(ctx, sess.Workspace.ID, folder); err != nil {
 		return "", err
 	}
@@ -584,8 +594,8 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return errTrashed
 		}
 		if tags != nil {
-			if slices.ContainsFunc(tags, func(t string) bool { return doctags.Protected(t) && !slices.Contains(d.Tags, t) }) {
-				return validationFailed(map[string]string{"tags": "Signed, year and client tags are set automatically."})
+			if slices.ContainsFunc(tags, func(t string) bool { return doctags.Reserved(t) && !slices.Contains(d.Tags, t) }) {
+				return validationFailed(map[string]string{"tags": "Signed, date and client tags are set automatically."})
 			}
 			// automatic tags take no room of the person's own; tags before the move, which may tag the file anew
 			if len(slices.DeleteFunc(slices.Clone(tags), func(t string) bool { return slices.Contains(d.AutoTags, t) })) > maxTags {
@@ -756,7 +766,7 @@ func (s *Service) unlink(w http.ResponseWriter, r *http.Request, sess store.Sess
 			if l.Retains {
 				return auth.Error(http.StatusConflict, "retained", "A business record stays linked to its invoice, expense or signed contract.", nil)
 			}
-			if err := s.db.RemoveDocumentLink(r.Context(), d.ID, l.Type, l.ID); err != nil {
+			if err := s.db.RemoveDocumentLink(r.Context(), sess.Workspace.ID, d.ID, l.Type, l.ID, s.now()); err != nil {
 				return err
 			}
 			return s.writeDocument(w, r, sess, http.StatusOK, d.ID)
@@ -881,6 +891,8 @@ func (s *Service) bulk(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		err := fn()
 		var p *problem
 		switch {
+		case errors.Is(err, errRecordMove):
+			return err
 		case err == nil:
 			updated++
 		case errors.Is(err, store.ErrNotFound):
@@ -892,21 +904,63 @@ func (s *Service) bulk(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		}
 		return nil
 	}
-	for _, id := range body.FolderIDs {
-		if err := apply(id, func() error { return s.bulkFolder(r.Context(), sess, body.Action, id, target, mode) }); err != nil {
+	if body.Action == "move" {
+		// A locked source rolls the whole selection back, including any earlier replacements.
+		err = s.db.Tx(r.Context(), func(q store.Q) error {
+			for _, id := range body.FolderIDs {
+				if err := apply(id, func() error {
+					f, err := q.DocumentFolder(r.Context(), sess.Workspace.ID, id)
+					if err != nil {
+						return err
+					}
+					if f.SystemKind != nil {
+						return errSystemFolder
+					}
+					return s.placeFolder(q, r.Context(), sess, id, f.Name, target, mode)
+				}); err != nil {
+					return err
+				}
+			}
+			for _, id := range body.DocumentIDs {
+				if err := apply(id, func() error {
+					d, err := q.Document(r.Context(), sess.Workspace.ID, id)
+					if err != nil {
+						return err
+					}
+					if d.DeletedAt != nil {
+						return errTrashed
+					}
+					name, err := s.placeFile(q, r.Context(), sess, id, d.Name, target, mode)
+					if err != nil {
+						return err
+					}
+					return q.UpdateDocument(r.Context(), sess.Workspace.ID, id, name, target, s.now())
+				}); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
 			return err
 		}
-	}
-	for _, id := range body.DocumentIDs {
-		if err := apply(id, func() error { return s.bulkFile(r.Context(), sess, body.Action, id, target, mode) }); err != nil {
-			return err
+	} else {
+		for _, id := range body.FolderIDs {
+			if err := apply(id, func() error { return s.bulkFolder(r.Context(), sess, body.Action, id) }); err != nil {
+				return err
+			}
+		}
+		for _, id := range body.DocumentIDs {
+			if err := apply(id, func() error { return s.bulkFile(r.Context(), sess, body.Action, id) }); err != nil {
+				return err
+			}
 		}
 	}
 	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"updated": updated, "skipped": skipped}))
 	return nil
 }
 
-func (s *Service) bulkFolder(ctx context.Context, sess store.Session, action, id string, target *string, mode string) error {
+func (s *Service) bulkFolder(ctx context.Context, sess store.Session, action, id string) error {
 	ws := sess.Workspace.ID
 	if action == "delete" {
 		done, err := s.purgeChecked(ctx, sess, "folder", id)
@@ -917,15 +971,6 @@ func (s *Service) bulkFolder(ctx context.Context, sess store.Session, action, id
 	}
 	return s.db.Tx(ctx, func(q store.Q) error {
 		switch action {
-		case "move":
-			f, err := q.DocumentFolder(ctx, ws, id)
-			if err != nil {
-				return err
-			}
-			if f.SystemKind != nil {
-				return errSystemFolder
-			}
-			return s.placeFolder(q, ctx, sess, id, f.Name, target, mode)
 		case "trash":
 			if f, err := q.DocumentFolder(ctx, ws, id); err != nil {
 				return err
@@ -958,7 +1003,7 @@ func (s *Service) bulkFolder(ctx context.Context, sess store.Session, action, id
 	})
 }
 
-func (s *Service) bulkFile(ctx context.Context, sess store.Session, action, id string, target *string, mode string) error {
+func (s *Service) bulkFile(ctx context.Context, sess store.Session, action, id string) error {
 	ws := sess.Workspace.ID
 	if action == "delete" {
 		done, err := s.purgeChecked(ctx, sess, "file", id)
@@ -973,15 +1018,6 @@ func (s *Service) bulkFile(ctx context.Context, sess store.Session, action, id s
 			return err
 		}
 		switch action {
-		case "move":
-			if d.DeletedAt != nil {
-				return errTrashed
-			}
-			name, err := s.placeFile(q, ctx, sess, d.ID, d.Name, target, mode)
-			if err != nil {
-				return err
-			}
-			return q.UpdateDocument(ctx, ws, d.ID, name, target, s.now())
 		case "trash":
 			if d.DeletedAt != nil {
 				return nil

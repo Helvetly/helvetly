@@ -167,6 +167,7 @@ function Grid({ files, selected }: { files: DocFile[]; selected: string[] }) {
   return (
     <div className="w-[720px] p-6">
       <ItemsView
+        canWrite
         layout="grid"
         folders={[]}
         files={files}

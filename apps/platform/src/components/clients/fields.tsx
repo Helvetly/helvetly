@@ -52,7 +52,7 @@ export function NativeSelect({
   )
 }
 
-export type KnownTag = { name: string; count: number }
+export type KnownTag = { name: string; count: number; label?: string }
 
 /** Chips for tags, with suggestions from the tags already in use (the workspace's client tags by default). */
 export function TagsInput({
@@ -64,6 +64,8 @@ export function TagsInput({
   onInputKeyDown,
   onLeave,
   known,
+  displayTag,
+  validateTag,
 }: {
   id: string
   value: string[]
@@ -75,6 +77,8 @@ export function TagsInput({
   onInputKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
   /** Focus left the field and its suggestions, after typed text became a tag. */
   onLeave?: () => void
+  validateTag?: (tag: string) => string | undefined
+  displayTag?: (tag: string) => string
   /** The tags to suggest, instead of the clients' ones. */
   known?: KnownTag[]
 }) {
@@ -86,16 +90,23 @@ export function TagsInput({
   const [error, setError] = useState('')
   const clientTags = useClientTags(!known)
   const needle = draft.trim().toLowerCase()
-  const suggestions = (known ?? clientTags.data ?? [])
+  const options: KnownTag[] = known ?? clientTags.data ?? []
+  const suggestions = options
     .filter(
       (tag) =>
-        tag.name.toLowerCase().includes(needle) &&
+        (tag.name.toLowerCase().includes(needle) || tag.label?.toLowerCase().includes(needle)) &&
         !value.some((existing) => existing.toLowerCase() === tag.name.toLowerCase()),
     )
     .slice(0, 6)
 
   const add = (input: string) => {
     const result = addTag(value, input)
+    const added = result.tags !== value && result.tags.at(-1)
+    const refusal = added ? validateTag?.(added.toLowerCase()) : undefined
+    if (refusal) {
+      setError(refusal)
+      return
+    }
     setError(result.error ?? '')
     if (result.tags !== value) onChange(result.tags)
     if (!result.error) setDraft('')
@@ -112,10 +123,10 @@ export function TagsInput({
             key={tag}
             className="flex h-6 items-center gap-1 rounded-[5px] bg-muted pr-0.5 pl-2 text-[13px]"
           >
-            {tag}
+            {displayTag?.(tag) ?? tag}
             <button
               type="button"
-              aria-label={translate('remove5', { tag: tag })}
+              aria-label={translate('remove5', { tag: displayTag?.(tag) ?? tag })}
               // Keeps focus in the field, so an inline editor around it does not see it leave.
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => onChange(value.filter((entry) => entry !== tag))}
@@ -165,7 +176,7 @@ export function TagsInput({
               onBlur={leave}
               className="h-6 rounded-[5px] px-2 text-[12.5px] text-muted-foreground ring-1 ring-border ring-inset hover:bg-muted hover:text-foreground"
             >
-              {tag.name} <span className="tabular-nums opacity-60">{tag.count}</span>
+              {tag.label ?? tag.name} <span className="tabular-nums opacity-60">{tag.count}</span>
             </button>
           ))}
         </div>
