@@ -58,13 +58,13 @@ func reminderMessage(inv store.Invoice, t store.ReminderTarget, pdf []byte) mail
 	if inv.Seller != nil {
 		seller = inv.Seller.Name
 	}
-	l := mail.NewLetter(lang).Greeting(buyer).Lead(fmt.Sprintf(sentence, what, swissDate(t.DueDate))).Summary(
+	l := mail.NewLetter(lang).Greeting(buyer).Lead(fmt.Sprintf(sentence, what, swissDate(t.DueDate)), t.Number, swissDate(t.DueDate)).Summary(
 		mail.Row{Label: invoicepdf.Title(lang, inv.Kind), Value: t.Number},
 		mail.Row{Label: text.open, Value: inv.Currency + " " + t.Open.Swiss("'")},
 		mail.Row{Label: invoicepdf.EmailWordsFor(lang).DueDate, Value: swissDate(t.DueDate)},
 		mail.Row{Label: text.reference, Value: reference(inv, t.Seq)},
-	).Lead(strings.TrimSpace(text.signOff + "\n" + seller)).Attached(pdfName(inv))
-	m := mail.Message{Workspace: t.WorkspaceID, Language: inv.Language, To: []string{t.ClientEmail}, Subject: text.subject + ": " + what,
+	).Attached(pdfName(inv)).SignOff(text.signOff + "\n" + seller)
+	m := mail.Message{Workspace: t.WorkspaceID, Language: inv.Language, To: []string{t.ClientEmail}, Subject: text.subject + ": " + what, Eyebrow: text.subject, Tone: mail.Attention,
 		Text: l.Text(), HTML: l.HTML(), Attachments: []mail.Attachment{{Name: pdfName(inv), ContentType: "application/pdf", Data: pdf}}}
 	if inv.Seller != nil && inv.Seller.Email != nil {
 		m.ReplyTo = *inv.Seller.Email

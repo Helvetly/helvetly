@@ -316,7 +316,9 @@ func TestSendIssuedRecordsSystemDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(e.mail.sent) != 1 || e.mail.sent[0].Subject != subject || !strings.HasPrefix(e.mail.sent[0].Text, message+"\n") {
+	body, closing, _ := strings.Cut(message, "\n\nFreundliche Grüsse")
+	if len(e.mail.sent) != 1 || e.mail.sent[0].Subject != subject || !strings.HasPrefix(e.mail.sent[0].Text, body+"\n\n") ||
+		!strings.HasSuffix(e.mail.sent[0].Text, "\n\nFreundliche Grüsse"+closing+"\n") {
 		t.Errorf("mail %+v, want the default subject and message", e.mail.sent)
 	}
 }

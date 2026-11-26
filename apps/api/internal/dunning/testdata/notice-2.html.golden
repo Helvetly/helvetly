@@ -6,9 +6,10 @@
 <tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid #e7e7ea">
 <tr><td height="3" bgcolor="#52525b" style="height:3px;font-size:0;line-height:0;background-color:#52525b">&nbsp;</td></tr>
 <tr><td style="padding:32px 32px 16px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:26px;color:#3f3f46">
-<h1 style="margin:0 0 20px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;font-weight:600;color:#18181b">2. Mahnung: Rechnung 2026-042</h1>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px"><tr><td bgcolor="#fef3c7" style="background-color:#fef3c7;padding:4px 12px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:600;letter-spacing:0.2px;color:#92400e">2. Mahnung</td></tr></table>
+<h1 style="margin:0 0 20px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;font-weight:600;color:#18181b">Rechnung 2026-042</h1>
 <p style="margin:0 0 18px;line-height:26px">Guten Tag</p>
-<p style="margin:0 0 18px;line-height:26px">Trotz unserer Zahlungserinnerung ist die Rechnung 2026-042 vom 01.10.2026, fällig am 31.10.2026, noch offen. Wir bitten Sie, den Betrag umgehend zu überweisen.</p>
+<p style="margin:0 0 18px;line-height:26px">Trotz unserer Zahlungserinnerung ist die Rechnung <strong>2026-042</strong> vom <strong>01.10.2026</strong>, fällig am <strong>31.10.2026</strong>, noch offen. Wir bitten Sie, den Betrag umgehend zu überweisen.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#f5f5f7" style="width:100%;margin:4px 0 24px;background-color:#f5f5f7">
 <tr><td style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;padding:9px 14px;color:#18181b"><span style="display:block;font-size:12px;line-height:18px;color:#71717a">Offener Betrag Rechnung 2026-042</span><strong style="font-weight:600">CHF 1&#39;081.00</strong></td></tr>
 <tr><td style="border-top:1px solid #e8e8ec;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;padding:9px 14px;color:#18181b"><span style="display:block;font-size:12px;line-height:18px;color:#71717a">Mahngebühr</span><strong style="font-weight:600">CHF 30.00</strong></td></tr>
@@ -16,11 +17,11 @@
 <tr><td style="border-top:1px solid #e8e8ec;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;padding:9px 14px;color:#18181b"><span style="display:block;font-size:12px;line-height:18px;color:#71717a">Total zu bezahlen</span><strong style="font-weight:600">CHF 1&#39;115.44</strong></td></tr>
 </table>
 <p style="margin:0 0 18px;line-height:26px">Bitte überweisen Sie den Gesamtbetrag innert 10 Tagen. Falls Sie die Zahlung bereits veranlasst haben, betrachten Sie dieses Schreiben als gegenstandslos.</p>
-<p style="margin:0 0 18px;line-height:26px">Freundliche Grüsse<br>Dein Deutsch Coach</p>
 <p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#71717a">Angehängt: 2.-Mahnung-2026-042.pdf, Rechnung-2026-042.pdf</p>
+<p style="margin:0 0 18px;line-height:26px">Freundliche Grüsse<br>Dein Deutsch Coach</p>
 </td></tr>
 </table></td></tr>
-<tr><td align="center" style="padding:28px 16px 0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:20px;color:#71717a"><strong style="color:#3f3f46">Dein Deutsch Coach</strong><br>Bahnhofstrasse &#8203;1, &#8203;8001 &#8203;Zürich<br><a href="tel:+41440000000" style="color:#71717a;text-decoration:none">+41 44 000 00 00</a> · <a href="mailto:hallo@deutsch.example" style="color:#71717a;text-decoration:none">hallo@deutsch.example</a> · <a href="https://www.deutsch.example/" style="color:#71717a;text-decoration:none">deutsch.example</a><br>CHE-123.456.789 MWST<br><br><span style="font-size:11px">Gesendet mit <a href="https://app.helvetly.example" style="color:#71717a">Helvetly</a></span></td></tr>
+<tr><td align="center" style="padding:28px 16px 0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:20px;color:#71717a"><strong style="color:#3f3f46">Dein Deutsch Coach</strong><br>Bahnhofstrasse &#8203;1, &#8203;8001 &#8203;Zürich<br><a href="tel:+41440000000" style="color:#71717a;text-decoration:none">+41 44 000 00 00</a> · <a href="mailto:hallo@deutsch.example" style="color:#71717a;text-decoration:none">hallo@deutsch.example</a> · <a href="https://www.deutsch.example/" style="color:#71717a;text-decoration:none">deutsch.example</a><br>CHE-123.456.789 MWST<br><br><span style="font-size:11px">Gesendet mit <a href="https://app.helvetly.example" style="color:#71717a"><strong>Helvetly</strong></a><br>Angebote, Rechnungen und Kundenportale an einem Ort. Mehr Zeit für Ihre Arbeit.</span></td></tr>
 </table>
 </td></tr>
 </table></html>

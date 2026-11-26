@@ -172,7 +172,7 @@ func (s *Service) report(w http.ResponseWriter, r *http.Request, sess store.Sess
 
 // email is the report's email: the message, the engagement and period, and the PDF attached.
 func (rep report) email(workspaceID, subject, message string) mail.Message {
-	l := mail.NewLetter(rep.language).Message(message).
+	l := mail.NewLetter(rep.language).DocumentMessage(message, rep.period).
 		Summary(mail.Row{Label: reportTexts[rep.language].title, Value: rep.e.Title + "\n" + rep.period}).Attached(rep.name)
 	return mail.Message{Workspace: workspaceID, Language: rep.language, Subject: subject, Text: l.Text(), HTML: l.HTML(),
 		Attachments: []mail.Attachment{{Name: rep.name, ContentType: "application/pdf", Data: rep.pdf}}}

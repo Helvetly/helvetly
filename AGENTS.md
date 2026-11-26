@@ -253,7 +253,7 @@ are the reference.
   logo (never the document logo) and name head the email, its seller details (with its website as a link) sign it. Its body
   is built from the `mail.Letter` blocks (greeting, lead, typed message, summary panel, sections, details, code, call to action, note, fine print,
   attachments), which write the HTML and text together. The optional eyebrow pill (`Message.Eyebrow`) above the title uses
-  green or red for outcomes. Every client email kind has a golden test through
+  green or red for outcomes and separate tints for reminders and amendments. Conventional sign-offs in document messages go after the details and attachments. Every client email kind has a golden test through
   `mail/mailtest` (`go test -update` rewrites `testdata/*.golden`), which also holds it to the email HTML rule and to words that wrap. Sign-in, security and invitation email is neither counted nor branded and stays Helvetly's, except a client's sign-in
   code for a workspace's portal: it comes from that business (Branded, in its language) and is `Uncounted`, which `Metered`
   never counts or refuses.

@@ -5,6 +5,25 @@ import (
 	"testing"
 )
 
+func TestDocumentMessageHighlightsFactsAndClosesAfterDetails(t *testing.T) {
+	l := NewLetter("en").
+		DocumentMessage("Invoice 2026-001 for CHF 216.20 is due on 06.12.2026. <Thanks!>\n\nKind regards,\n\nAna & Co",
+			"2026-001", "CHF 216.20", "06.12.2026").
+		Summary(Row{Label: "Invoice", Value: "2026-001"}).Lead("Payment link: https://pay.example.test/").Attached("invoice.pdf")
+	body := l.HTML()
+	for _, fact := range []string{"2026-001", "CHF 216.20", "06.12.2026"} {
+		if !strings.Contains(body, "<strong>"+fact+"</strong>") {
+			t.Errorf("%q was not highlighted", fact)
+		}
+	}
+	if !strings.Contains(body, "&lt;Thanks!&gt;") || !strings.Contains(body, "Ana &amp; Co") ||
+		!strings.Contains(body, "https://pay.example.test/") ||
+		strings.Index(body, "Attached: invoice.pdf") >= strings.Index(body, "Kind regards") ||
+		!strings.HasSuffix(l.Text(), "Attached: invoice.pdf\n\nKind regards,\n\nAna & Co\n") {
+		t.Fatalf("closing or body was lost or misplaced: %s", l.Text())
+	}
+}
+
 func TestLongLetterKeepsItsLayout(t *testing.T) {
 	long := strings.Repeat("é", 2500)
 	l := NewLetter("en").Message(long).Summary(Row{Label: "Outstanding amount for invoice 2026-042", Value: "CHF 1’081.00"})

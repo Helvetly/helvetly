@@ -2,6 +2,7 @@ package mail
 
 import (
 	"html"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -12,6 +13,7 @@ import (
 type Letter struct {
 	language   string
 	html, text strings.Builder
+	closing    string
 }
 
 // NewLetter starts a letter in a language (de, fr, it, en; anything else reads as en) for its fixed words.
@@ -66,9 +68,9 @@ func (l *Letter) Greeting(name string) *Letter {
 }
 
 // Lead is one paragraph of the message; an empty one is left out.
-func (l *Letter) Lead(s string) *Letter {
+func (l *Letter) Lead(s string, facts ...string) *Letter {
 	if s = strings.TrimSpace(s); s != "" {
-		l.html.WriteString(para + lines(s) + "</p>\n")
+		l.html.WriteString(para + highlightedLines(s, facts) + "</p>\n")
 		l.text.WriteString(s + "\n\n")
 	}
 	return l
@@ -82,10 +84,39 @@ func (l *Letter) Emphasis(before, value, after string) *Letter {
 }
 
 // Message is a typed text (an email template, a message the sender wrote): a paragraph per blank-line block.
-func (l *Letter) Message(s string) *Letter {
+func (l *Letter) Message(s string, facts ...string) *Letter {
 	for p := range strings.SplitSeq(strings.ReplaceAll(s, "\r\n", "\n"), "\n\n") {
-		l.Lead(p)
+		l.Lead(p, facts...)
 	}
+	return l
+}
+
+// DocumentMessage separates conventional closing lines from the sender’s prose so the closing follows the details.
+func (l *Letter) DocumentMessage(s string, facts ...string) *Letter {
+	paragraphs := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n\n")
+	for i := len(paragraphs) - 1; i >= 0; i-- {
+		first, _, _ := strings.Cut(strings.TrimSpace(paragraphs[i]), "\n")
+		switch strings.ToLower(strings.TrimRight(strings.TrimSpace(first), ",.!")) {
+		case "kind regards", "best regards", "regards", "sincerely", "freundliche grüsse", "freundliche grüße", "mit freundlichen grüssen", "mit freundlichen grüßen",
+			"meilleures salutations", "cordialement", "cordiali saluti", "distinti saluti":
+			l.SignOff(strings.Join(paragraphs[i:], "\n\n"))
+			return l.Message(strings.Join(paragraphs[:i], "\n\n"), facts...)
+		}
+	}
+	return l.Message(s, facts...)
+}
+
+// SignOff places a closing after all the visible message details and before the sender footer.
+func (l *Letter) SignOff(s string) *Letter {
+	l.closing = strings.TrimSpace(s)
+	return l
+}
+
+// Alert presents an advisory in a prominent, accessible callout.
+func (l *Letter) Alert(title, message string) *Letter {
+	l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;margin:16px 0 8px"><tr><td bgcolor="#fffbeb" style="background-color:#fffbeb;border-left:3px solid #d97706;padding:12px 14px;color:#78350f;font-size:13px;line-height:21px"><strong>` +
+		lines(title) + "</strong><br>" + lines(message) + "</td></tr></table>\n")
+	l.text.WriteString(title + "\n" + message + "\n\n")
 	return l
 }
 
@@ -215,10 +246,17 @@ func (l *Letter) Attached(names ...string) *Letter {
 }
 
 // HTML is the body fragment for Message.HTML.
-func (l *Letter) HTML() string { return l.html.String() }
+func (l *Letter) HTML() string {
+	if l.closing == "" {
+		return l.html.String()
+	}
+	return l.html.String() + para + lines(l.closing) + "</p>\n"
+}
 
 // Text is the text part for Message.Text.
-func (l *Letter) Text() string { return strings.TrimRight(l.text.String(), "\n") + "\n" }
+func (l *Letter) Text() string {
+	return strings.TrimRight(l.text.String()+l.closing, "\n") + "\n"
+}
 
 // Button is the call to action's HTML: a filled, rounded cell (bgcolor for Outlook) holding a white, bold link, centred.
 // The fill is a business's near-black; layout makes it Helvetly's teal on Helvetly's own email (buttonFill).
@@ -235,4 +273,27 @@ const para = `<p style="margin:0 0 18px;line-height:26px">`
 // lines escapes s and keeps its line breaks.
 func lines(s string) string {
 	return strings.ReplaceAll(html.EscapeString(strings.TrimSpace(s)), "\n", "<br>")
+}
+
+// highlightedLines escapes the original text and emphasises only the exact supplied document facts.
+func highlightedLines(s string, facts []string) string {
+	var terms []string
+	for _, fact := range facts {
+		if fact != "" {
+			terms = append(terms, regexp.QuoteMeta(fact))
+		}
+	}
+	if len(terms) == 0 {
+		return lines(s)
+	}
+	matches := regexp.MustCompile(`\b(?:`+strings.Join(terms, "|")+`)\b`).FindAllStringIndex(s, -1)
+	var out strings.Builder
+	start := 0
+	for _, match := range matches {
+		out.WriteString(html.EscapeString(s[start:match[0]]))
+		out.WriteString("<strong>" + html.EscapeString(s[match[0]:match[1]]) + "</strong>")
+		start = match[1]
+	}
+	out.WriteString(html.EscapeString(s[start:]))
+	return strings.ReplaceAll(out.String(), "\n", "<br>")
 }

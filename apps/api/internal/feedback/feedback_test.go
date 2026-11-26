@@ -135,7 +135,7 @@ func post(f fixture, fields map[string]string, files ...[]byte) *httptest.Respon
 }
 
 func valid() map[string]string {
-	return map[string]string{"kind": "problem", "description": "  The invoice PDF is blank\nsteps…  ", "page_path": "/invoices/edit?id=1"}
+	return map[string]string{"kind": "problem", "description": "  The invoice PDF is blank\n\nI opened invoice 2026-042 and chose Download PDF. The preview showed the invoice lines, but the downloaded file opened as a blank page.\n\nI tried again in a new tab and got the same result.  ", "page_path": "/invoices/edit?id=1"}
 }
 
 func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
@@ -167,7 +167,7 @@ func TestCreateStoresAndEmails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if kind != "problem" || description != "The invoice PDF is blank\nsteps…" || page != "/invoices/edit" || emailed == nil || shots != 2 {
+	if kind != "problem" || description != strings.TrimSpace(valid()["description"]) || page != "/invoices/edit" || emailed == nil || shots != 2 {
 		t.Fatalf("stored %q %q %q emailed=%v shots=%d", kind, description, page, emailed, shots)
 	}
 	if len(f.files.objects) != 2 {

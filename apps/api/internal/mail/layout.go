@@ -97,12 +97,16 @@ func layout(m Message, publicURL string) string {
 
 // eyebrow is the small pill above the title saying what the email is ("Invoice", "✓ Completed").
 func eyebrow(s string, tone Tone) string {
-	bg, color, icon := panel, text, ""
+	bg, color, icon := "#e0f2fe", "#075985", ""
 	switch tone {
 	case Positive:
 		bg, color, icon = "#dcfce7", "#166534", "✓"
 	case Negative:
 		bg, color, icon = "#fee2e2", "#991b1b", "×"
+	case Attention:
+		bg, color = "#fef3c7", "#92400e"
+	case Amended:
+		bg, color = "#f3e8ff", "#6b21a8"
 	}
 	if icon != "" {
 		icon = `<span aria-hidden="true">` + icon + `</span> `

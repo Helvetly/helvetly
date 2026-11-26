@@ -337,6 +337,7 @@ func run() error {
 	authSvc.OnPhotoRemoved = avatarsSvc.RemoveObject
 	portalSvc := portal.New(db, authSvc, files, portalScopes, portal.Config{SessionTTL: cfg.SessionTTL, CookieSecure: cfg.CookieSecure}, slog.Default())
 	portalSvc.SetMailer(portalLinksMailer)
+	portalSvc.SetEmailLogos(cfg.PublicURL, invoicesSvc.EmailLogoPath)
 	portalSvc.SetScheduling(schedulingSvc)
 	mcpSvc := mcp.New(authSvc, openapi.Operations)
 	api := func(mux *http.ServeMux) {

@@ -96,14 +96,16 @@ func displayName(name string) string {
 	return name
 }
 
-var footerWords = map[string]struct{ sentWith, vat string }{
-	"de": {"Gesendet mit", "MWST"},
-	"fr": {"Envoyé avec", "TVA"},
-	"it": {"Inviato con", "IVA"},
-	"en": {"Sent with", "VAT"},
+type footerCopy struct{ sentWith, vat, pitch string }
+
+var footerWords = map[string]footerCopy{
+	"de": {"Gesendet mit", "MWST", "Angebote, Rechnungen und Kundenportale an einem Ort. Mehr Zeit für Ihre Arbeit."},
+	"fr": {"Envoyé avec", "TVA", "Gérez vos devis, factures et portails clients au même endroit, et consacrez plus de temps à votre métier."},
+	"it": {"Inviato con", "IVA", "Gestisca preventivi, fatture e portali clienti in un unico posto, con più tempo per il suo lavoro."},
+	"en": {"Sent with", "VAT", "Manage quotes, invoices and client portals in one place, so you can spend more time on your work."},
 }
 
-func wordsFor(language string) struct{ sentWith, vat string } {
+func wordsFor(language string) footerCopy {
 	if w, ok := footerWords[language]; ok {
 		return w
 	}
@@ -175,7 +177,7 @@ func brandFooter(b Brand, language, publicURL string) string {
 	}
 	if b.SentWith {
 		f.WriteString(`<br><br><span style="font-size:11px">` + html.EscapeString(wordsFor(language).sentWith) + ` <a href="` +
-			html.EscapeString(publicURL) + `" style="color:` + muted + `">Helvetly</a></span>`)
+			html.EscapeString(publicURL) + `" style="color:` + muted + `"><strong>Helvetly</strong></a><br>` + html.EscapeString(wordsFor(language).pitch) + "</span>")
 	}
 	return f.String()
 }
@@ -184,7 +186,7 @@ func brandFooter(b Brand, language, publicURL string) string {
 func brandText(b Brand, language, publicURL string) string {
 	out := "\n\n-- \n" + strings.Join(b.lines(language, false), "\n") + "\n"
 	if b.SentWith {
-		out += "\n" + wordsFor(language).sentWith + " Helvetly: " + publicURL + "\n"
+		out += "\n" + wordsFor(language).sentWith + " Helvetly: " + publicURL + "\n" + wordsFor(language).pitch + "\n"
 	}
 	return out
 }

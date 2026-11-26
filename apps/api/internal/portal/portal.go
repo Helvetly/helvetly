@@ -53,6 +53,8 @@ type Service struct {
 	sched                   *scheduling.Service
 	// schedWrites caps a session's requests and bookings; linkByIP and linkByToken the booking links' calls.
 	schedWrites, linkByIP, linkByToken *auth.RateLimiter
+	emailLogo                          func(context.Context, string) (string, error)
+	platformURL                        string
 	mail                               Mailer
 	// async runs the links email after the answer (go in production; tests wait for it).
 	async func(func())

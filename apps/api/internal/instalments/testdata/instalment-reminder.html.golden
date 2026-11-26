@@ -6,17 +6,18 @@
 <tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid #e7e7ea">
 <tr><td height="3" bgcolor="#0f766e" style="height:3px;font-size:0;line-height:0;background-color:#0f766e;background-image:linear-gradient(90deg,#0e9a86,#0f766e)">&nbsp;</td></tr>
 <tr><td style="padding:32px 32px 16px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:26px;color:#3f3f46">
-<h1 style="margin:0 0 20px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;font-weight:600;color:#18181b">Zahlungserinnerung: Rate 2 von 3 der Rechnung 2026-007</h1>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px"><tr><td bgcolor="#fef3c7" style="background-color:#fef3c7;padding:4px 12px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:600;letter-spacing:0.2px;color:#92400e">Zahlungserinnerung</td></tr></table>
+<h1 style="margin:0 0 20px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;line-height:30px;font-weight:600;color:#18181b">Rate 2 von 3 der Rechnung 2026-007</h1>
 <p style="margin:0 0 18px;line-height:26px">Guten Tag Kunde AG,</p>
-<p style="margin:0 0 18px;line-height:26px">Wir erinnern Sie an die Zahlung für Rate 2 von 3 der Rechnung 2026-007, fällig am 01.12.2026.</p>
+<p style="margin:0 0 18px;line-height:26px">Wir erinnern Sie an die Zahlung für Rate 2 von 3 der Rechnung <strong>2026-007</strong>, fällig am <strong>01.12.2026</strong>.</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#f5f5f7" style="width:100%;margin:4px 0 24px;background-color:#f5f5f7">
 <tr><td style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;padding:9px 14px;color:#18181b"><span style="display:block;font-size:12px;line-height:18px;color:#71717a">Rechnung</span><strong style="font-weight:600">2026-007</strong></td></tr>
 <tr><td style="border-top:1px solid #e8e8ec;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;padding:9px 14px;color:#18181b"><span style="display:block;font-size:12px;line-height:18px;color:#71717a">Offener Betrag</span><strong style="font-weight:600">CHF 360.35</strong></td></tr>
 <tr><td style="border-top:1px solid #e8e8ec;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;padding:9px 14px;color:#18181b"><span style="display:block;font-size:12px;line-height:18px;color:#71717a">Zahlbar bis</span><strong style="font-weight:600">01.12.2026</strong></td></tr>
 <tr><td style="border-top:1px solid #e8e8ec;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:21px;padding:9px 14px;color:#18181b"><span style="display:block;font-size:12px;line-height:18px;color:#71717a">Zahlungsreferenz</span><strong style="font-weight:600">210000000003139471430009017</strong></td></tr>
 </table>
-<p style="margin:0 0 18px;line-height:26px">Freundliche Grüsse<br>Muster GmbH</p>
 <p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#71717a">Angehängt: Rechnung-2026-007.pdf</p>
+<p style="margin:0 0 18px;line-height:26px">Freundliche Grüsse<br>Muster GmbH</p>
 </td></tr>
 </table></td></tr>
 <tr><td align="center" style="padding:28px 16px 0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:20px;color:#71717a"><strong style="font-weight:600;color:#3f3f46">Helvetly</strong> &middot; The online back office for freelancers and small businesses.<br><a href="https://www.helvetly.com/help" style="color:#71717a">Help</a> &nbsp;&middot;&nbsp; <a href="https://www.helvetly.com/privacy" style="color:#71717a">Privacy</a> &nbsp;&middot;&nbsp; <a href="https://www.helvetly.com/terms" style="color:#71717a">Terms</a></td></tr>

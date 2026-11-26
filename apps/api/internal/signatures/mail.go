@@ -78,9 +78,9 @@ func inviteMessage(req store.SignatureRequest, to store.Signer, link string, rem
 		r := emailtemplate.Render(text, map[string]string{"document": req.Title, "sender": short(senderOf(req).Name), "company": company})
 		subject = r.Subject
 		if !reminder && req.Message != nil {
-			l.Message(*req.Message)
+			l.DocumentMessage(*req.Message)
 		} else {
-			l.Message(r.Body)
+			l.DocumentMessage(r.Body)
 		}
 	} else {
 		subject = fmt.Sprintf("%s asks you to sign “%s”", company, req.Title)
@@ -89,7 +89,7 @@ func inviteMessage(req store.SignatureRequest, to store.Signer, link string, rem
 			subject = "Reminder: " + subject
 			lead = "The document is still waiting for your signature. Open it to review the details before the deadline below."
 		}
-		l.Greeting(short(to.Name)).Lead(lead).Note(deref(req.Message))
+		l.Greeting(short(to.Name)).Lead(lead).DocumentMessage(deref(req.Message))
 	}
 	l.Summary(mail.Row{Label: w.document, Value: req.Title}, mail.Row{Label: w.sentBy, Value: sentBy(req)},
 		mail.Row{Label: w.signBy, Value: req.ExpiresAt.In(zone(req)).Format(w.date)}).

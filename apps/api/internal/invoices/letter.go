@@ -1,6 +1,8 @@
 package invoices
 
 import (
+	"strings"
+
 	"helvetly.com/api/internal/invoicepdf"
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/store"
@@ -18,12 +20,22 @@ func withLetter(m mail.Message, inv store.Invoice) mail.Message {
 	for i, a := range m.Attachments {
 		names[i] = a.Name
 	}
-	l := mail.NewLetter(inv.Language).Message(m.Text).Summary(
-		mail.Row{Label: Title(inv), Value: deref(inv.Number)},
-		mail.Row{Label: amount, Value: inv.Currency + " " + abs(inv.Payable()).Swiss("'")},
+	number, total := deref(inv.Number), inv.Currency+" "+abs(inv.Payable()).Swiss("'")
+	message, payment := m.Text, ""
+	if inv.Payment.RevolutURL != nil {
+		if body, ok := strings.CutSuffix(message, "\n\n"+revolutPaymentLine(inv)); ok {
+			message, payment = body, revolutPaymentLine(inv)
+		}
+	}
+	l := mail.NewLetter(inv.Language).DocumentMessage(message, number, total, due).Summary(
+		mail.Row{Label: Title(inv), Value: number},
+		mail.Row{Label: amount, Value: total},
 		mail.Row{Label: w.DueDate, Value: due},
-	).Attached(names...)
+	).Lead(payment).Attached(names...)
 	m.Text, m.HTML, m.Eyebrow = l.Text(), l.HTML(), Title(inv)
+	if inv.Kind == "corrected" || inv.Kind == "credit_note" || inv.Kind == "debit_note" {
+		m.Tone = mail.Amended
+	}
 	return m
 }
 

@@ -65,7 +65,9 @@ func TestQuoteSendDefaultsToDraft(t *testing.T) {
 		q := e.quote(b, "POST", "/api/v1/quotes", map[string]any{"client_id": e.client(b), "language": lang, "lines": []any{line("2", "100.00")}}, http.StatusCreated)
 		e.quote(b, "POST", "/api/v1/quotes/"+q.ID+"/send", map[string]any{}, http.StatusOK)
 		m := e.mail.sent[len(e.mail.sent)-1]
-		if m.Subject != want[0] || !strings.HasPrefix(m.Text, want[1]+"\n") {
+		closingAt := strings.LastIndex(want[1], "\n\n")
+		if m.Subject != want[0] || !strings.HasPrefix(m.Text, want[1][:closingAt]+"\n\n") ||
+			!strings.HasSuffix(m.Text, want[1][closingAt:]+"\n") {
 			t.Fatalf("%s: %q %q", lang, m.Subject, m.Text)
 		}
 	}

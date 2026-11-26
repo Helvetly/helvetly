@@ -209,7 +209,8 @@ func writeEmailContent(l *mail.Letter, n store.Notification, summary string) {
 		}
 		l.Lead(subscriptionEmailStatus(d.s("status")))
 	default:
-		l.Lead(summary).Lead(emailNextStep[n.Event])
+		l.Lead(summary, d.s("number"), d.s("due_date"), d.s("trial_end"), strings.TrimSpace(d.s("currency")+" "+d.s("amount"))).
+			Lead(emailNextStep[n.Event])
 	}
 }
 

@@ -24,12 +24,14 @@ import (
 	"helvetly.com/api/internal/config"
 )
 
-// Tone styles the eyebrow when a message reports an outcome.
+// Tone styles the label above the message title.
 type Tone uint8
 
 const (
 	Positive Tone = iota + 1
 	Negative
+	Attention
+	Amended
 )
 
 type Message struct {

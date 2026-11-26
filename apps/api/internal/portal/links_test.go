@@ -2,6 +2,8 @@ package portal
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"strings"
 	"sync"
 	"testing"
@@ -86,6 +88,32 @@ func TestEmailLinks(t *testing.T) {
 				t.Fatalf("%d primary buttons, want %d", got, wantButtons)
 			}
 		})
+	}
+}
+
+func TestEmailLinksShowsWorkspaceLogosWithFallback(t *testing.T) {
+	e := scopedEnv(t)
+	e.svc.SetEmailLogos("https://app.example.com/", func(_ context.Context, workspace string) (string, error) {
+		switch workspace {
+		case "wsp_a":
+			return "/api/v1/public/email-logo/wsp_a/wlg_1", nil
+		case "wsp_b":
+			return "", errors.New("logo unavailable")
+		default:
+			t.Fatalf("unexpected workspace %q", workspace)
+			return "", nil
+		}
+	})
+	res, _ := e.doAt("", "POST", "/auth/links", map[string]string{"email": "ana@acme.ch"}, nil, "")
+	if res.StatusCode != http.StatusAccepted || len(e.mail.sent) != 1 {
+		t.Fatalf("status %d, sent %d", res.StatusCode, len(e.mail.sent))
+	}
+	body := e.mail.sent[0].HTML
+	for _, fragment := range []string{`src="https://app.example.com/api/v1/public/email-logo/wsp_a/wlg_1"`,
+		`background-color:#ccfbf1">O</span>`, `background-color:#fffbeb`, "Unexpected email?"} {
+		if !strings.Contains(body, fragment) {
+			t.Errorf("missing %q in portal email", fragment)
+		}
 	}
 }
 
