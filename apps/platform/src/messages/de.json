@@ -4367,6 +4367,7 @@
   "importSectionPaymentsText": "Der auf der Rechnung gedruckte Gesamtbetrag und was der Kunde bereits bezahlt hat.",
   "importTotalDiffers": "Die Positionen ergeben {lines}. Prüfen Sie die Positionen oder den gedruckten Gesamtbetrag.",
   "importSectionInstalmentsText": "Der auf der Rechnung gedruckte Zahlungsplan. Bereits fällige Raten gelten als am Fälligkeitstag bezahlt.",
+  "clearImportedInstalments": "Ratenplan entfernen",
   "importInstalmentN": "Rate {n}",
   "importPaid": "Bezahlt",
   "importAddInstalment": "Rate hinzufügen",

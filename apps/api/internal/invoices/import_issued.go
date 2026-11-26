@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -34,8 +35,6 @@ type issuedElsewhere struct {
 	on     bool
 	number string
 	paid   []store.Payment // what was already paid, before the import: one per paid instalment, else one
-	// schedule is the document's instalments as the invoice's own schedule; nil when they do not make one.
-	schedule *store.InstalmentSchedule
 }
 
 // importedInstalment is one row of a payment schedule the document shows.
@@ -87,7 +86,6 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 		return store.Payment{Method: "other", Amount: amount, PaidOn: on, Note: &note}
 	}
 	instalments := paidInstalments(p, data["instalments"], fallback, today, payment)
-	out.schedule = importedSchedule(data["instalments"], inv)
 	var stated invoicecalc.Money
 	if hasAmount {
 		if n, ok := p.decimal("paid_amount", rawAmount, parseMoney, "Enter the amount with at most two decimals."); ok {
@@ -164,8 +162,7 @@ func paidInstalments(p *parser, raw json.RawMessage, fallback, today string, pay
 	return out
 }
 
-// importedSchedule: the document's instalments as a schedule, when they are 2 to 12 rows with increasing due dates
-// and amounts that make up the payable total; nil otherwise, never an error (they then only become payments).
+// importedSchedule accepts 2 to 12 dated instalments that add up to the payable total.
 func importedSchedule(raw json.RawMessage, inv store.Invoice) *store.InstalmentSchedule {
 	var rows []importedInstalment
 	if !Receivable(inv.Kind) || len(raw) == 0 || json.Unmarshal(raw, &rows) != nil ||
@@ -177,17 +174,32 @@ func importedSchedule(raw json.RawMessage, inv store.Invoice) *store.InstalmentS
 	var total invoicecalc.Money
 	for i, row := range rows {
 		n, ok := p.decimal("amount", row.Amount, parseMoney, "")
-		if !ok || n <= 0 || row.DueDate == nil {
+		if !ok || n <= 0 || n > int64(maxPayable) || row.DueDate == nil {
 			return nil
 		}
-		if _, msg := date(*row.DueDate); msg != "" || (i > 0 && *row.DueDate <= sched.Items[i-1].DueDate) {
+		if _, msg := date(*row.DueDate); msg != "" {
 			return nil
 		}
-		sched.Items[i] = store.InstalmentItem{Seq: i + 1, DueDate: *row.DueDate, Amount: invoicecalc.Money(n)}
+		sched.Items[i] = store.InstalmentItem{DueDate: *row.DueDate, Amount: invoicecalc.Money(n)}
 		total += invoicecalc.Money(n)
 	}
-	if total != inv.Payable() {
-		return nil
+	slices.SortFunc(sched.Items, func(a, b store.InstalmentItem) int { return strings.Compare(a.DueDate, b.DueDate) })
+	for i := range sched.Items {
+		if i > 0 && sched.Items[i].DueDate == sched.Items[i-1].DueDate {
+			return nil
+		}
+		sched.Items[i].Seq = i + 1
+	}
+	if difference := inv.Payable() - total; difference != 0 {
+		count := invoicecalc.Money(len(sched.Items))
+		equal := (inv.Payable() + count/2) / count
+		if equal+difference <= 0 || slices.ContainsFunc(sched.Items, func(item store.InstalmentItem) bool {
+			return item.Amount != equal
+		}) {
+			return nil
+		}
+		// A printed equal split can round each instalment to cents independently.
+		sched.Items[len(sched.Items)-1].Amount += difference
 	}
 	sched.Interval = intervalBetween(sched.Items[0].DueDate, sched.Items[1].DueDate)
 	return sched
@@ -246,14 +258,6 @@ func issueImported(ctx context.Context, q store.Q, sess store.Session, inv store
 	buyer := buyerOf(client)
 	inv.Number, inv.Seller, inv.Buyer, inv.SourceDocumentID = &in.number, &set.Seller.Party, &buyer, documentID
 	inv.Payment = store.InvoicePaymentInfo{IBAN: set.IBAN, ReferenceType: "NON"}
-	if in.schedule != nil { // kept only on a plan with instalments: without, the import stays as it was
-		if ok, err := q.FeatureAllowed(ctx, sess.Workspace.ID, store.FeatureInvoiceInstalments); err != nil {
-			return err
-		} else if ok {
-			inv.Instalments = in.schedule
-			syncSchedule(&inv)
-		}
-	}
 	if err := saveDraft(ctx, q, sess, inv, now); err != nil {
 		return err
 	}

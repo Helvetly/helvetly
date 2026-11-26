@@ -139,7 +139,8 @@ func TestImportIssuedElsewhereSchedule(t *testing.T) {
 			[]string{"400.00@2025-10-31", "400.00@2026-01-31", "281.00@2026-04-30"}, "quarterly", 3},
 		{"short of the total", []any{inst("400.00", "2025-10-31", true), inst("400.00", "2025-11-30", false)}, nil, "", 2},
 		{"a row without a due date", []any{inst("540.50", "2025-10-31", false), inst("540.50", nil, false)}, nil, "", 1},
-		{"dates out of order", []any{inst("540.50", "2025-11-30", false), inst("540.50", "2025-10-31", false)}, nil, "", 2},
+		{"dates out of order", []any{inst("581.00", "2025-11-30", false), inst("500.00", "2025-10-31", false)},
+			[]string{"500.00@2025-10-31", "581.00@2025-11-30"}, "monthly", 2},
 		{"one row", []any{inst("1081.00", "2025-10-31", false)}, nil, "", 1},
 	}
 	for i, tt := range tests {
@@ -169,6 +170,80 @@ func TestImportIssuedElsewhereSchedule(t *testing.T) {
 				t.Fatalf("payments %d %v, want %d", len(payments), err, tt.wantPayments)
 			}
 		})
+	}
+}
+
+func TestImportDetectedScheduleRequiresReview(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	sess, docID := e.importSession(b)
+	for _, rows := range []any{
+		nil,
+		[]any{map[string]any{"amount": "700.00", "due_date": "2099-01-31"}},
+		[]any{
+			map[string]any{"amount": "500.00", "due_date": "2099-01-31"},
+			map[string]any{"amount": "581.00", "due_date": nil},
+		},
+		[]any{
+			map[string]any{"amount": "500.00", "due_date": "2099-01-31"},
+			map[string]any{"amount": "580.99", "due_date": "2099-02-28"},
+		},
+	} {
+		data := importData(t, map[string]any{"has_instalment_schedule": true, "instalments": rows})
+		_, issues, err := CheckImport(context.Background(), e.st.Q, b.workspace, e.today(), clientID, data)
+		if err != nil || issues["instalments"] == "" {
+			t.Fatalf("rows %+v: issues %v, err %v", rows, issues, err)
+		}
+		if _, err := importOnce(e, sess, clientID, data, &docID); errCode(err) != "validation_failed" {
+			t.Fatalf("rows %+v imported without a schedule: %v", rows, err)
+		}
+	}
+}
+
+func TestImportRoundedEqualSchedule(t *testing.T) {
+	rows := json.RawMessage(`[
+		{"amount":"333.33","due_date":"2099-06-30"},
+		{"amount":"333.33","due_date":"2099-01-31"},
+		{"amount":"333.33","due_date":"2099-02-28"},
+		{"amount":"333.33","due_date":"2099-03-31"},
+		{"amount":"333.33","due_date":"2099-04-30"},
+		{"amount":"333.33","due_date":"2099-05-31"}
+	]`)
+	schedule := importedSchedule(rows, store.Invoice{Kind: "invoice", Total: 200000})
+	if schedule == nil || len(schedule.Items) != 6 {
+		t.Fatalf("schedule %+v", schedule)
+	}
+	for i, item := range schedule.Items[:5] {
+		if item.Seq != i+1 || item.Amount != 33333 {
+			t.Fatalf("instalment %d: %+v", i+1, item)
+		}
+	}
+	if last := schedule.Items[5]; last.DueDate != "2099-06-30" || last.Amount != 33335 {
+		t.Fatalf("last instalment %+v", last)
+	}
+}
+
+func TestImportDraftKeepsSchedule(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	sess, _ := e.importSession(b)
+	data := importData(t, map[string]any{
+		"issued_elsewhere":        false,
+		"has_instalment_schedule": true,
+		"instalments": []any{
+			map[string]any{"amount": "500.00", "due_date": "2099-01-31"},
+			map[string]any{"amount": "581.00", "due_date": "2099-02-28"},
+		},
+	})
+	id, err := importOnce(e, sess, clientID, data, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err := e.st.Invoice(context.Background(), b.workspace, id, e.today(), false)
+	if err != nil || inv.Status != "draft" || inv.DueDate != "2099-02-28" ||
+		inv.Instalments == nil || len(inv.Instalments.Items) != 2 || inv.AmountPaid != 0 {
+		t.Fatalf("imported draft: status %s, due %s, schedule %+v, paid %s (%v)",
+			inv.Status, inv.DueDate, inv.Instalments, inv.AmountPaid, err)
 	}
 }
 
