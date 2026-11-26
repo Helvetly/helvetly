@@ -54,7 +54,6 @@
   "everyInvoiceIssuedToYouEachWithItsPDF": "Ogni fattura a te emessa, ciascuna con il suo PDF.",
   "expired": "Scaduto",
   "file": "File",
-  "filesSharedWithYouDownloadAnyOfThemAt": "File condivisi con te. Scaricane uno qualsiasi in qualsiasi momento.",
   "fullName": "Nome completo",
   "goodAfternoon": "Buon pomeriggio",
   "goodEvening": "Buonasera",
@@ -339,5 +338,18 @@
   "engagementThisPeriod": "{name} · questo periodo",
   "engagementPeriod": "{name} · {period}",
   "earlierPeriod": "Periodo precedente",
-  "laterPeriod": "Periodo successivo"
+  "laterPeriod": "Periodo successivo",
+  "filesSharedWithYouAndDocumentsSentForSignature": "File condivisi con te e documenti che ti sono stati inviati da firmare. Scaricali in qualsiasi momento.",
+  "signatures": "Firme",
+  "sharedFiles": "File condivisi",
+  "yourSignatures": "Le tue firme",
+  "signatureSigned": "Firmato",
+  "signatureToSign": "Da firmare",
+  "signatureAwaitingOthers": "In attesa degli altri",
+  "signatureDeclined": "Rifiutato",
+  "signatureExpired": "Scaduto",
+  "signedOn": "Firmato il {date}",
+  "sentOn": "Inviato il {date}",
+  "signWithTheLinkInYourEmail": "Firma con il link ricevuto via e-mail",
+  "downloadSignedPdf": "Scarica il PDF firmato di {name}"
 }

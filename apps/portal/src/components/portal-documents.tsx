@@ -9,7 +9,12 @@ import { useState } from 'react'
 
 import { civilToday, sharedText } from '@/lib/dates'
 import { translate } from '@/lib/i18n'
-import { listPortalDocuments, portalDocumentUrl, portalKeys } from '@/lib/portal'
+import {
+  listPortalDocuments,
+  listPortalSignatures,
+  portalDocumentUrl,
+  portalKeys,
+} from '@/lib/portal'
 import { documentTitle } from '@/lib/quotes'
 
 import {
@@ -20,13 +25,17 @@ import {
   PageHeader,
   RetryAlert,
   rowClass,
+  SectionTitle,
 } from './portal-bits'
+import { SignatureList } from './portal-signatures'
 
 /** Above this many documents a search box helps. */
 const SEARCH_FROM = 7
 
 export function PortalDocuments() {
   const query = useQuery({ queryKey: portalKeys.documents, queryFn: listPortalDocuments })
+  const signatures = useQuery({ queryKey: portalKeys.signatures, queryFn: listPortalSignatures })
+  const signed = signatures.data ?? []
   const [search, setSearch] = useState('')
   const today = civilToday()
 
@@ -39,7 +48,7 @@ export function PortalDocuments() {
         </div>
       )
     if (query.data.length === 0)
-      return (
+      return signed.length > 0 ? null : (
         <div className={cardClass}>
           <EmptyState icon={FolderOpen} title={translate('nothingHasBeenSharedWithYouYet')}>
             {translate('contractsReportsAndOtherFilesAppearHereWhenThey')}
@@ -97,12 +106,45 @@ export function PortalDocuments() {
     )
   }
 
+  const signatureSection = () => {
+    if (signatures.error)
+      return (
+        <div className={cn(cardClass, 'p-4 sm:p-6')}>
+          <RetryAlert
+            what={translate('yourSignatures')}
+            onRetry={() => void signatures.refetch()}
+          />
+        </div>
+      )
+    return signed.length > 0 && <SignatureList signatures={signed} />
+  }
+  // Two titled sections once there is something to sign; the files' own empty state only when there is neither.
+  const titled = signed.length > 0 || Boolean(signatures.error)
+  const files = body()
+
   return (
     <div className="grid gap-6 sm:gap-8">
       <PageHeader title={translate('documents')}>
-        {translate('filesSharedWithYouDownloadAnyOfThemAt')}
+        {translate('filesSharedWithYouAndDocumentsSentForSignature')}
       </PageHeader>
-      {body()}
+      {signatures.isPending ? (
+        <Loader className={cn(cardClass, 'min-h-28')} />
+      ) : titled ? (
+        <>
+          <section aria-labelledby="signatures" className="grid gap-3">
+            <SectionTitle id="signatures">{translate('signatures')}</SectionTitle>
+            {signatureSection()}
+          </section>
+          {files && (
+            <section aria-labelledby="shared-files" className="grid gap-3">
+              <SectionTitle id="shared-files">{translate('sharedFiles')}</SectionTitle>
+              {files}
+            </section>
+          )}
+        </>
+      ) : (
+        files
+      )}
     </div>
   )
 }

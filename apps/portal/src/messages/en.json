@@ -54,7 +54,6 @@
   "everyInvoiceIssuedToYouEachWithItsPDF": "Every invoice issued to you, each with its PDF.",
   "expired": "Expired",
   "file": "File",
-  "filesSharedWithYouDownloadAnyOfThemAt": "Files shared with you. Download any of them at any time.",
   "fullName": "Full name",
   "goodAfternoon": "Good afternoon",
   "goodEvening": "Good evening",
@@ -339,5 +338,18 @@
   "engagementThisPeriod": "{name} · this period",
   "engagementPeriod": "{name} · {period}",
   "earlierPeriod": "Earlier period",
-  "laterPeriod": "Later period"
+  "laterPeriod": "Later period",
+  "filesSharedWithYouAndDocumentsSentForSignature": "Files shared with you and documents sent to you for signature. Download any of them at any time.",
+  "signatures": "Signatures",
+  "sharedFiles": "Shared files",
+  "yourSignatures": "Your signatures",
+  "signatureSigned": "Signed",
+  "signatureToSign": "To sign",
+  "signatureAwaitingOthers": "Awaiting others",
+  "signatureDeclined": "Declined",
+  "signatureExpired": "Expired",
+  "signedOn": "Signed {date}",
+  "sentOn": "Sent {date}",
+  "signWithTheLinkInYourEmail": "Sign with the link in the email you received",
+  "downloadSignedPdf": "Download the signed PDF of {name}"
 }
