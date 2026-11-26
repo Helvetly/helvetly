@@ -39,9 +39,9 @@ import type { Client } from '@/lib/clients'
 import {
   emailLanguage,
   useEmailPreview,
-  useTemplateDraft,
+  useEmailTextDraft,
   type EmailLanguage,
-} from '@/lib/email-templates'
+} from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 import { checkSigners, signerColor, type DraftSigner, type SigningOrder } from '@/lib/signatures'
@@ -151,7 +151,7 @@ export function FillTemplateDrawer({
   )
 
   const session = useSession().data
-  const email = useTemplateDraft(
+  const email = useEmailTextDraft(
     delivery === 'signature' ? 'signature_request' : 'document',
     language,
     {

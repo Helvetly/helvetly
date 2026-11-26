@@ -373,16 +373,14 @@ Pages: /settings/approvals
 4. A draft then shows **Submit for approval** instead of **Issue**. Approvers are notified and find it under **Needs my approval** on the Invoices page, where they approve it or reject it with a reason. Once approved, the author (or anyone who can edit invoices) issues it.
    The author never approves their own document, one person counts once, and any change to the draft ends the request so it is submitted again. Every step is kept in the audit log.
 
-## Change the email text for invoices and quotes (email templates)
+## Change the email text for invoices and quotes
 
-Keywords: email template, email text, send by email, subject, message, wording, variables, invoice email, quote email, credit note email
-Pages: /settings/emails
+Keywords: email template, email text, send by email, subject, message, wording, invoice email, quote email, credit note email
 
-1. Go to **Settings → Emails**.
-2. Pick the document type (**Invoice**, **Credit note**, **Proforma** or **Quote**) and the language (**DE**, **FR**, **IT** or **EN**). The client's document language decides which one is used.
-3. Edit the **Subject** and **Message**. Click a variable such as **{client}** or **{number}** to insert it where your cursor is; it is replaced with the real value when you send.
-4. Click **Save**. A dot on the language marks a customised template; **Reset to default** brings back the standard wording.
-   The **Send by email** dialog opens with this text filled in, and you can still change it before sending. Only people who can edit invoice settings can change the templates.
+Helvetly writes the email that goes with an invoice, credit note, proforma, quote or document in the client's language (German, French, Italian or English); the wording cannot be changed in Settings.
+
+1. Open the document and click **Send by email**.
+2. The dialog opens with the subject and message filled in. Change them as you like before you click **Send**; the change applies to that email only.
 
 ## Close a month (month-end close, periods)
 

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { request, type ApiError } from '@/lib/api'
 import { LANGUAGES, streetLine, type Client, type Language } from '@/lib/clients'
 import { refreshDocuments } from '@/lib/documents'
-import type { EmailLanguage } from '@/lib/email-templates'
+import type { EmailLanguage } from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 import {

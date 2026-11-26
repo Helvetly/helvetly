@@ -190,5 +190,5 @@ export const storyDefaults = [
     '/api/v1/imports/:id/files/:file/content',
     () => new HttpResponse(null, { status: 204 }),
   ),
-  http.get('/api/v1/email-templates', () => nothing([])),
+  http.get('/api/v1/email-texts', () => nothing([])),
 ]

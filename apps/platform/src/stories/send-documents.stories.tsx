@@ -12,7 +12,7 @@ import { TemplatesView } from '@/components/templates/templates-view'
 import type { AIWriteInput } from '@/lib/ai-write'
 import type { SignatureRequest, SigningOrder } from '@/lib/signatures'
 import type { GenerateRequest, Template, TemplateInput } from '@/lib/templates'
-import { emailTemplateHandlers, resetEmailTemplatesMock } from '@/mocks/email-templates'
+import { emailTextHandlers } from '@/mocks/email-texts'
 import { sampleClient } from '@/test/invoice-fixtures'
 
 import { emptyPage, sessionHandler } from './screen-fixtures'
@@ -222,14 +222,13 @@ const generateHandler = http.post<{ id: string }, GenerateRequest>(
 export const FillFromClientThenEmail: Story = {
   beforeEach: () => {
     generated = null
-    resetEmailTemplatesMock()
   },
   parameters: {
     msw: {
       handlers: [
         sessionHandler(),
         generateHandler,
-        ...emailTemplateHandlers,
+        ...emailTextHandlers,
         http.get('/api/v1/templates', () => HttpResponse.json({ data: [template()] })),
         http.get('/api/v1/clients', () => HttpResponse.json(emptyPage)),
       ],

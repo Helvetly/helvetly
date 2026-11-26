@@ -673,6 +673,20 @@ func TestGenerateEmail(t *testing.T) {
 		t.Fatalf("preview: %+v", preview.Data)
 	}
 
+	// The send step's starting text is the built-in one, whatever a workspace once stored as its own.
+	if _, err := e.raw.Exec(context.Background(), `INSERT INTO email_templates (workspace_id, kind, language, subject, body, updated_at)
+		VALUES ($1, 'document', 'de', 'Eigener Betreff', 'Eigener Text', now())`, b.workspace); err != nil {
+		t.Fatal(err)
+	}
+	var texts struct {
+		Data []struct{ Kind, Language, Subject, Body string }
+	}
+	e.do(b, "GET", "/api/v1/email-texts", nil, http.StatusOK, &texts)
+	i := slices.IndexFunc(texts.Data, func(x struct{ Kind, Language, Subject, Body string }) bool { return x.Kind == "document" && x.Language == "de" })
+	if len(texts.Data) != 32 || i < 0 || texts.Data[i].Subject != "{document} von {company}" {
+		t.Fatalf("email texts: %+v", texts.Data)
+	}
+
 	// A failing mail server: the document stays.
 	e.mail.fail = true
 	if code := e.fail(b, "POST", "/api/v1/templates/"+tpl.ID+"/documents", generate(client, tpl, obj{"type": "email", "to": "ana@example.com"}),

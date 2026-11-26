@@ -18,7 +18,7 @@ import {
   sampleAgreement,
   scheduledInvoice,
 } from './data'
-import { emailTemplateHandlers } from './email-templates'
+import { emailTextHandlers } from './email-texts'
 import { employeesHandlers } from './employees'
 import { heidiHandlers } from './heidi'
 import { ledgerHandlers } from './ledger'
@@ -465,7 +465,7 @@ export const handlers = [
   ...(process.env.VITEST ? notificationHandlers : []),
   ...(process.env.VITEST ? quoteHandlers : []),
   ...(process.env.VITEST ? employeesHandlers : []),
-  ...(process.env.VITEST ? emailTemplateHandlers : []),
+  ...(process.env.VITEST ? emailTextHandlers : []),
   ...(process.env.VITEST ? portalAddressHandlers : []),
   ...(process.env.VITEST ? replyToHandlers : []),
   ...(process.env.VITEST ? portalDomainHandlers : []),

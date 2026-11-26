@@ -115,7 +115,6 @@ var prefixes = []struct{ path, resource string }{
 	{"/api/v1/uid-register", "clients"}, // the client form's company lookup
 	{"/api/v1/invoices", "invoices"},
 	{"/api/v1/invoice-settings", "invoice-settings"},
-	{"/api/v1/email-templates", "invoice-settings"},
 	{"/api/v1/instalment-plans", "invoices"},
 	{"/api/v1/quotes", "invoices"},
 	{"/api/v1/periods", "periods"},

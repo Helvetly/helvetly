@@ -3,7 +3,7 @@ import { describedBy, FormField } from '@helvetly/ui/components/form-field'
 
 import { AIWrite } from '@/components/ai/ai-write'
 import { TextareaBox } from '@/components/textarea-box'
-import type { EmailLanguage } from '@/lib/email-templates'
+import type { EmailLanguage } from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 
 /** The longest message of an email sent with a document; the API refuses more (emailtemplate.MaxMessage). */

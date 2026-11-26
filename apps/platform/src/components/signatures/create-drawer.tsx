@@ -22,9 +22,9 @@ import { contentUrl, refreshDocuments, useDoc, type DocFile } from '@/lib/docume
 import {
   emailLanguage,
   useEmailPreview,
-  useTemplateDraft,
+  useEmailTextDraft,
   type EmailLanguage,
-} from '@/lib/email-templates'
+} from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 import {
@@ -183,7 +183,7 @@ export function CreateSignatureDrawer({
   const fromTemplate = source === 'template' && template !== null
   // A template with signing roles: one signer per role, sent with the template's own fields.
   const roles = fromTemplate && template.signers.length > 0
-  const draft = useTemplateDraft('signature_request', language, {
+  const draft = useEmailTextDraft('signature_request', language, {
     document: title.trim(),
     sender: session?.user.name || session?.user.email || '',
     company: session?.workspace.name ?? '',
