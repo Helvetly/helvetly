@@ -1,6 +1,52 @@
 import { expect, object, test, text, uniqueName } from './fixtures'
 import { list, objects, portalClient } from './scheduling-fixtures'
 
+test('booking and weekly hours save through the scheduling settings page', async ({
+  api,
+  page,
+}) => {
+  await page.goto('/settings/scheduling')
+
+  const booking = page.getByRole('region', { name: 'Booking', exact: true })
+  await booking.getByRole('radio', { name: 'Clients too' }).check()
+  await booking.getByRole('radio', { name: 'Review each one' }).check()
+  await booking.getByRole('button', { name: 'Save', exact: true }).click()
+
+  await expect
+    .poll(() => api.read('/scheduling/settings'))
+    .toMatchObject({
+      booking_mode: 'clients',
+      confirmation: 'manual',
+      notice_minutes: 1440,
+    })
+
+  const hours = page.getByRole('region', { name: 'Weekly hours', exact: true })
+  await hours.getByLabel('Start time', { exact: true }).fill('08:30')
+  await hours.getByLabel('End time', { exact: true }).fill('16:30')
+  await hours.getByRole('button', { name: 'Add to selected days' }).click()
+  await hours.getByRole('button', { name: 'Save', exact: true }).click()
+
+  const weekly = [1, 2, 3, 4, 5].map((day) => ({ day, start: '08:30', end: '16:30' }))
+  await expect.poll(() => api.read('/scheduling/hosts/me')).toMatchObject({ weekly })
+
+  await page.reload()
+  await expect(booking.getByRole('radio', { name: 'Review each one' })).toBeChecked()
+  await expect(hours.getByLabel('From, Friday')).toHaveValue('08:30')
+  await expect(hours.getByLabel('From, Saturday')).toHaveCount(0)
+
+  await hours.getByRole('button', { name: 'Every day', exact: true }).click()
+  await hours.getByLabel('Start time', { exact: true }).fill('17:00')
+  await hours.getByLabel('End time', { exact: true }).fill('18:00')
+  await hours.getByRole('button', { name: 'Add to selected days' }).click()
+  await hours.getByRole('button', { name: 'Save', exact: true }).click()
+
+  const evening = [1, 2, 3, 4, 5, 6, 7].map((day) => ({ day, start: '17:00', end: '18:00' }))
+  const allHours = [...weekly, ...evening].toSorted(
+    (a, b) => a.day - b.day || a.start.localeCompare(b.start),
+  )
+  await expect.poll(async () => (await api.read('/scheduling/hosts/me')).weekly).toEqual(allHours)
+})
+
 test('clients book in the portal: two at once for one slot, one wins; manual confirmation holds the slot until staff approve', async ({
   api,
   browser,
