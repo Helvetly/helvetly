@@ -52,9 +52,11 @@ export const SessionsOnly: Story = {
     const nav = within(await canvas.findByRole('navigation', { name: 'Portal' }))
     await expect(nav.getByRole('link', { name: 'Sessions' })).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Documents' })).toBeVisible()
-    for (const name of ['Overview', 'Invoices', 'Engagements']) {
-      await expect(nav.queryByRole('link', { name })).toBeNull()
-    }
+    await Promise.all(
+      ['Overview', 'Invoices', 'Engagements'].map((name) =>
+        expect(nav.queryByRole('link', { name })).toBeNull(),
+      ),
+    )
     const account = canvas.getByRole('button', { name: /^Account menu, Lorenzo Percic/ })
     await userEvent.click(account)
     const menu = within(await within(document.body).findByRole('menu'))

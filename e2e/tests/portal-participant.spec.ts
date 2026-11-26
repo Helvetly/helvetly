@@ -67,9 +67,11 @@ test('a participant signs in to the company portal and sees only their own sessi
     await expect(portal.getByText(companys)).toHaveCount(0)
     const nav = portal.getByRole('navigation', { name: 'Portal' })
     await expect(nav.getByRole('link', { name: 'Documents' })).toBeVisible()
-    for (const name of ['Invoices', 'Engagements', 'Overview']) {
-      await expect(nav.getByRole('link', { name })).toHaveCount(0)
-    }
+    await Promise.all(
+      ['Invoices', 'Engagements', 'Overview'].map((name) =>
+        expect(nav.getByRole('link', { name })).toHaveCount(0),
+      ),
+    )
     await expect(
       portal.getByRole('button', { name: /^Account menu, Lorenzo Percic/ }),
     ).toBeVisible()
