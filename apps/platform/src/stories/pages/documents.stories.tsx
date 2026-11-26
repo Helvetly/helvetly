@@ -670,6 +670,8 @@ export const DeepFolderWithChips: Story = {
       expect(crumbs.getByRole('button', { name: 'Unternehmensdokumente' })).toBeVisible(),
     )
     // Too long for the row: the folders in between fold into "…", the first and current stay whole.
+    // Measured after the first paint: the fold follows a moment later.
+    const more = await crumbs.findByRole('button', { name: 'Folders in between' })
     await expect(crumbs.queryByRole('button', { name: 'Invoices' })).toBeNull()
     // Whole: each one's text fits its box (a pixel for rounding).
     await Promise.all(
@@ -678,7 +680,7 @@ export const DeepFolderWithChips: Story = {
         return expect(crumb.scrollWidth).toBeLessThanOrEqual(crumb.clientWidth + 1)
       }),
     )
-    await userEvent.click(crumbs.getByRole('button', { name: 'Folders in between' }))
+    await userEvent.click(more)
     const menu = within(await body.findByRole('menu'))
     await expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Invoices',
