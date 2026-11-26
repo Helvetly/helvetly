@@ -17,6 +17,90 @@ export const AUDIT_CATEGORIES: { value: AuditCategory; label: string }[] = [
   { value: 'settings', label: translate('auditTypeSettings') },
 ]
 
+/**
+ * Every kind the API writes (`store.AuditKinds`, held to this list by a Go test); each has its own sentence, which a
+ * test checks, so "Entry recorded" is only ever seen for a kind newer than this app.
+ */
+export const AUDIT_KINDS = [
+  'invoice.issued',
+  'invoice.import_overwritten',
+  'invoice.xml_archived',
+  'invoice.voided',
+  'invoice.replaced',
+  'payment.added',
+  'payment.deleted',
+  'refund.added',
+  'refund.deleted',
+  'credit.issued',
+  'plan.created',
+  'plan.cancelled',
+  'expense.booked',
+  'expense.voided',
+  'expense.payment_changed',
+  'period.closed',
+  'period.reopened',
+  'approval.submitted',
+  'approval.approved',
+  'approval.rejected',
+  'approval.withdrawn',
+  'approval.reset',
+  'approvals.group_saved',
+  'approvals.group_deleted',
+  'approvals.policy_saved',
+  'workspace.portal_turned_off',
+  'workspace.portal_turned_on',
+  'workspace.portal_address_changed',
+  'workspace.portal_domain_added',
+  'workspace.portal_domain_removed',
+  'workspace.reply_to_changed',
+  'portal.preview_started',
+  'portal.preview_ended',
+  'documents.exported',
+  'imports.expired',
+  'email_template.ai_written',
+  'quote.contract_drafted',
+  'quote.contract_written',
+  'contract.signature_applied',
+  'employee.created',
+  'employee.archived',
+  'employee.unarchived',
+  'employee.deleted',
+  'employee.erased',
+  'employee.legal_hold_set',
+  'employee.legal_hold_lifted',
+  'employee.restricted',
+  'employee.unrestricted',
+  'employee.protected_viewed',
+  'employee.document_added',
+  'employee.document_deleted',
+  'employee.document_hold_set',
+  'employee.document_hold_lifted',
+  'employee.pay_terms_added',
+  'employee.pay_terms_removed',
+  'payroll.booked',
+  'payroll.exported',
+  'payroll.corrected',
+  'payroll.approved',
+  'payroll.paid',
+  'payroll.unpaid',
+  'payroll.four_eyes_on',
+  'payroll.four_eyes_off',
+  'scheduling.cancelled',
+  'scheduling.attendance_changed',
+  'scheduling.waived',
+  'scheduling.moved_from_calendar',
+  'scheduling.request_decided',
+  'scheduling.booking_link_created',
+  'scheduling.booking_link_revoked',
+  'scheduling.booking_link_used',
+  'scheduling.settings_changed',
+  'scheduling.holidays_changed',
+  'scheduling.event_type_changed',
+  'scheduling.calendar_connected',
+  'scheduling.calendar_disconnected',
+  'scheduling.feed_rotated',
+] as const
+
 /** A sentence's parts: plain text, and the record's number as a link where the record still exists. */
 export type SentencePart = string | { label: string; href: string | null }
 export type Sentence = { parts: SentencePart[]; amount: string | null }
@@ -86,6 +170,33 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
         }),
         amount: money(event, 'payable_total') || null,
       }
+    case 'invoice.import_overwritten':
+      return {
+        line: translate('auditSentenceImportOverwritten', { record: RECORD }),
+        amount: money(event, 'payable_total') || null,
+      }
+    case 'imports.expired':
+      return { line: translate('auditSentenceImportExpired'), amount: null }
+    case 'email_template.ai_written':
+      return { line: translate('auditSentenceEmailTemplateAI'), amount: null }
+    case 'quote.contract_drafted':
+      return {
+        line: translate('auditSentenceContractDrafted', {
+          record: RECORD,
+          template: text(event.payload.template),
+        }),
+        amount: null,
+      }
+    case 'quote.contract_written':
+      return {
+        line: translate('auditSentenceContractWritten', {
+          record: RECORD,
+          mode: text(event.payload.mode),
+        }),
+        amount: null,
+      }
+    case 'contract.signature_applied':
+      return { line: translate('auditSentenceSignatureApplied', { record: RECORD }), amount: null }
     case 'invoice.xml_archived':
       return { line: translate('auditSentenceXmlArchived', { record: RECORD }), amount: null }
     case 'invoice.voided':
@@ -200,7 +311,46 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
     return { line: translate('auditSentenceEmployee', { action }), amount: null }
   if (area === 'payroll')
     return { line: translate('auditSentencePayroll', { action }), amount: null }
+  if (area === 'scheduling')
+    return {
+      line: translate('auditSentenceScheduling', {
+        action,
+        as: text(event.payload.as),
+        by: text(event.payload.by),
+        to: text(event.payload.to),
+        kind: text(event.payload.kind),
+        decision: text(event.payload.decision),
+        change: text(event.payload.change),
+        provider: text(event.payload.provider),
+      }),
+      amount: null,
+    }
   return { line: translate('auditSentenceOther'), amount: null }
+}
+
+/** Where an entry without a person came from: an import, a client, a calendar, a job, or a removed account. */
+export type AuditSource = 'import' | 'client' | 'calendar' | 'system' | 'former'
+
+export function eventSource(event: FinancialEvent): AuditSource | null {
+  if (event.actor) return null
+  if (event.origin === 'imported' || event.kind.startsWith('imports.')) return 'import'
+  if (event.kind === 'scheduling.booking_link_used' || event.payload.by === 'client')
+    return 'client'
+  if (event.kind === 'scheduling.moved_from_calendar') return 'calendar'
+  // Jobs write these without a person; any other entry without one was a member whose account is gone.
+  return /^(invoice|credit|payment|refund|plan|workspace\.portal_domain|scheduling)\./.test(
+    event.kind,
+  )
+    ? 'system'
+    : 'former'
+}
+
+export const SOURCE_LABELS: Record<AuditSource, string> = {
+  import: translate('auditSourceImport'),
+  client: translate('auditSourceClient'),
+  calendar: translate('auditSourceCalendar'),
+  system: translate('system'),
+  former: translate('auditSourceFormerMember'),
 }
 
 /** One event as a sentence, e.g. "Invoice 2026-031 issued to Acme AG" with CHF 1’200.00 beside it. */

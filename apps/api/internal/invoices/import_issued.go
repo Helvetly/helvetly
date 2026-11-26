@@ -293,7 +293,7 @@ func issueImported(ctx context.Context, q store.Q, sess store.Session, inv store
 			return err
 		}
 		if err := logEventAt(ctx, q, sess, now, "payment.added", inv.ID, map[string]any{"number": in.number, "payment_id": p.ID,
-			"amount": p.Amount, "paid_on": p.PaidOn, "method": p.Method}); err != nil {
+			"amount": p.Amount, "paid_on": p.PaidOn, "method": p.Method, "origin": "imported"}); err != nil {
 			return err
 		}
 	}

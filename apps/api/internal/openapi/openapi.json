@@ -3615,6 +3615,16 @@
             }
           },
           {
+            "name": "origin",
+            "in": "query",
+            "required": false,
+            "description": "Only events an import wrote (the imported invoices and the payments recorded with them).",
+            "schema": {
+              "type": "string",
+              "enum": ["imported"]
+            }
+          },
+          {
             "name": "since",
             "in": "query",
             "required": false,
@@ -12181,6 +12191,11 @@
               }
             ]
           },
+          "origin": {
+            "type": ["string", "null"],
+            "enum": ["imported", null],
+            "description": "imported when an import wrote the event, else null."
+          },
           "at": {
             "type": "string",
             "format": "date-time"
@@ -12203,6 +12218,7 @@
           "subject_id",
           "subject",
           "actor",
+          "origin",
           "at",
           "payload",
           "prev_hash",

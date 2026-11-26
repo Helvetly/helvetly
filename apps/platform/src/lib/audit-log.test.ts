@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  AUDIT_KINDS,
+  eventSource,
+  SOURCE_LABELS,
   dayLabel,
   eventSentence,
   foldEvents,
@@ -20,6 +23,7 @@ const event = (over: Partial<FinancialEvent>): FinancialEvent => ({
   subject_id: 'inv_1',
   subject: { number: '2026/INV/001', party: 'Acme AG', currency: 'CHF' },
   actor: peter,
+  origin: null,
   at: '2026-11-20T08:47:00Z',
   payload: {},
   prev_hash: '',
@@ -157,6 +161,51 @@ describe('eventSentence', () => {
       'Employee archived',
     ],
     [
+      'a payment an import recorded',
+      {
+        kind: 'payment.added',
+        category: 'payments',
+        origin: 'imported',
+        payload: { amount: '268.60', origin: 'imported' },
+      },
+      'Payment of CHF 268.60 recorded on 2026/INV/001',
+    ],
+    [
+      'an import replaced',
+      { kind: 'invoice.import_overwritten', payload: { origin: 'imported' } },
+      'Imported invoice 2026/INV/001 replaced by a newer import',
+    ],
+    [
+      'a contract written with AI',
+      {
+        kind: 'quote.contract_written',
+        subject_type: 'quote',
+        subject: { number: '2026-Q-004', party: 'Acme AG', currency: 'CHF' },
+        payload: { mode: 'ai' },
+      },
+      'Contract for quote 2026-Q-004 written with AI',
+    ],
+    [
+      'a session the client cancelled late',
+      {
+        kind: 'scheduling.cancelled',
+        subject_type: 'scheduling',
+        subject: null,
+        payload: { as: 'late', by: 'client' },
+      },
+      'Session cancelled late by the client',
+    ],
+    [
+      'a calendar connected',
+      {
+        kind: 'scheduling.calendar_connected',
+        subject_type: 'calendar',
+        subject: null,
+        payload: { provider: 'google' },
+      },
+      'Google calendar connected',
+    ],
+    [
       'an unknown kind',
       { kind: 'something.new', category: 'settings', subject: null },
       'Entry recorded',
@@ -248,5 +297,42 @@ describe('payloadFacts', () => {
       { key: 'base_currency', value: 'EUR' },
       { key: 'reason', value: 'Wrong client' },
     ])
+  })
+})
+
+// The area-wide wordings only cover kinds this app does not know yet.
+const GENERIC = [
+  'Entry recorded',
+  'Employee record changed',
+  'Payroll changed',
+  'Schedule changed',
+  'Workspace settings changed',
+]
+
+describe('every kind the API writes', () => {
+  it.each(AUDIT_KINDS)('has its own sentence: %s', (kind) => {
+    const line = text(event({ kind, subject: null, payload: {} }))
+    expect(GENERIC).not.toContain(line)
+    expect(line).not.toMatch(/approval updated/)
+  })
+})
+
+describe('eventSource', () => {
+  it.each<[string, Partial<FinancialEvent>, string | null]>([
+    ['a person', {}, null],
+    ['an import', { actor: null, origin: 'imported' }, 'Import'],
+    ['the import cleanup', { actor: null, kind: 'imports.expired' }, 'Import'],
+    [
+      'a client cancelling',
+      { actor: null, kind: 'scheduling.cancelled', payload: { by: 'client' } },
+      'Client (portal)',
+    ],
+    ['a booking link', { actor: null, kind: 'scheduling.booking_link_used' }, 'Client (portal)'],
+    ['a calendar', { actor: null, kind: 'scheduling.moved_from_calendar' }, 'Calendar sync'],
+    ['the hourly job', { actor: null, kind: 'plan.cancelled' }, 'System'],
+    ['a removed account', { actor: null, kind: 'approval.approved' }, 'Former member'],
+  ])('names %s', (_, over, want) => {
+    const source = eventSource(event(over))
+    expect(source ? SOURCE_LABELS[source] : null).toBe(want)
   })
 })

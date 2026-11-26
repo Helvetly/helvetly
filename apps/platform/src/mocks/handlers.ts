@@ -209,9 +209,11 @@ export function filterAudit(events: FinancialEvent[], query: URLSearchParams) {
   const since = query.get('since')
   const before = query.get('before')
   const text = query.get('q')?.toLowerCase()
+  const origin = query.get('origin')
   return events.filter(
     (event) =>
       (!category || event.category === category) &&
+      (!origin || event.origin === origin) &&
       (!actor || event.actor?.id === actor) &&
       (!since || event.at >= since) &&
       (!before || event.at < before) &&
