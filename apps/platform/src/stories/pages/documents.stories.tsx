@@ -1361,6 +1361,31 @@ export const FileMenu: Story = {
   },
 }
 
+export const ProtectedDocumentTags: Story = {
+  parameters: pageParameters('/documents', { file: 'doc_1' }, [
+    http.get('/api/v1/documents/doc_1', () =>
+      HttpResponse.json({
+        data: {
+          ...sampleFiles[0],
+          tags: ['signed', 'year-2026', 'client-acme', 'urgent'],
+          auto_tags: ['signed', 'year-2026', 'client-acme'],
+        },
+      }),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: 'Edit' }))
+    await Promise.all(
+      ['signed', 'year-2026', 'client-acme'].map(async (tag) => {
+        await expect(body.getByText(tag, { selector: '[data-auto-tag]' })).toBeVisible()
+        await expect(body.queryByRole('button', { name: `Remove ${tag}` })).toBeNull()
+      }),
+    )
+    await expect(body.getByRole('button', { name: 'Remove urgent' })).toBeVisible()
+  },
+}
+
 /**
  * A file's "Linked to" opens the signature request's drawer on top of the preview, sliding in, without
  * leaving the page; closing it uncovers the preview again.

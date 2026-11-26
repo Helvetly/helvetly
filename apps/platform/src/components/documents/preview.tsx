@@ -533,6 +533,23 @@ function Details({
   )
 }
 
+const protectedDocumentTag = /^(signed|year-[0-9]{4}|client-.+)$/
+
+function AutomaticTag({ tag, locked }: { tag: string; locked: boolean }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge size="sm" variant="outline" tabIndex={0} data-auto-tag="">
+          {tag}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64 text-pretty">
+        {translate(locked ? 'protectedDocumentTagHint' : 'autoTagHint')}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 /** The file's tags, edited in place, and what AI filing did with it (with Undo). */
 function TagsPanel({
   file,
@@ -550,6 +567,7 @@ function TagsPanel({
       refreshDocuments(queryClient)
       toast.success(translate('aiFilingUndone', { count: 1 }))
     }, toastError)
+  const locked = file.auto_tags?.filter((tag) => protectedDocumentTag.test(tag)) ?? []
   const filed = file.ai_filing?.status === 'filed' ? file.ai_filing : null
   return (
     <Panel
@@ -566,28 +584,28 @@ function TagsPanel({
       }
     >
       {editing ? (
-        <InlineTagsEditor
-          initial={file.tags}
-          known={known}
-          save={(tags) =>
-            docsApi.update(file.id, { tags }).then(() => refreshDocuments(queryClient))
-          }
-          onDone={() => setEditing(false)}
-        />
+        <div className="grid gap-1">
+          {locked.length > 0 && (
+            <span className="flex flex-wrap gap-1">
+              {locked.map((tag) => (
+                <AutomaticTag key={tag} tag={tag} locked />
+              ))}
+            </span>
+          )}
+          <InlineTagsEditor
+            initial={file.tags.filter((tag) => !locked.includes(tag))}
+            known={known.filter(({ name }) => !protectedDocumentTag.test(name))}
+            save={(tags) =>
+              docsApi.update(file.id, { tags }).then(() => refreshDocuments(queryClient))
+            }
+            onDone={() => setEditing(false)}
+          />
+        </div>
       ) : file.tags.length > 0 ? (
         <span className="flex flex-wrap gap-1">
           {file.tags.map((tag) =>
             file.auto_tags?.includes(tag) ? (
-              <Tooltip key={tag}>
-                <TooltipTrigger asChild>
-                  <Badge size="sm" variant="outline" tabIndex={0} data-auto-tag="">
-                    {tag}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-64 text-pretty">
-                  {translate('autoTagHint')}
-                </TooltipContent>
-              </Tooltip>
+              <AutomaticTag key={tag} tag={tag} locked={locked.includes(tag)} />
             ) : (
               <Badge size="sm" key={tag}>
                 {tag}

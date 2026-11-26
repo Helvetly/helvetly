@@ -3,6 +3,7 @@ package documents
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -178,31 +179,47 @@ func TestAutoTagsOfEachRecord(t *testing.T) {
 	}
 }
 
-// Removing an automatic tag keeps it away through later tagging (a move, a new link, the backfill); the person's own
-// tags stay theirs, and automatic tags take no room of the 10.
-func TestRemovedAutoTagStaysRemoved(t *testing.T) {
+func TestProtectedAutoTagsStayAfterEditing(t *testing.T) {
 	a := newAutoEnv(t)
 	d := a.file(a.e.recordFolder(a.b, a.acme, "invoices", 2026))
 	a.e.invoice(a.b, a.acme, "invoice", "2026/IN/001", 2026, d.ID)
-	if got := a.retag(d.ID).Tags; !slices.Equal(got, []string{"invoice", "year-2026", "client-acme-ag", "2026-in-001"}) {
-		t.Fatalf("tags = %v", got)
+	a.retag(d.ID)
+	mine := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}
+	locked := []string{"year-2026", "client-acme-ag"}
+	path := "/api/v1/documents/" + d.ID
+	a.e.do(a.b, "PATCH", path, map[string]any{"tags": mine}, 200, nil)
+	got := a.e.get(a.b, d.ID)
+	if !slices.Equal(got.Tags, append(slices.Clone(mine), locked...)) || !slices.Equal(got.AutoTags, locked) {
+		t.Fatalf("manual edit changed protected tags: tags %v, automatic %v", got.Tags, got.AutoTags)
 	}
-	mine := []string{"invoice", "client-acme-ag", "2026-in-001", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}
-	a.e.do(a.b, "PATCH", "/api/v1/documents/"+d.ID, map[string]any{"tags": mine,
-		"folder_id": a.e.recordFolder(a.b, a.acme, "invoices", 2025)}, 200, nil)
-	got := a.retag(d.ID)
-	if want := append(slices.Clone(mine[3:]), mine[:3]...); !slices.Equal(got.Tags, want) ||
-		!slices.Equal(got.AutoTags, []string{"invoice", "client-acme-ag", "2026-in-001"}) {
-		t.Fatalf("after removal: tags = %v, auto = %v", got.Tags, got.AutoTags)
-	}
-	a.exec(`UPDATE documents SET auto_tagged_at = NULL WHERE id = $1`, d.ID)
+	a.e.fails(a.b, "PATCH", path, map[string]any{"tags": append(slices.Clone(mine), "k")}, 422, "validation_failed")
+	a.e.fails(a.b, "PATCH", path, map[string]any{"tags": []string{"signed", "year-2027", "client-other"}}, 422, "validation_failed")
+
+	// Before protection, a suppressed automatic tag was recorded here.
+	a.exec(`UPDATE documents SET tags = '{}', auto_tags = '{}', removed_auto_tags = ARRAY['year-2026', 'client-acme-ag', 'invoice'] WHERE id = $1`, d.ID)
 	if err := a.e.svc.BackfillAutoTags(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if got := a.e.get(a.b, d.ID); slices.Contains(got.Tags, "year-2026") || len(got.Tags) != len(mine) {
-		t.Fatalf("after backfill: %v", got.Tags)
+	if got := a.e.get(a.b, d.ID); !slices.Equal(got.AutoTags, append(locked, "2026-in-001")) {
+		t.Fatalf("backfill did not restore protected automatic tags: %v", got.AutoTags)
 	}
-	a.e.fails(a.b, "PATCH", "/api/v1/documents/"+d.ID, map[string]any{"tags": append(mine, "k")}, 422, "validation_failed")
+
+	signed := a.file(a.e.recordFolder(a.b, a.acme, "documents", 2026))
+	now := time.Now()
+	a.exec(`INSERT INTO signature_requests (id, workspace_id, document_id, signed_document_id, title, original_key,
+		original_sha256, page_count, status, signing_order, expires_at, created_at, updated_at)
+		VALUES ('sig_locked', $1, $2, $3, 'tag test', $4, repeat('a', 64), 1, 'pending', 'parallel', $5, $5, $5)`,
+		a.b.workspace, d.ID, signed.ID, a.key(d.ID), now)
+	if err := a.e.st.CompleteSignatureRequest(context.Background(), "sig_locked", signed.ID, strings.Repeat("b", 64), now); err != nil {
+		t.Fatal(err)
+	}
+	newFolder := a.e.recordFolder(a.b, a.beta, "documents", 2027)
+	a.e.do(a.b, "PATCH", "/api/v1/documents/"+signed.ID, map[string]any{
+		"folder_id": newFolder, "tags": []string{"urgent"},
+	}, 200, nil)
+	if got := a.e.get(a.b, signed.ID); !slices.Equal(got.Tags, []string{"urgent", "signed", "year-2027", "client-beta-gmbh"}) {
+		t.Fatalf("tags do not follow signature and updated folder: %v", got.Tags)
+	}
 }
 
 // The backfill tags each file from before once: the people's tags stay (a typed tag the app would set stays theirs),

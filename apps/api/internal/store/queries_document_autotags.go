@@ -75,8 +75,9 @@ func (q Q) AutoTag(ctx context.Context, workspaceID, documentID string, now time
 		return err
 	}
 	next, nextAuto := tags.Merge(have, auto, removed, tags.Auto(r))
-	_, err = q.db.Exec(ctx, `UPDATE documents SET tags = $3, auto_tags = $4, auto_tagged_at = $5
-		WHERE workspace_id = $1 AND id = $2`, workspaceID, documentID, next, nextAuto, now)
+	_, err = q.db.Exec(ctx, `UPDATE documents SET tags = $3, auto_tags = $4, auto_tagged_at = $5,
+		removed_auto_tags = ARRAY(SELECT t FROM unnest(removed_auto_tags) a(t) WHERE t !~ $6)
+		WHERE workspace_id = $1 AND id = $2`, workspaceID, documentID, next, nextAuto, now, tags.ProtectedPattern)
 	return err
 }
 
@@ -99,13 +100,14 @@ func (q Q) autoTagObject(ctx context.Context, workspaceID, objectKey string, now
 	return nil
 }
 
-// UntaggedDocument: a live file no automatic tagging has seen yet (backfill).
+// UntaggedDocument is a live file that needs automatic tag backfill.
 type UntaggedDocument struct{ WorkspaceID, ID string }
 
-// UntaggedDocuments: up to limit live general files never tagged automatically (every workspace).
+// UntaggedDocuments finds files not yet tagged and files with protected auto tags dismissed by older versions.
 func (q Q) UntaggedDocuments(ctx context.Context, limit int) ([]UntaggedDocument, error) {
-	rows, err := q.db.Query(ctx, `SELECT workspace_id, id FROM documents WHERE auto_tagged_at IS NULL AND deleted_at IS NULL
-		AND NOT hr_private ORDER BY id LIMIT $1`, limit)
+	rows, err := q.db.Query(ctx, `SELECT workspace_id, id FROM documents WHERE deleted_at IS NULL AND NOT hr_private
+		AND (auto_tagged_at IS NULL OR EXISTS (SELECT 1 FROM unnest(removed_auto_tags) a(t) WHERE t ~ $2))
+		ORDER BY id LIMIT $1`, limit, tags.ProtectedPattern)
 	if err != nil {
 		return nil, err
 	}

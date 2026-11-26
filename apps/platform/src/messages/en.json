@@ -2013,6 +2013,7 @@
   "noSupplier": "No supplier",
   "noSupplierYet": "No supplier yet",
   "noTagsYet": "No tags yet.",
+  "protectedDocumentTagHint": "Set automatically from this document’s record.",
   "autoTagHint": "Added automatically. Remove it and it stays removed.",
   "notAMoneyAmount": "Not a money amount: \"{value}\"",
   "notBeforeToday": "Not before today.",

@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	doctags "helvetly.com/api/internal/tags"
 )
 
 // TrashDays: how long trashed folders and files stay restorable before they are purged.
@@ -526,18 +528,21 @@ func (q Q) UpdateDocument(ctx context.Context, workspaceID, id, name string, fol
 // SetDocumentTags replaces a live file's tags for the app (AI filing, organizing, undo); its automatic tags stay.
 func (q Q) SetDocumentTags(ctx context.Context, workspaceID, id string, tags []string, now time.Time) error {
 	_, err := q.db.Exec(ctx, `UPDATE documents SET updated_at = $4,
-			tags = $3::text[] || ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE NOT t = ANY($3::text[]) ORDER BY i)
-		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now)
+			tags = ARRAY(SELECT t FROM unnest($3::text[]) WITH ORDINALITY a(t, i) WHERE t !~ $5 OR t = ANY(documents.tags) OR t = ANY(auto_tags) ORDER BY i)
+			|| ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE NOT t = ANY($3::text[]) ORDER BY i)
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now, doctags.ProtectedPattern)
 	return err
 }
 
-// SetOwnDocumentTags replaces a live file's tags as a person typed them; an automatic tag left out is removed for good
-// (never added again).
+// SetOwnDocumentTags replaces editable tags, keeping protected automatic tags even for older clients.
 func (q Q) SetOwnDocumentTags(ctx context.Context, workspaceID, id string, tags []string, now time.Time) error {
-	_, err := q.db.Exec(ctx, `UPDATE documents SET tags = $3, updated_at = $4,
-			auto_tags = ARRAY(SELECT unnest(auto_tags) INTERSECT SELECT unnest($3::text[])),
-			removed_auto_tags = ARRAY(SELECT unnest(removed_auto_tags) UNION (SELECT unnest(auto_tags) EXCEPT SELECT unnest($3::text[])))
-		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now)
+	_, err := q.db.Exec(ctx, `UPDATE documents SET
+			tags = $3::text[] || ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE t ~ $5 AND NOT t = ANY($3::text[]) ORDER BY i),
+			updated_at = $4,
+			auto_tags = ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE t ~ $5 OR t = ANY($3::text[]) ORDER BY i),
+			removed_auto_tags = ARRAY(SELECT unnest(removed_auto_tags) UNION
+				SELECT t FROM unnest(auto_tags) a(t) WHERE t !~ $5 AND NOT t = ANY($3::text[]))
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now, doctags.ProtectedPattern)
 	return err
 }
 

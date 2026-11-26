@@ -20,6 +20,7 @@ import (
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/storage"
 	"helvetly.com/api/internal/store"
+	doctags "helvetly.com/api/internal/tags"
 	"helvetly.com/api/internal/uploads"
 )
 
@@ -582,6 +583,9 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return errTrashed
 		}
 		if tags != nil {
+			if slices.ContainsFunc(tags, func(t string) bool { return doctags.Protected(t) && !slices.Contains(d.Tags, t) }) {
+				return validationFailed(map[string]string{"tags": "Signed, year and client tags are set automatically."})
+			}
 			// automatic tags take no room of the person's own; tags before the move, which may tag the file anew
 			if len(slices.DeleteFunc(slices.Clone(tags), func(t string) bool { return slices.Contains(d.AutoTags, t) })) > maxTags {
 				return validationFailed(map[string]string{"tags": tooManyTags})

@@ -2013,6 +2013,7 @@
   "noSupplier": "Aucun fournisseur",
   "noSupplierYet": "Pas encore de fournisseur",
   "noTagsYet": "Aucune balise pour l’instant.",
+  "protectedDocumentTagHint": "Définie automatiquement à partir des données du document.",
   "autoTagHint": "Ajoutée automatiquement. Si vous la retirez, elle ne revient pas.",
   "notAMoneyAmount": "Pas un montant monétaire : \"{value}\"",
   "notBeforeToday": "Pas avant aujourd’hui.",

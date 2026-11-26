@@ -111,9 +111,10 @@ are the reference.
   `engagement`), `signed` once its signature request completed, `year-<yyyy>`, `client-<name>`, the record's number
   (`2026-q-001`), `expense-<category>` and `from-quote-<number>`. `store.AutoTag` runs inside the writes that file
   (`CreateDocument`, `UpdateDocument`, `AddDocumentLink`, `AddQuoteContract`, `AddQuoteRevision`,
-  `CompleteSignatureRequest`) and once per start over files never tagged (`BackfillAutoTags`, by `auto_tagged_at`).
+  `CompleteSignatureRequest`) and at startup for untagged files and previously dismissed protected tags (`BackfillAutoTags`).
   `documents.auto_tags` names them (outlined chips); one no longer computed leaves, one a person removes
-  (`SetOwnDocumentTags`) goes to `removed_auto_tags` and never comes back; the app's own tag writes
+  (`SetOwnDocumentTags`) goes to `removed_auto_tags` and never comes back. The automatic `signed`, `year-<yyyy>`
+  and `client-<name>` tags follow the record or folder and cannot be changed by hand. The app's own tag writes
   (`SetDocumentTags`) keep them, and they take no room of a person's 10.
 - **Documents grouped views** (`store/queries_document_groups.go`, `documents/groups.go`): Group by type, year or
   client is computed from each file, never stored, and moves nothing. Type: the record it belongs to (an invoice's or

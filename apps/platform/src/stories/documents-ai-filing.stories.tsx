@@ -177,7 +177,14 @@ export const AutomaticTagsMuted: Story = {
     await expect(auto).toHaveAttribute('data-auto-tag')
     await expect(auto).toHaveAttribute('data-variant', 'outline')
     await expect(body.getByText('urgent')).not.toHaveAttribute('data-auto-tag')
+    // A year, client or signed tag comes from the record and cannot be removed.
     auto.focus()
+    await expect(
+      await body.findByRole('tooltip', { name: /Set automatically from this document/ }),
+    ).toBeInTheDocument()
+    auto.blur()
+    await waitFor(() => expect(body.queryByRole('tooltip')).not.toBeInTheDocument())
+    body.getByText('invoice').focus()
     await expect(
       await body.findByRole('tooltip', { name: /Added automatically/ }),
     ).toBeInTheDocument()

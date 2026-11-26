@@ -1,6 +1,7 @@
 package tags
 
 import (
+	"regexp"
 	"slices"
 	"strconv"
 )
@@ -46,18 +47,25 @@ func prefixed(prefix, name string) string {
 	return Slug(prefix + name)
 }
 
+// ProtectedPattern matches facts set only by the document's record or filing.
+const ProtectedPattern = `^(signed|year-[0-9]{4}|client-.+)$`
+
+var protectedTag = regexp.MustCompile(ProtectedPattern)
+
+func Protected(tag string) bool { return protectedTag.MatchString(tag) }
+
 // Merge applies computed automatic tags to a file's tags: automatic tags no longer computed leave, new ones join
-// unless the person removed them before or the file has them already (then they stay the person's). It returns the
+// unless dismissed or already owned by the person. Protected facts always follow the record. It returns the
 // file's tags, the person's first, then the automatic ones in Auto's order, and which of them are automatic.
 func Merge(have, auto, removed, computed []string) (tags, nowAuto []string) {
 	tags, nowAuto = []string{}, []string{}
 	for _, t := range have {
-		if !slices.Contains(auto, t) {
+		if !slices.Contains(auto, t) && !(Protected(t) && slices.Contains(computed, t)) {
 			tags = append(tags, t)
 		}
 	}
 	for _, t := range computed {
-		if slices.Contains(auto, t) && slices.Contains(have, t) || !slices.Contains(tags, t) && !slices.Contains(removed, t) {
+		if Protected(t) || slices.Contains(auto, t) && slices.Contains(have, t) || !slices.Contains(tags, t) && !slices.Contains(removed, t) {
 			nowAuto = append(nowAuto, t)
 		}
 	}
