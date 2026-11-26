@@ -612,6 +612,21 @@ export const ToolbarSearch: Story = {
     await expect(search.getBoundingClientRect().top).toBeGreaterThanOrEqual(
       grid.getBoundingClientRect().bottom,
     )
+    await userEvent.click(open)
+    await expect(open).toHaveAttribute('aria-expanded', 'false')
+    await expect(body.queryByRole('searchbox')).toBeNull()
+    await expect(open).toHaveFocus()
+    await userEvent.keyboard('{Enter}')
+    const field = body.getByRole('searchbox').closest('label')
+    if (!field?.parentElement) throw new Error('Missing Documents search row')
+    await expect(colour(field)).toBe(colour(field.parentElement))
+    // An unfinished field term has not reached the URL yet.
+    await userEvent.keyboard('kind:')
+    await userEvent.click(open)
+    await expect(body.queryByRole('searchbox')).toBeNull()
+    await userEvent.click(open)
+    await expect(body.getByRole('searchbox')).toHaveValue('kind:')
+    await userEvent.keyboard('{Escape}')
 
     // Escape on an empty field folds it back and hands the focus to the button.
     await userEvent.keyboard('{Escape}')
@@ -624,6 +639,12 @@ export const ToolbarSearch: Story = {
     await userEvent.keyboard('budget')
     await userEvent.tab()
     await expect(body.getByRole('searchbox', { name: 'Search files' })).toHaveValue('budget')
+    await userEvent.click(open)
+    await waitFor(() => expect(url(canvasElement).get('q')).toBe('budget'))
+    await expect(body.queryByRole('searchbox')).toBeNull()
+    await userEvent.click(open)
+    await expect(body.getByRole('searchbox')).toHaveFocus()
+    await expect(body.getByRole('searchbox')).toHaveValue('budget')
     await userEvent.click(body.getByRole('button', { name: 'Clear search' }))
     await expect(body.getByRole('searchbox', { name: 'Search files' })).toHaveValue('')
     await expect(body.getByRole('searchbox', { name: 'Search files' })).toHaveFocus()
@@ -635,6 +656,7 @@ export const ToolbarSearch: Story = {
     await waitFor(() => expect(body.queryByRole('searchbox')).toBeNull())
   },
 }
+export const ToolbarSearchDark = dark(ToolbarSearch)
 export const ToolbarSearchPhone = phone(ToolbarSearch)
 
 /** Deep in the folders with filters on: the chips sit in the search row, the path stays readable. */
@@ -664,7 +686,12 @@ export const DeepFolderWithChips: Story = {
       { timeout: 8000 },
     )
     await expect(chip).toBeVisible()
-    await expect(body.getByRole('searchbox', { name: 'Search files' })).toBeVisible()
+    const search = body.getByRole('button', { name: 'Search files', expanded: true })
+    await userEvent.click(search)
+    await expect(body.queryByRole('searchbox')).toBeNull()
+    await userEvent.click(search)
+    await expect(body.getByRole('searchbox', { name: 'Search files' })).toHaveFocus()
+    await expect(body.getByRole('button', { name: 'Remove filter Kind: Image' })).toBeVisible()
     const crumbs = within(body.getByRole('navigation', { name: 'Breadcrumbs' }))
     await waitFor(() =>
       expect(crumbs.getByRole('button', { name: 'Unternehmensdokumente' })).toBeVisible(),

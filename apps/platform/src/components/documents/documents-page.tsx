@@ -1244,10 +1244,7 @@ export function DocumentsPage() {
             )}
           </div>
           {/* The search field's own row, filled while it is open (see ListSearch). */}
-          <div
-            ref={setSearchRow}
-            className="sticky top-[100px] z-10 flex border-b bg-card px-2 py-2 empty:hidden md:px-3"
-          />
+          <div ref={setSearchRow} className="sticky top-[100px] z-10" />
 
           {view.section === 'templates' ? (
             <TemplatesView
