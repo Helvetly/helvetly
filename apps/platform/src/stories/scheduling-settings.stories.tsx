@@ -425,3 +425,36 @@ export const HoursFollowWorkspaceZone: Story = {
     await waitFor(() => expect(zone).toHaveTextContent('Zurich'))
   },
 }
+
+export const BulkWeeklyHours: Story = {
+  parameters: page('owner'),
+  beforeEach: () =>
+    resetSchedulingSettings({
+      providers: [],
+      hours: { weekly: [{ day: 7, start: '18:00', end: '19:00' }] },
+    }),
+  render: () => (
+    <Shell>
+      <Calendars userId="usr_story" />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const days = await canvas.findByRole('group', { name: 'Days to add hours to' })
+    const sunday = within(days).getByRole('button', { name: 'Sun' })
+    await expect(sunday).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(canvas.getByRole('button', { name: 'Every day' }))
+    await expect(sunday).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(sunday)
+    await userEvent.click(canvas.getByRole('button', { name: 'Add to selected days' }))
+
+    await expect(canvas.getByLabelText('From, Monday')).toHaveValue('09:00')
+    await expect(canvas.getByLabelText('From, Saturday')).toHaveValue('09:00')
+    await expect(canvas.getByLabelText('From, Sunday')).toHaveValue('18:00')
+    await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(schedulingCalls()).toContain('PUT /scheduling/hosts/usr_story'))
+    await waitFor(() => expect(canvas.queryByText('Unsaved changes')).not.toBeInTheDocument())
+    await expect(canvas.getByLabelText('From, Saturday')).toHaveValue('09:00')
+    await expect(canvas.getByLabelText('From, Sunday')).toHaveValue('18:00')
+  },
+}

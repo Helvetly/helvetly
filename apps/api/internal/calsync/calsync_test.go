@@ -771,7 +771,13 @@ func TestTeamsMeeting(t *testing.T) {
 
 func TestFeed(t *testing.T) {
 	e := newEnv(t)
+	e.clock = time.Date(e.clock.Year(), e.clock.Month(), e.clock.Day(), 23, 30, 0, 0, time.UTC)
 	b := e.workspace(pro, "member")
+	if err := e.st.UpdateWorkspace(context.Background(), store.Workspace{ID: b.ws, Name: "Firma " + b.ws, Timezone: "Europe/Zurich"}); err != nil {
+		t.Fatal(err)
+	}
+	today := e.session(b, b.userID, e.clock.Add(-15*time.Minute))
+	yesterday := e.session(b, b.userID, e.clock.Add(-2*time.Hour))
 	other := e.member(b.ws, "member")
 	start := e.clock.Add(24 * time.Hour)
 	e.session(b, b.userID, start)
@@ -805,9 +811,12 @@ func TestFeed(t *testing.T) {
 	}
 	res, body := get(feedURL, nil)
 	if res.StatusCode != 200 || !strings.HasPrefix(res.Header.Get("Content-Type"), "text/calendar") || res.Header.Get("Cache-Control") != "private, max-age=300" ||
-		res.Header.Get("Referrer-Policy") != "no-referrer" || strings.Count(body, "BEGIN:VEVENT") != 1 || !strings.Contains(body, "METHOD:PUBLISH") ||
+		res.Header.Get("Referrer-Policy") != "no-referrer" || strings.Count(body, "BEGIN:VEVENT") != 2 || !strings.Contains(body, "METHOD:PUBLISH") ||
 		!strings.Contains(body, "Lesson · Müller AG") {
 		t.Fatalf("%d %v\n%s", res.StatusCode, res.Header, body)
+	}
+	if !strings.Contains(body, "UID:"+today.ID+"@") || strings.Contains(body, "UID:"+yesterday.ID+"@") {
+		t.Fatal("feed should start at midnight in the workspace time zone")
 	}
 	if res304, _ := get(feedURL, map[string]string{"If-None-Match": res.Header.Get("ETag")}); res304.StatusCode != 304 {
 		t.Fatalf("etag: %d", res304.StatusCode)

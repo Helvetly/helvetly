@@ -8,6 +8,7 @@ import { Loader } from '@helvetly/ui/components/loader'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Clock, Plus, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 
 import { apiFieldErrors, useSectionForm } from '@/components/section-form'
 import { SettingsSection } from '@/components/settings/layout'
@@ -16,6 +17,7 @@ import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 import {
+  daysText,
   useHostHours,
   useSaveHours,
   weekdayName,
@@ -26,6 +28,8 @@ import {
 } from '@/lib/scheduling-settings'
 
 // A block has no id of its own; this one follows it through edits so typing never remounts its inputs.
+import { WeekdayPicker } from './weekday-picker'
+
 const windowIds = new WeakMap<object, number>()
 let windowCount = 0
 const windowKey = (window: object) => {
@@ -36,6 +40,8 @@ const windowKey = (window: object) => {
   return windowCount
 }
 
+const WEEKDAYS = [1, 2, 3, 4, 5]
+const ALL_DAYS = [...WEEKDAYS, 6, 7]
 const NEW_WINDOW = { start: '09:00', end: '17:00' }
 
 const intro = () => ({
@@ -100,6 +106,18 @@ function HoursForm({ userId, saved }: { userId: string; saved: HostHours }) {
   const zone = v.time_zone ?? workspaceZone ?? 'UTC'
   const zones = useMemo(() => timeZoneOptions(zone), [zone])
   const [date, setDate] = useState('')
+  const [bulkDays, setBulkDays] = useState(WEEKDAYS)
+  const [bulkWindow, setBulkWindow] = useState(NEW_WINDOW)
+
+  const addHours = (days: number[], window: typeof NEW_WINDOW) => {
+    const weekly = [...v.weekly, ...days.map((day) => ({ day, ...window }))]
+    const problem = windowProblem(weekly)
+    if (problem) {
+      toast.error(problem)
+      return
+    }
+    form.set('weekly', weekly)
+  }
   const setWindow = (target: Window, change: Partial<Window>) =>
     form.set(
       'weekly',
@@ -155,8 +173,52 @@ function HoursForm({ userId, saved }: { userId: string; saved: HostHours }) {
           <legend className="mb-1 text-body-sm font-medium">
             {translate('schedulingSettingsWeekly')}
           </legend>
+          <div className="grid gap-2 rounded-lg border p-3">
+            <div className="flex flex-wrap gap-2">
+              <WeekdayPicker
+                label={translate('schedulingSettingsHoursDays')}
+                value={bulkDays}
+                onChange={setBulkDays}
+              />
+              <Button type="button" variant="ghost" size="sm" onClick={() => setBulkDays(WEEKDAYS)}>
+                {daysText(WEEKDAYS)}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setBulkDays(ALL_DAYS)}>
+                {translate('schedulingSettingsEveryDay')}
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <FormField id="bulk-hours-start" label={translate('schedulingSettingsHoursStart')}>
+                <Input
+                  id="bulk-hours-start"
+                  type="time"
+                  className="w-32"
+                  value={bulkWindow.start}
+                  onChange={(event) => setBulkWindow({ ...bulkWindow, start: event.target.value })}
+                />
+              </FormField>
+              <FormField id="bulk-hours-end" label={translate('schedulingSettingsHoursEnd')}>
+                <Input
+                  id="bulk-hours-end"
+                  type="time"
+                  className="w-32"
+                  value={bulkWindow.end}
+                  onChange={(event) => setBulkWindow({ ...bulkWindow, end: event.target.value })}
+                />
+              </FormField>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={bulkDays.length === 0}
+                onClick={() => addHours(bulkDays, bulkWindow)}
+              >
+                <Plus />
+                {translate('schedulingSettingsAddHoursToDays')}
+              </Button>
+            </div>
+          </div>
           <ul className="grid divide-y rounded-lg border">
-            {[1, 2, 3, 4, 5, 6, 7].map((day) => {
+            {ALL_DAYS.map((day) => {
               const windows = v.weekly.filter((one) => one.day === day)
               return (
                 <li key={day} className="flex flex-wrap items-start gap-x-4 gap-y-2 px-3 py-2.5">

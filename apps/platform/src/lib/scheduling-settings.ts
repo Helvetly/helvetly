@@ -35,6 +35,8 @@ export type SchedulingSettings = {
   default_location: string | null
 }
 
+type SchedulingSettingsResponse = SchedulingSettings & { policy_text?: string }
+
 export type Holiday = { date: string; name: string }
 
 export type Mode = 'online' | 'live'
@@ -74,6 +76,8 @@ export type HostHours = {
   overrides: Override[]
 }
 
+type HostHoursResponse = HostHours & { user_id: string }
+
 export type Provider = 'google' | 'microsoft'
 export type CalendarInfo = { id: string; name: string; primary: boolean }
 export type Connection = {
@@ -103,9 +107,15 @@ const eventTypePath = (id: string) => `/scheduling/event-types/${encodeURICompon
 const calendarPath = (id: string) => `/scheduling/calendars/${encodeURIComponent(id)}`
 
 export const schedulingApi = {
-  settings: async () => (await request<One<SchedulingSettings>>('/scheduling/settings')).data,
-  saveSettings: async (input: SchedulingSettings) =>
-    (await request<One<SchedulingSettings>>('/scheduling/settings', send('PUT', input))).data,
+  settings: async () =>
+    (await request<One<SchedulingSettingsResponse>>('/scheduling/settings')).data,
+  saveSettings: async (settings: SchedulingSettingsResponse) => {
+    const input = { ...settings }
+    delete input.policy_text
+    return (
+      await request<One<SchedulingSettingsResponse>>('/scheduling/settings', send('PUT', input))
+    ).data
+  },
   holidays: async () => (await request<One<{ days: Holiday[] }>>('/scheduling/holidays')).data.days,
   saveHolidays: async (days: Holiday[]) =>
     (await request<One<{ days: Holiday[] }>>('/scheduling/holidays', send('PUT', { days }))).data
@@ -124,12 +134,19 @@ export const schedulingApi = {
     (await request<One<EventType>>(eventTypePath(id), send('PATCH', input))).data,
   deleteEventType: (id: string) => request<void>(eventTypePath(id), { method: 'DELETE' }),
   hours: async (userId: string) =>
-    (await request<One<HostHours>>(`/scheduling/hosts/${encodeURIComponent(userId)}`)).data,
-  saveHours: async ({ userId, ...input }: HostHours & { userId: string }) =>
+    (await request<One<HostHoursResponse>>(`/scheduling/hosts/${encodeURIComponent(userId)}`)).data,
+  saveHours: async ({
+    userId,
+    time_zone,
+    bookable,
+    color,
+    weekly,
+    overrides,
+  }: HostHours & { userId: string }) =>
     (
-      await request<One<HostHours>>(
+      await request<One<HostHoursResponse>>(
         `/scheduling/hosts/${encodeURIComponent(userId)}`,
-        send('PUT', input),
+        send('PUT', { time_zone, bookable, color, weekly, overrides }),
       )
     ).data,
   calendars: () => request<Connections>('/scheduling/calendars'),
