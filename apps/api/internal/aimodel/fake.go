@@ -183,13 +183,17 @@ func fakeFiling(message string) map[string]any {
 	if strings.Contains(base, "contract") {
 		reason = map[bool]string{true: "Both parties, dates and terms are filled in.", false: "It is not signed."}[completed]
 	}
+	record := fakeRecordPath(base, clients)
 	kind := "other" // a payment confirmation by its name; the other kinds come through the tags
-	if strings.Contains(base, "payment") || strings.Contains(base, "zahlungsbest") {
+	switch {
+	case strings.Contains(base, "payment") || strings.Contains(base, "zahlungsbest"):
 		kind = "payment-confirmation"
+	case strings.HasPrefix(record, "Bank Statements/"): // a statement unless the name makes it a record of another kind
+		kind = "bank-statement"
 	}
 	out := map[string]any{"tags": words, "folder_id": nil, "new_folder": nil, "is_completed_contract": completed,
-		"contract_reason": reason, "kind": kind}
-	if record := fakeRecordPath(base, clients); record != "" {
+		"contract_reason": reason, "kind": kind, "statement_period_end": "", "statement_date": ""}
+	if record != "" {
 		out["new_folder"] = record
 		return out
 	}
@@ -288,6 +292,9 @@ func fakeRecordPath(base string, clients []string) string {
 	flat := strings.NewReplacer("-", " ", "_", " ").Replace(base)
 	if strings.Contains(flat, "receipt") {
 		return "Expenses/" + year + "/Uncategorised"
+	}
+	if strings.Contains(flat, "statement") && !strings.Contains(flat, "invoice") {
+		return "Bank Statements/" + year
 	}
 	kind := ""
 	switch {

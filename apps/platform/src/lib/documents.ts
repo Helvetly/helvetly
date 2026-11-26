@@ -24,6 +24,7 @@ export type Person = { id: string; name: string; avatar_url?: string | null }
 export type SystemKind =
   | 'clients'
   | 'expenses'
+  | 'bank_statements'
   | 'client'
   | 'invoices'
   | 'quotes'
@@ -191,6 +192,7 @@ export const DOC_TYPES = [
   'payment_confirmations',
   'consents',
   'powers_of_attorney',
+  'bank_statements',
   'other',
 ] as const
 export type DocType = (typeof DOC_TYPES)[number]
@@ -208,6 +210,7 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
   payment_confirmations: translate('docTypePaymentConfirmations'),
   consents: translate('docTypeConsents'),
   powers_of_attorney: translate('docTypePowersOfAttorney'),
+  bank_statements: translate('docTypeBankStatements'),
   other: translate('docTypeOther'),
 }
 export const GROUP_DIM_LABELS: Record<GroupDim, string> = {

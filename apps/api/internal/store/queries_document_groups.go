@@ -12,7 +12,7 @@ import (
 
 // DocumentTypes: the type groups' keys, in the order they are shown.
 var DocumentTypes = []string{"invoices", "quotes", "credit_notes", "receipts", "contracts", "engagements",
-	"payment_confirmations", "consents", "powers_of_attorney", "other"}
+	"payment_confirmations", "consents", "powers_of_attorney", "bank_statements", "other"}
 
 // NoClient: the client key of files that belong to no client.
 const NoClient = "none"
@@ -35,13 +35,13 @@ func (f DocumentFilter) grouped() bool { return f.Type != "" || f.Year != 0 || f
 const classCTE = `WITH RECURSIVE fwalk AS (
 		SELECT f.id, f.parent_id AS up, 0 AS depth,
 			CASE WHEN f.system_kind = 'client' THEN f.system_ref END AS client,
-			CASE WHEN f.system_kind IN ('invoices', 'quotes', 'engagements', 'signatures', 'contracts', 'expenses') THEN f.system_kind END AS kind,
+			CASE WHEN f.system_kind IN ('invoices', 'quotes', 'engagements', 'signatures', 'contracts', 'expenses', 'bank_statements') THEN f.system_kind END AS kind,
 			CASE WHEN f.system_kind = 'year' THEN f.name END AS year
 		FROM document_folders f WHERE f.workspace_id = $1 AND f.deleted_at IS NULL
 		UNION ALL
 		SELECT w.id, p.parent_id, w.depth + 1,
 			coalesce(w.client, CASE WHEN p.system_kind = 'client' THEN p.system_ref END),
-			coalesce(w.kind, CASE WHEN p.system_kind IN ('invoices', 'quotes', 'engagements', 'signatures', 'contracts', 'expenses') THEN p.system_kind END),
+			coalesce(w.kind, CASE WHEN p.system_kind IN ('invoices', 'quotes', 'engagements', 'signatures', 'contracts', 'expenses', 'bank_statements') THEN p.system_kind END),
 			coalesce(w.year, CASE WHEN p.system_kind = 'year' THEN p.name END)
 		FROM fwalk w JOIN document_folders p ON p.id = w.up AND p.workspace_id = $1 AND p.deleted_at IS NULL
 		WHERE w.depth < 32),
@@ -92,16 +92,19 @@ func classJoins(zone string) string {
 		) c ORDER BY c.p, c.year DESC NULLS LAST LIMIT 1) rec ON true
 	CROSS JOIN LATERAL (SELECT
 		coalesce(rec.kind, CASE fx.kind WHEN 'invoices' THEN 'invoices' WHEN 'quotes' THEN 'quotes' WHEN 'engagements' THEN 'engagements'
-				WHEN 'signatures' THEN 'contracts' WHEN 'contracts' THEN 'contracts' WHEN 'expenses' THEN 'receipts' END,
+				WHEN 'signatures' THEN 'contracts' WHEN 'contracts' THEN 'contracts' WHEN 'expenses' THEN 'receipts'
+				WHEN 'bank_statements' THEN 'bank_statements' END,
 			CASE WHEN d.auto_tags && '{payment-confirmation}' THEN 'payment_confirmations'
 				WHEN d.auto_tags && '{consent}' THEN 'consents'
-				WHEN d.auto_tags && '{power-of-attorney}' THEN 'powers_of_attorney' END,
+				WHEN d.auto_tags && '{power-of-attorney}' THEN 'powers_of_attorney'
+				WHEN d.auto_tags && '{bank-statement}' THEN 'bank_statements' END,
 			CASE WHEN d.tags && '{credit-note,credit-notes,gutschrift,avoir,nota-di-credito}' THEN 'credit_notes'
 				WHEN d.tags && '{invoice,invoices,rechnung,facture,fattura,partial-invoice,prepayment-invoice,corrected-invoice,proforma-invoice,self-billed-invoice,debit-note}' THEN 'invoices'
 				WHEN d.tags && '{quote,quotes,offer,offerte,angebot,devis,preventivo}' THEN 'quotes'
 				WHEN d.tags && '{receipt,receipts,expense,quittung,beleg,quittance,ricevuta}' THEN 'receipts'
 				WHEN d.tags && '{contract,contracts,agreement,signature,vertrag,contrat,contratto}' THEN 'contracts'
-				WHEN d.tags && '{engagement,engagements,mandate,mandat}' THEN 'engagements' END,
+				WHEN d.tags && '{engagement,engagements,mandate,mandat}' THEN 'engagements'
+				WHEN d.tags && '{bank-statement,bank-statements,kontoauszug}' THEN 'bank_statements' END,
 			CASE WHEN lower(d.name) ~ '^(credit[-_ ]?note|gutschrift)' THEN 'credit_notes'
 				WHEN lower(d.name) ~ '^(invoice|rechnung|facture|fattura)' THEN 'invoices'
 				WHEN lower(d.name) ~ '^(quote|offerte|angebot|devis)' THEN 'quotes'

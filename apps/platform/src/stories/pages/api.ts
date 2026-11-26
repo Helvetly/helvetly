@@ -427,13 +427,14 @@ export const folders = [
   folder('fld_contracts', 'Contracts', 3),
   folder('fld_receipts', 'Receipts 2026', 12),
   folder('fld_tax', 'Tax', 4),
-  // The folders Helvetly manages: Clients / Acme AG / Invoices / 2025, and Expenses / 2025.
+  // The folders Helvetly manages: Clients / Acme AG / Invoices / 2025, Expenses / 2025 and Bank Statements.
   folder('fld_sys_clients', 'Clients', 2, 'clients'),
   folder('fld_sys_acme', 'Acme AG', 2, 'client', 'fld_sys_clients'),
   folder('fld_sys_acme_invoices', 'Invoices', 2, 'invoices', 'fld_sys_acme'),
   folder('fld_sys_acme_invoices_2025', '2025', 2, 'year', 'fld_sys_acme_invoices'),
   folder('fld_sys_expenses', 'Expenses', 5, 'expenses'),
   folder('fld_sys_expenses_2025', '2025', 5, 'year', 'fld_sys_expenses'),
+  folder('fld_sys_bank', 'Bank Statements', 0, 'bank_statements'),
 ]
 export const file = (id: string, name: string, kind: DocFile['kind'], type: string): DocFile => ({
   id,

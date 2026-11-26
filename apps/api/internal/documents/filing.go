@@ -50,7 +50,8 @@ const filingInstructions = "You file documents in a small business's document ma
 	"is_completed_contract to true only for an actual completed contract or agreement (its parties named, dates and key " +
 	"terms filled in, no empty lines, blanks or [Name]-style placeholders, not marked as a template, sample or draft), " +
 	"else false; contract_reason says why in one short sentence for a contract-like file, else is empty. " + kindRule +
-	" Use only the given information."
+	" For a bank statement, statement_period_end is the last day of the period it covers and statement_date the day " +
+	"it was made (YYYY-MM-DD, empty when not given); else both are empty. Use only the given information."
 
 var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any{
 	"type": "object",
@@ -61,8 +62,11 @@ var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any
 		"is_completed_contract": map[string]any{"type": "boolean"},
 		"contract_reason":       map[string]any{"type": "string"},
 		"kind":                  kindSchema,
+		"statement_period_end":  map[string]any{"type": "string"},
+		"statement_date":        map[string]any{"type": "string"},
 	},
-	"required":             []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason", "kind"},
+	"required": []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason", "kind",
+		"statement_period_end", "statement_date"},
 	"additionalProperties": false,
 }}
 
@@ -72,7 +76,9 @@ var kindSchema = map[string]any{"type": "string", "enum": append(slices.Clone(ta
 const kindRule = "Set kind to what the document is, one of the listed values, else other: payment-confirmation for a " +
 	"payment confirmation or proof of payment (a bank transfer confirmation, Zahlungsbestätigung, confirmation de " +
 	"paiement, conferma di pagamento, a provider's payment receipt), receipt for a purchase receipt, consent and " +
-	"power-of-attorney for a signed consent or power of attorney."
+	"power-of-attorney for a signed consent or power of attorney, bank-statement for an account statement of a bank or " +
+	"payment provider (such as UBS, PostFinance, Raiffeisen, Revolut or Wise, also CAMT.053 or MT940 files) that lists " +
+	"an account's transactions and balances, never for an invoice, receipt or payment slip that only shows an IBAN."
 
 // modelTags: the model's tags as tags (at most filingAITags) and its kind: the kind field, else a kind among its tags.
 // A kind, signed or date tag is never a free tag: those come only from the record or filing.
@@ -192,6 +198,8 @@ type filing struct {
 	// the model's verdict on a contract (is_completed_contract, contract_reason), and the reason recorded
 	completedContract bool
 	contractReason    string
+	// a bank statement's dates the model read (YYYY-MM-DD, "" when unknown)
+	periodEnd, statementDate string
 }
 
 func (s *Service) file(ctx context.Context, j store.FilingJob) {
@@ -319,6 +327,18 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if mayMove && decided.record == nil {
 		decided = toClient(decided, doc, listed, index.client(doc, text))
 		decided.newFolder = localName(decided.newFolder, lang) // the model may still have named it in the document's language
+		// never the bare system folder: Bank Statements/<year> or nowhere
+		if statementTag([]string{decided.newFolder}) {
+			decided.newFolder = ""
+			if decided.kind == "" {
+				decided.kind = "bank-statement"
+			}
+		}
+	}
+	if mayMove && bankStatement(doc, text, decided.kind, decided.record) {
+		year := statementYear(decided.periodEnd, decided.statementDate, doc.CreatedAt, ws.Location())
+		decided = filing{tags: decided.tags, kind: "bank-statement",
+			record: &recordPlace{kind: "bank_statements", year: year}}
 	}
 	if decided.record != nil && decided.record.contracts {
 		ok, reason := completedContract(doc.Name, text, decided.completedContract, decided.contractReason)
@@ -417,12 +437,15 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 		Completed bool     `json:"is_completed_contract"`
 		Reason    string   `json:"contract_reason"`
 		Kind      string   `json:"kind"`
+		PeriodEnd string   `json:"statement_period_end"`
+		Date      string   `json:"statement_date"`
 	}
 	if json.Unmarshal([]byte(strings.TrimSpace(text)), &out) != nil {
 		return filing{}, errSkip
 	}
 	reason := []rune(strings.Join(strings.Fields(out.Reason), " "))
-	f := filing{completedContract: out.Completed, contractReason: string(reason[:min(len(reason), 200)])}
+	f := filing{completedContract: out.Completed, contractReason: string(reason[:min(len(reason), 200)]),
+		periodEnd: out.PeriodEnd, statementDate: out.Date}
 	f.tags, f.kind = modelTags(out.Tags, out.Kind)
 	switch {
 	case !mayMove:
@@ -430,6 +453,15 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 		f.folderID = *out.FolderID
 	case out.NewFolder != nil:
 		if path, ok := splitPath(*out.NewFolder, organizeApplyDepth); ok {
+			if statementTag(path) { // a statement folder, in any language: Bank Statements/<year>
+				if f.kind == "" {
+					f.kind = "bank-statement"
+				}
+				if _, ok := yearOf(path[len(path)-1]); ok && f.periodEnd == "" && f.statementDate == "" {
+					f.periodEnd = path[len(path)-1]
+				}
+				break
+			}
 			if place, system := recordPath(path, names); system {
 				f.record = place // nil: a made-up place in the system folders, so the file stays
 				break

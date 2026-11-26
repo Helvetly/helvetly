@@ -29,6 +29,7 @@ it('keeps kinds, dates and signed for the record or filing; client names are fre
     'self-billed-invoice',
     'credit-note',
     'quote',
+    'bank-statement',
     'contract',
     'payment-confirmation',
     'power-of-attorney',

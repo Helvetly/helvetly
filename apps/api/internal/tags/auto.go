@@ -49,7 +49,7 @@ var Kinds = []string{
 	"payment-confirmation",
 	"consent",
 	"power-of-attorney",
-	// "bank-statement" joins with the bank statements system folder
+	"bank-statement",
 }
 
 // Kind reports whether t is one of Kinds.
