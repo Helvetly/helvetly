@@ -9958,6 +9958,13 @@
               }
             ],
             "description": "Null once the person's account is gone."
+          },
+          "locked_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The file's tags only its record or filing sets (its kind, signed, its date and its record's number); the platform groups a client's files by the kind among them."
           }
         },
         "required": ["id", "name", "size", "content_type", "created_at", "uploaded_by"]
