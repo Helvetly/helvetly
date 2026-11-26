@@ -174,7 +174,7 @@ func TestBrandedPlainText(t *testing.T) {
 		{"branded, without Sent with", Message{Text: "Guten Tag\n", HTML: "<p>x</p>", Language: "de", Brand: &unbranded},
 			"Guten Tag\r\n\r\n-- \r\nMuster GmbH\r\nWeg 1, 3000 Bern\r\ninfo@muster.ch\r\nCHE-123.456.789 MWST\r\n"},
 		{"Helvetly's own", Message{Text: "Code: 1\n", HTML: "<p>x</p>"}, "Code: 1\r\n\r\n-- \r\nHelvetly · The online back office for freelancers and small businesses.\r\n" +
-			"Help: https://www.helvetly.com/help\r\nPrivacy: https://www.helvetly.com/privacy\r\nTerms: https://www.helvetly.com/terms\r\nHelvetly, Switzerland\r\n"},
+			"Help: https://www.helvetly.com/help\r\nPrivacy: https://www.helvetly.com/privacy\r\nTerms: https://www.helvetly.com/terms\r\n"},
 		{"a phone spaced as the app shows it", Message{Text: "Hallo\n", HTML: "<p>x</p>", Brand: &Brand{Name: "M", Phone: "+41786533224"}},
 			"Hallo\r\n\r\n-- \r\nM\r\n+41 78 653 32 24\r\n"},
 	} {

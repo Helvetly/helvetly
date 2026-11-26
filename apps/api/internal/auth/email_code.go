@@ -288,8 +288,7 @@ func (s *Service) checkEmailCode(ctx context.Context, email, code string) (strin
 // signInCodeMessage: the code leads the subject, so it shows in the inbox list and mail apps offer to copy it.
 func signInCodeMessage(to, code string) mailer.Message {
 	const why = "You received this email because someone used this address to sign in to Helvetly."
-	l := mailer.NewLetter("en").Lead("Here is your code to sign in to Helvetly:").Code(code).
-		Lead("Type it on the sign-in page you came from. It works once and expires in 10 minutes.").
+	l := mailer.NewLetter("en").Lead("Enter this code on the Helvetly sign-in page. It works once and expires in 10 minutes.").Code(code).
 		FinePrint("Didn't try to sign in? You can ignore this email: nobody can sign in without this code. Never share it with anyone.")
 	return mailer.Message{To: []string{to}, Subject: code + " is your Helvetly sign-in code", Text: l.Text() + "\n" + why + "\n",
 		HTML: mailer.Title("Your sign-in code") + l.HTML(), Footer: why}

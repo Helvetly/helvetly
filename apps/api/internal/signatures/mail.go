@@ -84,10 +84,12 @@ func inviteMessage(req store.SignatureRequest, to store.Signer, link string, rem
 		}
 	} else {
 		subject = fmt.Sprintf("%s asks you to sign “%s”", company, req.Title)
+		lead := "Open the document to review the details before you sign. If you have questions, you can reply to this email."
 		if reminder {
 			subject = "Reminder: " + subject
+			lead = "The document is still waiting for your signature. Open it to review the details before the deadline below."
 		}
-		l.Greeting(short(to.Name)).Lead(fmt.Sprintf("%s asks you to review and sign “%s”.", company, req.Title)).Note(deref(req.Message))
+		l.Greeting(short(to.Name)).Lead(lead).Note(deref(req.Message))
 	}
 	l.Summary(mail.Row{Label: w.document, Value: req.Title}, mail.Row{Label: w.sentBy, Value: sentBy(req)},
 		mail.Row{Label: w.signBy, Value: req.ExpiresAt.In(zone(req)).Format(w.date)}).
@@ -137,11 +139,11 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request, sess store.Ses
 	return nil
 }
 func declinedMessage(req store.SignatureRequest, who store.Signer) mail.Message {
-	l := mail.NewLetter("en").Greeting("").Lead(fmt.Sprintf("%s declined to sign “%s”, so the request has stopped.", short(who.Name), req.Title)).
+	l := mail.NewLetter("en").Lead("This request is closed. If you still need the signature, review the response before starting a new request.").
 		Summary(mail.Row{Label: "Document", Value: req.Title}, mail.Row{Label: "Declined by", Value: short(who.Name) + " (" + who.Email + ")"},
 			mail.Row{Label: "Reason", Value: deref(who.DeclineReason)})
 	return mail.Message{Workspace: req.WorkspaceID, Members: true, To: []string{req.SenderEmail}, ReplyTo: who.Email,
-		Subject: fmt.Sprintf("%s declined to sign “%s”", short(who.Name), req.Title), Text: l.Text(), HTML: l.HTML()}
+		Subject: fmt.Sprintf("%s declined to sign “%s”", short(who.Name), req.Title), Eyebrow: "Declined", Tone: mail.Negative, Text: l.Text(), HTML: l.HTML()}
 }
 
 // completedMessage: the signed PDF for one recipient. The member who sent it gets the Helvetly copy (Members), with
@@ -154,13 +156,12 @@ func completedMessage(done completed, to string, member bool) mail.Message {
 		rows = append(rows, mail.Row{Label: "Signed SHA-256", Value: shortHash(done.sum)},
 			mail.Row{Label: "Original SHA-256", Value: shortHash(req.OriginalSHA256)})
 	}
-	l := mail.NewLetter("en").Greeting("").
-		Lead(fmt.Sprintf("Everyone has signed “%s”. The signed PDF is attached, with a certificate of completion on its last page.", req.Title)).
+	l := mail.NewLetter("en").Lead("Keep the attached signed PDF for your records. Its last page contains the certificate of completion.").
 		Summary(rows...).
 		Details(mail.Row{Label: "SHA-256 of the signed PDF", Value: groups(done.sum)}, mail.Row{Label: "SHA-256 of the original", Value: groups(req.OriginalSHA256)}).
 		FinePrint(sesNote)
 	return mail.Message{Workspace: req.WorkspaceID, Members: member, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail,
-		Subject: fmt.Sprintf("Signed: “%s”", req.Title), Eyebrow: "✓ Completed", Text: l.Text(), HTML: l.HTML(),
+		Subject: fmt.Sprintf("Signed: “%s”", req.Title), Eyebrow: "Completed", Tone: mail.Positive, Text: l.Text(), HTML: l.HTML(),
 		Attachments: []mail.Attachment{{Name: done.name, ContentType: "application/pdf", Data: done.pdf}}}
 }
 

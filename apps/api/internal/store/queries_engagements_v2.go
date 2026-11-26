@@ -133,7 +133,7 @@ func (q Q) LiveEngagementIDs(ctx context.Context, workspaceID string) ([]string,
 
 // DigestWorkspaces lists the live workspaces (id and time zone) with the digest on (the default) and un-notified notices.
 func (q Q) DigestWorkspaces(ctx context.Context) ([]Workspace, error) {
-	return q.workspaceZones(ctx, `SELECT w.id, w.timezone FROM workspaces w
+	return q.engagementWorkspaces(ctx, `SELECT w.id, w.name, w.timezone FROM workspaces w
 		WHERE w.deleted_at IS NULL AND coalesce((SELECT s.digest FROM engagement_settings s WHERE s.workspace_id = w.id), true)
 		AND EXISTS (SELECT 1 FROM engagement_notices n JOIN engagements e ON e.id = n.engagement_id
 			WHERE e.workspace_id = w.id AND e.deleted_at IS NULL AND n.notified_at IS NULL) ORDER BY w.id`)

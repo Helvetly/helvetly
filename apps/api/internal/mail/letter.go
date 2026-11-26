@@ -25,6 +25,31 @@ type Row struct {
 	Link, LinkText string
 }
 
+// Link is a labelled destination in a letter.
+type Link struct{ Label, URL string }
+
+// Section keeps related links and their context together in a distinct card.
+func (l *Letter) Section(title, icon, description string, links ...Link) *Letter {
+	l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fafafa" style="width:100%;margin:0 0 12px;background-color:#fafafa;border:1px solid ` +
+		line + `;border-radius:12px"><tr><td style="padding:14px 16px"><h2 style="margin:0 0 6px;font-size:16px;line-height:22px;color:` + ink + `">`)
+	if icon != "" {
+		l.html.WriteString(`<span aria-hidden="true" style="color:` + primary + `">` + html.EscapeString(icon) + `</span> &nbsp;`)
+	}
+	l.html.WriteString(lines(title) + "</h2>")
+	l.text.WriteString(title + "\n")
+	if description != "" {
+		l.html.WriteString(`<p style="margin:0 0 8px;font-size:13px;line-height:20px;color:` + muted + `">` + lines(description) + "</p>")
+		l.text.WriteString(description + "\n")
+	}
+	for _, link := range links {
+		l.html.WriteString(`<p style="margin:6px 0 0"><a href="` + html.EscapeString(link.URL) + `">` + lines(link.Label) + `</a></p>`)
+		l.text.WriteString("- " + link.Label + ": " + link.URL + "\n")
+	}
+	l.html.WriteString("</td></tr></table>\n")
+	l.text.WriteString("\n")
+	return l
+}
+
 var greetings = map[string]string{"de": "Guten Tag", "fr": "Bonjour", "it": "Buongiorno", "en": "Hello"}
 
 // Greeting is "Hello Anna," in the letter's language; without a name, "Hello,".
@@ -57,7 +82,7 @@ func (l *Letter) Message(s string) *Letter {
 }
 
 // Summary is the panel of what the email is about: a light grey box of rows, the label muted in a column of its own
-// width (so "Signed copy" stays on one line), the value beside it, thin lines between them. Rows without a value are
+// with room to wrap, the value beside it, thin lines between them. Rows without a value are
 // left out.
 func (l *Letter) Summary(rows ...Row) *Letter {
 	var h, t strings.Builder
@@ -81,7 +106,7 @@ func (l *Letter) Summary(rows ...Row) *Letter {
 			rule = "border-top:1px solid " + line + ";"
 		}
 		cell := rule + `font-family:` + fonts + `;font-size:14px;line-height:21px;`
-		h.WriteString(`<tr><td valign="top" style="` + cell + `white-space:nowrap;padding:11px 12px 11px 16px;color:` + muted + `">` + html.EscapeString(r.Label) +
+		h.WriteString(`<tr><td valign="top" style="` + cell + `padding:11px 12px 11px 16px;color:` + muted + `">` + html.EscapeString(r.Label) +
 			`</td><td valign="top" width="100%" style="` + cell + `padding:11px 16px 11px 8px;font-weight:500;color:` + ink + `">` + value + "</td></tr>\n")
 	}
 	if h.Len() > 0 {
@@ -134,6 +159,15 @@ func (l *Letter) Action(label, url string) *Letter {
 	return l
 }
 
+// Link adds a secondary action as a text link, leaving the main button prominent.
+func (l *Letter) Link(label, url string) *Letter {
+	if url != "" {
+		l.html.WriteString(para + `<a href="` + html.EscapeString(url) + `">` + lines(label) + "</a></p>\n")
+		l.text.WriteString(label + ": " + url + "\n\n")
+	}
+	return l
+}
+
 // Note is what the business wrote to the client, quoted and set apart; an empty one is left out.
 func (l *Letter) Note(s string) *Letter {
 	if s = strings.TrimSpace(s); s != "" {
@@ -181,7 +215,7 @@ func (l *Letter) HTML() string { return l.html.String() }
 func (l *Letter) Text() string { return strings.TrimRight(l.text.String(), "\n") + "\n" }
 
 // Button is the call to action's HTML: a filled, rounded cell (bgcolor for Outlook) holding a white, bold link, centred.
-// The fill is a business's near-black; layout makes it Helvetly's blue on Helvetly's own email (buttonFill).
+// The fill is a business's near-black; layout makes it Helvetly's teal on Helvetly's own email (buttonFill).
 func Button(label, url string) string {
 	label = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(label), "→"))
 	return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 24px"><tr><td align="center" ` + buttonFill +

@@ -80,13 +80,23 @@ func (s *Service) sendLinks(ctx context.Context, r *http.Request, email string) 
 	return s.mail.Send(ctx, linksEmail(email, portals))
 }
 
-// linksEmail lists the portals (name, link) of an address's suppliers, each its own call to action.
+// linksEmail gives one portal a button and several portals a list of links.
 func linksEmail(to string, portals [][2]string) mailer.Message {
-	l := mailer.NewLetter("en").Greeting("").
-		Lead("You asked for your client portal links. Open your supplier's portal and enter this email address: we send you a code to sign in, there is no password.")
-	for _, p := range portals {
-		l.Action(p[0], p[1])
+	l := mailer.NewLetter("en")
+	title := "Choose a client portal"
+	if len(portals) == 1 {
+		p := portals[0]
+		title = "Open your client portal"
+		l.Lead("Enter this email address when you open the portal and we’ll send you a one-time sign-in code.").
+			Action(p[0], p[1])
+	} else {
+		l.Lead("Enter this email address on the portal’s sign-in page to receive a one-time code.")
+		links := make([]mailer.Link, 0, len(portals))
+		for _, p := range portals {
+			links = append(links, mailer.Link{Label: p[0], URL: p[1]})
+		}
+		l.Section("Your portals", "", "", links...)
 	}
-	l.FinePrint("If you did not ask for this, you can ignore this email.")
-	return mailer.Message{To: []string{to}, Subject: "Your client portal links", Text: l.Text(), HTML: l.HTML()}
+	l.FinePrint("If you didn’t request these links, you can ignore this email.")
+	return mailer.Message{To: []string{to}, Subject: "Your client portal links", Text: l.Text(), HTML: mailer.Title(title) + l.HTML()}
 }

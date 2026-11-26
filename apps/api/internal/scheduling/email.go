@@ -401,6 +401,9 @@ func (e *Emails) send(ctx context.Context, m mailCtx, subject string, l letter, 
 	text, body := compose(m, l, method)
 	kind, _, _ := strings.Cut(subject, ": ") // every subject is "<kind>: <title>"; the kind is the eyebrow
 	msg := mail.Message{Workspace: m.ws.ID, To: m.to, Subject: subject, Eyebrow: kind, Text: text, HTML: body, Language: m.lang, Members: m.members}
+	if method == ical.Cancel || kind == wordsOf(m.lang).declined {
+		msg.Tone = mail.Negative
+	}
 	if !m.members {
 		msg.ReplyTo = m.hostMail
 	}
@@ -436,7 +439,11 @@ func compose(m mailCtx, l letter, method ical.Method) (text, body string) {
 	if l.portalLine {
 		lt.Lead(w.answerInPortal)
 	}
-	lt.Action(w.join, l.join).Action(w.open, m.portal)
+	if l.join == "" {
+		lt.Action(w.open, m.portal)
+	} else {
+		lt.Action(w.join, l.join).Link(w.open, m.portal)
+	}
 	switch method {
 	case ical.Request:
 		lt.FinePrint(w.calendarAdd)

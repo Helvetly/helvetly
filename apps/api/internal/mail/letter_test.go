@@ -5,6 +5,18 @@ import (
 	"testing"
 )
 
+func TestLongLetterKeepsItsLayout(t *testing.T) {
+	long := strings.Repeat("é", 2500)
+	l := NewLetter("en").Message(long).Summary(Row{Label: "Outstanding amount for invoice 2026-042", Value: "CHF 1’081.00"})
+	body := layout(Message{Subject: "Payment reminder", HTML: l.HTML()}, "https://app.example.com")
+	if !strings.Contains(body, "overflow-wrap:anywhere") || strings.Contains(body, "white-space:nowrap") {
+		t.Fatal("long messages and summary labels must wrap inside the card")
+	}
+	if !strings.Contains(l.Text(), long) {
+		t.Fatal("the text version must preserve the sender's message")
+	}
+}
+
 func TestLetter(t *testing.T) {
 	l := NewLetter("de").Greeting("Anna").Lead("Line <1>\nline 2").Message("One\n\nTwo").
 		Summary(Row{Label: "Wann", Value: "Di, 1. Dez.\nMi, 2. Dez."}, Row{Label: "Leer"}, Row{Label: "Wo", Value: "Weg 1", Link: "https://m.example/?q=a&b", LinkText: "Karte"}).

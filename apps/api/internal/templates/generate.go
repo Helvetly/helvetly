@@ -385,7 +385,7 @@ func (s *Service) emailMessage(ctx context.Context, sess store.Session, language
 		m.ReplyTo, m.Attachments = sess.User.Email, attachments
 		return m, nil
 	}
-	l := mail.NewLetter("en").Greeting("").Lead(fmt.Sprintf("%s (%s) sent you “%s”. The PDF is attached.", from, sess.Workspace.Name, title))
+	l := mail.NewLetter("en").Lead(fmt.Sprintf("The PDF from %s is attached. If you have any questions for %s, you can reply to this email.", sess.Workspace.Name, from))
 	if message != nil {
 		l.Note(*message)
 	}

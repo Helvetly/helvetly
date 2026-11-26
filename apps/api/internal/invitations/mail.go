@@ -13,14 +13,14 @@ var roleArticle = map[string]string{"owner": "an owner", "admin": "an admin", "m
 // inviteMessage: expires is shown on its date in its own location (the workspace's time zone).
 func inviteMessage(to, inviter, workspace, role, url string, expires time.Time) mail.Message {
 	date := expires.Format("2 January 2006")
-	lead := fmt.Sprintf("%s invited you to join %s on Helvetly as %s.", inviter, workspace, roleArticle[role])
+	lead := fmt.Sprintf("%s invited you to join as %s. Use the email address that received this invitation to sign in.", inviter, roleArticle[role])
 	expiry := fmt.Sprintf("This invitation expires on %s.", date)
-	text := fmt.Sprintf("Hello,\n\n%s\n\nAccept the invitation here:\n%s\n\n%s\n", lead, url, expiry)
-	htmlBody := mail.NewLetter("en").Greeting("").Lead(lead).Action("Accept invitation", url).FinePrint(expiry).HTML()
+	l := mail.NewLetter("en").Lead(lead).Action("Accept invitation", url).FinePrint(expiry)
+	title := "Join " + workspace + " on Helvetly"
 	return mail.Message{
 		To:      []string{to},
 		Subject: fmt.Sprintf("%s invited you to %s on Helvetly", inviter, workspace),
-		Text:    text,
-		HTML:    htmlBody,
+		Text:    title + "\n\n" + l.Text(),
+		HTML:    mail.Title(title) + l.HTML(),
 	}
 }

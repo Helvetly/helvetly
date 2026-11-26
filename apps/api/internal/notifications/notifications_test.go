@@ -473,6 +473,30 @@ func TestEmailMessage(t *testing.T) {
 	}
 }
 
+func TestEmailApprovalOutcome(t *testing.T) {
+	s := &Service{publicURL: "https://app.example.com", key: []byte("0123456789abcdef0123456789abcdef")}
+	for _, c := range []struct{ event, label, color, next string }{
+		{"approval.approved", "Approved", "#166534", "Open approved draft"},
+		{"approval.rejected", "Rejected", "#991b1b", "Update it and submit it again"},
+		{"quote.accepted", "Accepted", "#166534", "create an invoice draft"},
+		{"quote.declined", "Declined", "#991b1b", "prepare a new revision"},
+	} {
+		t.Run(c.event, func(t *testing.T) {
+			n := store.Notification{Event: c.event, Data: []byte(`{"doc_type":"invoice","invoice_id":"inv_1","client":"Lea","quote_id":"quo_1","quote_number":"Q-1"}`)}
+			msg := s.message([]store.Notification{n})
+			body, plain := mail.Render(msg, mail.Brand{}, s.publicURL)
+			for _, w := range []string{c.label + "</td>", "color:" + c.color, c.next} {
+				if !strings.Contains(body, w) {
+					t.Errorf("HTML is missing %q", w)
+				}
+			}
+			if !strings.Contains(plain, c.next) {
+				t.Errorf("plain text is missing %q", c.next)
+			}
+		})
+	}
+}
+
 // Several job instances tick at once against the same database: every burst is claimed and emailed exactly once.
 func TestParallelTicksEmailOnce(t *testing.T) {
 	e := newEnv(t)

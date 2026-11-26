@@ -150,8 +150,9 @@ func TestDigestOncePerDayAfter7(t *testing.T) {
 		t.Fatalf("%d mails at 07:05", m.count())
 	}
 	msg := m.msgs[0]
-	if !strings.HasPrefix(msg.Subject, "Engagements: 2 updates") || !strings.Contains(msg.Text, "https://app.example.com/engagements?id="+v.ID) ||
-		!strings.Contains(msg.HTML, "<a href=") {
+	if !strings.HasPrefix(msg.Subject, "Workspace roundup: 2 updates") || !strings.Contains(msg.Text, "https://app.example.com/engagements?id="+v.ID) ||
+		!msg.Members || !strings.Contains(msg.HTML, "in Acme.") || !strings.Contains(msg.HTML, "<a href=") || strings.Count(msg.HTML, "<h2 ") != 2 ||
+		!strings.Contains(msg.HTML, "what’s left to deliver") || !strings.Contains(msg.HTML, "remaining commitments") {
 		t.Fatalf("%+v", msg)
 	}
 	e.tick(zurich("08:05"))
@@ -232,7 +233,7 @@ func TestNoticesKinds(t *testing.T) {
 }
 
 func TestDigestMessageEscapes(t *testing.T) {
-	m := digestMessage("a@x.ch", []store.EngagementNotice{{Kind: "ending_soon", EngagementID: "eng_1", Number: 3, Title: `<b>"x"</b>`}}, "https://app")
+	m := digestMessage("a@x.ch", "Muster AG", []store.EngagementNotice{{Kind: "ending_soon", EngagementID: "eng_1", Number: 3, Title: `<b>"x"</b>`}}, "https://app")
 	if strings.Contains(m.HTML, "<b>") || !strings.Contains(m.HTML, "&lt;b&gt;") {
 		t.Fatal(m.HTML)
 	}

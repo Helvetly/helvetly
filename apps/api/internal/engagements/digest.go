@@ -4,21 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"net/url"
 	"slices"
-	"strings"
 	"time"
 
 	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/store"
 )
 
-var noticeKinds = []struct{ kind, heading string }{
-	{"draft_created", "Invoice drafts created"},
-	{"period_closed", "Periods ready to invoice"},
-	{"ending_soon", "Ending soon"},
-	{"under_pace", "Behind pace"},
+var noticeKinds = []struct{ kind, heading, icon, description string }{
+	{"draft_created", "Invoice drafts created", "＋", "Review the draft invoices before issuing them."},
+	{"period_closed", "Periods ready to invoice", "✓", "Review the work recorded in each period before billing your client."},
+	{"ending_soon", "Ending soon", "◷", "Check the end dates and confirm what’s left to deliver."},
+	{"under_pace", "Behind pace", "↗", "Review recorded work and make a plan for any remaining commitments."},
 }
 
 // DigestLine is one line of a digest section; Path is relative to the platform origin.
@@ -35,12 +33,12 @@ type DigestSource interface {
 func (s *Service) AddDigestSource(src DigestSource) { s.sources = append(s.sources, src) }
 
 type digestSection struct {
-	heading string
-	lines   []DigestLine
+	heading, icon, description string
+	lines                      []DigestLine
 }
 
 // digestMessage lists the notices grouped by kind, each linking to its engagement, then the sources' sections.
-func digestMessage(to string, notices []store.EngagementNotice, publicURL string, extra ...digestSection) mail.Message {
+func digestMessage(to, workspace string, notices []store.EngagementNotice, publicURL string, extra ...digestSection) mail.Message {
 	var sections []digestSection
 	for _, k := range noticeKinds {
 		var lines []DigestLine
@@ -50,26 +48,26 @@ func digestMessage(to string, notices []store.EngagementNotice, publicURL string
 			}
 		}
 		if len(lines) > 0 {
-			sections = append(sections, digestSection{k.heading, lines})
+			sections = append(sections, digestSection{heading: k.heading, icon: k.icon, description: k.description, lines: lines})
 		}
 	}
 	sections = append(sections, extra...)
-	var text, page strings.Builder
+	l := mail.NewLetter("en").Lead("Here’s what needs a look in " + workspace + ". Open an item to review it.")
 	updates := 0
 	for _, sec := range sections {
-		fmt.Fprintf(&text, "%s\n", sec.heading)
-		fmt.Fprintf(&page, "<h3>%s</h3><ul>", html.EscapeString(sec.heading))
-		for _, l := range sec.lines {
-			link := publicURL + l.Path
-			fmt.Fprintf(&text, "- %s: %s\n", l.Text, link)
-			fmt.Fprintf(&page, `<li><a href="%s">%s</a></li>`, html.EscapeString(link), html.EscapeString(l.Text))
+		links := make([]mail.Link, 0, len(sec.lines))
+		for _, line := range sec.lines {
+			links = append(links, mail.Link{Label: line.Text, URL: publicURL + line.Path})
 		}
-		updates += len(sec.lines)
-		text.WriteString("\n")
-		page.WriteString("</ul>")
+		l.Section(sec.heading, sec.icon, sec.description, links...)
+		updates += len(links)
 	}
-	return mail.Message{To: []string{to}, Subject: fmt.Sprintf("Engagements: %d updates", updates),
-		Text: text.String(), HTML: "<p>Your engagements need attention.</p>" + page.String()}
+	subject := fmt.Sprintf("Workspace roundup: %d updates", updates)
+	if updates == 1 {
+		subject = "Workspace roundup: 1 update"
+	}
+	return mail.Message{To: []string{to}, Subject: subject, Members: true,
+		Text: l.Text(), HTML: mail.Title("Your workspace roundup") + l.HTML()}
 }
 
 // digestFrom is the local hour the daily digest may go out.
@@ -128,7 +126,7 @@ func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time)
 			continue
 		}
 		if len(lines) > 0 {
-			sections = append(sections, digestSection{heading, lines})
+			sections = append(sections, digestSection{heading: heading, icon: "◷", lines: lines})
 		}
 	}
 	_, emails, err := s.db.DigestRecipients(ctx, ws.ID)
@@ -167,7 +165,7 @@ func (s *Service) digest(ctx context.Context, ws store.Workspace, now time.Time)
 		}
 		sent := 0
 		for i, to := range emails {
-			m := digestMessage(to, notices, s.publicURL, sections...)
+			m := digestMessage(to, ws.Name, notices, s.publicURL, sections...)
 			m.Workspace = ws.ID
 			if err := s.mailer.Send(ctx, m); err != nil {
 				s.log.ErrorContext(ctx, "engagement digest mail", "workspace", ws.ID, "error", err)

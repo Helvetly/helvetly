@@ -78,6 +78,13 @@ func TestEmailLinks(t *testing.T) {
 			if strings.Count(m.Text, ": http") != len(tc.links) {
 				t.Fatalf("one line per workspace: %q", m.Text)
 			}
+			wantButtons := 0
+			if len(tc.links) == 1 {
+				wantButtons = 1
+			}
+			if got := strings.Count(m.HTML, "text-decoration:none"); got != wantButtons {
+				t.Fatalf("%d primary buttons, want %d", got, wantButtons)
+			}
 		})
 	}
 }

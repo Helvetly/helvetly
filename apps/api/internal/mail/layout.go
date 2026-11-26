@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// The app's tokens (packages/ui globals.css) in hex: mail clients know no oklch or CSS variables.
+// Email colours are in hex because mail clients do not support CSS variables consistently.
 const (
 	ink      = "#18181b"
 	text     = "#3f3f46"
@@ -13,21 +13,20 @@ const (
 	line     = "#e8e8ec" // the summary panel's separators
 	border   = "#e7e7ea" // the card's edge on the white page
 	panel    = "#f5f5f7" // the summary panel
-	primary  = "#2563eb" // --primary: Helvetly's own buttons
-	brand    = "#1d4fd1" // --brand: Helvetly's own links
+	primary  = "#0f766e" // Helvetly teal, with contrast for white button text
 	logoFrom = "#0e9a86"
 	fonts    = "system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 )
 
 // What a style changes. Both stand on a white page with a white, thinly bordered card under a thin bar: Helvetly's own
-// email has its gradient bar and blue buttons; a business's email to its clients stays neutral (a near-black bar,
+// email has its teal gradient bar and buttons; a business's email to its clients stays neutral (a near-black bar,
 // buttons and links) so it reads as the business's.
 type look struct {
 	button, link, bar, barImage string
 }
 
 var (
-	helvetlyLook = look{button: primary, link: brand, bar: primary, barImage: "linear-gradient(90deg," + logoFrom + " 0%," + primary + " 55%,#8b5cf6 100%)"}
+	helvetlyLook = look{button: primary, link: primary, bar: primary, barImage: "linear-gradient(90deg," + logoFrom + "," + primary + ")"}
 	businessLook = look{button: ink, link: ink, bar: "#52525b"}
 )
 
@@ -35,12 +34,7 @@ var (
 // there. main sets it from the configuration.
 var SiteURL = "https://www.helvetly.com"
 
-// The footer of Helvetly's own email: what Helvetly is and who sends it, as the website's imprint names it (it gives
-// no postal address).
-const (
-	tagline   = "The online back office for freelancers and small businesses."
-	legalName = "Helvetly, Switzerland"
-)
+const tagline = "The online back office for freelancers and small businesses."
 
 // Email HTML keeps to what renders in every common client, with inline styles only: tables for layout, padding,
 // borders, rounded corners and backgrounds (a gradient always over a solid fallback colour), never a <style> block,
@@ -78,7 +72,7 @@ func layout(m Message, publicURL string) string {
 		body = Title(title) + body
 	}
 	if m.Eyebrow != "" {
-		body = eyebrow(m.Eyebrow) + body
+		body = eyebrow(m.Eyebrow, m.Tone) + body
 	}
 	bar := `background-color:` + lk.bar
 	if lk.barImage != "" {
@@ -90,7 +84,7 @@ func layout(m Message, publicURL string) string {
 		`<meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no">` +
 		`<title>` + html.EscapeString(m.Subject) + "</title></head>\n" +
 		`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff">` + "\n" +
-		`<tr><td align="center" style="padding:32px 12px 40px">` + "\n" +
+		`<tr><td align="center" style="padding:32px 12px 40px;word-wrap:break-word;overflow-wrap:anywhere">` + "\n" +
 		`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px">` + "\n" +
 		`<tr><td align="center" style="padding:0 0 24px;font-family:` + fonts + `;font-size:20px;line-height:28px;color:` + ink + `">` + header + "</td></tr>\n" +
 		`<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid ` + border + `;border-radius:16px">` + "\n" +
@@ -102,10 +96,20 @@ func layout(m Message, publicURL string) string {
 }
 
 // eyebrow is the small pill above the title saying what the email is ("Invoice", "✓ Completed").
-func eyebrow(s string) string {
-	return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px"><tr><td bgcolor="` + panel + `" style="background-color:` + panel +
-		`;border-radius:999px;padding:4px 12px;font-family:` + fonts + `;font-size:12px;line-height:16px;font-weight:600;letter-spacing:0.2px;color:` + text + `">` +
-		html.EscapeString(strings.TrimSpace(s)) + "</td></tr></table>\n"
+func eyebrow(s string, tone Tone) string {
+	bg, color, icon := panel, text, ""
+	switch tone {
+	case Positive:
+		bg, color, icon = "#dcfce7", "#166534", "✓"
+	case Negative:
+		bg, color, icon = "#fee2e2", "#991b1b", "×"
+	}
+	if icon != "" {
+		icon = `<span aria-hidden="true">` + icon + `</span> `
+	}
+	return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px"><tr><td bgcolor="` + bg + `" style="background-color:` + bg +
+		`;border-radius:999px;padding:4px 12px;font-family:` + fonts + `;font-size:12px;line-height:16px;font-weight:600;letter-spacing:0.2px;color:` + color + `">` +
+		icon + html.EscapeString(strings.TrimSpace(s)) + "</td></tr></table>\n"
 }
 
 // helvetlyFooter is the small print under Helvetly's own card: who sends it, why it came (why, HTML, when given), the
@@ -119,12 +123,12 @@ func helvetlyFooter(why string) string {
 	if why != "" {
 		f += why + "<br>"
 	}
-	return f + link("Help", "/help") + ` &nbsp;&middot;&nbsp; ` + link("Privacy", "/privacy") + ` &nbsp;&middot;&nbsp; ` + link("Terms", "/terms") + "<br>" + legalName
+	return f + link("Help", "/help") + ` &nbsp;&middot;&nbsp; ` + link("Privacy", "/privacy") + ` &nbsp;&middot;&nbsp; ` + link("Terms", "/terms")
 }
 
 // helvetlyText is the same footer in the text part (without the why: a text part says it in its own words).
 func helvetlyText() string {
-	return "Helvetly · " + tagline + "\nHelp: " + SiteURL + "/help\nPrivacy: " + SiteURL + "/privacy\nTerms: " + SiteURL + "/terms\n" + legalName + "\n"
+	return "Helvetly · " + tagline + "\nHelp: " + SiteURL + "/help\nPrivacy: " + SiteURL + "/privacy\nTerms: " + SiteURL + "/terms\n"
 }
 
 // Title is the card's heading: the layout puts the subject there unless a fragment begins with its own.

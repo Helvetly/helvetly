@@ -472,9 +472,9 @@ func TestDigestIncludesInstalments(t *testing.T) {
 	if err := e.eng.Tick(context.Background(), at); err != nil {
 		t.Fatal(err)
 	}
-	digests := e.mail.with("Engagements:")
+	digests := e.mail.with("Workspace roundup:")
 	if len(digests) != 1 || !strings.Contains(digests[0].Text, "Instalments\n- ") || !strings.Contains(digests[0].Text, "https://app.example.com/invoices?id=") ||
-		!strings.Contains(digests[0].HTML, "<h3>Instalments</h3>") {
+		!strings.Contains(digests[0].HTML, "Instalments</h2>") {
 		t.Fatalf("digests %+v", digests)
 	}
 }
@@ -492,12 +492,12 @@ func TestDigestWithoutNoticesOncePerDay(t *testing.T) {
 		if err := e.eng.Tick(context.Background(), time.Date(y, mo, d, step.hour, step.minute, 0, 0, zone)); err != nil {
 			t.Fatal(err)
 		}
-		if got := e.mail.with("Engagements:"); len(got) != step.want {
+		if got := e.mail.with("Workspace roundup:"); len(got) != step.want {
 			t.Fatalf("%02d:%02d: %d digests, want %d", step.hour, step.minute, len(got), step.want)
 		}
 	}
-	m := e.mail.with("Engagements:")[0]
-	if !strings.HasPrefix(m.Text, "Instalments\n- ") || !strings.Contains(m.Text, "instalment 1/3, Kunde AG: CHF 360.35") {
+	m := e.mail.with("Workspace roundup:")[0]
+	if !strings.Contains(m.Text, "in Acme.") || !strings.Contains(m.Text, "\nInstalments\n- ") || !strings.Contains(m.Text, "instalment 1/3, Kunde AG: CHF 360.35") {
 		t.Fatalf("digest %q", m.Text)
 	}
 }

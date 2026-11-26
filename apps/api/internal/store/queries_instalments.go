@@ -416,14 +416,14 @@ func (q Q) DigestRows(ctx context.Context, workspaceID string, now time.Time) ([
 
 // InstalmentDigestWorkspaces: the live workspaces (id and time zone) with the digest on and digest rows at now.
 func (q Q) InstalmentDigestWorkspaces(ctx context.Context, now time.Time) ([]Workspace, error) {
-	rows, err := q.db.Query(ctx, `SELECT DISTINCT d.workspace_id, w.timezone FROM (`+digestRows()+`) d(workspace_id)
+	rows, err := q.db.Query(ctx, `SELECT DISTINCT d.workspace_id, w.name, w.timezone FROM (`+digestRows()+`) d(workspace_id)
 		JOIN workspaces w ON w.id = d.workspace_id ORDER BY d.workspace_id`, "", now)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Workspace, error) {
 		var w Workspace
-		err := r.Scan(&w.ID, &w.Timezone)
+		err := r.Scan(&w.ID, &w.Name, &w.Timezone)
 		return w, err
 	})
 }

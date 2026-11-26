@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html"
 	"net/url"
@@ -69,6 +70,8 @@ func (s *Service) message(burst []store.Notification) mail.Message {
 	subject, summary, action, href := lead.title, lead.body, lead.action, lead.href
 	if len(rows) > 1 {
 		subject, summary, action, href = burstTitle(first.Event, len(rows)), "", "Open notifications", "/notifications"
+	} else if first.Event == "approval.approved" {
+		action = "Open approved draft"
 	}
 	prefs := s.publicURL + "/notifications?prefs=1"
 	unsub := s.publicURL + "/unsubscribe#" + s.token(first.UserID, first.Event)
@@ -80,9 +83,11 @@ func (s *Service) message(burst []store.Notification) mail.Message {
 	fmt.Fprintf(&text, "%s\n%s\n\n", first.WorkspaceName, subject)
 	fmt.Fprintf(&body, `<p style="margin:0 0 6px;font-size:13px;color:#71717a">%s</p>`+"\n", esc(first.WorkspaceName))
 	body.WriteString(mail.Title(subject))
-	if summary != "" {
-		fmt.Fprintf(&text, "%s\n\n", summary)
-		fmt.Fprintf(&body, `<p style="margin:0 0 16px">%s</p>`+"\n", esc(summary))
+	if len(rows) == 1 {
+		lead, note := emailLead(first, summary)
+		l := mail.NewLetter("en").Lead(lead).Note(note)
+		text.WriteString(l.Text() + "\n")
+		body.WriteString(l.HTML())
 	}
 	if len(rows) > 1 {
 		body.WriteString("<ul>\n")
@@ -102,6 +107,68 @@ func (s *Service) message(burst []store.Notification) mail.Message {
 	body.WriteString(mail.Button(action, s.publicURL+href))
 	footer := fmt.Sprintf(`%s<br><a href="%s" style="color:#71717a">Notification settings</a> &nbsp;·&nbsp; `+
 		`<a href="%s" style="color:#71717a">Unsubscribe</a>`, esc(because), esc(prefs), esc(unsub))
-	return mail.Message{Workspace: first.WorkspaceID, To: []string{first.Email}, Subject: subject, Text: text.String(), HTML: body.String(), ListUnsubscribe: oneClick,
+	label, tone := emailOutcome(burst)
+	return mail.Message{Workspace: first.WorkspaceID, To: []string{first.Email}, Subject: subject, Text: text.String(), HTML: body.String(), ListUnsubscribe: oneClick, Eyebrow: label, Tone: tone,
 		Footer: footer, Members: true}
+}
+
+// emailLead gives the recipient context and a next step beyond the notification title.
+func emailLead(n store.Notification, summary string) (lead, note string) {
+	switch n.Event {
+	case "approval.approved", "approval.rejected", "quote.accepted", "quote.declined":
+		d := data{}
+		_ = json.Unmarshal(n.Data, &d)
+		switch n.Event {
+		case "approval.approved":
+			switch d.s("doc_type") {
+			case "quote":
+				return "The quote is ready to send. Open it to review the details before sharing it with your client.", ""
+			case "expense":
+				return "The expense is ready to book. Review the details and receipts before recording it in your books.", ""
+			default:
+				return "Open the draft to review the final details and issue the invoice when you’re ready.", ""
+			}
+		case "approval.rejected":
+			return "The document is back in draft. Update it and submit it again when it’s ready for another review.", d.s("comment")
+		case "quote.accepted":
+			return "Open the accepted quote to review the agreed details or create an invoice draft from it.", d.s("note")
+		case "quote.declined":
+			return "Open the quote to review the response. If the client wants a different proposal, you can prepare a new revision.", d.s("note")
+		}
+	case "einvoice.delivered":
+		return summary + " Open the invoice to see its delivery history.", ""
+	case "member.role_changed":
+		return summary + " Your new role determines what you can see and do in this workspace.", ""
+	}
+	return summary, ""
+}
+
+func emailOutcome(burst []store.Notification) (string, mail.Tone) {
+	n := burst[0]
+	switch n.Event {
+	case "approval.approved":
+		return "Approved", mail.Positive
+	case "approval.rejected":
+		return "Rejected", mail.Negative
+	case "quote.accepted":
+		return "Accepted", mail.Positive
+	case "quote.declined":
+		return "Declined", mail.Negative
+	case "invoice.paid":
+		return "Paid", mail.Positive
+	case "scheduling.booked":
+		return "Booked", mail.Positive
+	case "scheduling.proposal_answered":
+		if len(burst) == 1 {
+			d := data{}
+			_ = json.Unmarshal(n.Data, &d)
+			switch d.s("answer") {
+			case "accepted":
+				return "Accepted", mail.Positive
+			case "declined":
+				return "Declined", mail.Negative
+			}
+		}
+	}
+	return "", 0
 }
