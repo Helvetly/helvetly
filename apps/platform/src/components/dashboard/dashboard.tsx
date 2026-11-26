@@ -51,7 +51,7 @@ import { Money, RowStatus } from '@/components/invoices/invoice-bits'
 import { RecordLink, useDrawers } from '@/components/record-link'
 import { TodayCard } from '@/components/scheduling/today-card'
 import { PageHeader } from '@/components/shell/page-header'
-import { errorMessage } from '@/lib/api'
+import { errorMessage, type CashFlowPoint } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import {
   DEFAULT_PARAMS,
@@ -67,6 +67,7 @@ import {
 import { useCan } from '@/lib/permissions'
 import { useDashboard, useSession } from '@/lib/queries'
 
+import { monthRows, yearToDate, yearsWithData, type Measure } from './cash-flow-years'
 import { DashboardCard, LIST_ROW, ToneTile, type Tone } from './dashboard-card'
 import { DashboardKpis } from './dashboard-kpis'
 import { firstName, greetingKey } from './figures'
@@ -472,7 +473,31 @@ const PERIODS = [
   { value: '30d', label: translate('message30d') },
   { value: '90d', label: translate('message90d') },
   { value: '12m', label: translate('message12m') },
+  { value: 'years', label: translate('cashFlowYears') },
 ] as const
+const MEASURES = [
+  { value: 'income', label: translate('income2') },
+  { value: 'expenses', label: translate('expenses') },
+  { value: 'net', label: translate('cashFlowNet') },
+] as const
+// This year in the brand colour, the year before in grey, older years in calm accents.
+const YEAR_COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-4)',
+  'var(--chart-3)',
+  'var(--chart-5)',
+]
+const calendarMonth = (month: number, style: 'short' | 'long') =>
+  new Date(Date.UTC(2026, month, 1)).toLocaleDateString(languageTag, {
+    month: style,
+    timeZone: 'UTC',
+  })
+const percent = new Intl.NumberFormat(languageTag, {
+  style: 'percent',
+  maximumFractionDigits: 0,
+  signDisplay: 'exceptZero',
+})
 
 const chartConfig = {
   income: { label: translate('income2'), color: 'var(--chart-1)' },
@@ -499,9 +524,16 @@ function CashFlow() {
   const [currency, setCurrency] = useState<string>()
   const dashboard = useDashboard(currency)
   const [currencies, setCurrencies] = useState<string[]>([])
-  const [period, setPeriod] = useState<(typeof PERIODS)[number]['value']>('12m')
+  const [chosenPeriod, setPeriod] = useState<(typeof PERIODS)[number]['value']>('12m')
+  const [measure, setMeasure] = useState<Measure>('income')
+  const [chosenYears, setYears] = useState<number[]>()
   const availableCurrencies = dashboard.data?.currencies ?? currencies
-  const points = dashboard.data?.cash_flow[period] ?? []
+  const monthly = dashboard.data?.cash_flow.years ?? []
+  const years = yearsWithData(monthly)
+  // Comparing years needs two of them; a currency with less falls back to the year view.
+  const period = chosenPeriod === 'years' && years.length < 2 ? '12m' : chosenPeriod
+  const shownYears = (chosenYears ?? years.slice(0, 2)).filter((year) => years.includes(year))
+  const points = period === 'years' ? [] : (dashboard.data?.cash_flow[period] ?? [])
   const income = points.reduce((sum, point) => sum + point.income, 0)
   const expenses = points.reduce((sum, point) => sum + point.expenses, 0)
   const unit = dashboard.data?.currency ?? currency ?? '—'
@@ -534,141 +566,281 @@ function CashFlow() {
             size="sm"
             label={translate('period')}
             value={period}
-            options={[...PERIODS]}
+            options={PERIODS.filter((option) => option.value !== 'years' || years.length > 1)}
             onChange={setPeriod}
           />
         </>
       }
     >
-      <div className="flex flex-1 flex-col gap-4 px-4 pt-1 pb-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <output
-            aria-label={translate('netCashFlow')}
-            className="flex items-baseline gap-1.5 text-display leading-none tracking-[-0.02em] tabular-nums"
-          >
-            <span className="text-body-sm tracking-normal text-muted-foreground">{unit}</span>
-            {dashboard.data ? formatWhole(income - expenses) : '—'}
-            <span className="text-body-sm tracking-normal text-muted-foreground">
-              {translate('net')}
-            </span>
-          </output>
-          <p className="flex flex-wrap items-center gap-2 text-body-sm">
-            <LegendChip swatch="bg-(--chart-1)" label={translate('income2')}>
-              {dashboard.data && `${unit} ${formatWhole(income)}`}
-            </LegendChip>
-            <LegendChip
-              swatch="border-t-2 border-dashed border-(--chart-2) bg-transparent"
-              label={translate('expenses')}
+      {period === 'years' && dashboard.data ? (
+        <CashFlowYears
+          points={monthly}
+          years={years}
+          shown={shownYears}
+          onShownChange={setYears}
+          measure={measure}
+          onMeasureChange={setMeasure}
+          unit={unit}
+        />
+      ) : (
+        <div className="flex flex-1 flex-col gap-4 px-4 pt-1 pb-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <output
+              aria-label={translate('netCashFlow')}
+              className="flex items-baseline gap-1.5 text-display leading-none tracking-[-0.02em] tabular-nums"
             >
-              {dashboard.data && `${unit} ${formatWhole(expenses)}`}
-            </LegendChip>
-          </p>
-        </div>
-        {(!canReadInvoices || !canReadExpenses) && (
-          <p className="text-xs text-muted-foreground">
-            {canReadInvoices
-              ? translate('invoicePaymentsAndRefundsOnlyExpensesAreNotIncluded')
-              : translate('paidExpensesOnlyInvoicePaymentsAndRefundsAreNot')}
-          </p>
-        )}
-        {dashboard.error ? (
-          <div className="grid h-60 content-center justify-items-start gap-3">
-            <p role="alert" className="text-sm text-muted-foreground">
-              {translate('cashFlowCouldnTBeLoaded')}
-              {errorMessage(dashboard.error)}
+              <span className="text-body-sm tracking-normal text-muted-foreground">{unit}</span>
+              {dashboard.data ? formatWhole(income - expenses) : '—'}
+              <span className="text-body-sm tracking-normal text-muted-foreground">
+                {translate('net')}
+              </span>
+            </output>
+            <p className="flex flex-wrap items-center gap-2 text-body-sm">
+              <LegendChip swatch="bg-(--chart-1)" label={translate('income2')}>
+                {dashboard.data && `${unit} ${formatWhole(income)}`}
+              </LegendChip>
+              <LegendChip
+                swatch="border-t-2 border-dashed border-(--chart-2) bg-transparent"
+                label={translate('expenses')}
+              >
+                {dashboard.data && `${unit} ${formatWhole(expenses)}`}
+              </LegendChip>
             </p>
-            <Button size="sm" variant="outline" onClick={() => void dashboard.refetch()}>
-              {translate('retryCashFlow')}
-            </Button>
           </div>
-        ) : dashboard.data ? (
-          <ChartContainer config={chartConfig} className="mt-auto aspect-auto h-60 w-full">
-            <ComposedChart data={points} margin={{ left: 0, right: 4, top: 8, bottom: 0 }}>
-              <defs>
-                <linearGradient id="dashboard-income" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--color-income)" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="var(--color-income)" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="2 4" />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                minTickGap={24}
-                tickFormatter={tickDate(period)}
-              />
-              <YAxis
-                width={44}
-                tickLine={false}
-                axisLine={false}
-                allowDecimals={false}
-                domain={[0, (max: number) => Math.max(max, 1)]}
-                tickFormatter={(value: number) => compact.format(value)}
-              />
-              <ChartTooltip
-                cursor={period === '12m' ? { fill: 'var(--muted)' } : { stroke: 'var(--border)' }}
-                content={
-                  <ChartTooltipContent
-                    className="min-w-44"
-                    labelFormatter={(_, payload) => {
-                      const date: unknown = payload[0]?.payload?.date
-                      if (typeof date !== 'string') return ''
-                      return period === '12m'
-                        ? new Date(date).toLocaleDateString(languageTag, {
-                            month: 'long',
-                            year: 'numeric',
-                          })
-                        : formatDate(date)
-                    }}
-                  />
-                }
-              />
-              {period === '12m' ? (
-                <>
-                  <Bar
-                    dataKey="income"
-                    fill="var(--color-income)"
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={18}
-                  />
-                  <Bar
-                    dataKey="expenses"
-                    fill="var(--color-expenses)"
-                    fillOpacity={0.55}
-                    radius={[4, 4, 0, 0]}
-                    maxBarSize={18}
-                  />
-                </>
-              ) : (
-                <>
-                  <Area
-                    dataKey="income"
-                    type="monotone"
-                    stroke="var(--color-income)"
-                    strokeWidth={1.75}
-                    fill="url(#dashboard-income)"
-                    activeDot={{ r: 3.5 }}
-                  />
-                  <Line
-                    dataKey="expenses"
-                    type="monotone"
-                    stroke="var(--color-expenses)"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 4"
-                    dot={false}
-                    activeDot={{ r: 3 }}
-                  />
-                </>
-              )}
-            </ComposedChart>
-          </ChartContainer>
-        ) : (
-          <Loader className="min-h-60" />
-        )}
-      </div>
+          {(!canReadInvoices || !canReadExpenses) && (
+            <p className="text-xs text-muted-foreground">
+              {canReadInvoices
+                ? translate('invoicePaymentsAndRefundsOnlyExpensesAreNotIncluded')
+                : translate('paidExpensesOnlyInvoicePaymentsAndRefundsAreNot')}
+            </p>
+          )}
+          {dashboard.error ? (
+            <div className="grid h-60 content-center justify-items-start gap-3">
+              <p role="alert" className="text-sm text-muted-foreground">
+                {translate('cashFlowCouldnTBeLoaded')}
+                {errorMessage(dashboard.error)}
+              </p>
+              <Button size="sm" variant="outline" onClick={() => void dashboard.refetch()}>
+                {translate('retryCashFlow')}
+              </Button>
+            </div>
+          ) : dashboard.data ? (
+            <ChartContainer config={chartConfig} className="mt-auto aspect-auto h-60 w-full">
+              <ComposedChart data={points} margin={{ left: 0, right: 4, top: 8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="dashboard-income" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-income)" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="var(--color-income)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="2 4" />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  minTickGap={24}
+                  tickFormatter={tickDate(period)}
+                />
+                <YAxis
+                  width={44}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                  domain={[0, (max: number) => Math.max(max, 1)]}
+                  tickFormatter={(value: number) => compact.format(value)}
+                />
+                <ChartTooltip
+                  cursor={period === '12m' ? { fill: 'var(--muted)' } : { stroke: 'var(--border)' }}
+                  content={
+                    <ChartTooltipContent
+                      className="min-w-44"
+                      labelFormatter={(_, payload) => {
+                        const date: unknown = payload[0]?.payload?.date
+                        if (typeof date !== 'string') return ''
+                        return period === '12m'
+                          ? new Date(date).toLocaleDateString(languageTag, {
+                              month: 'long',
+                              year: 'numeric',
+                            })
+                          : formatDate(date)
+                      }}
+                    />
+                  }
+                />
+                {period === '12m' ? (
+                  <>
+                    <Bar
+                      dataKey="income"
+                      fill="var(--color-income)"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={18}
+                    />
+                    <Bar
+                      dataKey="expenses"
+                      fill="var(--color-expenses)"
+                      fillOpacity={0.55}
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={18}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Area
+                      dataKey="income"
+                      type="monotone"
+                      stroke="var(--color-income)"
+                      strokeWidth={1.75}
+                      fill="url(#dashboard-income)"
+                      activeDot={{ r: 3.5 }}
+                    />
+                    <Line
+                      dataKey="expenses"
+                      type="monotone"
+                      stroke="var(--color-expenses)"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4"
+                      dot={false}
+                      activeDot={{ r: 3 }}
+                    />
+                  </>
+                )}
+              </ComposedChart>
+            </ChartContainer>
+          ) : (
+            <Loader className="min-h-60" />
+          )}
+        </div>
+      )}
     </DashboardCard>
+  )
+}
+
+/** Up to five years side by side, January to December, in one measure; years switch on and off. */
+function CashFlowYears({
+  points,
+  years,
+  shown,
+  onShownChange,
+  measure,
+  onMeasureChange,
+  unit,
+}: {
+  points: CashFlowPoint[]
+  years: number[]
+  shown: number[]
+  onShownChange: (years: number[]) => void
+  measure: Measure
+  onMeasureChange: (measure: Measure) => void
+  unit: string
+}) {
+  const latest = shown[0] ?? years[0]
+  if (latest === undefined) return null
+  const { total, change } = yearToDate(points, measure, latest)
+  const color = (year: number) => YEAR_COLORS[years.indexOf(year)] ?? YEAR_COLORS[0]
+  const config = Object.fromEntries(
+    years.map((year) => [year, { label: String(year), color: color(year) }]),
+  ) satisfies ChartConfig
+  const toggle = (year: number) =>
+    onShownChange(
+      shown.includes(year)
+        ? shown.filter((other) => other !== year)
+        : years.filter((other) => other === year || shown.includes(other)),
+    )
+
+  return (
+    <div className="flex flex-1 flex-col gap-4 px-4 pt-1 pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <output
+          aria-label={translate('cashFlowYearToDate', { year: String(latest) })}
+          className="flex flex-wrap items-baseline gap-1.5 text-display leading-none tracking-[-0.02em] tabular-nums"
+        >
+          <span className="text-body-sm tracking-normal text-muted-foreground">{unit}</span>
+          {formatWhole(total)}
+          <span className="text-body-sm tracking-normal text-muted-foreground">
+            {translate('cashFlowYearToDateShort', { year: String(latest) })}
+            {change !== null &&
+              ` · ${translate('cashFlowVsYear', { change: percent.format(change), year: String(latest - 1) })}`}
+          </span>
+        </output>
+        <Segmented
+          size="sm"
+          label={translate('cashFlowMeasure')}
+          value={measure}
+          options={[...MEASURES]}
+          onChange={onMeasureChange}
+        />
+      </div>
+      <fieldset className="flex flex-wrap gap-2">
+        <legend className="sr-only">{translate('cashFlowYearsShown')}</legend>
+        {years.map((year) => (
+          <button
+            key={year}
+            type="button"
+            aria-pressed={shown.includes(year)}
+            // The last year shown stays: an empty chart says nothing.
+            disabled={shown.length === 1 && shown[0] === year}
+            onClick={() => toggle(year)}
+            className="inline-flex items-center gap-2 rounded-full bg-muted px-2.5 py-1 text-body-sm tabular-nums transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-default aria-[pressed=false]:text-muted-foreground"
+          >
+            <span
+              aria-hidden
+              className="h-0.5 w-3.5 rounded-full"
+              style={{ background: shown.includes(year) ? color(year) : 'var(--border)' }}
+            />
+            {year}
+          </button>
+        ))}
+      </fieldset>
+      <ChartContainer config={config} className="mt-auto aspect-auto h-60 w-full">
+        <ComposedChart
+          data={monthRows(points, measure)}
+          margin={{ left: 0, right: 4, top: 8, bottom: 0 }}
+        >
+          <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="2 4" />
+          <XAxis
+            dataKey="month"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            minTickGap={16}
+            tickFormatter={(month: number) => calendarMonth(month, 'short')}
+          />
+          <YAxis
+            width={44}
+            tickLine={false}
+            axisLine={false}
+            allowDecimals={false}
+            domain={measure === 'net' ? ['auto', 'auto'] : [0, (max: number) => Math.max(max, 1)]}
+            tickFormatter={(value: number) => compact.format(value)}
+          />
+          <ChartTooltip
+            cursor={{ stroke: 'var(--border)' }}
+            content={
+              <ChartTooltipContent
+                className="min-w-44"
+                labelFormatter={(_, payload) => {
+                  const month: unknown = payload[0]?.payload?.month
+                  return typeof month === 'number' ? calendarMonth(month, 'long') : ''
+                }}
+              />
+            }
+          />
+          {shown.map((year) => (
+            <Line
+              key={year}
+              dataKey={String(year)}
+              type="monotone"
+              stroke={`var(--color-${year})`}
+              strokeWidth={year === latest ? 2 : 1.5}
+              dot={false}
+              activeDot={{ r: 3 }}
+              isAnimationActive={false}
+            />
+          ))}
+        </ComposedChart>
+      </ChartContainer>
+    </div>
   )
 }
 

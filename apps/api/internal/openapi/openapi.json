@@ -13862,7 +13862,7 @@
                 "required": ["date", "income", "expenses"]
               }
             },
-            "description": "Keys 30d, 90d and 12m."
+            "description": "Keys 30d, 90d, 12m and years: months from January four years back to this month."
           },
           "unread": {
             "type": "object",

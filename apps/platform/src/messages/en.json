@@ -5113,7 +5113,7 @@
   "noExpensesThisMonthYet": "No expenses this month yet.",
   "needsAttentionHelp": "VAT returns to file, months to close, company details to add and invoices still to be paid, the most urgent first.",
   "nothingNeedsAttentionBody": "Open invoices, VAT returns and months to close show up here when they need you.",
-  "cashFlowHelp": "Invoice payments and refunds against paid expenses: by month for a year, by day for 30 and 90 days.",
+  "cashFlowHelp": "Invoice payments and refunds against paid expenses: by month for a year, by day for 30 and 90 days. Years compares up to five calendar years month by month.",
   "editFilter": "Edit filter {label}",
   "searchSuggestions": "Search suggestions",
   "filterNot": "not {value}",
@@ -6026,5 +6026,12 @@
   "theWorkspaceMovesToFree": "the workspace moves to Free",
   "thenTheWorkspaceMovesToFree": "Then the workspace moves to Free.",
   "planTierLine": "{price} for {included, plural, one {# person} other {# people}}{extra, plural, =0 {} one { + # person at {extraPrice}} other { + # people at {extraPrice} each}}",
-  "youSavePerPersonPerYear": "You save {amount} per person per year vs monthly"
+  "youSavePerPersonPerYear": "You save {amount} per person per year vs monthly",
+  "cashFlowYears": "Years",
+  "cashFlowNet": "Net",
+  "cashFlowMeasure": "Measure",
+  "cashFlowYearsShown": "Years shown",
+  "cashFlowYearToDate": "{year} year to date",
+  "cashFlowYearToDateShort": "{year} to date",
+  "cashFlowVsYear": "{change} vs {year}"
 }
