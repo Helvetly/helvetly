@@ -3615,6 +3615,16 @@
             }
           },
           {
+            "name": "origin",
+            "in": "query",
+            "required": false,
+            "description": "Only events an import wrote (the imported invoices and the payments recorded with them).",
+            "schema": {
+              "type": "string",
+              "enum": ["imported"]
+            }
+          },
+          {
             "name": "since",
             "in": "query",
             "required": false,
@@ -9958,6 +9968,13 @@
               }
             ],
             "description": "Null once the person's account is gone."
+          },
+          "locked_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The file's tags only its record or filing sets (its kind, signed, its date and its record's number); the platform groups a client's files by the kind among them."
           }
         },
         "required": ["id", "name", "size", "content_type", "created_at", "uploaded_by"]
@@ -12181,6 +12198,11 @@
               }
             ]
           },
+          "origin": {
+            "type": ["string", "null"],
+            "enum": ["imported", null],
+            "description": "imported when an import wrote the event, else null."
+          },
           "at": {
             "type": "string",
             "format": "date-time"
@@ -12203,6 +12225,7 @@
           "subject_id",
           "subject",
           "actor",
+          "origin",
           "at",
           "payload",
           "prev_hash",

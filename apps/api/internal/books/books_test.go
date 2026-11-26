@@ -177,6 +177,7 @@ type eventOut struct {
 	SubjectID   string          `json:"subject_id"`
 	Subject     *subject        `json:"subject"`
 	Actor       *person         `json:"actor"`
+	Origin      *string         `json:"origin"`
 	Payload     json.RawMessage `json:"payload"`
 	PrevHash    string          `json:"prev_hash"`
 	Hash        string          `json:"hash"`
@@ -520,7 +521,7 @@ func TestAuditLogFilters(t *testing.T) {
 		actor                        *string
 		payload                      string
 	}{
-		{"invoice.issued", "invoice", "inv_gone", &owner.user, `{"number": "2026-001"}`},
+		{"invoice.issued", "invoice", "inv_gone", &owner.user, `{"number": "2026-001", "origin": "imported"}`},
 		{"payment.added", "invoice", "inv_gone", &admin.user, `{"number": "2026-001", "amount": "10.00"}`},
 		{"expense.booked", "expense", "exp_1", &owner.user, `{"number": 1}`},
 		{"workspace.portal_turned_off", "workspace", ws, &admin.user, `{}`},
@@ -554,6 +555,7 @@ func TestAuditLogFilters(t *testing.T) {
 		{"percent is literal", "q=50%25", []int64{5}},
 		{"underscore is literal", "q=x_y", []int64{}},
 		{"combined", "category=payments&actor=" + owner.user, []int64{}},
+		{"imported", "origin=imported", []int64{1}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var page logPage
@@ -574,11 +576,14 @@ func TestAuditLogFilters(t *testing.T) {
 		*s.Party != "Papeterie SA" || *s.Currency != "EUR" {
 		t.Fatalf("expense subject: %+v %+v", page.Data[2], s)
 	}
+	if o := page.Data[0].Origin; o == nil || *o != "imported" || page.Data[1].Origin != nil {
+		t.Fatalf("origins: %v %v", o, page.Data[1].Origin)
+	}
 	if page.Data[0].Subject != nil || page.Data[3].Subject != nil {
 		t.Fatalf("gone or non-record subjects: %+v %+v", page.Data[0].Subject, page.Data[3].Subject)
 	}
 
-	for _, q := range []string{"order=up", "category=quotes", "since=yesterday", "before=2026-03-01", "q=" + strings.Repeat("a", 201)} {
+	for _, q := range []string{"order=up", "category=quotes", "since=yesterday", "before=2026-03-01", "q=" + strings.Repeat("a", 201), "origin=manual"} {
 		e.fails(owner, "GET", "/api/v1/audit-log?"+q, nil, 400, "invalid_request")
 	}
 

@@ -38,6 +38,8 @@ export type FinancialEvent = {
   subject: { number: string | null; party: string | null; currency: string | null } | null
   /** null for the hourly job or a deleted account */
   actor: Person | null
+  /** 'imported' for what an import wrote */
+  origin: 'imported' | null
   at: string
   payload: Record<string, unknown>
   prev_hash: string
@@ -51,6 +53,7 @@ export type AuditFilter = Partial<{
   since: string
   before: string
   q: string
+  origin: 'imported'
 }>
 export type EventPage = { data: FinancialEvent[]; meta: { next_cursor: string | null } }
 export type ChainCheck = { ok: boolean; broken_at: number | null; entries: number }

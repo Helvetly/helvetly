@@ -2,7 +2,6 @@ package quotes
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"helvetly.com/api/internal/auth"
@@ -10,21 +9,14 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// draftText is the subject and message of a quote's email: the workspace's own template for the quote's
-// language, else the built-in text, with the variables filled in. A quote without a number renders {number} as "".
+// draftText is the subject and message of a quote's email: the built-in text for the quote's language, with the
+// variables filled in. A quote without a number renders {number} as "".
 func (s *Service) draftText(ctx context.Context, q store.Q, workspaceID string, t store.Quote) (emailtemplate.Template, error) {
 	seller, _, _, err := s.invoices.Seller(ctx, q, workspaceID)
 	if err != nil {
 		return emailtemplate.Template{}, err
 	}
 	tpl := emailtemplate.Default("quote", t.Language)
-	own, err := q.EmailTemplate(ctx, workspaceID, "quote", t.Language)
-	switch {
-	case err == nil:
-		tpl = emailtemplate.Template{Subject: own.Subject, Body: own.Body}
-	case !errors.Is(err, store.ErrNotFound):
-		return emailtemplate.Template{}, err
-	}
 	number := ""
 	if t.Number != nil {
 		number = *t.Number

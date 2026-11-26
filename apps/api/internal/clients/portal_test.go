@@ -366,3 +366,22 @@ func TestBulkPortalDisable(t *testing.T) {
 		t.Fatal("only the selected client's original session should end")
 	}
 }
+
+// With portal invitations off (Settings → Client emails), turning a client's portal on sends nothing; a resend by
+// hand still goes.
+func TestNoInviteWhileInvitationsOff(t *testing.T) {
+	e, m := newPortalEnv(t)
+	b := e.workspace()
+	if err := e.st.SetWorkspaceClientEmails(context.Background(), b.workspace, store.ClientEmails{SessionReminders: true}); err != nil {
+		t.Fatal(err)
+	}
+	c := e.create(b, address("Acme"))
+	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"email": "ana@acme.ch", "portal_enabled": true}, 200, nil)
+	if m.count() != 0 {
+		t.Fatalf("mails = %+v", m.sent)
+	}
+	e.do(b, "POST", "/api/v1/clients/"+c.ID+"/portal-invitation", nil, 200, nil)
+	if m.count() != 1 {
+		t.Fatalf("mails = %+v", m.sent)
+	}
+}

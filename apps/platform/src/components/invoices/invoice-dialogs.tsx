@@ -32,7 +32,7 @@ import {
 import { RecordLink } from '@/components/record-link'
 import { ApiError, errorMessage } from '@/lib/api'
 import { useClient } from '@/lib/clients'
-import { useInvoiceEmailDraft } from '@/lib/email-templates'
+import { useInvoiceEmailDraft } from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 import {
   documentName,

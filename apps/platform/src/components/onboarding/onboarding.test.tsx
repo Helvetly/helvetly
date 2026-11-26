@@ -828,7 +828,7 @@ describe('the welcome', () => {
       expect(legalForm()).toBeDisabled()
       expect(legalForm()).toHaveTextContent('No list for this country yet')
       await user.click(screen.getByRole('button', { name: /Continue/ }))
-      await waitFor(() => expect(saved.at(-1)?.seller.legal_form).toBeNull())
+      await waitFor(() => expect(saved.at(-1)?.seller?.legal_form).toBeNull())
     })
 
     test('a Swiss company saves its legal form', async () => {
@@ -837,7 +837,7 @@ describe('the welcome', () => {
       await start(user)
       await fillCompany(user, 'Muster GmbH')
       await user.click(screen.getByRole('button', { name: /Continue/ }))
-      await waitFor(() => expect(saved.at(-1)?.seller.legal_form).toBe('gmbh'))
+      await waitFor(() => expect(saved.at(-1)?.seller?.legal_form).toBe('gmbh'))
     })
 
     test('a custom number format is built from placeholders, checked and saved', async () => {

@@ -8,6 +8,7 @@ import type { EinvoiceFormat, Interval, PlanInput } from '@/lib/invoices'
 
 import { accountHandlers } from './account'
 import { approvalHandlers } from './approvals'
+import { clientEmailsHandlers } from './client-emails'
 import {
   auditEvents,
   closedPeriods,
@@ -18,7 +19,7 @@ import {
   sampleAgreement,
   scheduledInvoice,
 } from './data'
-import { emailTemplateHandlers } from './email-templates'
+import { emailTextHandlers } from './email-texts'
 import { employeesHandlers } from './employees'
 import { heidiHandlers } from './heidi'
 import { ledgerHandlers } from './ledger'
@@ -209,9 +210,11 @@ export function filterAudit(events: FinancialEvent[], query: URLSearchParams) {
   const since = query.get('since')
   const before = query.get('before')
   const text = query.get('q')?.toLowerCase()
+  const origin = query.get('origin')
   return events.filter(
     (event) =>
       (!category || event.category === category) &&
+      (!origin || event.origin === origin) &&
       (!actor || event.actor?.id === actor) &&
       (!since || event.at >= since) &&
       (!before || event.at < before) &&
@@ -465,9 +468,10 @@ export const handlers = [
   ...(process.env.VITEST ? notificationHandlers : []),
   ...(process.env.VITEST ? quoteHandlers : []),
   ...(process.env.VITEST ? employeesHandlers : []),
-  ...(process.env.VITEST ? emailTemplateHandlers : []),
+  ...(process.env.VITEST ? emailTextHandlers : []),
   ...(process.env.VITEST ? portalAddressHandlers : []),
   ...(process.env.VITEST ? replyToHandlers : []),
+  ...(process.env.VITEST ? clientEmailsHandlers : []),
   ...(process.env.VITEST ? portalDomainHandlers : []),
   ...(process.env.VITEST ? approvalHandlers : []),
   ...(process.env.VITEST ? schedulingHandlers(emptyState(), new Date()) : []),

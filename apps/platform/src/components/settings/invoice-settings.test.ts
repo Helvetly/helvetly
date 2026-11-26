@@ -31,7 +31,13 @@ test('keeps the payment method switches it read', () => {
 
 test('settings save instalments', () => {
   const values = valuesFrom(sampleSettings())
-  expect(toSettingsInput(values).instalments).toEqual(sampleSettings().instalments)
+  // The switches live in Settings → Client emails: the form leaves them out, so they keep their value.
+  const {
+    plan_auto_send: _send,
+    reminders_enabled: _remind,
+    ...form
+  } = sampleSettings().instalments
+  expect(toSettingsInput(values).instalments).toEqual(form)
   const changed = {
     ...values,
     instalments_count: '6',
@@ -45,8 +51,6 @@ test('settings save instalments', () => {
     interval: 'monthly',
     mode: 'plan',
     plan_lead_days: 14,
-    plan_auto_send: true,
-    reminders_enabled: true,
     remind_before_days: 0,
     remind_after_days: [3, 10],
   })
@@ -96,10 +100,10 @@ test.each([
 
 test('settings save dunning as typed, normalised', () => {
   const values = valuesFrom(sampleSettings())
-  expect(toSettingsInput(values).dunning).toEqual(sampleSettings().dunning)
+  const { enabled: _enabled, ...form } = sampleSettings().dunning
+  expect(toSettingsInput(values).dunning).toEqual(form)
   const changed = {
     ...values,
-    dunning_enabled: true,
     dunning_steps: [
       {
         key: 'a',
@@ -107,7 +111,6 @@ test('settings save dunning as typed, normalised', () => {
         timing: 'before_due' as const,
         days: '3',
         fee: '0.00',
-        text: '',
         qr_bill: false,
       },
       {
@@ -116,7 +119,6 @@ test('settings save dunning as typed, normalised', () => {
         timing: 'after_due' as const,
         days: '7',
         fee: '',
-        text: '  ',
         qr_bill: true,
       },
       {
@@ -125,7 +127,6 @@ test('settings save dunning as typed, normalised', () => {
         timing: 'after_previous' as const,
         days: '14',
         fee: '20',
-        text: 'Bitte zahlen Sie jetzt.',
         qr_bill: true,
       },
     ],
@@ -134,16 +135,14 @@ test('settings save dunning as typed, normalised', () => {
     dunning_interest_from: 'due_date' as const,
   }
   expect(toSettingsInput(changed).dunning).toEqual({
-    enabled: true,
     steps: [
-      { name: null, timing: 'before_due', days: 3, fee: '0.00', text: null, qr_bill: false },
-      { name: null, timing: 'after_due', days: 7, fee: '0.00', text: null, qr_bill: true },
+      { name: null, timing: 'before_due', days: 3, fee: '0.00', qr_bill: false },
+      { name: null, timing: 'after_due', days: 7, fee: '0.00', qr_bill: true },
       {
         name: 'Letzte Aufforderung',
         timing: 'after_previous',
         days: 14,
         fee: '20.00',
-        text: 'Bitte zahlen Sie jetzt.',
         qr_bill: true,
       },
     ],

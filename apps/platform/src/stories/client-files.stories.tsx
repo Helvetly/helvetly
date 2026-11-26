@@ -276,6 +276,75 @@ export const Empty: Story = {
   },
 }
 
+const pdf = (
+  id: string,
+  name: string,
+  created_at: string,
+  ...locked_tags: string[]
+): ClientFile => ({
+  ...receipt,
+  id,
+  name,
+  created_at,
+  locked_tags,
+})
+
+/** Files of known kinds sit under small headers with counts, in a fixed order, the newest first; the rest last. */
+export const ByKind: Story = {
+  parameters: {
+    msw: {
+      handlers: handlers([
+        pdf('inv_2', '2026-IN-003_Percic_2.pdf', '2026-11-20T10:00:00Z', 'invoice'),
+        pdf('loose', 'Percic.pdf', '2026-11-18T10:00:00Z'),
+        pdf('inv_1', '2026-IN-003_Percic_1.pdf', '2026-11-10T10:00:00Z', 'partial-invoice'),
+        pdf('ctr', 'C43-26-CP0043.pdf', '2026-10-01T10:00:00Z', 'contract', 'signed'),
+        pdf('sig', 'Consent signed.pdf', '2026-09-01T10:00:00Z', 'signed'),
+      ]),
+    },
+  },
+  play: async () => {
+    const files = await panel()
+    const groups = await files.findAllByRole('region')
+    await expect(files.getByRole('heading', { name: 'Files 5' })).toBeVisible()
+    await expect(groups.map((group) => group.getAttribute('aria-labelledby'))).toEqual([
+      'client-files-contracts',
+      'client-files-invoices',
+      'client-files-clientFilesSigned',
+      'client-files-clientFilesOther',
+    ])
+    await expect(files.getByRole('heading', { name: 'Invoices 2' })).toBeVisible()
+    await expect(files.getByRole('heading', { name: 'Other files 1' })).toBeVisible()
+    const invoices = within(files.getByRole('region', { name: 'Invoices 2' }))
+    await expect(
+      invoices.getAllByRole('link', { name: /^2026-IN/ }).map((a) => a.textContent),
+    ).toEqual(['2026-IN-003_Percic_2.pdf', '2026-IN-003_Percic_1.pdf'])
+    // Row actions still work inside a group.
+    await expect(
+      within(files.getByRole('region', { name: 'Contracts 1' })).getByRole('link', {
+        name: 'Preview C43-26-CP0043.pdf',
+      }),
+    ).toHaveAttribute('href', expect.stringMatching(/^\/documents\/?\?file=ctr$/))
+  },
+}
+
+/** One kind only: the plain list, no headers. */
+export const OneKind: Story = {
+  parameters: {
+    msw: {
+      handlers: handlers([
+        pdf('inv_2', '2026-IN-003_Percic_2.pdf', '2026-11-20T10:00:00Z', 'invoice'),
+        pdf('inv_1', '2026-IN-003_Percic_1.pdf', '2026-11-10T10:00:00Z', 'invoice'),
+      ]),
+    },
+  },
+  play: async () => {
+    const files = await panel()
+    await files.findByText('2026-IN-003_Percic_1.pdf')
+    await expect(files.queryByRole('region')).toBeNull()
+    await expect(files.queryByRole('heading', { name: /^Invoices/ })).toBeNull()
+  },
+}
+
 export const ListDark: Story = { ...List, parameters: { ...List.parameters, dark: true } }
 
 export const ListPhone: Story = {

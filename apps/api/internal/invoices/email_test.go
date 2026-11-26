@@ -6,8 +6,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
-	"unicode/utf8"
 
 	"helvetly.com/api/internal/emailtemplate"
 	"helvetly.com/api/internal/store"
@@ -21,16 +19,14 @@ type emailDraftOut struct {
 	}
 }
 
-func (e *env) setTemplate(b *browser, kind, lang, subject, body string) {
+// oldOverride stores a row of the email texts workspaces could once write; the app no longer reads them.
+func (e *env) oldOverride(b *browser, kind, lang, subject, body string) {
 	e.t.Helper()
-	ws := e.wsID(b)
-	err := e.st.Q.SetEmailTemplate(context.Background(), ws, store.EmailTemplate{Kind: kind, Language: lang, Subject: subject, Body: body}, "", time.Now())
-	if err != nil {
+	if _, err := e.raw.Exec(context.Background(), `INSERT INTO email_templates (workspace_id, kind, language, subject, body, updated_at)
+		VALUES ($1, $2, $3, $4, $5, now())`, b.workspace, kind, lang, subject, body); err != nil {
 		e.t.Fatal(err)
 	}
 }
-
-func (e *env) wsID(b *browser) string { return b.workspace }
 
 func (e *env) draftOf(b *browser, id string, want int) emailDraftOut {
 	var out emailDraftOut
@@ -59,32 +55,6 @@ func TestDraftDefaultsMatchTheBuiltInTexts(t *testing.T) {
 	}
 }
 
-func TestDraftUsesInvoiceLanguageTemplate(t *testing.T) {
-	e := newEnv(t)
-	b, client := e.ready()
-	e.setTemplate(b, "invoice", "en", "EN {number}", "english")
-	e.setTemplate(b, "invoice", "de", "Rechnung {number} – {client}", "Hi {client}")
-	de := e.issued(b, client, map[string]any{"language": "de"})
-	got := e.draftOf(b, de.ID, http.StatusOK).Data
-	if got.Subject != "Rechnung "+*de.Number+" – "+de.Buyer.Name || got.Message != "Hi "+de.Buyer.Name {
-		t.Fatalf("draft %+v", got)
-	}
-}
-
-func TestDraftCreditNoteUsesCreditNoteTemplate(t *testing.T) {
-	e := newEnv(t)
-	b, client := e.ready()
-	e.setTemplate(b, "invoice", "de", "wrong", "wrong")
-	e.setTemplate(b, "credit_note", "de", "Gutschrift {number}", "credit")
-	de := e.issued(b, client, map[string]any{"language": "de"})
-	cn := e.invoice(b, "POST", "/api/v1/invoices/"+de.ID+"/credit-note", map[string]any{"lines": []any{line("1", "50.00")}}, http.StatusCreated)
-	cn = e.invoice(b, "POST", "/api/v1/invoices/"+cn.ID+"/issue", nil, http.StatusOK)
-	got := e.draftOf(b, cn.ID, http.StatusOK).Data
-	if got.Subject != "Gutschrift "+*cn.Number || got.Message != "credit" {
-		t.Fatalf("draft %+v", got)
-	}
-}
-
 func TestDraftAppendsRevolutOnce(t *testing.T) {
 	e := newEnv(t)
 	b, client := e.ready()
@@ -100,10 +70,6 @@ func TestDraftAppendsRevolutOnce(t *testing.T) {
 	if !strings.Contains(msg.HTML, `href="`+url+`">Pay with Revolut</a>`) ||
 		!strings.Contains(msg.Text, "\nPay with Revolut: "+url+"\n") || strings.Count(msg.Text, url) != 1 {
 		t.Fatalf("Revolut payment link missing: %s\n%s", msg.HTML, msg.Text)
-	}
-	e.setTemplate(b, "invoice", "en", "S", "Pay here: "+url)
-	if got := e.draftOf(b, inv.ID, http.StatusOK).Data; got.Message != "Pay here: "+url {
-		t.Fatalf("message %q, want the link once", got.Message)
 	}
 }
 
@@ -123,51 +89,36 @@ func TestDraftOfAnotherWorkspace(t *testing.T) {
 	e.fails(other, "GET", "/api/v1/invoices/"+inv.ID+"/email", nil, http.StatusNotFound, "not_found")
 }
 
-func TestSendWithoutSubjectUsesTemplate(t *testing.T) {
+// A send uses Helvetly's wording even when the workspace still has a text it wrote when that was possible.
+func TestSendIgnoresOldOverrides(t *testing.T) {
 	e := newEnv(t)
 	b, client := e.ready()
-	e.setTemplate(b, "invoice", "en", "Bill {number}", "Dear {client}")
-	inv := e.issued(b, client, map[string]any{"language": "en"})
-	e.do(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{}, http.StatusOK, nil)
-	m := e.mail.sent[0]
-	if m.Subject != "Bill "+*inv.Number || !strings.HasPrefix(m.Text, "Dear "+inv.Buyer.Name+"\n") {
-		t.Fatalf("mail %q / %q", m.Subject, m.Text)
+	for _, kind := range []string{"invoice", "credit_note"} {
+		e.oldOverride(b, kind, "en", "Bill {number}", "Dear {client}")
 	}
-}
-
-func TestInstalmentMailUsesTemplate(t *testing.T) {
-	e := newEnv(t)
-	b, client := e.ready()
-	e.setTemplate(b, "invoice", "en", "Bill {number}", "Dear {client}")
 	issued := e.issued(b, client, map[string]any{"language": "en"})
-	inv, err := e.st.Invoice(context.Background(), b.workspace, issued.ID, e.today(), false)
+	want := emailtemplate.Default("invoice", "en")
+	if d := e.draftOf(b, issued.ID, http.StatusOK).Data; !strings.HasPrefix(d.Subject, "Invoice ") || !strings.HasPrefix(d.Message, "Hello\n\n") {
+		t.Fatalf("draft %+v, want the built-in %+v", d, want)
+	}
+	e.do(b, "POST", "/api/v1/invoices/"+issued.ID+"/send", map[string]any{}, http.StatusOK, nil)
+	// the email of an instalment that issues itself
+	second := e.issued(b, client, map[string]any{"language": "en"})
+	inv, err := e.st.Invoice(context.Background(), b.workspace, second.ID, e.today(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := e.svc.SendIssued(context.Background(), store.Workspace{ID: b.workspace, Timezone: zone.String()}, inv); err != nil {
 		t.Fatal(err)
 	}
-	if m := e.mail.sent[0]; m.Subject != "Bill "+*inv.Number || !strings.HasPrefix(m.Text, "Dear "+inv.Buyer.Name+"\n") {
-		t.Fatalf("mail %q / %q", m.Subject, m.Text)
+	if len(e.mail.sent) != 2 {
+		t.Fatalf("sent %d emails, want 2", len(e.mail.sent))
 	}
-}
-
-func TestSendAcceptsTheRenderedDraftOverTheLimit(t *testing.T) {
-	e := newEnv(t)
-	b, client := e.ready()
-	// the template is within the limits, the rendered draft (company name filled in) is not
-	e.setTemplate(b, "invoice", "en", "{company}"+strings.Repeat("s", 191), strings.Repeat("{company}", 100)+strings.Repeat("b", emailtemplate.MaxMessage-900))
-	inv := e.issued(b, client, map[string]any{"language": "en"})
-	d := e.draftOf(b, inv.ID, http.StatusOK).Data
-	if utf8.RuneCountInString(d.Subject) <= 200 || utf8.RuneCountInString(d.Message) <= emailtemplate.MaxMessage {
-		t.Fatalf("draft is %d / %d runes, want over the limits", utf8.RuneCountInString(d.Subject), utf8.RuneCountInString(d.Message))
+	for _, m := range e.mail.sent {
+		if !strings.HasPrefix(m.Subject, "Invoice ") || !strings.HasSuffix(m.Subject, " from "+inv.Seller.Name) || strings.Contains(m.Text, "Dear ") {
+			t.Fatalf("mail %q / %q, want the built-in text", m.Subject, m.Text)
+		}
 	}
-	e.do(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{"subject": d.Subject, "message": d.Message}, http.StatusOK, nil)
-	if m := e.mail.sent[0]; m.Subject != d.Subject || !strings.HasPrefix(m.Text, strings.TrimSpace(d.Message)+"\n") {
-		t.Fatalf("mail %q / %q, want the draft", m.Subject, m.Text)
-	}
-	e.fails(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{"subject": strings.Repeat("s", 201)}, http.StatusUnprocessableEntity, "validation_failed", "subject")
-	e.fails(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{"message": d.Message + "!"}, http.StatusUnprocessableEntity, "validation_failed", "message")
 }
 
 func TestSendMessageLimit(t *testing.T) {

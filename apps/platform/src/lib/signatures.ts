@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError } from '@/lib/api'
 import { refreshDocuments } from '@/lib/documents'
-import type { EmailLanguage, EmailPreview } from '@/lib/email-templates'
+import type { EmailLanguage, EmailPreview } from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 import { queryKeys } from '@/lib/queries'
 

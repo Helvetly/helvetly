@@ -107,7 +107,8 @@ func AllowsAny(role string, scopes []string, need string) bool {
 func MayUseAPI(sess store.Session) bool { return Allows(sess.Role, sess.Scopes, "read:api") }
 
 // prefixes maps each guarded path (and everything below it) to its resource. Unlisted paths (auth, session,
-// account, invitations preview/accept, public signing, creating a new workspace, a person's own notifications)
+// account, invitations preview/accept, public signing, creating a new workspace, a person's own notifications, the
+// built-in client email texts)
 // are not scope-checked; a person's own API tokens need the api area (tokensPath).
 // Dashboard, Heidi and imports instead check permissions for each included resource, requested action or kind.
 var prefixes = []struct{ path, resource string }{
@@ -115,7 +116,6 @@ var prefixes = []struct{ path, resource string }{
 	{"/api/v1/uid-register", "clients"}, // the client form's company lookup
 	{"/api/v1/invoices", "invoices"},
 	{"/api/v1/invoice-settings", "invoice-settings"},
-	{"/api/v1/email-templates", "invoice-settings"},
 	{"/api/v1/instalment-plans", "invoices"},
 	{"/api/v1/quotes", "invoices"},
 	{"/api/v1/periods", "periods"},

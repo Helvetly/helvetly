@@ -122,6 +122,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/templates", s.list)
 	handle("POST /api/v1/templates", s.create)
 	handle("POST /api/v1/templates/email-preview", s.preview)
+	handle("GET /api/v1/email-texts", emailTexts)
 	handle("GET /api/v1/templates/{id}", s.get)
 	handle("PUT /api/v1/templates/{id}", s.update)
 	handle("DELETE /api/v1/templates/{id}", s.remove)
@@ -141,6 +142,25 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 func data(v any) map[string]any { return map[string]any{"data": v} }
+
+type emailText struct {
+	Kind     string `json:"kind"`
+	Language string `json:"language"`
+	emailtemplate.Template
+}
+
+// emailTexts is Helvetly's built-in wording of every client email in every language, read-only: the send steps of
+// documents and signature requests fill it in before the person changes it for that one email.
+func emailTexts(w http.ResponseWriter, _ *http.Request, _ store.Session) error {
+	list := make([]emailText, 0, len(emailtemplate.Kinds)*len(emailtemplate.Languages))
+	for _, kind := range emailtemplate.Kinds {
+		for _, language := range emailtemplate.Languages {
+			list = append(list, emailText{kind, language, emailtemplate.Default(kind, language)})
+		}
+	}
+	auth.WriteJSON(w, http.StatusOK, data(list))
+	return nil
+}
 
 func validationFailed(fields map[string]string) error {
 	return auth.Error(http.StatusUnprocessableEntity, "validation_failed", "Check the highlighted fields.", map[string]any{"fields": fields})

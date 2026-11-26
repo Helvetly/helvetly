@@ -341,6 +341,30 @@ func TestReminders(t *testing.T) {
 	}
 }
 
+// With session reminders off (Settings → Client emails), the client gets none; the host still gets theirs.
+func TestNoClientRemindersWhenOff(t *testing.T) {
+	e := newEnv(t)
+	box, em := e.withEmails()
+	b := e.workspace()
+	ctx := context.Background()
+	set := store.DefaultSchedSettings()
+	set.HostReminders = []int{30}
+	if err := e.st.SaveSchedulingSettings(ctx, b.workspace, set, b.user, fixedNow); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.SetWorkspaceClientEmails(ctx, b.workspace, store.ClientEmails{PortalInvitations: true}); err != nil {
+		t.Fatal(err)
+	}
+	c := e.clientIn(b, "anna@mueller.example", "en")
+	e.create(b, map[string]any{"client_id": c, "title": "Coaching", "starts_local": "2026-11-18T09:00", "duration_minutes": 60})
+	box.take()
+	e.at(mustTime("2026-11-18T07:30:00Z")) // the client's 1 h and the host's 30 min reminders
+	em.RemindersTick(ctx)
+	if got := box.take(); len(got) != 1 || !got[0].Members {
+		t.Fatalf("reminders %+v", got)
+	}
+}
+
 func TestMaterialiseExtendsSeriesOnce(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()

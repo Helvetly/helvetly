@@ -588,10 +588,7 @@ func (s *Service) signLink(token string) string { return s.publicURL + "/sign#" 
 // nothing for that signer; the first failure is returned once all were tried.
 func (s *Service) invite(ctx context.Context, req store.SignatureRequest, signers []store.Signer, eventType string) error {
 	reminder := eventType == "reminded"
-	text, err := s.emailText(ctx, req, reminder)
-	if err != nil {
-		return err
-	}
+	text := emailText(req, reminder)
 	var first error
 	for _, sg := range signers {
 		token := rand.Text()

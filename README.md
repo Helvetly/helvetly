@@ -35,6 +35,9 @@ Each item below is implemented and covered by tests in this repository:
   email with `.ics` files; requests to cancel or reschedule and self-booking in the portal, plus booking links for new
   clients. Two-way sync with Google Calendar and Microsoft 365 (optional) and a private iCal feed per member.
 - **Client portal**: clients sign in on their own host to see invoices, engagements, sessions and shared documents.
+- **Client emails**: every email to clients in the business's name, in the client's language, with Helvetly's own
+  wording (changed only per email in a Send dialog), an optional footer, and one Settings page to turn each automatic
+  email on or off.
 - **Notifications**: in-app and email notifications with per-person preferences.
 - **Subscription billing (optional)**: a free plan for one person, paid plans with tiered team prices through Stripe
   Checkout and webhooks, and plan limits. Off without a Stripe key.

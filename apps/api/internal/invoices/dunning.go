@@ -15,14 +15,13 @@ import (
 // settings; internal/dunning sends the steps.
 
 // DunningStep is one reminder: when it goes out (Timing, Days), an optional name replacing the standard title, its
-// fee (never before the due date), an optional text replacing the standard sentence and whether the letter carries
-// a QR bill.
+// fee (never before the due date) and whether the letter carries a QR bill. Its wording is always Helvetly's; a text
+// saved when steps could have their own is no longer read.
 type DunningStep struct {
 	Name   *string            `json:"name"`
 	Timing dunningcalc.Timing `json:"timing"`
 	Days   int                `json:"days"`
 	Fee    invoicecalc.Money  `json:"fee"`
-	Text   *string            `json:"text"`
 	QRBill bool               `json:"qr_bill"`
 }
 
@@ -45,7 +44,6 @@ func (d *DunningSettings) UnmarshalJSON(raw []byte) error {
 		Levels []struct {
 			Days int               `json:"days"`
 			Fee  invoicecalc.Money `json:"fee"`
-			Text *string           `json:"text"`
 		} `json:"levels"`
 	}{plain: (*plain)(d)}
 	if err := json.Unmarshal(raw, &v); err != nil {
@@ -60,7 +58,7 @@ func (d *DunningSettings) UnmarshalJSON(raw []byte) error {
 		if i == 0 {
 			timing = dunningcalc.AfterDue
 		}
-		d.Steps[i] = DunningStep{Timing: timing, Days: l.Days, Fee: l.Fee, Text: l.Text, QRBill: true}
+		d.Steps[i] = DunningStep{Timing: timing, Days: l.Days, Fee: l.Fee, QRBill: true}
 	}
 	return nil
 }
@@ -161,7 +159,7 @@ func parseDunningSettings(p *parser, raw json.RawMessage, d *DunningSettings) er
 }
 
 func parseDunningStep(p *parser, key string, raw json.RawMessage, s *DunningStep) error {
-	m, err := object(raw, "a dunning step", "name", "timing", "days", "fee", "text", "qr_bill")
+	m, err := object(raw, "a dunning step", "name", "timing", "days", "fee", "qr_bill")
 	if err != nil {
 		return err
 	}
@@ -186,9 +184,6 @@ func parseDunningStep(p *parser, key string, raw json.RawMessage, s *DunningStep
 		} else {
 			s.Fee = invoicecalc.Money(fee)
 		}
-	}
-	if v, ok := m["text"]; ok {
-		s.Text = p.text(key+".text", v, 1000, nil)
 	}
 	s.QRBill = true
 	if v, ok := m["qr_bill"]; ok && (isNull(v) || json.Unmarshal(v, &s.QRBill) != nil) {

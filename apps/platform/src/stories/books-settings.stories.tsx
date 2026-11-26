@@ -454,6 +454,98 @@ export const AuditLogDetails: Story = {
   },
 }
 
+const imported = { number: '2026/IN/020', party: 'Muster AG', currency: 'CHF' }
+const sourceEvent = (
+  seq: number,
+  clock: string,
+  over: Partial<FinancialEvent> & Pick<FinancialEvent, 'kind' | 'category'>,
+): FinancialEvent => {
+  const at = new Date()
+  const [hours = 0, minutes = 0] = clock.split(':').map(Number)
+  at.setHours(hours, minutes, 0, 0)
+  return {
+    seq,
+    subject_type: 'invoice',
+    subject_id: 'inv_mock_9',
+    subject: imported,
+    actor: { id: 'usr_mock_1', name: 'Anna Muster' },
+    origin: null,
+    at: at.toISOString(),
+    payload: {},
+    prev_hash: seq === 1 ? '' : `${seq - 1}`.padStart(64, '0'),
+    hash: `${seq}`.padStart(64, '0'),
+    ...over,
+  }
+}
+
+/** Where entries came from: an import is marked, and one without a person names its source. */
+export const AuditLogSources: Story = {
+  parameters: page(
+    'owner',
+    auditHandlers([
+      sourceEvent(1, '08:02', {
+        kind: 'plan.cancelled',
+        category: 'invoices',
+        subject_type: 'plan',
+        subject: null,
+        actor: null,
+      }),
+      sourceEvent(2, '09:20', {
+        kind: 'invoice.issued',
+        category: 'invoices',
+        origin: 'imported',
+        payload: { number: '2026/IN/020', payable_total: '268.60', origin: 'imported' },
+      }),
+      sourceEvent(3, '09:20', {
+        kind: 'payment.added',
+        category: 'payments',
+        origin: 'imported',
+        payload: { amount: '268.60', origin: 'imported' },
+      }),
+      sourceEvent(4, '09:35', {
+        kind: 'scheduling.cancelled',
+        category: 'settings',
+        subject_type: 'scheduling',
+        subject: null,
+        actor: null,
+        payload: { as: 'late', by: 'client' },
+      }),
+      sourceEvent(5, '10:05', {
+        kind: 'payment.added',
+        category: 'payments',
+        payload: { amount: '50.00' },
+      }),
+    ]),
+  ),
+  render: AuditLog.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const row = async (name: string) => {
+      const item = (await canvas.findByRole('button', { name: `Details of: ${name}` })).closest(
+        'li',
+      )
+      if (!item) throw new Error(`No row for ${name}.`)
+      return item
+    }
+    const importedPayment = await row('Payment of CHF 268.60 recorded on 2026/IN/020')
+    await expect(importedPayment).toHaveTextContent('· import')
+    const byHand = await row('Payment of CHF 50.00 recorded on 2026/IN/020')
+    await expect(byHand).not.toHaveTextContent('· import')
+    await expect(byHand).toHaveTextContent('Anna Muster')
+    await expect(await row('Session cancelled late by the client')).toHaveTextContent(
+      'Client (portal)',
+    )
+    await expect(await row('Instalment plan cancelled')).toHaveTextContent('System')
+    await expect(canvas.queryByText('Entry recorded')).toBeNull()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Type' }))
+    await userEvent.click(
+      await body(canvasElement).findByRole('menuitemradio', { name: 'Imported' }),
+    )
+    await expect(await canvas.findByText('2 entries shown')).toBeVisible()
+  },
+}
+
 /** While the first page loads: a quiet skeleton of rows. */
 export const AuditLogLoading: Story = {
   parameters: page('owner', [

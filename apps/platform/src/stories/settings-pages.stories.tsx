@@ -488,7 +488,7 @@ export const InvoicesNotes: Story = {
     const dunning = await canvas.findByRole('region', { name: 'Dunning' })
     const reminders = within(dunning).getByRole('list', { name: 'Reminders' })
     const dunningRow = within(dunning)
-      .getByText('Send reminders automatically')
+      .getByText('Default interest')
       .closest('[data-slot="switch-row"]')
     await expect(reminders.getBoundingClientRect().left).toBe(
       dunningRow?.getBoundingClientRect().left,

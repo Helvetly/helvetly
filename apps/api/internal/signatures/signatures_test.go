@@ -614,8 +614,9 @@ func TestReminderReplacesTheLinkAndRevokeStopsIt(t *testing.T) {
 	}
 }
 
-// TestEmailsFromTemplates: with a language, the invitation carries the sender's message under the template's subject,
-// and the reminder the workspace's own reminder template; the button, expiry and SES note follow the language.
+// TestEmailsFromTemplates: with a language, the invitation carries the sender's message under the built-in subject,
+// and the reminder the built-in reminder text, even with a reminder text the workspace wrote when that was possible;
+// the button, expiry and SES note follow the language.
 func TestEmailsFromTemplates(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
@@ -636,7 +637,8 @@ func TestEmailsFromTemplates(t *testing.T) {
 	}
 	e.do(b, "POST", "/api/v1/signatures/"+req.ID+"/remind", nil, http.StatusOK, nil)
 	reminder := e.mail.to("one@example.com")[1]
-	if reminder.Subject != "Bitte Vertrag unterschreiben" || !strings.Contains(reminder.Text, "Noch offen: Vertrag") ||
+	if !strings.HasPrefix(reminder.Subject, "Erinnerung: ") || !strings.Contains(reminder.Text, "«Vertrag» noch auf Ihre Unterschrift wartet") ||
+		strings.Contains(reminder.Text, "Noch offen") ||
 		strings.Contains(reminder.Text, "Bitte unterschreiben.") {
 		t.Fatalf("reminder: %+v", reminder)
 	}

@@ -7,7 +7,7 @@ import { billingFixture } from '@/components/billing/billing-fixture'
 import { ClientsPage } from '@/components/clients/clients-page'
 import { QuotesPage } from '@/components/quotes/quotes-page'
 import { aiConsent } from '@/mocks/ai-notice'
-import { emailTemplateHandlers } from '@/mocks/email-templates'
+import { emailTextHandlers } from '@/mocks/email-texts'
 import { listQuotes, quoteHandlers, quotePreviewHandler, resetQuotesMock } from '@/mocks/quotes'
 
 import { emptyPage, sessionHandler, storySession, unavailable } from '../screen-fixtures'
@@ -27,7 +27,7 @@ import { dropOpensImport, emptyOffersImport, noDropTarget } from './page-drop'
 
 /** The quotes page with the stateful quote fake behind it; `handlers` answer first. */
 const quotes = (query: Record<string, string> = {}, handlers: RequestHandler[] = []) =>
-  pageParameters('/quotes', query, [...handlers, ...quoteHandlers, ...emailTemplateHandlers])
+  pageParameters('/quotes', query, [...handlers, ...quoteHandlers, ...emailTextHandlers])
 
 const meta = {
   title: 'Pages/Quotes',

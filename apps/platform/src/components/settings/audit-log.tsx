@@ -35,6 +35,7 @@ import {
   FileText,
   Globe,
   History,
+  Import,
   Lock,
   Receipt,
   SearchX,
@@ -58,11 +59,14 @@ import {
   byDay,
   dayLabel,
   eventSentence,
+  eventSource,
   foldEvents,
   payloadFacts,
   rowSentence,
   sentenceText,
+  SOURCE_LABELS,
   type AuditRow,
+  type AuditSource,
   type Sentence,
 } from '@/lib/audit-log'
 import {
@@ -97,6 +101,21 @@ const LOOK: Record<AuditCategory, { Icon: LucideIcon; tone: Tone }> = {
   settings: { Icon: Settings2, tone: 'neutral' },
 }
 
+const SOURCE_ICONS: Record<AuditSource, LucideIcon> = {
+  import: Import,
+  client: Globe,
+  calendar: CalendarDays,
+  system: Settings2,
+  former: UserRound,
+}
+
+/** The type filter's choices: the categories, then what an import wrote. */
+const TYPES = [
+  ...AUDIT_CATEGORIES.map((category) => ({ ...category, Icon: LOOK[category.value].Icon })),
+  { value: 'imported' as const, label: translate('auditTypeImported'), Icon: Import },
+]
+type TypeValue = (typeof TYPES)[number]['value']
+
 /** The icon and tint of an event: by its category, red for anything undone. */
 export function eventLook(event: Pick<FinancialEvent, 'kind' | 'category'>): {
   Icon: LucideIcon
@@ -130,7 +149,7 @@ export function AuditLogSettings() {
   )
 }
 
-type Filters = { category: AuditCategory | ''; actor: string; from: string; to: string }
+type Filters = { category: TypeValue | ''; actor: string; from: string; to: string }
 const NO_FILTERS: Filters = { category: '', actor: '', from: '', to: '' }
 
 /** A local calendar day ("2026-11-20") as the instant it starts. */
@@ -145,9 +164,9 @@ const queryFields = (people: { id: string; name: string }[]): QueryField<Filters
     id: 'type',
     label: translate('type'),
     type: 'enum',
-    values: AUDIT_CATEGORIES,
+    values: TYPES,
     ...shownElsewhere((value) => ({
-      category: AUDIT_CATEGORIES.find((category) => category.value === value)?.value ?? '',
+      category: TYPES.find((type) => type.value === value)?.value ?? '',
     })),
   },
   {
@@ -183,7 +202,8 @@ export function AuditLog() {
 
   const filter: AuditFilter = {
     order: 'newest',
-    category: filters.category || undefined,
+    category: filters.category && filters.category !== 'imported' ? filters.category : undefined,
+    origin: filters.category === 'imported' ? 'imported' : undefined,
     actor: filters.actor || undefined,
     since: filters.from ? dayStart(filters.from) : undefined,
     before: filters.to ? dayStart(filters.to, 1) : undefined,
@@ -372,10 +392,12 @@ function SentenceText({ sentence }: { sentence: Sentence }) {
 function Actor({ event }: { event: FinancialEvent }) {
   if (event.actor)
     return <Person person={event.actor} size="sm" className="text-body-sm text-muted-foreground" />
+  const source = eventSource(event)
+  const SourceIcon = source ? SOURCE_ICONS[source] : UserRound
   return (
     <span className="flex min-w-0 items-center gap-1.5 text-body-sm text-muted-foreground">
-      <UserRound className="size-4 shrink-0" aria-hidden />
-      <span className="truncate">{translate('system')}</span>
+      <SourceIcon className="size-4 shrink-0" aria-hidden />
+      <span className="truncate">{source ? SOURCE_LABELS[source] : translate('system')}</span>
     </span>
   )
 }
@@ -428,6 +450,11 @@ function EntryRow({
           {sentence.amount && (
             <span className="text-body-sm text-muted-foreground tabular-nums">
               · {sentence.amount}
+            </span>
+          )}
+          {first.origin === 'imported' && (
+            <span className="text-body-sm text-muted-foreground">
+              · {translate('auditOriginImported')}
             </span>
           )}
           {sentence.times > 1 && (
@@ -504,10 +531,10 @@ function TypeFilter({
   value,
   onChange,
 }: {
-  value: AuditCategory | ''
-  onChange: (value: AuditCategory | '') => void
+  value: TypeValue | ''
+  onChange: (value: TypeValue | '') => void
 }) {
-  const current = AUDIT_CATEGORIES.find((category) => category.value === value)
+  const current = TYPES.find((type) => type.value === value)
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -519,21 +546,16 @@ function TypeFilter({
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuRadioGroup
           value={value}
-          onValueChange={(next) =>
-            onChange(AUDIT_CATEGORIES.find((category) => category.value === next)?.value ?? '')
-          }
+          onValueChange={(next) => onChange(TYPES.find((type) => type.value === next)?.value ?? '')}
         >
           <DropdownMenuRadioItem value="">{translate('auditAllTypes')}</DropdownMenuRadioItem>
           <DropdownMenuSeparator />
-          {AUDIT_CATEGORIES.map((category) => {
-            const { Icon } = LOOK[category.value]
-            return (
-              <DropdownMenuRadioItem key={category.value} value={category.value}>
-                <Icon className="text-muted-foreground" />
-                {category.label}
-              </DropdownMenuRadioItem>
-            )
-          })}
+          {TYPES.map(({ value: type, label, Icon }) => (
+            <DropdownMenuRadioItem key={type} value={type}>
+              <Icon className="text-muted-foreground" />
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -80,7 +80,6 @@ test.each([
   ['/settings/billing', 'billing'],
   ['/settings/billing/plans', 'billing'],
   ['/settings/invoices', 'invoice-settings'],
-  ['/settings/emails', 'invoice-settings'],
   ['/books/vat-return', 'vat-return'],
   ['/books/ledger', 'ledger'],
   ['/books', 'periods'],

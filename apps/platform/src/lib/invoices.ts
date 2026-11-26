@@ -297,7 +297,6 @@ export type DunningStep = {
   days: number
   /** "0.00" before the due date. */
   fee: Decimal
-  text: string | null
   qr_bill: boolean
 }
 export type DunningSettings = {
@@ -311,7 +310,7 @@ export type DunningSettings = {
   interest_from: 'reminder' | 'due_date'
 }
 /** A dunning level as an API from before steps sends it (settings.dunning.levels). */
-type DunningLevel = { name?: string | null; days: number; fee: Decimal; text?: string | null }
+type DunningLevel = { name?: string | null; days: number; fee: Decimal }
 /** settings.dunning from an API of any version: older ones send `levels`, not `steps`. */
 type DunningResponse = Omit<DunningSettings, 'steps'> & {
   steps?: DunningStep[]
@@ -330,7 +329,6 @@ export const stepsFromLevels = (levels: DunningLevel[]): DunningStep[] =>
     timing: i === 0 ? 'after_due' : 'after_previous',
     days: level.days,
     fee: level.fee,
-    text: level.text ?? null,
     qr_bill: true,
   }))
 
@@ -546,10 +544,13 @@ export type InvoiceSettings = {
   missing_fields: string[]
 }
 
-export type SettingsInput = Omit<
-  InvoiceSettings,
-  'is_complete' | 'missing_fields' | 'logo_file_id' | 'logo_url'
->
+/** What a save sends: a field left out keeps its value (Settings → Client emails saves its switches alone). */
+export type SettingsInput = Partial<
+  Omit<
+    InvoiceSettings,
+    'is_complete' | 'missing_fields' | 'logo_file_id' | 'logo_url' | 'instalments' | 'dunning'
+  >
+> & { instalments?: Partial<InstalmentSettings>; dunning?: Partial<DunningSettings> }
 
 export type SendInput = {
   expected_amount_due?: Decimal

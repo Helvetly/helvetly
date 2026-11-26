@@ -259,3 +259,31 @@ export function useSetReplyTo() {
     onSuccess: (result) => queryClient.setQueryData(replyToKey, result.data.reply_to_email),
   })
 }
+
+/** The workspace's own part of its client email (Settings → Client emails). */
+export type ClientEmails = {
+  /** Plain text under every branded client email, after the company details; '' for none. */
+  email_footer: string
+  /** Email a client the portal link when its portal is turned on or its address changes. */
+  portal_invitations: boolean
+  /** Remind clients of their sessions at the times of the scheduling settings. */
+  session_reminders: boolean
+}
+
+const clientEmailsKey = ['workspace', 'client-emails'] as const
+
+export function useClientEmails() {
+  return useQuery({
+    queryKey: clientEmailsKey,
+    queryFn: async () => (await request<{ data: ClientEmails }>('/workspace/client-emails')).data,
+  })
+}
+
+/** Changes the fields given (owner or admin); the others keep their value. */
+export function useSetClientEmails() {
+  const queryClient = useQueryClient()
+  return useMutation<{ data: ClientEmails }, ApiError, Partial<ClientEmails>>({
+    mutationFn: (change) => request('/workspace/client-emails', { method: 'PUT', json: change }),
+    onSuccess: (result) => queryClient.setQueryData(clientEmailsKey, result.data),
+  })
+}
