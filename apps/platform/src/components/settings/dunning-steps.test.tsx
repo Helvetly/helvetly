@@ -21,7 +21,6 @@ const step = (change: Partial<StepDraft>): StepDraft => ({
   timing: 'after_due',
   days: '10',
   fee: '0.00',
-  text: '',
   qr_bill: true,
   ...change,
 })
@@ -29,17 +28,17 @@ const step = (change: Partial<StepDraft>): StepDraft => ({
 const three = () => [
   step({ key: 'a' }),
   step({ key: 'b', timing: 'after_previous', days: '14', fee: '20' }),
-  step({ key: 'c', timing: 'after_previous', days: '14', fee: '30.00', text: 'Zahlen Sie.' }),
+  step({ key: 'c', timing: 'after_previous', days: '14', fee: '30.00' }),
 ]
 
 test.each([
-  [step({}), '10 days after due · no fee · standard text'],
-  [step({ timing: 'before_due', days: '3' }), '3 days before due · friendly note · standard text'],
+  [step({}), '10 days after due · no fee'],
+  [step({ timing: 'before_due', days: '3' }), '3 days before due · friendly note'],
   [
-    step({ timing: 'after_previous', days: '14', fee: '20', text: 'Bitte.' }),
-    '14 days after the previous · CHF 20.00 fee · own text',
+    step({ timing: 'after_previous', days: '14', fee: '20' }),
+    '14 days after the previous · CHF 20.00 fee',
   ],
-  [step({ days: '1', qr_bill: false }), '1 day after due · no fee · standard text · no QR bill'],
+  [step({ days: '1', qr_bill: false }), '1 day after due · no fee · no QR bill'],
 ])('a step reads as one line', (draft, line) => {
   expect(stepSummary(draft, 'CHF')).toBe(line)
 })
@@ -106,9 +105,9 @@ test('lists each step with its summary around the due date', () => {
   expect(rows().map((row) => row.textContent)).toEqual([
     expect.stringContaining('Payment due soon3 days before due · friendly note'),
     'Due date',
-    expect.stringContaining('Payment reminder10 days after due · no fee · standard text'),
+    expect.stringContaining('Payment reminder10 days after due · no fee'),
     expect.stringContaining('Reminder 214 days after the previous · CHF 20.00 fee'),
-    expect.stringContaining('Final reminder14 days after the previous · CHF 30.00 fee · own text'),
+    expect.stringContaining('Final reminder14 days after the previous · CHF 30.00 fee'),
   ])
 })
 
@@ -131,7 +130,7 @@ test('edits a step in the dialog; Apply changes the list, Cancel does not', asyn
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(saved()[1]).toMatchObject({ name: 'Zweite Mahnung', fee: '25', qr_bill: false })
   expect(
-    screen.getByText('14 days after the previous · CHF 25.00 fee · standard text · no QR bill'),
+    screen.getByText('14 days after the previous · CHF 25.00 fee · no QR bill'),
   ).toBeVisible()
 
   await user.click(screen.getByRole('button', { name: 'Edit Final reminder' }))

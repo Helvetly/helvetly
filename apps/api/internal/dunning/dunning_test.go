@@ -621,6 +621,33 @@ func TestLegacyLevelsBecomeSteps(t *testing.T) {
 	}
 }
 
+// A reminder's wording is Helvetly's: a text a workspace saved for a step when that was possible is ignored, in the
+// email and in the letter, and the settings no longer answer or accept it.
+func TestOldOwnTextIsIgnored(t *testing.T) {
+	e := newEnv(t)
+	b := e.ready(nil)
+	e.invoice(b, nil)
+	if _, err := e.pool.Exec(context.Background(), `UPDATE invoice_settings SET settings = jsonb_set(settings, '{dunning}', $2::jsonb)
+		WHERE workspace_id = $1`, b.workspace, `{"enabled": true, "steps": [{"timing": "after_due", "days": 10, "fee": "0.00", "text": "Zahlen Sie sofort!", "qr_bill": true}]}`); err != nil {
+		t.Fatal(err)
+	}
+	var raw struct {
+		Data struct {
+			Dunning struct{ Steps []map[string]any }
+		}
+	}
+	e.do(b, "GET", "/api/v1/invoice-settings", nil, http.StatusOK, &raw)
+	if steps := raw.Data.Dunning.Steps; len(steps) != 1 || steps[0]["text"] != nil {
+		t.Fatalf("steps %+v", steps)
+	}
+	e.tickAt(10)
+	e.mail.mu.Lock()
+	defer e.mail.mu.Unlock()
+	if len(e.mail.sent) != 1 || strings.Contains(e.mail.sent[0].Text, "sofort") || !strings.Contains(e.mail.sent[0].Text, "Guten Tag") {
+		t.Fatalf("sent %+v", e.mail.sent)
+	}
+}
+
 // A note before the due date: friendly wording, no fee or interest, its own name; skipped once the invoice is past
 // due, and the reminders after it count from the due date.
 func TestNotesBeforeTheDueDate(t *testing.T) {

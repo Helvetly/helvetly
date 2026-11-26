@@ -16,7 +16,6 @@ type Notice struct {
 	Amounts      dunningcalc.Amounts
 	Rate         invoicecalc.Percent // a year, 0 without interest
 	InterestFrom string              // first day of interest, "" without
-	Text         *string             // replaces the standard sentence
 }
 
 // Words is the wording of a notice in one language, shared by the letter and the email. Sentence %s %s %s = invoice
@@ -145,9 +144,6 @@ func RenderReminder(d Document, n Notice) ([]byte, error) {
 	r.cell(left, y, contentW, 8, n.Title, "L")
 	y += 12
 	sentence := fmt.Sprintf(w.Sentence, number(inv), swissDate(inv.IssueDate), swissDate(inv.DueDate))
-	if n.Text != nil {
-		sentence = *n.Text
-	}
 	r.set("", 9.5)
 	y = r.lines(left, y, contentW, 4.6, r.wrap(w.Greeting+"\n\n"+sentence, contentW), "L") + 6
 

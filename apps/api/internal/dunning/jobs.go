@@ -125,9 +125,6 @@ func (st state) message(n store.DunningNotice, letter, invoicePDF []byte) mail.M
 		number = *inv.Number
 	}
 	sentence := fmt.Sprintf(w.Sentence, number, invoicepdf.SwissDate(inv.IssueDate), invoicepdf.SwissDate(inv.DueDate))
-	if text := st.text(n.Level); text != nil {
-		sentence = *text
-	}
 	amount := func(label string, m store.Money) mail.Row {
 		return mail.Row{Label: label, Value: inv.Currency + " " + m.Swiss("'")}
 	}

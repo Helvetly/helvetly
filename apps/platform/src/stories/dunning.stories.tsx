@@ -69,7 +69,7 @@ export const Settings: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await page.findByRole('switch', { name: 'Send reminders automatically' }))
     const section = within(page.getByRole('region', { name: 'Dunning' }))
-    await expect(section.getByText('10 days after due · no fee · standard text')).toBeVisible()
+    await expect(section.getByText('10 days after due · no fee')).toBeVisible()
     await userEvent.click(section.getByRole('button', { name: 'Edit Reminder 2' }))
     const dialog = within(await body.findByRole('dialog', { name: 'Edit Reminder 2' }))
     const fee = dialog.getByRole('textbox', { name: 'Fee' })
@@ -81,7 +81,7 @@ export const Settings: Story = {
     await userEvent.type(fee, '20')
     await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
     await expect(
-      section.getByText('14 days after the previous · CHF 20.00 fee · standard text'),
+      section.getByText('14 days after the previous · CHF 20.00 fee'),
     ).toBeVisible()
     await expect(section.getByText('Unsaved changes')).toBeVisible()
     await userEvent.click(section.getByRole('button', { name: 'Save' }))
@@ -119,7 +119,6 @@ const draft = (change: Partial<StepDraft>): StepDraft => ({
   timing: 'after_previous',
   days: '14',
   fee: '0.00',
-  text: '',
   qr_bill: true,
   ...change,
 })
@@ -127,8 +126,8 @@ const draft = (change: Partial<StepDraft>): StepDraft => ({
 const full = [
   draft({ name: 'Freundlicher Hinweis', timing: 'before_due', days: '3', qr_bill: false }),
   draft({ timing: 'after_due', days: '10', fee: '0.00' }),
-  draft({ fee: '20.00', text: 'Trotz unserer Erinnerung ist die Rechnung noch offen.' }),
-  draft({ fee: '30.00', text: 'Letzte Aufforderung vor der Betreibung.' }),
+  draft({ fee: '20.00' }),
+  draft({ fee: '30.00' }),
 ]
 
 const NO_ERRORS: FieldErrors = {}
@@ -162,16 +161,16 @@ export const StepsDefault: Story = {
   },
 }
 
-/** A note before the due date and three reminders with fees and own text. */
+/** A note before the due date and three reminders with fees. */
 export const StepsFull: Story = {
   render: () => <Steps initial={full} />,
   play: async ({ canvasElement }) => {
     const page = within(canvasElement)
     await expect(
-      page.getByText('3 days before due · friendly note · standard text · no QR bill'),
+      page.getByText('3 days before due · friendly note · no QR bill'),
     ).toBeVisible()
     await expect(
-      page.getByText('14 days after the previous · CHF 30.00 fee · own text'),
+      page.getByText('14 days after the previous · CHF 30.00 fee'),
     ).toBeVisible()
     const items = within(page.getByRole('list', { name: 'Reminders' })).getAllByRole('listitem')
     await expect(items[1]).toHaveTextContent('Due date')
@@ -206,7 +205,7 @@ export const StepsEditing: Story = {
     await userEvent.type(days, '30')
     await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
     await waitFor(() => expect(body.queryByRole('dialog')).toBeNull())
-    await expect(page.getByText('30 days after due · CHF 30.00 fee · own text')).toBeVisible()
+    await expect(page.getByText('30 days after due · CHF 30.00 fee')).toBeVisible()
     await userEvent.click(page.getByRole('button', { name: 'Edit Final reminder' }))
     dialog = within(await body.findByRole('dialog', { name: 'Edit Final reminder' }))
     await userEvent.click(dialog.getByRole('button', { name: 'Remove reminder' }))

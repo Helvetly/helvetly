@@ -107,7 +107,6 @@ test('settings save dunning as typed, normalised', () => {
         timing: 'before_due' as const,
         days: '3',
         fee: '0.00',
-        text: '',
         qr_bill: false,
       },
       {
@@ -116,7 +115,6 @@ test('settings save dunning as typed, normalised', () => {
         timing: 'after_due' as const,
         days: '7',
         fee: '',
-        text: '  ',
         qr_bill: true,
       },
       {
@@ -125,7 +123,6 @@ test('settings save dunning as typed, normalised', () => {
         timing: 'after_previous' as const,
         days: '14',
         fee: '20',
-        text: 'Bitte zahlen Sie jetzt.',
         qr_bill: true,
       },
     ],
@@ -136,14 +133,13 @@ test('settings save dunning as typed, normalised', () => {
   expect(toSettingsInput(changed).dunning).toEqual({
     enabled: true,
     steps: [
-      { name: null, timing: 'before_due', days: 3, fee: '0.00', text: null, qr_bill: false },
-      { name: null, timing: 'after_due', days: 7, fee: '0.00', text: null, qr_bill: true },
+      { name: null, timing: 'before_due', days: 3, fee: '0.00', qr_bill: false },
+      { name: null, timing: 'after_due', days: 7, fee: '0.00', qr_bill: true },
       {
         name: 'Letzte Aufforderung',
         timing: 'after_previous',
         days: 14,
         fee: '20.00',
-        text: 'Bitte zahlen Sie jetzt.',
         qr_bill: true,
       },
     ],

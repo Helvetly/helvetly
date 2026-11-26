@@ -248,7 +248,6 @@ export function valuesFrom(settings: InvoiceSettings): Values {
       timing: step.timing,
       days: String(step.days),
       fee: step.fee,
-      text: step.text ?? '',
       qr_bill: step.qr_bill,
     })),
     dunning_interest_enabled: settings.dunning.interest_enabled,
@@ -317,7 +316,6 @@ export function toSettingsInput(values: Values): SettingsInput {
           timing: step.timing,
           days: Number(step.days),
           fee: fee === null ? step.fee : Number(fee).toFixed(2),
-          text: orNull(step.text),
           qr_bill: step.qr_bill,
         }
       }),
