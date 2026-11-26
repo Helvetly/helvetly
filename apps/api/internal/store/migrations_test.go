@@ -15,7 +15,7 @@ import (
 )
 
 // migrationProvider: goose on a fresh, empty schema, to run migrations one at a time around test data.
-func migrationProvider(t *testing.T) (*goose.Provider, *pgxpool.Pool) {
+func migrationProvider(t *testing.T, options ...goose.ProviderOption) (*goose.Provider, *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
 	base := os.Getenv("HELVETLY_TEST_DATABASE_URL")
@@ -44,11 +44,23 @@ func migrationProvider(t *testing.T) (*goose.Provider, *pgxpool.Pool) {
 	files, _ := fs.Sub(migrations, "migrations")
 	db := stdlib.OpenDBFromPool(pool)
 	t.Cleanup(func() { _ = db.Close() })
-	p, err := goose.NewProvider(goose.DialectPostgres, db, files)
+	p, err := goose.NewProvider(goose.DialectPostgres, db, files, options...)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return p, pool
+}
+
+func TestMigrateFromDocumentRecordTags(t *testing.T) {
+	ctx := context.Background()
+	// The document record tags release went directly from version 70 to 74.
+	released, pool := migrationProvider(t, goose.WithExcludeVersions([]int64{71, 72, 73}))
+	if _, err := released.UpTo(ctx, 74); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // TestConcurrentMigrateEmptySchema: the first deploy, where instances with their own pools (processes) all find an
