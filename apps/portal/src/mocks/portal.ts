@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { civilToday } from '@/lib/dates'
 import type {
   PortalDocument,
+  PortalSignature,
   PortalEngagement,
   PortalEngagementPeriod,
   PortalInvoice,
@@ -181,6 +182,36 @@ export const portalEngagementHistory: PortalEngagementPeriod[] = [
   { starts_on: '2026-09-01', ends_on: '2026-09-30', entries: [] },
 ]
 
+export const portalSignatures: PortalSignature[] = [
+  {
+    id: 'sig_1',
+    title: 'Service agreement',
+    status: 'pending',
+    sent_at: sharedAt(-1),
+    completed_at: null,
+    awaiting_you: true,
+    signed_file: null,
+  },
+  {
+    id: 'sig_2',
+    title: `Contract ${year}/C/001`,
+    status: 'completed',
+    sent_at: sharedAt(-12),
+    completed_at: sharedAt(-10),
+    awaiting_you: false,
+    signed_file: { name: `${year}-C-001 (signed).pdf`, size: 140000 },
+  },
+  {
+    id: 'sig_3',
+    title: 'Data processing agreement',
+    status: 'declined',
+    sent_at: sharedAt(-30),
+    completed_at: null,
+    awaiting_you: false,
+    signed_file: null,
+  },
+]
+
 export const portalDocuments: PortalDocument[] = [
   {
     id: 'doc_1',
@@ -291,6 +322,7 @@ export const portalHandlers = [
     HttpResponse.json({ data: portalEngagementHistory }),
   ),
   http.get(`${P}/documents`, () => HttpResponse.json({ data: portalDocuments })),
+  http.get(`${P}/signatures`, () => HttpResponse.json({ data: portalSignatures })),
   http.get(`${P}/profile`, () => HttpResponse.json(portalProfile)),
   http.put(`${P}/avatar`, async ({ request }) => {
     if (!csrfOk(request))

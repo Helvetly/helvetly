@@ -83,6 +83,19 @@ export type PortalDocument = {
   quote?: { number: string; revision: number } | null
 }
 
+/** A signature request addressed to the client, as the portal lists it (revoked ones are not). */
+export type PortalSignature = {
+  id: string
+  title: string
+  status: 'pending' | 'completed' | 'declined' | 'expired'
+  sent_at: string
+  completed_at: string | null
+  /** Pending and the signed-in address has still to sign (with the link it was emailed). */
+  awaiting_you: boolean
+  /** The signed PDF, with its certificate page, once completed; null while there is none to download. */
+  signed_file: { name: string; size: number } | null
+}
+
 /** What a client may ask to change (the API's clients.ProfileFields). */
 export type ProfileFields = {
   name: string
@@ -127,6 +140,7 @@ export const portalKeys = {
   engagements: ['portal', 'engagements'] as const,
   engagementHistory: (engagementId: string) => ['portal', 'engagements', engagementId] as const,
   documents: ['portal', 'documents'] as const,
+  signatures: ['portal', 'signatures'] as const,
   profile: ['portal', 'profile'] as const,
   scope: ['portal', 'scope'] as const,
 }
@@ -233,6 +247,10 @@ export const listPortalDocuments = async () =>
   (await call<{ data: PortalDocument[] }>('/documents')).data
 export const portalDocumentUrl = (documentId: string) =>
   apiUrl(`${base}/documents/${id(documentId)}/download`)
+export const listPortalSignatures = async () =>
+  (await call<{ data: PortalSignature[] }>('/signatures')).data
+export const portalSignatureUrl = (signatureId: string) =>
+  apiUrl(`${base}/signatures/${id(signatureId)}/download`)
 export const getPortalProfile = () => call<PortalProfile>('/profile')
 
 /** A 422 throws an ApiError whose `details.fields` names each bad field. */

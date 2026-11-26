@@ -7,6 +7,7 @@ import {
   portalEngagementHistory,
   portalEngagements,
   portalHandlers,
+  portalSignatures,
 } from '@/mocks/portal'
 
 import { PortalDocuments } from './portal-documents'
@@ -25,8 +26,16 @@ const engagements = (data: unknown) => ({
     handlers: [http.get(`${P}/engagements`, () => HttpResponse.json({ data })), ...portalHandlers],
   },
 })
-const documents = (response: Parameters<typeof http.get>[1]) => ({
-  msw: { handlers: [http.get(`${P}/documents`, response), ...portalHandlers] },
+type Resolver = Parameters<typeof http.get>[1]
+const noSignatures: Resolver = () => HttpResponse.json({ data: [] })
+const documents = (response: Resolver, signatures = noSignatures) => ({
+  msw: {
+    handlers: [
+      http.get(`${P}/documents`, response),
+      http.get(`${P}/signatures`, signatures),
+      ...portalHandlers,
+    ],
+  },
 })
 const retainer = portalEngagements[0]
 
@@ -530,6 +539,25 @@ export const Documents: Story = {
     await expect(canvas.queryByRole('button', { name: /Accept|Decline/ })).toBeNull()
     // Five documents: no search box yet.
     await expect(canvas.queryByRole('searchbox')).toBeNull()
+    // Documents sent for signature come first, under their own title, each with its status.
+    await expect(canvas.getByRole('heading', { name: 'Signatures' })).toBeVisible()
+    await expect(canvas.getByRole('heading', { name: 'Shared files' })).toBeVisible()
+    const toSign = canvas.getByText('Service agreement').closest('li')!
+    await expect(within(toSign).getByText('To sign')).toBeVisible()
+    await expect(
+      within(toSign).getByText('Sign with the link in the email you received'),
+    ).toBeVisible()
+    await expect(within(toSign).queryByRole('link')).toBeNull()
+    const contract = `Contract ${new Date().getFullYear()}/C/001`
+    const signed = canvas.getByText(contract).closest('li')!
+    await expect(within(signed).getByText('Signed')).toBeVisible()
+    await expect(within(signed).getByText(/^Signed .+/)).toBeVisible()
+    await expect(
+      within(signed).getByRole('link', { name: `Download the signed PDF of ${contract}` }),
+    ).toHaveAttribute('href', '/api/v1/public/portal/signatures/sig_2/download')
+    const declined = canvas.getByText('Data processing agreement').closest('li')!
+    await expect(within(declined).getByText('Declined')).toBeVisible()
+    await expect(within(declined).queryByRole('link')).toBeNull()
   },
 }
 
@@ -560,6 +588,37 @@ export const DocumentsSearch: Story = {
     await userEvent.clear(search)
     await userEvent.type(search, 'nothing like this')
     await expect(canvas.getByText('No matching documents')).toBeVisible()
+  },
+}
+
+/** Only documents for signature: no empty "shared files" card and no section titles to tell apart. */
+export const SignaturesOnly: Story = {
+  parameters: documents(
+    () => HttpResponse.json({ data: [] }),
+    () => HttpResponse.json({ data: portalSignatures }),
+  ),
+  render: () => <PortalDocuments />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText('Service agreement')).toBeVisible()
+    await expect(canvas.queryByText('Nothing has been shared with you yet')).toBeNull()
+    await expect(canvas.queryByRole('heading', { name: 'Shared files' })).toBeNull()
+  },
+}
+
+/** Signatures that fail to load say so in their own section; the shared files still show. */
+export const SignaturesError: Story = {
+  parameters: documents(
+    () => HttpResponse.json({ data: portalDocuments }),
+    () => HttpResponse.json({}, { status: 500 }),
+  ),
+  render: () => <PortalDocuments />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveTextContent('Your signatures')
+    await expect(within(alert).getByRole('button', { name: 'Try again' })).toBeVisible()
+    await expect(canvas.getByText('Contract.pdf')).toBeVisible()
   },
 }
 

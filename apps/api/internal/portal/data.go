@@ -20,6 +20,8 @@ func (s *Service) registerData(handle func(string, handler)) {
 	handle("GET /api/v1/public/portal/engagements/{id}/entries", s.engagementEntries)
 	handle("GET /api/v1/public/portal/documents", s.documents)
 	handle("GET /api/v1/public/portal/documents/{id}/download", s.downloadDocument)
+	handle("GET /api/v1/public/portal/signatures", s.signatures)
+	handle("GET /api/v1/public/portal/signatures/{id}/download", s.downloadSignature)
 }
 
 func (s *Service) today(sess store.PortalSession) string { return sess.Workspace.Today(s.now()) }
@@ -245,6 +247,36 @@ func (s *Service) downloadDocument(w http.ResponseWriter, r *http.Request, sess 
 		return notifications.Notify(r.Context(), q, sess.Workspace.ID, "portal.document_viewed", map[string]any{"client_id": sess.ClientID,
 			"client_name": sess.ClientName, "contact_name": sess.Email, "document_id": d.ID, "document_name": d.Name}, to, s.now())
 	})
+	if err != nil {
+		return err
+	}
+	return storage.Serve(w, r, s.files, sess.Workspace.ID, d.ObjectKey, d.Name, d.ContentType)
+}
+
+func (s *Service) signatures(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
+	list, err := s.db.Q.PortalSignatures(r.Context(), sess.Workspace.ID, sess.ClientID, sess.Email, "", s.now())
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, data(list))
+	return nil
+}
+
+// downloadSignature serves a completed request's signed PDF; 404 for another client's, an unfinished one or one
+// whose signed copy is trashed.
+func (s *Service) downloadSignature(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
+	id := r.PathValue("id")
+	if id == "" {
+		return store.ErrNotFound
+	}
+	list, err := s.db.Q.PortalSignatures(r.Context(), sess.Workspace.ID, sess.ClientID, sess.Email, id, s.now())
+	if err != nil {
+		return err
+	}
+	if len(list) == 0 || list[0].SignedFile == nil {
+		return store.ErrNotFound
+	}
+	d, err := s.db.Q.Document(r.Context(), sess.Workspace.ID, list[0].SignedDocumentID)
 	if err != nil {
 		return err
 	}

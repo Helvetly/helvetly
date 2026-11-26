@@ -54,7 +54,6 @@
   "everyInvoiceIssuedToYouEachWithItsPDF": "Jede an Sie ausgestellte Rechnung, jeweils mit PDF.",
   "expired": "Abgelaufen",
   "file": "Datei",
-  "filesSharedWithYouDownloadAnyOfThemAt": "Mit Ihnen geteilte Dateien. Laden Sie sie jederzeit herunter.",
   "fullName": "Vollständiger Name",
   "goodAfternoon": "Guten Tag",
   "goodEvening": "Guten Abend",
@@ -339,5 +338,18 @@
   "engagementThisPeriod": "{name} · diese Periode",
   "engagementPeriod": "{name} · {period}",
   "earlierPeriod": "Frühere Periode",
-  "laterPeriod": "Spätere Periode"
+  "laterPeriod": "Spätere Periode",
+  "filesSharedWithYouAndDocumentsSentForSignature": "Mit Ihnen geteilte Dateien und Dokumente, die Ihnen zur Unterschrift gesendet wurden. Laden Sie sie jederzeit herunter.",
+  "signatures": "Unterschriften",
+  "sharedFiles": "Geteilte Dateien",
+  "yourSignatures": "Ihre Unterschriften",
+  "signatureSigned": "Unterschrieben",
+  "signatureToSign": "Zu unterschreiben",
+  "signatureAwaitingOthers": "Wartet auf andere",
+  "signatureDeclined": "Abgelehnt",
+  "signatureExpired": "Abgelaufen",
+  "signedOn": "Unterschrieben am {date}",
+  "sentOn": "Gesendet am {date}",
+  "signWithTheLinkInYourEmail": "Unterschreiben Sie über den Link in der erhaltenen E-Mail",
+  "downloadSignedPdf": "Unterschriebenes PDF von {name} herunterladen"
 }
