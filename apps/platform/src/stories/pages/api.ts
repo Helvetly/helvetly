@@ -716,10 +716,13 @@ export const shellHandlers = [
   http.get('/api/v1/documents/exports', () => HttpResponse.json({ data: [] })),
   http.get('/api/v1/documents/groups', ({ request }) => {
     const query = new URL(request.url).searchParams
-    const by = (query.get('group') ?? '').split(',').find((dim) => !query.get(dim))
-    return by
-      ? HttpResponse.json({ data: { by, groups: documentGroups[by] ?? [] } })
-      : HttpResponse.json(page(files))
+    const by = (query.get('group') ?? '').split(',').find((dim) => query.getAll(dim).length !== 1)
+    if (!by) return HttpResponse.json(page(files))
+    const selected = query.getAll(by)
+    const groups = (documentGroups[by] ?? []).filter(
+      (group) => !selected.length || selected.includes(group.key),
+    )
+    return HttpResponse.json({ data: { by, groups } })
   }),
   http.get('/api/v1/documents/:id/content', () => new HttpResponse(null, { status: 204 })),
   http.get('/api/v1/documents', () => HttpResponse.json(page(files))),

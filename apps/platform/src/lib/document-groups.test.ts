@@ -29,9 +29,9 @@ describe('grouped views', () => {
     )
     expect(view).toMatchObject({
       group: ['type', 'year'],
-      type: 'invoices',
+      types: ['invoices'],
       year: 2026,
-      client: 'cli_1',
+      clients: ['cli_1'],
     })
     expect(viewToQuery(view).toString()).toBe(
       'group=type%2Cyear&type=invoices&year=2026&client=cli_1',
@@ -44,7 +44,7 @@ describe('grouped views', () => {
     expect(parseGrouping('client,year,client,kind,type')).toEqual(['client', 'year', 'type'])
     expect(parseGrouping(null)).toEqual([])
     expect(parseView(new URLSearchParams('type=memo&year=26'))).toMatchObject({
-      type: null,
+      types: [],
       year: null,
     })
   })
@@ -53,8 +53,8 @@ describe('grouped views', () => {
     const view = { ...DEFAULT_VIEW, group: ['type' as const, 'year' as const] }
     expect(openDim(view)).toBe('type')
     expect(openDim({ ...view, ...groupChange('type', 'quotes') })).toBe('year')
-    expect(openDim({ ...view, type: 'quotes', ...groupChange('year', '2025') })).toBeNull()
-    expect(groupChange('type', 'memo')).toEqual({ type: null })
+    expect(openDim({ ...view, types: ['quotes'], ...groupChange('year', '2025') })).toBeNull()
+    expect(groupChange('type', 'memo')).toEqual({ types: [] })
   })
 
   it('lists a group everywhere, with the same filters as its groups and ZIP', () => {
@@ -62,7 +62,7 @@ describe('grouped views', () => {
       ...DEFAULT_VIEW,
       folder: 'fld_1',
       group: ['client' as const],
-      client: NO_CLIENT,
+      clients: [NO_CLIENT],
       search: 'bill',
       mine: true,
     }
@@ -81,7 +81,7 @@ describe('grouped views', () => {
   })
 
   it('zips what the view shows: chips combined, the grouping, a plain folder', () => {
-    const chips = { ...DEFAULT_VIEW, client: 'cli_1', year: 2026, type: 'invoices' as const }
+    const chips = { ...DEFAULT_VIEW, clients: ['cli_1'], year: 2026, types: ['invoices' as const] }
     expect(zipQuery(chips, undefined).toString()).toBe('type=invoices&year=2026&client=cli_1')
     expect(zipQuery({ ...chips, group: ['client', 'year'] }, undefined).toString()).toBe(
       'type=invoices&year=2026&client=cli_1&group=client%2Cyear',
@@ -89,6 +89,26 @@ describe('grouped views', () => {
     expect(zipQuery({ ...DEFAULT_VIEW, folder: 'fld_1' }, undefined).toString()).toBe(
       'folder_id=fld_1',
     )
+  })
+
+  it('applies every selected client and type and both upload dates to lists, groups and ZIPs', () => {
+    const params = new URLSearchParams(
+      'type=invoices&type=quotes&client=cli_a&client=cli_b&date=custom&from=2026-01-03&to=2026-02-05',
+    )
+    const view = parseView(params)
+    expect(viewToQuery(view).toString()).toBe(params.toString())
+    for (const query of [
+      listQuery(view, undefined),
+      groupsQuery(view, undefined),
+      zipQuery(view, undefined),
+    ]) {
+      expect(query.getAll('type')).toEqual(['invoices', 'quotes'])
+      expect(query.getAll('client')).toEqual(['cli_a', 'cli_b'])
+      expect(query.get('from')).toBe('2026-01-03')
+      expect(query.get('to')).toBe('2026-02-05')
+      expect(query.has('folder_id')).toBe(false)
+    }
+    expect(openDim({ ...view, group: ['type', 'client'] })).toBe('type')
   })
 
   it('names groups', () => {

@@ -415,7 +415,7 @@ func listFilter(r *http.Request, sess store.Session) (store.DocumentFilter, erro
 func parseFilter(v url.Values, zone string) (store.DocumentFilter, error) {
 	f := store.DocumentFilter{Folder: v.Get("folder_id"), Search: strings.TrimSpace(v.Get("search")),
 		UploadedBy: v.Get("uploaded_by"), ClientID: v.Get("client_id"), From: v.Get("from"), To: v.Get("to"), Zone: zone,
-		Tag: strings.ToLower(strings.TrimSpace(v.Get("tag"))), Type: v.Get("type"), Client: v.Get("client")}
+		Tag: strings.ToLower(strings.TrimSpace(v.Get("tag")))}
 	// kind repeats or lists with commas (kind=pdf,image); kinds are ORed, the other filters ANDed.
 	var want []string
 	for _, k := range v["kind"] {
@@ -434,9 +434,23 @@ func parseFilter(v url.Values, zone string) (store.DocumentFilter, error) {
 			return f, badRequest("Dates are YYYY-MM-DD.")
 		}
 	}
-	if f.Type != "" && !slices.Contains(store.DocumentTypes, f.Type) {
-		return f, badRequest("Unknown type " + strconv.Quote(f.Type) + ".")
+	if f.From != "" && f.To != "" && f.From > f.To {
+		return f, badRequest("The start date must be on or before the end date.")
 	}
+	for _, kind := range v["type"] {
+		if kind == "" {
+			continue
+		}
+		if !slices.Contains(store.DocumentTypes, kind) {
+			return f, badRequest("Unknown type " + strconv.Quote(kind) + ".")
+		}
+		if !slices.Contains(f.Types, kind) {
+			f.Types = append(f.Types, kind)
+		}
+	}
+	f.Clients = slices.Clone(v["client"])
+	slices.Sort(f.Clients)
+	f.Clients = slices.DeleteFunc(slices.Compact(f.Clients), func(id string) bool { return id == "" })
 	if y := v.Get("year"); y != "" {
 		n, err := strconv.Atoi(y)
 		if err != nil || n < 1900 || n > 9999 {

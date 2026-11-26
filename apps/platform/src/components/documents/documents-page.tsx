@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@helvetly/ui/components/dropdown-menu'
 import { HeidiSparkle } from '@helvetly/ui/components/heidi-mark'
+import { Input } from '@helvetly/ui/components/input'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
@@ -78,7 +79,7 @@ import {
   type FeatureLock,
 } from '@/components/billing/feature-lock'
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { ListFilters, sinceOptions } from '@/components/data/list-filters'
+import { ListFilters, SingleSelect } from '@/components/data/list-filters'
 import { ListSearch } from '@/components/data/list-toolbar'
 import { LoadProblem } from '@/components/data/load-problem'
 import { PageContextMenu } from '@/components/data/menus'
@@ -111,6 +112,8 @@ import {
   groupLabel,
   groupsQuery,
   groupValue,
+  uploadDateOptions,
+  isDatePreset,
   listQuery,
   NO_CLIENT,
   openDim,
@@ -144,7 +147,7 @@ import {
   type ViewParams,
 } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
-import { among, oneValue, SINCE_PRESETS, type QueryField, type QueryOption } from '@/lib/list-query'
+import { among, oneValue, type QueryField, type QueryOption } from '@/lib/list-query'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
 import { folderLabel, isSystemFolder, withoutEmptySystem } from '@/lib/system-folders'
@@ -162,7 +165,7 @@ import { GroupView } from './group-view'
 import { ItemsView } from './items-view'
 import { KIND_STYLE, KindIcon } from './kind'
 import { OrganizeDrawer } from './organize-drawer'
-import { sameTab, tabOfView, usePinnedTabs, type PinnedTab } from './pinned-tabs'
+import { pinAction, sameTab, tabOfView, usePinnedTabs, type PinnedTab } from './pinned-tabs'
 import { Preview, type PreviewCommands } from './preview'
 import { RecentStrip } from './recent-strip'
 import { useCollapsed, type SectionId } from './section'
@@ -458,7 +461,7 @@ export function DocumentsPage() {
       : translate('allDocuments')
 
   // ---- what is on screen ----
-  const byGroup = view.type !== null || view.year !== null || view.client !== null
+  const byGroup = view.types.length > 0 || view.year !== null || view.clients.length > 0
   const filtered = view.kinds.length > 0 || view.mine || view.date !== null || byGroup || grouping
   const searching = view.search.trim().length > 0
   const crumbs = pathTo(allFolders, current)
@@ -1007,6 +1010,7 @@ export function DocumentsPage() {
         shortcut: translate('v'),
         onSelect: paste,
       },
+    here?.type === 'kind' && pinAction(pinned, here),
     view.section === 'files' && zipAction(),
   ]
   // Download as ZIP: what the view shows; off while there is nothing, or while a ZIP is being prepared.
@@ -1179,7 +1183,6 @@ export function DocumentsPage() {
                       refreshDocuments(queryClient)
                       openFolder(data.id)
                     }, docError),
-                  kinds: (kinds) => navigate({ section: 'files', kinds }),
                   open: openFolder,
                   section: openSection,
                   newFolder: (parent) => setNewFolderIn(parent),
@@ -1253,7 +1256,9 @@ export function DocumentsPage() {
                   <GroupByMenu
                     view={view}
                     counts={presetCounts}
-                    onPreset={(preset) => setGrouping(preset.group, { type: preset.type })}
+                    onPreset={(preset) =>
+                      setGrouping(preset.group, { types: preset.type ? [preset.type] : [] })
+                    }
                     onChange={changeLevels}
                   />
                 )}
@@ -1385,7 +1390,15 @@ export function DocumentsPage() {
                     onNewFolder={() => setNewFolderIn(current)}
                     onClear={() => {
                       setSearch('')
-                      navigate({ search: '', kinds: [], mine: false, date: null, ...NO_GROUP })
+                      navigate({
+                        search: '',
+                        kinds: [],
+                        mine: false,
+                        date: null,
+                        from: '',
+                        to: '',
+                        ...NO_GROUP,
+                      })
                     }}
                   />
                 ) : (
@@ -1989,7 +2002,7 @@ function saveFile(href: string) {
   link.click()
 }
 
-const NO_GROUP = { type: null, year: null, client: null } satisfies Partial<ViewParams>
+const NO_GROUP = { types: [], year: null, clients: [] } satisfies Partial<ViewParams>
 
 /**
  * The search's field terms: `kind:`, `uploaded:`, `by:me` and the groups' `type:`, `year:` and
@@ -2003,10 +2016,8 @@ const queryFields = (clients: QueryOption[]): QueryField<ViewParams>[] => [
     type: 'enum',
     values: DOC_TYPES.map((type) => ({ value: type, label: DOC_TYPE_LABELS[type] })),
     placeholder: translate('anyType'),
-    ...oneValue(
-      (view) => view.type,
-      (type) => ({ type: among(DOC_TYPES, type ? [type] : [])[0] ?? null }),
-    ),
+    get: (view) => view.types,
+    set: (values) => ({ types: among(DOC_TYPES, values) }),
   },
   {
     id: 'year',
@@ -2023,10 +2034,8 @@ const queryFields = (clients: QueryOption[]): QueryField<ViewParams>[] => [
     type: 'enum',
     values: clients,
     placeholder: translate('anyClient'),
-    ...oneValue(
-      (view) => view.client,
-      (client) => ({ client }),
-    ),
+    get: (view) => view.clients,
+    set: (values) => ({ clients: values }),
   },
   // Last in the popover, just above "Clear all".
   {
@@ -2041,6 +2050,25 @@ const queryFields = (clients: QueryOption[]): QueryField<ViewParams>[] => [
   },
 ]
 
+const uploadedField: QueryField<ViewParams> = {
+  id: 'uploaded',
+  label: translate('uploaded2'),
+  type: 'enum',
+  values: uploadDateOptions,
+  kind: 'date',
+  placeholder: translate('uploadedAnyTime'),
+  single: true,
+  get: (view) => (view.date ? [view.date] : []),
+  set: (values, view) => {
+    const date = values.at(-1) ?? null
+    return {
+      date: isDatePreset(date) ? date : null,
+      from: date === 'custom' ? view.from : '',
+      to: date === 'custom' ? view.to : '',
+    }
+  },
+}
+
 const QUERY_FIELDS: QueryField<ViewParams>[] = [
   {
     id: 'kind',
@@ -2051,18 +2079,7 @@ const QUERY_FIELDS: QueryField<ViewParams>[] = [
     get: (view) => view.kinds,
     set: (kinds) => ({ kinds: among(KINDS, kinds) }),
   },
-  {
-    id: 'uploaded',
-    label: translate('uploaded2'),
-    type: 'enum',
-    values: sinceOptions(),
-    kind: 'date',
-    placeholder: translate('uploadedAnyTime'),
-    ...oneValue(
-      (view) => view.date,
-      (date) => ({ date: SINCE_PRESETS.find((preset) => preset === date) ?? null }),
-    ),
-  },
+  uploadedField,
 ]
 
 function Filters({
@@ -2082,6 +2099,41 @@ function Filters({
       variant="outline"
       align="end"
       custom={{
+        uploaded: (
+          <div className="grid gap-1.5">
+            <SingleSelect
+              field={uploadedField}
+              params={view}
+              onSet={(field, values) => onChange(field.set(values, view))}
+            />
+            {view.date === 'custom' && (
+              <div className="grid grid-cols-2 gap-2">
+                <label className="grid gap-1 text-xs">
+                  {translate('from')}
+                  <Input
+                    type="date"
+                    value={view.from}
+                    max={view.to || undefined}
+                    onChange={(event) => {
+                      if (event.target.validity.valid) onChange({ from: event.target.value })
+                    }}
+                  />
+                </label>
+                <label className="grid gap-1 text-xs">
+                  {translate('to3')}
+                  <Input
+                    type="date"
+                    value={view.to}
+                    min={view.from || undefined}
+                    onChange={(event) => {
+                      if (event.target.validity.valid) onChange({ to: event.target.value })
+                    }}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        ),
         by: (
           <label className="flex h-8 cursor-pointer items-center gap-2.5 px-1 text-sm">
             <Checkbox
@@ -2115,9 +2167,9 @@ function Empty({
     view.kinds.length ||
     view.mine ||
     view.date ||
-    view.type ||
+    view.types.length ||
     view.year ||
-    view.client
+    view.clients.length
   )
     return (
       <State

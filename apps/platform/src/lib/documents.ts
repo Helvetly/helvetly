@@ -11,10 +11,12 @@ import {
 import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
 import type { Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
-import { isoDay, sinceDate, type SincePreset } from '@/lib/list-query'
+import { addDays } from '@/lib/invoices'
+import { isoDay, sinceDate } from '@/lib/list-query'
 import type { Sort, SortValue } from '@/lib/list-sort'
 import { queryKeys } from '@/lib/queries'
 import { folderLabel } from '@/lib/system-folders'
+import { todayIn } from '@/lib/timezone'
 import { MAX_FILE_BYTES } from '@/lib/upload-packs'
 
 import { documentTagLabel } from './document-tags'
@@ -178,7 +180,52 @@ export const ACCEPT =
 
 export const SORT_FIELDS = ['name', 'created_at', 'updated_at', 'size', 'kind'] as const
 export type SortField = (typeof SORT_FIELDS)[number]
-export type DatePreset = SincePreset
+const UPLOAD_DATES = {
+  today: 'today',
+  yesterday: 'yesterday',
+  '7d': 'last7Days',
+  '30d': 'last30Days',
+  '90d': 'last90Days2',
+  month: 'thisMonth2',
+  'last-month': 'lastMonth',
+  year: 'thisYear',
+  custom: 'customRange',
+} as const
+export type DatePreset = keyof typeof UPLOAD_DATES
+export const isDatePreset = (value: string | null): value is DatePreset =>
+  value !== null && Object.hasOwn(UPLOAD_DATES, value)
+export const uploadDateOptions = Object.entries(UPLOAD_DATES).map(([value, key]) => ({
+  value,
+  label: translate(key),
+}))
+
+function uploadDates(view: ViewParams, day = todayIn()): [string, string] {
+  const month = day.slice(0, 7) + '-01'
+  switch (view.date) {
+    case 'today':
+      return [day, day]
+    case 'yesterday': {
+      const previous = addDays(day, -1)
+      return [previous, previous]
+    }
+    case 'month':
+      return [month, day]
+    case 'last-month': {
+      const last = addDays(month, -1)
+      return [last.slice(0, 7) + '-01', last]
+    }
+    case '90d':
+      return [addDays(day, -89), day]
+    case '7d':
+    case '30d':
+    case 'year':
+      return [sinceDate(view.date, day), day]
+    case 'custom':
+      return [view.from, view.to]
+    default:
+      return ['', '']
+  }
+}
 export type Section = 'files' | 'recent' | 'trash' | 'signatures' | 'templates'
 
 // ---- virtual groups: files grouped by what they are, computed by the API; nothing moves ----
@@ -253,16 +300,16 @@ export function storeGrouping(dims: readonly GroupDim[]) {
 
 /** The view's group value of one dimension, null while that level is still open. */
 export function groupValue(view: ViewParams, dim: GroupDim): string | null {
-  if (dim === 'type') return view.type
+  if (dim === 'type') return view.types.length === 1 ? view.types[0]! : null
   if (dim === 'year') return view.year === null ? null : String(view.year)
-  return view.client
+  return view.clients.length === 1 ? view.clients[0]! : null
 }
 
 /** The change that sets one dimension's value (null clears it). */
 export function groupChange(dim: GroupDim, value: string | null): Partial<ViewParams> {
-  if (dim === 'type') return { type: value && isDocType(value) ? value : null }
+  if (dim === 'type') return { types: value && isDocType(value) ? [value] : [] }
   if (dim === 'year') return { year: value ? Number(value) : null }
-  return { client: value }
+  return { clients: value ? [value] : [] }
 }
 
 /** The first grouping level the view has not chosen a group of, or null at the files of one group. */
@@ -284,10 +331,12 @@ function filterQuery(view: ViewParams, userId: string | undefined, query: URLSea
   if (view.search.trim()) query.set('search', view.search.trim())
   for (const kind of view.kinds) query.append('kind', kind)
   if (view.mine && userId) query.set('uploaded_by', userId)
-  if (view.date) query.set('from', presetFrom(view.date))
-  if (view.type) query.set('type', view.type)
+  const [from, to] = uploadDates(view)
+  if (from) query.set('from', from)
+  if (to) query.set('to', to)
+  for (const type of view.types) query.append('type', type)
   if (view.year !== null) query.set('year', String(view.year))
-  if (view.client) query.set('client', view.client)
+  for (const client of view.clients) query.append('client', client)
   return query
 }
 
@@ -328,11 +377,13 @@ export type ViewParams = {
   search: string
   /** Group by (empty = Folders) and the groups chosen so far, which also filter as the search's chips. */
   group: GroupDim[]
-  type: DocType | null
+  types: DocType[]
   year: number | null
-  client: string | null
+  clients: string[]
   kinds: Kind[]
   mine: boolean
+  from: string
+  to: string
   date: DatePreset | null
   sort: SortField
   desc: boolean
@@ -346,11 +397,13 @@ export const DEFAULT_VIEW: ViewParams = {
   folder: null,
   search: '',
   group: [],
-  type: null,
+  types: [],
   year: null,
-  client: null,
+  clients: [],
   kinds: [],
   mine: false,
+  from: '',
+  to: '',
   date: null,
   sort: 'name',
   desc: false,
@@ -367,7 +420,10 @@ export function parseView(query: URLSearchParams): ViewParams {
   const section = query.get('view')
   const sort = (query.get('sort') ?? '').replace(/^-/, '')
   const date = query.get('date')
-  const type = query.get('type') ?? ''
+  const boundary = (key: string) => {
+    const value = query.get(key) ?? ''
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : ''
+  }
   return {
     section:
       section === 'recent' ||
@@ -379,12 +435,14 @@ export function parseView(query: URLSearchParams): ViewParams {
     folder: query.get('folder') || null,
     search: query.get('q') ?? '',
     group: parseGrouping(query.get('group')),
-    type: isDocType(type) ? type : null,
+    types: [...new Set(query.getAll('type').filter(isDocType))],
     year: /^\d{4}$/.test(query.get('year') ?? '') ? Number(query.get('year')) : null,
-    client: query.get('client') || null,
+    clients: [...new Set(query.getAll('client').filter(Boolean))],
     kinds: [...new Set(query.getAll('kind').filter(isKind))],
     mine: query.get('mine') === '1',
-    date: date === '7d' || date === '30d' || date === 'year' ? date : null,
+    date: isDatePreset(date) ? date : null,
+    from: date === 'custom' ? boundary('from') : '',
+    to: date === 'custom' ? boundary('to') : '',
     sort: isSort(sort) ? sort : DEFAULT_VIEW.sort,
     desc: isSort(sort) ? (query.get('sort') ?? '').startsWith('-') : DEFAULT_VIEW.desc,
     layout: query.get('layout') === 'list' ? 'list' : 'grid',
@@ -399,12 +457,16 @@ export function viewToQuery(view: ViewParams) {
   if (view.folder && view.section === 'files') query.set('folder', view.folder)
   if (view.search) query.set('q', view.search)
   if (view.group.length > 0 && view.section === 'files') query.set('group', view.group.join())
-  if (view.type) query.set('type', view.type)
+  for (const type of view.types) query.append('type', type)
   if (view.year !== null) query.set('year', String(view.year))
-  if (view.client) query.set('client', view.client)
+  for (const client of view.clients) query.append('client', client)
   for (const kind of view.kinds) query.append('kind', kind)
   if (view.mine) query.set('mine', '1')
   if (view.date) query.set('date', view.date)
+  if (view.date === 'custom') {
+    if (view.from) query.set('from', view.from)
+    if (view.to) query.set('to', view.to)
+  }
   if (view.sort !== DEFAULT_VIEW.sort || view.desc !== DEFAULT_VIEW.desc)
     query.set('sort', `${view.desc ? '-' : ''}${view.sort}`)
   if (view.layout !== 'grid') query.set('layout', view.layout)
@@ -421,10 +483,11 @@ export function listQuery(view: ViewParams, userId: string | undefined) {
   const everywhere =
     view.section === 'recent' ||
     view.search.trim().length > 0 ||
+    (!view.folder && (view.date !== null || view.kinds.length > 0 || view.mine)) ||
     view.group.length > 0 ||
-    view.type !== null ||
+    view.types.length > 0 ||
     view.year !== null ||
-    view.client !== null
+    view.clients.length > 0
   if (!everywhere) query.set('folder_id', view.folder ?? 'root')
   query.set(
     'sort',

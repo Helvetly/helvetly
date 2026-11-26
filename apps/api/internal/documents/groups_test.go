@@ -170,6 +170,25 @@ func TestGroupedViewsLeafPagingAndFilters(t *testing.T) {
 	}
 }
 
+func TestMultiClientAndTypeFilters(t *testing.T) {
+	g := newGrouped(t)
+	choices := "client=" + g.acme + "&client=" + g.beta + "&type=invoices&type=credit_notes"
+	if got := names(g.e.list(g.b, choices).Data); !slices.Equal(got, []string{"a.pdf", "b.pdf"}) {
+		t.Fatalf("selected files = %v", got)
+	}
+	if got := counts(g.groups(g.b, "group=type&"+choices).Data.Groups); !maps(got, map[string]int{"invoices": 1, "credit_notes": 1}) {
+		t.Fatalf("type counts = %v", got)
+	}
+	if got := names(g.e.list(g.b, "client="+g.beta+"&type=other&from=2024-01-01&to=2024-01-01").Data); !slices.Equal(got, []string{"notes.pdf"}) {
+		t.Fatalf("workspace day = %v", got)
+	}
+	if got := names(g.e.list(g.other, choices).Data); len(got) != 0 {
+		t.Fatalf("foreign files = %v", got)
+	}
+	g.e.fails(g.b, "GET", "/api/v1/documents?type=invoices&type=unknown", nil, 400, "invalid_request")
+	g.e.fails(g.b, "GET", "/api/v1/documents?from=2026-02-01&to=2026-01-31", nil, 400, "invalid_request")
+}
+
 func TestGroupedViewsIsolationAndPermissions(t *testing.T) {
 	g := newGrouped(t)
 	if got := counts(g.groups(g.other, "group=type").Data.Groups); !maps(got, map[string]int{"invoices": 1}) {

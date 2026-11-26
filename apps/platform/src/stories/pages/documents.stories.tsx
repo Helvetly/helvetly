@@ -771,64 +771,57 @@ export const Filters: Story = {
   }),
 }
 
-/**
- * The sidebar's types are toggles: several at once, each marked, the same state as the Kind filter
- * (its chip and the popover); "Uploaded by me" is the popover's last control, above "Clear all".
- */
-const kindRequests: URLSearchParams[] = []
-const typesPage = pageParameters('/documents', {}, [
-  http.get('/api/v1/documents', ({ request }) => {
-    kindRequests.push(new URL(request.url).searchParams)
-    return HttpResponse.json(page(sampleFiles))
-  }),
-])
+/** Selections share the URL, chips and API parameters. */
 export const TypesMultiSelect: Story = {
-  // A query string: the kind repeats (a record holds one value per key).
   parameters: {
-    ...typesPage,
-    nextjs: { navigation: { pathname: '/documents', query: 'kind=pdf&kind=image' } },
+    ...pageParameters('/documents'),
+    nextjs: {
+      navigation: {
+        pathname: '/documents',
+        query: 'kind=pdf&kind=image&type=invoices&type=quotes&client=cli_acme&client=cli_bern',
+      },
+    },
   },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    const types = within(
-      await body.findByRole('navigation', { name: 'File types' }, { timeout: 8000 }),
-    )
-    const pressed = (name: string) =>
-      types.getByRole('button', { name }).getAttribute('aria-pressed')
-    await expect(['PDFs', 'Images', 'Spreadsheets', 'Documents'].map(pressed)).toEqual([
-      'true',
-      'true',
-      'false',
-      'false',
-    ])
-    await waitFor(() =>
-      expect(kindRequests.some((query) => query.getAll('kind').join() === 'pdf,image')).toBe(true),
-    )
     await expect(
       await body.findByRole('button', { name: 'Remove filter Kind: PDF or Image' }),
     ).toBeVisible()
-
-    // The popover's Kind holds both; "Uploaded by me" comes last, right above "Clear all".
+    await expect(body.queryByRole('navigation', { name: 'File types' })).toBeNull()
     await userEvent.click(body.getByRole('button', { name: /^Filters/ }))
-    const dialog = await body.findByRole('dialog', { name: 'Filters' })
-    await expect(within(dialog).getByRole('button', { name: /^Kind/ })).toHaveTextContent(
-      /PDF.*Image/,
+    const panel = within(await body.findByRole('dialog', { name: 'Filters' }))
+    await expect(panel.getByRole('button', { name: /^Type / })).toHaveTextContent(
+      /Invoices.*Quotes/,
     )
-    const controls = [...dialog.querySelectorAll('button, [role="checkbox"]')]
-    const mine = within(dialog).getByRole('checkbox', { name: 'Uploaded by me' })
-    const clearAll = within(dialog).getByRole('button', { name: 'Clear all' })
-    await expect(controls.indexOf(clearAll) - controls.indexOf(mine)).toBe(1)
-    await userEvent.keyboard('{Escape}')
-
-    // A row toggles its type in or out; "Clear" in the section's header takes them all out.
-    await userEvent.click(types.getByRole('button', { name: 'Spreadsheets' }))
+    await expect(panel.getByRole('button', { name: /^Client / })).toHaveTextContent(
+      /Acme AG.*Bern Bau GmbH/,
+    )
+    await userEvent.click(panel.getByRole('button', { name: /^Type / }))
+    await userEvent.click(await body.findByRole('option', { name: 'Receipts' }))
     await waitFor(() =>
-      expect(url(canvasElement).getAll('kind')).toEqual(['pdf', 'image', 'spreadsheet']),
+      expect(url(canvasElement).getAll('type')).toEqual(['invoices', 'quotes', 'receipts']),
     )
-    await userEvent.click(types.getByRole('button', { name: 'PDFs' }))
-    await waitFor(() => expect(url(canvasElement).getAll('kind')).toEqual(['image']))
-    await userEvent.click(types.getByRole('button', { name: 'Clear' }))
-    await waitFor(() => expect(url(canvasElement).has('kind')).toBe(false))
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(panel.getByRole('button', { name: /^Client / }))
+    await userEvent.click(await body.findByRole('option', { name: 'Acme AG' }))
+    await waitFor(() => expect(url(canvasElement).getAll('client')).toEqual(['cli_bern']))
+  },
+}
+export const CustomUploadDates: Story = {
+  parameters: pageParameters('/documents', {
+    date: 'custom',
+    from: '2026-02-01',
+    to: '2026-02-28',
+  }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('button', { name: /^Filters/ }))
+    const panel = within(await body.findByRole('dialog', { name: 'Filters' }))
+    const from = panel.getByLabelText('From')
+    await expect(from).toHaveValue('2026-02-01')
+    await expect(panel.getByLabelText('To')).toHaveValue('2026-02-28')
+    fireEvent.change(from, { target: { value: '2026-02-10' } })
+    await waitFor(() => expect(url(canvasElement).get('from')).toBe('2026-02-10'))
   },
 }
 export const TypesMultiSelectDark = dark(TypesMultiSelect)

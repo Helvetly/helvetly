@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   childrenOf,
@@ -91,6 +91,25 @@ describe('listQuery', () => {
     expect(presetFrom('7d', today)).toBe('2026-10-30')
     expect(presetFrom('30d', today)).toBe('2026-10-07')
     expect(presetFrom('year', today)).toBe('2026-01-01')
+  })
+  it('resolves rolling periods and previous months in the workspace calendar', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2024-03-01T12:00:00Z'))
+      const cases = [
+        ['today', '2024-03-01', '2024-03-01'],
+        ['yesterday', '2024-02-29', '2024-02-29'],
+        ['last-month', '2024-02-01', '2024-02-29'],
+        ['90d', '2023-12-03', '2024-03-01'],
+      ] as const
+      for (const [preset, first, last] of cases) {
+        const query = listQuery(parseView(new URLSearchParams({ date: preset })), undefined)
+        expect([query.get('from'), query.get('to')]).toEqual([first, last])
+        expect(query.has('folder_id')).toBe(false)
+      }
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
