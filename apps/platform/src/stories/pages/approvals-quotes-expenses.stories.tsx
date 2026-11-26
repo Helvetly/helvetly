@@ -14,7 +14,7 @@ import {
   inboxItem,
   resetApprovals,
 } from '@/mocks/approvals'
-import { emailTemplateHandlers } from '@/mocks/email-templates'
+import { emailTextHandlers } from '@/mocks/email-texts'
 import { quoteHandlers, resetQuotesMock, sampleQuote } from '@/mocks/quotes'
 
 import { expense } from './api'
@@ -70,7 +70,7 @@ const quotesPage = (query: Record<string, string> = {}, ...handlers: RequestHand
     draftQuote,
     ...approvalHandlers,
     ...quoteHandlers,
-    ...emailTemplateHandlers,
+    ...emailTextHandlers,
   ])
 const expensesPage = (query: Record<string, string> = {}, ...handlers: RequestHandler[]) =>
   pageParameters('/expenses', query, [

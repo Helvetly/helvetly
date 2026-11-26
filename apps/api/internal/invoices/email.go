@@ -3,7 +3,6 @@ package invoices
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -29,21 +28,17 @@ func (s *Service) recipients(ctx context.Context, ws string, inv store.Invoice, 
 	return client, err, to
 }
 
-// draft is the subject and message of an invoice's email: the workspace's template for its kind and language,
-// else the built-in text, with the variables filled in.
+// draft is the subject and message of an invoice's email: the built-in text for its kind and language, with the
+// variables filled in.
 func (s *Service) draft(ctx context.Context, q store.Q, ws string, inv store.Invoice) (string, string, error) {
 	kind := "invoice"
 	if inv.Kind == "credit_note" || inv.Kind == "proforma" {
 		kind = inv.Kind
 	}
 	lang := emailLanguage(inv)
-	t, err := template(ctx, q, ws, kind, lang)
-	if err != nil {
-		return "", "", err
-	}
+	t := emailtemplate.Default(kind, lang)
 	if adjustedBalance(inv) {
-		// A saved invoice template can contain an unconditional request for the original payment.
-		t.Subject = emailtemplate.Default(kind, lang).Subject
+		// The built-in invoice text asks for the original payment; a copy names what is still open.
 		t.Body = map[string]string{
 			"de": "Im Anhang finden Sie die Kopie der Rechnung {number} über {amount}. Der offene Betrag ist {balance}.",
 			"en": "Attached is a copy of invoice {number} for {amount}. The outstanding balance is {balance}.",
@@ -68,15 +63,6 @@ func emailLanguage(inv store.Invoice) string {
 		return inv.Language
 	}
 	return "en"
-}
-
-// template is the workspace's own text of a kind in a language, else the built-in one.
-func template(ctx context.Context, q store.Q, ws, kind, lang string) (emailtemplate.Template, error) {
-	own, err := q.EmailTemplate(ctx, ws, kind, lang)
-	if errors.Is(err, store.ErrNotFound) {
-		return emailtemplate.Default(kind, lang), nil
-	}
-	return emailtemplate.Template{Subject: own.Subject, Body: own.Body}, err
 }
 
 // limitFor is the length limit of a typed text: the dialog posts the rendered draft back, which passes as it is,

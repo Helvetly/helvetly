@@ -65,11 +65,17 @@ func (e *Emails) RemindersTick(ctx context.Context) {
 }
 
 // remind sends one claimed reminder: to the client's addresses, or to the host as a member email. A workspace
-// whose plan lost the feature, a closed session, a client without an address or a host who left get none.
+// whose plan lost the feature, a closed session, a client without an address or a host who left get none, nor a
+// client of a workspace that turned session reminders off (Settings → Client emails).
 func (e *Emails) remind(ctx context.Context, d store.DueReminder) error {
 	q := e.s.db.Q
 	if ok, err := q.FeatureAllowed(ctx, d.WorkspaceID, store.FeatureScheduling); err != nil || !ok {
 		return err
+	}
+	if d.Audience != "host" {
+		if c, err := q.WorkspaceClientEmails(ctx, d.WorkspaceID); err != nil || !c.SessionReminders {
+			return err
+		}
 	}
 	o, err := q.SchedOccurrence(ctx, d.WorkspaceID, d.OccurrenceID, false)
 	if err != nil || !isOpen(o.Status) {

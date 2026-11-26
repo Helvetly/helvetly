@@ -7,11 +7,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
-	"unicode/utf8"
 
 	"helvetly.com/api/internal/emailtemplate"
-	"helvetly.com/api/internal/store"
 )
 
 type draftOut struct {
@@ -22,7 +19,7 @@ type draftOut struct {
 	}
 }
 
-func TestQuoteDraftUsesTemplate(t *testing.T) {
+func TestQuoteDraftUsesBuiltInText(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
 	q := e.draft(b, e.client(b))
@@ -35,18 +32,13 @@ func TestQuoteDraftUsesTemplate(t *testing.T) {
 		t.Fatalf("default draft: %+v", out.Data)
 	}
 
-	own := store.EmailTemplate{Kind: "quote", Language: "de", Subject: "{number} für {client}", Body: "Hallo {client}: {amount}, {valid_until} <{x}> {company}"}
-	if err := e.st.SetEmailTemplate(context.Background(), b.workspace, own, "", time.Now()); err != nil {
+	// a text the workspace wrote when that was possible is no longer read
+	if _, err := e.pool.Exec(context.Background(), `INSERT INTO email_templates (workspace_id, kind, language, subject, body, updated_at)
+		VALUES ($1, 'quote', 'de', '{number} für {client}', 'Hallo {client}', now())`, b.workspace); err != nil {
 		t.Fatal(err)
 	}
-	e.do(b, "GET", path, nil, http.StatusOK, &out)
-	if out.Data.Subject != "für Kunde AG" || out.Data.Message != "Hallo Kunde AG: CHF 216.20, 16.12.2026 <{x}> Muster GmbH" {
-		t.Fatalf("template draft: %+v", out.Data)
-	}
-
-	// the send without subject/message uses the template too
 	e.quote(b, "POST", "/api/v1/quotes/"+q.ID+"/send", map[string]any{}, http.StatusOK)
-	if m := e.mail.sent[0]; m.Subject != "Q-2026-001 für Kunde AG" || !strings.HasPrefix(m.Text, "Hallo Kunde AG: CHF 216.20, 16.12.2026 <{x}> Muster GmbH\n") {
+	if m := e.mail.sent[0]; m.Subject != "Offerte Q-2026-001 von Muster GmbH" || !strings.HasPrefix(m.Text, "Guten Tag\n") {
 		t.Fatalf("sent: %q %q", m.Subject, m.Text)
 	}
 }
@@ -78,29 +70,6 @@ func TestQuoteDraftOtherWorkspace404(t *testing.T) {
 	b := e.workspace()
 	q := e.draft(b, e.client(b))
 	e.fails(e.workspace(), "GET", "/api/v1/quotes/"+q.ID+"/email", nil, 404, "not_found", "")
-}
-
-func TestQuoteSendAcceptsTheRenderedDraftOverTheLimit(t *testing.T) {
-	e := newEnv(t)
-	b := e.workspace()
-	q := e.draft(b, e.client(b))
-	// the template is within the limits, the rendered draft (company name filled in) is not
-	own := store.EmailTemplate{Kind: "quote", Language: "de", Subject: "{company}" + strings.Repeat("s", 191), Body: strings.Repeat("{company}", 100) + strings.Repeat("b", emailtemplate.MaxMessage-900)}
-	if err := e.st.SetEmailTemplate(context.Background(), b.workspace, own, "", time.Now()); err != nil {
-		t.Fatal(err)
-	}
-	var d draftOut
-	path := "/api/v1/quotes/" + q.ID
-	e.do(b, "GET", path+"/email", nil, http.StatusOK, &d)
-	if utf8.RuneCountInString(d.Data.Subject) <= 200 || utf8.RuneCountInString(d.Data.Message) <= emailtemplate.MaxMessage {
-		t.Fatalf("draft is %d / %d runes, want over the limits", utf8.RuneCountInString(d.Data.Subject), utf8.RuneCountInString(d.Data.Message))
-	}
-	e.fails(b, "POST", path+"/send", map[string]any{"subject": strings.Repeat("s", 201)}, http.StatusUnprocessableEntity, "validation_failed", "subject")
-	e.fails(b, "POST", path+"/send", map[string]any{"message": d.Data.Message + "!"}, http.StatusUnprocessableEntity, "validation_failed", "message")
-	e.quote(b, "POST", path+"/send", map[string]any{"subject": d.Data.Subject, "message": d.Data.Message}, http.StatusOK)
-	if m := e.mail.sent[0]; m.Subject != d.Data.Subject || !strings.HasPrefix(m.Text, strings.TrimSpace(d.Data.Message)+"\n") {
-		t.Fatalf("mail %q / %q, want the draft", m.Subject, m.Text)
-	}
 }
 
 func TestQuoteSendMessageLimit(t *testing.T) {

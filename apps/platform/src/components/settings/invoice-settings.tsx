@@ -32,17 +32,16 @@ import {
   Image as ImageIcon,
   Landmark,
   Lock,
-  MailCheck,
   PanelBottom,
   Percent,
   QrCode,
   SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useEffectEvent, useState, type ReactNode } from 'react'
 
-import { useFeatureLock } from '@/components/billing/feature-lock'
 import { formatUid, TERM_PRESETS } from '@/components/clients/client-form-model'
 import {
   Combobox,
@@ -94,7 +93,6 @@ import {
   type NextNumbers,
   type NumberFormat,
   type NumberedKind,
-  type SettingsInput,
   type VatMode,
   unsupportedSellerCountry,
 } from '@/lib/invoices'
@@ -145,17 +143,13 @@ type Values = {
   instalments_interval: Interval
   instalments_mode: InstalmentSettings['mode']
   instalments_plan_lead_days: string
-  instalments_plan_auto_send: boolean
-  instalments_reminders_enabled: boolean
   instalments_remind_before_days: string
   /** As typed: "3, 10". */
   instalments_remind_after_days: string
-  dunning_enabled: boolean
   dunning_steps: StepDraft[]
   dunning_interest_enabled: boolean
   dunning_interest_rate: string
   dunning_interest_from: DunningSettings['interest_from']
-  payment_confirmation: boolean
 }
 
 const afterDays = (typed: string) =>
@@ -237,30 +231,40 @@ export function valuesFrom(settings: InvoiceSettings): Values {
     instalments_interval: instalments.interval,
     instalments_mode: instalments.mode,
     instalments_plan_lead_days: String(instalments.plan_lead_days),
-    instalments_plan_auto_send: instalments.plan_auto_send,
-    instalments_reminders_enabled: instalments.reminders_enabled,
     instalments_remind_before_days: String(instalments.remind_before_days),
     instalments_remind_after_days: instalments.remind_after_days.join(', '),
-    dunning_enabled: settings.dunning.enabled,
     dunning_steps: settings.dunning.steps.map((step, i) => ({
       key: `step-${i}`,
       name: step.name ?? '',
       timing: step.timing,
       days: String(step.days),
       fee: step.fee,
-      text: step.text ?? '',
       qr_bill: step.qr_bill,
     })),
     dunning_interest_enabled: settings.dunning.interest_enabled,
     dunning_interest_rate: settings.dunning.interest_rate,
     dunning_interest_from: settings.dunning.interest_from,
-    payment_confirmation: settings.payment_confirmation,
   }
 }
 
 const orNull = (text: string) => text.trim() || null
 
-export function toSettingsInput(values: Values): SettingsInput {
+/** What the form saves: everything but the switches of Settings → Client emails, which keep their value. */
+export type FormInput = Omit<
+  InvoiceSettings,
+  | 'is_complete'
+  | 'missing_fields'
+  | 'logo_file_id'
+  | 'logo_url'
+  | 'payment_confirmation'
+  | 'instalments'
+  | 'dunning'
+> & {
+  instalments: Omit<InstalmentSettings, 'plan_auto_send' | 'reminders_enabled'>
+  dunning: Omit<DunningSettings, 'enabled'>
+}
+
+export function toSettingsInput(values: Values): FormInput {
   return {
     seller: {
       name: values.name.trim(),
@@ -302,13 +306,10 @@ export function toSettingsInput(values: Values): SettingsInput {
       interval: values.instalments_interval,
       mode: values.instalments_mode,
       plan_lead_days: Number(values.instalments_plan_lead_days),
-      plan_auto_send: values.instalments_plan_auto_send,
-      reminders_enabled: values.instalments_reminders_enabled,
       remind_before_days: Number(values.instalments_remind_before_days),
       remind_after_days: afterDays(values.instalments_remind_after_days),
     },
     dunning: {
-      enabled: values.dunning_enabled,
       steps: values.dunning_steps.map((step) => {
         const fee = parseDecimalInput(step.fee || '0', 2)
         // as money, "20.00": at most two decimals, so toFixed is exact
@@ -317,7 +318,6 @@ export function toSettingsInput(values: Values): SettingsInput {
           timing: step.timing,
           days: Number(step.days),
           fee: fee === null ? step.fee : Number(fee).toFixed(2),
-          text: orNull(step.text),
           qr_bill: step.qr_bill,
         }
       }),
@@ -326,7 +326,6 @@ export function toSettingsInput(values: Values): SettingsInput {
         parseDecimalInput(values.dunning_interest_rate, 2) ?? values.dunning_interest_rate,
       interest_from: values.dunning_interest_from,
     },
-    payment_confirmation: values.payment_confirmation,
   }
 }
 
@@ -421,7 +420,6 @@ type SectionId =
   | 'numbering'
   | 'defaults'
   | 'instalments'
-  | 'client_emails'
   | 'dunning'
   | 'footer'
 export type SettingsPageId = 'company' | 'invoices'
@@ -531,19 +529,9 @@ const SECTIONS: {
       'instalments_interval',
       'instalments_mode',
       'instalments_plan_lead_days',
-      'instalments_plan_auto_send',
-      'instalments_reminders_enabled',
       'instalments_remind_before_days',
       'instalments_remind_after_days',
     ],
-  },
-  {
-    id: 'client_emails',
-    page: 'invoices',
-    title: translate('clientEmails'),
-    icon: MailCheck,
-    required: [],
-    fields: ['payment_confirmation'],
   },
   {
     id: 'dunning',
@@ -552,7 +540,6 @@ const SECTIONS: {
     icon: BellRing,
     required: [],
     fields: [
-      'dunning_enabled',
       'dunning_steps',
       'dunning_interest_enabled',
       'dunning_interest_rate',
@@ -765,7 +752,6 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
   const shows = (id: SectionId) => sections.some((section) => section.id === id)
   const router = useRouter()
   const canEdit = useCan('write:invoice-settings')
-  const remindersLock = useFeatureLock('automations')
   const save = useSaveInvoiceSettings()
   const legalForms = useLegalForms().data
   const nextNumbers =
@@ -1578,82 +1564,48 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     }
                   />
                 </FormField>
-                <SwitchRow
-                  id={inputId('instalments_plan_auto_send')}
-                  label={translate('emailInstalmentInvoicesWhenIssued')}
-                  description={translate('sentToTheClientSBillingEmailWithoutOne')}
-                  checked={values.instalments_plan_auto_send}
-                  onCheckedChange={(on) => set('instalments_plan_auto_send', on)}
-                />
-                <SwitchRow
-                  id={inputId('instalments_reminders_enabled')}
-                  label={translate('paymentReminders')}
-                  description={translate('emailsTheClientBeforeAndAfterEachInstalmentIs')}
-                  checked={values.instalments_reminders_enabled}
-                  onCheckedChange={(on) => set('instalments_reminders_enabled', on)}
-                />
-                {values.instalments_reminders_enabled && (
-                  <>
-                    <FormField
-                      id={inputId('instalments_remind_before_days')}
-                      label={translate('beforeTheDueDate')}
-                      width="md"
-                      error={shown.instalments_remind_before_days}
-                      tip={translate('aFriendlyHeadsUpBeforeTheInstalmentIsDue')}
-                    >
-                      <UnitInput
-                        {...describe('instalments_remind_before_days')}
-                        unit={translate('daysBefore')}
-                        inputMode="numeric"
-                        value={values.instalments_remind_before_days}
-                        onChange={(e) =>
-                          set(
-                            'instalments_remind_before_days',
-                            e.target.value.replace(/\D/g, '').slice(0, 2),
-                          )
-                        }
-                      />
-                    </FormField>
-                    <FormField
-                      id={inputId('instalments_remind_after_days')}
-                      label={translate('afterTheDueDateIfUnpaid')}
-                      width="md"
-                      error={shown.instalments_remind_after_days}
-                      tip={translate('upToThreeRemindersSeparatedByCommas310')}
-                    >
-                      <UnitInput
-                        {...describe('instalments_remind_after_days')}
-                        unit={translate('daysAfter')}
-                        value={values.instalments_remind_after_days}
-                        onChange={(e) => set('instalments_remind_after_days', e.target.value)}
-                        placeholder="3, 10"
-                      />
-                    </FormField>
-                    <SettingsPreview label={translate('reminderSchedule')}>
-                      {reminderSummary(
-                        values.instalments_remind_before_days,
-                        values.instalments_remind_after_days,
-                      )}
-                    </SettingsPreview>
-                  </>
-                )}
-              </Section>
-            )}
-
-            {shows('client_emails') && (
-              <Section
-                id="client_emails"
-                state={state('client_emails')}
-                title={translate('clientEmails')}
-                description={translate('clientEmailsDescription')}
-              >
-                <SwitchRow
-                  id={inputId('payment_confirmation')}
-                  label={translate('emailClientsAPaymentConfirmation')}
-                  description={translate('emailClientsAPaymentConfirmationHelp')}
-                  checked={values.payment_confirmation}
-                  onCheckedChange={(on) => set('payment_confirmation', on)}
-                />
+                <ClientEmailsLink />
+                <FormField
+                  id={inputId('instalments_remind_before_days')}
+                  label={translate('beforeTheDueDate')}
+                  width="md"
+                  error={shown.instalments_remind_before_days}
+                  tip={translate('aFriendlyHeadsUpBeforeTheInstalmentIsDue')}
+                >
+                  <UnitInput
+                    {...describe('instalments_remind_before_days')}
+                    unit={translate('daysBefore')}
+                    inputMode="numeric"
+                    value={values.instalments_remind_before_days}
+                    onChange={(e) =>
+                      set(
+                        'instalments_remind_before_days',
+                        e.target.value.replace(/\D/g, '').slice(0, 2),
+                      )
+                    }
+                  />
+                </FormField>
+                <FormField
+                  id={inputId('instalments_remind_after_days')}
+                  label={translate('afterTheDueDateIfUnpaid')}
+                  width="md"
+                  error={shown.instalments_remind_after_days}
+                  tip={translate('upToThreeRemindersSeparatedByCommas310')}
+                >
+                  <UnitInput
+                    {...describe('instalments_remind_after_days')}
+                    unit={translate('daysAfter')}
+                    value={values.instalments_remind_after_days}
+                    onChange={(e) => set('instalments_remind_after_days', e.target.value)}
+                    placeholder="3, 10"
+                  />
+                </FormField>
+                <SettingsPreview label={translate('reminderSchedule')}>
+                  {reminderSummary(
+                    values.instalments_remind_before_days,
+                    values.instalments_remind_after_days,
+                  )}
+                </SettingsPreview>
               </Section>
             )}
 
@@ -1664,16 +1616,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                 title={translate('dunning')}
                 description={translate('remindersForInvoicesWithoutInstalmentsInUpToTen')}
               >
-                <SwitchRow
-                  id={inputId('dunning_enabled')}
-                  label={translate('sendRemindersAutomatically')}
-                  description={translate('eachStepGoesOutOnceToTheClientS')}
-                  disabledReason={
-                    remindersLock && !values.dunning_enabled ? `${remindersLock.hint}.` : undefined
-                  }
-                  checked={values.dunning_enabled}
-                  onCheckedChange={(on) => set('dunning_enabled', on)}
-                />
+                <ClientEmailsLink />
                 <DunningSteps
                   steps={values.dunning_steps}
                   currency={values.currency}
@@ -1810,5 +1753,17 @@ function Readiness({
         ))}
       </p>
     </div>
+  )
+}
+
+/** Where the automatic emails these settings shape are turned on or off. */
+function ClientEmailsLink() {
+  return (
+    <p className="text-body-sm text-muted-foreground">
+      {translate('clientEmailsSwitchesLiveThere')}{' '}
+      <Link href="/settings/emails" className="text-foreground underline underline-offset-4">
+        {translate('clientEmails')}
+      </Link>
+    </p>
   )
 }

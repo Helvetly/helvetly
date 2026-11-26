@@ -21,7 +21,7 @@ import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
 import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
 import { useClient } from '@/lib/clients'
-import { useQuoteEmailDraft } from '@/lib/email-templates'
+import { useQuoteEmailDraft } from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 import {
   quoteErrorMessage,

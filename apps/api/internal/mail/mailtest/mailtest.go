@@ -40,7 +40,12 @@ var attr = regexp.MustCompile(`\s([a-z-]+)=`)
 // .txt.golden (go test -update rewrites them). The HTML must keep to the supported set and wrap on a phone.
 func Golden(t *testing.T, name string, m mail.Message) {
 	t.Helper()
-	brand := Brand
+	GoldenWith(t, name, m, Brand)
+}
+
+// GoldenWith is Golden for the business brand.
+func GoldenWith(t *testing.T, name string, m mail.Message, brand mail.Brand) {
+	t.Helper()
 	if m.Workspace == "" || m.Members { // Helvetly's own, as Branded passes it through
 		brand = mail.Brand{}
 	}

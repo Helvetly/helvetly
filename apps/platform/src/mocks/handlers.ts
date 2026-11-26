@@ -8,6 +8,7 @@ import type { EinvoiceFormat, Interval, PlanInput } from '@/lib/invoices'
 
 import { accountHandlers } from './account'
 import { approvalHandlers } from './approvals'
+import { clientEmailsHandlers } from './client-emails'
 import {
   auditEvents,
   closedPeriods,
@@ -18,7 +19,7 @@ import {
   sampleAgreement,
   scheduledInvoice,
 } from './data'
-import { emailTemplateHandlers } from './email-templates'
+import { emailTextHandlers } from './email-texts'
 import { employeesHandlers } from './employees'
 import { heidiHandlers } from './heidi'
 import { ledgerHandlers } from './ledger'
@@ -465,9 +466,10 @@ export const handlers = [
   ...(process.env.VITEST ? notificationHandlers : []),
   ...(process.env.VITEST ? quoteHandlers : []),
   ...(process.env.VITEST ? employeesHandlers : []),
-  ...(process.env.VITEST ? emailTemplateHandlers : []),
+  ...(process.env.VITEST ? emailTextHandlers : []),
   ...(process.env.VITEST ? portalAddressHandlers : []),
   ...(process.env.VITEST ? replyToHandlers : []),
+  ...(process.env.VITEST ? clientEmailsHandlers : []),
   ...(process.env.VITEST ? portalDomainHandlers : []),
   ...(process.env.VITEST ? approvalHandlers : []),
   ...(process.env.VITEST ? schedulingHandlers(emptyState(), new Date()) : []),
