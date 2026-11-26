@@ -97,6 +97,7 @@ import { useAI } from '@/lib/ai'
 import { ApiError, errorMessage } from '@/lib/api'
 import {
   ACCEPT,
+  isMoveLocked,
   canDeleteForever,
   childrenOf,
   docKeys,
@@ -212,6 +213,8 @@ type Confirm = { kind: 'delete'; items: TrashItem[] } | { kind: 'empty' }
 function docError(error: unknown) {
   if (error instanceof ApiError && error.code === 'system_folder')
     toast.error(translate('systemFolderError'))
+  else if (error instanceof ApiError && error.code === 'record_move_locked')
+    toast.error(translate('documentRecordMoveLocked'))
   else toastError(error)
 }
 
@@ -489,6 +492,15 @@ export function DocumentsPage() {
   // System folders cannot be renamed, moved or trashed; their files can.
   const managed = new Set(allFolders.filter(isSystemFolder).map((folder) => folder.id))
   const hasManaged = (split: { folders: string[] }) => split.folders.some((id) => managed.has(id))
+  const moveBlock = (split: { files: string[]; folders: string[] }) => {
+    if (hasManaged(split)) return translate('systemFolderTip')
+    if (
+      [...files, ...recentFiles].some((file) => split.files.includes(file.id) && isMoveLocked(file))
+    )
+      return translate('documentRecordMoveLocked')
+    return undefined
+  }
+
   // Why "Extract with AI" cannot read these items (the plan's reason first), or null when it can.
   const extractReason = (split: { files: string[]; folders: string[] }) =>
     aiLock?.hint ??
@@ -524,8 +536,9 @@ export function DocumentsPage() {
     return data
   }
 
-  const move = (payload: { files: string[]; folders: string[] }, target: string | null) =>
-    runBulk({
+  const move = (payload: { files: string[]; folders: string[] }, target: string | null) => {
+    if (!canWrite || moveBlock(payload)) return
+    return runBulk({
       action: 'move',
       document_ids: payload.files,
       folder_ids: payload.folders,
@@ -548,7 +561,7 @@ export function DocumentsPage() {
       )
       clearSelection()
     }, docError)
-
+  }
   const trashItems = (payload: { files: string[]; folders: string[] }) =>
     runBulk({ action: 'trash', document_ids: payload.files, folder_ids: payload.folders }).then(
       (result) => {
@@ -757,7 +770,7 @@ export function DocumentsPage() {
       mod &&
       key.toLowerCase() === 'x' &&
       selectedKeys.size > 0 &&
-      !hasManaged(selectedSplit)
+      !moveBlock(selectedSplit)
     ) {
       setClipboard({ mode: 'cut', ...selectedSplit })
       toast(
@@ -841,7 +854,7 @@ export function DocumentsPage() {
                 onSelect: () => setRenaming(key),
               },
             canWrite &&
-              !locked && {
+              !moveBlock(split) && {
                 id: 'move',
                 group: 'edit',
                 icon: <FolderInput />,
@@ -859,7 +872,7 @@ export function DocumentsPage() {
                 onSelect: () => setPicker({ mode: 'copy', ...split }),
               },
             canWrite &&
-              !locked && {
+              !moveBlock(split) && {
                 id: 'cut',
                 group: 'edit',
                 icon: <Scissors />,
@@ -1378,6 +1391,7 @@ export function DocumentsPage() {
                     )}
                   >
                     <ItemsView
+                      canWrite={canWrite}
                       layout={view.layout}
                       folders={visibleFolders}
                       files={files}
@@ -1456,9 +1470,7 @@ export function DocumentsPage() {
                         label: translate('moveTo'),
                         icon: <FolderInput />,
                         onClick: () => setPicker({ mode: 'move', ...selectedSplit }),
-                        disabled: hasManaged(selectedSplit)
-                          ? translate('systemFolderTip')
-                          : undefined,
+                        disabled: moveBlock(selectedSplit),
                         write: true,
                       },
                       ...(ai.available

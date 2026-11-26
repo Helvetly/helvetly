@@ -179,7 +179,7 @@ func (s *Service) reuse(q store.Q, ctx context.Context, sess store.Session, sum 
 		return "", err
 	}
 	now := s.now()
-	if doc.FolderID == nil && folder != nil {
+	if doc.FolderID == nil && folder != nil && !doc.MoveLocked(s.today()) {
 		name, err := s.placeFile(q, ctx, sess, doc.ID, doc.Name, folder, "keep_both")
 		if err != nil {
 			return "", err

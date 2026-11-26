@@ -1361,14 +1361,48 @@ export const FileMenu: Story = {
   },
 }
 
+export const LockedFileMenu: Story = {
+  parameters: pageParameters('/documents', {}, [
+    http.get('/api/v1/documents', () =>
+      HttpResponse.json(
+        page(sampleFiles.map((file) => ({ ...file, record_file: file.id === 'doc_1' }))),
+      ),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const [button] = await body.findAllByRole('button', {
+      name: 'Actions for Mandate agreement Alpenglow.pdf',
+    })
+    if (!button) throw new Error('Missing original')
+    const actions = await sameRowMenus(button)
+    await expect(actions).not.toContain('Move to…')
+    await expect(actions.some((label) => label.startsWith('Cut'))).toBe(false)
+    await expect(actions).toContain('Copy to…')
+    await expect(actions.some((label) => label.startsWith('Download'))).toBe(true)
+    const clear = body.queryByRole('button', { name: 'Clear selection' })
+    if (clear) await userEvent.click(clear)
+    await userEvent.click(
+      body.getByRole('checkbox', { name: 'Select Mandate agreement Alpenglow.pdf' }),
+    )
+    await userEvent.click(body.getByRole('checkbox', { name: 'Select Budget 2027.xlsx' }))
+    const move = body.getByRole('button', { name: 'Move to…' })
+    await expect(move).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.click(move)
+    await expect(body.queryByRole('dialog')).toBeNull()
+    await userEvent.keyboard('{Control>}x{/Control}')
+    await expect(body.queryByText(/cut\. Paste with/)).toBeNull()
+  },
+}
+
 export const ProtectedDocumentTags: Story = {
   parameters: pageParameters('/documents', { file: 'doc_1' }, [
     http.get('/api/v1/documents/doc_1', () =>
       HttpResponse.json({
         data: {
           ...sampleFiles[0],
-          tags: ['signed', 'year-2026', 'client-acme', 'urgent'],
-          auto_tags: ['signed', 'year-2026', 'client-acme'],
+          tags: ['invoice', 'signed', 'year-2026-02', 'client-acme', 'urgent'],
+          auto_tags: ['invoice', 'signed', 'year-2026-02', 'client-acme'],
         },
       }),
     ),
@@ -1377,12 +1411,15 @@ export const ProtectedDocumentTags: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('button', { name: 'Edit' }))
     await Promise.all(
-      ['signed', 'year-2026', 'client-acme'].map(async (tag) => {
+      ['Invoice', 'Signed', '2026-02', 'Client: acme'].map(async (tag) => {
         await expect(body.getByText(tag, { selector: '[data-auto-tag]' })).toBeVisible()
         await expect(body.queryByRole('button', { name: `Remove ${tag}` })).toBeNull()
       }),
     )
     await expect(body.getByRole('button', { name: 'Remove urgent' })).toBeVisible()
+    await userEvent.type(body.getByRole('textbox', { name: 'Tags' }), 'year-2031-09{Enter}')
+    await expect(body.getByText('Set automatically from this document’s record.')).toBeVisible()
+    await expect(body.queryByRole('button', { name: 'Remove year-2031-09' })).toBeNull()
   },
 }
 

@@ -159,8 +159,8 @@ export const AutomaticTagsMuted: Story = {
         http.get('/api/v1/documents/doc_a', () =>
           HttpResponse.json({
             data: file('doc_a', {
-              tags: ['urgent', 'invoice', 'year-2026', 'client-acme-ag', '2026-in-005'],
-              auto_tags: ['invoice', 'year-2026', 'client-acme-ag', '2026-in-005'],
+              tags: ['urgent', 'invoice', 'year-2026-02', 'client-acme-ag', '2026-in-005'],
+              auto_tags: ['invoice', 'year-2026-02', 'client-acme-ag', '2026-in-005'],
             }),
           }),
         ),
@@ -173,7 +173,7 @@ export const AutomaticTagsMuted: Story = {
   ),
   play: async () => {
     const body = within(document.body)
-    const auto = await body.findByText('year-2026')
+    const auto = await body.findByText('2026-02')
     await expect(auto).toHaveAttribute('data-auto-tag')
     await expect(auto).toHaveAttribute('data-variant', 'outline')
     await expect(body.getByText('urgent')).not.toHaveAttribute('data-auto-tag')
@@ -184,7 +184,7 @@ export const AutomaticTagsMuted: Story = {
     ).toBeInTheDocument()
     auto.blur()
     await waitFor(() => expect(body.queryByRole('tooltip')).not.toBeInTheDocument())
-    body.getByText('invoice').focus()
+    body.getByText('2026-in-005').focus()
     await expect(
       await body.findByRole('tooltip', { name: /Added automatically/ }),
     ).toBeInTheDocument()

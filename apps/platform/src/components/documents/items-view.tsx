@@ -20,7 +20,7 @@ import { UserAvatar } from '@/components/user-avatar'
 import {
   docQuery,
   formatSize,
-  isRetained,
+  isMoveLocked,
   KIND_LABELS,
   type DocFile,
   type Folder,
@@ -54,6 +54,7 @@ import { FolderName } from './system-mark'
 import { Thumbnail } from './thumbnail'
 
 export type ItemsProps = {
+  canWrite: boolean
   layout: 'grid' | 'list'
   folders: Folder[]
   files: DocFile[]
@@ -173,7 +174,7 @@ function useItem(
   key: ItemKey,
   name: string,
   folderTarget: string | null,
-  system = false,
+  locked = false,
 ) {
   const drop = useDropTarget(folderTarget ?? '')
   const isFolder = key.startsWith('folder:')
@@ -183,15 +184,18 @@ function useItem(
     data: itemData(props, key),
     drop: isFolder ? drop.props : {},
     handlers: {
-      draggable: !system,
+      draggable: props.canWrite && !locked,
       onDragStart: (event: DragEvent) => {
         const keys = props.selected.has(key) ? [...props.selected] : [key]
         const split = splitKeys(keys)
-        // A system folder never moves, so it stays out of what is dragged.
-        const managed = new Set(props.folders.filter(isSystemFolder).map((folder) => folder.id))
-        const files = split.files
-        const folders = split.folders.filter((id) => !managed.has(id))
-        if (files.length + folders.length === 0) return event.preventDefault()
+        const { files, folders } = split
+        if (
+          !props.canWrite ||
+          locked ||
+          props.files.some((file) => files.includes(file.id) && isMoveLocked(file)) ||
+          props.folders.some((folder) => folders.includes(folder.id) && isSystemFolder(folder))
+        )
+          return event.preventDefault()
         startDrag(
           event,
           { files, folders, from: props.from },
@@ -420,7 +424,7 @@ function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
 
 function FileCard({ props, file }: { props: ItemsProps; file: DocFile }) {
   const key = fileKey(file.id)
-  const item = useItem(props, key, file.name, null)
+  const item = useItem(props, key, file.name, null, isMoveLocked(file))
   const renaming = props.renaming === key
   const [sharing, setSharing] = useState(false)
   return (
@@ -486,7 +490,7 @@ function FileCard({ props, file }: { props: ItemsProps; file: DocFile }) {
 
 /** Small marks for links and business records. */
 function FileBadges({ file, className }: { file: DocFile; className?: string }) {
-  const retained = isRetained(file.retained_until)
+  const retained = isMoveLocked(file)
   if (!retained && file.links.length === 0) return null
   return (
     <span className={cn('flex gap-1', className)}>
@@ -501,7 +505,11 @@ function FileBadges({ file, className }: { file: DocFile; className?: string }) 
       )}
       {retained && (
         <span
-          title={translate('businessRecordKeptUntil', { retained_until: file.retained_until })}
+          title={
+            file.retained_until
+              ? translate('businessRecordKeptUntil', { retained_until: file.retained_until })
+              : translate('documentRecordMoveLocked')
+          }
           className="flex size-5 items-center justify-center rounded-full bg-[#ece9d5] text-[#827851] shadow-elevation-1 dark:bg-amber-500/20 dark:text-amber-300"
         >
           <Lock className="size-3" />
@@ -560,7 +568,7 @@ function List(props: ItemsProps) {
 
 /** A row's drag, drop, click and context menu: merged onto the table's `<tr>` by the trigger. */
 function ListRow({ props, row, children }: { props: ItemsProps; row: Row; children: ReactNode }) {
-  const system = 'folder' in row && isSystemFolder(row.folder)
+  const system = 'folder' in row ? isSystemFolder(row.folder) : isMoveLocked(row.file)
   const item = useItem(props, row.key, rowName(row), 'folder' in row ? row.folder.id : null, system)
   return (
     <ContextMenu>
@@ -568,7 +576,7 @@ function ListRow({ props, row, children }: { props: ItemsProps; row: Row; childr
         asChild
         {...item.handlers}
         {...item.drop}
-        draggable={props.renaming !== row.key && !system}
+        draggable={props.renaming !== row.key && item.handlers.draggable}
       >
         {children}
       </ContextMenuTrigger>
@@ -630,7 +638,7 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
               name={row.file.name}
               isFile
               detail={`${formatSize(row.file.size)} · ${KIND_LABELS[row.file.kind]}`}
-              aside={<TagChips tags={row.file.tags} />}
+              aside={<TagChips tags={row.file.tags} autoTags={row.file.auto_tags} />}
             />
           </span>
         ),
@@ -772,13 +780,15 @@ function Person({ person }: { person: { name: string; avatar_url?: string | null
 
 /** "Business record" or "Linked", as a quiet pill. */
 function StatusPill({ file }: { file: DocFile }) {
-  const retained = isRetained(file.retained_until)
+  const retained = isMoveLocked(file)
   if (!retained && file.links.length === 0) return null
   return (
     <span
       title={
         retained
-          ? translate('keptUntil', { retained_until: file.retained_until })
+          ? file.retained_until
+            ? translate('keptUntil', { retained_until: file.retained_until })
+            : translate('documentRecordMoveLocked')
           : file.links.map(linkLabel).join(', ')
       }
       className="inline-flex h-6 max-w-full items-center gap-1.5 rounded-full border border-border/80 px-2 text-[12px] text-foreground/80"

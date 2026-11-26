@@ -126,10 +126,10 @@ func (q Q) DeleteEmptyFiledFolder(ctx context.Context, workspaceID, id string) (
 
 // OrganizeDocuments: up to limit live files for AI organizing, within folderIDs when not nil; files without a folder or
 // tags first, oldest first.
-func (q Q) OrganizeDocuments(ctx context.Context, workspaceID string, folderIDs []string, limit int) ([]Document, error) {
+func (q Q) OrganizeDocuments(ctx context.Context, workspaceID string, folderIDs []string, limit int, today string) ([]Document, error) {
 	rows, err := q.db.Query(ctx, documentSelect+`WHERE d.workspace_id = $1 AND d.deleted_at IS NULL AND NOT d.hr_private
-		AND ($2::text[] IS NULL OR d.folder_id = ANY($2))
-		ORDER BY (d.folder_id IS NULL OR cardinality(d.tags) = 0) DESC, d.created_at, d.id LIMIT $3`, workspaceID, folderIDs, limit)
+		AND NOT `+retainedSQL("$4")+` AND ($2::text[] IS NULL OR d.folder_id = ANY($2))
+		ORDER BY (d.folder_id IS NULL OR cardinality(d.tags) = 0) DESC, d.created_at, d.id LIMIT $3`, workspaceID, folderIDs, limit, today)
 	if err != nil {
 		return nil, err
 	}

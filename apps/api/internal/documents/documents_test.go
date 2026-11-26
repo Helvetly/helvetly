@@ -801,3 +801,31 @@ func (e *env) userFolders(b *browser) []store.Folder {
 	e.do(b, "GET", "/api/v1/documents/folders", nil, 200, &all)
 	return slices.DeleteFunc(all.Data, func(f store.Folder) bool { return f.SystemKind != nil })
 }
+
+func TestRecordMoveRefusedBeforeReplacementAndBulkSelectionRollsBack(t *testing.T) {
+	a := newAutoEnv(t)
+	e, b := a.e, a.b
+	dest := e.folder(b, "Target", nil)
+	sourceFolder := e.folder(b, "Source", nil)
+	locked := e.uploaded(b, "record.pdf", pdf+"record", "folder_id", sourceFolder.ID)
+	e.invoice(b, a.acme, "invoice", "SAMPLE", 2025, locked.ID)
+	unlocked := e.uploaded(b, "plain.pdf", pdf+"plain")
+	victim := e.uploaded(b, "plain.pdf", pdf+"target", "folder_id", dest.ID)
+	collision := e.uploaded(b, "record.pdf", pdf+"existing", "folder_id", dest.ID)
+	folder := e.folder(b, "Ordinary folder", nil)
+	e.fails(b, "PATCH", "/api/v1/documents/"+locked.ID, map[string]any{"folder_id": dest.ID, "on_conflict": "replace", "tags": []string{"rolled-back"}}, 409, "record_move_locked")
+	e.fails(b, "POST", "/api/v1/documents/bulk", map[string]any{"action": "move", "folder_id": dest.ID, "on_conflict": "replace",
+		"document_ids": []string{unlocked.ID, locked.ID}, "folder_ids": []string{folder.ID}}, 409, "record_move_locked")
+	for _, d := range []store.Document{locked, unlocked, victim, collision} {
+		got := e.get(b, d.ID)
+		if !samePlace(got.FolderID, d.FolderID) || got.DeletedAt != nil || slices.Contains(got.Tags, "rolled-back") {
+			t.Fatalf("partial move: %+v", got)
+		}
+	}
+	if f, err := e.st.DocumentFolder(t.Context(), b.workspace, folder.ID); err != nil || f.ParentID != nil {
+		t.Fatalf("partial folder move: %+v %v", f, err)
+	}
+	e.do(b, "PATCH", "/api/v1/documents/"+locked.ID, map[string]any{"folder_id": sourceFolder.ID, "name": "renamed.pdf"}, 200, nil)
+	e.do(b, "PATCH", "/api/v1/documents/"+unlocked.ID, map[string]any{"folder_id": dest.ID, "on_conflict": "keep_both"}, 200, nil)
+	e.fails(b, "POST", "/api/v1/documents/organize/apply", map[string]any{"items": []map[string]any{{"document_id": locked.ID, "folder": "Arbitrary", "tags": []string{}}}}, 409, "record_move_locked")
+}

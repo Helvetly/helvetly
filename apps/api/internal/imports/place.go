@@ -26,6 +26,9 @@ func placeDocument(ctx context.Context, q store.Q, sess store.Session, documentI
 	if err != nil {
 		return err
 	}
+	if d.MoveLocked(now.Format(time.DateOnly)) {
+		return nil
+	}
 	if d.FolderID != nil {
 		rec, err := q.LockFiling(ctx, ws, documentID)
 		if errors.Is(err, store.ErrNotFound) {
@@ -43,6 +46,9 @@ func placeDocument(ctx context.Context, q store.Q, sess store.Session, documentI
 		return err
 	}
 	if d.FolderID == nil || *d.FolderID != to {
+		if err := q.LockContainer(ctx, ws, &to); err != nil {
+			return err
+		}
 		name := d.Name
 		if taken, err := q.FileNameTaken(ctx, ws, &to, name, d.ID); err != nil {
 			return err

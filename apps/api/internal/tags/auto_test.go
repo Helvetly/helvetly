@@ -12,19 +12,19 @@ func TestAuto(t *testing.T) {
 		r    Record
 		want []string
 	}{
-		{"invoice", Record{Kind: "invoice", Year: 2026, Client: "Müller & Söhne AG", Number: "2026/IN/005"},
-			[]string{"invoice", "year-2026", "client-mueller-soehne-ag", "2026-in-005"}},
-		{"credit note", Record{Kind: "credit-note", Year: 2025, Client: "Beta", Number: "CN-2"},
+		{"invoice", Record{Kind: "invoice", Period: "2026-02", Client: "Müller & Söhne AG", Number: "2026/IN/005"},
+			[]string{"invoice", "year-2026-02", "client-mueller-soehne-ag", "2026-in-005"}},
+		{"credit note", Record{Kind: "credit-note", Period: "2025", Client: "Beta", Number: "CN-2"},
 			[]string{"credit-note", "year-2025", "client-beta", "cn-2"}},
-		{"quote", Record{Kind: "quote", Year: 2026, Client: "Acme", Number: "2026/Q/001"},
+		{"quote", Record{Kind: "quote", Period: "2026", Client: "Acme", Number: "2026/Q/001"},
 			[]string{"quote", "year-2026", "client-acme", "2026-q-001"}},
-		{"contract from a quote", Record{Kind: "contract", Year: 2026, Client: "Acme", Number: "2026/C/001", FromQuote: "2026/Q/001"},
+		{"contract from a quote", Record{Kind: "contract", Period: "2026", Client: "Acme", Number: "2026/C/001", FromQuote: "2026/Q/001"},
 			[]string{"contract", "year-2026", "client-acme", "2026-c-001", "from-quote-2026-q-001"}},
-		{"signed contract", Record{Kind: "contract", Signed: true, Year: 2026, Client: "Acme"},
+		{"signed contract", Record{Kind: "contract", Signed: true, Period: "2026", Client: "Acme"},
 			[]string{"contract", "signed", "year-2026", "client-acme"}},
-		{"receipt", Record{Kind: "receipt", Year: 2024, Category: "Büro Material"},
+		{"receipt", Record{Kind: "receipt", Period: "2024", Category: "Büro Material"},
 			[]string{"receipt", "year-2024", "expense-buero-material"}},
-		{"client upload", Record{Year: 2026, Client: "Acme"}, []string{"year-2026", "client-acme"}},
+		{"client upload", Record{Period: "2026", Client: "Acme"}, []string{"year-2026", "client-acme"}},
 		{"nothing known", Record{}, []string{}},
 		{"names without letters make no tag", Record{Kind: "quote", Client: "株式会社", Number: "—", FromQuote: "/"}, []string{"quote"}},
 		{"long names are cut", Record{Client: strings.Repeat("Very Long Name ", 5)},
@@ -60,7 +60,7 @@ func TestMerge(t *testing.T) {
 			[]string{"receipt", "expense-new"}, []string{"mine", "receipt", "expense-new"}, []string{"receipt", "expense-new"}},
 		{"automatic ones follow Auto's order", []string{"year-2026", "mine"}, []string{"year-2026"}, nil, []string{"invoice", "year-2026"},
 			[]string{"mine", "invoice", "year-2026"}, []string{"invoice", "year-2026"}},
-		{"a typed one stays the person's", []string{"invoice"}, nil, nil, []string{"invoice"}, []string{"invoice"}, []string{}},
+		{"a manual record number stays the person's", []string{"abc-123"}, nil, nil, []string{"abc-123"}, []string{"abc-123"}, []string{}},
 		{"the person's are never removed", []string{"client-acme"}, nil, nil, nil, []string{"client-acme"}, []string{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

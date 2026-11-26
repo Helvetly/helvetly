@@ -141,7 +141,13 @@ func documentWhere(f DocumentFilter, arg func(any) string) []string {
 			arg(f.ClientID)+")")
 	}
 	if f.Tag != "" {
-		where = append(where, arg(f.Tag)+" = ANY(d.tags)")
+		tag := arg(f.Tag)
+		match := tag + " = ANY(d.tags)"
+		// Bookmarks filtering by the former year tag include the more precise automatic month tags.
+		if len(f.Tag) == len("year-2000") && strings.HasPrefix(f.Tag, "year-") {
+			match = "(" + match + " OR EXISTS (SELECT 1 FROM unnest(d.auto_tags) t WHERE left(t, 9) = " + tag + " AND t ~ '^year-[0-9]{4}-(0[1-9]|1[0-2])$'))"
+		}
+		where = append(where, match)
 	}
 	if f.Type != "" {
 		where = append(where, "g.type = "+arg(f.Type))

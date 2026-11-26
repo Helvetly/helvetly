@@ -48,12 +48,14 @@ import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordLink, RecordPageButton } from '@/components/record-link'
 import { useAI } from '@/lib/ai'
 import { useClientSearch } from '@/lib/clients'
+import { documentTagLabel, protectedDocumentTag, reservedDocumentTag } from '@/lib/document-tags'
 import {
   contentUrl,
   daysLeft,
   downloadUrl,
   formatSize,
   isRetained,
+  isMoveLocked,
   KIND_LABELS,
   docsApi,
   linkHref,
@@ -239,6 +241,7 @@ export function Preview({
                     },
                     {
                       id: 'move',
+                      disabled: isMoveLocked(file),
                       group: 'edit',
                       icon: <FolderInput />,
                       label: translate('moveTo2'),
@@ -256,7 +259,7 @@ export function Preview({
                       group: 'danger',
                       icon: <Trash2 />,
                       label: translate('moveToTrash3'),
-                      disabled: isRetained(file.retained_until),
+                      disabled: isMoveLocked(file),
                       onSelect: () => commands.trash(file),
                     },
                   ],
@@ -533,14 +536,12 @@ function Details({
   )
 }
 
-const protectedDocumentTag = /^(signed|year-[0-9]{4}|client-.+)$/
-
 function AutomaticTag({ tag, locked }: { tag: string; locked: boolean }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge size="sm" variant="outline" tabIndex={0} data-auto-tag="">
-          {tag}
+          {documentTagLabel(tag)}
         </Badge>
       </TooltipTrigger>
       <TooltipContent className="max-w-64 text-pretty">
@@ -567,7 +568,7 @@ function TagsPanel({
       refreshDocuments(queryClient)
       toast.success(translate('aiFilingUndone', { count: 1 }))
     }, toastError)
-  const locked = file.auto_tags?.filter((tag) => protectedDocumentTag.test(tag)) ?? []
+  const locked = file.auto_tags?.filter(protectedDocumentTag) ?? []
   const filed = file.ai_filing?.status === 'filed' ? file.ai_filing : null
   return (
     <Panel
@@ -594,7 +595,13 @@ function TagsPanel({
           )}
           <InlineTagsEditor
             initial={file.tags.filter((tag) => !locked.includes(tag))}
-            known={known.filter(({ name }) => !protectedDocumentTag.test(name))}
+            known={known.filter(({ name }) => !reservedDocumentTag(name) && !locked.includes(name))}
+            validateTag={(tag) =>
+              reservedDocumentTag(tag) || locked.includes(tag)
+                ? translate('protectedDocumentTagHint')
+                : undefined
+            }
+            displayTag={(tag) => (file.auto_tags?.includes(tag) ? documentTagLabel(tag) : tag)}
             save={(tags) =>
               docsApi.update(file.id, { tags }).then(() => refreshDocuments(queryClient))
             }
@@ -624,15 +631,16 @@ function TagsPanel({
               ? translate('sortedByAIInto', { folder: folderLabel(filed.folder) })
               : translate('sortedByAI')}
           </span>
-          {canWrite && (
-            <button
-              type="button"
-              onClick={undo}
-              className="shrink-0 cursor-pointer underline underline-offset-2 hover:no-underline"
-            >
-              {translate('undo')}
-            </button>
-          )}
+          {canWrite &&
+            !(filed.folder && filed.folder.id === file.folder_id && isMoveLocked(file)) && (
+              <button
+                type="button"
+                onClick={undo}
+                className="shrink-0 cursor-pointer underline underline-offset-2 hover:no-underline"
+              >
+                {translate('undo')}
+              </button>
+            )}
         </p>
       )}
     </Panel>

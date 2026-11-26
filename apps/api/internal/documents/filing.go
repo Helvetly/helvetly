@@ -484,7 +484,7 @@ func (s *Service) applyFiling(ctx context.Context, j store.FilingJob, ws store.W
 				return err
 			}
 		}
-		if j.MayMove && cur.FolderID == nil {
+		if j.MayMove && cur.FolderID == nil && !cur.MoveLocked(s.today()) {
 			target, created, err := s.filingFolder(ctx, q, ws.ID, j.UserID, f)
 			if err != nil {
 				return err

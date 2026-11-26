@@ -108,7 +108,7 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 			}
 		}
 	}
-	docs, err := s.db.OrganizeDocuments(ctx, ws.ID, within, organizeMax)
+	docs, err := s.db.OrganizeDocuments(ctx, ws.ID, within, organizeMax, s.today())
 	if err != nil {
 		return err
 	}

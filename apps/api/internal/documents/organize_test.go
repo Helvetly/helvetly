@@ -382,7 +382,7 @@ func TestOrganizeClientRecords(t *testing.T) {
 
 	var out organizeAnswer
 	e.do(b, "POST", "/api/v1/documents/organize", map[string]any{}, 200, &out)
-	if out.Data.Considered != 7 || len(out.Data.Proposals) != 5 { // the fake model skips names without a word
+	if out.Data.Considered != 6 || len(out.Data.Proposals) != 4 { // the fake model skips names without a word
 		t.Fatalf("got %+v", out.Data)
 	}
 	got := map[string]proposal{}
@@ -395,7 +395,6 @@ func TestOrganizeClientRecords(t *testing.T) {
 		tag            string
 	}{
 		{d5, "Clients/Acme AG/Invoices/2026", "Matches invoice 2026/IN/005 for Acme AG.", "invoice"},
-		{d6, "Clients/Acme AG/Invoices/2026", "Matches invoice 2026/IN/006 for Acme AG.", "invoice"},
 		{d11, "Clients/Baker GmbH/Invoices/2026", "Matches credit note 2026/IN/011 for Baker GmbH.", "credit-note"},
 		{named, "Clients/Baker GmbH/Invoices/" + strconv.Itoa(time.Now().Year()), "An invoice for Baker GmbH, so it goes in the client's folder.", "invoice"},
 		{nobody, "Invoices", "No known client could be found in it", "invoice"},
@@ -407,6 +406,9 @@ func TestOrganizeClientRecords(t *testing.T) {
 	}
 	if p := got[d11.ID]; p.FromFolder == nil || *p.FromFolder != "Invoices/2026" {
 		t.Errorf("credit note from = %v", p.FromFolder)
+	}
+	if _, ok := got[d6.ID]; ok {
+		t.Fatal("organizer proposed moving a locked original")
 	}
 	for _, d := range []store.Document{twice, theirs} { // the model's (fake) Clients-less guess, no client known
 		if p := got[d.ID]; strings.HasPrefix(p.Folder, "Clients/") {

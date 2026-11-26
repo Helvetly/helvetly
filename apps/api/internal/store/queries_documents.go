@@ -53,6 +53,7 @@ type Document struct {
 	Links         []DocumentLink  `json:"links"`
 	SharedWith    []DocumentShare `json:"shared_with"` // clients that see it in portal, newest first
 	RetainedUntil *string         `json:"retained_until"`
+	RecordFile    bool            `json:"record_file"`
 	UploadedBy    *Uploader       `json:"uploaded_by"`
 	CreatedAt     time.Time       `json:"created_at"`
 	UpdatedAt     time.Time       `json:"updated_at"`
@@ -61,6 +62,11 @@ type Document struct {
 	PurgeAt       *time.Time      `json:"purge_at"`
 	TrashedWith   *string         `json:"-"`
 	ObjectKey     string          `json:"-"`
+}
+
+// MoveLocked reports the record padlock for a document already read in its transaction.
+func (d Document) MoveLocked(today string) bool {
+	return d.RecordFile || d.RetainedUntil != nil && *d.RetainedUntil >= today
 }
 
 type DocumentLink struct {
@@ -101,12 +107,31 @@ const retentionSQL = `(SELECT to_char(make_date(max(extract(year FROM r.day))::i
 // retainedSQL: document d may not be trashed or deleted on the day in parameter $today; the original of an invoice
 // issued elsewhere stays as long as the invoice (invoices.source_document_id) points at it, and the filed PDF of an
 // invoice or quote as long as the record (pdf_key) or a sent revision of the quote keeps it: they share one object.
-func retainedSQL(today string) string {
-	return `(coalesce(` + retentionSQL + ` >= ` + today + `, false)
-		OR EXISTS (SELECT 1 FROM invoices si WHERE si.source_document_id = d.id)
+const recordFileSQL = `(EXISTS (SELECT 1 FROM invoices si WHERE si.workspace_id = d.workspace_id AND si.source_document_id = d.id)
 		OR EXISTS (SELECT 1 FROM invoices pi WHERE pi.workspace_id = d.workspace_id AND pi.pdf_key = d.object_key)
 		OR EXISTS (SELECT 1 FROM quotes pq WHERE pq.workspace_id = d.workspace_id AND pq.pdf_key = d.object_key)
 		OR EXISTS (SELECT 1 FROM quote_revisions qr WHERE qr.workspace_id = d.workspace_id AND qr.pdf_key = d.object_key))`
+
+func retainedSQL(today string) string {
+	return `(coalesce(` + retentionSQL + ` >= ` + today + `, false) OR ` + recordFileSQL + `)`
+}
+
+// LockLiveDocument serializes changes to the source before assigning or checking its record.
+func (q Q) LockLiveDocument(ctx context.Context, workspaceID, id string) error {
+	var found string
+	return q.db.QueryRow(ctx, `SELECT id FROM documents WHERE workspace_id = $1 AND id = $2
+		AND deleted_at IS NULL AND NOT hr_private FOR UPDATE`, workspaceID, id).Scan(&found)
+}
+
+// DocumentMoveLocked checks the current record after locking the file. Renaming in place is allowed.
+func (q Q) DocumentMoveLocked(ctx context.Context, workspaceID, id string, target *string, today string) (bool, error) {
+	if err := q.LockLiveDocument(ctx, workspaceID, id); err != nil {
+		return false, err
+	}
+	var locked bool
+	err := q.db.QueryRow(ctx, `SELECT d.folder_id IS DISTINCT FROM $3::text AND `+retainedSQL("$4")+
+		` FROM documents d WHERE d.workspace_id = $1 AND d.id = $2`, workspaceID, id, target, today).Scan(&locked)
+	return locked, err
 }
 
 // ---- folders ----
@@ -394,7 +419,7 @@ func collect(rows interface {
 var documentSelect = `SELECT d.id, d.name, d.folder_id, f.name, d.size, d.content_type, d.sha256, d.object_key,
 		d.created_at, d.updated_at, d.deleted_at, d.trashed_with, u.id, u.name, ` + avatarColumn + `, x.id, x.name, ` + avatarOf("x") + `, ` + retentionSQL + `,
 		d.tags, ff.status, ff.folder_id, fl.name, coalesce(ff.created_folder, false), coalesce(ff.tags, '{}'),
-		f.system_kind, fl.system_kind, d.auto_tags
+		f.system_kind, fl.system_kind, d.auto_tags, ` + recordFileSQL + `
 	FROM documents d LEFT JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
 	LEFT JOIN users u ON u.id = d.uploaded_by LEFT JOIN users x ON x.id = d.deleted_by
 	LEFT JOIN document_filings ff ON ff.document_id = d.id
@@ -406,7 +431,7 @@ func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, 
 	var filed Filing
 	err := row.Scan(append([]any{&d.ID, &d.Name, &d.FolderID, &folderName, &d.Size, &d.ContentType, &d.SHA256, &d.ObjectKey,
 		&d.CreatedAt, &d.UpdatedAt, &d.DeletedAt, &d.TrashedWith, &uid, &uname, &uavatar, &xid, &xname, &xavatar, &d.RetainedUntil,
-		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags, &folderKind, &filedKind, &d.AutoTags}, extra...)...)
+		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags, &folderKind, &filedKind, &d.AutoTags, &d.RecordFile}, extra...)...)
 	if filing != nil {
 		filed.Status = *filing
 		if filedID != nil && filedName != nil {
@@ -530,7 +555,7 @@ func (q Q) SetDocumentTags(ctx context.Context, workspaceID, id string, tags []s
 	_, err := q.db.Exec(ctx, `UPDATE documents SET updated_at = $4,
 			tags = ARRAY(SELECT t FROM unnest($3::text[]) WITH ORDINALITY a(t, i) WHERE t !~ $5 OR t = ANY(documents.tags) OR t = ANY(auto_tags) ORDER BY i)
 			|| ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE NOT t = ANY($3::text[]) ORDER BY i)
-		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now, doctags.ProtectedPattern)
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now, doctags.ReservedPattern)
 	return err
 }
 
@@ -721,10 +746,14 @@ func (q Q) AddDocumentLink(ctx context.Context, workspaceID, documentID, targetT
 	return q.AutoTag(ctx, workspaceID, documentID, now)
 }
 
-func (q Q) RemoveDocumentLink(ctx context.Context, documentID, targetType, targetID string) error {
-	_, err := q.db.Exec(ctx, `DELETE FROM document_links WHERE document_id = $1 AND target_type = $2 AND target_id = $3`,
-		documentID, targetType, targetID)
-	return err
+func (q Q) RemoveDocumentLink(ctx context.Context, workspaceID, documentID, targetType, targetID string, now time.Time) error {
+	return q.writeTx(ctx, func(q Q) error {
+		if _, err := q.db.Exec(ctx, `DELETE FROM document_links WHERE workspace_id = $1 AND document_id = $2 AND target_type = $3 AND target_id = $4`,
+			workspaceID, documentID, targetType, targetID); err != nil {
+			return err
+		}
+		return q.AutoTag(ctx, workspaceID, documentID, now)
+	})
 }
 
 // UsageRow: the files of one content type, live or in the Trash, and their bytes.

@@ -522,3 +522,80 @@ func TestCompletedContract(t *testing.T) {
 		}
 	}
 }
+
+func TestBackfillImportedOriginalKeepsObjectAndOnlyMovesItsOwner(t *testing.T) {
+	a := newAutoEnv(t)
+	e, b, ctx := a.e, a.b, t.Context()
+	root := e.folder(b, "Invoices", nil)
+	legacy := e.folder(b, "2025", &root.ID)
+	dest := e.recordFolder(b, a.acme, "invoices", 2025)
+	e.uploaded(b, "statement.pdf", pdf+"collision", "folder_id", dest)
+	const original = pdf + "original"
+	d := e.uploaded(b, "statement.pdf", original, "folder_id", legacy.ID)
+	e.invoice(b, a.acme, "invoice", "A-1", 2025, d.ID)
+	var inv string
+	if err := e.raw.QueryRow(ctx, `SELECT id FROM invoices WHERE workspace_id=$1 AND number='A-1'`, b.workspace).Scan(&inv); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.AddDocumentLink(ctx, b.workspace, d.ID, "invoice", inv, b.user, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	separate := a.file(legacy.ID)
+	a.exec(`UPDATE invoices SET pdf_key=$1 WHERE id=$2`, a.key(separate.ID), inv)
+	alsoLinked := a.file(legacy.ID)
+	if err := e.st.AddDocumentLink(ctx, b.workspace, alsoLinked.ID, "invoice", inv, b.user, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	shared := a.file(legacy.ID)
+	e.invoice(b, a.acme, "invoice", "A-2", 2025, shared.ID)
+	e.invoice(b, a.beta, "invoice", "B-2", 2025, shared.ID)
+	revision := a.file(legacy.ID)
+	e.invoice(b, a.acme, "invoice", "A-3", 2025, revision.ID)
+	qid := a.quote(a.beta, "Q-1", "")
+	a.exec(`INSERT INTO quote_revisions(workspace_id,quote_id,revision,pdf_key,created_at) VALUES($1,$2,1,$3,now())`, b.workspace, qid, a.key(revision.ID))
+	hr, deleted, foreign := a.file(legacy.ID), a.file(legacy.ID), a.file(legacy.ID)
+	e.invoice(b, a.acme, "invoice", "HR", 2025, hr.ID)
+	e.invoice(b, a.acme, "invoice", "DEL", 2025, deleted.ID)
+	a.exec(`UPDATE documents SET hr_private=true WHERE id=$1`, hr.ID)
+	a.exec(`UPDATE documents SET deleted_at=now() WHERE id=$1`, deleted.ID)
+	other := e.workspace()
+	e.invoice(other, e.client(other, "Other"), "invoice", "FOREIGN", 2025, foreign.ID)
+	storageUsage := func() (count int, size int64) {
+		t.Helper()
+		if err := e.raw.QueryRow(ctx, `SELECT count(*),coalesce(sum(size),0) FROM stored_objects WHERE workspace_id=$1`, b.workspace).Scan(&count, &size); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	stored, bytes := storageUsage()
+	key, count := a.key(d.ID), e.files.count()
+	var before time.Time
+	for run := range 2 {
+		if err := e.svc.BackfillSystemFolders(ctx); err != nil {
+			t.Fatal(err)
+		}
+		got := e.get(b, d.ID)
+		if got.FolderID == nil || *got.FolderID != dest || got.Name != "statement (2).pdf" || a.key(d.ID) != key || *got.SHA256 != *d.SHA256 ||
+			!got.RecordFile || len(got.Links) != 1 || got.Links[0].ID != inv || !slices.Contains(got.AutoTags, "year-2025-01") || e.files.count() != count {
+			t.Fatalf("repaired original: %+v", got)
+		}
+		if run == 1 && !got.UpdatedAt.Equal(before) {
+			t.Fatal("second repair rewrote original")
+		}
+		before = got.UpdatedAt
+	}
+	for _, skip := range []store.Document{separate, alsoLinked, shared, revision, hr, deleted, foreign} {
+		var folder string
+		if err := e.raw.QueryRow(ctx, `SELECT folder_id FROM documents WHERE id=$1`, skip.ID).Scan(&folder); err != nil || folder != legacy.ID {
+			t.Fatalf("unexpected move %s: %s %v", skip.ID, folder, err)
+		}
+	}
+	if after, size := storageUsage(); after != stored || size != bytes {
+		t.Fatalf("storage accounting changed: %d/%d to %d/%d", stored, bytes, after, size)
+	}
+	e.files.proxy = true
+	res, body := e.send(b, "GET", "/api/v1/documents/"+d.ID+"/download", nil, "")
+	if res.StatusCode != 200 || string(body) != original {
+		t.Fatalf("download %d: %q", res.StatusCode, body)
+	}
+}

@@ -324,12 +324,8 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 // date gave to the new one (moving tags it anew); a file the user moved elsewhere stays.
 func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, old, e store.Expense) error {
 	oldYear, year := store.ExpenseYear(old.DocumentDate, s.today(sess.Workspace)), store.ExpenseYear(e.DocumentDate, s.today(sess.Workspace))
-	if equalRef(old.CategoryID, e.CategoryID) && oldYear == year {
+	if equalRef(old.CategoryID, e.CategoryID) && equalRef(old.DocumentDate, e.DocumentDate) {
 		return nil
-	}
-	from, err := q.ExistingExpenseYearFolder(ctx, sess.Workspace.ID, old.CategoryID, oldYear)
-	if err != nil {
-		return err
 	}
 	docs, err := q.ExpenseDocuments(ctx, sess.Workspace.ID, e.ID)
 	if err != nil {
@@ -339,6 +335,13 @@ func (s *Service) refile(ctx context.Context, q store.Q, sess store.Session, old
 		if err := q.AutoTag(ctx, sess.Workspace.ID, d.ID, s.now()); err != nil {
 			return err
 		}
+	}
+	if equalRef(old.CategoryID, e.CategoryID) && oldYear == year {
+		return nil
+	}
+	from, err := q.ExistingExpenseYearFolder(ctx, sess.Workspace.ID, old.CategoryID, oldYear)
+	if err != nil {
+		return err
 	}
 	var to *string
 	for _, d := range docs {

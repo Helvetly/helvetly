@@ -170,10 +170,10 @@ func engagementCounts(e Engagement, today string) bool {
 }
 
 func (q Q) CreateEngagement(ctx context.Context, workspaceID string, e *Engagement, now time.Time) error {
-	if q.admission == nil {
-		return q.createEngagement(ctx, workspaceID, e, now)
-	}
-	return q.admissionTx(ctx, func(q Q) error {
+	return q.writeTx(ctx, func(q Q) error {
+		if q.admission == nil {
+			return q.createEngagement(ctx, workspaceID, e, now)
+		}
 		ws, err := q.AdmissionWorkspace(ctx, workspaceID)
 		if err != nil {
 			return err
@@ -188,10 +188,10 @@ func (q Q) CreateEngagement(ctx context.Context, workspaceID string, e *Engageme
 }
 
 func (q Q) SaveEngagement(ctx context.Context, workspaceID string, e Engagement, now time.Time) error {
-	if q.admission == nil {
-		return q.saveEngagement(ctx, workspaceID, e, now)
-	}
-	return q.admissionTx(ctx, func(q Q) error {
+	return q.writeTx(ctx, func(q Q) error {
+		if q.admission == nil {
+			return q.saveEngagement(ctx, workspaceID, e, now)
+		}
 		if err := q.LockAdmission(ctx, workspaceID, "engagements"); err != nil {
 			return err
 		}

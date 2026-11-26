@@ -245,6 +245,9 @@ func issueImported(ctx context.Context, q store.Q, sess store.Session, inv store
 	if documentID == nil {
 		return errNoOriginal
 	}
+	if err := q.LockLiveDocument(ctx, sess.Workspace.ID, *documentID); err != nil {
+		return err
+	}
 	if err := checkOpen(ctx, q, sess.Workspace.ID, inv.IssueDate); err != nil {
 		return err
 	}
@@ -268,6 +271,9 @@ func issueImported(ctx context.Context, q store.Q, sess store.Session, inv store
 		return err
 	}
 	if err := q.AddDocumentLink(ctx, sess.Workspace.ID, *documentID, "invoice", inv.ID, sess.User.ID, now); err != nil {
+		return err
+	}
+	if err := q.FileImportedOriginal(ctx, sess.Workspace.ID, *documentID, sess.User.ID, now); err != nil {
 		return err
 	}
 	if err := q.RefreshBalance(ctx, inv.ID, now); err != nil {

@@ -100,7 +100,7 @@ func TestExpenseCreatePlacesTheDocument(t *testing.T) {
 		if _, err := createFrom(ctx, st, sess, data, Source{DocumentID: &id, Name: "a.pdf"}); err != nil {
 			t.Fatal(err)
 		}
-		if d := inFolder(t, st, sess, id, "Expenses", "2025", list[0].Name); !slices.Equal(d.Tags, []string{"receipt", "year-2025", tags.Slug("expense-" + list[0].Name)}) {
+		if d := inFolder(t, st, sess, id, "Expenses", "2025", list[0].Name); !slices.Equal(d.Tags, []string{"receipt", "year-2025-06", tags.Slug("expense-" + list[0].Name)}) {
 			t.Fatalf("tags %v", d.Tags)
 		}
 	})
@@ -113,7 +113,7 @@ func TestExpenseCreatePlacesTheDocument(t *testing.T) {
 		if _, err := createFrom(ctx, st, sess, data, Source{DocumentID: &id, Name: "b.pdf"}); err != nil {
 			t.Fatal(err)
 		}
-		if d := inFolder(t, st, sess, id, "Mine"); !slices.Equal(d.Tags, []string{"receipt", "year-2025", tags.Slug("expense-" + list[0].Name)}) {
+		if d := inFolder(t, st, sess, id, "Mine"); !slices.Equal(d.Tags, []string{"receipt", "year-2025-06", tags.Slug("expense-" + list[0].Name)}) {
 			t.Fatalf("tags %v", d.Tags)
 		}
 	})
@@ -165,6 +165,26 @@ func TestInvoiceImportPlacesTheDocument(t *testing.T) {
 	if d := inFolder(t, st, sess, id, "Invoices", "2025"); !slices.Equal(d.Tags, []string{"invoice"}) {
 		t.Fatalf("tags %v", d.Tags)
 	}
+	// The legal original can come from an existing folder or a materialized ZIP entry.
+	f := auth.NewID("fld")
+	if err := st.CreateFolder(ctx, sess.Workspace.ID, f, "Incoming", nil, sess.User.ID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	original := categoryDoc(t, st, sess, "issued.pdf", &f)
+	var invoiceID string
+	if err := st.Tx(ctx, func(q store.Q) error {
+		var err error
+		invoiceID, err = invoicesKind.Create(ctx, q, sess, invoiceData(t, `{"issued_elsewhere":true}`),
+			Source{Document: func(context.Context) (string, error) { return original, nil }})
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	d := inFolder(t, st, sess, original, "Clients", "Kunde AG", "Invoices", "2025")
+	if !d.RecordFile || !slices.Contains(d.AutoTags, "year-2025-10") || len(d.Links) != 1 || d.Links[0].ID != invoiceID {
+		t.Fatalf("issued original: %+v", d)
+	}
+
 }
 
 func TestPlacingKindsAreNotQueuedForGenericFiling(t *testing.T) {

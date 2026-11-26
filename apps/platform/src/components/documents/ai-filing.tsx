@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
+import { documentTagLabel } from '@/lib/document-tags'
 import { docsApi, filingSummary, refreshDocuments, type DocFile } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 
@@ -90,14 +91,22 @@ export function announceFiling(files: DocFile[], queryClient: QueryClient) {
 }
 
 /** A file's tags as small chips, at most `max` with "+n" for the rest. */
-export function TagChips({ tags, max = 3 }: { tags: string[]; max?: number }) {
+export function TagChips({
+  tags,
+  autoTags,
+  max = 3,
+}: {
+  tags: string[]
+  autoTags?: string[]
+  max?: number
+}) {
   if (tags.length === 0) return null
   const rest = tags.length - max
   return (
     <span className="flex min-w-0 items-center gap-1 overflow-hidden">
       {tags.slice(0, max).map((tag) => (
         <Badge size="sm" className="truncate" key={tag}>
-          {tag}
+          {autoTags?.includes(tag) ? documentTagLabel(tag) : tag}
         </Badge>
       ))}
       {rest > 0 && <span className="shrink-0 text-caption">+{rest}</span>}

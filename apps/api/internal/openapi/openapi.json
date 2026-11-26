@@ -1158,7 +1158,7 @@
         "operationId": "upload_document",
         "tags": ["Documents"],
         "summary": "Upload a document",
-        "description": "Uploads one file (multipart field file; one per request) into a folder (folder_id, default top level), optionally linking it to a client (client_id). Allowed types: PDF; PNG, JPEG, WebP, GIF; XLSX, XLS, ODS, CSV; DOCX, DOC, ODT, RTF; PPTX, ODP; TXT, Markdown, XML, JSON; ZIP; the extension and the file's bytes must agree, else 422 validation_failed (fields.file). Larger than DOCUMENTS_MAX_UPLOAD_MB (1 to 25 MiB, default 25): 413 payload_too_large. Names are cut to 255 characters and lose path parts. Duplicate check: the SHA-256 of the actual bytes is compared inside the workspace with live Documents (client files included). Identical bytes are never stored twice: the existing Document is the answer, 200 with {data: that document, reused: true}, whatever the name or on_conflict. It stays where it is (a top-level one moves into folder_id when sent) and is linked to client_id when sent. Only a caller who may not read Documents gets 409 duplicate_file. Bytes held only by an expense receipt are not a Documents duplicate: the file is stored as new. A same-named live file in the folder is a name conflict, resolved by on_conflict (fail: 409 name_taken with details {existing_id, suggestion}; keep_both; replace: the old file goes to the Trash, 409 retained if it is a business record); on_conflict applies only to different content. Repeating a successful upload answers 200 with reused: true.",
+        "description": "Uploads one file (multipart field file; one per request) into a folder (folder_id, default top level), optionally linking it to a client (client_id). Allowed types: PDF; PNG, JPEG, WebP, GIF; XLSX, XLS, ODS, CSV; DOCX, DOC, ODT, RTF; PPTX, ODP; TXT, Markdown, XML, JSON; ZIP; the extension and the file's bytes must agree, else 422 validation_failed (fields.file). Larger than DOCUMENTS_MAX_UPLOAD_MB (1 to 25 MiB, default 25): 413 payload_too_large. Names are cut to 255 characters and lose path parts. Duplicate check: the SHA-256 of the actual bytes is compared inside the workspace with live Documents (client files included). Identical bytes are never stored twice: the existing Document is the answer, 200 with {data: that document, reused: true}, whatever the name or on_conflict. It stays where it is (an unlocked top-level one moves into folder_id when sent) and is linked to client_id when sent. Only a caller who may not read Documents gets 409 duplicate_file. Bytes held only by an expense receipt are not a Documents duplicate: the file is stored as new. A same-named live file in the folder is a name conflict, resolved by on_conflict (fail: 409 name_taken with details {existing_id, suggestion}; keep_both; replace: the old file goes to the Trash, 409 retained if it is a business record); on_conflict applies only to different content. Repeating a successful upload answers 200 with reused: true.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1234,7 +1234,7 @@
         "operationId": "update_document",
         "tags": ["Documents"],
         "summary": "Rename or move a document",
-        "description": "Renames and/or moves a live document (name, folder_id; null folder_id is the top level). A name taken in the target folder follows on_conflict: fail answers 409 name_taken (details.suggestion), keep_both renames, replace trashes the other file. 409 trashed for a document in the Trash (restore it with bulk_documents first), 422 validation_failed for a bad name or a folder that no longer exists. Retrying the same body is safe.",
+        "description": "Renames and/or moves a live document (name, folder_id; null folder_id is the top level). A record file or a file under active retention cannot change folders (409 record_move_locked). A name taken in the target folder follows on_conflict: fail answers 409 name_taken (details.suggestion), keep_both renames, replace trashes the other file. 409 trashed for a document in the Trash (restore it with bulk_documents first), 422 validation_failed for a bad name or a folder that no longer exists. Retrying the same body is safe.",
         "parameters": [
           {
             "name": "id",
@@ -5420,7 +5420,7 @@
         "operationId": "bulk_documents",
         "tags": ["Documents"],
         "summary": "Move, trash or restore documents and folders",
-        "description": "The way to trash, restore and bulk-move documents (there is no DELETE on a document): up to 500 ids in total across document_ids and folder_ids, one action: move, trash, restore or delete. Each item is applied on its own and what cannot be done is listed in skipped with a reason (not found, retained, name taken, folder moved into itself, not in the Trash); the call still answers 200. Trashing keeps an item for 30 days and is reversible with restore; a document linked to an issued invoice or a booked or void expense is a business record kept 10 years and cannot be trashed (skipped: retained). 422 validation_failed for an empty or oversized selection or an unknown action. delete removes items that are already in the Trash for good (owner or admin; anything else is skipped: not in the Trash); it cannot be undone, so trash first and delete only on an explicit request. Trashing the same items again is safe.",
+        "description": "The way to trash, restore and bulk-move documents (there is no DELETE on a document): up to 500 ids in total across document_ids and folder_ids, one action: move, trash, restore or delete. A move that would change the folder of a record file or a file under active retention returns 409 record_move_locked and rolls back the entire selection. Other item-level refusals are listed in skipped with a reason (not found, retained, name taken, folder moved into itself, not in the Trash); the call still answers 200. Trashing keeps an item for 30 days and is reversible with restore; a document linked to an issued invoice or a booked or void expense is a business record kept 10 years and cannot be trashed (skipped: retained). 422 validation_failed for an empty or oversized selection or an unknown action. delete removes items that are already in the Trash for good (owner or admin; anything else is skipped: not in the Trash); it cannot be undone, so trash first and delete only on an explicit request. Trashing the same items again is safe.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9356,7 +9356,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Those of tags the app set from what the file is (kind, year-YYYY, client-<name>, the record's number, expense-<category>, from-quote-<number>, signed). A removed one is never set again."
+            "description": "Tags derived from the record. Its kind, signed, year-YYYY-MM (year-YYYY when the month is unknown) and client-<name> are protected. Other automatic tags can be dismissed."
           },
           "ai_filing": {
             "anyOf": [
@@ -9387,6 +9387,10 @@
               },
               "required": ["client_id", "client_name", "shared_at"]
             }
+          },
+          "record_file": {
+            "type": "boolean",
+            "description": "The file belongs to a financial record and its folder is fixed."
           },
           "retained_until": {
             "type": ["string", "null"],
