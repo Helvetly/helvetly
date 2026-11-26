@@ -193,13 +193,14 @@ func TestInvoicedQuantityIgnoresVoid(t *testing.T) {
 	insertInvoice(t, pool, "inv_void", "void")
 	insertInvoice(t, pool, "inv_adv", "draft")
 	for id, inv := range map[string]string{"ent_1": "inv_open", "ent_2": "inv_void", "ent_3": ""} {
-		var invoice any
-		if inv != "" {
-			invoice = inv
-		}
-		if _, err := pool.Exec(ctx, `INSERT INTO engagement_entries (id, engagement_id, period_id, date, quantity, invoice_id, created_at)
-			VALUES ($1, 'eng_1', 'epr_1', '2026-02-01', 1000, $2, now())`, id, invoice); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO engagement_entries (id, engagement_id, period_id, date, quantity, created_at)
+			VALUES ($1, 'eng_1', 'epr_1', '2026-02-01', 1000, now())`, id); err != nil {
 			t.Fatal(err)
+		}
+		if inv != "" {
+			if err := s.LinkEntries(ctx, []string{id}, []invoicecalc.Quantity{1000}, inv); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO engagement_invoices (period_id, invoice_id, kind, created_at) VALUES

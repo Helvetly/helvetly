@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"helvetly.com/api/internal/instalcalc"
 	"helvetly.com/api/internal/invoices"
+	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/store"
 )
 
@@ -43,7 +45,7 @@ func (s *Service) Tick(ctx context.Context, now time.Time) error {
 			s.log.ErrorContext(ctx, "plan item not issued", "plan", d.Plan.ID, "seq", d.Item.Seq, "error", err)
 		}
 	}
-	targets, err := s.db.DueReminders(ctx, now)
+	targets, err := s.db.DueReminders(ctx, now, "")
 	if err != nil {
 		return fmt.Errorf("list due reminders: %w", err)
 	}
@@ -127,19 +129,21 @@ func (s *Service) sendOnce(ctx context.Context, ws store.Workspace, invoiceID st
 	action := "instalments.send:" + invoiceID
 	err = s.db.ReserveAutomation(ctx, ws.ID, action, now)
 	if errors.Is(err, store.ErrAdmissionDenied) {
-		return s.db.ReleasePlanSend(context.WithoutCancel(ctx), invoiceID) // it waits among the unsent partials
+		return s.db.ReleasePlanSend(context.WithoutCancel(ctx), invoiceID, now) // it waits among the unsent partials
 	}
 	if err == nil {
 		var inv store.Invoice
 		if inv, err = s.db.Invoice(ctx, ws.ID, invoiceID, ws.Today(now), false); err != nil {
 			err = fmt.Errorf("load invoice: %w", err)
-		} else if err = s.inv.SendIssued(ctx, ws, inv); err == nil {
-			// a failed send keeps its reservation for the retry: whether the mail server took it is not known
-			return s.db.SettleAutomation(context.WithoutCancel(ctx), ws.ID, action, now)
+		} else if err = s.inv.SendIssued(ctx, ws, inv); errors.Is(err, invoices.ErrAlreadySent) {
+			return errors.Join(s.db.ReleaseAutomation(context.WithoutCancel(ctx), ws.ID, action), s.db.ReleasePlanSend(context.WithoutCancel(ctx), invoiceID, now))
+		} else if err == nil || errors.Is(err, mail.ErrUncertain) {
+			// A transport that may have accepted the message consumes the action.
+			return errors.Join(err, s.db.SettleAutomation(context.WithoutCancel(ctx), ws.ID, action, now))
 		}
 	}
 	if err != nil {
-		if rerr := s.db.ReleasePlanSend(context.WithoutCancel(ctx), invoiceID); rerr != nil {
+		if rerr := s.db.ReleasePlanSend(context.WithoutCancel(ctx), invoiceID, now); rerr != nil {
 			return errors.Join(err, fmt.Errorf("release send claim: %w", rerr))
 		}
 	}
@@ -170,42 +174,64 @@ func (s *Service) remind(ctx context.Context, t store.ReminderTarget, now time.T
 		return fmt.Errorf("load invoice pdf: %w", err)
 	}
 	action := fmt.Sprintf("instalments.remind:%s:%d:%s:%d", t.InvoiceID, t.Seq, t.Kind, t.OffsetDays)
-	if err := s.db.ReserveAutomation(ctx, t.WorkspaceID, action, now); err != nil {
-		if errors.Is(err, store.ErrAdmissionDenied) {
-			return nil // paused: the reminder waits for room, and is checked against the payments again then
-		}
-		return err
-	}
-	// The log row goes in first, in a transaction that rolls back when the send fails: a failed send leaves no row
-	// (the next run retries), and a concurrent run waits on the row's key, then sees the conflict and sends nothing.
-	sent := false
+	var claimed bool
 	err = s.db.Tx(ctx, func(q store.Q) error {
-		// The target was listed earlier: under the invoice's lock (payments, credits and voids take it too) remind only
-		// of what is open now.
+		if err := q.LockInvoiceSettings(ctx, t.WorkspaceID); err != nil {
+			return err
+		}
 		cur, err := q.Invoice(ctx, t.WorkspaceID, t.InvoiceID, t.Today, true)
 		if err != nil {
-			return fmt.Errorf("lock invoice: %w", err)
+			return err
 		}
-		if t.Open = openOf(cur, t.Seq); t.Open <= 0 {
+		if live, err := q.LockClient(ctx, t.WorkspaceID, cur.ClientID); err != nil || !live {
+			return err
+		}
+		targets, err := q.DueReminders(ctx, now, t.InvoiceID)
+		if err != nil {
+			return err
+		}
+		idx := slices.IndexFunc(targets, func(v store.ReminderTarget) bool {
+			return v.Seq == t.Seq && v.Kind == t.Kind && v.OffsetDays == t.OffsetDays
+		})
+		if idx < 0 || targets[idx].ClientEmail == "" {
 			return nil
 		}
-		won, err := q.LogReminder(ctx, t, now)
-		if err != nil || !won {
+		t = targets[idx]
+		inv = cur
+		if t.Open = openOf(inv, t.Seq); t.Open <= 0 {
+			return nil
+		}
+		claimed, err = q.LogReminder(ctx, t, now)
+		if err != nil || !claimed {
 			return err
 		}
-		if err := q.SettleAutomation(ctx, t.WorkspaceID, action, now); err != nil {
-			return err
-		}
-		if err := s.mailer.Send(ctx, reminderMessage(cur, t, pdf)); err != nil {
-			return fmt.Errorf("send: %w", err)
-		}
-		sent = true
-		return nil
+		return q.ReserveAutomation(ctx, t.WorkspaceID, action, now)
 	})
-	if err == nil && !sent { // paid since it was listed, or sent by a concurrent run
-		return s.db.ReleaseAutomation(context.WithoutCancel(ctx), t.WorkspaceID, action)
+	if errors.Is(err, store.ErrAdmissionDenied) {
+		return nil
 	}
-	return err
+	if err != nil || !claimed {
+		return err
+	}
+
+	// A committed intent prevents another worker retrying after SMTP accepted a message but the process stopped.
+	sendErr := s.mailer.Send(ctx, reminderMessage(inv, t, pdf))
+	done := context.WithoutCancel(ctx)
+	if sendErr != nil && !errors.Is(sendErr, mail.ErrUncertain) {
+		return errors.Join(sendErr, s.db.Tx(done, func(q store.Q) error {
+			if err := q.FinishReminder(done, t, false); err != nil {
+				return err
+			}
+			return q.ReleaseAutomation(done, t.WorkspaceID, action)
+		}))
+	}
+	err = s.db.Tx(done, func(q store.Q) error {
+		if err := q.SettleAutomation(done, t.WorkspaceID, action, now); err != nil || sendErr != nil {
+			return err
+		}
+		return q.FinishReminder(done, t, true)
+	})
+	return errors.Join(err, sendErr)
 }
 
 // guard turns a panic in one unit of work into an error, so one bad plan or reminder cannot stop the job.

@@ -687,7 +687,11 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := apply(&e, body, d, false); err != nil {
 			return err
 		}
-		if err := checkRefs(ctx, q, ws, e); err != nil {
+		refs := e
+		if old.ProductID != nil && e.ProductID != nil && *old.ProductID == *e.ProductID {
+			refs.ProductID = nil // A catalogue deletion keeps an existing agreement's terms.
+		}
+		if err := checkRefs(ctx, q, ws, refs); err != nil {
 			return err
 		}
 		if e.AutoInvoice && !old.AutoInvoice {

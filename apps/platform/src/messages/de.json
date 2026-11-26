@@ -2755,6 +2755,7 @@
   "sendFinalReminder": "Letzte Erinnerung senden",
   "reminderSentTo": "An {email}",
   "sentAutomatically": " · automatisch",
+  "historicalInvoiceQuantity": "Die ursprünglich verrechnete Menge ist unklar. Dieser Eintrag zählt vollständig, um eine doppelte Verrechnung zu vermeiden.",
   "reminderDeliveryUnconfirmed": "Zustellung nicht bestätigt: Der Mailserver hat sie vielleicht angenommen, deshalb wird sie nicht erneut gesendet.",
   "noAutomaticRemindersToPause": "Für diese Rechnung gehen keine automatischen Erinnerungen hinaus, es gibt also nichts zu pausieren. Von Hand senden können Sie trotzdem.",
   "pauseAutomaticReminders": "Die automatischen Erinnerungen für diese Rechnung anhalten, bis Sie fortsetzen.",

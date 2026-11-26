@@ -714,7 +714,7 @@ function Detail({
         <Panel
           title={translate('sentByEmail')}
           action={
-            invoice.status !== 'draft' && (
+            (invoice.status === 'open' || invoice.status === 'paid') && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -726,6 +726,17 @@ function Detail({
             )
           }
         >
+          {invoice.send_uncertain_at && (
+            <p className="py-2 text-sm">
+              {formatDate(invoice.send_uncertain_at)} · {translate('reminderDeliveryUnconfirmed')}
+            </p>
+          )}
+          {invoice.unconfirmed_reminders?.map((r) => (
+            <p key={`${r.seq}-${r.kind}-${r.offset_days}`} className="py-2 text-sm">
+              {translate('instalment')} {r.seq} · {formatDate(r.at)} ·{' '}
+              {translate('reminderDeliveryUnconfirmed')}
+            </p>
+          ))}
           {deliveries.data?.length ? (
             <ul className="divide-y divide-border/60">
               {deliveries.data.map((delivery) => (
@@ -737,7 +748,7 @@ function Detail({
                     <span className="truncate text-[14px]">{delivery.to.join(', ')}</span>
                     <span className="text-[12.5px] text-muted-foreground">
                       {translate('by2')}
-                      {delivery.sent_by.name}
+                      {delivery.sent_by?.name ?? translate('system')}
                     </span>
                   </span>
                   <span className="text-[13px] text-muted-foreground tabular-nums">
@@ -746,7 +757,7 @@ function Detail({
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : invoice.send_uncertain_at || invoice.unconfirmed_reminders?.length ? null : (
             <p className="py-6 text-center text-[13.5px] text-muted-foreground">
               {deliveries.isLoading
                 ? translate('loading')

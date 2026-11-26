@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"helvetly.com/api/internal/invoicecalc"
 	"helvetly.com/api/internal/invoices"
 	"helvetly.com/api/internal/store"
 )
@@ -77,7 +78,7 @@ func TestAttendanceCountsThroughEngagement(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		return q.LinkEntries(ctx, got.EntryIDs, id)
+		return q.LinkEntries(ctx, got.EntryIDs, []invoicecalc.Quantity{1500}, id)
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -90,7 +90,7 @@ func TestEntryInvoiceVoidReleased(t *testing.T) {
 	if err := s.LinkPeriodInvoice(ctx, "epr_1", "inv_1", "usage"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.LinkEntries(ctx, []string{"ent_1"}, "inv_1"); err != nil {
+	if err := s.LinkEntries(ctx, []string{"ent_1"}, []invoicecalc.Quantity{1000}, "inv_1"); err != nil {
 		t.Fatal(err)
 	}
 	e, _ := s.Entry(ctx, "eng_1", "ent_1", false)
@@ -116,7 +116,7 @@ func TestDeletedDraftReleasesEntries(t *testing.T) {
 	if err := s.LinkPeriodInvoice(ctx, "epr_1", "inv_d", "usage"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.LinkEntries(ctx, []string{"ent_1"}, "inv_d"); err != nil {
+	if err := s.LinkEntries(ctx, []string{"ent_1"}, []invoicecalc.Quantity{1000}, "inv_d"); err != nil {
 		t.Fatal(err)
 	}
 	if ok, err := s.DeleteDraft(ctx, "wsp_a", "inv_d"); err != nil || !ok {

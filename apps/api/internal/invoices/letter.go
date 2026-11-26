@@ -22,16 +22,21 @@ func withLetter(m mail.Message, inv store.Invoice) mail.Message {
 	}
 	number, total := deref(inv.Number), inv.Currency+" "+abs(inv.Payable()).Swiss("'")
 	message, payment := m.Text, ""
-	if inv.Payment.RevolutURL != nil {
+	if inv.Payment.RevolutURL != nil && (!adjustedBalance(inv) || inv.AmountDue > 0) {
 		if body, ok := strings.CutSuffix(message, "\n\n"+revolutPaymentLine(inv)); ok {
 			message, payment = body, *inv.Payment.RevolutURL
 		}
 	}
-	l := mail.NewLetter(inv.Language).DocumentMessage(message, number, total, due).Summary(
-		mail.Row{Label: Title(inv), Value: number},
-		mail.Row{Label: amount, Value: total},
-		mail.Row{Label: w.DueDate, Value: due},
-	).Link(revolutPaymentLabel(inv.Language), payment).Attached(names...)
+	rows := []mail.Row{{Label: Title(inv), Value: number}}
+	if adjustedBalance(inv) {
+		rows = append(rows, mail.Row{Label: w.Total, Value: total})
+		total = inv.Currency + " " + inv.AmountDue.Swiss("'")
+		if inv.AmountDue == 0 {
+			due = ""
+		}
+	}
+	rows = append(rows, mail.Row{Label: amount, Value: total}, mail.Row{Label: w.DueDate, Value: due})
+	l := mail.NewLetter(inv.Language).DocumentMessage(message, number, total, due).Summary(rows...).Link(revolutPaymentLabel(inv.Language), payment).Attached(names...)
 	m.Text, m.HTML, m.Eyebrow = l.Text(), l.HTML(), Title(inv)
 	if inv.Kind == "corrected" || inv.Kind == "credit_note" || inv.Kind == "debit_note" {
 		m.Tone = mail.Amended

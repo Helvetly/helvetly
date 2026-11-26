@@ -155,6 +155,7 @@ func (q Q) SetDunningPaused(ctx context.Context, workspaceID, invoiceID string, 
 
 // DunningDigestRow is a notice sent in the 24 hours before the digest.
 type DunningDigestRow struct {
+	Confirmed                               bool
 	InvoiceID, Number, ClientName, Currency string
 	Level, Levels                           int
 	Title                                   *string // nil for a notice sent before titles were stored
@@ -178,7 +179,7 @@ func (q Q) DunningDigestWorkspaces(ctx context.Context, now time.Time) ([]Worksp
 // DunningDigestRows: the workspace's notices sent in the 24 hours before now, oldest first.
 func (q Q) DunningDigestRows(ctx context.Context, workspaceID string, now time.Time) ([]DunningDigestRow, error) {
 	rows, err := q.db.Query(ctx, `SELECT n.invoice_id, COALESCE(i.number, ''), COALESCE(i.buyer->>'name', ''), i.currency, n.level,
-			n.levels, n.title, n.total
+			n.levels, n.title, n.total, n.confirmed
 		FROM dunning_notices n JOIN invoices i ON i.id = n.invoice_id
 		WHERE n.workspace_id = $1 AND n.sent_at > $2::timestamptz - interval '24 hours' AND n.sent_at <= $2
 		ORDER BY n.sent_at, n.invoice_id`, workspaceID, now)
@@ -187,7 +188,7 @@ func (q Q) DunningDigestRows(ctx context.Context, workspaceID string, now time.T
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (DunningDigestRow, error) {
 		var d DunningDigestRow
-		err := r.Scan(&d.InvoiceID, &d.Number, &d.ClientName, &d.Currency, &d.Level, &d.Levels, &d.Title, &d.Total)
+		err := r.Scan(&d.InvoiceID, &d.Number, &d.ClientName, &d.Currency, &d.Level, &d.Levels, &d.Title, &d.Total, &d.Confirmed)
 		return d, err
 	})
 }

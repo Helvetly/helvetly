@@ -79,16 +79,22 @@ func (f *fakeStorage) Delete(_ context.Context, key string) error {
 }
 
 type fakeMailer struct {
-	mu    sync.Mutex
-	sent  []mail.Message
-	fail  bool
-	delay time.Duration // set before the job runs
+	mu        sync.Mutex
+	sendError error
+	attempts  int
+	sent      []mail.Message
+	fail      bool
+	delay     time.Duration // set before the job runs
 }
 
 func (m *fakeMailer) Send(_ context.Context, msg mail.Message) error {
 	time.Sleep(m.delay)
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.attempts++
+	if m.sendError != nil {
+		return m.sendError
+	}
 	if m.fail {
 		return errors.New("smtp down")
 	}

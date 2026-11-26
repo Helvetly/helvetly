@@ -176,7 +176,7 @@ func (q Q) UpsertChangeRequest(ctx context.Context, id, workspaceID, clientID, c
 	err := q.db.QueryRow(ctx, `INSERT INTO client_change_requests (id, workspace_id, client_id, contact_id, fields, created_at)
 		VALUES ($1, $2, $3, nullif($4, ''), $5, $6)
 		ON CONFLICT (client_id) WHERE status = 'pending'
-		DO UPDATE SET fields = EXCLUDED.fields, contact_id = EXCLUDED.contact_id, created_at = EXCLUDED.created_at
+		DO UPDATE SET fields = EXCLUDED.fields, contact_id = EXCLUDED.contact_id, created_at = greatest(EXCLUDED.created_at, client_change_requests.created_at + interval '1 microsecond')
 		WHERE client_change_requests.workspace_id = EXCLUDED.workspace_id
 		RETURNING id`, id, workspaceID, clientID, contactID, fields, now).Scan(&got)
 	if err != nil {
@@ -188,6 +188,12 @@ func (q Q) UpsertChangeRequest(ctx context.Context, id, workspaceID, clientID, c
 func (q Q) PendingChangeRequest(ctx context.Context, workspaceID, clientID string) (ChangeRequest, error) {
 	return scanChangeRequest(q.db.QueryRow(ctx, changeRequestSelect+
 		`WHERE r.workspace_id = $1 AND r.client_id = $2 AND r.status = 'pending'`, workspaceID, clientID))
+}
+
+// LockPendingChangeRequest holds the reviewed revision until both the client edit and decision commit.
+func (q Q) LockPendingChangeRequest(ctx context.Context, workspaceID, clientID string) (ChangeRequest, error) {
+	return scanChangeRequest(q.db.QueryRow(ctx, changeRequestSelect+
+		`WHERE r.workspace_id = $1 AND r.client_id = $2 AND r.status = 'pending' FOR UPDATE OF r`, workspaceID, clientID))
 }
 
 // DecideChangeRequest marks the pending request approved (with the fields applied) or rejected (with an optional

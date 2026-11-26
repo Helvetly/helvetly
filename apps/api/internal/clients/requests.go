@@ -1,12 +1,14 @@
 package clients
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"helvetly.com/api/internal/auth"
@@ -116,11 +118,25 @@ func chosenFields(requested map[string]any, chosen *[]string) ([]string, error) 
 	return out, nil
 }
 
+type reviewedRequest struct {
+	RequestID string    `json:"request_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (v reviewedRequest) lock(ctx context.Context, q store.Q, ws, client string) (store.ChangeRequest, error) {
+	req, err := q.LockPendingChangeRequest(ctx, ws, client)
+	if err == nil && (req.ID != v.RequestID || !req.CreatedAt.Equal(v.CreatedAt)) {
+		return req, auth.Error(http.StatusConflict, "request_changed", "The request has changed. Review the current changes before deciding.", nil)
+	}
+	return req, err
+}
+
 func (s *Service) approveRequest(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	if !canDelete(sess) {
 		return errForbiddenDecide
 	}
 	var in struct {
+		reviewedRequest
 		Fields *[]string `json:"fields"`
 	}
 	if !s.optionalBody(w, r, &in) {
@@ -128,7 +144,7 @@ func (s *Service) approveRequest(w http.ResponseWriter, r *http.Request, sess st
 	}
 	ctx, id := r.Context(), r.PathValue("id")
 	err := s.db.Tx(ctx, func(q store.Q) error {
-		req, err := q.PendingChangeRequest(ctx, sess.Workspace.ID, id)
+		req, err := in.lock(ctx, q, sess.Workspace.ID, id)
 		if err != nil {
 			return err
 		}
@@ -167,6 +183,7 @@ func (s *Service) rejectRequest(w http.ResponseWriter, r *http.Request, sess sto
 		return errForbiddenDecide
 	}
 	var in struct {
+		reviewedRequest
 		Reason string `json:"reason"`
 	}
 	if !s.optionalBody(w, r, &in) {
@@ -176,7 +193,14 @@ func (s *Service) rejectRequest(w http.ResponseWriter, r *http.Request, sess sto
 	if utf8.RuneCountInString(reason) > maxRejectReason {
 		return validationFailed(map[string]string{"reason": fmt.Sprintf("Keep the reason to at most %d characters.", maxRejectReason)})
 	}
-	if _, err := s.db.DecideChangeRequest(r.Context(), sess.Workspace.ID, r.PathValue("id"), "rejected", sess.User.ID, nil, reason, s.now()); err != nil {
+	ctx, ws, id := r.Context(), sess.Workspace.ID, r.PathValue("id")
+	if err := s.db.Tx(ctx, func(q store.Q) error {
+		if _, err := in.lock(ctx, q, ws, id); err != nil {
+			return err
+		}
+		_, err := q.DecideChangeRequest(ctx, ws, id, "rejected", sess.User.ID, nil, reason, s.now())
+		return err
+	}); err != nil {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)

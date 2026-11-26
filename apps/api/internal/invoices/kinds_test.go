@@ -3,6 +3,7 @@ package invoices
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -165,6 +166,10 @@ func TestSelfBilledNoQRPaymentsAllowed(t *testing.T) {
 	paid := e.invoice(b, "POST", path(inv.ID, "mark-paid"), map[string]any{}, http.StatusOK)
 	if paid.Status != "paid" || paid.AmountPaid != "216.20" {
 		t.Fatalf("paid: %+v", paid)
+	}
+	e.do(b, "POST", path(inv.ID, "send"), map[string]any{}, http.StatusOK, nil)
+	if body := e.mail.sent[len(e.mail.sent)-1].Text; !strings.Contains(body, "Zu bezahlen: CHF 0.00") {
+		t.Fatal(body)
 	}
 }
 

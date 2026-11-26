@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { Initials } from '@/components/initials'
+import { ApiError } from '@/lib/api'
 import {
   ADDRESS_FIELDS,
   approveChangeRequest,
@@ -169,7 +170,7 @@ const requesterOf = (client: Client, request: ChangeRequest) => request.contact.
 /** The full request in a drawer stacked over the client's: each change with its own checkbox, approve or reject. */
 function ChangeRequestReview({
   client,
-  request,
+  request: incoming,
   canDecide,
   onClose,
   onDecided,
@@ -180,14 +181,15 @@ function ChangeRequestReview({
   onClose: () => void
   onDecided: (decided: Decided) => void
 }) {
+  const [request, setRequest] = useState(incoming)
   const queryClient = useQueryClient()
   const [confirming, setConfirming] = useState(false)
   const [reason, setReason] = useState('')
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set())
   const decide = useMutation({
     mutationFn: async (decision: Decision) => {
-      if (decision.approve) await approveChangeRequest(client.id, decision.fields)
-      else await rejectChangeRequest(client.id, decision.reason.trim())
+      if (decision.approve) await approveChangeRequest(client.id, request, decision.fields)
+      else await rejectChangeRequest(client.id, request, decision.reason.trim())
     },
     onSuccess: (_, decision) => {
       toast.success(decision.approve ? translate('changesApplied') : translate('requestRejected'))
@@ -196,7 +198,22 @@ function ChangeRequestReview({
       void queryClient.invalidateQueries({ queryKey: ['clients', 'list'] })
       onDecided(!decision.approve ? 'rejected' : skipped.size > 0 ? 'partly' : 'approved')
     },
-    onError: toastError,
+    onError: async (error) => {
+      toastError(error)
+      if (error instanceof ApiError && (error.code === 'request_changed' || error.status === 404)) {
+        const queryKey = clientKeys.changeRequest(client.id)
+        await queryClient.invalidateQueries({ queryKey })
+        const latest = queryClient.getQueryData<ChangeRequest | null>(queryKey)
+        if (!latest) {
+          onClose()
+          return
+        }
+        setRequest(latest)
+        setSkipped(new Set())
+        setReason('')
+        setConfirming(false)
+      }
+    },
   })
 
   const requester = requesterOf(client, request)

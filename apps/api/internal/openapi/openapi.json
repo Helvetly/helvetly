@@ -3460,7 +3460,7 @@
         "operationId": "send_invoice",
         "tags": ["Invoices"],
         "summary": "Email an issued invoice, or mark it sent",
-        "description": "Emails the issued document's PDF (with the client's e-invoice XML attached when the client asked for one, einvoice_format) and records a delivery; the invoice's sent_at is set. Drafts must be issued first (409 invalid_state); invoices imported as issued elsewhere cannot be sent (409 issued_elsewhere); 503 mail_unavailable when the server has no email. 422 validation_failed on to/cc/subject/message (details.fields). Sends a real email on every call, so a retry sends it again. Send {} to use the defaults. email false only marks the invoice sent (its PDF handed over another way): no email, no delivery, mail need not be set up; an invoice sent already keeps its first sent_at; 409 invalid_state for a void invoice. email false with sent false takes the mark back (sent_at cleared), refused with 409 invalid_state once the invoice was emailed.",
+        "description": "Emails the issued document's PDF (with the client's e-invoice XML attached when the client asked for one, einvoice_format) and records a delivery; the invoice's sent_at is set. Drafts, void and replaced documents cannot be emailed (409 invalid_state); invoices imported as issued elsewhere cannot be sent (409 issued_elsewhere); 503 mail_unavailable when the server has no email. 422 validation_failed on to/cc/subject/message (details.fields). Overlapping sends or a changed expected_amount_due are refused with 409. A later send emails another copy. On 502 delivery_uncertain the mail server may have accepted the message; verify delivery before resending. Send {} to use the defaults. email false only marks the invoice sent (its PDF handed over another way): no email, no delivery, mail need not be set up; an invoice sent already keeps its first sent_at; 409 invalid_state for a void invoice. email false with sent false takes the mark back (sent_at cleared), refused with 409 invalid_state once the invoice was emailed.",
         "parameters": [
           {
             "name": "id",
@@ -6622,7 +6622,7 @@
         "operationId": "create_instalment_plan",
         "tags": ["Instalments"],
         "summary": "Plan a draft invoice in instalments",
-        "description": "Splits a draft invoice into an instalment plan: one partial invoice is issued automatically per instalment, each on its own date, from the draft, which is never issued itself and is locked (409 planned on edit, delete and issue) while the plan exists. The draft must be a receivable kind without prepayments or an instalment schedule. 404 for an unknown draft; 409 invalid_state when not a draft, already planned or it has a schedule; 422 validation_failed on kind, count (2 to 12), interval, first_due_date (not before today), lead_days (0 to 60); 422 cannot_issue (planned_with_prepayments) when the draft deducts prepayments. Not idempotent: a second call is refused with 409.",
+        "description": "Splits a draft invoice into an instalment plan: one partial invoice is issued automatically per instalment, each on its own date, from the draft, which is never issued itself and is locked (409 planned on edit, delete and issue) while the plan exists. The draft must be an invoice, partial invoice, prepayment or debit note without prepayments or an instalment schedule. Each generated partial must have a positive payable amount. 404 for an unknown draft; 409 invalid_state when not a draft, already planned or it has a schedule; 422 validation_failed on kind, count (2 to 12), interval, first_due_date (not before today), lead_days (0 to 60); 422 cannot_issue (planned_with_prepayments) when the draft deducts prepayments. Not idempotent: a second call is refused with 409.",
         "parameters": [
           {
             "name": "id",
@@ -8285,6 +8285,20 @@
       "Invoice": {
         "type": "object",
         "properties": {
+          "send_uncertain_at": { "type": ["string", "null"], "format": "date-time" },
+          "unconfirmed_reminders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seq": { "type": "integer" },
+                "kind": { "type": "string" },
+                "offset_days": { "type": "integer" },
+                "at": { "type": "string", "format": "date-time" }
+              },
+              "required": ["seq", "kind", "offset_days", "at"]
+            }
+          },
           "id": {
             "type": "string"
           },
@@ -10242,6 +10256,10 @@
       "InvoiceSendInput": {
         "type": "object",
         "properties": {
+          "expected_amount_due": {
+            "type": "string",
+            "description": "Refuse a send prepared for a different outstanding balance."
+          },
           "to": {
             "type": "array",
             "items": {
@@ -10629,6 +10647,19 @@
         "properties": {
           "currency": {
             "type": "string"
+          },
+          "open_balances": {
+            "type": "array",
+            "description": "Open client balances grouped by currency, when client_id is supplied.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "currency": { "type": "string" },
+                "outstanding": { "$ref": "#/components/schemas/InvoiceSummaryAmount" },
+                "overdue": { "$ref": "#/components/schemas/InvoiceSummaryAmount" }
+              },
+              "required": ["currency", "outstanding", "overdue"]
+            }
           },
           "outstanding": {
             "$ref": "#/components/schemas/InvoiceSummaryAmount"
@@ -11531,6 +11562,8 @@
       "EngagementEntry": {
         "type": "object",
         "properties": {
+          "historical_estimate": { "type": "boolean" },
+          "invoiced_quantity": { "type": "string" },
           "id": {
             "type": "string"
           },

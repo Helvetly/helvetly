@@ -339,13 +339,16 @@ export const clientsApi = {
     request<void>(`${path(id)}/contacts/${encodeURIComponent(contactId)}`, { method: 'DELETE' }),
   changeRequest: async (id: string) =>
     (await request<{ data: ChangeRequest | null }>(`${path(id)}/change-request`)).data,
-  approveChangeRequest: (id: string, fields: string[]) =>
+  approveChangeRequest: (id: string, reviewed: ChangeRequest, fields: string[]) =>
     request<{ data: Client }>(`${path(id)}/change-request/approve`, {
       method: 'POST',
-      json: { fields },
+      json: { fields, request_id: reviewed.id, created_at: reviewed.created_at },
     }),
-  rejectChangeRequest: (id: string, reason: string) =>
-    request<void>(`${path(id)}/change-request/reject`, { method: 'POST', json: { reason } }),
+  rejectChangeRequest: (id: string, reviewed: ChangeRequest, reason: string) =>
+    request<void>(`${path(id)}/change-request/reject`, {
+      method: 'POST',
+      json: { reason, request_id: reviewed.id, created_at: reviewed.created_at },
+    }),
   files: (id: string) => request<{ data: ClientFile[] }>(`${path(id)}/files`),
   deleteFile: (id: string, fileId: string) =>
     request<void>(`${path(id)}/files/${encodeURIComponent(fileId)}`, { method: 'DELETE' }),
@@ -561,10 +564,13 @@ export const useChangeRequest = (clientId: string) =>
     queryFn: () => getChangeRequest(clientId),
   })
 /** Applies the chosen changes (field keys, `address` for the whole address); the others are discarded. */
-export const approveChangeRequest = async (clientId: string, fields: string[]) =>
-  (await clientsApi.approveChangeRequest(clientId, fields)).data
-export const rejectChangeRequest = (clientId: string, reason: string) =>
-  clientsApi.rejectChangeRequest(clientId, reason)
+export const approveChangeRequest = async (
+  clientId: string,
+  reviewed: ChangeRequest,
+  fields: string[],
+) => (await clientsApi.approveChangeRequest(clientId, reviewed, fields)).data
+export const rejectChangeRequest = (clientId: string, reviewed: ChangeRequest, reason: string) =>
+  clientsApi.rejectChangeRequest(clientId, reviewed, reason)
 
 /** Who may delete clients (members can read, create, edit and attach files). */
 export const canDeleteClients = (role: string | undefined) => role === 'owner' || role === 'admin'

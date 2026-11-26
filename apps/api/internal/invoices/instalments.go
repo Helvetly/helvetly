@@ -13,7 +13,6 @@ import (
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/instalcalc"
 	"helvetly.com/api/internal/invoicecalc"
-	"helvetly.com/api/internal/mail"
 	"helvetly.com/api/internal/notifications"
 	"helvetly.com/api/internal/store"
 )
@@ -300,8 +299,8 @@ func (s *Service) createPlan(w http.ResponseWriter, r *http.Request, sess store.
 			return err
 		}
 		p := newParser()
-		if !Receivable(inv.Kind) {
-			p.fail("kind", "Only invoices, partial, prepayment and debit notes and corrections can be paid in instalments.")
+		if !Receivable(inv.Kind) || inv.Kind == "corrected" {
+			p.fail("kind", "This document cannot be split into partial invoices.")
 		}
 		var count int
 		if json.Unmarshal(body["count"], &count) != nil || count < instalcalc.MinCount || count > instalcalc.MaxCount {
@@ -334,6 +333,13 @@ func (s *Service) createPlan(w http.ResponseWriter, r *http.Request, sess store.
 		for i, d := range dates {
 			plan.Items = append(plan.Items, store.PlanItem{Seq: i + 1, DueDate: d.Format(time.DateOnly),
 				IssueOn: d.AddDate(0, 0, -lead).Format(time.DateOnly)})
+		}
+		compute(&inv)
+		for _, item := range plan.Items {
+			partial := planPartial(inv, plan, item, today, set)
+			if len(partial.Lines) == 0 || partial.Payable() <= 0 {
+				return validationFailed(map[string]string{"count": "Each partial invoice must have a positive payable amount."})
+			}
 		}
 		if err := q.CreatePlan(ctx, plan); err != nil {
 			return err
@@ -423,6 +429,9 @@ func (s *Service) IssuePlanItem(ctx context.Context, ws store.Workspace, plan st
 		if err != nil {
 			return err
 		}
+		if src.Kind == "corrected" {
+			return invalidState("A correction cannot issue independent partial invoices.")
+		}
 		compute(&src)
 		set, err := loadSettings(ctx, q, ws.ID)
 		if err != nil {
@@ -500,40 +509,7 @@ func planPartial(src store.Invoice, plan store.Plan, item store.PlanItem, today 
 	return inv
 }
 
-// SendIssued emails an issued invoice like POST /send with its defaults: to the client's billing email, the default
-// subject and message, the stored PDF attached.
+// SendIssued delivers the worker's invoice with the same recipients, message and attachments as a manual send.
 func (s *Service) SendIssued(ctx context.Context, ws store.Workspace, inv store.Invoice) error {
-	if s.mail == nil {
-		return fmt.Errorf("send invoice %s: no mail server configured", inv.ID)
-	}
-	var to *string
-	if c, err := s.db.Client(ctx, ws.ID, inv.ClientID); err == nil {
-		to = buyerOf(c).Email
-	} else if !errors.Is(err, store.ErrNotFound) {
-		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
-	}
-	if to == nil && inv.Buyer != nil {
-		to = inv.Buyer.Email
-	}
-	if to == nil {
-		return fmt.Errorf("send invoice %s: the client has no email address", inv.ID)
-	}
-	pdf, err := s.files.Get(ctx, deref(inv.PDFKey))
-	if err != nil {
-		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
-	}
-	subject, message, err := s.draft(ctx, s.db.Q, ws.ID, inv)
-	if err != nil {
-		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
-	}
-	m := mail.Message{Workspace: ws.ID, Language: inv.Language, To: []string{*to}, Subject: subject, Text: message,
-		Attachments: []mail.Attachment{{Name: fileName(inv), ContentType: "application/pdf", Data: pdf}}}
-	if inv.Seller != nil && inv.Seller.Email != nil {
-		m.ReplyTo = *inv.Seller.Email
-	}
-	m = withLetter(m, inv)
-	if err := s.mail.Send(ctx, m); err != nil {
-		return fmt.Errorf("send invoice %s: %w", inv.ID, err)
-	}
-	return s.recordDelivery(ctx, inv.ID, nil, []string{*to}, []string{}, []string{})
+	return s.emailInvoice(ctx, store.Session{Workspace: ws}, inv, sendOptions{}, nil)
 }

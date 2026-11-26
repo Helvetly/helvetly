@@ -173,7 +173,7 @@ func TestUsageInvoiceOverageSplitAndRelease(t *testing.T) {
 	if len(lines) != 1 || lines[0] != "German · 01.11.2026 – 30.11.2026|5000|15000|Z" {
 		t.Fatalf("lines %v", lines)
 	}
-	if inv.Data.Period.InvoicedQuantity != "15" || len(inv.Data.Period.Invoices) != 1 {
+	if inv.Data.Period.InvoicedQuantity != "5" || len(inv.Data.Period.Invoices) != 1 {
 		t.Fatalf("%+v", inv.Data.Period)
 	}
 	e.fails(b, "PATCH", path+"/entries/"+newest.Data.Entry.ID, map[string]any{"quantity": "1"}, 409, "entry_invoiced")

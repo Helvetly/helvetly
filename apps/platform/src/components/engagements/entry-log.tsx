@@ -526,6 +526,18 @@ function EntryRow({
             </p>
           </div>
         )}
+        {entry.invoice &&
+          entry.invoiced_quantity &&
+          Number(entry.invoiced_quantity) < Number(entry.quantity) && (
+            <p className="text-caption text-muted-foreground">
+              {translate('alreadyInvoiced')} · {plain(entry.invoiced_quantity)} {short}
+            </p>
+          )}
+        {entry.historical_estimate && (
+          <p className="text-caption text-muted-foreground">
+            {translate('historicalInvoiceQuantity')}
+          </p>
+        )}
         {(entry.performed_by || entry.invoice) && (
           <p className="flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
             {entry.performed_by && (

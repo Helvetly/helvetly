@@ -263,7 +263,7 @@ func (q Q) EngagementPeriodsOf(ctx context.Context, engagementIDs []string) (map
 	rows, err := q.db.Query(ctx, `SELECT p.id, p.engagement_id, p.idx, to_char(p.starts_on, `+dateFmt+`),
 		to_char(p.ends_on, `+dateFmt+`), to_char(p.natural_ends_on, `+dateFmt+`), p.full_quantity, p.quantity_manual, p.quantity, p.unit_price, p.overage_unit_price,
 		coalesce((SELECT sum(en.quantity) FROM engagement_entries en WHERE en.period_id = p.id), 0),
-		coalesce((SELECT sum(en.quantity) FROM engagement_entries en JOIN invoices i ON i.id = en.invoice_id
+		coalesce((SELECT sum(a.quantity) FROM engagement_entries en JOIN engagement_entry_allocations a ON a.entry_id = en.id JOIN invoices i ON i.id = a.invoice_id
 			WHERE en.period_id = p.id AND i.status <> 'void'), 0),
 		a.id, a.number, a.status, a.kind
 		FROM engagement_periods p

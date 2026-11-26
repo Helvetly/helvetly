@@ -46,6 +46,16 @@ func (s *Service) draft(ctx context.Context, q store.Q, ws string, inv store.Inv
 	} else if !errors.Is(err, store.ErrNotFound) {
 		return "", "", err
 	}
+	if adjustedBalance(inv) {
+		// A saved invoice template can contain an unconditional request for the original payment.
+		t.Subject = emailtemplate.Default(kind, lang).Subject
+		t.Body = map[string]string{
+			"de": "Im Anhang finden Sie die Kopie der Rechnung {number} über {amount}. Der offene Betrag ist {balance}.",
+			"en": "Attached is a copy of invoice {number} for {amount}. The outstanding balance is {balance}.",
+			"fr": "Vous trouverez en pièce jointe une copie de la facture {number} de {amount}. Le solde restant est de {balance}.",
+			"it": "In allegato trova una copia della fattura {number} di {amount}. Il saldo residuo è di {balance}.",
+		}[lang]
+	}
 	var company, client string
 	if inv.Seller != nil {
 		company = inv.Seller.Name
@@ -54,7 +64,7 @@ func (s *Service) draft(ctx context.Context, q store.Q, ws string, inv store.Inv
 		client = inv.Buyer.Name
 	}
 	r := emailtemplate.Render(t, map[string]string{"document": Title(inv), "number": deref(inv.Number), "client": client,
-		"amount": inv.Currency + " " + inv.Payable().Swiss("'"), "due_date": swissDate(inv.DueDate), "company": company})
+		"amount": inv.Currency + " " + inv.Payable().Swiss("'"), "balance": inv.Currency + " " + inv.AmountDue.Swiss("'"), "due_date": swissDate(inv.DueDate), "company": company})
 	return r.Subject, withRevolut(r.Body, inv), nil
 }
 
@@ -68,9 +78,13 @@ func limitFor(raw json.RawMessage, draft string, limit int) int {
 	return limit
 }
 
+func adjustedBalance(inv store.Invoice) bool {
+	return takesPayments(inv.Kind) && (inv.Status == "paid" || inv.AmountPaid > 0 || inv.AmountCredited > 0)
+}
+
 // withRevolut adds the Revolut payment link to a message that does not hold it yet.
 func withRevolut(message string, inv store.Invoice) string {
-	if inv.Payment.RevolutURL == nil || strings.Contains(message, *inv.Payment.RevolutURL) {
+	if (adjustedBalance(inv) && inv.AmountDue == 0) || inv.Payment.RevolutURL == nil || strings.Contains(message, *inv.Payment.RevolutURL) {
 		return message
 	}
 	return message + "\n\n" + revolutPaymentLine(inv)
@@ -95,7 +109,7 @@ func (s *Service) emailDraft(w http.ResponseWriter, r *http.Request, sess store.
 	if err != nil {
 		return err
 	}
-	if inv.Status == "draft" {
+	if inv.Status == "draft" || inv.Status == "void" || inv.Status == "replaced" {
 		return invalidState("Issue the document before sending it.")
 	}
 	if inv.IssuedElsewhere() {
@@ -111,6 +125,6 @@ func (s *Service) emailDraft(w http.ResponseWriter, r *http.Request, sess store.
 		return err
 	}
 	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"to": append([]string{}, to...), "subject": subject, "message": message,
-		"reply_to": replyTo}))
+		"reply_to": replyTo, "amount_due": inv.AmountDue}))
 	return nil
 }
