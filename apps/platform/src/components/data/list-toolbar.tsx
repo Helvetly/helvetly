@@ -14,6 +14,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
+import { createPortal } from 'react-dom'
 
 import { MultiSelect, SingleSelect } from '@/components/data/list-filters'
 import { translate } from '@/lib/i18n'
@@ -437,16 +438,16 @@ const suggestionKey = <P,>(suggestion: Suggestion<P>) =>
   `${suggestion.kind}:${suggestion.field.id}:${suggestion.kind === 'value' ? suggestion.value : ''}`
 
 /**
- * The list's search: a magnifier button that opens into a field ("/" opens it too). It stays open
- * while it holds a query; Escape clears the query, then closes it. Its slot keeps the same width
- * either way and the field grows leftwards inside it, so the other toolbar controls never move.
+ * The list's search: a magnifier button in the toolbar that opens a field in its own row below it
+ * (`row`), so the toolbar's other content keeps its room ("/" opens it too). It stays open while it
+ * holds a query or a field term; Escape clears the query, then closes it.
  */
-function CollapsibleSearch<P>(props: SearchProps<P>) {
+function CollapsibleSearch<P>({ row, ...props }: SearchProps<P> & { row: HTMLElement | null }) {
   const { label, value, query, className } = props
   const [open, setOpen] = useState(false)
   const input = useRef<HTMLInputElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
   const focusInput = useRef(false)
-  const returnFocus = useRef(false)
   const terms = query ? termsOf(query.fields, query.params) : []
   const expanded = open || value !== '' || terms.length > 0
 
@@ -471,16 +472,31 @@ function CollapsibleSearch<P>(props: SearchProps<P>) {
   }, [expanded])
 
   return (
-    <div className={cn('flex min-w-0 flex-1 justify-end', className)}>
-      <div
-        className={cn(
-          'flex h-8 max-w-full items-center',
-          expanded
-            ? 'w-[clamp(180px,26vw,320px)] sm:w-full sm:max-w-[40rem] sm:min-w-[22rem]'
-            : 'w-8',
-        )}
-      >
-        {expanded ? (
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            ref={button}
+            variant="ghost"
+            size="icon"
+            aria-label={label}
+            aria-keyshortcuts="/"
+            aria-expanded={expanded}
+            onClick={() => {
+              if (input.current) return input.current.focus()
+              focusInput.current = true
+              setOpen(true)
+            }}
+            className={cn('text-muted-foreground', className)}
+          >
+            <Search className="stroke-[1.5]" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{translate('search')}</TooltipContent>
+      </Tooltip>
+      {expanded &&
+        row &&
+        createPortal(
           <QueryInput
             {...props}
             inputRef={input}
@@ -489,39 +505,13 @@ function CollapsibleSearch<P>(props: SearchProps<P>) {
             onFocus={() => setOpen(true)}
             onBlur={() => setOpen(false)}
             onEscape={() => {
-              returnFocus.current = true
               setOpen(false)
-              input.current?.blur()
+              button.current?.focus()
             }}
-          />
-        ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                ref={(node) => {
-                  if (node && returnFocus.current) {
-                    returnFocus.current = false
-                    node.focus()
-                  }
-                }}
-                variant="ghost"
-                size="icon"
-                aria-label={label}
-                aria-keyshortcuts="/"
-                onClick={() => {
-                  focusInput.current = true
-                  setOpen(true)
-                }}
-                className="text-muted-foreground"
-              >
-                <Search className="stroke-[1.5]" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{translate('search')}</TooltipContent>
-          </Tooltip>
+          />,
+          row,
         )}
-      </div>
-    </div>
+    </>
   )
 }
 
@@ -530,12 +520,12 @@ function CollapsibleSearch<P>(props: SearchProps<P>) {
  * also takes field terms (`status:paid`, `name:"Acme AG"`), shown as chips inside it.
  */
 export function ListSearch<P>({
-  collapsible,
+  row,
   ...props
 }: SearchProps<P> & {
-  /** Fold into a magnifier button until asked for (the Documents page). */
-  collapsible?: boolean
+  /** Fold into a magnifier button that opens the field in this row below the toolbar (the Documents page). */
+  row?: HTMLElement | null
 }) {
-  if (collapsible) return <CollapsibleSearch {...props} />
+  if (row !== undefined) return <CollapsibleSearch row={row} {...props} />
   return <QueryInput {...props} className={cn('flex-1', props.className)} />
 }

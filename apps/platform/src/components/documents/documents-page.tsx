@@ -30,6 +30,7 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronRight,
+  Ellipsis,
   ClipboardPaste,
   Clock,
   HardDrive,
@@ -256,6 +257,7 @@ export function DocumentsPage() {
   const aiLock = useFeatureLock('ai_import')
   const ai = useAI()
   const [organizing, setOrganizing] = useState(false)
+  const [searchRow, setSearchRow] = useState<HTMLDivElement | null>(null)
   // Documents being read by "Extract with AI": the import drawer is open on them.
   const [extracting, setExtracting] = useState<string[] | null>(null)
   const pathname = usePathname()
@@ -1140,7 +1142,7 @@ export function DocumentsPage() {
         />
       )}
       <div className="relative flex flex-1">
-        <aside className="hidden w-[276px] shrink-0 border-r md:block">
+        <aside className="hidden w-[276px] shrink-0 border-r md:block xl:w-80">
           <div className="sticky top-[52px] h-[calc(100svh-68px)] overflow-y-auto">
             {folders.data ? (
               <FolderTree
@@ -1210,8 +1212,7 @@ export function DocumentsPage() {
             {listing && (
               <>
                 <ListSearch
-                  collapsible
-                  className="mr-1 flex-none"
+                  row={searchRow}
                   label={translate('searchFiles')}
                   placeholder={translate('searchAllFiles')}
                   value={search}
@@ -1242,6 +1243,11 @@ export function DocumentsPage() {
               </>
             )}
           </div>
+          {/* The search field's own row, filled while it is open (see ListSearch). */}
+          <div
+            ref={setSearchRow}
+            className="sticky top-[100px] z-10 flex border-b bg-card px-2 py-2 empty:hidden md:px-3"
+          />
 
           {view.section === 'templates' ? (
             <TemplatesView
@@ -1701,6 +1707,35 @@ function Breadcrumbs({
   term: string
   onOpen: (id: string | null) => void
 }) {
+  // State, not a ref: the nav mounts again after a search, and the measuring follows it.
+  const [nav, setNav] = useState<HTMLElement | null>(null)
+  // An unseen copy of the whole path: its width says whether every folder fits.
+  const ruler = useRef<HTMLSpanElement>(null)
+  // all: every folder shows; middle: the ones between fold into "…"; first: "All documents" too.
+  const [fold, setFold] = useState<'all' | 'middle' | 'first'>('all')
+  useEffect(() => {
+    const element = nav
+    const copy = ruler.current
+    if (!element || !copy || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      const room = element.clientWidth - 8 // less its p-1
+      const parts = Array.from(copy.children, (part) => part.getBoundingClientRect().width)
+      // The "…" button with its chevron and gaps.
+      const more = 48
+      setFold(
+        copy.offsetWidth <= room
+          ? 'all'
+          : (parts[0] ?? 0) + more + (parts.at(-1) ?? 0) <= room
+            ? 'middle'
+            : 'first',
+      )
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    observer.observe(copy)
+    return () => observer.disconnect()
+  }, [nav])
   if (searching)
     return (
       <p className="min-w-0 flex-1 truncate px-2 text-[15px]">
@@ -1709,22 +1744,82 @@ function Breadcrumbs({
         <span className="text-muted-foreground">{translate('inAllFolders')}</span>
       </p>
     )
+  const names = [
+    { id: 'all', name: translate('allDocuments') },
+    ...crumbs.map((folder) => ({ id: folder.id, name: folderLabel(folder) })),
+  ]
+  const last = crumbs.at(-1)
+  // Too long for its room: the folders before the current one fold into a menu, the first last.
+  const folded = fold === 'all' || !last ? [] : crumbs.slice(0, -1)
+  const hidden: (Folder | null)[] = fold === 'first' ? [null, ...folded] : folded
+  const separator = <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
   return (
     <nav
+      ref={setNav}
       aria-label={translate('breadcrumbs')}
-      className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden"
+      // Room for the "…" button's focus ring inside the clipping box.
+      className="relative -m-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden p-1"
     >
-      <Crumb target={null} current={crumbs.length === 0} onOpen={onOpen}>
-        {translate('allDocuments')}
-      </Crumb>
-      {crumbs.map((folder, i) => (
-        <span key={folder.id} className="flex min-w-0 items-center gap-0.5">
-          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
-          <Crumb target={folder.id} current={i === crumbs.length - 1} onOpen={onOpen}>
-            {folderLabel(folder)}
-          </Crumb>
-        </span>
-      ))}
+      <span
+        ref={ruler}
+        aria-hidden
+        className="invisible absolute flex w-max items-center gap-0.5 text-title-sm font-medium"
+      >
+        {names.map(({ id, name }, i) => (
+          <span key={id} className="flex items-center gap-0.5">
+            {i > 0 && separator}
+            {/* Drawn from the attribute: no text of its own for search or a screen reader. */}
+            <span data-name={name} className="px-2 before:content-[attr(data-name)]" />
+          </span>
+        ))}
+      </span>
+      {(fold !== 'first' || !last) && (
+        <Crumb target={null} current={crumbs.length === 0} onOpen={onOpen}>
+          {translate('allDocuments')}
+        </Crumb>
+      )}
+      {hidden.length > 0 && last ? (
+        <>
+          {fold !== 'first' && separator}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={translate('breadcrumbsHidden')}
+                className="shrink-0 text-muted-foreground"
+              >
+                <Ellipsis />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {hidden.map((folder) => (
+                <DropdownMenuItem
+                  key={folder?.id ?? 'all'}
+                  onSelect={() => onOpen(folder?.id ?? null)}
+                >
+                  {folder ? folderLabel(folder) : translate('allDocuments')}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <span className="flex min-w-0 items-center gap-0.5">
+            {separator}
+            <Crumb target={last.id} current onOpen={onOpen}>
+              {folderLabel(last)}
+            </Crumb>
+          </span>
+        </>
+      ) : (
+        crumbs.map((folder, i) => (
+          <span key={folder.id} className="flex min-w-0 items-center gap-0.5">
+            {separator}
+            <Crumb target={folder.id} current={i === crumbs.length - 1} onOpen={onOpen}>
+              {folderLabel(folder)}
+            </Crumb>
+          </span>
+        ))
+      )}
     </nav>
   )
 }
@@ -1834,7 +1929,7 @@ function SortMenu({
               className="cursor-pointer gap-1.5 font-normal text-foreground/80"
             >
               <ArrowDownUp className="stroke-[1.5]" />
-              <span className="max-lg:sr-only">{SORT_LABELS[view.sort]}</span>
+              <span className="max-xl:sr-only">{SORT_LABELS[view.sort]}</span>
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>

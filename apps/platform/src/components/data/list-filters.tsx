@@ -2,6 +2,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { Combobox } from '@helvetly/ui/components/combobox'
 import { Input } from '@helvetly/ui/components/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { ListFilter, X } from 'lucide-react'
 import { Fragment, useState, type ReactNode } from 'react'
@@ -93,26 +94,34 @@ export function ListFilters<P>({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant={variant}
-          size="sm"
-          className={cn(
-            'font-normal',
-            variant === 'ghost' ? 'text-title-sm' : 'gap-1.5 text-foreground/80',
-          )}
-        >
-          <ListFilter className="stroke-[1.5]" />
-          <span className={cn(variant === 'outline' && 'max-lg:sr-only')}>
-            {translate('filters').trim()}
-          </span>
-          {count > 0 && (
-            <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-caption text-primary-foreground tabular-nums">
-              {count}
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant={variant}
+              size="sm"
+              className={cn(
+                'font-normal',
+                variant === 'ghost' ? 'text-title-sm' : 'gap-1.5 text-foreground/80',
+              )}
+            >
+              <ListFilter className="stroke-[1.5]" />
+              <span className={cn(variant === 'outline' && 'max-xl:sr-only')}>
+                {translate('filters').trim()}
+              </span>
+              {count > 0 && (
+                <span className="ml-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-caption text-primary-foreground tabular-nums">
+                  {count}
+                </span>
+              )}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        {/* Named while the label is folded away (the Documents toolbar's outline button). */}
+        <TooltipContent className={cn(variant !== 'outline' && 'hidden', 'xl:hidden')}>
+          {translate('filters').trim()}
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent
         align={align}
         aria-label={translate('filters').trim()}
