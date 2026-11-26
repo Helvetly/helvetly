@@ -47,6 +47,7 @@ const KIND_LABELS: Record<EmailKind, string> = {
   credit_note: translate('emailTemplatesKindCreditNote'),
   proforma: translate('emailTemplatesKindProforma'),
   quote: translate('emailTemplatesKindQuote'),
+  payment_confirmation: translate('paymentConfirmation'),
   document: translate('emailTemplatesKindDocument'),
   signature_request: translate('emailTemplatesKindSignatureRequest'),
   signature_reminder: translate('emailTemplatesKindSignatureReminder'),
@@ -58,6 +59,7 @@ const KIND_ABOUT: Record<EmailKind, string> = {
   credit_note: translate('emailTemplatesAboutCreditNote'),
   proforma: translate('emailTemplatesAboutProforma'),
   quote: translate('emailTemplatesAboutQuote'),
+  payment_confirmation: translate('emailTemplatesAboutPaymentConfirmation'),
   document: translate('emailTemplatesAboutDocument'),
   signature_request: translate('emailTemplatesAboutSignatureRequest'),
   signature_reminder: translate('emailTemplatesAboutSignatureReminder'),
@@ -79,6 +81,8 @@ const VARIABLE_HINTS: Record<string, string> = {
   due_date: translate('emailTemplatesVarDueDate'),
   valid_until: translate('emailTemplatesVarValidUntil'),
   sender: translate('emailTemplatesVarSender'),
+  paid_on: translate('emailTemplatesVarPaidOn'),
+  balance: translate('emailTemplatesVarBalance'),
 }
 
 type Fields = { subject?: string; body?: string }
@@ -475,7 +479,9 @@ function TemplateDialog({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {VARIABLE_HINTS[variable] ?? translate('emailTemplatesVariableUnknown')}
+                    {(template.kind === 'payment_confirmation' && variable === 'amount'
+                      ? translate('emailTemplatesVarAmountReceived')
+                      : VARIABLE_HINTS[variable]) ?? translate('emailTemplatesVariableUnknown')}
                   </TooltipContent>
                 </Tooltip>
               ))}

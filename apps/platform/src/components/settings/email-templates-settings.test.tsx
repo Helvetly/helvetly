@@ -85,12 +85,13 @@ const field = (name: string) =>
 test('lists one row per document type; the language is chosen in the dialog', async () => {
   const user = setup()
   const list = await screen.findByRole('list', { name: 'Email templates' })
-  expect(within(list).getAllByRole('listitem')).toHaveLength(7)
+  expect(within(list).getAllByRole('listitem')).toHaveLength(8)
   for (const kind of [
     'Invoice',
     'Credit note',
     'Proforma',
     'Quote',
+    'Payment confirmation',
     'Document',
     'Request to sign',
     'Signing reminder',

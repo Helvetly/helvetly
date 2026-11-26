@@ -28,13 +28,14 @@ var languageNames = map[string]string{"de": "German (Swiss usage: ss, never ß)"
 
 // purposes: what each kind's email is for, so the model writes towards it.
 var purposes = map[string]string{
-	"invoice":            "sends an invoice to a client as an attached PDF",
-	"credit_note":        "sends a credit note to a client as an attached PDF",
-	"proforma":           "sends a proforma invoice to a client as an attached PDF",
-	"quote":              "sends a quote (offer) to a client as an attached PDF",
-	"document":           "sends a document to a client as an attached PDF",
-	"signature_request":  "asks someone to review and sign a document through a link shown below the message",
-	"signature_reminder": "reminds someone that a document still waits for their signature through a link shown below the message",
+	"invoice":              "sends an invoice to a client as an attached PDF",
+	"credit_note":          "sends a credit note to a client as an attached PDF",
+	"proforma":             "sends a proforma invoice to a client as an attached PDF",
+	"quote":                "sends a quote (offer) to a client as an attached PDF",
+	"payment_confirmation": "thanks a client for a payment on an invoice and confirms the amount and date received; the remaining balance follows in a summary below the message",
+	"document":             "sends a document to a client as an attached PDF",
+	"signature_request":    "asks someone to review and sign a document through a link shown below the message",
+	"signature_reminder":   "reminds someone that a document still waits for their signature through a link shown below the message",
 }
 
 const aiInstructions = `You write the email template of Helvetly, business software for small Swiss companies, in German, French, Italian and English at once.

@@ -8821,6 +8821,10 @@
       "PaymentInput": {
         "type": "object",
         "properties": {
+          "notify_client": {
+            "type": "boolean",
+            "description": "Email the client a confirmation of this payment (sent shortly after it is recorded, once per payment; never for an invoice issued elsewhere or a client without an email address). Default: the workspace's payment_confirmation invoice setting."
+          },
           "request_id": {
             "type": "string",
             "minLength": 1,
@@ -10174,6 +10178,11 @@
       "InvoiceDelivery": {
         "type": "object",
         "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["invoice", "payment_confirmation"],
+            "description": "invoice: the document itself went out; payment_confirmation: the client was told a payment arrived."
+          },
           "id": {
             "type": "string"
           },
@@ -10210,7 +10219,7 @@
             ]
           }
         },
-        "required": ["id", "to", "cc", "bcc", "sent_at", "sent_by"]
+        "required": ["id", "kind", "to", "cc", "bcc", "sent_at", "sent_by"]
       },
       "InvoiceRefundInput": {
         "type": "object",
@@ -10273,6 +10282,10 @@
       "InvoiceMarkPaidInput": {
         "type": "object",
         "properties": {
+          "notify_client": {
+            "type": "boolean",
+            "description": "Email the client a confirmation of this payment (sent shortly after it is recorded, once per payment; never for an invoice issued elsewhere or a client without an email address). Default: the workspace's payment_confirmation invoice setting."
+          },
           "paid_on": {
             "type": "string",
             "format": "date",

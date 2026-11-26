@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
+import { Checkbox } from '@helvetly/ui/components/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ import {
   useAddPayment,
   useAddRefund,
   useInvoice,
+  useInvoiceSettings,
   useSendInvoice,
   type InvoiceListItem,
   type IssueReason,
@@ -182,6 +184,10 @@ export function PaymentDialog({
   const [paidOn, setPaidOn] = useState(today())
   const [method, setMethod] = useState<PaymentMethod>('bank_transfer')
   const [note, setNote] = useState('')
+  // null until ticked or unticked: the API then follows the workspace's setting, which the box shows.
+  const [notify, setNotify] = useState<boolean | null>(null)
+  const settings = useInvoiceSettings()
+  const notifyClient = notify ?? settings.data?.payment_confirmation ?? true
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [requestId] = useState(() => crypto.randomUUID())
   const attemptedAmount = useRef<string | null>(null)
@@ -210,6 +216,7 @@ export function PaymentDialog({
           paid_on: paidOn,
           method,
           ...(note.trim() ? { note: note.trim() } : {}),
+          ...(notify === null ? {} : { notify_client: notify }),
         },
       },
       {
@@ -316,6 +323,13 @@ export function PaymentDialog({
           className={fieldClass}
         />
       </FormField>
+      <label className="flex items-center gap-2.5 text-[13.5px]">
+        <Checkbox
+          checked={notifyClient}
+          onCheckedChange={(checked) => setNotify(checked === true)}
+        />
+        {translate('sendPaymentConfirmationToTheClient')}
+      </label>
     </FormDialog>
   )
 }

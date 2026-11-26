@@ -24,7 +24,9 @@ func payable(inv store.Invoice) error {
 	return nil
 }
 
-func (s *Service) recordPayment(ctx context.Context, q store.Q, sess store.Session, inv store.Invoice, p store.Payment) error {
+// recordPayment records p on inv (locked) and, when notify (nil: the workspace's setting), queues the client's
+// confirmation, sent once the transaction commits.
+func (s *Service) recordPayment(ctx context.Context, q store.Q, sess store.Session, inv store.Invoice, p store.Payment, notify *bool) error {
 	if err := checkOpen(ctx, q, sess.Workspace.ID, p.PaidOn); err != nil {
 		return err
 	}
@@ -37,6 +39,9 @@ func (s *Service) recordPayment(ctx context.Context, q store.Q, sess store.Sessi
 		return err
 	}
 	if err := q.RefreshBalance(ctx, inv.ID, s.now()); err != nil {
+		return err
+	}
+	if err := s.queueConfirmation(ctx, q, sess, inv, p, notify); err != nil {
 		return err
 	}
 	to := store.NotifyTo{Roles: notifications.Managers, Except: sess.User.ID}
@@ -69,6 +74,7 @@ func (s *Service) addPayment(w http.ResponseWriter, r *http.Request, sess store.
 		PaidOn    json.RawMessage `json:"paid_on"`
 		Method    json.RawMessage `json:"method"`
 		Note      json.RawMessage `json:"note"`
+		Notify    *bool           `json:"notify_client"`
 	}
 	if !s.auth.Decode(w, r, &body) {
 		return nil
@@ -125,7 +131,7 @@ func (s *Service) addPayment(w http.ResponseWriter, r *http.Request, sess store.
 		if pay.Amount > inv.AmountDue {
 			return validationFailed(map[string]string{"amount": "The amount exceeds what is due (" + inv.Currency + " " + inv.AmountDue.String() + ")."})
 		}
-		return s.recordPayment(ctx, q, sess, inv, pay)
+		return s.recordPayment(ctx, q, sess, inv, pay, body.Notify)
 	})
 	if err != nil {
 		return err
@@ -138,6 +144,7 @@ func (s *Service) markPaid(w http.ResponseWriter, r *http.Request, sess store.Se
 	var body struct {
 		PaidOn json.RawMessage `json:"paid_on"`
 		Method json.RawMessage `json:"method"`
+		Notify *bool           `json:"notify_client"`
 	}
 	if !s.auth.Decode(w, r, &body) {
 		return nil
@@ -150,14 +157,14 @@ func (s *Service) markPaid(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err := p.err(); err != nil {
 		return err
 	}
-	if err := s.payDue(r.Context(), sess, r.PathValue("id"), on, method); err != nil {
+	if err := s.payDue(r.Context(), sess, r.PathValue("id"), on, method, body.Notify); err != nil {
 		return err
 	}
 	return s.respond(w, r, sess, http.StatusOK, r.PathValue("id"))
 }
 
 // payDue records, in its own transaction, one payment of everything still due, which settles every instalment.
-func (s *Service) payDue(ctx context.Context, sess store.Session, id, on, method string) error {
+func (s *Service) payDue(ctx context.Context, sess store.Session, id, on, method string, notify *bool) error {
 	return s.db.Tx(ctx, func(q store.Q) error {
 		inv, err := q.Invoice(ctx, sess.Workspace.ID, id, s.today(sess.Workspace), true)
 		if err != nil {
@@ -169,7 +176,7 @@ func (s *Service) payDue(ctx context.Context, sess store.Session, id, on, method
 		if inv.AmountDue <= 0 {
 			return invalidState("Nothing is due on this invoice.")
 		}
-		return s.recordPayment(ctx, q, sess, inv, store.Payment{Amount: inv.AmountDue, PaidOn: on, Method: method})
+		return s.recordPayment(ctx, q, sess, inv, store.Payment{Amount: inv.AmountDue, PaidOn: on, Method: method}, notify)
 	})
 }
 

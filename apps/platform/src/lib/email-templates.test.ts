@@ -31,11 +31,11 @@ const setup = () => {
   return { client, wrapper }
 }
 
-test('lists 28 templates and builds the invoice draft from the default', async () => {
+test('lists 32 templates and builds the invoice draft from the default', async () => {
   const { wrapper } = setup()
   const list = renderHook(() => useEmailTemplates(), { wrapper })
   const draft = renderHook(() => useInvoiceEmailDraft('inv_1'), { wrapper })
-  await waitFor(() => expect(list.result.current.data).toHaveLength(28))
+  await waitFor(() => expect(list.result.current.data).toHaveLength(32))
   expect(list.result.current.data?.[0]).toMatchObject({ kind: 'invoice', language: 'de' })
   await waitFor(() => expect(draft.result.current.data).toBeDefined())
   expect(draft.result.current.data).toEqual({

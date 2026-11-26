@@ -6055,5 +6055,15 @@
   "cashFlowYearsShown": "Anni mostrati",
   "cashFlowYearToDate": "{year} da inizio anno",
   "cashFlowYearToDateShort": "{year} da inizio anno",
-  "cashFlowVsYear": "{change} rispetto al {year}"
+  "cashFlowVsYear": "{change} rispetto al {year}",
+  "clientEmails": "E-mail ai clienti",
+  "clientEmailsDescription": "Le e-mail che i suoi clienti ricevono automaticamente da lei.",
+  "emailClientsAPaymentConfirmation": "Inviare ai clienti una conferma di pagamento",
+  "emailClientsAPaymentConfirmationHelp": "Quando registra un pagamento, il cliente riceve un ringraziamento con l’importo, la data e il saldo residuo. Può ometterlo per un singolo pagamento.",
+  "sendPaymentConfirmationToTheClient": "Inviare la conferma di pagamento al cliente",
+  "paymentConfirmation": "Conferma di pagamento",
+  "emailTemplatesAboutPaymentConfirmation": "Inviata al cliente quando registra un pagamento su una fattura, a meno che non la disattivi.",
+  "emailTemplatesVarPaidOn": "Il giorno in cui è arrivato il pagamento, ad es. 24.11.2026",
+  "emailTemplatesVarBalance": "Quanto resta da pagare dopo il pagamento, ad es. CHF 0.00",
+  "emailTemplatesVarAmountReceived": "L’importo ricevuto, ad es. CHF 1’234.50"
 }

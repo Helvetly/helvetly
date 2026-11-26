@@ -36,10 +36,12 @@ type Settings struct {
 	RevolutUsername  *string             `json:"revolut_username"` // without the revolut.me/ prefix
 	Instalments      InstalmentSettings  `json:"instalments"`
 	Dunning          DunningSettings     `json:"dunning"`
-	LogoFileID       *string             `json:"logo_file_id"`
-	LogoURL          *string             `json:"logo_url"` // derived: the logo's download path
-	IsComplete       bool                `json:"is_complete"`
-	MissingFields    []string            `json:"missing_fields"`
+	// PaymentConfirmation: a recorded payment emails the client a confirmation unless the person recording it says not to.
+	PaymentConfirmation bool     `json:"payment_confirmation"`
+	LogoFileID          *string  `json:"logo_file_id"`
+	LogoURL             *string  `json:"logo_url"` // derived: the logo's download path
+	IsComplete          bool     `json:"is_complete"`
+	MissingFields       []string `json:"missing_fields"`
 }
 
 type Seller struct {
@@ -51,7 +53,7 @@ type Seller struct {
 func defaultSettings() Settings {
 	return Settings{Seller: Seller{Party: store.Party{Country: "CH"}}, VATRegistered: true, DefaultVATMode: invoicecalc.Exclusive,
 		DefaultVATRate: 810, Currency: "CHF", Language: "de", DefaultTermsDays: 30, NumberFormat: "{YYYY}-{NNN}", QRBillEnabled: true,
-		Instalments: defaultInstalmentSettings(), Dunning: defaultDunningSettings()}
+		Instalments: defaultInstalmentSettings(), Dunning: defaultDunningSettings(), PaymentConfirmation: true}
 }
 
 func loadSettings(ctx context.Context, q store.Q, workspaceID string) (Settings, error) {
@@ -144,7 +146,7 @@ func (s *Service) getSettings(w http.ResponseWriter, r *http.Request, sess store
 var bicPattern = regexp.MustCompile(`^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$`)
 
 var settingsKeys = []string{"seller", "vat_registered", "default_vat_mode", "default_vat_rate", "iban", "bank_name", "bic", "currency",
-	"language", "default_terms_days", "number_format", "footer", "qr_bill_enabled", "revolut_enabled", "revolut_username", "instalments", "dunning", "logo_file_id", "logo_url", "is_complete", "missing_fields"}
+	"language", "default_terms_days", "number_format", "footer", "qr_bill_enabled", "revolut_enabled", "revolut_username", "instalments", "dunning", "payment_confirmation", "logo_file_id", "logo_url", "is_complete", "missing_fields"}
 
 var sellerKeys = []string{"name", "street", "street_number", "apt", "zip", "city", "country", "vat_number", "email", "phone", "electronic_address", "registration_number", "legal_form", "website"}
 
@@ -275,8 +277,9 @@ func (s *Service) putSettings(w http.ResponseWriter, r *http.Request, sess store
 				set.NumberFormat = p.required(k, v, maxFormatLen, parseNumberFormat, "Enter a number format, such as {YYYY}-{NNN}.")
 			case "footer":
 				set.Footer = p.text(k, v, MaxDocumentText, nil)
-			case "qr_bill_enabled", "revolut_enabled":
-				into := map[string]*bool{"qr_bill_enabled": &set.QRBillEnabled, "revolut_enabled": &set.RevolutEnabled}[k]
+			case "qr_bill_enabled", "revolut_enabled", "payment_confirmation":
+				into := map[string]*bool{"qr_bill_enabled": &set.QRBillEnabled, "revolut_enabled": &set.RevolutEnabled,
+					"payment_confirmation": &set.PaymentConfirmation}[k]
 				if json.Unmarshal(v, into) != nil || isNull(v) {
 					p.fail(k, "Choose true or false.")
 				}

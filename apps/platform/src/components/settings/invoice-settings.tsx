@@ -32,6 +32,7 @@ import {
   Image as ImageIcon,
   Landmark,
   Lock,
+  MailCheck,
   PanelBottom,
   Percent,
   QrCode,
@@ -154,6 +155,7 @@ type Values = {
   dunning_interest_enabled: boolean
   dunning_interest_rate: string
   dunning_interest_from: DunningSettings['interest_from']
+  payment_confirmation: boolean
 }
 
 const afterDays = (typed: string) =>
@@ -252,6 +254,7 @@ export function valuesFrom(settings: InvoiceSettings): Values {
     dunning_interest_enabled: settings.dunning.interest_enabled,
     dunning_interest_rate: settings.dunning.interest_rate,
     dunning_interest_from: settings.dunning.interest_from,
+    payment_confirmation: settings.payment_confirmation,
   }
 }
 
@@ -323,6 +326,7 @@ export function toSettingsInput(values: Values): SettingsInput {
         parseDecimalInput(values.dunning_interest_rate, 2) ?? values.dunning_interest_rate,
       interest_from: values.dunning_interest_from,
     },
+    payment_confirmation: values.payment_confirmation,
   }
 }
 
@@ -417,6 +421,7 @@ type SectionId =
   | 'numbering'
   | 'defaults'
   | 'instalments'
+  | 'client_emails'
   | 'dunning'
   | 'footer'
 export type SettingsPageId = 'company' | 'invoices'
@@ -531,6 +536,14 @@ const SECTIONS: {
       'instalments_remind_before_days',
       'instalments_remind_after_days',
     ],
+  },
+  {
+    id: 'client_emails',
+    page: 'invoices',
+    title: translate('clientEmails'),
+    icon: MailCheck,
+    required: [],
+    fields: ['payment_confirmation'],
   },
   {
     id: 'dunning',
@@ -1624,6 +1637,23 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     </SettingsPreview>
                   </>
                 )}
+              </Section>
+            )}
+
+            {shows('client_emails') && (
+              <Section
+                id="client_emails"
+                state={state('client_emails')}
+                title={translate('clientEmails')}
+                description={translate('clientEmailsDescription')}
+              >
+                <SwitchRow
+                  id={inputId('payment_confirmation')}
+                  label={translate('emailClientsAPaymentConfirmation')}
+                  description={translate('emailClientsAPaymentConfirmationHelp')}
+                  checked={values.payment_confirmation}
+                  onCheckedChange={(on) => set('payment_confirmation', on)}
+                />
               </Section>
             )}
 

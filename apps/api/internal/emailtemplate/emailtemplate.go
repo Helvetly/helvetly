@@ -28,7 +28,7 @@ const MaxTemplate = 1000
 const maxSubject = 200
 
 var (
-	Kinds     = []string{"invoice", "credit_note", "proforma", "quote", "document", "signature_request", "signature_reminder"}
+	Kinds     = []string{"invoice", "credit_note", "proforma", "quote", "payment_confirmation", "document", "signature_request", "signature_reminder"}
 	Languages = []string{"de", "fr", "it", "en"}
 )
 
@@ -43,6 +43,8 @@ func Variables(kind string) []string {
 		return append(slices.Clone(common), "valid_until")
 	case "credit_note", "proforma":
 		return slices.Clone(common)
+	case "payment_confirmation": // amount: what arrived; balance: what is still open after it
+		return append(slices.Clone(common), "paid_on", "balance")
 	case "document":
 		return []string{"document", "client", "sender", "company"}
 	case "signature_request", "signature_reminder":
@@ -54,7 +56,7 @@ func Variables(kind string) []string {
 // Required lists the variables every text of a kind written by AI must keep: the record it is about.
 func Required(kind string) []string {
 	switch kind {
-	case "invoice", "credit_note", "proforma", "quote":
+	case "invoice", "credit_note", "proforma", "quote", "payment_confirmation":
 		return []string{"number"}
 	case "document", "signature_request", "signature_reminder":
 		return []string{"document"}
@@ -153,8 +155,27 @@ var signing = map[string]map[string]Template{
 	},
 }
 
+// confirmations is the built-in text of the email confirming a payment: the amounts, the balance and the next
+// instalment follow in the email's summary.
+var confirmations = map[string]Template{
+	"de": {"Zahlung erhalten: {document} {number}",
+		"Guten Tag\n\nVielen Dank für Ihre Zahlung. Wir haben am {paid_on} {amount} für {document} {number} erhalten.\n\nBei Fragen antworten Sie einfach auf diese E-Mail.\n\nFreundliche Grüsse\n{company}"},
+	"fr": {"Paiement reçu : {document} {number}",
+		"Bonjour\n\nMerci pour votre paiement. Nous avons bien reçu {amount} le {paid_on} ({document} {number}).\n\nPour toute question, répondez simplement à cet e-mail.\n\nMeilleures salutations\n{company}"},
+	"it": {"Pagamento ricevuto: {document} {number}",
+		"Buongiorno\n\nGrazie per il suo pagamento. Abbiamo ricevuto {amount} il {paid_on} ({document} {number}).\n\nPer qualsiasi domanda, risponda semplicemente a questa e-mail.\n\nCordiali saluti\n{company}"},
+	"en": {"Payment received: {document} {number}",
+		"Hello\n\nThank you for your payment. We received {amount} on {paid_on} for {document} {number}.\n\nIf you have a question, reply to this email.\n\nKind regards\n{company}"},
+}
+
 // Default is the built-in text of a kind in a language (English for any other); empty for an unknown kind.
 func Default(kind, language string) Template {
+	if kind == "payment_confirmation" {
+		if t, ok := confirmations[language]; ok {
+			return t
+		}
+		return confirmations["en"]
+	}
 	if texts, ok := signing[kind]; ok {
 		if t, ok := texts[language]; ok {
 			return t
