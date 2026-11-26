@@ -1,8 +1,8 @@
-package invoicepdf
+package phone
 
 import "testing"
 
-func TestDisplayPhone(t *testing.T) {
+func TestDisplay(t *testing.T) {
 	for in, want := range map[string]string{
 		"+41786533224":     "+41 78 653 32 24",
 		"+41782390999":     "+41 78 239 09 99",
@@ -17,8 +17,8 @@ func TestDisplayPhone(t *testing.T) {
 		"+41 12":           "+41 12",
 		"":                 "",
 	} {
-		if got := displayPhone(in); got != want {
-			t.Errorf("displayPhone(%q) = %q, want %q", in, got, want)
+		if got := Display(in); got != want {
+			t.Errorf("Display(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

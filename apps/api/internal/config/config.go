@@ -34,6 +34,9 @@ type Config struct {
 	// MediaURL is the origin downloads are redirected to (MEDIA_URL), signed links under /api/media/ served by this
 	// binary on another host. Empty = presigned or proxied downloads (S3_PROXY_DOWNLOADS).
 	MediaURL string
+	// WebURL is the public website's origin (NEXT_PUBLIC_WEB_URL, the one the platform links to): Helvetly's own email
+	// links its help, privacy policy and terms there.
+	WebURL string
 	// APIURL is the origin bearer clients and agents are told to use (PUBLIC_API_URL), e.g. https://api.helvetly.com, the
 	// same binary on its own host. Empty = PUBLIC_URL serves them too.
 	APIURL string
@@ -341,6 +344,13 @@ func Load() (Config, error) {
 		default:
 			c.MediaURL = m.Scheme + "://" + strings.ToLower(m.Host)
 		}
+	}
+	c.WebURL = env("NEXT_PUBLIC_WEB_URL", "https://www.helvetly.com")
+	if w, err := url.Parse(c.WebURL); err != nil || (w.Scheme != "http" && w.Scheme != "https") || w.Host == "" || (w.Path != "" && w.Path != "/") ||
+		w.RawQuery != "" || w.Fragment != "" || w.User != nil || (!localHost(w.Hostname()) && w.Scheme != "https") {
+		fail("NEXT_PUBLIC_WEB_URL must be an origin such as https://www.helvetly.com, https on a public host, got %q", c.WebURL)
+	} else {
+		c.WebURL = w.Scheme + "://" + strings.ToLower(w.Host)
 	}
 	if c.APIURL = env("PUBLIC_API_URL", ""); c.APIURL != "" {
 		a, err := url.Parse(c.APIURL)

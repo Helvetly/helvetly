@@ -59,6 +59,8 @@ func TestMeteredCountsBusinessEmailOnly(t *testing.T) {
 		{name: "allowance used up: not sent", msg: business, meter: &fakeEmailMeter{refuse: refused}, wantErr: refused, settled: "[]"},
 		{name: "sign-in code: never counted, never refused", msg: Message{To: []string{"me@x.ch"}}, meter: &fakeEmailMeter{refuse: refused},
 			sent: 1, settled: "[]"},
+		{name: "portal sign-in code: a workspace's, never counted, never refused", msg: Message{Workspace: "wsp_1", Uncounted: true, To: []string{"client@x.ch"}},
+			meter: &fakeEmailMeter{refuse: refused}, sent: 1, settled: "[]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sender := &fakeSending{err: tc.sendErr}

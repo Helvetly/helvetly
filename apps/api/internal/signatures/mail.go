@@ -149,7 +149,7 @@ func declinedMessage(req store.SignatureRequest, who store.Signer) mail.Message 
 func completedMessage(done completed, to string, member bool) mail.Message {
 	req := done.req
 	rows := []mail.Row{{Label: "Document", Value: req.Title}, {Label: "Sent by", Value: sentBy(req)},
-		{Label: "Signed copy", Value: done.name + " (attached)"}}
+		{Label: "Signed copy", Value: done.name, Hint: "attached"}}
 	if member {
 		rows = append(rows, mail.Row{Label: "Signed SHA-256", Value: shortHash(done.sum)},
 			mail.Row{Label: "Original SHA-256", Value: shortHash(req.OriginalSHA256)})
@@ -157,9 +157,10 @@ func completedMessage(done completed, to string, member bool) mail.Message {
 	l := mail.NewLetter("en").Greeting("").
 		Lead(fmt.Sprintf("Everyone has signed “%s”. The signed PDF is attached, with a certificate of completion on its last page.", req.Title)).
 		Summary(rows...).
-		FinePrint("SHA-256 of the signed PDF: "+groups(done.sum), "SHA-256 of the original: "+groups(req.OriginalSHA256), sesNote)
+		Details(mail.Row{Label: "SHA-256 of the signed PDF", Value: groups(done.sum)}, mail.Row{Label: "SHA-256 of the original", Value: groups(req.OriginalSHA256)}).
+		FinePrint(sesNote)
 	return mail.Message{Workspace: req.WorkspaceID, Members: member, Language: "en", To: []string{to}, ReplyTo: req.SenderEmail,
-		Subject: fmt.Sprintf("Signed: “%s”", req.Title), Text: l.Text(), HTML: l.HTML(),
+		Subject: fmt.Sprintf("Signed: “%s”", req.Title), Eyebrow: "✓ Completed", Text: l.Text(), HTML: l.HTML(),
 		Attachments: []mail.Attachment{{Name: done.name, ContentType: "application/pdf", Data: done.pdf}}}
 }
 

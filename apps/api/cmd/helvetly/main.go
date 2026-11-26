@@ -164,10 +164,13 @@ func run() error {
 	var portalLinksMailer portal.Mailer
 	var businessMail *mail.Metered // counts business email against the workspace's allowances once billing is wired
 	var branded *mail.Branded      // sends client email as the business once the invoice settings are wired
+	mail.SiteURL = cfg.WebURL
 	if cfg.MailConfigured() {
 		sender := mail.NewSender(cfg.SMTP, cfg.PublicURL)
 		branded = &mail.Branded{Sender: sender, NoReply: sender.FromAddress(), IsMember: db.Q.IsMemberEmail}
 		businessMail = &mail.Metered{Sender: branded}
+		// A portal sign-in code goes out as the business (Uncounted); every other code passes through as Helvetly's.
+		authSvc.SetMailer(businessMail)
 		inviteMailer, feedbackMailer, portalLinksMailer = sender, sender, sender                                                                                               // joining a workspace and feedback to Helvetly: no business limit
 		mailer, signMailer, templateMailer, notifyMailer, portalInviteMailer, quoteMailer = businessMail, businessMail, businessMail, businessMail, businessMail, businessMail // two vars: copying a nil interface between types is fine, a typed nil pointer is not
 	}
@@ -185,6 +188,7 @@ func run() error {
 	invoicesSvc := invoices.New(db, authSvc, files, mailer, slog.Default())
 	if branded != nil {
 		branded.Brands = invoicesSvc.MailBrand
+		authSvc.PortalBrand = invoicesSvc.MailBrand
 	}
 	approvalsSvc := approvals.New(db, authSvc)
 	invoicesSvc.SetApprovals(approvalsSvc)

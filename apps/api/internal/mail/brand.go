@@ -7,6 +7,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"helvetly.com/api/internal/phone"
 )
 
 // Brand is the business a workspace's email to its clients comes from: its name is the From display name and the
@@ -117,7 +119,8 @@ func vatLine(b Brand, language string) string {
 }
 
 // lines are the footer's text lines: name, address, contact, VAT number; empty ones left out. With rich the lines
-// are HTML (escaped, the website a link); without, plain text.
+// are HTML (escaped; phone, email and website muted links, the address broken for data detectors, so no mail app
+// turns them blue); without, plain text. The phone is spaced as the app shows it.
 func (b Brand) lines(language string, rich bool) []string {
 	esc := func(v string) string {
 		if rich {
@@ -125,20 +128,28 @@ func (b Brand) lines(language string, rich bool) []string {
 		}
 		return v
 	}
-	contact := []string{}
-	for _, c := range []string{b.Phone, b.Email} {
-		if c != "" {
-			contact = append(contact, esc(c))
+	quiet := func(href, label string) string {
+		if !rich {
+			return label
 		}
+		return `<a href="` + html.EscapeString(href) + `" style="color:` + muted + `;text-decoration:none">` + html.EscapeString(label) + `</a>`
+	}
+	contact := []string{}
+	if p := phone.Display(b.Phone); p != "" {
+		contact = append(contact, quiet("tel:"+strings.ReplaceAll(p, " ", ""), p))
+	}
+	if b.Email != "" {
+		contact = append(contact, quiet("mailto:"+b.Email, b.Email))
 	}
 	if d := websiteDomain(b.Website); d != "" {
-		if rich {
-			d = `<a href="` + html.EscapeString(b.Website) + `" style="color:` + muted + `">` + html.EscapeString(d) + `</a>`
-		}
-		contact = append(contact, d)
+		contact = append(contact, quiet(b.Website, d))
+	}
+	address := esc(strings.Join(b.Address, ", "))
+	if rich { // a zero-width space after each space: Gmail no longer reads it as an address to link
+		address = strings.ReplaceAll(address, " ", " &#8203;")
 	}
 	out := []string{}
-	for _, l := range []string{esc(b.Name), esc(strings.Join(b.Address, ", ")), strings.Join(contact, " · "), esc(vatLine(b, language))} {
+	for _, l := range []string{esc(b.Name), address, strings.Join(contact, " · "), esc(vatLine(b, language))} {
 		if strings.TrimSpace(l) != "" {
 			out = append(out, l)
 		}

@@ -17,10 +17,11 @@ type Letter struct {
 // NewLetter starts a letter in a language (de, fr, it, en; anything else reads as en) for its fixed words.
 func NewLetter(language string) *Letter { return &Letter{language: language} }
 
-// Row is one line of a summary card. Value may hold several lines; Link (with LinkText) is a small link under it,
-// such as "Open in Maps".
+// Row is one line of a summary card. Value may hold several lines; Hint is a muted word after it ("attached"); Link
+// (with LinkText) is a small link under it, such as "Open in Maps".
 type Row struct {
 	Label, Value   string
+	Hint           string
 	Link, LinkText string
 }
 
@@ -55,8 +56,9 @@ func (l *Letter) Message(s string) *Letter {
 	return l
 }
 
-// Summary is the panel of what the email is about: a light grey box of rows, the label muted on the left, the value on
-// the right, thin lines between them. Rows without a value are left out.
+// Summary is the panel of what the email is about: a light grey box of rows, the label muted in a column of its own
+// width (so "Signed copy" stays on one line), the value beside it, thin lines between them. Rows without a value are
+// left out.
 func (l *Letter) Summary(rows ...Row) *Letter {
 	var h, t strings.Builder
 	for _, r := range rows {
@@ -64,7 +66,12 @@ func (l *Letter) Summary(rows ...Row) *Letter {
 			continue
 		}
 		value := lines(r.Value)
-		t.WriteString(r.Label + ": " + strings.ReplaceAll(strings.TrimSpace(r.Value), "\n", "\n  ") + "\n")
+		t.WriteString(r.Label + ": " + strings.ReplaceAll(strings.TrimSpace(r.Value), "\n", "\n  "))
+		if r.Hint != "" {
+			value += ` <span style="font-weight:400;color:` + muted + `">(` + html.EscapeString(r.Hint) + ")</span>"
+			t.WriteString(" (" + r.Hint + ")")
+		}
+		t.WriteString("\n")
 		if r.Link != "" {
 			value += `<br><span style="font-size:13px;font-weight:400"><a href="` + html.EscapeString(r.Link) + `">` + html.EscapeString(r.LinkText) + "</a></span>"
 			t.WriteString("  " + r.LinkText + ": " + r.Link + "\n")
@@ -73,13 +80,37 @@ func (l *Letter) Summary(rows ...Row) *Letter {
 		if h.Len() > 0 {
 			rule = "border-top:1px solid " + line + ";"
 		}
-		cell := `style="` + rule + `padding:11px 16px;font-family:` + fonts + `;font-size:14px;line-height:21px;`
-		h.WriteString(`<tr><td valign="top" ` + cell + `color:` + muted + `">` + html.EscapeString(r.Label) +
-			`</td><td valign="top" align="right" ` + cell + `font-weight:500;color:` + ink + `">` + value + "</td></tr>\n")
+		cell := rule + `font-family:` + fonts + `;font-size:14px;line-height:21px;`
+		h.WriteString(`<tr><td valign="top" style="` + cell + `white-space:nowrap;padding:11px 12px 11px 16px;color:` + muted + `">` + html.EscapeString(r.Label) +
+			`</td><td valign="top" width="100%" style="` + cell + `padding:11px 16px 11px 8px;font-weight:500;color:` + ink + `">` + value + "</td></tr>\n")
 	}
 	if h.Len() > 0 {
 		l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="` + panel + `" style="width:100%;margin:4px 0 24px;background-color:` +
 			panel + `;border-radius:12px">` + "\n" + h.String() + "</table>\n")
+		l.text.WriteString(t.String() + "\n")
+	}
+	return l
+}
+
+// Details are technical values (checksums, references) in a small muted box: each label above its value, set in a
+// monospace face so a hash reads as one value rather than noise. Rows without a value are left out.
+func (l *Letter) Details(rows ...Row) *Letter {
+	var h, t strings.Builder
+	for _, r := range rows {
+		if strings.TrimSpace(r.Value) == "" {
+			continue
+		}
+		pad := "12px"
+		if h.Len() > 0 {
+			pad = "0"
+		}
+		h.WriteString(`<tr><td style="padding:` + pad + ` 14px 10px;font-family:` + fonts + `;font-size:12px;line-height:18px;color:` + muted + `">` + html.EscapeString(r.Label) +
+			`<br><span style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:18px;color:` + text + `">` + lines(r.Value) + "</span></td></tr>\n")
+		t.WriteString(r.Label + ": " + strings.TrimSpace(r.Value) + "\n")
+	}
+	if h.Len() > 0 {
+		l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fafafa" style="width:100%;margin:0 0 16px;background-color:#fafafa;border:1px solid ` +
+			line + `;border-radius:10px">` + "\n" + h.String() + `<tr><td height="2" style="height:2px;font-size:0;line-height:0">&nbsp;</td></tr></table>` + "\n")
 		l.text.WriteString(t.String() + "\n")
 	}
 	return l

@@ -11,6 +11,7 @@ const (
 	text     = "#3f3f46"
 	muted    = "#71717a"
 	line     = "#e8e8ec" // the summary panel's separators
+	border   = "#e7e7ea" // the card's edge on the white page
 	panel    = "#f5f5f7" // the summary panel
 	primary  = "#2563eb" // --primary: Helvetly's own buttons
 	brand    = "#1d4fd1" // --brand: Helvetly's own links
@@ -18,16 +19,27 @@ const (
 	fonts    = "system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 )
 
-// What a style changes: Helvetly's own email has its pastel page, gradient bar and blue buttons; a business's email to
-// its clients stays neutral (grey page, near-black buttons and links) so it reads as the business's.
+// What a style changes. Both stand on a white page with a white, thinly bordered card under a thin bar: Helvetly's own
+// email has its gradient bar and blue buttons; a business's email to its clients stays neutral (a near-black bar,
+// buttons and links) so it reads as the business's.
 type look struct {
-	page, pageImage, button, link, bar string
+	button, link, bar, barImage string
 }
 
 var (
-	helvetlyLook = look{page: "#f3f1fa", pageImage: "linear-gradient(180deg,#e9e4fb 0%,#f3f1fa 38%,#f6f6f8 100%)", button: primary, link: brand,
-		bar: "linear-gradient(90deg," + logoFrom + " 0%," + primary + " 55%,#8b5cf6 100%)"}
-	businessLook = look{page: "#f4f4f5", button: ink, link: ink}
+	helvetlyLook = look{button: primary, link: brand, bar: primary, barImage: "linear-gradient(90deg," + logoFrom + " 0%," + primary + " 55%,#8b5cf6 100%)"}
+	businessLook = look{button: ink, link: ink, bar: "#52525b"}
+)
+
+// SiteURL is the public website's origin (NEXT_PUBLIC_WEB_URL): Helvetly's own footer links its help and legal pages
+// there. main sets it from the configuration.
+var SiteURL = "https://www.helvetly.com"
+
+// The footer of Helvetly's own email: what Helvetly is and who sends it, as the website's imprint names it (it gives
+// no postal address).
+const (
+	tagline   = "The online back office for freelancers and small businesses."
+	legalName = "Helvetly, Switzerland"
 )
 
 // Email HTML keeps to what renders in every common client, with inline styles only: tables for layout, padding,
@@ -46,46 +58,73 @@ func layout(m Message, publicURL string) string {
 	if m.HTML == "" || strings.HasPrefix(strings.ToLower(strings.TrimSpace(m.HTML)), "<!doctype") {
 		return m.HTML
 	}
-	lk, footer, header := helvetlyLook, m.Footer, helvetlyHeader(publicURL)
+	lk, footer, header := helvetlyLook, helvetlyFooter(m.Footer), helvetlyHeader(publicURL)
 	switch {
-	case m.Brand != nil && footer == "":
+	case m.Brand != nil && m.Footer == "":
 		lk, footer, header = businessLook, brandFooter(*m.Brand, m.Language, publicURL), brandHeader(*m.Brand, publicURL)
 	case m.Brand != nil:
-		lk, header = businessLook, brandHeader(*m.Brand, publicURL)
-	case footer == "":
-		footer = `Sent by <a href="` + html.EscapeString(publicURL) + `" style="color:` + muted + `">Helvetly</a>`
+		lk, footer, header = businessLook, m.Footer, brandHeader(*m.Brand, publicURL)
 	}
 	lang := "en"
 	if m.Language != "" {
 		lang = html.EscapeString(m.Language)
 	}
 	body := strings.NewReplacer(`<a href=`, `<a style="color:`+lk.link+`" href=`, buttonFill, `bgcolor="`+lk.button+`" style="background-color:`+lk.button).Replace(m.HTML)
-	if !strings.Contains(body, "<h1") && strings.TrimSpace(m.Subject) != "" {
-		body = Title(m.Subject) + body
+	if title := strings.TrimSpace(m.Subject); !strings.Contains(body, "<h1") && title != "" {
+		// An eyebrow saying what the email is replaces the same word leading the subject ("Invitation: …").
+		if m.Eyebrow != "" {
+			title = strings.TrimSpace(strings.TrimPrefix(title, m.Eyebrow+":"))
+		}
+		body = Title(title) + body
 	}
-	page := `background-color:` + lk.page
-	if lk.pageImage != "" {
-		page += `;background-image:` + lk.pageImage
+	if m.Eyebrow != "" {
+		body = eyebrow(m.Eyebrow) + body
 	}
-	bar := ""
-	if lk.bar != "" {
-		bar = `<tr><td height="5" bgcolor="` + primary + `" style="height:5px;font-size:0;line-height:0;border-radius:16px 16px 0 0;background-color:` + primary +
-			`;background-image:` + lk.bar + `">&nbsp;</td></tr>` + "\n"
+	bar := `background-color:` + lk.bar
+	if lk.barImage != "" {
+		bar += `;background-image:` + lk.barImage
 	}
 	return `<!doctype html><html lang="` + lang + `"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
-		// Light only: inverted, the muted colours would be unreadable.
+		// Light only: inverted, the muted colours would be unreadable. No data detectors: the footer stays muted.
 		`<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">` +
+		`<meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no">` +
 		`<title>` + html.EscapeString(m.Subject) + "</title></head>\n" +
-		`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="` + lk.page + `" style="width:100%;` + page + `">` + "\n" +
+		`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff">` + "\n" +
 		`<tr><td align="center" style="padding:32px 12px 40px">` + "\n" +
 		`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px">` + "\n" +
 		`<tr><td align="center" style="padding:0 0 24px;font-family:` + fonts + `;font-size:20px;line-height:28px;color:` + ink + `">` + header + "</td></tr>\n" +
-		`<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid ` + line + `;border-radius:16px">` + "\n" +
-		bar +
-		`<tr><td style="padding:32px 28px 16px;font-family:` + fonts + `;font-size:15px;line-height:24px;color:` + text + `">` + "\n" + body + "</td></tr>\n" +
+		`<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid ` + border + `;border-radius:16px">` + "\n" +
+		`<tr><td height="3" bgcolor="` + lk.bar + `" style="height:3px;font-size:0;line-height:0;border-radius:16px 16px 0 0;` + bar + `">&nbsp;</td></tr>` + "\n" +
+		`<tr><td style="padding:32px 32px 16px;font-family:` + fonts + `;font-size:15px;line-height:24px;color:` + text + `">` + "\n" + body + "</td></tr>\n" +
 		"</table></td></tr>\n" +
-		`<tr><td align="center" style="padding:24px 16px 0;font-family:` + fonts + `;font-size:12px;line-height:19px;color:` + muted + `">` + footer + "</td></tr>\n" +
+		`<tr><td align="center" style="padding:28px 16px 0;font-family:` + fonts + `;font-size:12px;line-height:20px;color:` + muted + `">` + footer + "</td></tr>\n" +
 		"</table>\n</td></tr>\n</table></html>"
+}
+
+// eyebrow is the small pill above the title saying what the email is ("Invoice", "✓ Completed").
+func eyebrow(s string) string {
+	return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 14px"><tr><td bgcolor="` + panel + `" style="background-color:` + panel +
+		`;border-radius:999px;padding:4px 12px;font-family:` + fonts + `;font-size:12px;line-height:16px;font-weight:600;letter-spacing:0.2px;color:` + text + `">` +
+		html.EscapeString(strings.TrimSpace(s)) + "</td></tr></table>\n"
+}
+
+// helvetlyFooter is the small print under Helvetly's own card: who sends it, why it came (why, HTML, when given), the
+// website's help and legal pages, and the company.
+func helvetlyFooter(why string) string {
+	site := html.EscapeString(SiteURL)
+	link := func(label, path string) string {
+		return `<a href="` + site + path + `" style="color:` + muted + `">` + label + `</a>`
+	}
+	f := `<strong style="font-weight:600;color:` + text + `">Helvetly</strong> &middot; ` + tagline + "<br>"
+	if why != "" {
+		f += why + "<br>"
+	}
+	return f + link("Help", "/help") + ` &nbsp;&middot;&nbsp; ` + link("Privacy", "/privacy") + ` &nbsp;&middot;&nbsp; ` + link("Terms", "/terms") + "<br>" + legalName
+}
+
+// helvetlyText is the same footer in the text part (without the why: a text part says it in its own words).
+func helvetlyText() string {
+	return "Helvetly · " + tagline + "\nHelp: " + SiteURL + "/help\nPrivacy: " + SiteURL + "/privacy\nTerms: " + SiteURL + "/terms\n" + legalName + "\n"
 }
 
 // Title is the card's heading: the layout puts the subject there unless a fragment begins with its own.
@@ -100,19 +139,25 @@ func helvetlyHeader(publicURL string) string {
 		`&nbsp;&nbsp;<strong style="vertical-align:middle;font-size:21px;font-weight:600">Helvetly</strong></a>`
 }
 
-// brandHeader: the business's logo, else its name. The logo has no size attributes: its URL serves a file already
-// scaled to 36 px high (invoices.scaleEmailLogo); its alt text is the name, for clients that block images.
+// brandHeader: the business's logo and its name, as Helvetly's header shows its own (the name alone without a logo).
+// The logo has no size attributes: its URL serves a file already scaled to 44 px high (invoices.scaleEmailLogo).
 func brandHeader(b Brand, publicURL string) string {
-	if b.LogoPath != "" {
-		return `<img src="` + html.EscapeString(publicURL+b.LogoPath) + `" alt="` + html.EscapeString(b.Name) + `" style="border:0">`
+	name := `<strong style="vertical-align:middle;font-size:19px;font-weight:600;color:` + ink + `">` + html.EscapeString(b.Name) + `</strong>`
+	if b.LogoPath == "" {
+		return name
 	}
-	return `<strong style="font-weight:600;color:` + ink + `">` + html.EscapeString(b.Name) + `</strong>`
+	return `<img src="` + html.EscapeString(publicURL+b.LogoPath) + `" alt="" style="vertical-align:middle;border:0">&nbsp;&nbsp;` + name
 }
 
-// plainText is the text part: the message, then the business footer for a branded email.
+// plainText is the text part: the message, then the business footer for a branded email, Helvetly's for its own.
 func plainText(m Message, publicURL string) string {
-	if m.Brand == nil || m.Footer != "" {
+	switch {
+	case m.Text == "" || (m.Brand != nil && m.Footer != ""):
 		return m.Text
+	case m.Brand != nil:
+		return strings.TrimRight(m.Text, "\n") + brandText(*m.Brand, m.Language, publicURL)
+	case strings.Contains(m.Text, "\n--"): // the message closes with its own signature block (a notification's settings)
+		return strings.TrimRight(m.Text, "\n") + "\n\n" + helvetlyText()
 	}
-	return strings.TrimRight(m.Text, "\n") + brandText(*m.Brand, m.Language, publicURL)
+	return strings.TrimRight(m.Text, "\n") + "\n\n-- \n" + helvetlyText()
 }

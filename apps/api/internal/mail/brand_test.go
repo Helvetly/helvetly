@@ -123,7 +123,7 @@ func TestBrandedByRecipient(t *testing.T) {
 func TestBrandedLayout(t *testing.T) {
 	const site = "https://app.example.com"
 	full := Brand{Name: "Müller & Co AG", LogoPath: "/api/v1/public/email-logo/w/lgo_1", Address: []string{"Bahnhofstrasse 1", "8001 Zürich"},
-		Phone: "+41 44 123 45 67", Email: "info@mueller.ch", VAT: "CHE-123.456.789", SentWith: true}
+		Phone: "+41441234567", Email: "info@mueller.ch", VAT: "CHE-123.456.789", SentWith: true}
 	for _, c := range []struct {
 		name      string
 		m         Message
@@ -131,10 +131,11 @@ func TestBrandedLayout(t *testing.T) {
 	}{
 		{"every detail, in German", Message{HTML: "<p>Hallo</p>", Language: "de", Brand: &full}, []string{
 			`<html lang="de">`, `src="https://app.example.com/api/v1/public/email-logo/w/lgo_1"`, ">Müller &amp; Co AG</strong>",
-			">Müller &amp; Co AG</strong>", "<br>Bahnhofstrasse 1, 8001 Zürich", "<br>+41 44 123 45 67 · info@mueller.ch",
+			">Müller &amp; Co AG</strong>", "<br>Bahnhofstrasse &#8203;1, &#8203;8001 &#8203;Zürich",
+			`<br><a href="tel:+41441234567" style="color:#71717a;text-decoration:none">+41 44 123 45 67</a> · <a href="mailto:info@mueller.ch" style="color:#71717a;text-decoration:none">info@mueller.ch</a>`,
 			"<br>CHE-123.456.789 MWST", `Gesendet mit <a href="https://app.example.com"`}, []string{"Sent by"}},
 		{"a website: a link with the domain", Message{HTML: "<p>Hi</p>", Brand: &Brand{Name: "X", Email: "a@x.ch", Website: "https://www.firma.ch/"}},
-			[]string{`<br>a@x.ch · <a href="https://www.firma.ch/" style="color:#71717a">firma.ch</a>`}, nil},
+			[]string{`">a@x.ch</a> · <a href="https://www.firma.ch/" style="color:#71717a;text-decoration:none">firma.ch</a>`}, nil},
 		{"name only, in French", Message{HTML: "<p>Bonjour</p>", Language: "fr", Brand: &Brand{Name: "Dupont SA", VAT: "FR12345678901", SentWith: true}}, []string{
 			">Dupont SA</strong><br>FR12345678901<br><br>", "Envoyé avec"}, []string{"<img", " · ", " TVA"}},
 		{"an unknown language: English", Message{HTML: "<p>Hi</p>", Language: "pl", Brand: &Brand{Name: "X", VAT: "CHE-111.222.333", SentWith: true}},
@@ -172,7 +173,10 @@ func TestBrandedPlainText(t *testing.T) {
 			"Guten Tag\r\n\r\n-- \r\nMuster GmbH\r\nWeg 1, 3000 Bern\r\ninfo@muster.ch\r\nCHE-123.456.789 MWST\r\n\r\nGesendet mit Helvetly: https://app.example.com\r\n"},
 		{"branded, without Sent with", Message{Text: "Guten Tag\n", HTML: "<p>x</p>", Language: "de", Brand: &unbranded},
 			"Guten Tag\r\n\r\n-- \r\nMuster GmbH\r\nWeg 1, 3000 Bern\r\ninfo@muster.ch\r\nCHE-123.456.789 MWST\r\n"},
-		{"Helvetly's own", Message{Text: "Code: 1\n", HTML: "<p>x</p>"}, "Code: 1\r\n"},
+		{"Helvetly's own", Message{Text: "Code: 1\n", HTML: "<p>x</p>"}, "Code: 1\r\n\r\n-- \r\nHelvetly · The online back office for freelancers and small businesses.\r\n" +
+			"Help: https://www.helvetly.com/help\r\nPrivacy: https://www.helvetly.com/privacy\r\nTerms: https://www.helvetly.com/terms\r\nHelvetly, Switzerland\r\n"},
+		{"a phone spaced as the app shows it", Message{Text: "Hallo\n", HTML: "<p>x</p>", Brand: &Brand{Name: "M", Phone: "+41786533224"}},
+			"Hallo\r\n\r\n-- \r\nM\r\n+41 78 653 32 24\r\n"},
 	} {
 		msg, err := mail.ReadMessage(bytes.NewReader(build(from, c.m, "https://app.example.com", time.Now())))
 		if err != nil {

@@ -399,7 +399,8 @@ func (e *Emails) send(ctx context.Context, m mailCtx, subject string, l letter, 
 		method = cal.Method
 	}
 	text, body := compose(m, l, method)
-	msg := mail.Message{Workspace: m.ws.ID, To: m.to, Subject: subject, Text: text, HTML: body, Language: m.lang, Members: m.members}
+	kind, _, _ := strings.Cut(subject, ": ") // every subject is "<kind>: <title>"; the kind is the eyebrow
+	msg := mail.Message{Workspace: m.ws.ID, To: m.to, Subject: subject, Eyebrow: kind, Text: text, HTML: body, Language: m.lang, Members: m.members}
 	if !m.members {
 		msg.ReplyTo = m.hostMail
 	}

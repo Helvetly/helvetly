@@ -49,17 +49,18 @@ func (s *Service) emailStart(w http.ResponseWriter, r *http.Request) {
 	if !s.Decode(w, r, &in) {
 		return
 	}
-	if err := s.SendEmailCode(r, in.Email, true); err != nil {
+	if err := s.SendEmailCode(r, in.Email, "", true); err != nil {
 		s.WriteError(w, r, err)
 		return
 	}
 	WriteJSON(w, http.StatusAccepted, map[string]int{"resend_in": int(emailCodeCooldown.Seconds()), "expires_in": int(emailCodeTTL.Seconds())})
 }
 
-// SendEmailCode mails a sign-in code: the per-network limit, then sendEmailCode. Also for the client portal,
-// which passes deliver=false for an address without access: the code is recorded (cooldown and limits count it
-// alike) but never mailed, so the answers cannot tell the two addresses apart.
-func (s *Service) SendEmailCode(r *http.Request, email string, deliver bool) error {
+// SendEmailCode mails a sign-in code: the per-network limit, then sendEmailCode. Also for the client portal, which
+// names the workspace whose portal it is (the code then comes from that business) and passes deliver=false for an
+// address without access: the code is recorded (cooldown and limits count it alike) but never mailed, so the answers
+// cannot tell the two addresses apart.
+func (s *Service) SendEmailCode(r *http.Request, email, workspaceID string, deliver bool) error {
 	if !s.cfg.EmailSignIn() {
 		return ErrNotFound
 	}
@@ -68,7 +69,7 @@ func (s *Service) SendEmailCode(r *http.Request, email string, deliver bool) err
 		return &apiError{status: http.StatusTooManyRequests, code: "rate_limited", retryAfter: "3600",
 			message: "Too many codes requested from this network: try again later."}
 	}
-	return s.sendEmailCode(r.Context(), email, ip, deliver)
+	return s.sendEmailCode(r.Context(), email, workspaceID, ip, deliver)
 }
 
 // ConsumeEmailCode checks the address's code and spends it (single use) and returns the normalized address.
@@ -166,7 +167,7 @@ func sixDigits() string {
 	return fmt.Sprintf("%06d", n.Int64())
 }
 
-func (s *Service) sendEmailCode(ctx context.Context, email, ip string, deliver bool) error {
+func (s *Service) sendEmailCode(ctx context.Context, email, workspaceID, ip string, deliver bool) error {
 	email, err := normalizeEmail(email)
 	if err != nil {
 		return err
@@ -223,14 +224,26 @@ func (s *Service) sendEmailCode(ctx context.Context, email, ip string, deliver b
 	if s.cfg.DevSignIn {
 		s.devCodes.put(email, code)
 	}
-	if s.mail != nil {
-		if err := s.mail.Send(ctx, signInCodeMessage(email, code, s.cfg.PublicURL)); err != nil {
-			s.log.WarnContext(ctx, "sign-in code email not sent", "error", err)
-			return &apiError{status: http.StatusServiceUnavailable, code: "mail_failed", message: "The code could not be sent: try again in a minute."}
+	if s.mail == nil {
+		return nil
+	}
+	m := signInCodeMessage(email, code)
+	if workspaceID != "" && s.PortalBrand != nil {
+		brand, err := s.PortalBrand(ctx, workspaceID)
+		if err != nil {
+			s.log.WarnContext(ctx, "portal sign-in code: brand", "error", err)
+			return errCodeNotSent
 		}
+		m = portalCodeMessage(email, code, workspaceID, brand)
+	}
+	if err := s.mail.Send(ctx, m); err != nil {
+		s.log.WarnContext(ctx, "sign-in code email not sent", "error", err)
+		return errCodeNotSent
 	}
 	return nil
 }
+
+var errCodeNotSent = &apiError{status: http.StatusServiceUnavailable, code: "mail_failed", message: "The code could not be sent: try again in a minute."}
 
 // checkEmailCode spends one try on the address's latest code and returns its id and the normalized
 // address when the code matches. The try is counted before the comparison, so a wrong code always costs one
@@ -273,15 +286,41 @@ func (s *Service) checkEmailCode(ctx context.Context, email, code string) (strin
 }
 
 // signInCodeMessage: the code leads the subject, so it shows in the inbox list and mail apps offer to copy it.
-func signInCodeMessage(to, code, publicURL string) mailer.Message {
-	text := fmt.Sprintf("Here is your code to sign in to Helvetly:\n\n%s\n\n"+
-		"Type it on the sign-in page you came from. It works once and expires in 10 minutes.\n\n"+
-		"Didn't try to sign in? You can ignore this email: nobody can sign in without this code. Never share it with anyone.\n\n"+
-		"Helvetly · %s\n", code, publicURL)
-	body := mailer.Title("Your sign-in code") + mailer.NewLetter("en").Lead("Here is your code to sign in to Helvetly:").Code(code).
+func signInCodeMessage(to, code string) mailer.Message {
+	const why = "You received this email because someone used this address to sign in to Helvetly."
+	l := mailer.NewLetter("en").Lead("Here is your code to sign in to Helvetly:").Code(code).
 		Lead("Type it on the sign-in page you came from. It works once and expires in 10 minutes.").
-		FinePrint("Didn't try to sign in? You can ignore this email: nobody can sign in without this code. Never share it with anyone.").HTML()
-	return mailer.Message{To: []string{to}, Subject: code + " is your Helvetly sign-in code", Text: text, HTML: body}
+		FinePrint("Didn't try to sign in? You can ignore this email: nobody can sign in without this code. Never share it with anyone.")
+	return mailer.Message{To: []string{to}, Subject: code + " is your Helvetly sign-in code", Text: l.Text() + "\n" + why + "\n",
+		HTML: mailer.Title("Your sign-in code") + l.HTML(), Footer: why}
+}
+
+// portalCodeWords are the portal code email's words; the subject and lead take the code and the business's name.
+var portalCodeWords = map[string]struct{ subject, title, lead, use, ignore string }{
+	"en": {"%s is your sign-in code for the %s client portal", "Your sign-in code", "Here is your code to sign in to %s’s client portal:",
+		"Type it on the sign-in page you came from. It works once and expires in 10 minutes.",
+		"Didn’t try to sign in? You can ignore this email: nobody can sign in without this code. Never share it with anyone."},
+	"de": {"%s ist Ihr Anmeldecode für das Kundenportal von %s", "Ihr Anmeldecode", "Hier ist Ihr Code für die Anmeldung im Kundenportal von %s:",
+		"Geben Sie ihn auf der Anmeldeseite ein, von der Sie kommen. Er gilt nur einmal und läuft in 10 Minuten ab.",
+		"Sie wollten sich nicht anmelden? Dann können Sie diese E-Mail ignorieren: Ohne diesen Code kann sich niemand anmelden. Geben Sie ihn niemandem weiter."},
+	"fr": {"%s est votre code de connexion au portail client de %s", "Votre code de connexion", "Voici votre code pour vous connecter au portail client de %s :",
+		"Saisissez-le sur la page de connexion d’où vous venez. Il ne sert qu’une fois et expire dans 10 minutes.",
+		"Vous n’avez pas essayé de vous connecter ? Vous pouvez ignorer cet e-mail : personne ne peut se connecter sans ce code. Ne le communiquez à personne."},
+	"it": {"%s è il suo codice di accesso al portale clienti di %s", "Il suo codice di accesso", "Ecco il suo codice per accedere al portale clienti di %s:",
+		"Lo inserisca nella pagina di accesso da cui proviene. Vale una sola volta e scade tra 10 minuti.",
+		"Non ha provato ad accedere? Può ignorare questa email: nessuno può accedere senza questo codice. Non lo condivida con nessuno."},
+}
+
+// portalCodeMessage is the code for a workspace's client portal, from the business in its language (Branded adds its
+// name, logo and details). Uncounted: no plan limit may stop or count a client's sign-in.
+func portalCodeMessage(to, code, workspaceID string, brand mailer.Brand) mailer.Message {
+	w, ok := portalCodeWords[brand.Language]
+	if !ok {
+		w = portalCodeWords["en"]
+	}
+	l := mailer.NewLetter(brand.Language).Lead(fmt.Sprintf(w.lead, brand.Name)).Code(code).Lead(w.use).FinePrint(w.ignore)
+	return mailer.Message{Workspace: workspaceID, Uncounted: true, Language: brand.Language, To: []string{to}, Subject: fmt.Sprintf(w.subject, code, brand.Name),
+		Text: l.Text(), HTML: mailer.Title(w.title) + l.HTML()}
 }
 
 // devCodeBox keeps the last code per address in memory under AUTH_DEV_SIGNIN, so tests and the dev stack

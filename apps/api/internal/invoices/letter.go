@@ -23,7 +23,7 @@ func withLetter(m mail.Message, inv store.Invoice) mail.Message {
 		mail.Row{Label: amount, Value: inv.Currency + " " + abs(inv.Payable()).Swiss("'")},
 		mail.Row{Label: w.DueDate, Value: due},
 	).Attached(names...)
-	m.Text, m.HTML = l.Text(), l.HTML()
+	m.Text, m.HTML, m.Eyebrow = l.Text(), l.HTML(), Title(inv)
 	return m
 }
 

@@ -19,15 +19,15 @@ type Sending interface {
 
 // Metered sends through Sender, counting each message with a Workspace against Meter: reserved before SMTP, used
 // once the server accepted it, released when it surely was not sent, and kept reserved when the outcome is unknown
-// (ErrUncertain), so a blind retry cannot send for free. A message without a Workspace (sign-in, security) is never
-// counted or refused.
+// (ErrUncertain), so a blind retry cannot send for free. A message without a Workspace (sign-in, security) or marked
+// Uncounted (a portal sign-in code) is never counted or refused.
 type Metered struct {
 	Sender Sending
 	Meter  Meter
 }
 
 func (m Metered) Send(ctx context.Context, msg Message) error {
-	if msg.Workspace == "" || m.Meter == nil {
+	if msg.Workspace == "" || msg.Uncounted || m.Meter == nil {
 		return m.Sender.Send(ctx, msg)
 	}
 	var attached int64

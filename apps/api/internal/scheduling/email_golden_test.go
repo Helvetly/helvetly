@@ -57,6 +57,6 @@ func TestSchedulingEmailsGolden(t *testing.T) {
 	} {
 		c.l.title = c.ev.Title
 		text, body := compose(goldenCtx(c.lang, c.ev), c.l, c.method)
-		mailtest.Golden(t, "scheduling-"+c.name, mail.Message{Workspace: "ws", Subject: c.subject + ": " + c.ev.Title, Language: c.lang, Text: text, HTML: body})
+		mailtest.Golden(t, "scheduling-"+c.name, mail.Message{Workspace: "ws", Subject: c.subject + ": " + c.ev.Title, Eyebrow: c.subject, Language: c.lang, Text: text, HTML: body})
 	}
 }
