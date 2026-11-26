@@ -144,6 +144,15 @@ func (s *Service) Guard(next http.Handler) http.Handler {
 	})
 }
 
+// StorageCapacity reports the effective byte limit, or Unlimited for uncapped storage.
+func (s *Service) StorageCapacity(ctx context.Context, workspaceID string) (int64, error) {
+	rights, err := s.Entitlements(ctx, s.db.Q, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return rights.Cap(Storage)
+}
+
 // AllowStorage checks exact new bytes inside the upload transaction. Existing hashes add zero bytes.
 func (s *Service) AllowStorage(ctx context.Context, q store.Q, sess store.Session, add int64) error {
 	return s.AllowResource(ctx, q, sess.Workspace.ID, string(Storage), add)

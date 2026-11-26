@@ -40,15 +40,16 @@ type Storage interface {
 }
 
 type Service struct {
-	db      *store.Store
-	auth    Auth
-	files   Storage
-	log     *slog.Logger
-	maxSize int64
-	now     func() time.Time
-	filer   aimodel.Provider // nil: AI filing is off
-	budget  aimodel.Budget
-	text    func([]byte, int) string
+	db              *store.Store
+	auth            Auth
+	files           Storage
+	log             *slog.Logger
+	storageCapacity func(context.Context, string) (int64, error)
+	maxSize         int64
+	now             func() time.Time
+	filer           aimodel.Provider // nil: AI filing is off
+	budget          aimodel.Budget
+	text            func([]byte, int) string
 	// A group's ZIP holds at most zipFiles files and zipBytes bytes (groups.go); above zipStream bytes it is built in
 	// the background (zip_exports.go).
 	zipFiles  int

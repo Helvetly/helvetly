@@ -590,6 +590,8 @@ const everyKind = http.get('/api/v1/documents/usage', () =>
     data: {
       files: 40,
       size: 9_000_000,
+      stored_bytes: 10_000_000,
+      capacity_bytes: 10_000_000_000,
       by_kind: [
         { kind: 'pdf', files: 15, size: 3_600_000 },
         { kind: 'image', files: 6, size: 1_500_000 },
@@ -617,11 +619,17 @@ export const StorageColours: Story = {
       { name: 'Storage overview' },
       { timeout: 8000 },
     )
+    await within(overview).findByText('Free space')
+    await expect(within(overview).getByText('9.99 GB')).toBeVisible()
     const dots = [...overview.querySelectorAll('li > [data-kind]')]
     const segments = [...overview.querySelectorAll('[aria-hidden] > [data-kind]')]
-    await expect(dots).toHaveLength(8)
-    await expect(new Set(dots.map(colour)).size).toBe(8)
+    await expect(dots).toHaveLength(10)
+    await expect(new Set(dots.slice(0, 8).map(colour)).size).toBe(8)
     await expect(segments.map(colour)).toEqual(dots.map(colour))
+    const free = overview.querySelector<HTMLElement>('[aria-hidden] > [data-kind="free"]')!
+    await expect(
+      free.getBoundingClientRect().width / free.parentElement!.getBoundingClientRect().width,
+    ).toBeGreaterThan(0.95)
   },
 }
 export const StorageColoursDark = dark(StorageColours)

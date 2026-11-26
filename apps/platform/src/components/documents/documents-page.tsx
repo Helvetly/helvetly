@@ -1332,7 +1332,7 @@ export function DocumentsPage() {
                 )}
                 {...surfaceDrop.props}
               >
-                {home && usage.data && usage.data.files > 0 && (
+                {home && usage.data && (
                   <StorageOverview usage={usage.data} onTrash={() => openSection('trash')} />
                 )}
                 {dim !== null ? (

@@ -700,6 +700,8 @@ export const shellHandlers = [
     HttpResponse.json({
       data: {
         files: 23,
+        stored_bytes: 5_520_000,
+        capacity_bytes: 10_000_000_000,
         size: 5_520_000,
         by_kind: [
           { kind: 'pdf', files: 15, size: 3_600_000 },

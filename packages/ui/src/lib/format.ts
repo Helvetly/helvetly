@@ -79,7 +79,7 @@ export const formatMoney = (value: string, currency: string) => {
 }
 
 /** "12 KB", "3.4 MB" in powers of 1000. */
-export function formatSize(bytes: number) {
+export function formatSize(bytes: number, fractionDigits?: number) {
   if (bytes < 1000) return `${bytes} B`
   const units = ['KB', 'MB', 'GB', 'TB']
   let value = bytes / 1000
@@ -88,5 +88,11 @@ export function formatSize(bytes: number) {
     value /= 1000
     unit++
   }
-  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`
+  const display =
+    fractionDigits === undefined
+      ? value < 10
+        ? value.toFixed(1)
+        : Math.round(value)
+      : value.toLocaleString(numberLocale, { maximumFractionDigits: fractionDigits })
+  return `${display} ${units[unit]}`
 }

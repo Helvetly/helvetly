@@ -143,7 +143,12 @@ export function trashSortValue(
 }
 
 export type Tally = { files: number; size: number }
-export type Usage = Tally & { by_kind: (Tally & { kind: Kind })[]; trash: Tally }
+export type Usage = Tally & {
+  stored_bytes?: number
+  capacity_bytes?: number
+  by_kind: (Tally & { kind: Kind })[]
+  trash: Tally
+}
 
 export type Page<T> = {
   data: T[]

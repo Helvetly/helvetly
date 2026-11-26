@@ -253,6 +253,7 @@ func run() error {
 	expensesSvc := expenses.New(db, authSvc, files, slog.Default())
 	expensesSvc.SetApprovals(approvalsSvc)
 	documentsSvc := documents.New(db, authSvc, files, cfg.DocumentsMaxUpload, slog.Default())
+	documentsSvc.SetStorageCapacity(billingSvc.StorageCapacity)
 	employeesSvc := employees.New(db, authSvc, documentsSvc, cfg.SecretKey, slog.Default())
 	signaturesSvc := signatures.New(db, authSvc, files, signMailer, cfg.PublicURL, slog.Default())
 	templatesSvc := templates.New(db, authSvc, files, templateMailer, signaturesSvc, slog.Default())
