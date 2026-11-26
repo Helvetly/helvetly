@@ -136,14 +136,16 @@ func (s *Service) feedBody(ctx context.Context, hash []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	now := s.now()
-	from, to := now.Add(-30*24*time.Hour), now.Add(horizon)
-	occs, err := s.db.SchedOccurrences(ctx, f.WorkspaceID, store.SchedOccurrenceFilter{From: &from, To: &to, HostIDs: []string{f.UserID},
-		Statuses: openStatuses})
+	workspace, err := s.db.AdmissionWorkspace(ctx, f.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
-	name, err := s.db.WorkspaceName(ctx, f.WorkspaceID)
+	now := s.now().In(workspace.Location())
+	year, month, day := now.Date()
+	from := time.Date(year, month, day, 0, 0, 0, 0, now.Location())
+	to := now.Add(horizon)
+	occs, err := s.db.SchedOccurrences(ctx, f.WorkspaceID, store.SchedOccurrenceFilter{From: &from, To: &to, HostIDs: []string{f.UserID},
+		Statuses: openStatuses})
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +153,7 @@ func (s *Service) feedBody(ctx context.Context, hash []byte) ([]byte, error) {
 	if u, err := url.Parse(s.publicURL); err == nil && u.Hostname() != "" {
 		host = u.Hostname()
 	}
-	cal := ical.Calendar{Method: ical.Publish, Name: name + " · Helvetly", Stamp: now}
+	cal := ical.Calendar{Method: ical.Publish, Name: workspace.Name + " · Helvetly", Stamp: now}
 	busy := settings.FeedDetails == "busy"
 	cache := &lookups{events: map[string]store.SchedEvent{}, clients: map[string]string{}}
 	for _, o := range occs {
