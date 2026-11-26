@@ -22,7 +22,7 @@ const invoice = (
 describe('importedMonthsToClose', () => {
   it('spans the imported history without gaps, skipping closed months', () => {
     const records = [
-      invoice({ issue_date: '2024-03-19', due_date: '2024-03-26', paid_amount: '1407.60' }),
+      invoice({ issue_date: '2024-03-19', paid_on: '2024-03-26', paid_amount: '1407.60' }),
       invoice({ issue_date: '2024-06-02' }),
     ]
     expect(importedMonthsToClose(records, new Set(['2024-04']), '2026-11-18')).toEqual([
@@ -32,13 +32,13 @@ describe('importedMonthsToClose', () => {
     ])
   })
 
-  it('books a payment without a date on the due date, an instalment on its own', () => {
+  it('uses actual payment dates and ignores due dates', () => {
     const records = [
-      invoice({ issue_date: '2024-01-10', due_date: '2024-02-10', paid_amount: '10' }),
+      invoice({ issue_date: '2024-01-10', due_date: '2024-11-10' }),
       invoice({
         issue_date: '2024-01-10',
         instalments: [
-          { amount: '5', due_date: '2024-04-01', paid: true },
+          { amount: '5', due_date: '2024-07-01', paid: true, paid_on: '2024-04-01' },
           { amount: '5', due_date: '2024-09-01', paid: false },
         ],
       }),

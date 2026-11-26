@@ -102,10 +102,11 @@ func TestInvoicesKindCheck(t *testing.T) {
 		{"paid more than the total", `{"issued_elsewhere": true, "paid_amount": "1081.01", "paid_on": "2025-10-15"}`, []string{"paid_amount"}},
 		{"stated unpaid (0): stays open", `{"issued_elsewhere": true, "paid_amount": "0", "paid_on": "2025-10-15"}`, nil},
 		{"paid less than nothing", `{"issued_elsewhere": true, "paid_amount": "-5"}`, []string{"paid_amount"}},
-		{"paid without a date", `{"issued_elsewhere": true, "paid_amount": "10"}`, nil},
-		{"paid instalments", `{"issued_elsewhere": true, "instalments": [{"amount": "500", "due_date": "2025-10-15", "paid": true, "paid_on": null}, {"amount": "581", "due_date": "2025-11-15", "paid": false, "paid_on": null}]}`, nil},
-		{"paid instalments over the total", `{"issued_elsewhere": true, "instalments": [{"amount": "1081", "due_date": "2025-10-15", "paid": true, "paid_on": null}, {"amount": "1", "due_date": "2025-11-15", "paid": true, "paid_on": null}]}`, []string{"paid_amount"}},
-		{"paid instalment in the future", `{"issued_elsewhere": true, "instalments": [{"amount": "10", "due_date": "2999-01-01", "paid": true, "paid_on": null}]}`, []string{"instalments.0"}},
+		{"paid without a date", `{"issued_elsewhere": true, "paid_amount": "10"}`, []string{"paid_on"}},
+		{"paid instalments", `{"issued_elsewhere": true, "instalments": [{"amount": "500", "due_date": "2025-10-15", "paid": true, "paid_on": "2025-10-14"}, {"amount": "581", "due_date": "2025-11-15", "paid": false, "paid_on": null}]}`, nil},
+		{"paid instalments over the total", `{"issued_elsewhere": true, "instalments": [{"amount": "1081", "due_date": "2025-10-15", "paid": true, "paid_on": "2025-10-14"}, {"amount": "1", "due_date": "2025-11-15", "paid": true, "paid_on": "2025-10-14"}]}`, []string{"paid_amount"}},
+		{"paid instalment without a payment date", `{"issued_elsewhere": true, "instalments": [{"amount": "10", "due_date": "2025-10-15", "paid": true}]}`, []string{"instalments.0.paid_on"}},
+		{"paid instalment in the future", `{"issued_elsewhere": true, "instalments": [{"amount": "10", "due_date": "2999-01-01", "paid": true, "paid_on": "2999-01-01"}]}`, []string{"instalments.0.paid_on"}},
 		{"paid instalment without an amount", `{"issued_elsewhere": true, "instalments": [{"amount": null, "due_date": "2025-10-15", "paid": true, "paid_on": null}]}`, []string{"instalments.0.amount"}},
 		{"paid date without an amount", `{"issued_elsewhere": true, "paid_on": "2025-10-15"}`, []string{"paid_amount"}},
 		{"paid in the future", `{"issued_elsewhere": true, "paid_amount": "10", "paid_on": "2999-01-01"}`, []string{"paid_on"}},
@@ -184,6 +185,49 @@ func TestInvoicesKindKeepsContractReference(t *testing.T) {
 	}
 	if !strings.Contains(invoicesKind.Prompt, "contract_reference") || invoicesKind.Schema == nil {
 		t.Error("the prompt does not ask for the contract number")
+	}
+}
+
+func TestInvoiceImportKeepsInternalNote(t *testing.T) {
+	st, sess, _ := invoiceStore(t)
+	ctx := context.Background()
+	data := clean(invoicesKind, invoiceData(t, `{"note": "Materials ordered separately.\nConfirm delivery."}`))
+	id, err := invoicesKind.Create(ctx, st.Q, sess, data, Source{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err := st.Invoice(ctx, sess.Workspace.ID, id, "2026-01-01", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "Imported from document RE-2025-017\n\nMaterials ordered separately.\nConfirm delivery."; inv.Note == nil || *inv.Note != want {
+		t.Errorf("note = %v, want %q", inv.Note, want)
+	}
+	if inv.Intro != nil || inv.Footer != nil {
+		t.Errorf("note reached document text: intro %v, footer %v", inv.Intro, inv.Footer)
+	}
+	duplicate, err := invoicesKind.Duplicate(ctx, st.Q, sess.Workspace.ID, data)
+	if err != nil || duplicate == nil || duplicate.ID != id || duplicate.Reason != "same document number" {
+		t.Errorf("duplicate = %+v, %v", duplicate, err)
+	}
+}
+
+func TestInvoiceImportPostalCode(t *testing.T) {
+	for _, tt := range []struct{ name, extra, want string }{
+		{"printed postcode", `{"client_city":"Zug","client_country":"CH","client_zip":"6301"}`, "6301"},
+		{"Swiss locality", `{"client_city":" Zug ","client_country":"CH"}`, "6300"},
+		{"Swiss locality with an umlaut", `{"client_city":"Hünenberg See","client_country":"CH"}`, "6333"},
+		{"ambiguous locality", `{"client_city":"Zürich","client_country":"CH"}`, ""},
+		{"locality outside Switzerland", `{"client_city":"Vaduz","client_country":"CH"}`, ""},
+		{"country missing", `{"client_city":"Baar"}`, ""},
+		{"another country", `{"client_city":"Baar","client_country":"DE"}`, ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			data := clean(invoicesKind, invoiceData(t, tt.extra))
+			if got := rawText(data["client_zip"]); got != tt.want {
+				t.Errorf("client_zip = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 

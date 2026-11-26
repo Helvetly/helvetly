@@ -292,6 +292,7 @@ export const IMPORT_KINDS = {
       number: translate('number'),
       reference: translate('reference'),
       contract_reference: translate('importContractNumber'),
+      note: translate('internalNote'),
       issue_date: translate('date'),
       due_date: translate('due'),
       currency: translate('importFieldCurrency'),

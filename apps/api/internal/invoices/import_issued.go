@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	address "helvetly.com/api/internal/addresses"
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/instalcalc"
 	"helvetly.com/api/internal/invoicecalc"
@@ -45,10 +46,7 @@ type importedInstalment struct {
 	PaidOn  *string         `json:"paid_on"`
 }
 
-// checkIssuedElsewhere reads issued_elsewhere, paid_amount, paid_on and instalments into invalid's messages: an
-// invoice issued elsewhere needs its own number and a past issue date. What was paid is one payment per paid
-// instalment when they make up paid_amount (or paid_amount is not given), else paid_amount once on paid_on. A payment without
-// its date was made on its instalment's due date, else the invoice's stated due date, else its issue date.
+// checkIssuedElsewhere validates the source number and the payments the document or reviewer confirmed.
 func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, today string, invalid map[string]string) issuedElsewhere {
 	var out issuedElsewhere
 	if raw, ok := data["issued_elsewhere"]; ok && json.Unmarshal(raw, &out.on) != nil {
@@ -74,10 +72,6 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 	} else if inv.IssueDate > today {
 		invalid["issue_date"] = "The issue date cannot be in the future."
 	}
-	fallback := inv.IssueDate
-	if _, ok := data["due_date"]; ok && inv.DueDate != "" {
-		fallback = inv.DueDate
-	}
 	note := "Paid before the import"
 	payment := func(key string, amount invoicecalc.Money, on string) store.Payment {
 		if on > today {
@@ -85,7 +79,7 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 		}
 		return store.Payment{Method: "other", Amount: amount, PaidOn: on, Note: &note}
 	}
-	instalments := paidInstalments(p, data["instalments"], fallback, today, payment)
+	instalments := paidInstalments(p, data["instalments"], payment)
 	var stated invoicecalc.Money
 	if hasAmount {
 		if n, ok := p.decimal("paid_amount", rawAmount, parseMoney, "Enter the amount with at most two decimals."); ok {
@@ -103,15 +97,8 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 	case hasAmount && stated == 0:
 		// Stated as not paid at all: it stays open.
 	case hasAmount:
-		on := fallback
-		if hasOn {
-			on = p.required("paid_on", rawOn, 10, date, "Enter when it was paid.")
-		}
+		on := p.required("paid_on", rawOn, 10, date, "Enter when it was paid.")
 		out.paid = []store.Payment{payment("paid_on", stated, on)}
-	case len(instalments) == 0 && fallback < today && inv.Payable() > 0:
-		// History: an invoice issued elsewhere whose due date has passed, with nothing said about payment, was paid in
-		// full on its due date (else its issue date). A paid amount of 0 says otherwise.
-		out.paid = []store.Payment{payment("paid_on", inv.Payable(), fallback)}
 	}
 	if total := sumPayments(out.paid); total > inv.Payable() {
 		p.fail("paid_amount", "The paid amount exceeds the invoice's total ("+inv.Currency+" "+inv.Payable().String()+").")
@@ -122,10 +109,8 @@ func checkIssuedElsewhere(inv store.Invoice, data map[string]json.RawMessage, to
 	return out
 }
 
-// paidInstalments: a payment per instalment of raw the document marks paid, dated as it states, else on the
-// instalment's due date, else on fallback. An instalment of this invoice issued elsewhere whose due date is before
-// today counts as paid on that date: imported invoices are history, settled as their schedule said.
-func paidInstalments(p *parser, raw json.RawMessage, fallback, today string, payment func(string, invoicecalc.Money, string) store.Payment) []store.Payment {
+// paidInstalments books payments using the date each was received.
+func paidInstalments(p *parser, raw json.RawMessage, payment func(string, invoicecalc.Money, string) store.Payment) []store.Payment {
 	var rows []importedInstalment
 	if len(raw) == 0 || isNull(raw) {
 		return nil
@@ -136,30 +121,51 @@ func paidInstalments(p *parser, raw json.RawMessage, fallback, today string, pay
 	}
 	var out []store.Payment
 	for i, row := range rows {
-		past := row.DueDate != nil && *row.DueDate != "" && *row.DueDate < today
-		if !(row.Paid != nil && *row.Paid) && row.PaidOn == nil && !past {
+		if row.PaidOn == nil && (row.Paid == nil || !*row.Paid) {
 			continue
 		}
 		key := fmt.Sprintf("instalments.%d", i)
-		n, ok := p.decimal(key+".amount", row.Amount, parseMoney, "Enter the amount with at most two decimals.")
+		if row.Paid != nil && !*row.Paid {
+			p.fail(key+".paid_on", "Clear the payment date or mark the instalment paid.")
+			continue
+		}
+		n, ok := p.decimal(key+".amount", row.Amount, parseMoney, "Enter an amount with at most two decimals.")
 		if !ok || n <= 0 {
 			p.fail(key+".amount", "Enter an amount above 0.")
 			continue
 		}
-		on := fallback
-		for _, d := range []*string{row.PaidOn, row.DueDate} {
-			if d != nil {
-				if _, msg := date(*d); msg != "" {
-					p.fail(key, msg)
-					break
-				}
-				on = *d
-				break
-			}
+		on, msg := date(deref(row.PaidOn))
+		if msg != "" {
+			p.fail(key+".paid_on", "Enter the date this instalment was paid.")
+			continue
 		}
-		out = append(out, payment(key, invoicecalc.Money(n), on))
+		out = append(out, payment(key+".paid_on", invoicecalc.Money(n), on))
 	}
 	return out
+}
+
+func importedBuyer(client store.Client, data map[string]json.RawMessage) store.Party {
+	buyer := buyerOf(client)
+	if buyer.Zip != "" {
+		return buyer
+	}
+	text := func(key string) string {
+		var value string
+		_ = json.Unmarshal(data[key], &value)
+		return strings.TrimSpace(value)
+	}
+	if strings.EqualFold(buyer.Name, text("client_name")) &&
+		buyer.City != "" && strings.EqualFold(buyer.City, text("client_city")) &&
+		buyer.Country != "" && strings.EqualFold(buyer.Country, text("client_country")) &&
+		strings.EqualFold(buyer.Street, text("client_street")) &&
+		strings.EqualFold(buyer.StreetNumber, text("client_street_number")) {
+		if zip := text("client_zip"); zip != "" && len(zip) <= 20 {
+			buyer.Zip = zip
+			return buyer
+		}
+	}
+	buyer.Zip = address.SwissPostcode(buyer.Country, buyer.City)
+	return buyer
 }
 
 // importedSchedule accepts 2 to 12 dated instalments that add up to the payable total.
@@ -251,12 +257,7 @@ func issueImported(ctx context.Context, q store.Q, sess store.Session, inv store
 	if err != nil {
 		return err
 	}
-	client, err := q.Client(ctx, sess.Workspace.ID, inv.ClientID)
-	if err != nil {
-		return err
-	}
-	buyer := buyerOf(client)
-	inv.Number, inv.Seller, inv.Buyer, inv.SourceDocumentID = &in.number, &set.Seller.Party, &buyer, documentID
+	inv.Number, inv.Seller, inv.SourceDocumentID = &in.number, &set.Seller.Party, documentID
 	inv.Payment = store.InvoicePaymentInfo{IBAN: set.IBAN, ReferenceType: "NON"}
 	if err := saveDraft(ctx, q, sess, inv, now); err != nil {
 		return err

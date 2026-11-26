@@ -1,0 +1,3947 @@
+# Federal Office of Topography swisstopo. Official index of cities and towns, 2026-11-01.
+# https://data.geo.admin.ch/api/stac/v0.9/collections/ch.swisstopo-vd.ortschaftenverzeichnis_plz
+# https://www.swisstopo.admin.ch/ogd-conditions
+# Swiss Ortschaftsname and PLZ4, excluding localities with multiple distinct postcodes.
+aadorf	8355
+aarau rohr	5032
+aarberg	3270
+aarburg	4663
+aarwangen	4912
+aathal-seegräben	8607
+aawangen	8522
+abländschen	1657
+abtwil ag	5646
+abtwil sg	9030
+achseten	3725
+aclens	1123
+acquarossa	6716
+adelboden	3715
+adetswil	8345
+adligenswil	6043
+adlikon b. andelfingen	8452
+adlikon b. regensdorf	8106
+adliswil	8134
+aedermannsdorf	4714
+aefligen	3426
+aegerten	2558
+aesch (neftenbach)	8412
+aesch bl	4147
+aesch lu	6287
+aesch zh	8904
+aeschau	3536
+aeschi b. spiez	3703
+aeschi so	4556
+aeschiried	3703
+aeschlen b. oberdiessbach	3672
+aeschlen ob gunten	3656
+aetigkofen	4583
+aetingen	4587
+aettenschwil	5645
+aeugst am albis	8914
+aeugstertal	8914
+affeltrangen	9556
+affoltern am albis	8910
+affoltern im emmental	3416
+agarn	3951
+agarone	6597
+agasul	8308
+agiez	1352
+agno	6982
+agra	6927
+agriswil	3216
+aigle	1860
+aire-la-ville	1288
+airolo	6780
+alberswil	6248
+albeuve	1669
+albinen	3955
+albligen	3183
+alchenflüh	3422
+alchenstorf	3473
+aldesago	6974
+algetshausen	9249
+alikon	5643
+allaman	1165
+alle	2942
+allens	1304
+allenwinden	6319
+allerheiligenberg	4615
+allmendingen b. bern	3112
+allschwil	4123
+almens	7416
+alosen	6315
+alp grüm	7710
+alpnach dorf	6055
+alpnachstad	6053
+alpthal	8849
+alt st. johann	9656
+altbüron	6147
+altdorf sh	8243
+altdorf ur	6460
+alten	8453
+altendorf	8852
+altenrhein	9423
+alterswil fr	1715
+alterswilen	8573
+altikon	8479
+altishausen	8573
+altishofen	6246
+altnau	8595
+altstätten sg	9450
+altwis	6286
+alvaneu bad	7473
+alvaneu dorf	7492
+alvaschein	7451
+ambrì	6775
+amden	8873
+aminona	3963
+amlikon-bissegg	8514
+ammerswil ag	5600
+ammerzwil be	3257
+amriswil	8580
+amsoldingen	3633
+amsteg	6474
+andeer	7440
+andelfingen	8450
+andermatt	6490
+andhausen	8572
+andiast	7159
+andwil sg	9204
+andwil tg	8586
+anglikon	5611
+anières	1247
+anwil	4469
+anzonico	6748
+anzère	1972
+appenzell	9050
+appenzell eggerstanden	9050
+appenzell enggenhütten	9050
+appenzell meistersrüte	9050
+appenzell schlatt	9050
+appenzell steinegg	9050
+apples	1143
+aproz (nendaz)	1994
+aquila	6719
+aran	1091
+aranno	6994
+arbaz	1974
+arbedo	6517
+arboldswil	4424
+arbon	9320
+arcegno	6618
+arch	3296
+arconciel	1732
+ardez	7546
+ardon	1957
+areuse	2015
+argnou (ayent)	1966
+arisdorf	4422
+aristau	5628
+arlesheim	4144
+arnegg	9212
+arnex-sur-nyon	1277
+arnex-sur-orbe	1321
+arni ag	8905
+arni be	3508
+arogno	6822
+arolla	1986
+arosa	7050
+arosio	6939
+arth	6415
+arveyes	1884
+arvigo	6543
+arvillard (salins)	1991
+arzier-le muids	1273
+arzo	6864
+ascharina	7245
+ascona	6612
+asp	5025
+assens	1042
+astano	6999
+asuel	2954
+athenaz (avusy)	1285
+attalens	1616
+attelwil	5056
+attikon	8544
+attinghausen	6468
+attiswil	4536
+au sg	9434
+au tg	8376
+au zh	8804
+aubonne	1170
+auboranges	1673
+auddes-sur-riddes	1914
+auenstein	5105
+augio	6548
+augst bl	4302
+aumont	1484
+auressio	6661
+aurigeno	6677
+auslikon	8331
+ausserberg	3938
+ausserbinn	3995
+ausserferrera	7444
+auswil	4944
+autafond	1782
+autavaux	1475
+autigny	1742
+auvernier	2012
+auw	5644
+avegno	6670
+aven	1976
+avenches	1580
+avers	7447
+avry-devant-pont	1644
+avry-sur-matran	1754
+avully	1237
+axalp	3855
+ayer	3961
+azmoos	9478
+aïre	1219
+baar	6340
+baar (nendaz)	1996
+bachenbülach	8184
+bachs	8164
+bad ragaz	7310
+bad zurzach	5330
+baldegg	6283
+baldingen	5333
+balerna	6828
+balgach	9436
+ballaigues	1338
+ballens	1144
+ballmoos	3303
+ballwil	6275
+balm b. günsberg	4525
+balm b. messen	3254
+balmberg	4524
+balsthal	4710
+balterswil	8362
+baltschieder	3937
+banco	6981
+bangerten b. dieterswil	3256
+bannwil	4913
+barbengo	6917
+barberêche	1783
+bargen be	3282
+bargen sh	8233
+barmelweid	5017
+barzheim	8241
+basadingen	8254
+basse-nendaz	1996
+bassecourt	2854
+bassersdorf	8303
+bassins	1269
+bauen	6466
+baulmes	1446
+bauma	8494
+bavois	1372
+bazenheid	9602
+beatenberg	3803
+beckenried	6375
+bedano	6930
+bedigliora	6981
+bedretto	6781
+beggingen	8228
+begnins	1268
+beinwil (freiamt)	5637
+beinwil am see	5712
+beinwil so	4229
+belalp	3914
+belfaux	1782
+bellach	4512
+bellelay	2713
+bellerive vd	1585
+bellevue	1293
+bellikon	5454
+bellmund	2564
+bellwald	3997
+belmont-sur-lausanne	1092
+belmont-sur-yverdon	1432
+belp	3123
+belpberg	3124
+belprahon	2744
+benglen	8121
+benken sg	8717
+benken zh	8463
+bennau	8836
+bennwil	4431
+benzenschwil	5636
+bercher	1038
+berg (dägerlen)	8471
+berg am irchel	8415
+berg sg	9305
+berg tg	8572
+bergdietikon	8962
+bergün/bravuogn	7482
+beride di bedigliora	6981
+berikon	8965
+beringen	8222
+berken	3376
+berlens	1680
+berlingen	8267
+berneck	9442
+bernex	1233
+bernhardzell	9304
+berolle	1149
+beromünster	6215
+berschis	8892
+bertschikon	8543
+bertschikon (gossau zh)	8614
+berzona	6661
+besazio	6863
+besenbüren	5627
+besencens	1609
+betschwanden	8777
+betten	3991
+bettenhausen	3366
+bettens	1042
+bettingen	4126
+bettlach	2544
+bettmeralp	3992
+bettwiesen	9553
+bettwil	5618
+beurnevésin	2935
+beuson (nendaz)	1996
+bevaix	2022
+bever	7502
+bex	1880
+biasca	6710
+biberen	3206
+biberist	4562
+bibern sh	8242
+bibern so	4578
+biberstein	5023
+bichelsee	8363
+bichwil	9248
+bidogno	6958
+biel vs	3989
+biel-benken bl	4105
+biembach im emmental	3419
+biessenhofen	8580
+bieudron (nendaz)	1996
+biezwil	4585
+bigenthal	3513
+biglen	3507
+bignasco	6676
+bigorio	6954
+billens	1681
+bilten	8865
+binn	3996
+binningen	4102
+binz	8122
+bioggio	6934
+bioley-magnoux	1407
+bioley-orjulaz	1042
+bionnens	1670
+birgisch	3903
+birmensdorf zh	8903
+birmenstorf ag	5413
+bironico	6804
+birr	5242
+birrhard	5244
+birrwil	5708
+birsfelden	4127
+birwinken	8585
+bischofszell	9220
+bisisthal	6436
+bissone	6816
+bister	3983
+bitsch	3982
+bivio	7457
+bière	1145
+blankenburg	3771
+blatten (lötschen)	3919
+blatten b. naters	3914
+blauen	4223
+blausee-mitholz	3717
+bleienbach	3368
+bleiken b. oberdiessbach	3674
+blessens	1675
+blignou (ayent)	1966
+blitzingen	3989
+blonay	1807
+blumenstein	3638
+bodio ti	6743
+bofflens	1353
+bogis-bossey	1279
+bogno	6951
+bolken	4556
+boll	3067
+bolligen	3065
+bollingen	8715
+bollion	1470
+bollodingen	3366
+boltigen	3766
+bombinasco	6981
+bonaduz	7402
+bonau	8554
+boncourt	2926
+bondo	7606
+bonfol	2944
+boningen	4618
+boniswil	5706
+bonnefontaine	1724
+bonstetten	8906
+bonvillars	1427
+boppelsen	8113
+borex	1277
+borgnone	6658
+borgonovo	7604
+bosco luganese	6935
+bosco/gurin	6685
+bossonnens	1615
+boswil	5623
+bottens	1041
+bottenwil	4814
+botterens	1652
+bottighofen	8598
+bottmingen	4103
+botyre (ayent)	1966
+boudevilliers	2043
+boudry	2017
+bougy-villars	1172
+boulens	1063
+bouloz	1699
+bourg-st-pierre	1946
+bourguillon	1722
+bournens	1035
+bourrignon	2803
+boussens	1034
+bouveret	1897
+boveresse	2113
+bovernier	1932
+bowil	3533
+boécourt	2856
+braggio	6544
+brail	7527
+bramboden	6167
+bramois	1967
+bratsch	3957
+braunau	9502
+braunwald	8784
+breganzona	6932
+breil/brigels	7165
+breitenbach	4226
+bremblens	1121
+bremgarten ag	5620
+bremgarten b. bern	3047
+brenles	1683
+breno	6937
+brent	1817
+brenzikofen	3671
+bressaucourt	2904
+bretigny-sur-morrens	1053
+bretonnières	1329
+bretzwil	4207
+brienz be	3855
+brienz/brinzauls gr	7084
+brienzwiler	3856
+brig	3900
+brigerbad	3900
+brignon (nendaz)	1996
+brione (verzasca)	6634
+brione sopra minusio	6645
+brislach	4225
+brissago	6614
+bristen	6475
+brittern	4588
+brittnau	4805
+broc	1636
+broglio	6693
+bronschhofen	9552
+brontallo	6692
+brot-dessous	2149
+brot-plamboz	2318
+bruderholz	4101
+brugg ag	5200
+brunegg	5505
+brunnadern	9125
+brunnen	6440
+brunnenthal	3307
+brusino arsizio	6827
+brusio	7743
+bruson	1934
+bruzella	6837
+brè sopra lugano	6979
+brügg be	2555
+brügglen	4582
+brülisau	9058
+brünig	3860
+brünisried	1719
+brüttelen	3237
+brütten	8311
+brüttisellen	8306
+bubendorf	4416
+bubikon	8608
+buch am irchel	8414
+buch b. frauenfeld	8524
+buch b. kümmertshausen	8586
+buch b. märwil	9562
+buch sh	8263
+buchackern	8586
+buchberg	8454
+buchen be	3623
+buchen im prättigau	7223
+buchillon	1164
+buchrain	6033
+buchs ag	5033
+buchs lu	6211
+buchs sg	9470
+buchs zh	8107
+buckten	4446
+buhwil	9215
+buix	2925
+bulle	1630
+bullet	1453
+buochs	6374
+buonas	6343
+bure	2915
+burg ag	5736
+burg im leimental	4117
+burgdorf	3400
+burgistein	3664
+burglauenen	3816
+burgäschi	4556
+bursinel	1195
+bursins	1183
+burtigny	1268
+buseno	6542
+bussigny	1030
+bussigny-sur-oron	1608
+bussnang	9565
+busswil b. melchnau	4917
+busswil be	3292
+busswil tg	8371
+bussy fr	1541
+bussy-chardonney	1136
+bussy-sur-moudon	1514
+buttes	2115
+buttikon sz	8863
+buttisholz	6018
+buttwil	5632
+buus	4463
+bäch sz	8806
+bächli (hemberg)	9633
+bänk (dägerlen)	8471
+bärau	3552
+bäretswil	8344
+bäriswil be	3323
+bärschwil	4252
+bätterkinden	3315
+bättwil	4112
+bévilard	2735
+bôle	2014
+böbikon	5334
+böckten	4461
+bönigen b. interlaken	3806
+bösingen	3178
+böttstein	5315
+bözberg	5225
+bözen	5076
+büchslen	3215
+büetigen	3263
+bühl b. aarberg	3274
+bühler	9055
+bülach	8180
+bünzen	5624
+bürchen	3935
+büren an der aare	3294
+büren nw	6382
+büren so	4413
+büren zum hof	3313
+bürgenstock	6363
+bürglen ow	6078
+bürglen tg	8575
+bürglen ur	6463
+büriswilen	9442
+büron	6233
+büsserach	4227
+bütschwil	9606
+büttenhardt	8236
+büttikon ag	5619
+bützberg	4922
+cabbio	6838
+cademario	6936
+cadempino	6814
+cadenazzo	6593
+cadro	6965
+cagiallo	6955
+calfreisen	7027
+calonico	6746
+calpiogna	6760
+cama	6557
+camedo	6659
+camignolo	6803
+camischolas	7187
+camorino	6528
+campascio	7748
+campello	6760
+camperio	6718
+campo (blenio)	6720
+campo (vallemaggia)	6684
+campocologno	7744
+campora	6875
+camuns	7113
+caneggio	6837
+canobbio	6952
+capolago	6825
+carabbia	6913
+carabietta	6919
+carena	6584
+carona	6914
+carouge ge	1227
+carrouge vd	1084
+cartigny	1236
+carì	6760
+casaccia	7602
+casima	6875
+caslano	6987
+cassina d'agno	6990
+castagnola	6976
+castaneda	6540
+castasegna	7608
+castel san pietro	6874
+castelrotto	6980
+castiel	7027
+castione	6532
+castrisch	7126
+castro	6723
+cauco	6546
+caux	1824
+cavagnago	6749
+cavardiras	7182
+cavergno	6690
+caviano	6578
+cavigliano	6654
+cazis	7408
+celerina/schlarigna	7505
+cerentino	6683
+cerniat fr	1654
+cerniaz vd	1682
+cernier	2053
+certara	6959
+cevio	6675
+chabrey	1589
+chailly-montreux	1816
+chalais	3966
+cham	6330
+chamblon	1436
+chambrelien	2019
+chamby	1832
+chambésy	1292
+chamoille (sembrancher)	1933
+chamoson	1955
+champ-du-moulin	2149
+champagne	1424
+champex-lac	1938
+champfèr	7512
+champlan (grimisuat)	1971
+champoussin	1873
+champoz	2735
+champsec	1947
+champtauroz	1537
+champvent	1443
+champzabé	3976
+champéry	1874
+chancy	1284
+chandolin	3961
+chandon	1773
+chandonne (liddes)	1945
+chanéaz	1409
+chapella	7526
+chapelle (broye)	1534
+chapelle (glâne)	1608
+chapelle-sur-moudon	1063
+chardonne	1803
+charmey (gruyère)	1637
+charmoille	2947
+charrat	1906
+chaumont	2067
+chavannes-de-bogis	1279
+chavannes-des-bois	1290
+chavannes-le-chêne	1464
+chavannes-le-veyron	1148
+chavannes-les-forts	1676
+chavannes-près-renens	1022
+chavannes-sous-orsonnens	1694
+chavannes-sur-moudon	1512
+chavornay	1373
+cheiry	1529
+chemin	1927
+chenaux	1091
+chermignon	3971
+chermignon-d'en-bas	3971
+chernex	1822
+chesalles-sur-moudon	1683
+chesalles-sur-oron	1608
+cheseaux-noréaz	1400
+cheseaux-sur-lausanne	1033
+chesières	1885
+chessel	1846
+chevenez	2906
+chevilly	1316
+chevroux	1545
+chexbres	1071
+cheyres	1468
+chez petit (liddes)	1945
+chez-le-bart	2025
+chiasso	6830
+chiggiogna	6764
+chigny	1134
+chippis	3965
+chironico	6747
+choulex	1244
+choëx	1871
+chur	7000
+churwalden	7075
+châbles fr	1474
+château-d'oex	1660
+châtel-st-denis	1618
+châtel-sur-montsalvens	1653
+châtelaine	1219
+châtelat	2715
+châtillens	1610
+châtillon fr	1473
+châtillon ju	2843
+châtonnaye	1553
+chénens	1744
+chéserex	1275
+chésopelloz	1720
+chézard-st-martin	2054
+chêne-bougeries	1224
+chêne-bourg	1225
+chêne-pâquier	1464
+cimadera	6959
+cimalmotto	6684
+cimo	6992
+cinuos-chel	7526
+clarens	1815
+clarmont	1127
+claro	6702
+clavaleyres	1595
+clugin	7442
+clèbes (nendaz)	1993
+coeuve	2932
+coffrane	2207
+coglio	6678
+coinsins	1267
+cointrin	1216
+coldrerio	6877
+colla	6951
+collex	1239
+collombey	1868
+collonge-bellerive	1245
+collonges	1903
+cologny	1223
+colombier ne	2013
+colombier vd	1114
+comano	6949
+combremont-le-grand	1535
+combremont-le-petit	1536
+commugny	1291
+comologno	6661
+conches	1231
+concise	1426
+condémines (nendaz)	1996
+confignon	1232
+constantine	1587
+conters im prättigau	7241
+conthey	1964
+contone	6594
+contra	6646
+coppet	1296
+corban	2826
+corbeyrier	1856
+corbières	1647
+corcelles be	2747
+corcelles ne	2035
+corcelles-le-jorat	1082
+corcelles-près-concise	1426
+corcelles-près-payerne	1562
+corcelles-sur-chavornay	1374
+cordast	1792
+corgémont	2606
+corin-de-la-crête	3960
+corippo	6631
+corjolens	1754
+cormagens	1782
+corminboeuf	1720
+cormondrèche	2036
+cormoret	2612
+cormérod	1721
+cornaux ne	2087
+cornol	2952
+corpataux	1727
+correvon	1410
+corseaux	1802
+corserey	1747
+corsier ge	1246
+corsier-sur-vevey	1804
+cortaillod	2016
+corteglia	6873
+corticiasca	6958
+cortébert	2607
+corzoneso	6722
+cossonay-ville	1304
+cottens fr	1741
+cottens vd	1116
+cotterd	1585
+courcelon	2823
+courchapoix	2825
+courchavon	2922
+courfaivre	2853
+courgenay	2950
+courgevaux	1796
+courlevon	1795
+cournillens	1721
+courrendlin	2830
+courroux	2822
+court	2738
+courtaman	1791
+courtedoux	2905
+courtelary	2608
+courtemautruy	2950
+courtemaîche	2923
+courtepin	1784
+courtion	1721
+courtételle	2852
+cousset	1774
+couvet	2108
+cozzo	6951
+crana	6661
+crans vd	1299
+crans vs	3963
+crans-montana	3963
+crassier	1263
+cremin	1526
+cresciano	6705
+cressier fr	1785
+cressier ne	2088
+cries (vollèges)	1941
+crissier	1023
+cronay	1406
+croy	1322
+crémines	2746
+crésuz	1653
+crête-à-l'oeil (les agettes)	1992
+cuarnens	1148
+cuarny	1404
+cudrefin	1588
+cugnasco	6516
+cugy fr	1482
+cugy vd	1053
+cully	1096
+cumbel	7142
+cumpadials	7176
+cunter	7452
+curaglia	7184
+cureggia	6963
+cureglia	6944
+curio	6986
+curtilles	1521
+curtina	6959
+céligny	1298
+dachsen	8447
+dagmersellen	6252
+daillens	1306
+daillon	1976
+daiwil	6126
+dalin	7424
+dallenwil	6383
+dalpe	6774
+damphreux	2933
+damvant	2914
+dangio	6717
+danis	7163
+dardagny	1283
+dardin	7164
+davesco-soragno	6964
+davos clavadel	7272
+davos dorf	7260
+davos frauenkirch	7276
+davos glaris	7277
+davos monstein	7278
+davos platz	7270
+davos wiesen	7494
+davos wolfgang	7265
+degen	7145
+degersheim	9113
+deisswil b. münchenbuchsee	3053
+deitingen	4543
+delley	1567
+delémont	2800
+denens	1135
+denezy	1410
+denges	1026
+densbüren	5026
+derendingen	4552
+detligen	3036
+dettighofen	8505
+dettighofen (lengwil)	8574
+develier	2802
+dickbuch	8354
+dicken	9115
+diegten	4457
+dielsdorf	8157
+diemerswil	3053
+diemtigen	3754
+diepflingen	4442
+diepoldsau	9444
+dierikon	6036
+diesbach gl	8777
+diessbach b. büren	3264
+diesse	2517
+diessenhofen	8253
+dieterswil	3256
+dietfurt	9615
+dietikon	8953
+dietlikon	8305
+dietschwil	9533
+dietwil	6042
+dinhard	8474
+dino	6967
+dintikon	5606
+disentis/mustér	7180
+dittingen	4243
+dizy	1304
+domat/ems	7013
+dombresson	2056
+domdidier	1564
+dommartin	1041
+dompierre fr	1563
+dompierre vd	1682
+donat	7433
+donatyre	1580
+dongio	6715
+donneloye	1407
+donzhausen	8583
+doppleschwand	6112
+dorf	8458
+dornach	4143
+dorénaz	1905
+dotnacht	8566
+dottikon	5605
+dotzigen	3293
+dozwil	8582
+dranse (liddes)	1945
+dreien	9612
+duggingen	4202
+dugny (leytron)	1912
+duillier	1266
+dulliken	4657
+dully	1195
+dussnang	8374
+duvin	7112
+dägerlen	8471
+dällikon	8108
+däniken so	4658
+dänikon zh	8114
+därligen	3707
+därstetten	3763
+dättlikon	8421
+dättwil ag	5405
+démoret	1415
+dörflingen	8239
+döttingen	5312
+dübendorf	8600
+düdingen	3186
+dürnten	8635
+dürrenroth	3465
+dürrenäsch	5724
+ebersecken	6245
+ebersol	9122
+ebertswil	8925
+ebikon	6030
+ebmatingen	8123
+ebnat-kappel	9642
+ebnet	6163
+echallens	1040
+echandens	1026
+echarlens	1646
+echichens	1112
+eclagnens	1376
+eclépens	1312
+ecoteaux	1612
+ecublens fr	1673
+ecublens vd	1024
+ecuvillens	1730
+ederswiler	2813
+edlibach	6313
+effingen	5078
+effretikon	8307
+egerkingen	4622
+egg (flawil)	9231
+egg b. zürich	8132
+egg sz	8847
+eggenwil	5445
+eggerberg	3939
+eggersriet	9034
+eggiwil	3537
+eglisau	8193
+egliswil	5704
+egnach	9322
+egolzwil	6243
+ehrendingen	5420
+ehrikon	8489
+eich	6205
+eichberg	9453
+eigenthal	6013
+eigergletscher	3823
+eiken	5074
+einigen	3646
+einsiedeln	8840
+eischoll	3943
+eison (st-martin)	1969
+eisten	3922
+elfingen	5077
+elgg	8353
+ellighausen	8566
+ellikon am rhein	8464
+ellikon an der thur	8548
+elm	8767
+elsau	8352
+embd	3926
+embrach	8424
+emdthal	3711
+emmen	6032
+emmenbrücke	6020
+emmenmatt	3543
+emmetten	6376
+endingen	5304
+engelberg	6390
+engelburg	9032
+enges	2073
+enggistein	3077
+engi	8765
+engishofen	8586
+englisberg	3086
+engollon	2063
+engwang	8556
+engwilen	8564
+ennenda	8755
+ennetaach	8586
+ennetbaden	5408
+ennetbühl	9651
+ennetbürgen	6373
+ennetmoos	6372
+enney	1667
+entlebuch	6162
+epagny	1663
+epalinges	1066
+epautheyres	1417
+epauvillers	2885
+ependes fr	1731
+ependes vd	1434
+epesses	1098
+epiquerez	2886
+eppenberg	5012
+epsach	3272
+eptingen	4458
+erde	1976
+ergisch	3947
+eriswil	4952
+eriz	3619
+erlach	3235
+erlen	8586
+erlenbach im simmental	3762
+erlenbach zh	8703
+erlinsbach	5018
+erlinsbach so	5015
+ermatingen	8272
+ermensee	6294
+ermenswil	8734
+ernen	3995
+ernetschwil	8725
+erschmatt	3957
+erschwil	4228
+ersigen	3423
+erstfeld	6472
+eschenbach lu	6274
+eschenbach sg	8733
+eschenz	8264
+eschert	2743
+eschikofen	8553
+eschlikon tg	8360
+escholzmatt	6182
+esmonts	1670
+essert fr	1724
+essert-pittet	1435
+essert-sous-champvent	1443
+essertes	1078
+essertines-sur-rolle	1186
+essertines-sur-yverdon	1417
+esslingen	8133
+estavannens	1665
+estavayer-le-gibloux	1695
+estavayer-le-lac	1470
+estévenens	1687
+etagnières	1037
+etoy	1163
+ettenhausen tg	8356
+ettingen	4107
+ettiswil	6218
+etzelkofen	3306
+etzgen	5275
+etziken	4554
+etzwilen	8259
+euseigne	1982
+euthal	8844
+evilard	2533
+evionnaz	1902
+evolène	1983
+eyholz	3930
+eysins	1262
+fahrni b. thun	3617
+fahrwangen	5615
+fahrweid	8951
+fahy	2916
+faido	6760
+fajauna	7226
+falera	7153
+fanas	7215
+fankhaus (trub)	3557
+faoug	1595
+farnern	4539
+farvagny-le-grand	1726
+farvagny-le-petit	1726
+faulensee	3705
+fehraltorf	8320
+fehren	4232
+felben-wellhausen	8552
+feldbach	8714
+feldbrunnen	4532
+feldis/veulden	7404
+felsberg	7012
+fenalet-sur-bex	1880
+fenil-sur-corsier	1809
+fenin	2063
+fenkrieden	5645
+ferden	3916
+ferenbalm	3206
+ferlens vd	1076
+ferpicloz	1724
+ferreyres	1313
+fescoggia	6938
+feuerthalen	8245
+feusisberg	8835
+feutersoey	3784
+fex	7514
+fey	1044
+fey (nendaz)	1996
+fiaugères	1609
+fidaz	7019
+fideris	7235
+fiesch	3984
+fieschertal	3984
+fiez	1420
+figino	6918
+filet	3983
+filisur	7477
+filzbach	8757
+finhaut	1925
+finsterhennen	2577
+finstersee	6313
+finsterwald b. entlebuch	6162
+fionnay	1948
+fischbach lu	6145
+fischbach-göslikon	5525
+fischenthal	8497
+fischingen	8376
+fisibach	5467
+fislisbach	5442
+flaach	8416
+flamatt	3175
+flanthey	3978
+flawil	9230
+flendruz	1659
+flerden	7426
+fleurier	2114
+flims dorf	7017
+flims waldhaus	7018
+flond	7137
+flumenthal	4534
+flums	8890
+flums hochwiese	8893
+flumserberg bergheim	8896
+flumserberg portels	8895
+flumserberg saxli	8894
+flumserberg tannenbodenalp	8898
+flumserberg tannenheim	8897
+flurlingen	8247
+fläsch	7306
+flüelen	6454
+flüeli-ranft	6073
+flüh	4112
+flühli lu	6173
+font	1473
+fontaine dessous (liddes)	1945
+fontaine dessus (liddes)	1945
+fontainemelon	2052
+fontaines ne	2046
+fontaines-sur-grandson	1421
+fontanezier	1423
+fontannen b. wolhusen	6110
+fontenais	2902
+fontnas	9476
+forch	8127
+forel (lavaux)	1072
+forel fr	1475
+forel-sur-lucens	1526
+formangueires	1782
+fornet-dessous	2717
+fornet-dessus	2718
+fornex (liddes)	1945
+forst b. längenbühl	3636
+fortunau (ayent)	1966
+founex	1297
+frasco	6636
+frasnacht	9320
+frasses	1483
+fraubrunnen	3312
+frauenfeld	8500
+frauenkappelen	3202
+fregiécourt	2953
+freidorf tg	9306
+freienbach	8807
+freienstein	8427
+freienwil	5423
+freimettigen	3510
+frenières-sur-bex	1880
+frenkendorf	4402
+fresens	2027
+fretereules	2149
+freudwil	8615
+fribourg	1700
+frick	5070
+frieswil	3035
+friltschen	9504
+frinvillier	2535
+froideville	1055
+fruthwilen	8269
+frutigen	3714
+fräschels	3284
+frümsen	9467
+ftan	7551
+fuldera	7533
+fulenbach	4629
+full-reuenthal	5324
+fully	1926
+furna	7232
+fusio	6696
+fällanden	8117
+féchy	1173
+fétigny	1532
+füllinsdorf	4414
+fürigen	6363
+fürstenau	7414
+fürstenaubruck	7413
+gabi (simplon)	3907
+gachnang	8547
+gadenstätt	7244
+gadmen	3863
+gais	9056
+galgenen	8854
+galmiz	3285
+gals	3238
+gammen	3206
+gampel	3945
+gampelen	3236
+gams	9473
+gamsen	3900
+gandria	6978
+gansingen	5272
+ganterschwil	9608
+gasel	3144
+gattikon	8136
+gebenstorf	5412
+gebertingen	8725
+geiss	6123
+gelfingen	6284
+gelterfingen	3126
+gelterkinden	4460
+geltwil	5637
+gempen	4145
+gempenach	3215
+genestrerio	6852
+genolier	1272
+genthod	1294
+gentilino	6925
+gerlafingen	4563
+gerlikon	8500
+geroldswil	8954
+gerolfingen	2575
+gerra (gambarogno)	6576
+gerra (verzasca)	6635
+gersau	6442
+gerzensee	3115
+geschinen	3985
+gettnau	6142
+geuensee	6232
+ghirone	6720
+gibswil	8498
+giebenach	4304
+giez	1429
+giffers	1735
+gillarens	1673
+gilly	1182
+gimel	1188
+gimmelwald	3826
+gingins	1276
+giornico	6745
+gipf-oberfrick	5073
+gisikon	6038
+giswil	6074
+giubiasco	6512
+giumaglio	6678
+givisiez	1762
+givrins	1271
+gland	1196
+glarus	8750
+glashütten	4856
+glattbrugg	8152
+glattfelden	8192
+glattpark (opfikon)	8152
+gletterens	1544
+glion	1823
+glis	3902
+glovelier	2855
+gluringen	3998
+gnosca	6525
+gockhausen	8044
+gohl	3553
+golaten	3207
+goldach	9403
+goldau	6410
+goldingen	8638
+goldiwil (thun)	3624
+goldswil b. interlaken	3805
+golino	6656
+gollion	1124
+gommiswald	8737
+gondiswil	4955
+gondo	3907
+gonten	9108
+gontenbad	9108
+gontenschwil	5728
+goppenstein	3917
+goppisberg	3983
+gordevio	6672
+gordola	6596
+gorduno	6518
+gorgier	2023
+gossau sg	9200
+gossau zh	8625
+gossens	1407
+gossliwil	4579
+gottlieben	8274
+goumoens-la-ville	1376
+goumoens-le-jux	1376
+goumois	2354
+graben	3376
+grabs	9472
+grabserberg	9472
+grafenort	6388
+grafenried	3308
+grafstal	8310
+graltshausen	8572
+grancia	6916
+grancy	1117
+grand-lancy	1212
+grandcour	1543
+grandevent	1421
+grandfontaine	2908
+grandsivaz	1775
+grandson	1422
+grandval	2745
+grandvaux	1091
+grandvillard	1666
+granges (veveyse)	1614
+granges vs	3977
+granges-de-vesin	1484
+granges-paccot	1763
+granges-près-marnand	1523
+grangettes-près-romont	1686
+grasswil	3365
+grattavache	1624
+gravesano	6929
+greich	3983
+greifensee	8606
+grellingen	4203
+grenchen	2540
+greng	3280
+grengiols	3993
+grenilles	1726
+grens	1274
+greppen	6404
+gresso	6661
+gressy	1432
+gretschins	9479
+gretzenbach	5014
+grimentz	3961
+grimisuat	1971
+grindel	4247
+grindelwald	3818
+grolley	1772
+grono	6537
+gross	8841
+grossaffoltern	3257
+grossdietwil	6146
+grosshöchstetten	3506
+grosswangen	6022
+grub ar	9035
+grub sg	9036
+gruben	3946
+grugnay (chamoson)	1955
+grund b. gstaad	3783
+gruyères	1663
+gryon	1882
+grächen	3925
+gränichen	5722
+gräslikon	8415
+grône	3979
+grünen	3455
+grünenmatt	3452
+grüningen	8627
+grüsch	7214
+grüt (gossau zh)	8624
+gstaad	3780
+gsteig b. gstaad	3785
+gsteigwiler	3814
+guarda	7545
+gudo	6515
+guggisberg	3158
+gumefens	1643
+gundetswil	8543
+guntalingen	8468
+gunten	3654
+guntershausen b. aadorf	8357
+guntershausen b. berg	8572
+gunterswilen	8564
+guntmadingen	8223
+gunzgen	4617
+gunzwil	6222
+gurbrü	3208
+gurmels	3212
+gurtnellen	6482
+gurzelen	3663
+guschelmuth	1792
+gutenburg	4932
+gutenswil	8605
+guttannen	3864
+guttet-feschel	3956
+gwatt (thun)	3645
+gy	1251
+gysenstein	3503
+gächlingen	8214
+gächliwil	4584
+gähwil	9534
+gänsbrunnen	4716
+göschenen	6487
+götighofen	8583
+gümligen	3073
+gümmenen	3205
+gündisau	8322
+gündlischwand	3815
+günsberg	4524
+güttingen	8594
+haag (rheintal)	9469
+habkern	3804
+habsburg	5245
+hagenbuch zh	8523
+hagendorn	6332
+hagenwil b. amriswil	8580
+hagneck	2575
+halden	9223
+haldenstein	7023
+haldi b. schattdorf	6469
+hallau	8215
+hallwil	5705
+halten	4566
+happerswil	8585
+harenwilen	8553
+hasle b. burgdorf	3415
+hasle lu	6166
+haslen ai	9054
+haslen gl	8773
+hasliberg goldern	6085
+hasliberg hohfluh	6083
+hasliberg reuti	6086
+hasliberg wasserwendi	6084
+hattenhausen	8564
+hauenstein	4633
+hauptikon	8926
+hauptwil	9213
+hausen ag	5212
+hausen am albis	8915
+haute-nendaz	1997
+hauterive ne	2068
+hauteville	1648
+hedingen	8908
+heerbrugg	9435
+hefenhausen	8564
+hefenhofen	8580
+heiden	9410
+heiligenschwendi	3625
+heiligkreuz (mels)	8888
+heimberg	3627
+heimenhausen	3373
+heimenschwand	3615
+heimisbach	3453
+heimiswil	3412
+heinrichswil	4558
+heitenried	1714
+heldswil	9216
+helgisried-rohrbach	3155
+hellbühl	6016
+hellikon	4316
+hellsau	3429
+hemberg	9633
+hemishofen	8261
+hemmental	8231
+hemmiken	4465
+henau	9247
+hendschiken	5604
+henggart	8444
+hennens	1681
+henniez	1525
+herbetswil	4715
+herbligen	3671
+herbriggen	3927
+herdern	8535
+hergiswil b. willisau	6133
+hergiswil nw	6052
+herisau	9100
+herlisberg	6028
+hermance	1248
+hermenches	1513
+hermetschwil-staffeln	5626
+hermiswil	3475
+hermrigen	3274
+herrenhof	8585
+herrenschwanden	3037
+herrliberg	8704
+hersberg	4423
+hersiwil	4558
+hertenstein ag	5415
+herznach	5027
+herzogenbuchsee	3360
+hessigkofen	4577
+hettenschwil	5317
+hettiswil b. hindelbank	3325
+hettlingen	8442
+hildisrieden	6024
+hilfikon	5613
+hilterfingen	3652
+himmelried	4204
+hindelbank	3324
+hinteregg	8132
+hinterforst	9452
+hinterfultigen	3089
+hinterkappelen	3032
+hintermoos	6260
+hinterrhein	7438
+hinwil	8340
+hirschthal	5042
+hirzel	8816
+hittnau	8335
+hitzkirch	6285
+hochdorf	6280
+hochfelden	8182
+hochwald	4146
+hofen sh	8242
+hoffeld	9114
+hofstatt	6154
+hofstetten b. brienz	3858
+hofstetten so	4114
+hofstetten zh	8354
+hohenrain	6276
+hohentannen	9216
+hohtenn	3949
+holderbank ag	5113
+holderbank so	4718
+holzhäusern zg	6343
+holziken	5043
+homberg b. thun	3622
+hombrechtikon	8634
+homburg	8508
+honau	6038
+hondrich	3702
+horboden	3755
+horgen	8810
+horgenberg	8815
+horn	9326
+hornussen	5075
+horrenbach	3623
+horriwil	4557
+horw	6048
+hosenruck	9515
+hospental	6493
+hottwil	5277
+hubersdorf	4535
+hugelshofen	8565
+humlikon	8457
+hundwil	9064
+hunzenschwil	5502
+hurden	8640
+huttwil	4950
+huémoz	1884
+häfelfingen	4445
+hägendorf	4614
+häggenschwil	9312
+hägglingen	5607
+hämikon	6289
+härkingen	4624
+hätzingen	8775
+häusernmoos im emmental	3463
+häuslenen	8522
+häutligen	3510
+hérémence	1987
+höchstetten	3429
+höfen b. thun	3631
+hölstein	4434
+hörhausen	8507
+höri	8181
+hünenberg	6331
+hünenberg see	6333
+hünibach	3626
+hüniken	4554
+hünikon (neftenbach)	8412
+hüntwangen	8194
+hüswil	6152
+hütten	8825
+hüttikon	8115
+hüttlingen	8553
+hüttwilen	8536
+ibach	6438
+ichertswil	4571
+icogne	1977
+iffwil	3305
+igis	7206
+ilanz	7130
+illgau	6434
+illhart	8556
+illighausen	8574
+illnau	8308
+im fang	1656
+immensee	6405
+indemini	6571
+inden	3953
+inkwil	3375
+innerberg	3044
+innerferrera	7445
+innerthal	8858
+innertkirchen	3862
+ins	3232
+insone	6951
+interlaken	3800
+intragna	6655
+intschi	6476
+inwil	6034
+ipsach	2563
+iragna	6707
+iseltwald	3807
+isenfluh	3822
+isenthal	6461
+iseo	6993
+islikon	8546
+islisberg	8905
+isole di brissago	6614
+isone	6810
+istighofen	8575
+isérables	1914
+itingen	4452
+ittenthal	5083
+ittigen	3063
+jaberg	3629
+jakobsbad	9108
+jaun	1656
+jegenstorf	3303
+jenaz	7233
+jenins	7307
+jens	2565
+jeuss	1793
+jona	8645
+jonen	8916
+jongny	1805
+jonschwil	9243
+jouxtens-mézery	1008
+juf	7448
+jungfraujoch	3801
+juriens	1326
+jussy	1254
+kaiseraugst	4303
+kaiserstuhl ag	5466
+kaisten	5082
+kallern	5625
+kallnach	3283
+kalpetran	3922
+kaltacker	3413
+kaltbach	6212
+kaltbrunn	8722
+kaltenbach	8259
+kammersrohr	4535
+kandergrund	3716
+kandersteg	3718
+kappel am albis	8926
+kappel so	4616
+kappelen	3273
+kastanienbaum	6047
+kaufdorf	3126
+kefikon tg	8546
+kefikon zh	8543
+kehrsatz	3122
+kehrsiten	6365
+kemptthal	8310
+kernenried	3309
+kerns	6064
+kerzers	3210
+kesswil	8593
+kestenholz	4703
+kienberg	4468
+kiental	3723
+kiesen	3629
+kilchberg bl	4496
+kilchberg zh	8802
+killwangen	8956
+kippel	3917
+kirchberg be	3422
+kirchberg sg	9533
+kirchdorf ag	5416
+kirchdorf be	3116
+kirchenthurnen	3128
+kirchleerau	5054
+kirchlindach	3038
+klarsreuti	8585
+kleinandelfingen	8451
+kleinbösingen	3213
+kleindietwil	4936
+kleindöttingen	5314
+kleine scheidegg	3823
+kleingurmels	3212
+kleinlützel	4245
+kleinwangen	6277
+klingnau	5313
+kloster fahr	8109
+klosters	7250
+klosters dorf	7252
+kloten	8302
+klöntal	8750
+knonau	8934
+knutwil	6213
+koblenz	5322
+kollbrunn	8483
+konolfingen	3510
+koppigen	3425
+kottwil	6217
+kradolf	9214
+krattigen	3704
+krauchthal	3326
+kreuzlingen	8280
+kriechenwil	3179
+kriegstetten	4566
+kriens	6010
+kriessern	9451
+krinau	9622
+krummenau	9643
+kräiligen	3315
+kulmerau	6234
+kyburg	8314
+kyburg-buchegg	4586
+kägiswil	6056
+känerkinden	4447
+kölliken	5742
+köniz	3098
+küblis	7240
+kümmertshausen	8586
+künten	5444
+küsnacht zh	8700
+küssnacht am rigi	6403
+küttigen	5024
+küttigkofen	4581
+l'abbaye	1344
+l'abergement	1355
+l'auberson	1454
+l'etivaz	1660
+l'isle	1148
+l'orient	1341
+la brévine	2406
+la chaux (cossonay)	1308
+la chaux-de-fonds	2300
+la chaux-des-breuleux	2345
+la chaux-du-milieu	2405
+la châtagne	2406
+la comballaz	1862
+la conversion	1093
+la corbaz	1782
+la coudre	1148
+la croix (lutry)	1090
+la croix-de-rozon	1257
+la cure	1265
+la côte-aux-fées	2117
+la ferrière	2333
+la forclaz vd	1866
+la forclaz vs	1985
+la fouly vs	1944
+la garde (sembrancher)	1933
+la heutte	2604
+la joux fr	1697
+la lécherette	1660
+la magne	1687
+la neirigue	1686
+la neuveville	2520
+la place (ayent)	1966
+la plaine	1283
+la praz	1148
+la punt chamues-ch	7522
+la rippe	1278
+la roche fr	1634
+la russille	1356
+la rösa	7742
+la sage	1985
+la sagne (ste-croix)	1450
+la sagne ne	2314
+la sarraz	1315
+la tanne	2720
+la tine	1658
+la tour vs	1984
+la tour-de-peilz	1814
+la tour-de-trême	1635
+la tzoumaz	1918
+la vernaz (les agettes)	1992
+la verrerie	1624
+la vraconnaz	1454
+la vue-des-alpes	2052
+laax gr	7031
+laax gr 2	7032
+lachen sz	8853
+laconnex	1287
+ladir	7155
+lajoux ju	2718
+lalden	3931
+lamboing	2516
+lamone	6814
+lampenberg	4432
+lamperswil tg	8556
+landiswil	3434
+landquart	7302
+landschlacht	8597
+langenbruck	4438
+langendorf	4513
+langenthal	4900
+langnau am albis	8135
+langnau b. reiden	6262
+langnau im emmental	3550
+langrickenbach	8585
+langwies	7057
+langwiesen	8246
+lanna	1983
+lanterswil	9503
+lantsch/lenz	7083
+lanzenhäusern	3148
+lanzenneunforn	8506
+largario	6724
+latsch	7484
+latterbach	3758
+lauenen b. gstaad	3782
+lauerz	6424
+laufen	4242
+laufenburg	5080
+laupen be	3177
+laupen zh	8637
+laupersdorf	4712
+lauperswil	3438
+laura	6549
+lausanne 25	1000
+lausanne 26	1000
+lausanne 27	1000
+lausen	4415
+lauterbrunnen	3822
+lauwil	4426
+lavertezzo	6633
+lavey-les-bains	1892
+lavey-village	1892
+lavigny	1175
+lavin	7543
+lavorgo	6746
+lax	3994
+le brassus	1348
+le brouillet	2406
+le bry	1645
+le bémont ju	2360
+le cerneux-péquignot	2414
+le cerneux-veusil	2345
+le châble vs	1934
+le château-de-ste-croix	1450
+le châtelard vs	1925
+le châtelard-près-romont	1689
+le crêt-du-locle	2322
+le crêt-près-semsales	1611
+le fuet	2712
+le grand-saconnex	1218
+le landeron	2525
+le lieu	1345
+le lignon	1219
+le locle	2400
+le mont-pèlerin	1801
+le mont-sur-lausanne	1052
+le mouret	1724
+le noirmont	2340
+le peuchapatte	2345
+le pont	1342
+le prese	7746
+le prédame	2714
+le prévoux	2400
+le pâquier ne	2058
+le pâquier-montbarry	1661
+le sentier	1347
+le solliat	1347
+le séchey	1345
+le sépey	1863
+le trétien	1923
+le vaud	1261
+leggia	6556
+leibstadt	5325
+leimbach ag	5733
+leimbach tg	8584
+leimiswil	4935
+leissigen	3706
+lenggenwil	9525
+lengnau ag	5426
+lengnau be	2543
+lengwil	8574
+lenk im simmental	3775
+lens	1978
+lentigny	1745
+lenzburg	5600
+lenzerheide/lai	7078
+leontica	6716
+les acacias	1227
+les agettes	1992
+les avanchets	1220
+les avants	1833
+les bayards	2127
+les bioux	1346
+les bois	2336
+les brenets	2416
+les breuleux	2345
+les charbonnières	1343
+les clées	1356
+les collons	1988
+les crosets	1873
+les cullayes	1080
+les diablerets	1865
+les ecasseys	1697
+les ecorcheresses	2748
+les emibois	2338
+les enfers	2363
+les evouettes	1897
+les friques	1566
+les geneveys-sur-coffrane	2206
+les genevez ju	2714
+les giettes	1871
+les granges (salvan)	1922
+les haudères	1984
+les hauts-geneveys	2208
+les marécottes	1923
+les mayens-de-sion	1992
+les monts-de-corsier	1808
+les monts-de-pully	1068
+les mosses	1862
+les moulins	1660
+les moulins vs (liddes)	1945
+les paccots	1619
+les planchettes	2325
+les plans-sur-bex	1880
+les pommerats	2353
+les pontins	2610
+les ponts-de-martel	2316
+les posses-sur-bex	1880
+les prés-d'orvin	2534
+les rasses	1452
+les reussilles	2722
+les sagnettes	2124
+les sciernes-d'albeuve	1669
+les taillères	2406
+les tavernes	1607
+les thioleyres	1607
+les valettes (bovernier)	1932
+les verrières	2126
+les vieux-prés	2054
+les vérines (chamoson)	1955
+lessoc	1669
+leuggelbach	8774
+leuggern	5316
+leuk stadt	3953
+leukerbad	3954
+leutwil	5725
+leuzigen	3297
+levron	1942
+leysin	1854
+leytron	1912
+li curt	7745
+libingen	9614
+lichtensteig	9620
+liddes	1945
+liebefeld	3097
+liebistorf	3213
+liedertswil	4436
+lieffrens	1688
+lieli lu	6277
+lienz	9464
+liesberg	4253
+liesberg dorf	4254
+liestal	4410
+liez (st-martin)	1969
+ligerz	2514
+lignerolle	1357
+lignières	2523
+ligornetto	6853
+limpach	3317
+lindau	8315
+linden	3673
+linescio	6682
+linthal	8783
+lipperswil	8564
+lippoldswilen	8566
+littenheid	9573
+litzirüti	7058
+lobsigen	3268
+loc	3960
+loco	6661
+lodano	6678
+lodrino	6527
+lohn gr	7433
+lohn sh	8235
+lohn-ammannsegg	4573
+lohnstorf	3127
+lommis	9506
+lommiswil	4514
+lonay	1027
+longirod	1261
+lopagno	6956
+losone	6616
+lossy	1782
+lostallo	6558
+lostorf	4654
+lottigna	6716
+lotzwil	4932
+lourtier	1948
+lovatens	1682
+lovens	1756
+loveresse	2732
+luc (ayent)	1966
+lucelle	2807
+lucens	1522
+luchsingen	8775
+ludiano	6721
+lufingen	8426
+lugaggia	6953
+lugano	6900
+lugnez	2933
+lugnorre	1789
+luins	1184
+lully fr	1470
+lully vd	1132
+lumbrein	7148
+lumino	6533
+lunden	7222
+lungern	6078
+lupfig	5242
+lupsingen	4419
+lurtigen	3215
+lussery-villars	1307
+lussy fr	1690
+lussy-sur-morges	1167
+lustdorf	8512
+lustmühle	9062
+luterbach	4542
+luthern	6156
+luthern bad	6156
+lutry	1095
+lutzenberg	9426
+luven	7141
+luzein	7242
+lyss	3250
+lyssach	3421
+längenbühl	3636
+lätti	3053
+läufelfingen	4448
+léchelles	1773
+löhningen	8224
+lömmenschwil	9308
+lü	7534
+lüchingen	9450
+lüen	7027
+lüscherz	2576
+lüsslingen	4574
+lüterkofen	4571
+lüterswil	4584
+lütisburg	9604
+lütisburg station	9601
+lütschental	3816
+lützelflüh-goldbach	3432
+madetswil	8322
+madiswil	4934
+madonna del piano	6995
+madulain	7523
+magadino	6573
+magden	4312
+maggia	6673
+magglingen/macolin	2532
+magliaso	6983
+maglio di colla	6959
+magnedens	1727
+maienfeld	7304
+mairengo	6763
+maisprach	4464
+maladers	7026
+malans gr	7208
+malans sg	9479
+malix	7074
+malleray	2735
+maloja	7516
+malters	6102
+malvaglia	6713
+mamishaus	3152
+mammern	8265
+mandach	5318
+mannenbach-salenstein	8268
+mannens	1775
+manno	6928
+maracon	1613
+marbach lu	6196
+marbach sg	9437
+marchissy	1261
+mariastein	4115
+marin-epagnier	2074
+marly	1723
+marmorera	7456
+marnand	1524
+maroggia	6817
+marolta	6723
+marsens	1633
+marthalen	8460
+martherenges	1063
+martigny	1920
+martigny-croix	1921
+martina	7560
+martisberg	3994
+maschwanden	8933
+mase	1968
+masein	7425
+maseltrangen	8723
+massagno	6900
+massongex	1869
+massonnens	1692
+mastrils	7303
+mathod	1438
+mathon	7433
+matran	1753
+matt	8766
+matten (st. stephan)	3773
+matten b. interlaken	3800
+mattstetten	3322
+mattwil	8585
+matzendorf	4713
+matzingen	9548
+mauborget	1453
+mauensee	6216
+maules	1625
+maur	8124
+mauraz	1148
+mauren tg	8576
+mayens-de-chamoson	1955
+medeglia	6809
+medels im rheinwald	7436
+meggen	6045
+mehlsecken	6260
+meien	6485
+meienberg	5643
+meienried	3294
+meierskappel	6344
+meikirch	3045
+meilen	8706
+meinier	1252
+meinisberg	2554
+meiringen	3860
+meisterschwanden	5616
+melano	6818
+melchnau	4917
+melchsee-frutt	6068
+melchtal	6067
+melide	6815
+mellikon	5465
+mellingen	5507
+mels	8887
+meltingen	4233
+mendrisio	6850
+menzberg	6125
+menzengrüt	8546
+menziken	5737
+menzingen	6313
+menznau	6122
+menzonio	6692
+merenschwand	5634
+mergoscia	6647
+meride	6866
+merishausen	8232
+merligen	3658
+merlischachen	6402
+mervelier	2827
+merzligen	3274
+mesocco	6563
+messen	3254
+mettau	5274
+mettembert	2806
+mettendorf tg	8553
+mettlen	9517
+mettmenstetten	8932
+metzerlen	4116
+mex vd	1031
+mex vs	1890
+meyriez	3280
+meyrin	1217
+mezzovico	6805
+middes	1749
+mies	1295
+miex	1896
+miglieglia	6986
+milken	3157
+minusio	6648
+miralago	7743
+mirchel	3532
+misery	1721
+mission	3961
+missy	1565
+misériez (salins)	1991
+mitlödi	8756
+mittelhäusern	3147
+miège	3972
+miécourt	2946
+mogelsberg	9122
+moghegno	6677
+moiry vd	1148
+molare	6760
+moleno	6524
+molinis	7056
+mollens vd	1146
+mollens vs	3974
+mollie-margot	1073
+mollis	8753
+molondin	1415
+mols	8885
+moléson-sur-gruyères	1663
+mon	7458
+moneto	6659
+monible	2715
+monnaz	1125
+mont-crosin	2610
+mont-de-buttes	2116
+mont-la-ville	1148
+mont-soleil	2610
+mont-sur-rolle	1185
+mont-tramelan	2723
+montagne-de-courtelary	2608
+montagne-de-sonvilier	2615
+montagnola	6926
+montagnon (leytron)	1912
+montagny-la-ville	1776
+montagny-les-monts	1774
+montagny-près-yverdon	1442
+montalchez	2027
+montana	3963
+montaubion-chardonney	1041
+montavon	2857
+montbovon	1669
+montbrelloz	1475
+montcherand	1354
+monte	6875
+monte carasso	6513
+monteggio	6998
+montenol	2884
+montet (broye)	1483
+montet (glâne)	1674
+montezillon	2037
+montfaucon	2362
+montfavergier	2362
+montherod	1174
+monthey	1870
+montignez	2924
+montlingen	9462
+montmagny	1587
+montmelon	2883
+montmollin	2037
+montpreveyres	1081
+montreux	1820
+montricher	1147
+montsevelier	2828
+montévraz	1724
+moosleerau	5054
+moosseedorf	3302
+morbio inferiore	6834
+morbio superiore	6835
+morcles	1892
+morcote	6922
+morens fr	1541
+morgarten	6315
+morges	1110
+morgins	1875
+morissen	7143
+morlens	1674
+morlon	1638
+morrens vd	1054
+morschach	6443
+mosen	6295
+mosnang	9607
+mosogno	6661
+mossel	1675
+motto (blenio)	6721
+moudon	1510
+moutier	2740
+movelier	2812
+mugena	6939
+muggio	6838
+muhen	5037
+mulegns	7455
+mumpf	4322
+mumpé medel	7183
+mund	3903
+muntelier	3286
+muolen	9313
+muotathal	6436
+mur (vully) fr	1787
+mur (vully) vd	1787
+muralto	6600
+muraz (collombey)	1893
+muraz (sierre)	3960
+murg	8877
+murgenthal	4853
+muri ag	5630
+muri b. bern	3074
+muriaux	2338
+murist	1489
+murten	3280
+murzelen	3034
+mutrux	1428
+mutten	7431
+muttenz	4132
+muzzano	6933
+mädris-vermol	8886
+mägenwil	5506
+männedorf	8708
+märstetten	8560
+märwil	9562
+ménières	1533
+mézery-près-donneloye	1407
+mézières fr	1684
+mézières vd	1083
+môtier (vully)	1787
+môtiers ne	2112
+möhlin	4313
+mönchaltorf	8617
+mönthal	5237
+mörel	3983
+mörigen	2572
+möriken ag	5103
+mörschwil	9402
+mötschwil	3324
+mühlau	5642
+mühlebach (goms)	3995
+mühleberg	3203
+mühledorf be	3116
+mühledorf so	4583
+mühlehorn	8874
+mühlethal	4812
+mühlethurnen	3127
+mühlrüti	9613
+mülchi	3317
+mülenen	3711
+müllheim dorf	8555
+müllheim-wigoltingen	8554
+mülligen	5243
+mümliswil	4717
+münchenbuchsee	3053
+münchenstein	4142
+münchenwiler	1797
+münchringen	3303
+münchwilen ag	4333
+münchwilen tg	9542
+münsingen	3110
+münster vs	3985
+münsterlingen	8596
+müntschemier	3225
+mürren	3825
+müselbach	9602
+müstair	7537
+müswangen	6289
+nassen	9123
+nassenwil	8155
+naters	3904
+nax	1973
+naz	1041
+nebikon	6244
+necker	9126
+neerach	8173
+neftenbach	8413
+neggio	6991
+neirivue	1669
+nennigkofen	4574
+nenzlingen	4224
+neschwil	8484
+nesselnbach	5524
+nesslau	9650
+netstal	8754
+neu st. johann	9652
+neuchâtel	2000
+neudorf	6025
+neuendorf	4623
+neuenegg	3176
+neuenhof	5432
+neuenkirch	6206
+neuhaus sg	8732
+neuhausen am rheinfall	8212
+neuheim	6345
+neukirch (egnach)	9315
+neukirch an der thur	9217
+neunkirch	8213
+neuwilen	8566
+neuägeri	6314
+neyruz fr	1740
+neyruz-sur-moudon	1515
+nidau	2560
+nidfurn	8772
+niederbipp	4704
+niederbuchsiten	4626
+niederbüren	9246
+niederdorf	4435
+niedergampel	3945
+niedergesteln	3942
+niederglatt sg	9240
+niederglatt zh	8172
+niedergösgen	5013
+niederhasli	8155
+niederhelfenschwil	9527
+niederhünigen	3504
+niederlenz	5702
+niedermuhlern	3087
+niederneunforn	8525
+niederrickenbach	6383
+niederried b. interlaken	3853
+niederried b. kallnach	3283
+niederrohrdorf	5443
+niederscherli	3145
+niederstetten	9249
+niederstocken	3632
+niederteufen	9052
+niederurnen	8867
+niederuzwil	9244
+niederwald	3989
+niederwangen b. bern	3172
+niederweningen	8166
+niederwil ag	5524
+niederwil sg	9203
+niederwil so	4523
+niederönz	3362
+niederösch	3424
+nierlet-les-bois	1772
+niouc	3960
+niva (vallemaggia)	6683
+nivo	6746
+nods	2518
+noflen be	3116
+nohl	8212
+noiraigue	2103
+noréaz	1757
+nottwil	6207
+novaggio	6986
+novalles	1431
+novazzano	6883
+noville	1845
+noës	3976
+nufenen	7437
+nuglar	4412
+nunningen	4208
+nussbaumen ag	5415
+nussbaumen tg	8537
+nusshof	4453
+nuvilly	1485
+nyon	1260
+näfels	8752
+nänikon	8606
+némiaz (chamoson)	1955
+nürensdorf	8309
+obbürgen	6363
+oberaach	8587
+oberarth	6414
+oberbalm	3096
+oberbalmberg	4524
+oberbipp	4538
+oberbuchsiten	4625
+oberburg	3414
+oberbussnang	9565
+oberbüren	9245
+oberbütschel	3088
+oberdiessbach	3672
+oberdorf bl	4436
+oberdorf nw	6370
+oberdorf so	4515
+oberegg	9413
+oberembrach	8425
+oberems	3948
+oberengstringen	8102
+oberentfelden	5036
+oberflachs	5108
+oberfrittenbach	3551
+obergerlafingen	4564
+obergesteln	3988
+oberglatt zh	8154
+obergoldbach	3434
+obergösgen	4653
+oberhallau	8216
+oberhasli	8156
+oberhelfenschwil	9621
+oberhof	5062
+oberhofen ag	5273
+oberhofen am thunersee	3653
+oberhofen tg	8574
+oberhünigen	3504
+oberiberg	8843
+oberkirch lu	6208
+oberkulm	5727
+oberlunkhofen	8917
+obermumpf	4324
+obermutten	7431
+obernau	6012
+oberneunforn	8526
+oberohringen	8472
+oberramsern	4588
+oberrickenbach	6387
+oberried am brienzersee	3854
+oberried fr	1724
+oberrieden	8942
+oberriet sg	9463
+oberrindal	9604
+oberrohrdorf	5452
+oberrüti	5647
+obersaxen	7134
+oberschan	9479
+oberschrot	1716
+oberstammheim	8477
+obersteckholz	4924
+oberstetten	9249
+oberstocken	3632
+oberterzen	8884
+oberthal	3531
+oberurnen	8868
+oberuzwil	9242
+oberwald	3999
+oberwangen b. bern	3173
+oberwangen tg	8374
+oberweningen	8165
+oberwil (dägerlen)	8471
+oberwil b. büren	3298
+oberwil b. zug	6317
+oberwil bl	4104
+oberwil im simmental	3765
+oberwil-lieli	8966
+oberägeri	6315
+oberönz	3363
+oberösch	3424
+obfelden	8912
+obstalden	8758
+ochlenberg	3367
+ocourt	2889
+odogno	6960
+oekingen	4566
+oensingen	4702
+oerlingen	8461
+oeschenbach	4943
+oeschgen	5072
+oeschseite	3776
+oetwil am see	8618
+oetwil an der limmat	8955
+oey	3753
+oftringen	4665
+ogens	1045
+oggio	6955
+ohmstal	6143
+oleyres	1580
+olivone	6718
+ollon vd	1867
+ollon vs	3971
+olsberg	4305
+olten	4600
+oltingen	4494
+onex	1213
+onnens fr	1756
+onnens vd	1425
+opfershofen tg	8584
+opfertshofen sh	8236
+opfikon	8152
+oppens	1047
+oppikon	9565
+oppligen	3629
+orbe	1350
+orges	1430
+origlio	6945
+ormalingen	4466
+orny	1317
+oron-la-ville	1610
+oron-le-châtel	1608
+orpund	2552
+orselina	6644
+orsières	1937
+orsonnens	1694
+ortschwaben	3042
+orvin	2534
+orzens	1413
+oschwand	3476
+osco	6763
+osogna	6703
+ospizio bernina	7710
+ossingen	8475
+osterfingen	8218
+ostermundigen	3072
+otelfingen	8112
+othmarsingen	5504
+ottenbach	8913
+ottikon (gossau zh)	8626
+ottikon b. kemptthal	8307
+ottoberg	8561
+oulens-sous-echallens	1377
+oulens-sur-lucens	1522
+ovronnaz	1911
+pagig	7028
+pailly	1416
+palagnedra	6657
+palasuit (liddes)	1945
+palézieux	1607
+palézieux-village	1607
+pambio-noranco	6915
+pampigny	1142
+panex	1867
+pany	7243
+paradiso	6900
+parpan	7076
+parsonz	7464
+paspels	7417
+passugg	7062
+paudex	1094
+payerne	1530
+pazzallo	6912
+peccia	6695
+pedrinate	6832
+peiden	7110
+peist	7029
+peney-le-jorat	1059
+pensier	1783
+penthalaz	1305
+penthaz	1303
+penthéréaz	1375
+perlen	6035
+perly	1258
+perrefitte	2742
+perroy	1166
+personico	6744
+peseux	2034
+petit vichères (liddes)	1945
+petit-lancy	1213
+petit-martel	2316
+peyres-possens	1063
+pfaffhausen	8118
+pfaffnau	6264
+pfeffikon lu	5735
+pfeffingen	4148
+pfungen	8422
+pfyn	8505
+pfäfers	7312
+pfäffikon sz	8808
+pfäffikon zh	8330
+piandera paese	6959
+pianezzo	6582
+piano di peccia	6695
+piazzogna	6579
+pierrafortscha	1723
+pieterlen	2542
+pignia	7443
+pigniu	7156
+pilatus kulm	6010
+piotta	6776
+pitasch	7111
+pizy	1174
+plaffeien	1716
+plagne	2536
+plan-les-ouates	1228
+plasselb	1737
+platta	7185
+plaun da lej	7517
+pleigne	2807
+pleujouse	2953
+plons	8889
+pohlern	3638
+poliez-le-grand	1041
+poliez-pittet	1041
+pollegio	6742
+pompaples	1318
+pomy	1405
+pont (veveyse)	1699
+pont-de-la-morge (sion)	1962
+pont-la-ville	1649
+ponte capriasca	6946
+ponte tresa	6988
+pontenet	2733
+ponthaux	1772
+ponto valentino	6724
+pontresina	7504
+porrentruy	2900
+porsel	1699
+port	2562
+portalban	1568
+portein	7423
+porto ronco	6613
+porza	6948
+posat	1726
+poschiavo	7742
+posieux	1725
+praden	7063
+pragg-jenaz	7231
+prahins	1408
+prangins	1197
+praratoud	1528
+prato (leventina)	6773
+prato-sornico	6694
+pratteln	4133
+pratval	7415
+pravidondaz (salins)	1991
+praz (vully)	1788
+praz-de-fort	1943
+preda	7482
+pregassona	6963
+premier	1324
+preonzo	6523
+presinge	1243
+prez-vers-noréaz	1746
+prez-vers-siviriez	1677
+prilly	1008
+pringy	1663
+produit (leytron)	1912
+progens	1624
+promasens	1673
+promontogno	7606
+prosito	6526
+provence	1428
+prugiasco	6723
+präz	7424
+préverenges	1028
+prévondavaux	1410
+prévonloup	1682
+prêles	2515
+pugerna	6823
+puidoux	1070
+pully	1009
+puplinge	1241
+pura	6984
+purasca	6989
+pusserein	7228
+putz	7224
+péry	2603
+quarten	8883
+quartino	6572
+quinten	8878
+quinto	6777
+rabius	7172
+radelfingen b. aarberg	3271
+rafz	8197
+rain	6026
+ramersberg	6060
+ramiswil	4719
+ramlinsburg	4433
+ramosch	7556
+ramsei	3435
+ramsen	8262
+rancate	6862
+rances	1439
+randa	3928
+randogne	3975
+ranflüh	3439
+ranzo	6577
+raperswilen	8558
+rapperswil be	3255
+rapperswil sg	8640
+raron	3942
+rasa	6655
+ravoire	1928
+realp	6491
+rebeuvelier	2832
+rebstein	9445
+rebévelier	2717
+recherswil	4565
+rechthalten	1718
+reckingen vs	3998
+reconvilier	2732
+regensberg	8158
+regensdorf	8105
+rehetobel	9038
+reichenbach im kandertal	3713
+reichenburg	8864
+reiden	6260
+reidermoos	6260
+reigoldswil	4418
+reinach ag	5734
+reinach bl	4153
+reisiswil	4919
+reitnau	5057
+rekingen ag	5332
+remaufens	1617
+remetschwil	5453
+remigen	5236
+renan be	2616
+renens vd	1020
+rengg	6162
+rennaz	1847
+retschwil	6285
+reute ar	9411
+reutigen	3647
+reutlingen (winterthur)	8404
+reverolle	1128
+rheinau	8462
+rheineck	9424
+rheinfelden	4310
+rheinklingen	8259
+rheinsulz	5084
+rhäzüns	7403
+riaz	1632
+riazzino	6595
+richenthal	6263
+richigen	3078
+richterswil	8805
+ricken sg	8726
+rickenbach b. schwyz	6432
+rickenbach b. wil	9532
+rickenbach bl	4462
+rickenbach lu	6221
+rickenbach so	4613
+rickenbach sulz	8545
+rickenbach zh	8545
+ricketwil (winterthur)	8352
+riddes	1908
+ried (frutigen)	3724
+ried (muotathal)	6436
+ried b. kerzers	3216
+ried-brig	3911
+ried-mörel	3986
+rieden ag	5415
+rieden sg	8739
+riederalp	3987
+riedern	8750
+riedholz	4533
+riedikon	8616
+riedstätt	3159
+riedt b. erlen	8586
+riedtwil	3475
+riehen	4125
+riein	7128
+riemenstalden	6452
+riet (neftenbach)	8412
+rietheim	5323
+riex	1097
+riffenmatt	3156
+rifferswil	8911
+riggisberg	3132
+rigi kaltbad	6356
+rigi klösterli	6410
+rigi kulm	6410
+rigi scheidegg	6410
+rigi staffel	6410
+riken ag	4853
+rikon im tösstal	8486
+ringgenberg be	3852
+ringoldswil	3656
+riniken	5223
+riom	7463
+risch	6343
+ritzingen	3989
+riva san vitale	6826
+rivaz	1071
+rive haute (liddes)	1945
+riveo	6674
+rivera	6802
+rizenbach	3206
+robasacco	6599
+roche vd	1852
+roche-d'or	2912
+rochefort	2019
+roches be	2762
+rocourt	2907
+rodels	7415
+rodersdorf	4118
+rodi-fiesso	6772
+roggenburg	2814
+roggliswil	6265
+roggwil be	4914
+roggwil tg	9325
+rohr b. olten	4655
+rohrbach	4938
+rohrbachgraben	4938
+rohrmatt	6132
+rolle	1180
+romainmôtier	1323
+romairon	1423
+romanel-sur-lausanne	1032
+romanel-sur-morges	1122
+romanens	1626
+romanshorn	8590
+rombach	5022
+romont be	2538
+romont fr	1680
+romoos	6113
+rona	7454
+ronco sopra ascona	6622
+rongellen	7430
+root	6037
+root d4	6039
+ropraz	1088
+rorbas	8427
+rorschach	9400
+rorschacherberg	9404
+rosenlaui	3860
+rossa	6548
+rossemaison	2842
+rossenges	1513
+rossens fr	1728
+rossens vd	1554
+rosshäusern	3204
+rossinière	1658
+rossrüti	9512
+rossura	6760
+rosswald	3913
+rothenbrunnen	7405
+rothenburg	6023
+rothenfluh	4467
+rothenhausen	9565
+rothenthurm	6418
+rothrist	4852
+rothwald	3901
+rotkreuz	6343
+rottenschwil	8919
+rougemont	1659
+roveredo gr	6535
+roveredo ti	6957
+rovio	6821
+rovray	1463
+rubigen	3113
+rudolfingen	8465
+rudolfstetten	8964
+rue	1673
+rueras	7189
+rueun	7156
+rueyres	1046
+rueyres-les-prés	1542
+rueyres-st-laurent	1695
+rueyres-treyfayes	1626
+rufi	8723
+rumendingen	3472
+rumisberg	4539
+rumlikon	8332
+rupperswil	5102
+ruppoldsried	3251
+ruschein	7154
+russikon	8332
+russin	1281
+russo	6661
+russy	1773
+ruswil	6017
+rutschwil (dägerlen)	8471
+ruvigliana	6977
+rämismühle	8487
+réchy	3966
+réclère	2912
+römerswil lu	6027
+röschenz	4244
+röthenbach herzogenbuchsee	3373
+röthenbach im emmental	3538
+rüderswil	3437
+rüdlingen	8455
+rüdtligen	3422
+rüedisbach	3474
+rüeggisberg	3088
+rüegsau	3417
+rüegsauschachen	3415
+rüegsbach	3418
+rüeterswil	8735
+rüfenach ag	5235
+rüfenacht be	3075
+rümikon ag	5464
+rümlang	8153
+rümligen	3128
+rümlingen	4444
+rünenberg	4497
+rüschegg gambach	3153
+rüschegg heubach	3154
+rüschlikon	8803
+rüthi (rheintal)	9464
+rüti b. büren	3295
+rüti b. lyssach	3421
+rüti b. riggisberg	3099
+rüti gl	8782
+rüti zh	8630
+rütihof	5406
+rütli	6441
+rütschelen	4933
+rüttenen	4522
+s-chanf	7525
+s. antonino	6592
+s. antonio (val morobbia)	6583
+s. benedetg	7174
+s. bernardino	6565
+s. carlo (poschiavo)	7741
+s. carlo (val bavona)	6690
+s. nazzaro	6575
+s. pietro	6854
+s. vittore	6534
+saanen	3792
+saanenmöser	3777
+saas im prättigau	7247
+saas-almagell	3905
+saas-balen	3908
+saas-fee	3906
+saas-grund	3910
+sachseln	6072
+saclentse	1996
+safenwil	5745
+safien platz	7107
+safnern	2553
+sagno	6839
+sagogn	7152
+saicourt	2732
+saignelégier	2350
+saillon	1913
+sala capriasca	6954
+saland	8493
+salavaux	1585
+salenstein	8268
+salez	9465
+salgesch	3970
+salins	1991
+salmsach	8599
+salorino	6872
+salouf	7462
+salvan	1922
+salvenach	1794
+samedan	7503
+samnaun dorf	7563
+samnaun-compatsch	7562
+samstagern	8833
+sangernboden	1738
+sargans	7320
+sarmenstorf	5614
+sarn	7423
+sarnen	6060
+sarreyer	1948
+sarzens	1683
+sassel	1534
+satigny	1242
+sattel	6417
+saubraz	1189
+saulcy	2873
+saules	2063
+saules be	2732
+savagnier	2065
+savigny	1073
+savièse	1965
+savognin	7460
+savosa	6942
+sax	9468
+saxeten	3813
+saxon	1907
+saxonne (ayent)	1966
+says	7202
+scareglia	6951
+schachen b. herisau	9112
+schachen b. reute	9411
+schachen lu	6105
+schafhausen im emmental	3415
+schafisheim	5503
+schalchen	8489
+schalunen	3314
+schangnau	6197
+scharans	7412
+scharnachtal	3722
+schattdorf	6467
+schattenhalb	3860
+scheid	7419
+schelten	2827
+schenkon	6214
+scherz	5246
+scherzingen	8596
+scheunen	3305
+scheuren	2556
+schiers	7220
+schindellegi	8834
+schinznach bad	5116
+schinznach dorf	5107
+schlans	7168
+schlatt tg	8252
+schlatt zh	8418
+schlattingen	8255
+schleinikon	8165
+schleitheim	8226
+schlierbach	6231
+schlieren	8952
+schliern b. köniz	3098
+schlossrued	5044
+schlosswil	3082
+schluein	7151
+schmerikon	8716
+schmidigen-mühleweg	3464
+schmidrüti	8495
+schmidshof	9565
+schmiedrued	5046
+schmitten (albula)	7493
+schmitten fr	3185
+schnaus	7130
+schneisingen	5425
+schnottwil	3253
+schocherswil	8581
+schongau	6288
+schuders	7228
+schupfart	4325
+schwaderloch	5326
+schwadernau	2556
+schwanden (sigriswil)	3657
+schwanden b. brienz	3855
+schwanden gl	8762
+schwanden im emmental	3433
+schwarzenbach (huttwil)	4953
+schwarzenbach lu	6215
+schwarzenbach sg	9536
+schwarzenberg lu	6103
+schwarzenburg	3150
+schwarzenegg	3616
+schwarzhäusern	4911
+schwarzsee	1716
+schweizersholz	9223
+schwellbrunn	9103
+schwende	9057
+schwenden im diemtigtal	3757
+schwendi im weisstannental	7325
+schwendibach	3624
+schwerzenbach	8603
+schwyz	6430
+schwändi b. schwanden	8762
+schänis	8718
+schöfflisdorf	8165
+schöftland	5040
+schönenbaumgarten	8585
+schönenberg an der thur	9215
+schönenberg zh	8824
+schönenbuch	4124
+schönengrund	9105
+schönenwerd	5012
+schönholzerswilen	8577
+schönried	3778
+schötz	6247
+schübelbach	8862
+schüpbach	3535
+schüpfen	3054
+schüpfheim	6170
+scuol	7550
+sedrun	7188
+seeberg	3365
+seedorf be	3267
+seedorf ur	6462
+seehof	2747
+seelisberg	6377
+seengen	5707
+seewen so	4206
+seewen sz	6423
+seewil	3256
+seewis dorf	7212
+seewis-pardisla	7212
+seewis-schmitten	7212
+seftigen	3662
+segnas	7186
+seigneux	1525
+seiry	1470
+seleute	2888
+selkingen	3989
+selma	6545
+seltisberg	4411
+selzach	2545
+sembrancher	1933
+sementina	6514
+semione	6714
+sempach	6204
+sempach station	6203
+semsales	1623
+senarclens	1304
+sennhof (winterthur)	8482
+sennwald	9466
+sent	7554
+senèdes	1724
+seon	5703
+sergey	1355
+serneus	7249
+serpiano	6867
+servion	1077
+seseglio	6832
+sessa	6997
+seuzach	8472
+sevelen	9475
+sevgein	7127
+sfazù	7742
+siat	7157
+siblingen	8225
+siebnen	8854
+siegershausen	8573
+sierre	3960
+siggenthal station	5301
+sigigen	6019
+sigirino	6806
+siglistorf	5462
+signau	3534
+signy	1274
+signèse (ayent)	1966
+signôra	6951
+sigriswil	3655
+sihlbrugg	6340
+sihlbrugg station	8135
+sihlwald	8135
+silenen	6473
+sils im domleschg	7411
+sils/segl baselgia	7515
+sils/segl maria	7514
+silvaplana	7513
+silvaplana-surlej	7513
+simplon dorf	3907
+simplon hospiz	3907
+sins	5643
+sion	1950
+sirnach	8370
+siselen be	2577
+sisikon	6452
+sissach	4450
+sisseln ag	4334
+sitterdorf	8589
+siviez (nendaz)	1997
+siviriez	1678
+soazza	6562
+sobrio	6749
+soglio	7610
+solduno	6600
+solothurn	4500
+someo	6674
+sommentier	1688
+sommeri	8580
+sonceboz-sombeval	2605
+sonnental	9245
+sonogno	6637
+sonterswil	8564
+sonvico	6968
+sonvilier	2615
+sool	8762
+soral	1286
+sorengo	6924
+sorens	1642
+sornard (nendaz)	1997
+sornetan	2716
+sorvilier	2736
+sottens	1062
+soubey	2887
+souboz	2748
+soulce	2864
+soyhières	2805
+speicher	9042
+speicherschwendi	9037
+spiegel b. bern	3095
+spiez	3700
+spiringen	6464
+splügen	7435
+spreitenbach	8957
+spruga	6661
+st-aubin fr	1566
+st-aubin-sauges	2024
+st-barthélemy vd	1040
+st-blaise	2072
+st-brais	2364
+st-cergue	1264
+st-cierges	1410
+st-george	1188
+st-gingolph	1898
+st-imier	2610
+st-jean vs	3961
+st-livres	1176
+st-luc	3961
+st-légier-la chiésaz	1806
+st-léonard	1958
+st-martin fr	1609
+st-martin vs	1969
+st-maurice	1890
+st-oyens	1187
+st-pierre-de-clages	1955
+st-prex	1162
+st-romain (ayent)	1966
+st-saphorin (lavaux)	1071
+st-saphorin-sur-morges	1113
+st-sulpice ne	2123
+st-sulpice vd	1025
+st-séverin	1975
+st-triphon	1867
+st-ursanne	2882
+st. antoni	1713
+st. antönien	7246
+st. erhard	6212
+st. gallenkappel	8735
+st. german	3942
+st. josefen	9030
+st. margarethen tg	9543
+st. margrethen sg	9430
+st. margrethenberg	7313
+st. martin (lugnez)	7116
+st. moritz	7500
+st. niklaus vs	3924
+st. niklausen lu	6005
+st. niklausen ow	6066
+st. pantaleon	4421
+st. pelagiberg	9225
+st. peter	7028
+st. peterzell	9127
+st. silvester	1736
+st. stephan	3772
+st. urban	4915
+st. ursen	1717
+sta. domenica	6548
+sta. maria in calanca	6541
+sta. maria val müstair	7536
+staad sg	9422
+stabio	6855
+stachen	9320
+stadel (winterthur)	8404
+stadel b. niederglatt	8174
+staffelbach	5053
+stalden (sarnen)	6063
+stalden vs	3922
+staldenried	3933
+stallikon	8143
+stampa	7605
+stans	6370
+stansstad	6362
+starrkirch-wil	4656
+staufen	5603
+ste-croix	1450
+stechelberg	3824
+steckborn	8266
+steg im tösstal	8496
+steg vs	3940
+stehrenberg	9503
+stein ag	4332
+stein am rhein	8260
+stein ar	9063
+stein sg	9655
+steinach	9323
+steinebrunn	9314
+steinen	6422
+steinerberg	6416
+steinhaus	3995
+steinhausen	6312
+steinhof so	4556
+steinhuserberg	6114
+steinmaur	8162
+stels	7226
+sternenberg	8499
+stetten ag	5608
+stetten sh	8234
+stettfurt	9507
+stettlen	3066
+stierva	7459
+stilli	5233
+stoos sz	6433
+strada	7558
+strengelbach	4802
+studen be	2557
+studen sz	8845
+stugl/stuls	7482
+stäfa	8712
+stüsslingen	4655
+suberg	3262
+subingen	4553
+suchy	1433
+suen (st-martin)	1969
+sufers	7434
+sugiez	1786
+sugnens	1043
+suhr	5034
+sulgen	8583
+sullens	1036
+sulz ag	5085
+sulz lu	6284
+sulzbach	8614
+sumiswald	3454
+summaprada	7421
+sumvitg	7175
+sundlauenen	3800
+sur	7456
+surava	7472
+surcasti	7115
+surcuolm	7138
+surpierre	1528
+surrein	7173
+sursee	6210
+susch	7542
+suscévaz	1437
+susten	3952
+sutz	2572
+syens	1510
+sâles (gruyère)	1625
+säriswil	3049
+sédeilles	1554
+sévaz	1541
+sévery	1141
+sörenberg	6174
+süderen	3618
+sünikon	8162
+tafers	1712
+tagelswangen	8317
+tamins	7015
+tann	8632
+tannay	1295
+tarasp	7553
+tartar	7422
+tartegnin	1180
+tatroz	1617
+tavanasa	7162
+tavannes	2710
+taverne	6807
+tecknau	4492
+tegerfelden	5306
+tegna	6652
+tenero	6598
+tenna	7106
+tenniken	4456
+tennwil	5617
+tentlingen	1734
+termen	3912
+territet	1820
+tersnaus	7116
+tesserete	6950
+teufen ar	9053
+teufen zh	8428
+teufenthal ag	5723
+teuffenthal b. thun	3623
+thal	9425
+thalheim ag	5112
+thalheim an der thur	8478
+thalkirch	7109
+thalwil	8800
+thayngen	8240
+theilingen	8484
+therwil	4106
+thielle	2075
+thierachern	3634
+thierrens	1410
+thundorf	8512
+thunstetten	4922
+thusis	7430
+thyon	1988
+thônex	1226
+thörigen	3367
+thörishaus	3174
+thürnen	4441
+tiefencastel	7450
+tinizong	7453
+titterten	4425
+tobel	9555
+toffen	3125
+tolochenaz	1131
+torgon	1899
+torny-le-grand	1748
+torre	6717
+torricella	6808
+trachselwald	3456
+trachslau	8840
+tramelan	2720
+trans	7407
+trasadingen	8219
+travers	2105
+treiten	3226
+tremona	6865
+trey	1552
+treycovagnes	1436
+treytorrens (payerne)	1538
+treyvaux	1733
+triboltingen	8273
+triengen	6234
+trient	1929
+trimbach	4632
+trimmis	7203
+trimstein	3083
+trin	7014
+trin mulin	7016
+trogen	9043
+trogne (st-martin)	1969
+troinex	1256
+troistorrents	1872
+trub	3556
+trubschachen	3555
+trun	7166
+truttikon	8467
+trélex	1270
+trübbach	9477
+trüllikon	8466
+tschappina	7428
+tscheppach	4576
+tscherlach	8881
+tschiertschen	7064
+tschierv	7532
+tschingel ob gunten	3656
+tschlin	7559
+tschugg	3233
+tuggen	8856
+tumegl/tomils	7418
+turbach	3781
+turbenthal	8488
+turgi	5300
+turin (salins)	1991
+turtmann	3946
+tuttwil	9546
+twann	2513
+tägerig	5522
+tägerschen	9554
+tägertschi	3111
+tägerwilen	8274
+täsch	3929
+täuffelen	2575
+törbel	3923
+tübach	9327
+tüscherz-alfermée	2512
+udligenswil	6044
+ueberstorf	3182
+uebeschi	3635
+ueken	5028
+uerikon	8713
+uerkheim	4813
+uerschhausen	8537
+uerzlikon	8926
+uesslingen	8524
+uetendorf	3661
+uetikon am see	8707
+uetliberg	8143
+uetliburg sg	8738
+uettligen	3043
+uezwil	5619
+uffikon	6253
+ufhusen	6153
+uhwiesen	8248
+uitikon waldegg	8142
+ulisbach	9631
+ulmiz	3214
+ulrichen	3988
+umiken	5222
+undervelier	2863
+unterbach be	3857
+unterbäch vs	3944
+untereggen	9033
+unterems	3948
+unterendingen	5305
+unterengstringen	8103
+unterentfelden	5035
+unteriberg	8842
+unterkulm	5726
+unterlangenegg	3614
+unterlunkhofen	8918
+unterohringen	8472
+unterramsern	4588
+unterrindal	9604
+unterschächen	6465
+unterseen	3800
+untersiggenthal	5417
+unterstammheim	8476
+untersteckholz	4916
+unterterzen	8882
+untervaz	7204
+unterwasser	9657
+unterägeri	6314
+uors (lumnezia)	7114
+urdorf	8902
+urmein	7427
+urnerboden	8751
+urnäsch	9107
+ursenbach	4937
+ursins	1412
+urswil	6280
+ursy	1670
+urtenen-schönbühl	3322
+uster	8610
+uttigen	3628
+uttwil	8592
+utzenstorf	3427
+utzigen	3068
+uvrier	1958
+uznach	8730
+uzwil	9240
+vacallo	6833
+vadura	7314
+vaglio	6947
+vairano	6575
+val-d'illiez	1873
+valangin	2042
+valbella	7077
+valchava	7535
+valendas	7122
+valens	7317
+valeyres-sous-montagny	1441
+valeyres-sous-rances	1358
+valeyres-sous-ursins	1412
+vallamand	1586
+vallon	1565
+vallorbe	1337
+vals	7132
+valzeina	7213
+vandoeuvres	1253
+varen	3953
+vasön	7317
+vattiz	7146
+vauderens	1675
+vauffelin	2537
+vaugondry	1423
+vaulion	1325
+vaulruz	1627
+vaumarcus	2028
+vaux-sur-morges	1126
+vaz/obervaz	7082
+vella	7144
+vellerat	2830
+veltheim ag	5106
+vendlincourt	2943
+vens (sembrancher)	1933
+venthône	3973
+verbier	1936
+vercorin	3967
+verdabbio	6538
+verdasio	6655
+vergeletto	6661
+vermes	2829
+vernamiège	1961
+vernate	6992
+vernayaz	1904
+vernier	1214
+vers-chez-perrin	1551
+vers-l'eglise	1864
+versam	7104
+verscio	6653
+versegères	1947
+versoix	1290
+vesin	1483
+vessy	1234
+vevey	1800
+vex	1981
+veyras	3968
+veyrier	1255
+veysonnaz	1993
+veytaux	1820
+vezia	6943
+vezio	6938
+viano	7747
+vich	1267
+vichères (liddes)	1945
+vico morcote	6921
+vicosoprano	7603
+vicques	2824
+vielbringen b. worb	3075
+viganello	6962
+vignogn	7147
+vilars ne	2063
+villa (ayent)	1966
+villa (evolène)	1985
+villa bedretto	6781
+villa luganese	6966
+villaraboud	1679
+villarbeney	1652
+villard-sur-chamby	1832
+villarepos	1583
+villargiroud	1694
+villariaz	1685
+villarimboud	1691
+villarlod	1695
+villars-bozon	1148
+villars-bramard	1682
+villars-burquin	1423
+villars-epeney	1404
+villars-le-comte	1515
+villars-le-grand	1584
+villars-le-terroir	1040
+villars-mendraz	1061
+villars-sous-champvent	1443
+villars-sous-mont	1666
+villars-sous-yens	1168
+villars-ste-croix	1029
+villars-sur-fontenais	2903
+villars-sur-glâne	1752
+villars-sur-ollon	1884
+villars-tiercelin	1058
+villarsel-le-gibloux	1695
+villarsel-sur-marly	1723
+villarsiviriaux	1694
+villarvolard	1651
+villarzel	1555
+villaz-st-pierre	1690
+villeneuve fr	1527
+villeneuve vd	1844
+villeret	2613
+villette (lavaux)	1096
+villiers	2057
+villigen	5234
+villmergen	5612
+villnachern	5213
+vilters	7324
+vinelz	3234
+vinzel	1184
+vionnaz	1895
+vira (gambarogno)	6574
+visp	3930
+visperterminen	3932
+vissoie	3961
+vitznau	6354
+vnà	7557
+vogelsang ag	5412
+vogorno	6632
+volken	8459
+volketswil	8604
+vollèges	1941
+vordemwald	4803
+vorderthal	8857
+vouvry	1896
+vrin	7149
+vuadens	1628
+vuarmarens	1674
+vuarrens	1418
+vucherens	1509
+vufflens-la-ville	1302
+vufflens-le-château	1134
+vugelles-la mothe	1431
+vuibroye	1610
+vuippens	1633
+vuissens	1486
+vuisternens-devant-romont	1687
+vuisternens-en-ogoz	1696
+vuiteboeuf	1445
+vulliens	1085
+vullierens	1115
+vulpera	7552
+vättis	7315
+vérossaz	1891
+vésenaz	1222
+vétroz	1963
+wabern	3084
+wagen	8646
+wagenhausen	8259
+wagerswil	8564
+wahlen b. laufen	4246
+wahlendorf	3046
+walchwil	6318
+wald ar	9044
+wald zh	8636
+walde ag	5046
+walde sg	8727
+waldenburg	4437
+waldhäusern ag	5624
+waldkirch	9205
+waldstatt	9104
+walenstadt	8880
+walenstadtberg	8881
+walkringen	3512
+wallbach	4323
+wallenbuch	3206
+wallenried	1784
+wallenwil	8360
+wallisellen	8304
+walliswil b. niederbipp	3380
+walliswil b. wangen	3377
+walperswil	3272
+waltalingen	8468
+waltensburg/vuorz	7158
+waltenschwil	5622
+walterswil be	4942
+walterswil so	5746
+walzenhausen	9428
+wangen an der aare	3380
+wangen b. dübendorf	8602
+wangen b. olten	4612
+wangen sz	8855
+wangenried	3374
+wangs	7323
+wanzwil	3372
+warth	8532
+wasen im emmental	3457
+wassen ur	6484
+wasserauen	9057
+wasterkingen	8195
+watt	8105
+wattenwil	3665
+wattwil	9630
+wauwil	6242
+wavre	2075
+weesen	8872
+wegenstetten	4317
+weggis	6353
+weiach	8187
+weier im emmental	3462
+weinfelden	8570
+weingarten-kalthäusern	9508
+weiningen tg	8532
+weiningen zh	8104
+weissbad	9057
+weissenburg	3764
+weissenstein b. solothurn	4515
+weisslingen	8484
+weisstannen	7326
+weite	9476
+welschenrohr	4716
+wengen	3823
+wengi b. büren	3251
+wengi b. frutigen	3714
+wenslingen	4493
+werdenberg	9470
+wergenstein	7433
+wermatswil	8615
+wernetshausen	8342
+werthenstein	6106
+wettingen	5430
+wettswil	8907
+wetzikon tg	8512
+wichtrach	3114
+widen	8967
+widnau	9443
+wiedlisbach	4537
+wienacht-tobel	9405
+wiesenberg	6383
+wiesendangen	8542
+wiezikon b. sirnach	8372
+wiggen	6192
+wiggiswil	3053
+wigoltingen	8556
+wikon	4806
+wil ag	5276
+wil sg	9500
+wil zh	8196
+wila	8492
+wilchingen	8217
+wildberg	8489
+wildegg	5103
+wildensbuch	8465
+wilderswil	3812
+wildhaus	9658
+wilen (gottshaus)	9225
+wilen (sarnen)	6062
+wilen b. neunforn	8525
+wilen b. wil	9535
+wilen b. wollerau	8832
+wiler (lötschen)	3918
+wiler b. seedorf	3266
+wiler b. utzenstorf	3428
+wileroltigen	3207
+wiliberg	5058
+wilihof	6236
+willadingen	3425
+willerzell	8846
+willisau	6130
+willisdorf	8253
+wimmis	3752
+winden	9315
+windisch	5210
+windlach	8175
+winikon	6235
+winistorf	4558
+winkel	8185
+winterberg zh	8312
+wintersingen	4451
+winznau	4652
+wirzweli	6383
+wisen so	4634
+wislikofen	5463
+wittenbach	9300
+wittenwil	9547
+witterswil	4108
+wittinsburg	4443
+wittnau	5064
+wittwil	5053
+wohlen ag	5610
+wohlen b. bern	3033
+wohlenschwil	5512
+wolfenschiessen	6386
+wolfertswil	9116
+wolfhalden	9427
+wolfhausen	8633
+wolfisberg	4704
+wolfwil	4628
+wolhusen	6110
+wollerau	8832
+worb	3076
+worben	3252
+worblaufen	3048
+wuppenau	9514
+wynau	4923
+wynigen	3472
+wyssachen	4954
+wädenswil	8820
+wäldi	8564
+wängi	9545
+wölflinswil	5063
+wöschnau	5012
+wünnewil	3184
+würenlingen	5303
+würenlos	5436
+yens	1169
+yverdon-les-bains	1400
+yvonand	1462
+yvorne	1853
+zauggenried	3309
+zeglingen	4495
+zeihen	5079
+zeiningen	4314
+zell lu	6144
+zell zh	8487
+zeneggen	3934
+zermatt	3920
+zernez	7530
+zetzwil	5732
+zezikon	9556
+ziefen	4417
+ziegelbrücke	8866
+zielebach	4564
+zignau	7167
+zihlschlacht	8588
+zillis	7432
+zimmerwald	3086
+zinal	3961
+zizers	7205
+zofingen	4800
+zollbrück	3436
+zollikerberg	8125
+zollikofen	3052
+zollikon	8702
+zuben	8585
+zuchwil	4528
+zuckenriet	9526
+zufikon	5621
+zug	6300
+zugerberg	6300
+zullwil	4234
+zumholz	1719
+zumikon	8126
+zunzgen	4455
+zuoz	7524
+zuzgen	4315
+zuzwil be	3303
+zuzwil sg	9524
+zweidlen	8192
+zweilütschinen	3815
+zweisimmen	3770
+zwieselberg	3645
+zwillikon	8909
+zwingen	4222
+zwischenflüh	3756
+zäziwil	3532
+zénauva	1724
+züberwangen	9523

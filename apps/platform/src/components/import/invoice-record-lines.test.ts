@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
-import { editorLinesOf, importLinesOf } from './invoice-record-editor'
+import { editorLinesOf, importLinesOf, instalmentsOf } from './invoice-record-editor'
+
+it('keeps a past due instalment open and reads an explicit payment date', () => {
+  expect(
+    instalmentsOf({
+      instalments: [
+        { due_date: '2024-01-31', amount: '100.00', paid: false },
+        { due_date: '2024-02-29', amount: '100.00', paid_on: '2024-02-27' },
+      ],
+    }),
+  ).toMatchObject([
+    { due_date: '2024-01-31', paid: false, paid_on: '' },
+    { due_date: '2024-02-29', paid: true, paid_on: '2024-02-27' },
+  ])
+})
 
 describe('invoice record lines', () => {
   it('reads the document lines into editor rows and back, unchanged', () => {

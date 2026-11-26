@@ -9,24 +9,26 @@ import { monthLabel, PERIODS_KEY, useCloseMonths } from '@/components/settings/p
 import { booksApi } from '@/lib/books'
 import { translate } from '@/lib/i18n'
 import type { ImportRecord, ImportValue } from '@/lib/imports'
-import { today } from '@/lib/invoices'
+import { toCents, today } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 
 const text = (value: ImportValue | undefined) => (typeof value === 'string' ? value : '')
 
-/**
- * The dates the books record for an invoice issued elsewhere: its issue date and each payment's day, which is the
- * stated one, else its instalment's due date, else the invoice's due date, else its issue date (as the API books it).
- */
+/** The invoice's issue date and the payment dates that the import books. */
 function bookedDates(data: ImportRecord['data']): string[] {
   const issued = text(data.issue_date)
-  const fallback = text(data.due_date) || issued
-  const instalments = Array.isArray(data.instalments) ? data.instalments : []
-  const paidInstalments = instalments
-    .filter((row) => row.paid === true || text(row.paid_on) !== '')
-    .map((row) => text(row.paid_on) || text(row.due_date) || fallback)
-  const single = data.paid_amount ? [text(data.paid_on) || fallback] : []
-  return [issued, ...(paidInstalments.length ? paidInstalments : single)].filter(Boolean)
+  const rows = Array.isArray(data.instalments) ? data.instalments : []
+  const paid = rows.filter((row) => row.paid !== false && text(row.paid_on) !== '')
+  const amount = text(data.paid_amount)
+  const totalPaid = amount ? toCents(amount) : 0n
+  const instalmentsPaid = paid.reduce((sum, row) => sum + toCents(text(row.amount)), 0n)
+  const dates =
+    paid.length > 0 && (!amount || totalPaid === instalmentsPaid)
+      ? paid.map((row) => text(row.paid_on))
+      : totalPaid > 0n
+        ? [text(data.paid_on)]
+        : []
+  return [issued, ...dates].filter(Boolean)
 }
 
 /**

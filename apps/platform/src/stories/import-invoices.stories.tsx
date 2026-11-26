@@ -310,6 +310,7 @@ export const ClosePastMonths: Story = {
               issue_date: '2025-12-03',
               due_date: '2026-01-02',
               paid_amount: '1081.00',
+              paid_on: '2026-01-12',
             },
           },
         ],
@@ -321,7 +322,7 @@ export const ClosePastMonths: Story = {
     const dialog = within(await importAll(2))
     await userEvent.click(dialog.getByRole('button', { name: 'Overwrite all' }))
     await userEvent.click(dialog.getByRole('button', { name: 'Confirm' }))
-    // October 2025 to the payment's due date in January 2026, with no gap.
+    // October 2025 to the actual payment in January 2026, with no gap.
     const offer = await body().findByRole('button', { name: 'Close 4 months' })
     await expect(body().getByText(/October 2025 – January 2026/)).toBeVisible()
     await userEvent.click(offer)

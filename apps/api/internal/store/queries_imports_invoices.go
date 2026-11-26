@@ -14,10 +14,12 @@ import (
 func (q Q) SimilarInvoice(ctx context.Context, workspaceID, clientID, note, number, issueDate string, total int64) (*ImportDuplicate, error) {
 	var d ImportDuplicate
 	err := q.db.QueryRow(ctx, `SELECT id, coalesce(number, 'Draft of ' || to_char(issue_date, 'DD.MM.YYYY')),
-			CASE WHEN ($3<>'' AND note=$3) OR ($4<>'' AND number=$4) THEN 'same document number' ELSE 'same date and total' END
-		FROM invoices WHERE workspace_id=$1 AND client_id=$2 AND kind<>'credit_note'
-			AND (($3<>'' AND note=$3) OR ($4<>'' AND number=$4) OR (issue_date=NULLIF($5, '')::date AND total=$6))
-		ORDER BY (($3<>'' AND note=$3) OR ($4<>'' AND number=$4)) DESC, created_at LIMIT 1`,
+			CASE WHEN same_number THEN 'same document number' ELSE 'same date and total' END
+		FROM (SELECT id, number, issue_date, total, created_at,
+			coalesce(($3<>'' AND (note=$3 OR starts_with(note, $3 || E'\n\n'))) OR ($4<>'' AND number=$4), false) AS same_number
+			FROM invoices WHERE workspace_id=$1 AND client_id=$2 AND kind<>'credit_note') AS candidates
+		WHERE same_number OR (issue_date=NULLIF($5, '')::date AND total=$6)
+		ORDER BY same_number DESC, created_at LIMIT 1`,
 		workspaceID, clientID, note, number, issueDate, total).Scan(&d.ID, &d.Label, &d.Reason)
 	return similar(d, err)
 }
