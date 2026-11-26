@@ -55,7 +55,7 @@ const SUGGESTED = [translate('contracts'), translate('bankStatements'), translat
 const TYPES: Kind[] = ['pdf', 'image', 'spreadsheet', 'document']
 
 const row =
-  'group/row relative flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg pr-2.5 text-left text-[14px] text-foreground/75 transition-colors duration-100 outline-none hover:bg-foreground/[0.045] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 has-focus-visible:ring-2 has-focus-visible:ring-ring/50 aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:font-medium aria-[current=page]:text-foreground data-current:bg-foreground/[0.06] data-current:font-medium data-current:text-foreground data-drop-over:bg-brand-solid/10 data-drop-over:text-foreground data-drop-over:ring-2 data-drop-over:ring-brand-solid/70'
+  'group/row relative flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg pr-2.5 text-left text-[14px] text-foreground/75 transition-colors duration-100 outline-none hover:bg-foreground/[0.045] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 has-[:focus-visible:not(input)]:ring-2 has-[:focus-visible:not(input)]:ring-ring/50 aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:font-medium aria-[current=page]:text-foreground data-current:bg-foreground/[0.06] data-current:font-medium data-current:text-foreground data-drop-over:bg-brand-solid/10 data-drop-over:text-foreground data-drop-over:ring-2 data-drop-over:ring-brand-solid/70'
 
 /** The left column: the workspace's folders as a tree, plus the Trash as a drop target. */
 export function FolderTree({
