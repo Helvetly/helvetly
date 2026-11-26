@@ -166,6 +166,13 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
         }),
         amount: null,
       }
+    case 'documents.folder_repaired':
+      return {
+        line: translate('auditSentenceDocumentsFolderRepaired', {
+          count: Number(event.payload.files) || 0,
+        }),
+        amount: null,
+      }
     case 'approvals.group_deleted':
       return { line: translate('auditSentenceGroupDeleted'), amount: null }
     case 'approvals.policy_saved':

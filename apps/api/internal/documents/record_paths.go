@@ -12,9 +12,9 @@ import (
 )
 
 // Record paths: AI filing and organizing put a client's records into Clients/<client>/<record type>/<year> (contracts
-// into Clients/<client>/Documents/<year>/Contracts),
-// expenses into Expenses/<year>/<category> and bank statements into Bank Statements/<year>, the system folders,
-// instead of folders of their own.
+// into Clients/<client>/Documents/<year>/Contracts, a client's bank statements and payment confirmations into
+// Clients/<client>/Documents/<year>/Bank Statements), expenses into Expenses/<year>/<category> and tax documents
+// into Tax Documents/<year>, the system folders, instead of folders of their own.
 
 const (
 	filingClients = 200    // clients and categories listed to the model
@@ -28,11 +28,16 @@ const recordRules = "Documents of one of the listed clients (issued to them or r
 	"Documents>/<the year of the document's date>; a completed contract or agreement of a client (parties, dates " +
 	"and key terms filled in, no blanks or placeholders, not a template, sample or draft) goes to " +
 	"Clients/<the client's name exactly as listed>/Documents/<the year it was signed or starts, else the year of the " +
-	"upload>/" + store.ContractsFolderName + ", any other contract-like file to Clients/<the client>/Documents/<year>. Receipts, supplier bills and other expenses go to Expenses/<the " +
+	"upload>/" + store.ContractsFolderName + ", any other contract-like file to Clients/<the client>/Documents/<year>. A bank " +
+	"statement, credit advice (Gutschrift) or payment confirmation about one of the listed clients goes to Clients/<the " +
+	"client's name exactly as listed>/Documents/<the year of its value or statement date>/" + store.BankStatementsFolderName +
+	". Receipts, supplier bills and other expenses go to Expenses/<the " +
 	"listed expense category that fits, exactly as listed, or " + store.UncategorisedFolder + ">/<the year of their " +
-	"date>. Account statements of a bank or payment provider (not an invoice or receipt that only shows an IBAN) go to " +
-	store.BankStatementsFolderName + "/<the year the statement's period ends>. Never make other folders inside " +
-	"Clients, Expenses or " + store.BankStatementsFolderName + "."
+	"date>. Tax documents (tax returns, tax " +
+	"assessments, provisional tax bills, VAT returns and statements of the tax authority, withholding tax, tax " +
+	"certificates; not a social security bill, which is an expense) go to " + store.TaxDocumentsFolderName +
+	"/<the tax year they are about>. Never make other folders inside Clients, Expenses or " +
+	store.TaxDocumentsFolderName + "."
 
 // recordNames: the clients and expense categories a record path may name.
 type recordNames struct {
@@ -50,29 +55,27 @@ func (s *Service) recordNames(ctx context.Context, workspaceID string) (recordNa
 	return recordNames{clients: clients, categories: categories}, err
 }
 
-// recordPlace: where a record path points; client "" for Expenses and Bank Statements, category nil for
+// recordPlace: where a record path points; client "" for Expenses and Tax Documents, category nil for
 // Uncategorised.
 type recordPlace struct {
 	clientID, kind string
 	year           int
 	categoryID     *string
 	contracts      bool // Clients/<client>/Documents/<year>/Contracts
+	statements     bool // Clients/<client>/Documents/<year>/Bank Statements
 }
 
-// recordPath reads a path into the system folders; ok false when it does not start with Clients, Expenses or Bank
-// Statements, and
+// recordPath reads a path into the system folders; ok false when it does not start with Clients, Expenses or Tax
+// Documents, and
 // place nil when it does but does not fit their structure (or names no single listed client).
 func recordPath(path []string, names recordNames) (place *recordPlace, ok bool) {
 	if len(path) == 0 {
 		return nil, false
 	}
 	root := strings.ToLower(path[0])
-	if strings.EqualFold(root, store.BankStatementsFolderName) {
-		if len(path) != 2 {
-			return nil, true
-		}
-		if year, good := yearOf(path[1]); good {
-			return &recordPlace{kind: "bank_statements", year: year}, true
+	if strings.EqualFold(root, store.TaxDocumentsFolderName) {
+		if year, good := yearOf(path[len(path)-1]); good && len(path) == 2 {
+			return &recordPlace{kind: "tax_documents", year: year}, true
 		}
 		return nil, true
 	}
@@ -97,9 +100,10 @@ func recordPath(path []string, names recordNames) (place *recordPlace, ok bool) 
 		}
 		return nil, true
 	}
-	contracts := len(path) == 5 && strings.EqualFold(path[4], store.ContractsFolderName) &&
-		strings.EqualFold(path[2], store.RecordFolders["documents"])
-	if len(path) != 4 && !contracts {
+	inDocuments := len(path) == 5 && strings.EqualFold(path[2], store.RecordFolders["documents"])
+	contracts := inDocuments && strings.EqualFold(path[4], store.ContractsFolderName)
+	statements := inDocuments && strings.EqualFold(path[4], store.BankStatementsFolderName)
+	if len(path) != 4 && !contracts && !statements {
 		return nil, true
 	}
 	kind := ""
@@ -124,7 +128,7 @@ func recordPath(path []string, names recordNames) (place *recordPlace, ok bool) 
 	if match == "" {
 		return nil, true
 	}
-	return &recordPlace{clientID: match, kind: kind, year: year, contracts: contracts}, true
+	return &recordPlace{clientID: match, kind: kind, year: year, contracts: contracts, statements: statements}, true
 }
 
 func yearOf(s string) (int, bool) {
@@ -137,8 +141,11 @@ func (p recordPlace) folder(ctx context.Context, q store.Q, workspaceID, userID 
 	if p.contracts {
 		return q.ContractsFolder(ctx, workspaceID, p.clientID, p.year, userID, now)
 	}
-	if p.kind == "bank_statements" {
-		return q.BankStatementsFolder(ctx, workspaceID, p.year, userID, now)
+	if p.statements {
+		return q.ClientBankStatementsFolder(ctx, workspaceID, p.clientID, p.year, userID, now)
+	}
+	if p.kind == "tax_documents" {
+		return q.TaxDocumentsFolder(ctx, workspaceID, p.year, userID, now)
 	}
 	if p.clientID != "" {
 		return q.ClientRecordFolder(ctx, workspaceID, p.clientID, p.kind, p.year, userID, now)

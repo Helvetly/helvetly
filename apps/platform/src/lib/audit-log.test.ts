@@ -152,6 +152,17 @@ describe('eventSentence', () => {
       '12 documents downloaded as a ZIP',
     ],
     [
+      'a bank statements folder repaired at start-up',
+      {
+        kind: 'documents.folder_repaired',
+        category: 'settings',
+        subject_type: 'workspace',
+        subject: null,
+        payload: { files: 3 },
+      },
+      "Helvetly moved 3 files into clients' Bank Statements folders",
+    ],
+    [
       'an HR event',
       { kind: 'employee.archived', category: 'employees', subject_type: 'employee', subject: null },
       'Employee archived',

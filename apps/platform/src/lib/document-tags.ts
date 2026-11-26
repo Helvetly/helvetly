@@ -21,6 +21,7 @@ const kinds = new Map<string, Parameters<typeof translate>[0]>([
   ['consent', 'documentTagConsent'],
   ['power-of-attorney', 'documentTagPowerOfAttorney'],
   ['bank-statement', 'bankStatement'],
+  ['tax-document', 'documentTagTaxDocument'],
 ] as const)
 const date = /^year-(\d{4}(?:-(?:0[1-9]|1[0-2]))?)$/
 

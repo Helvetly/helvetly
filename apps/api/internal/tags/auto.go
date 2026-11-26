@@ -50,6 +50,7 @@ var Kinds = []string{
 	"consent",
 	"power-of-attorney",
 	"bank-statement",
+	"tax-document",
 }
 
 // Kind reports whether t is one of Kinds.
