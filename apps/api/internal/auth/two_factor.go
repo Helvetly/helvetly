@@ -191,9 +191,9 @@ func (s *Service) notifyFactorLocked(ctx context.Context, userID string) {
 
 func factorLockedMessage(to, publicURL string) mailer.Message {
 	l := mailer.NewLetter("en").Lead("We’ve temporarily paused two-factor verification after several incorrect codes. If you were trying to sign in, wait and try again.").
-		Lead("If you don’t recognise the attempt, review your sign-in methods and end any sessions you don’t recognise when you can access your account.").
 		Action("Sign in", publicURL)
-	return mailer.Message{To: []string{to}, Subject: "Two-factor verification paused on your Helvetly account", Text: l.Text(), HTML: l.HTML()}
+	return mailer.Message{To: []string{to}, Subject: "Two-factor verification paused on your Helvetly account", Text: l.Text(), HTML: l.HTML(),
+		Advisory: "If you don’t recognise the attempt, review your sign-in methods and end any sessions you don’t recognise when you can access your account."}
 }
 
 func (s *Service) factorDisable(w http.ResponseWriter, r *http.Request, sess store.Session) {

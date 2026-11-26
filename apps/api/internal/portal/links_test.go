@@ -108,12 +108,18 @@ func TestEmailLinksShowsWorkspaceLogosWithFallback(t *testing.T) {
 	if res.StatusCode != http.StatusAccepted || len(e.mail.sent) != 1 {
 		t.Fatalf("status %d, sent %d", res.StatusCode, len(e.mail.sent))
 	}
-	body := e.mail.sent[0].HTML
+	msg := e.mail.sent[0]
+	body, plain := mailer.Render(msg, mailer.Brand{}, "https://app.example.com")
+	cardEnd := "</td></tr>\n</table></td></tr>\n"
+	advisory := "If you didn’t request these links, you can ignore this email."
 	for _, fragment := range []string{`src="https://app.example.com/api/v1/public/email-logo/wsp_a/wlg_1"`,
-		`background-color:#ccfbf1">O</span>`, `background-color:#fffbeb`, "Unexpected email?"} {
+		`background-color:#ccfbf1">O</span>`, cardEnd + `<tr><td style="padding:10px 0 0">`, `background-color:#fffbeb`, advisory} {
 		if !strings.Contains(body, fragment) {
 			t.Errorf("missing %q in portal email", fragment)
 		}
+	}
+	if strings.Contains(msg.HTML, advisory) || strings.Count(plain, advisory) != 1 {
+		t.Fatal("security note should be outside the card and present once in plain text")
 	}
 }
 

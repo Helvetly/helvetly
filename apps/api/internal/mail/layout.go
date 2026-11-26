@@ -78,6 +78,12 @@ func layout(m Message, publicURL string) string {
 	if lk.barImage != "" {
 		bar += `;background-image:` + lk.barImage
 	}
+	advisory := ""
+	if m.Advisory != "" {
+		advisory = `<tr><td style="padding:10px 0 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%"><tr>` +
+			`<td bgcolor="#fffbeb" style="background-color:#fffbeb;border-left:2px solid #f2ce7c;padding:6px 10px;font-family:` + fonts +
+			`;font-size:12px;line-height:18px;color:#78350f">` + lines(m.Advisory) + "</td></tr></table></td></tr>\n"
+	}
 	return `<!doctype html><html lang="` + lang + `"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
 		// Light only: inverted, the muted colours would be unreadable. No data detectors: the footer stays muted.
 		`<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">` +
@@ -90,7 +96,7 @@ func layout(m Message, publicURL string) string {
 		`<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;border:1px solid ` + border + `">` + "\n" +
 		`<tr><td height="3" bgcolor="` + lk.bar + `" style="height:3px;font-size:0;line-height:0;` + bar + `">&nbsp;</td></tr>` + "\n" +
 		`<tr><td style="padding:32px 32px 16px;font-family:` + fonts + `;font-size:15px;line-height:26px;color:` + text + `">` + "\n" + body + "</td></tr>\n" +
-		"</table></td></tr>\n" +
+		"</table></td></tr>\n" + advisory +
 		`<tr><td align="center" style="padding:28px 16px 0;font-family:` + fonts + `;font-size:12px;line-height:20px;color:` + muted + `">` + footer + "</td></tr>\n" +
 		"</table>\n</td></tr>\n</table></html>"
 }
@@ -162,6 +168,9 @@ func brandHeader(b Brand, publicURL string) string {
 
 // plainText is the text part: the message, then the business footer for a branded email, Helvetly's for its own.
 func plainText(m Message, publicURL string) string {
+	if m.Advisory != "" {
+		m.Text = strings.TrimRight(m.Text, "\n") + "\n\n" + m.Advisory
+	}
 	switch {
 	case m.Text == "" || (m.Brand != nil && m.Footer != ""):
 		return m.Text

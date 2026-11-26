@@ -112,14 +112,6 @@ func (l *Letter) SignOff(s string) *Letter {
 	return l
 }
 
-// Alert presents an advisory in a prominent, accessible callout.
-func (l *Letter) Alert(title, message string) *Letter {
-	l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;margin:16px 0 8px"><tr><td bgcolor="#fffbeb" style="background-color:#fffbeb;border-left:3px solid #d97706;padding:12px 14px;color:#78350f;font-size:13px;line-height:21px"><strong>` +
-		lines(title) + "</strong><br>" + lines(message) + "</td></tr></table>\n")
-	l.text.WriteString(title + "\n" + message + "\n\n")
-	return l
-}
-
 // Summary lists the details in a panel. Each value sits beneath its label, leaving the full width for both.
 func (l *Letter) Summary(rows ...Row) *Letter {
 	var h, t strings.Builder

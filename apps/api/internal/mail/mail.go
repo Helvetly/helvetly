@@ -46,6 +46,7 @@ type Message struct {
 	Attachments          []Attachment
 	ListUnsubscribe      string // optional: the one-click unsubscribe URL (RFC 8058)
 	NotificationSettings string // optional URL for the shared Helvetly footer
+	Advisory             string // optional note between the card and the footer
 	Footer               string // optional HTML: why the email came, in Helvetly's own footer; a branded email's whole footer
 	Eyebrow              string // optional: the pill above the title saying what the email is ("Invoice")
 	Tone                 Tone

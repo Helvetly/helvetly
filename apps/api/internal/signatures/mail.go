@@ -93,9 +93,9 @@ func inviteMessage(req store.SignatureRequest, to store.Signer, link string, rem
 	}
 	l.Summary(mail.Row{Label: w.document, Value: req.Title}, mail.Row{Label: w.sentBy, Value: sentBy(req)},
 		mail.Row{Label: w.signBy, Value: req.ExpiresAt.In(zone(req)).Format(w.date)}).
-		Action(w.button, link).FinePrint(w.personal, w.ses)
+		Action(w.button, link).FinePrint(w.ses)
 	return mail.Message{Workspace: req.WorkspaceID, Language: language, To: []string{to.Email}, Subject: subject, ReplyTo: req.SenderEmail,
-		Text: l.Text(), HTML: l.HTML()}
+		Text: l.Text(), HTML: l.HTML(), Advisory: w.personal}
 }
 
 // previewBody is POST /signatures/email-preview: the request as the send drawer has it so far.

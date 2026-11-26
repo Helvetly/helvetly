@@ -125,9 +125,8 @@ func linksEmail(to string, portals []portalLink) mailer.Message {
 		body += rows.String()
 		text += "\n" + links.String()
 	}
-	warning := mailer.NewLetter("en").Alert("Unexpected email?", alert)
 	return mailer.Message{To: []string{to}, Subject: "Your client portal links",
-		Text: text + "\n" + warning.Text(), HTML: mailer.Title(title) + body + warning.HTML()}
+		Text: text, HTML: mailer.Title(title) + body, Advisory: alert}
 }
 
 // portalCard uses the workspace’s image or a letter tile. The name is the accessible link even if images are blocked.
