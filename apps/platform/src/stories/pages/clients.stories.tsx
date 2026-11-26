@@ -88,9 +88,9 @@ export const BulkPortal: Story = {
     await waitFor(() => expect(body.queryByRole('dialog', { name: 'Enable portal' })).toBeNull())
     await expect(changePortal).not.toHaveBeenCalled()
     await apply('Enable portal', 'enable_portal')
-    await expect(
-      await body.findByText('1 client skipped because no email address is on file.'),
-    ).toBeVisible()
+    await waitFor(() =>
+      expect(body.getByText('1 client skipped because no email address is on file.')).toBeVisible(),
+    )
     await chooseClients()
     await apply('Disable portal', 'disable_portal')
     await expect(changePortal).toHaveBeenCalledTimes(2)
