@@ -244,10 +244,12 @@ export const FillFromClientThenEmail: Story = {
   ),
   play: async () => {
     const sheet = within(await body().findByRole('dialog'))
-    await expect(sheet.getByText('For: Alpenglow Studio GmbH')).toBeVisible()
-    await expect(sheet.queryByRole('searchbox', { name: 'Search clients' })).toBeNull()
-    await userEvent.click(sheet.getByRole('button', { name: 'Change' }))
-    await expect(sheet.getByRole('searchbox', { name: 'Search clients' })).toBeVisible()
+    // Opened from a client: that client is already chosen; the document type is still asked for.
+    await expect(sheet.getByRole('button', { name: /^Client / })).toHaveTextContent(
+      'Alpenglow Studio GmbH',
+    )
+    await userEvent.click(sheet.getByRole('button', { name: /^Document type/ }))
+    await userEvent.click(await body().findByRole('option', { name: 'Contract' }))
 
     await userEvent.click(sheet.getByRole('button', { name: 'Next' }))
     await userEvent.click(await sheet.findByRole('button', { name: 'Next' }))
@@ -270,6 +272,7 @@ export const FillFromClientThenEmail: Story = {
 
     await userEvent.click(sheet.getByRole('button', { name: 'Send email' }))
     await waitFor(() => expect(generated).not.toBeNull())
+    await expect(generated?.document_type).toBe('contract')
     await expect(generated?.delivery).toMatchObject({
       type: 'email',
       to: 'hello@alpenglow.ch',

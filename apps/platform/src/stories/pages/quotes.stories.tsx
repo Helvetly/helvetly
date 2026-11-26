@@ -1151,10 +1151,10 @@ export const ContractFromQuote: Story = {
     const writer = await body.findByRole('dialog', { name: /Create contract/ }, wait)
     // the template is picked in the first step, right under its option
     await userEvent.click(within(writer).getByRole('button', { name: /Fill a template/ }))
-    const list = await within(writer).findByLabelText('Templates', {}, wait)
-    const rows = await within(list).findAllByRole('button')
+    await userEvent.click(await within(writer).findByRole('button', { name: /^Template / }, wait))
+    const rows = await body.findAllByRole('option', {}, wait)
     await expect(rows[0]).toHaveTextContent('Service contract')
-    await expect(within(writer).queryByRole('searchbox', { name: 'Search clients' })).toBeNull()
+    await expect(within(writer).queryByRole('button', { name: /^Client / })).toBeNull()
     await userEvent.click(rows[0] as HTMLElement)
     await userEvent.click(within(writer).getByRole('button', { name: 'Next' }))
     // filled from the quote at once: the drawer is titled after the contract
@@ -1505,7 +1505,9 @@ export const ContractWithoutAI: Story = {
     await expect(await body.findByRole('menuitem', { name: 'Create contract' })).toBeVisible()
     await userEvent.click(body.getByRole('menuitem', { name: 'Create contract' }))
     const drawer = await body.findByRole('dialog', { name: /Create contract/ }, wait)
-    await expect(await within(drawer).findByLabelText('Templates', {}, wait)).toBeVisible()
+    await expect(
+      await within(drawer).findByRole('button', { name: /^Template / }, wait),
+    ).toBeVisible()
     await expect(within(drawer).queryByRole('button', { name: /Write it with AI/ })).toBeNull()
   },
 }
@@ -1594,8 +1596,9 @@ export const ContractTemplateSignatures: Story = {
   play: async (context) => {
     const writer = await openWriter(context)
     await userEvent.click(within(writer).getByRole('button', { name: /Fill a template/ }))
-    const list = await within(writer).findByLabelText('Templates', {}, wait)
-    await userEvent.click((await within(list).findAllByRole('button'))[0] as HTMLElement)
+    await userEvent.click(await within(writer).findByRole('button', { name: /^Template / }, wait))
+    const body = page(context.canvasElement)
+    await userEvent.click((await body.findAllByRole('option', {}, wait))[0] as HTMLElement)
     await userEvent.click(within(writer).getByRole('button', { name: 'Next' }))
     const drawer = await page(context.canvasElement).findByRole(
       'dialog',
