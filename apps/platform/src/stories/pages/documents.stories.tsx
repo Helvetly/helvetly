@@ -590,7 +590,10 @@ export const StorageColours: Story = {
 }
 export const StorageColoursDark = dark(StorageColours)
 
-/** The search is a button until asked for; opening it moves none of the other controls. */
+/**
+ * The search is a button until asked for; it opens in its own row below the toolbar, so the
+ * breadcrumbs and the other controls keep their room.
+ */
 export const ToolbarSearch: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
@@ -600,10 +603,14 @@ export const ToolbarSearch: Story = {
     const before = grid.getBoundingClientRect().left
 
     await userEvent.click(open)
+    await expect(open).toHaveAttribute('aria-expanded', 'true')
     const search = body.getByRole('searchbox', { name: 'Search files' })
     await expect(search).toHaveFocus()
     await new Promise((resolve) => setTimeout(resolve, 300))
     await expect(grid.getBoundingClientRect().left).toBe(before)
+    await expect(search.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      grid.getBoundingClientRect().bottom,
+    )
 
     // Escape on an empty field folds it back and hands the focus to the button.
     await userEvent.keyboard('{Escape}')
@@ -628,6 +635,58 @@ export const ToolbarSearch: Story = {
   },
 }
 export const ToolbarSearchPhone = phone(ToolbarSearch)
+
+/** Deep in the folders with filters on: the chips sit in the search row, the path stays readable. */
+export const DeepFolderWithChips: Story = {
+  parameters: pageParameters('/documents', { folder: 'fld_deep', date: '30d', kind: 'image' }, [
+    http.get('/api/v1/documents/folders', () =>
+      HttpResponse.json({
+        data: [
+          ...sampleFolders,
+          invoices,
+          { ...invoices, id: 'fld_invoices_2025', name: '2025', parent_id: 'fld_invoices' },
+          {
+            ...invoices,
+            id: 'fld_deep',
+            name: 'Unternehmensdokumente',
+            parent_id: 'fld_invoices_2025',
+          },
+        ],
+      }),
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const chip = await body.findByRole(
+      'button',
+      { name: 'Remove filter Kind: Image' },
+      { timeout: 8000 },
+    )
+    await expect(chip).toBeVisible()
+    await expect(body.getByRole('searchbox', { name: 'Search files' })).toBeVisible()
+    const crumbs = within(body.getByRole('navigation', { name: 'Breadcrumbs' }))
+    await waitFor(() =>
+      expect(crumbs.getByRole('button', { name: 'Unternehmensdokumente' })).toBeVisible(),
+    )
+    // Too long for the row: the folders in between fold into "…", the first and current stay whole.
+    await expect(crumbs.queryByRole('button', { name: 'Invoices' })).toBeNull()
+    // Whole: each one's text fits its box (a pixel for rounding).
+    await Promise.all(
+      ['All documents', 'Unternehmensdokumente'].map((name) => {
+        const crumb = crumbs.getByRole('button', { name })
+        return expect(crumb.scrollWidth).toBeLessThanOrEqual(crumb.clientWidth + 1)
+      }),
+    )
+    await userEvent.click(crumbs.getByRole('button', { name: 'Folders in between' }))
+    const menu = within(await body.findByRole('menu'))
+    await expect(menu.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Invoices',
+      '2025',
+    ])
+    await userEvent.click(menu.getByRole('menuitem', { name: 'Invoices' }))
+    await waitFor(() => expect(url(canvasElement).get('folder')).toBe('fld_invoices'))
+  },
+}
 
 /** The Filters popover and the search's chips show the URL's filters; a pick and "Clear all" go to the URL. */
 export const Filters: Story = {

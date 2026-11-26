@@ -77,6 +77,7 @@ function Harness({
   narrow?: boolean
 }) {
   const [params, setParams] = useState<Params>(EMPTY)
+  const [row, setRow] = useState<HTMLDivElement | null>(null)
   const update = (change: Partial<Params>) => setParams((current) => ({ ...current, ...change }))
   return (
     <div className={narrow ? 'max-w-md rounded-xl border' : 'max-w-3xl rounded-xl border'}>
@@ -99,9 +100,12 @@ function Harness({
           value={params.search}
           onChange={(search) => update({ search })}
           query={{ fields, params, onChange: update }}
-          collapsible={collapsible}
+          row={collapsible ? row : undefined}
         />
       </ListToolbar>
+      {collapsible && (
+        <div ref={setRow} aria-label="Search row" className="border-b p-2 empty:hidden" />
+      )}
       <output aria-label="Params" className="block p-3 font-mono text-xs">
         {JSON.stringify(params)}
       </output>
@@ -220,18 +224,37 @@ export const SyncsWithFilters: Story = {
   },
 }
 
-/** The Documents page's folded search opens on a click and stays open while it holds chips. */
+/** The Documents page's folded search opens in a row below on a click and stays open while it holds chips. */
 export const Collapsible: Story = {
   render: () => <Harness collapsible />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Search clients' }))
+    const toggle = canvas.getByRole('button', { name: 'Search clients' })
+    await expect(canvas.queryByRole('searchbox')).toBeNull()
+    await userEvent.click(toggle)
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
     const search = canvas.getByRole('searchbox', { name: 'Search clients' })
     await expect(search).toHaveFocus()
+    // The field opens in its own row below the toolbar, which keeps its room for the rest.
+    const row = canvasElement.querySelector('[aria-label="Search row"]')
+    await expect(row?.contains(search)).toBe(true)
     await userEvent.type(search, 'tag:design ')
     await userEvent.tab()
     await expect(canvas.getByRole('button', { name: 'Remove filter Tags: design' })).toBeVisible()
     await expect(canvas.getByRole('searchbox', { name: 'Search clients' })).toBeVisible()
+
+    // Left empty, it folds away; open again, Escape closes it and gives focus back to the button.
+    await userEvent.click(canvas.getByRole('button', { name: 'Remove filter Tags: design' }))
+    await expect(canvas.queryByRole('searchbox')).toBeNull()
+    await userEvent.click(toggle)
+    await expect(canvas.getByRole('searchbox', { name: 'Search clients' })).toHaveFocus()
+    await userEvent.keyboard('{Escape}')
+    await expect(canvas.queryByRole('searchbox')).toBeNull()
+    await expect(toggle).toHaveFocus()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    // "/" opens it again, focused.
+    await userEvent.keyboard('/')
+    await expect(canvas.getByRole('searchbox', { name: 'Search clients' })).toHaveFocus()
   },
 }
 

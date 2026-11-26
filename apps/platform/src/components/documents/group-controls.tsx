@@ -323,7 +323,7 @@ export function GroupByMenu(props: PanelProps) {
       className="cursor-pointer gap-1.5 font-normal text-foreground/80 max-sm:hidden"
     >
       <Icon className="stroke-[1.5]" />
-      <span className="max-lg:sr-only">{label}</span>
+      <span className="max-xl:sr-only">{label}</span>
       {dot}
     </Button>,
     <Button
