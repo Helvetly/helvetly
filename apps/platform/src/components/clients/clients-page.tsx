@@ -21,6 +21,8 @@ import {
   CloudOff,
   Download,
   FilePen,
+  KeyRound,
+  LockKeyhole,
   PanelRightOpen,
   PauseCircle,
   Pencil,
@@ -83,6 +85,7 @@ import { useCan } from '@/lib/permissions'
 import { usePrefetch, useSession } from '@/lib/queries'
 import { setUrlQuery } from '@/lib/url-query'
 import { useStableCallback } from '@/lib/use-stable-callback'
+import { usePortalAddress } from '@/lib/workspaces'
 
 import { ChangesPendingBadge, ClientRowStatus, ClientTypeBadge } from './client-bits'
 import { ClientDetail, type ClientCommand } from './client-detail'
@@ -118,6 +121,8 @@ export function ClientsPage() {
 
   const [search, setSearch] = useState(params.search)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
+  const [portalChange, setPortalChange] = useState<{ enabled: boolean; ids: string[] } | null>(null)
+  const portal = usePortalAddress(canWrite && selected.size > 0).data
   const [form, setForm] = useState<{ client?: Client; focus?: 'address' } | null>(null)
   const [deleting, setDeleting] = useState<Client[] | null>(null)
   const hiddenColumns = useHiddenColumns('helvetly:clients:columns', ['tags'])
@@ -244,6 +249,13 @@ export function ClientsPage() {
     actions: bulkActions(canDelete, {
       activate: () => runBulk('activate'),
       deactivate: () => runBulk('deactivate'),
+      portal:
+        canWrite && portal?.enabled && portal.feature_available
+          ? {
+              change: (enabled: boolean) => setPortalChange({ enabled, ids: [...selected] }),
+              disabled: bulk.isPending ? translate('loading') : undefined,
+            }
+          : undefined,
       exportCsv: unlessLocked(exportLock, () =>
         window.location.assign(exportIdsUrl([...selected])),
       ),
@@ -512,6 +524,44 @@ export function ClientsPage() {
           onDecide={confirmDelete}
         />
       )}
+      {portalChange && (
+        <ConfirmDialog
+          tone="default"
+          title={translate(portalChange.enabled ? 'bulkEnablePortal' : 'bulkDisablePortal')}
+          body={translate(portalChange.enabled ? 'bulkEnablePortalBody' : 'bulkDisablePortalBody', {
+            count: portalChange.ids.length,
+          })}
+          confirmLabel={translate(portalChange.enabled ? 'bulkEnablePortal' : 'bulkDisablePortal')}
+          onDecide={(approved) => {
+            const { ids, enabled } = portalChange
+            setPortalChange(null)
+            if (!approved) return
+            bulk.mutate(
+              { ids, action: enabled ? 'enable_portal' : 'disable_portal' },
+              {
+                onSuccess: ({ data }) => {
+                  toast.success(
+                    translate(enabled ? 'bulkPortalEnabled' : 'bulkPortalDisabled', {
+                      count: data.updated,
+                    }),
+                    {
+                      description: data.missing_email
+                        ? translate('bulkPortalMissingEmail', { count: data.missing_email })
+                        : undefined,
+                    },
+                  )
+                  setSelected((current) => {
+                    const remaining = new Set(current)
+                    for (const id of ids) remaining.delete(id)
+                    return remaining
+                  })
+                },
+                onError: toastError,
+              },
+            )
+          }}
+        />
+      )}
     </>
   )
 }
@@ -519,11 +569,36 @@ export function ClientsPage() {
 /** The bulk bar's buttons; deleting only for those allowed to. */
 export function bulkActions(
   canDelete: boolean,
-  run: { activate: () => void; deactivate: () => void; exportCsv: () => void; remove: () => void },
+  run: {
+    activate: () => void
+    deactivate: () => void
+    exportCsv: () => void
+    remove: () => void
+    portal?: { change: (enabled: boolean) => void; disabled?: string }
+  },
 ) {
+  const { portal } = run
   return [
     { label: translate('activate'), icon: <Power />, onClick: run.activate, write: true },
     { label: translate('deactivate'), icon: <PowerOff />, onClick: run.deactivate, write: true },
+    ...(portal
+      ? [
+          {
+            label: translate('bulkEnablePortal'),
+            icon: <KeyRound />,
+            onClick: () => portal.change(true),
+            disabled: portal.disabled,
+            write: true,
+          },
+          {
+            label: translate('bulkDisablePortal'),
+            icon: <LockKeyhole />,
+            onClick: () => portal.change(false),
+            disabled: portal.disabled,
+            write: true,
+          },
+        ]
+      : []),
     { label: translate('exportCSV'), icon: <Download />, onClick: run.exportCsv },
     ...(canDelete
       ? [

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
+	"sync"
 
 	"helvetly.com/api/internal/auth"
 	mailer "helvetly.com/api/internal/mail"
@@ -34,13 +36,83 @@ func PortalLogin(c store.Client) string {
 	return ""
 }
 
+type bulkPortalResult struct {
+	Updated      int `json:"updated"`
+	MissingEmail int `json:"missing_email"`
+}
+
+func (s *Service) bulkPortal(ctx context.Context, sess store.Session, ids []string, enable bool) (bulkPortalResult, error) {
+	var result bulkPortalResult
+	var invitations []store.Client
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		if enable {
+			if err := q.RequireFeature(ctx, sess.Workspace.ID, store.FeatureClientPortal); err != nil {
+				return err
+			}
+			off, err := q.LockPortalOff(ctx, sess.Workspace.ID)
+			if err != nil {
+				return err
+			}
+			if off {
+				return errPortalClosed
+			}
+		}
+		clients, err := q.LockClientsChangingPortal(ctx, sess.Workspace.ID, ids, enable)
+		if err != nil {
+			return err
+		}
+		changed := make([]string, 0, len(clients))
+		for _, client := range clients {
+			if enable {
+				if PortalLogin(client) == "" {
+					result.MissingEmail++
+					continue
+				}
+				invitations = append(invitations, client)
+			}
+			changed = append(changed, client.ID)
+		}
+		result.Updated = len(changed)
+		if len(changed) == 0 {
+			return nil
+		}
+		return q.SetClientsPortal(ctx, sess.Workspace.ID, changed, enable, s.now())
+	})
+	if err != nil {
+		return bulkPortalResult{}, err
+	}
+	// A committed grant needs its invitation even if the browser disconnects. Bound simultaneous mail deliveries.
+	ctx = context.WithoutCancel(ctx)
+	var workers sync.WaitGroup
+	jobs := make(chan store.Client)
+	for range min(4, len(invitations)) {
+		workers.Go(func() {
+			for c := range jobs {
+				s.invitePortal(ctx, sess, c)
+			}
+		})
+	}
+	for _, c := range invitations {
+		jobs <- c
+	}
+	close(jobs)
+	workers.Wait()
+	return result, nil
+}
+
 // invitePortal mails the client the portal link after the change is saved and records when. A failure is logged,
 // never returned.
 func (s *Service) invitePortal(ctx context.Context, sess store.Session, c store.Client) {
 	if s.mail == nil || PortalLogin(c) == "" {
 		return
 	}
-	if off, err := s.db.Q.PortalOff(ctx, sess.Workspace.ID); err != nil || off {
+	// A queued invitation may have been revoked or its recipient changed since commit.
+	access, err := s.db.Q.PortalAccessByEmail(ctx, PortalLogin(c), sess.Workspace.ID)
+	if err != nil {
+		s.log.WarnContext(ctx, "check portal invitation", "client", c.ID, "error", err)
+		return
+	}
+	if !slices.ContainsFunc(access, func(a store.PortalAccess) bool { return a.ClientID == c.ID }) {
 		return // a workspace with its whole portal off sends no invitations
 	}
 	if err := s.sendPortalInvite(ctx, sess, c); err != nil {

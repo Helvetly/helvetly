@@ -32,7 +32,7 @@ const problemOf = (value: string) => {
   return null
 }
 
-const address = () => ({ data: { slug, url: `${BASE}${slug}/`, enabled } })
+const address = () => ({ data: { slug, url: `${BASE}${slug}/`, enabled, feature_available: true } })
 
 export const portalAddressHandlers = [
   http.get('/api/v1/workspace/portal/availability', ({ request }) => {

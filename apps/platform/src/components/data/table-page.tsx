@@ -47,14 +47,14 @@ export function BulkBar({
         type="button"
         aria-label={translate('clearSelection')}
         onClick={onClear}
-        className="pointer-events-auto flex size-11 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-elevation-2 transition-colors duration-150 hover:bg-zinc-800 dark:bg-zinc-800"
+        className="pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-elevation-2 transition-colors duration-150 hover:bg-zinc-800 dark:bg-zinc-800"
       >
         <X className="size-[18px]" />
       </button>
       <div
         role="toolbar"
         aria-label={translate('selectedRows')}
-        className="pointer-events-auto flex h-11 items-center gap-2 rounded-xl bg-zinc-900 px-4 text-[15px] text-white shadow-elevation-2 dark:bg-zinc-800"
+        className="pointer-events-auto flex min-h-11 min-w-0 flex-wrap items-center justify-center gap-x-1 gap-y-0.5 rounded-xl bg-zinc-900 px-2 py-1 text-[15px] text-white shadow-elevation-2 sm:gap-x-2 sm:px-4 dark:bg-zinc-800"
       >
         <span className="pr-1 whitespace-nowrap tabular-nums">
           {translate('selected')}

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"helvetly.com/api/internal/billing"
+	"helvetly.com/api/internal/billing/billingtest"
 	"helvetly.com/api/internal/portalscope"
 	"helvetly.com/api/internal/store"
 )
@@ -190,5 +192,25 @@ func TestPortalCanonicalURL(t *testing.T) {
 	r.Forget()
 	if got := canonical(); got != "https://portal.firma.ch/" {
 		t.Fatalf("active domain: %q", got)
+	}
+}
+
+func TestPortalPlanAvailability(t *testing.T) {
+	e := newEnv(t)
+	owner, ws := e.person("Acme", "owner")
+	billingtest.Wire(t, e.st)
+	for _, tc := range []struct {
+		plan      string
+		available bool
+	}{{billing.Basic, false}, {billing.Business, true}} {
+		billingtest.On(t, e.st, ws, tc.plan)
+		status, out := e.do(owner, "GET", "/api/v1/workspace/portal", nil)
+		if status != 200 {
+			t.Fatalf("portal: %d %v", status, out)
+		}
+		data := out["data"].(map[string]any)
+		if data["feature_available"] != tc.available || data["enabled"] != true {
+			t.Fatalf("%v: %v", tc.plan, data)
+		}
 	}
 }
