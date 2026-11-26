@@ -6067,5 +6067,15 @@
   "cashFlowYearsShown": "Angezeigte Jahre",
   "cashFlowYearToDate": "{year} bis heute",
   "cashFlowYearToDateShort": "{year} bis heute",
-  "cashFlowVsYear": "{change} ggü. {year}"
+  "cashFlowVsYear": "{change} ggü. {year}",
+  "clientEmails": "E-Mails an Kunden",
+  "clientEmailsDescription": "E-Mails, die Ihre Kunden automatisch von Ihnen erhalten.",
+  "emailClientsAPaymentConfirmation": "Kunden eine Zahlungsbestätigung senden",
+  "emailClientsAPaymentConfirmationHelp": "Wenn Sie eine Zahlung erfassen, erhält der Kunde ein Dankeschön mit Betrag, Datum und dem noch offenen Betrag. Für einzelne Zahlungen können Sie es weglassen.",
+  "sendPaymentConfirmationToTheClient": "Zahlungsbestätigung an den Kunden senden",
+  "paymentConfirmation": "Zahlungsbestätigung",
+  "emailTemplatesAboutPaymentConfirmation": "Geht an den Kunden, wenn Sie eine Zahlung auf einer Rechnung erfassen, sofern Sie es nicht ausschalten.",
+  "emailTemplatesVarPaidOn": "Der Tag des Zahlungseingangs, z. B. 24.11.2026",
+  "emailTemplatesVarBalance": "Was nach der Zahlung noch offen ist, z. B. CHF 0.00",
+  "emailTemplatesVarAmountReceived": "Der erhaltene Betrag, z. B. CHF 1’234.50"
 }

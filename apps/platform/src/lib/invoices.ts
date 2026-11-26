@@ -317,8 +317,10 @@ type DunningResponse = Omit<DunningSettings, 'steps'> & {
   steps?: DunningStep[]
   levels?: DunningLevel[]
 }
-export type InvoiceSettingsResponse = Omit<InvoiceSettings, 'dunning'> & {
+export type InvoiceSettingsResponse = Omit<InvoiceSettings, 'dunning' | 'payment_confirmation'> & {
   dunning: DunningResponse
+  /** Absent from an API before payment confirmations: on. */
+  payment_confirmation?: boolean
 }
 
 /** Levels read as the server reads them: the first after the due date, the rest after the previous notice. */
@@ -336,7 +338,11 @@ export const stepsFromLevels = (levels: DunningLevel[]): DunningStep[] =>
 export function settingsFrom(raw: InvoiceSettingsResponse): InvoiceSettings {
   // `?? {}`: partial responses (test fixtures) leave dunning out.
   const { steps, levels = [], ...dunning } = raw.dunning ?? {}
-  return { ...raw, dunning: { ...dunning, steps: steps ?? stepsFromLevels(levels) } }
+  return {
+    ...raw,
+    payment_confirmation: raw.payment_confirmation ?? true,
+    dunning: { ...dunning, steps: steps ?? stepsFromLevels(levels) },
+  }
 }
 export type PlanInput = {
   count: number
@@ -459,6 +465,8 @@ export type Refund = {
 
 export type Delivery = {
   id: string
+  /** `payment_confirmation`: the client was told a payment arrived; `invoice`: the document went out. */
+  kind?: 'invoice' | 'payment_confirmation'
   to: string[]
   sent_at: string
   sent_by: { id: string; name: string } | null
@@ -529,6 +537,8 @@ export type InvoiceSettings = {
   revolut_username: string | null
   instalments: InstalmentSettings
   dunning: DunningSettings
+  /** A recorded payment emails the client a confirmation, unless turned off for that payment. */
+  payment_confirmation: boolean
   logo_file_id: string | null
   /** Where the logo is shown from (GET /invoice-settings/logo), null without one. */
   logo_url: string | null
@@ -560,6 +570,8 @@ export type PaymentInput = {
   paid_on: string
   method: PaymentMethod
   note?: string
+  /** Email the client a confirmation; omitted: the workspace's setting. */
+  notify_client?: boolean
 }
 export type RefundInput = {
   amount: Decimal

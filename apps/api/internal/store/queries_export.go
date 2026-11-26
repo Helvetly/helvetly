@@ -213,6 +213,7 @@ var ExportExcluded = map[string]string{
 	"transmission_credentials": "sealed e-invoice channel credentials",
 	"heidi_confirmations":      "pending confirmations of Heidi actions, minutes long; the conversation is in heidi_messages",
 	"digest_deliveries":        "job bookkeeping: per-recipient digest attempts and retry payloads",
+	"payment_confirmations":    "job bookkeeping: the payment confirmation emails queued and their attempts; sent ones are in invoice_deliveries",
 	"invoice_payment_requests": "payment retry receipts: request identities and parameter hashes",
 	"digest_days":              "job bookkeeping: the days the engagements digest was sent",
 	"workspace_deletions":      "the operator's record of a deletion and its archive; a live workspace has none to export",

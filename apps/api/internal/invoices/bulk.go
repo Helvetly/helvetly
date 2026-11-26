@@ -25,6 +25,7 @@ func (s *Service) bulk(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	var body struct {
 		Action string   `json:"action"`
 		IDs    []string `json:"ids"`
+		Notify *bool    `json:"notify_client"` // mark_paid: nil follows the workspace's setting
 	}
 	if !s.auth.Decode(w, r, &body) {
 		return nil
@@ -47,7 +48,7 @@ func (s *Service) bulk(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		if body.Action == "issue" {
 			err = s.issueOne(ctx, sess, id)
 		} else {
-			err = s.payDue(ctx, sess, id, today, "bank_transfer")
+			err = s.payDue(ctx, sess, id, today, "bank_transfer", body.Notify)
 		}
 		res := bulkResult{ID: id, OK: err == nil}
 		if errors.Is(err, store.ErrNotFound) {

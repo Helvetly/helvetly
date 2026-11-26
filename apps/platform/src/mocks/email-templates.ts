@@ -16,6 +16,7 @@ const NAMES: Record<EmailKind, string> = {
   credit_note: 'credit note',
   proforma: 'proforma invoice',
   quote: 'quote',
+  payment_confirmation: 'payment confirmation',
   document: 'document',
   signature_request: 'signature request',
   signature_reminder: 'signature reminder',
@@ -31,6 +32,10 @@ const FILE_DEFAULTS: Partial<Record<EmailKind, { subject: string; body: string }
   signature_request: {
     subject: '{company} asks you to sign “{document}”',
     body: 'Hello\n\nPlease review and sign “{document}” using the link below. If you have any questions, simply reply to this email.\n\nKind regards\n{sender}\n{company}',
+  },
+  payment_confirmation: {
+    subject: 'Payment received: {document} {number}',
+    body: 'Hello\n\nThank you for your payment. We received {amount} on {paid_on} for {document} {number}.\n\nIf you have a question, reply to this email.\n\nKind regards\n{company}',
   },
   signature_reminder: {
     subject: 'Reminder: {company} asks you to sign “{document}”',
@@ -54,11 +59,13 @@ const variablesOf = (kind: EmailKind) =>
     ? [...COMMON, 'due_date']
     : kind === 'quote'
       ? [...COMMON, 'valid_until']
-      : kind === 'document'
-        ? ['document', 'client', 'sender', 'company']
-        : kind.startsWith('signature')
-          ? ['document', 'sender', 'company']
-          : COMMON
+      : kind === 'payment_confirmation'
+        ? [...COMMON, 'paid_on', 'balance']
+        : kind === 'document'
+          ? ['document', 'client', 'sender', 'company']
+          : kind.startsWith('signature')
+            ? ['document', 'sender', 'company']
+            : COMMON
 
 const sampleTemplates = (): EmailTemplate[] =>
   EMAIL_KINDS.flatMap((kind) =>

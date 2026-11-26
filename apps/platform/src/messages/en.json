@@ -6067,5 +6067,15 @@
   "cashFlowYearsShown": "Years shown",
   "cashFlowYearToDate": "{year} year to date",
   "cashFlowYearToDateShort": "{year} to date",
-  "cashFlowVsYear": "{change} vs {year}"
+  "cashFlowVsYear": "{change} vs {year}",
+  "clientEmails": "Client emails",
+  "clientEmailsDescription": "Emails your clients get from you automatically.",
+  "emailClientsAPaymentConfirmation": "Email clients a payment confirmation",
+  "emailClientsAPaymentConfirmationHelp": "When you record a payment, the client gets a thank-you with the amount, the date and what is still open. You can leave it out for a single payment.",
+  "sendPaymentConfirmationToTheClient": "Send payment confirmation to the client",
+  "paymentConfirmation": "Payment confirmation",
+  "emailTemplatesAboutPaymentConfirmation": "Sent to the client when you record a payment on an invoice, unless you turn it off.",
+  "emailTemplatesVarPaidOn": "The day the payment arrived, e.g. 24.11.2026",
+  "emailTemplatesVarBalance": "What is still open after the payment, e.g. CHF 0.00",
+  "emailTemplatesVarAmountReceived": "The amount received, e.g. CHF 1’234.50"
 }

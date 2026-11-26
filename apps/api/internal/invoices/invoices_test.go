@@ -90,10 +90,15 @@ type fakeMailer struct {
 	mu     sync.Mutex
 	sent   []mail.Message
 	onSend func(context.Context) // runs after a successful send
+	fail   error                 // refuses every message with it while set
 }
 
 func (m *fakeMailer) Send(ctx context.Context, msg mail.Message) error {
 	m.mu.Lock()
+	if m.fail != nil {
+		defer m.mu.Unlock()
+		return m.fail
+	}
 	m.sent = append(m.sent, msg)
 	m.mu.Unlock()
 	if m.onSend != nil {

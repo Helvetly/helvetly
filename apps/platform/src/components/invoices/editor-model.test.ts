@@ -95,6 +95,7 @@ const settings = {
   revolut_username: null,
   instalments: sampleSettings().instalments,
   dunning: sampleSettings().dunning,
+  payment_confirmation: true,
   logo_file_id: null,
   logo_url: null,
   is_complete: false,

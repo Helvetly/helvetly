@@ -260,6 +260,7 @@ type Delivery struct {
 	Bcc    []string  `json:"bcc"`
 	SentAt time.Time `json:"sent_at"`
 	SentBy *Uploader `json:"sent_by"`
+	Kind   string    `json:"kind"` // invoice (the document itself) or payment_confirmation
 }
 
 type InvoiceListItem struct {
@@ -760,10 +761,10 @@ func (q Q) MarkSent(ctx context.Context, id string, now time.Time) error {
 	return err
 }
 
-// UnmarkSent clears sent_at unless an email delivery exists; false when one does.
+// UnmarkSent clears sent_at unless the invoice itself went out by email; false when it did.
 func (q Q) UnmarkSent(ctx context.Context, id string, now time.Time) (bool, error) {
 	tag, err := q.db.Exec(ctx, `UPDATE invoices SET sent_at = NULL, updated_at = $2
-		WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM invoice_deliveries WHERE invoice_id = $1)`, id, now)
+		WHERE id = $1 AND NOT EXISTS (SELECT 1 FROM invoice_deliveries WHERE invoice_id = $1 AND kind = 'invoice')`, id, now)
 	return tag.RowsAffected() > 0, err
 }
 
@@ -853,14 +854,14 @@ func (q Q) RefundAvailableOn(ctx context.Context, id, day string, payable Money)
 
 // CreateDelivery records a send; userID is nil when the system sent it (an instalment plan).
 func (q Q) CreateDelivery(ctx context.Context, invoiceID string, userID *string, d Delivery) error {
-	_, err := q.db.Exec(ctx, `INSERT INTO invoice_deliveries (id, invoice_id, recipients, cc, bcc, sent_by, sent_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`, d.ID, invoiceID, d.To, d.Cc, d.Bcc, userID, d.SentAt)
+	_, err := q.db.Exec(ctx, `INSERT INTO invoice_deliveries (id, invoice_id, recipients, cc, bcc, sent_by, sent_at, kind)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, coalesce(nullif($8, ''), 'invoice'))`, d.ID, invoiceID, d.To, d.Cc, d.Bcc, userID, d.SentAt, d.Kind)
 	return err
 }
 
 // Deliveries: the invoice's sends, newest first.
 func (q Q) Deliveries(ctx context.Context, invoiceID string) ([]Delivery, error) {
-	rows, err := q.db.Query(ctx, `SELECT d.id, d.recipients, d.cc, d.bcc, d.sent_at, u.id, u.name, `+avatarColumn+` FROM invoice_deliveries d
+	rows, err := q.db.Query(ctx, `SELECT d.id, d.recipients, d.cc, d.bcc, d.sent_at, d.kind, u.id, u.name, `+avatarColumn+` FROM invoice_deliveries d
 		LEFT JOIN users u ON u.id = d.sent_by WHERE d.invoice_id = $1 ORDER BY d.sent_at DESC, d.id DESC`, invoiceID)
 	if err != nil {
 		return nil, err
@@ -868,7 +869,7 @@ func (q Q) Deliveries(ctx context.Context, invoiceID string) ([]Delivery, error)
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Delivery, error) {
 		var d Delivery
 		var uid, uname, uavatar *string
-		err := r.Scan(&d.ID, &d.To, &d.Cc, &d.Bcc, &d.SentAt, &uid, &uname, &uavatar)
+		err := r.Scan(&d.ID, &d.To, &d.Cc, &d.Bcc, &d.SentAt, &d.Kind, &uid, &uname, &uavatar)
 		d.SentBy = uploader(uid, uname, uavatar)
 		return d, err
 	})

@@ -6,7 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
 import { invoiceKeys } from '@/lib/invoices'
-import { listItem, sampleInvoice } from '@/test/invoice-api'
+import { listItem, sampleInvoice, sampleSettings } from '@/test/invoice-api'
 
 import { PaymentDialog } from './invoice-dialogs'
 
@@ -20,6 +20,7 @@ test('a lost payment response keeps its identity after the balance refreshes; th
   const requests: string[] = []
   server.use(
     http.get('/api/v1/invoices/:id', () => HttpResponse.json({ data: invoice })),
+    http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
     http.post<never, { request_id: string }>(
       '/api/v1/invoices/:id/payments',
       async ({ request }) => {
@@ -60,4 +61,51 @@ test('a lost payment response keeps its identity after the balance refreshes; th
   expect(requests[0]).toBeTruthy()
   expect(requests[1]).toBe(requests[0])
   expect(requests[2]).not.toBe(requests[0])
+})
+
+/** Records a payment with the setting given, the box clicked once or left alone; answers the request body. */
+const record = async (paymentConfirmation: boolean, click: boolean) => {
+  const invoice = sampleInvoice({ status: 'open', amount_due: '216.20' })
+  const bodies: Record<string, unknown>[] = []
+  server.use(
+    http.get('/api/v1/invoices/:id', () => HttpResponse.json({ data: invoice })),
+    http.get('/api/v1/invoice-settings', () =>
+      HttpResponse.json({ data: sampleSettings({ payment_confirmation: paymentConfirmation }) }),
+    ),
+    http.post<never, Record<string, unknown>>(
+      '/api/v1/invoices/:id/payments',
+      async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ data: { ...invoice, status: 'paid', amount_due: '0.00' } })
+      },
+    ),
+  )
+  const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={cache}>
+      <TooltipProvider>
+        <PaymentDialog invoice={listItem(invoice)} onClose={() => {}} />
+      </TooltipProvider>
+    </QueryClientProvider>,
+  )
+  const box = screen.getByRole('checkbox', { name: 'Send payment confirmation to the client' })
+  await waitFor(() => expect(box).toHaveAttribute('aria-checked', String(paymentConfirmation)))
+  if (click) await userEvent.click(box)
+  await userEvent.click(screen.getByRole('button', { name: 'Record payment' }))
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  return bodies[0]
+}
+
+describe('the payment confirmation checkbox', () => {
+  test('starts as the setting and, untouched, leaves the choice to it', async () => {
+    expect(await record(true, false)).not.toHaveProperty('notify_client')
+  })
+
+  test('unticked, the payment goes without a confirmation', async () => {
+    expect(await record(true, true)).toMatchObject({ notify_client: false })
+  })
+
+  test('ticked with the setting off, the client still gets one', async () => {
+    expect(await record(false, true)).toMatchObject({ notify_client: true })
+  })
 })

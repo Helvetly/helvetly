@@ -235,6 +235,8 @@ func run() error {
 	bg.Go(ctx, "instalments", instalmentsSvc.Run) // hourly: due plan items and reminders
 	bg.Go(ctx, "billing seats", billingSvc.Run)   // hourly: per-seat subscriptions billed for the members they have
 	bg.Go(ctx, "dunning", dunningSvc.Run)         // hourly: due dunning levels
+	// every 10 s: clients' payment confirmations queued by payments
+	bg.Go(ctx, "payment confirmations", invoicesSvc.RunPaymentConfirmations)
 	if retention.Mode(files) != "" {
 		bg.Go(ctx, "retention", retention.NewJob(db, files, slog.Default()).Run) // every 10 min: Object Lock left pending after a commit
 	}

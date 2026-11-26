@@ -19,3 +19,25 @@ func TestInvoiceEmailGolden(t *testing.T) {
 	mailtest.Golden(t, "credit-note", withLetter(mail.Message{Workspace: "ws", Subject: "Credit note 2026-042", Language: "en", Text: "Hello,\n\nYour credit note is attached.",
 		Attachments: []mail.Attachment{{Name: "Credit-note-2026-042.pdf"}}}, credit))
 }
+
+// A payment confirmation in each language: in part with the next instalment (de, fr), and in full (it, en).
+func TestPaymentConfirmationEmailGolden(t *testing.T) {
+	number, next, due := "2026-042", store.Money(20000), "2026-12-24"
+	for _, tt := range []struct {
+		lang, subject, message string
+		open                   store.Money
+	}{
+		{"de", "Zahlung erhalten: Rechnung 2026-042", "Guten Tag\n\nVielen Dank für Ihre Zahlung. Wir haben am 24.11.2026 CHF 280.00 für Rechnung 2026-042 erhalten.\n\nFreundliche Grüsse\nDein Deutsch Coach", 20000},
+		{"fr", "Paiement reçu : Facture 2026-042", "Bonjour\n\nMerci pour votre paiement. Nous avons bien reçu CHF 280.00 le 24.11.2026 (Facture 2026-042).\n\nMeilleures salutations\nDein Deutsch Coach", 20000},
+		{"it", "Pagamento ricevuto: Fattura 2026-042", "Buongiorno\n\nGrazie per il suo pagamento. Abbiamo ricevuto CHF 280.00 il 24.11.2026 (Fattura 2026-042).\n\nCordiali saluti\nDein Deutsch Coach", 0},
+		{"en", "Payment received: Invoice 2026-042", "Hello\n\nThank you for your payment. We received CHF 280.00 on 24.11.2026 for Invoice 2026-042.\n\nKind regards\nDein Deutsch Coach", 0},
+	} {
+		inv := store.Invoice{Kind: "invoice", Number: &number, DueDate: due, Currency: "CHF", Language: tt.lang, Total: 48000}
+		c := store.PaymentConfirmation{Amount: 28000, PaidOn: "2026-11-24", Open: tt.open}
+		if tt.open > 0 {
+			c.NextAmount, c.NextDue = &next, &due
+		}
+		m := confirmationLetter(mail.Message{Workspace: "ws", Language: tt.lang, Subject: tt.subject, Text: tt.message}, inv, c)
+		mailtest.Golden(t, "payment-confirmation-"+tt.lang, m)
+	}
+}

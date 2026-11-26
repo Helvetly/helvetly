@@ -45,6 +45,7 @@ export const sampleSettings = (change: Partial<InvoiceSettings> = {}): InvoiceSe
   qr_bill_enabled: true,
   revolut_enabled: false,
   revolut_username: null,
+  payment_confirmation: true,
   instalments: {
     count: 3,
     interval: 'monthly',

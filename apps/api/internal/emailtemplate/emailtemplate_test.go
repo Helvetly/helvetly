@@ -106,7 +106,7 @@ func TestDefaultsMatchToday(t *testing.T) {
 			"proforma":    {fmt.Sprintf("Rechnung %s %s %s", n, o[4], c), o[0] + "\n\n" + fmt.Sprintf(o[5], n, a) + sign},
 			"quote":       {fmt.Sprintf("Rechnung %s %s %s", n, o[4], c), o[0] + "\n\n" + fmt.Sprintf(o[6], n, a, vars["valid_until"]) + sign},
 		}
-		if len(want) != len(Kinds)-3 { // document and the two signature kinds: TestSignatureDefaults
+		if len(want) != len(Kinds)-4 { // document and the two signature kinds: TestSignatureDefaults; payment_confirmation: TestPaymentConfirmationDefaults
 			t.Fatal("kinds changed")
 		}
 		for kind, w := range want {
@@ -125,6 +125,28 @@ func TestEveryDefaultPassesCheck(t *testing.T) {
 				t.Errorf("%s/%s: %v", kind, lang, got)
 			}
 		}
+	}
+}
+
+// A payment confirmation thanks the client and names the amount, its day and the invoice in every language.
+func TestPaymentConfirmationDefaults(t *testing.T) {
+	v := map[string]string{"document": "Rechnung", "number": "2026-042", "client": "Beta AG", "amount": "CHF 480.00",
+		"company": "Muster GmbH", "paid_on": "24.11.2026", "balance": "CHF 0.00"}
+	if Default("payment_confirmation", "pl") != Default("payment_confirmation", "en") {
+		t.Error("pl is not en")
+	}
+	seen := map[Template]bool{}
+	for _, lang := range Languages {
+		d := Default("payment_confirmation", lang)
+		r := Render(d, v)
+		if seen[d] || strings.Contains(r.Subject+r.Body, "{") || !strings.Contains(r.Subject, "2026-042") ||
+			!strings.Contains(r.Body, "CHF 480.00") || !strings.Contains(r.Body, "24.11.2026") || !strings.HasSuffix(r.Body, "\nMuster GmbH") {
+			t.Errorf("%s: %+v", lang, r)
+		}
+		seen[d] = true
+	}
+	if bad := Check("payment_confirmation", Template{Subject: "{number}", Body: "{balance} {paid_on}"}); len(bad) > 0 {
+		t.Errorf("variables refused: %v", bad)
 	}
 }
 

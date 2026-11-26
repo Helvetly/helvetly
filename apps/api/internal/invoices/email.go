@@ -36,14 +36,9 @@ func (s *Service) draft(ctx context.Context, q store.Q, ws string, inv store.Inv
 	if inv.Kind == "credit_note" || inv.Kind == "proforma" {
 		kind = inv.Kind
 	}
-	lang := inv.Language
-	if !slices.Contains(emailtemplate.Languages, lang) {
-		lang = "en"
-	}
-	t := emailtemplate.Default(kind, lang)
-	if own, err := q.EmailTemplate(ctx, ws, kind, lang); err == nil {
-		t = emailtemplate.Template{Subject: own.Subject, Body: own.Body}
-	} else if !errors.Is(err, store.ErrNotFound) {
+	lang := emailLanguage(inv)
+	t, err := template(ctx, q, ws, kind, lang)
+	if err != nil {
 		return "", "", err
 	}
 	if adjustedBalance(inv) {
@@ -66,6 +61,22 @@ func (s *Service) draft(ctx context.Context, q store.Q, ws string, inv store.Inv
 	r := emailtemplate.Render(t, map[string]string{"document": Title(inv), "number": deref(inv.Number), "client": client,
 		"amount": inv.Currency + " " + inv.Payable().Swiss("'"), "balance": inv.Currency + " " + inv.AmountDue.Swiss("'"), "due_date": swissDate(inv.DueDate), "company": company})
 	return r.Subject, withRevolut(r.Body, inv), nil
+}
+
+func emailLanguage(inv store.Invoice) string {
+	if slices.Contains(emailtemplate.Languages, inv.Language) {
+		return inv.Language
+	}
+	return "en"
+}
+
+// template is the workspace's own text of a kind in a language, else the built-in one.
+func template(ctx context.Context, q store.Q, ws, kind, lang string) (emailtemplate.Template, error) {
+	own, err := q.EmailTemplate(ctx, ws, kind, lang)
+	if errors.Is(err, store.ErrNotFound) {
+		return emailtemplate.Default(kind, lang), nil
+	}
+	return emailtemplate.Template{Subject: own.Subject, Body: own.Body}, err
 }
 
 // limitFor is the length limit of a typed text: the dialog posts the rendered draft back, which passes as it is,

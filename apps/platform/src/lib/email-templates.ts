@@ -9,6 +9,7 @@ export const EMAIL_KINDS = [
   'credit_note',
   'proforma',
   'quote',
+  'payment_confirmation',
   'document',
   'signature_request',
   'signature_reminder',

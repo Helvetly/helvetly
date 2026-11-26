@@ -748,6 +748,8 @@ function Detail({
                   <span className="grid min-w-0 flex-1 leading-tight">
                     <span className="truncate text-[14px]">{delivery.to.join(', ')}</span>
                     <span className="text-[12.5px] text-muted-foreground">
+                      {delivery.kind === 'payment_confirmation' &&
+                        `${translate('paymentConfirmation')} · `}
                       {translate('by2')}
                       {delivery.sent_by?.name ?? translate('system')}
                     </span>
