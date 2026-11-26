@@ -323,7 +323,7 @@ export function PaymentDialog({
           className={fieldClass}
         />
       </FormField>
-      <label className="flex items-center gap-2.5 text-[13.5px]">
+      <label className="flex items-center gap-2.5 text-body-sm">
         <Checkbox
           checked={notifyClient}
           onCheckedChange={(checked) => setNotify(checked === true)}
