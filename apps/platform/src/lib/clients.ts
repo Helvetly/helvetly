@@ -298,12 +298,7 @@ export function apiQuery(params: ListParams, paging = true) {
   return query
 }
 
-type BulkClientAction =
-  | 'activate'
-  | 'deactivate'
-  | 'delete'
-  | 'enable_portal'
-  | 'disable_portal'
+type BulkClientAction = 'activate' | 'deactivate' | 'delete' | 'enable_portal' | 'disable_portal'
 
 const path = (id: string) => `/clients/${encodeURIComponent(id)}`
 
