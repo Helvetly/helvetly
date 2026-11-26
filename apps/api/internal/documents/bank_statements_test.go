@@ -208,20 +208,19 @@ func TestBankStatementDecision(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		doc   store.Document
-		model bool
-		tags  []string
+		kind  string
 		place *recordPlace
 		want  bool
 	}{
-		{"the model says so", store.Document{Name: "scan.pdf"}, true, []string{"ubs"}, nil, true},
-		{"the name says so", store.Document{Name: "kontoauszug.pdf"}, false, nil, nil, true},
-		{"nothing says so", store.Document{Name: "scan.pdf"}, false, nil, nil, false},
-		{"tagged an invoice", store.Document{Name: "statement.pdf"}, true, []string{"invoice"}, nil, false},
-		{"tagged a receipt", store.Document{Name: "statement.pdf"}, true, []string{"Quittung"}, nil, false},
-		{"the model filed it in Expenses", store.Document{Name: "statement.pdf"}, true, nil, expenses, false},
-		{"an expense's receipt", store.Document{Name: "statement.pdf", Links: []store.DocumentLink{{Type: "expense"}}}, true, nil, nil, false},
+		{"the model says so", store.Document{Name: "scan.pdf"}, "bank-statement", nil, true},
+		{"the name says so", store.Document{Name: "kontoauszug.pdf"}, "", nil, true},
+		{"nothing says so", store.Document{Name: "scan.pdf"}, "", nil, false},
+		{"the model names an invoice", store.Document{Name: "statement.pdf"}, "invoice", nil, false},
+		{"the model names a receipt", store.Document{Name: "statement.pdf"}, "receipt", nil, false},
+		{"the model filed it in Expenses", store.Document{Name: "statement.pdf"}, "bank-statement", expenses, false},
+		{"an expense's receipt", store.Document{Name: "statement.pdf", Links: []store.DocumentLink{{Type: "expense"}}}, "bank-statement", nil, false},
 	} {
-		if got := bankStatement(tc.doc, "", tc.model, tc.tags, tc.place); got != tc.want {
+		if got := bankStatement(tc.doc, "", tc.kind, tc.place); got != tc.want {
 			t.Errorf("%s: %v, want %v", tc.name, got, tc.want)
 		}
 	}

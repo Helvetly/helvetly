@@ -400,3 +400,16 @@ export const DetailCards = story(receiptApi([cafe]), async ({ canvasElement }) =
 export const DetailCardsDark = dark(DetailCards)
 /** On a phone (in Storybook and the visual suite) the cards stack and Book stays at the bottom of the screen. */
 export const DetailCardsPhone = phone(DetailCards)
+
+/** The drawer's "…" offers the payment toggle for the expense's current state: paid here, so Mark unpaid. */
+export const MenuTogglesPayment = story(receiptApi([cafe]), async ({ canvasElement, args }) => {
+  const sheet = await drawer(canvasElement)
+  await userEvent.click(await sheet.findByRole('button', { name: 'More actions' }))
+  const body = within(canvasElement.ownerDocument.body)
+  await expect(body.queryByRole('menuitem', { name: /Mark paid/ })).toBeNull()
+  await userEvent.click(await body.findByRole('menuitem', { name: /Mark unpaid/ }))
+  await expect(args.onCommand).toHaveBeenCalledWith(
+    'mark_unpaid',
+    expect.objectContaining({ id: ID }),
+  )
+})

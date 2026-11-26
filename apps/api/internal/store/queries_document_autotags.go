@@ -29,8 +29,8 @@ const autoTagSQL = `WITH RECURSIVE up AS (
 		(SELECT system_ref FROM up WHERE system_kind = 'client' ORDER BY depth LIMIT 1) AS client,
 		(SELECT c.name FROM up JOIN expense_categories c ON c.id = up.system_ref
 			WHERE up.system_kind = 'expense_category' ORDER BY depth LIMIT 1) AS category)
-	SELECT d.tags, d.auto_tags, d.removed_auto_tags,
-		CASE WHEN inv.kind IS NOT NULL THEN CASE inv.kind WHEN 'credit_note' THEN 'credit-note' WHEN 'debit_note' THEN 'debit-note' ELSE 'invoice' END
+	SELECT d.tags, d.auto_tags, d.removed_auto_tags, coalesce(inv.kind, ''), coalesce(d.filed_kind, ''),
+		CASE WHEN inv.kind IS NOT NULL THEN ''
 			WHEN qt.found THEN 'quote' WHEN qc.number IS NOT NULL THEN 'contract' WHEN ex.found THEN 'receipt' WHEN eg.start_date IS NOT NULL THEN 'engagement'
 			ELSE CASE fx.kind WHEN 'invoices' THEN 'invoice' WHEN 'quotes' THEN 'quote' WHEN 'engagements' THEN 'engagement'
 				WHEN 'contracts' THEN 'contract' WHEN 'expenses' THEN 'receipt' WHEN 'bank_statements' THEN 'bank-statement' ELSE '' END END,
@@ -72,18 +72,26 @@ const autoTagSQL = `WITH RECURSIVE up AS (
 // AutoTag sets a live general file's automatic tags (tags.Merge of tags.Auto); nothing for another file.
 func (q Q) AutoTag(ctx context.Context, workspaceID, documentID string, now time.Time) error {
 	var have, auto, removed []string
+	var invoiceKind, filedKind string
 	var r tags.Record
-	err := q.db.QueryRow(ctx, autoTagSQL, workspaceID, documentID).Scan(&have, &auto, &removed, &r.Kind, &r.Period, &r.Client,
-		&r.Number, &r.Category, &r.FromQuote, &r.Signed)
+	err := q.db.QueryRow(ctx, autoTagSQL, workspaceID, documentID).Scan(&have, &auto, &removed, &invoiceKind, &filedKind, &r.Kind,
+		&r.Period, &r.Client, &r.Number, &r.Category, &r.FromQuote, &r.Signed)
 	if errors.Is(err, ErrNotFound) {
 		return nil
 	} else if err != nil {
 		return err
 	}
-	next, nextAuto := tags.Merge(have, auto, removed, tags.Auto(r))
+	switch {
+	case invoiceKind != "":
+		r.Kind = tags.InvoiceKinds[invoiceKind]
+	case r.Kind == "" && tags.Kind(filedKind):
+		r.Kind = filedKind
+	}
+	locked := tags.Locked(r)
+	next, nextAuto := tags.Merge(have, auto, removed, tags.Auto(r), locked)
 	_, err = q.db.Exec(ctx, `UPDATE documents SET tags = $3, auto_tags = $4, auto_tagged_at = $5, record_tags_current = true,
-		removed_auto_tags = ARRAY(SELECT t FROM unnest(removed_auto_tags) a(t) WHERE t !~ $6)
-		WHERE workspace_id = $1 AND id = $2`, workspaceID, documentID, next, nextAuto, now, tags.ProtectedPattern)
+		locked_tags = $7, removed_auto_tags = ARRAY(SELECT t FROM unnest(removed_auto_tags) a(t) WHERE t !~ $6 AND NOT t = ANY($7))
+		WHERE workspace_id = $1 AND id = $2`, workspaceID, documentID, next, nextAuto, now, tags.ProtectedPattern, locked)
 	return err
 }
 

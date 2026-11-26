@@ -100,10 +100,11 @@ are the reference.
   move along; the emptied old folders are deleted). AI filing and organizing put a known
   client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
   An account statement of a bank or payment provider goes to `Bank Statements/<year>` (`documents/bank_statements.go`):
-  filing when the model says so (`is_bank_statement`; the year its period ends, else its date, else the upload's in the
+  filing when the model's `kind` is `bank-statement` (the year its period ends, else its date, else the upload's in the
   workspace's zone) or its name or text looks like one (statement words, CAMT.053 or MT940, an IBAN with opening and
-  closing balances), organizing when its first tag or name and text say so; a file of an invoice, quote or expense,
-  or one the model reads or files as an invoice, quote or receipt, never goes there. Existing files move only by an
+  closing balances) and the model names no other kind, organizing when its kind or name and text say so; a file of an
+  invoice, quote or expense, or one the model names another kind or files as an invoice, quote or receipt, never goes
+  there. Existing files move only by an
   applied organize proposal. Plain folders they make are named in the asker's language (the uploader's, kept on the filing; else the workspace's document language, else English), never the document's: a common kind named otherwise is translated, and an existing folder of that kind in any language is used instead of a new sibling (`documents/folder_language.go`); people's folders are never renamed.
   Before the model is asked, a file that is one of the workspace's invoices or quotes (by the PDF it shares, the
   imported invoice it is the original of, or a record number in its name or text, separators ignored) goes straight to
@@ -114,15 +115,21 @@ are the reference.
   the model files outside Clients goes to the client's folder when the file names one client (whole name or UID). When organizing existing documents, a contract tag also puts a document in its
   client's Contracts folder when its client and year are known, unless the file name marks a template, sample or draft.
 - **Automatic tags** (`tags.Auto`, `store/queries_document_autotags.go`): a file's tags say what it is, from its record
-  first, then its system folder: the kind (`invoice`, `credit-note`, `debit-note`, `quote`, `contract`, `receipt`,
-  `engagement`, `bank-statement`), `signed` once its signature request completed, `year-<yyyy-mm>` (year only if the month is unknown), `client-<name>`, the record's number
-  (`2026-q-001`), `expense-<category>` and `from-quote-<number>`. `store.AutoTag` runs inside the writes that file
-  (`CreateDocument`, `UpdateDocument`, `AddDocumentLink`, `AddQuoteContract`, `AddQuoteRevision`,
-  `CompleteSignatureRequest`) and at startup for untagged files and previously dismissed protected tags (`BackfillAutoTags`).
-  `documents.auto_tags` names them (outlined chips); one no longer computed leaves, one a person removes
-  (`SetOwnDocumentTags`) goes to `removed_auto_tags` and never comes back. The automatic record kind, `signed`, date
-  and `client-<name>` tags follow the record or folder and cannot be changed by hand. The app's own tag writes
-  (`SetDocumentTags`) keep them, and they take no room of a person's 10.
+  first, then its system folder, then its `documents.filed_kind` (the kind AI filing or organizing found, or a client
+  document's upload type): the kind (`tags.Kinds`, one line each: every invoice kind through `tags.InvoiceKinds`, a test
+  failing for a kind without one, plus `quote`, `contract`, `engagement`, `receipt`, `payment-confirmation`, `consent`,
+  `power-of-attorney`, `bank-statement`), `signed` once its signature request completed, `year-<yyyy-mm>` (year only if the month is
+  unknown), the client's name (`tags.ClientTag`: its slug, `client-<slug>` only when the slug reads as another automatic
+  tag), the record's number (`2026-q-001`), `expense-<category>` and `from-quote-<number>`. `store.AutoTag` runs inside
+  the writes that file (`CreateDocument`, `UpdateDocument`, `AddDocumentLink`, `AddQuoteContract`, `AddQuoteRevision`,
+  `CompleteSignatureRequest`, `SetDocumentKind`, a client's rename) and at startup for files not yet current
+  (`BackfillAutoTags`). `documents.auto_tags` names them (outlined chips), `documents.locked_tags` those only the record
+  or filing sets (`tags.Locked`: kind, signed, date, number): they always follow it, nobody removes them, and kind,
+  signed and date tags (`tags.ProtectedPattern`) are never typed onto a file by a person (422) or the AI's free tags. One
+  no longer computed leaves; another one a person removes (`SetOwnDocumentTags`), such as the client's, goes to
+  `removed_auto_tags` and never comes back, also after the client's rename. The app's own tag writes (`SetDocumentTags`)
+  keep them, and they take no room of a person's 10. The platform's kind labels (`lib/document-tags.ts`) are held to
+  `tags.Kinds` by a Go test.
 - **Document sharing** (`internal/documents/shares.go`, `share_links.go`): client portal shares optionally expire.
   The portal checks expiry for lists and downloads, and streams time-limited shares directly. Public share links are
   session-managed and revocable (`document_share_links`), with only a hash of the random token stored. The link puts

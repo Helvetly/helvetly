@@ -200,13 +200,29 @@ export const NoFoldersReadOnly: Story = {
   },
 }
 
-const invoices = { ...sampleFolders[2], id: 'fld_invoices', name: 'Invoices', starred: false }
+function treeFolder(id: string, name: string, parent: string | null, files: number, total = files) {
+  return {
+    ...sampleFolders[2],
+    id,
+    name,
+    parent_id: parent,
+    file_count: files,
+    size: files * 1000,
+    total_files: total,
+    total_size: total * 1000,
+  }
+}
+const invoices = treeFolder('fld_invoices', 'Invoices', null, 2, 9)
 const nestedFolders = http.get('/api/v1/documents/folders', () =>
   HttpResponse.json({
     data: [
       ...sampleFolders,
       invoices,
-      { ...invoices, id: 'fld_invoices_2025', name: '2025', parent_id: 'fld_invoices' },
+      treeFolder('fld_invoices_2025', '2025', invoices.id, 0, 7),
+      treeFolder('fld_invoices_pdf', 'PDFs', 'fld_invoices_2025', 7),
+      treeFolder('fld_empty_group', 'Archive', invoices.id, 0),
+      treeFolder('fld_empty', 'Empty folder', 'fld_empty_group', 0),
+      { ...treeFolder('fld_hidden', 'Quotes', invoices.id, 0), system_kind: 'quotes' },
     ],
   }),
 )
@@ -233,8 +249,17 @@ export const FolderTree: Story = {
     const collapse = tree.getByRole('button', { name: 'Collapse Invoices' })
     await expect(collapse).toHaveAttribute('aria-expanded', 'true')
     await expect(tree.getByText('2025')).toBeVisible()
-    // Leaves have no toggle; the name stays the one way into a folder.
-    await expect(tree.queryByRole('button', { name: 'Expand 2025' })).toBeNull()
+    await expect(tree.getByRole('button', { name: 'Invoices 4 items' })).toBeVisible()
+    await expect(tree.getByRole('button', { name: '2025 1 item' })).toBeVisible()
+    await expect(tree.getByRole('button', { name: 'Archive 1 item' })).toBeVisible()
+    await userEvent.click(tree.getByRole('button', { name: 'Expand Archive' }))
+    await expect(tree.getByRole('button', { name: 'Empty folder' })).toBeVisible()
+    await expect(tree.queryByRole('button', { name: 'Expand Empty folder' })).toBeNull()
+    await expect(tree.queryByText('Quotes')).toBeNull()
+    await expect(folderItem(canvasElement, invoices.id)).toHaveAttribute(
+      'title',
+      expect.stringMatching(/^4 items · /),
+    )
 
     // Keyboard: the toggle takes focus and Enter flips it; arrows on the name work too.
     collapse.focus()
@@ -255,6 +280,17 @@ export const FolderTree: Story = {
   },
 }
 export const FolderTreeDark = dark(FolderTree)
+/** The list counts an empty child folder as one item. */
+export const FolderContentsCount: Story = {
+  parameters: pageParameters('/documents', { folder: invoices.id, layout: 'list' }, [
+    nestedFolders,
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const archive = await body.findByRole('row', { name: /Select Archive/ }, { timeout: 8000 })
+    await expect(archive).toHaveTextContent('1 item · 0 B')
+  },
+}
 /** On a phone the sidebar is a drawer: the selected tile keeps its size beside the others. */
 export const FolderTreePhone: Story = {
   ...phone(FolderTree),
@@ -275,7 +311,7 @@ async function selectTile(canvasElement: HTMLElement) {
 const longName = 'Signed agreements with suppliers and subcontractors 2026'
 const longFolder = http.get('/api/v1/documents/folders', () =>
   HttpResponse.json({
-    data: [...sampleFolders, { ...invoices, id: 'fld_long', name: longName, total_files: 12 }],
+    data: [...sampleFolders, treeFolder('fld_long', longName, null, 12)],
   }),
 )
 
@@ -291,7 +327,8 @@ export const SidebarCounts: Story = {
     const name = await within(nav).findByText(longName)
     const row = name.closest('button')
     const badge = row?.querySelector('[data-slot=count-badge]')
-    await expect(badge?.textContent).toBe('12')
+    await expect(row).toHaveAccessibleName(`${longName} 12 items`)
+    await expect(badge?.querySelector('[aria-hidden]')).toHaveTextContent(/^12$/)
     await expect(badge).toHaveClass('rounded-full')
     await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
 
@@ -1426,8 +1463,9 @@ export const ProtectedDocumentTags: Story = {
       HttpResponse.json({
         data: {
           ...sampleFiles[0],
-          tags: ['invoice', 'signed', 'year-2026-02', 'client-acme', 'urgent'],
-          auto_tags: ['invoice', 'signed', 'year-2026-02', 'client-acme'],
+          tags: ['urgent', 'invoice', 'signed', 'year-2026-02', 'acme', '2026-in-005'],
+          auto_tags: ['invoice', 'signed', 'year-2026-02', 'acme', '2026-in-005'],
+          locked_tags: ['invoice', 'signed', 'year-2026-02', '2026-in-005'],
         },
       }),
     ),
@@ -1436,15 +1474,25 @@ export const ProtectedDocumentTags: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('button', { name: 'Edit' }))
     await Promise.all(
-      ['Invoice', 'Signed', '2026-02', 'Client: acme'].map(async (tag) => {
+      ['Invoice', 'Signed', '2026-02', '2026-in-005'].map(async (tag) => {
         await expect(body.getByText(tag, { selector: '[data-auto-tag]' })).toBeVisible()
         await expect(body.queryByRole('button', { name: `Remove ${tag}` })).toBeNull()
       }),
     )
+    // A free tag and the client's automatic tag keep their remove control.
     await expect(body.getByRole('button', { name: 'Remove urgent' })).toBeVisible()
-    await userEvent.type(body.getByRole('textbox', { name: 'Tags' }), 'year-2031-09{Enter}')
-    await expect(body.getByText('Set automatically from this document’s record.')).toBeVisible()
-    await expect(body.queryByRole('button', { name: 'Remove year-2031-09' })).toBeNull()
+    await expect(body.getByRole('button', { name: 'Remove acme' })).toBeVisible()
+    // Kind, date and signed tags cannot be typed onto a file.
+    const refused = async (typed: string) => {
+      await userEvent.type(body.getByRole('textbox', { name: 'Tags' }), `${typed}{Enter}`)
+      await expect(
+        body.getByText('Set automatically from a document’s record or filing.'),
+      ).toBeVisible()
+      await expect(body.queryByRole('button', { name: `Remove ${typed}` })).toBeNull()
+      await userEvent.clear(body.getByRole('textbox', { name: 'Tags' }))
+    }
+    await refused('year-2031-09')
+    await refused('payment-confirmation')
   },
 }
 

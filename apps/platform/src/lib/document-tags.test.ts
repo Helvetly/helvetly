@@ -5,7 +5,7 @@ import de from '../messages/de.json'
 import en from '../messages/en.json'
 import fr from '../messages/fr.json'
 import itMessages from '../messages/it.json'
-import { documentTagLabel, protectedDocumentTag, reservedDocumentTag } from './document-tags'
+import { automaticOnlyTag, documentTagLabel } from './document-tags'
 
 const translator = createTranslators({ en, de, fr, it: itMessages })
 
@@ -23,23 +23,35 @@ it.each([
   expect(documentTagLabel('sample-7', t)).toBe('sample-7')
 })
 
-it('protects automatic record kinds, dates, signed status and clients', () => {
+it('keeps kinds, dates and signed for the record or filing; client names are free tags', () => {
   for (const tag of [
     'invoice',
+    'self-billed-invoice',
     'credit-note',
-    'debit-note',
     'quote',
-    'receipt',
-    'engagement',
     'bank-statement',
     'contract',
+    'payment-confirmation',
+    'power-of-attorney',
     'signed',
-    'client-sample',
     'year-2025',
     'year-2025-02',
   ])
-    expect(protectedDocumentTag(tag)).toBe(true)
-  for (const tag of ['year-2025-13', 'custom', 'sample-7', 'from-quote-sample', 'expense-travel'])
-    expect(protectedDocumentTag(tag)).toBe(false)
-  expect(reservedDocumentTag('invoice')).toBe(false)
+    expect(automaticOnlyTag(tag)).toBe(true)
+  for (const tag of [
+    'year-2025-13',
+    'custom',
+    'acme-ag',
+    'client-invoice',
+    '2026-in-005',
+    'expense-travel',
+  ])
+    expect(automaticOnlyTag(tag)).toBe(false)
+})
+
+it.each(['en', 'de', 'fr', 'it'] as const)('labels every kind in %s', (locale) => {
+  const t = translator(locale)
+  for (const tag of ['payment-confirmation', 'proforma-invoice', 'consent', 'power-of-attorney'])
+    expect(documentTagLabel(tag, t)).not.toBe(tag)
+  expect(documentTagLabel('client-invoice', t)).toContain('invoice')
 })

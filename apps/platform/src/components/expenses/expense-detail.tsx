@@ -20,9 +20,12 @@ import {
   BookCheck,
   Ban,
   Check,
+  CircleCheck,
+  CircleDashed,
   Copy,
   Ellipsis,
   FolderOpen,
+  HandCoins,
   Pencil,
   Plus,
   Trash2,
@@ -219,6 +222,33 @@ function Detail({
               menu={{
                 header: `#${expense.number} · ${expense.supplier_name ?? translate('noSupplier')}`,
                 actions: [
+                  expense.status !== 'void' &&
+                    (expense.payment_status === 'unpaid'
+                      ? {
+                          id: 'mark_paid',
+                          group: 'status',
+                          tone: 'success',
+                          icon: <CircleCheck />,
+                          label: translate('markPaid'),
+                          onSelect: () => onCommand('mark_paid', expense),
+                        }
+                      : {
+                          id: 'mark_unpaid',
+                          group: 'status',
+                          icon: <CircleDashed />,
+                          label: translate('markUnpaid'),
+                          onSelect: () => onCommand('mark_unpaid', expense),
+                        }),
+                  expense.status !== 'void' &&
+                    expense.paid_by_member &&
+                    !expense.reimbursed_on && {
+                      id: 'mark_reimbursed',
+                      group: 'status',
+                      tone: 'success',
+                      icon: <HandCoins />,
+                      label: translate('markReimbursed'),
+                      onSelect: () => onCommand('mark_reimbursed', expense),
+                    },
                   expense.status === 'booked' &&
                     canManage && {
                       id: 'void',

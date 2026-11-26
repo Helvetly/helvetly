@@ -49,12 +49,9 @@ const filingInstructions = "You file documents in a small business's document ma
 	"new_folder to that path. When the message says the file stays in its folder, set both to null. Set " +
 	"is_completed_contract to true only for an actual completed contract or agreement (its parties named, dates and key " +
 	"terms filled in, no empty lines, blanks or [Name]-style placeholders, not marked as a template, sample or draft), " +
-	"else false; contract_reason says why in one short sentence for a contract-like file, else is empty. Set " +
-	"is_bank_statement to true only for an account statement of a bank or payment provider (such as UBS, PostFinance, " +
-	"Raiffeisen, Revolut or Wise, also CAMT.053 or MT940 files) that lists an account's transactions and balances, " +
-	"never for an invoice, receipt or payment slip that only shows an IBAN, else false; for a statement, " +
-	"statement_period_end is the last day of the period it covers and statement_date the day it was made " +
-	"(YYYY-MM-DD, empty when not given), else both are empty. Use only the given information."
+	"else false; contract_reason says why in one short sentence for a contract-like file, else is empty. " + kindRule +
+	" For a bank statement, statement_period_end is the last day of the period it covers and statement_date the day " +
+	"it was made (YYYY-MM-DD, empty when not given); else both are empty. Use only the given information."
 
 var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any{
 	"type": "object",
@@ -64,14 +61,43 @@ var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any
 		"new_folder":            map[string]any{"type": []string{"string", "null"}},
 		"is_completed_contract": map[string]any{"type": "boolean"},
 		"contract_reason":       map[string]any{"type": "string"},
-		"is_bank_statement":     map[string]any{"type": "boolean"},
+		"kind":                  kindSchema,
 		"statement_period_end":  map[string]any{"type": "string"},
 		"statement_date":        map[string]any{"type": "string"},
 	},
-	"required": []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason",
-		"is_bank_statement", "statement_period_end", "statement_date"},
+	"required": []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason", "kind",
+		"statement_period_end", "statement_date"},
 	"additionalProperties": false,
 }}
+
+// kindSchema: the kind AI filing and organizing name for a file, one of tags.Kinds or "other".
+var kindSchema = map[string]any{"type": "string", "enum": append(slices.Clone(tags.Kinds), "other")}
+
+const kindRule = "Set kind to what the document is, one of the listed values, else other: payment-confirmation for a " +
+	"payment confirmation or proof of payment (a bank transfer confirmation, Zahlungsbestätigung, confirmation de " +
+	"paiement, conferma di pagamento, a provider's payment receipt), receipt for a purchase receipt, consent and " +
+	"power-of-attorney for a signed consent or power of attorney, bank-statement for an account statement of a bank or " +
+	"payment provider (such as UBS, PostFinance, Raiffeisen, Revolut or Wise, also CAMT.053 or MT940 files) that lists " +
+	"an account's transactions and balances, never for an invoice, receipt or payment slip that only shows an IBAN."
+
+// modelTags: the model's tags as tags (at most filingAITags) and its kind: the kind field, else a kind among its tags.
+// A kind, signed or date tag is never a free tag: those come only from the record or filing.
+func modelTags(raw []string, kind string) ([]string, string) {
+	out := []string{}
+	for _, t := range raw {
+		tag := tags.Slug(t)
+		if !tags.Kind(kind) && tags.Kind(tag) {
+			kind = tag
+		}
+		if tag != "" && !tags.Protected(tag) && len(out) < filingAITags && !slices.Contains(out, tag) {
+			out = append(out, tag)
+		}
+	}
+	if !tags.Kind(kind) {
+		kind = ""
+	}
+	return out, kind
+}
 
 // SetFiler turns AI filing on: the model, the budget its calls are counted in and how a file's text is read (the
 // imports' reader, passed in because imports reaches documents through employees). Without it (no model) uploads
@@ -166,13 +192,13 @@ func (s *Service) FileDue(ctx context.Context) error {
 // (a place in the system folders).
 type filing struct {
 	tags                []string
+	kind                string // one of tags.Kinds, "" for none
 	folderID, newFolder string
 	record              *recordPlace
 	// the model's verdict on a contract (is_completed_contract, contract_reason), and the reason recorded
 	completedContract bool
 	contractReason    string
-	// the model's verdict on a bank statement (is_bank_statement) and its dates (YYYY-MM-DD, "" when unknown)
-	bankStatement            bool
+	// a bank statement's dates the model read (YYYY-MM-DD, "" when unknown)
 	periodEnd, statementDate string
 }
 
@@ -249,7 +275,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 		if err := s.filingGate(ctx, s.db.Q, ws.ID, j.UserID); err != nil {
 			return err
 		}
-		f := filing{tags: []string{m.tag}}
+		f := filing{kind: m.tag}
 		if mayMove {
 			f.record = &m.place
 		}
@@ -303,12 +329,16 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 		decided.newFolder = localName(decided.newFolder, lang) // the model may still have named it in the document's language
 		// never the bare system folder: Bank Statements/<year> or nowhere
 		if statementTag([]string{decided.newFolder}) {
-			decided.bankStatement, decided.newFolder = true, ""
+			decided.newFolder = ""
+			if decided.kind == "" {
+				decided.kind = "bank-statement"
+			}
 		}
 	}
-	if mayMove && bankStatement(doc, text, decided.bankStatement, decided.tags, decided.record) {
+	if mayMove && bankStatement(doc, text, decided.kind, decided.record) {
 		year := statementYear(decided.periodEnd, decided.statementDate, doc.CreatedAt, ws.Location())
-		decided = filing{tags: decided.tags, record: &recordPlace{kind: "bank_statements", year: year}}
+		decided = filing{tags: decided.tags, kind: "bank-statement",
+			record: &recordPlace{kind: "bank_statements", year: year}}
 	}
 	if decided.record != nil && decided.record.contracts {
 		ok, reason := completedContract(doc.Name, text, decided.completedContract, decided.contractReason)
@@ -406,7 +436,7 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 		NewFolder *string  `json:"new_folder"`
 		Completed bool     `json:"is_completed_contract"`
 		Reason    string   `json:"contract_reason"`
-		Statement bool     `json:"is_bank_statement"`
+		Kind      string   `json:"kind"`
 		PeriodEnd string   `json:"statement_period_end"`
 		Date      string   `json:"statement_date"`
 	}
@@ -415,12 +445,8 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 	}
 	reason := []rune(strings.Join(strings.Fields(out.Reason), " "))
 	f := filing{completedContract: out.Completed, contractReason: string(reason[:min(len(reason), 200)]),
-		bankStatement: out.Statement, periodEnd: out.PeriodEnd, statementDate: out.Date}
-	for _, t := range out.Tags {
-		if tag := tags.Slug(t); tag != "" && len(f.tags) < filingAITags && !slices.Contains(f.tags, tag) {
-			f.tags = append(f.tags, tag)
-		}
-	}
+		periodEnd: out.PeriodEnd, statementDate: out.Date}
+	f.tags, f.kind = modelTags(out.Tags, out.Kind)
 	switch {
 	case !mayMove:
 	case out.FolderID != nil && folders[*out.FolderID]:
@@ -428,7 +454,9 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 	case out.NewFolder != nil:
 		if path, ok := splitPath(*out.NewFolder, organizeApplyDepth); ok {
 			if statementTag(path) { // a statement folder, in any language: Bank Statements/<year>
-				f.bankStatement = true
+				if f.kind == "" {
+					f.kind = "bank-statement"
+				}
 				if _, ok := yearOf(path[len(path)-1]); ok && f.periodEnd == "" && f.statementDate == "" {
 					f.periodEnd = path[len(path)-1]
 				}
@@ -513,6 +541,12 @@ func (s *Service) applyFiling(ctx context.Context, j store.FilingJob, ws store.W
 			if err := q.SetDocumentTags(ctx, ws.ID, cur.ID, append(slices.Clone(cur.Tags), rec.Tags...), s.now()); err != nil {
 				return err
 			}
+		}
+		if f.kind != "" { // recorded with the filing's tags, so Undo knows it set the kind
+			if err := q.SetDocumentKind(ctx, ws.ID, cur.ID, f.kind, s.now()); err != nil {
+				return err
+			}
+			rec.Tags = append([]string{f.kind}, rec.Tags...)
 		}
 		if j.MayMove && cur.FolderID == nil && !cur.MoveLocked(s.today()) {
 			target, created, err := s.filingFolder(ctx, q, ws.ID, j.UserID, f)
@@ -609,6 +643,11 @@ func (s *Service) undoFiling(w http.ResponseWriter, r *http.Request, sess store.
 		}
 		if cur.DeletedAt != nil {
 			return errTrashed
+		}
+		if slices.ContainsFunc(rec.Tags, tags.Kind) {
+			if err := q.SetDocumentKind(ctx, sess.Workspace.ID, id, "", s.now()); err != nil {
+				return err
+			}
 		}
 		kept := slices.DeleteFunc(slices.Clone(cur.Tags), func(t string) bool { return slices.Contains(rec.Tags, t) })
 		if len(kept) != len(cur.Tags) {

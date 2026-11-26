@@ -262,7 +262,7 @@ func TestOrganizeApplyAndUndo(t *testing.T) {
 	}
 	year := out.Data.Undo.CreatedFolders[0]
 	da, dc := e.get(b, a.ID), e.get(b, c.ID)
-	if da.FolderID == nil || *da.FolderID != year || !slices.Equal(da.Tags, []string{"old", "invoice"}) {
+	if da.FolderID == nil || *da.FolderID != year || !slices.Equal(da.Tags, []string{"old", "invoice"}) || !slices.Equal(da.LockedTags, []string{"invoice"}) {
 		t.Fatalf("a = %+v", da)
 	}
 	if dc.FolderID == nil || *dc.FolderID != year || dc.Name == "same.txt" {
@@ -278,7 +278,7 @@ func TestOrganizeApplyAndUndo(t *testing.T) {
 	for range 2 { // twice is fine
 		e.do(b, "POST", "/api/v1/documents/organize/undo", out.Data.Undo, 200, nil)
 		da, dc = e.get(b, a.ID), e.get(b, c.ID)
-		if da.FolderID != nil || !slices.Equal(da.Tags, []string{"old"}) {
+		if da.FolderID != nil || !slices.Equal(da.Tags, []string{"old"}) || len(da.LockedTags) != 0 {
 			t.Fatalf("a after undo = %+v", da)
 		}
 		if dc.FolderID == nil || *dc.FolderID != misc.ID {

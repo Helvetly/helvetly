@@ -18,17 +18,10 @@ import {
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
-import {
-  childrenOf,
-  KIND_LABELS,
-  pathTo,
-  type Folder,
-  type Kind,
-  type Section,
-} from '@/lib/documents'
+import { KIND_LABELS, type Folder, type Kind, type Section } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
-import { folderLabel, isSystemFolder, withoutEmptySystem } from '@/lib/system-folders'
+import { folderLabel, isSystemFolder } from '@/lib/system-folders'
 
 import { endDrag, startDrag, useDropTarget } from './drop-target'
 import { FolderMark } from './folder-art'
@@ -55,11 +48,14 @@ const SUGGESTED = [translate('contracts'), translate('tax2026')]
 const TYPES: Kind[] = ['pdf', 'image', 'spreadsheet', 'document']
 
 const row =
-  'group/row relative flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg pr-2.5 text-left text-[14px] text-foreground/75 transition-colors duration-100 outline-none hover:bg-foreground/[0.045] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 has-focus-visible:ring-2 has-focus-visible:ring-ring/50 aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:font-medium aria-[current=page]:text-foreground data-current:bg-foreground/[0.06] data-current:font-medium data-current:text-foreground data-drop-over:bg-brand-solid/10 data-drop-over:text-foreground data-drop-over:ring-2 data-drop-over:ring-brand-solid/70'
+  'group/row relative flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg pr-2.5 text-left text-[14px] text-foreground/75 transition-colors duration-100 outline-none hover:bg-foreground/[0.045] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 has-[:focus-visible:not(input)]:ring-2 has-[:focus-visible:not(input)]:ring-ring/50 aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:font-medium aria-[current=page]:text-foreground data-current:bg-foreground/[0.06] data-current:font-medium data-current:text-foreground data-drop-over:bg-brand-solid/10 data-drop-over:text-foreground data-drop-over:ring-2 data-drop-over:ring-brand-solid/70'
 
 /** The left column: the workspace's folders as a tree, plus the Trash as a drop target. */
 export function FolderTree({
   folders,
+  tree,
+  onPath,
+  itemCount,
   current,
   section,
   trashCount,
@@ -68,6 +64,9 @@ export function FolderTree({
   actions,
 }: {
   folders: Folder[]
+  tree: ReadonlyMap<string, Folder[]>
+  onPath: ReadonlySet<string>
+  itemCount: (folder: Folder) => number
   current: string | null
   section: Section
   trashCount: number
@@ -77,8 +76,6 @@ export function FolderTree({
   actions: TreeActions
 }) {
   const canWrite = useCan('write:documents')
-  const onPath = new Set(pathTo(folders, current).map((folder) => folder.id))
-  const tree = childrenOf(withoutEmptySystem(folders, onPath))
   // Folders on the way to the open one start expanded; the rest follow the person's clicks.
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(new Map())
   const isOpen = (id: string) => toggled.get(id) ?? onPath.has(id)
@@ -96,6 +93,7 @@ export function FolderTree({
         depth={depth}
         last={index === siblings.length - 1}
         hasChildren={tree.has(folder.id)}
+        itemCount={itemCount(folder)}
         expanded={isOpen(folder.id)}
         current={section === 'files' && current === folder.id}
         renaming={renaming === folder.id}
@@ -399,6 +397,7 @@ function TreeNode({
   depth,
   last,
   hasChildren,
+  itemCount,
   expanded,
   current,
   renaming,
@@ -412,6 +411,7 @@ function TreeNode({
   depth: number
   last: boolean
   hasChildren: boolean
+  itemCount: number
   expanded: boolean
   current: boolean
   renaming: boolean
@@ -494,7 +494,11 @@ function TreeNode({
                     </span>
                   )}
                   <FolderName folder={folder} />
-                  {folder.total_files > 0 && <CountBadge>{folder.total_files}</CountBadge>}
+                  {itemCount > 0 && (
+                    <CountBadge label={translate('itemsCount', { count: itemCount })}>
+                      {itemCount}
+                    </CountBadge>
+                  )}
                 </button>
               </>
             )}

@@ -184,10 +184,15 @@ func fakeFiling(message string) map[string]any {
 		reason = map[bool]string{true: "Both parties, dates and terms are filled in.", false: "It is not signed."}[completed]
 	}
 	record := fakeRecordPath(base, clients)
-	// a statement unless the name makes it a record of another kind
-	statement := strings.HasPrefix(record, "Bank Statements/")
+	kind := "other" // a payment confirmation by its name; the other kinds come through the tags
+	switch {
+	case strings.Contains(base, "payment") || strings.Contains(base, "zahlungsbest"):
+		kind = "payment-confirmation"
+	case strings.HasPrefix(record, "Bank Statements/"): // a statement unless the name makes it a record of another kind
+		kind = "bank-statement"
+	}
 	out := map[string]any{"tags": words, "folder_id": nil, "new_folder": nil, "is_completed_contract": completed,
-		"contract_reason": reason, "is_bank_statement": statement, "statement_period_end": "", "statement_date": ""}
+		"contract_reason": reason, "kind": kind, "statement_period_end": "", "statement_date": ""}
 	if record != "" {
 		out["new_folder"] = record
 		return out
@@ -239,7 +244,7 @@ func fakeOrganize(message string) map[string]any {
 		base := strings.ToLower(strings.TrimSuffix(doc.Name, path.Ext(doc.Name)))
 		if record := fakeRecordPath(base, clients); record != "" {
 			proposals = append(proposals, map[string]any{"document_id": doc.ID, "folder": record, "tags": []string{},
-				"reason": "The name says whose record it is.", "change": record != doc.Folder})
+				"reason": "The name says whose record it is.", "change": record != doc.Folder, "kind": "other"})
 			continue
 		}
 		words := strings.FieldsFunc(base, func(r rune) bool { return !unicode.IsLetter(r) })
@@ -250,7 +255,7 @@ func fakeOrganize(message string) map[string]any {
 		word := []rune(words[i])
 		folder := strings.ToUpper(string(word[:1])) + string(word[1:]) + "s"
 		proposals = append(proposals, map[string]any{"document_id": doc.ID, "folder": folder, "tags": []string{words[i]},
-			"reason": "The name says it is a " + words[i] + ".", "change": folder != doc.Folder})
+			"reason": "The name says it is a " + words[i] + ".", "change": folder != doc.Folder, "kind": "other"})
 	}
 	return map[string]any{"proposals": proposals}
 }

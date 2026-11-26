@@ -88,7 +88,7 @@ func TestRecordMatch(t *testing.T) {
 			want: &recordMatch{place: recordPlace{clientID: "acme", kind: "invoices", year: 2019}, client: "Acme AG", tag: "invoice",
 				reason: "Matches invoice EXT-9 for Acme AG."}},
 		{name: "a PDF without number", file: "x.pdf", object: "inv/draft.pdf",
-			want: &recordMatch{place: recordPlace{clientID: "acme", kind: "invoices", year: 2023}, client: "Acme AG", tag: "invoice",
+			want: &recordMatch{place: recordPlace{clientID: "acme", kind: "invoices", year: 2023}, client: "Acme AG", tag: "proforma-invoice",
 				reason: "Matches pro forma invoice for Acme AG."}},
 		{name: "two clients' records: the model decides", file: "2026-IN-007.pdf"},
 		{name: "two records of one client: the model decides", file: "2026-IN-008.pdf"},

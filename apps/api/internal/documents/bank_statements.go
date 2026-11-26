@@ -50,22 +50,19 @@ func looksLikeStatement(name, text string) bool {
 		ibanText.MatchString(text) && openingText.MatchString(text) && closingText.MatchString(text)
 }
 
-// otherRecord: the file belongs to an invoice or expense, or the model reads it (its first tag, or the place it
-// chose) as an invoice, quote or receipt.
-func otherRecord(d store.Document, tagList []string, place *recordPlace) bool {
+// otherRecord: the file belongs to an invoice or expense, the model names another kind for it, or the model put it
+// into another record's place.
+func otherRecord(d store.Document, kind string, place *recordPlace) bool {
 	if slices.ContainsFunc(d.Links, func(l store.DocumentLink) bool { return l.Type == "invoice" || l.Type == "expense" }) {
 		return true
 	}
-	if place != nil && place.kind != "bank_statements" {
-		return true
-	}
-	return len(tagList) > 0 && (recordWords[tags.Slug(tagList[0])] != "" || folderKind(tagList[0]) == "receipts")
+	return place != nil && place.kind != "bank_statements" || kind != "" && kind != "bank-statement"
 }
 
-// bankStatement: whether a file goes to Bank Statements: the model says so, or its name or text looks like a
-// statement; never a file of another record, nor one the model put into a client's or the expenses' folders.
-func bankStatement(d store.Document, text string, model bool, tagList []string, place *recordPlace) bool {
-	return !otherRecord(d, tagList, place) && (model || looksLikeStatement(d.Name, text))
+// bankStatement: whether a file goes to Bank Statements: the model names it one (kind bank-statement), or names no
+// kind and its name or text looks like a statement; never a file of another record.
+func bankStatement(d store.Document, text, kind string, place *recordPlace) bool {
+	return !otherRecord(d, kind, place) && (kind == "bank-statement" || looksLikeStatement(d.Name, text))
 }
 
 // statementYear: the year of the statement's period end, else its date (YYYY-MM-DD each, "" when unknown), else of
@@ -79,15 +76,22 @@ func statementYear(periodEnd, date string, uploaded time.Time, zone *time.Locati
 	return uploaded.In(zone).Year()
 }
 
-// statementProposal: a proposal for a bank statement (its first tag says so, or its name or text looks like one, and
-// the model put it into no other record's place) goes to Bank Statements/<year>: the year a path or the file's name
+// statementProposal: a proposal for a bank statement (its kind or first tag says so, or it has no kind and its name
+// or text looks like one, and the model put it into no other record's place) goes to Bank Statements/<year>: the year a path or the file's name
 // names, else the upload's in zone. A file already there keeps its place.
 func statementProposal(p proposal, d store.Document, text string, names recordNames, zone *time.Location) proposal {
 	path, _ := splitPath(p.Folder, organizeApplyDepth)
 	place, _ := recordPath(path, names)
-	if place != nil && place.kind == "bank_statements" || otherRecord(d, p.Tags, place) ||
-		!statementTag(p.Tags) && !looksLikeStatement(d.Name, text) {
+	kind := "" // organizing proposes the kind as the first tag
+	if len(p.Tags) > 0 && tags.Kind(p.Tags[0]) {
+		kind = p.Tags[0]
+	}
+	if place != nil && place.kind == "bank_statements" || otherRecord(d, kind, place) ||
+		kind == "" && !statementTag(p.Tags) && !looksLikeStatement(d.Name, text) {
 		return p
+	}
+	if kind == "" {
+		p.Tags = append([]string{"bank-statement"}, p.Tags[:min(len(p.Tags), filingAITags-1)]...)
 	}
 	year := d.CreatedAt.In(zone).Year()
 	for _, seg := range append(path, words(d.Name)...) {
