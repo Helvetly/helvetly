@@ -293,10 +293,10 @@ func TestUndoAIFiling(t *testing.T) {
 		}
 	}
 	// a tag the person adds stays after undo
-	e.do(b, "PATCH", "/api/v1/documents/"+first.ID, map[string]any{"tags": []string{"contract", "baker", "Signed"}}, 200, nil)
+	e.do(b, "PATCH", "/api/v1/documents/"+first.ID, map[string]any{"tags": []string{"contract", "baker", "Urgent"}}, 200, nil)
 	var out one[store.Document]
 	e.do(b, "DELETE", "/api/v1/documents/"+first.ID+"/filing", nil, 200, &out)
-	if d := out.Data; d.FolderID != nil || !slices.Equal(d.Tags, []string{"signed"}) || d.AIFiling.Status != "undone" {
+	if d := out.Data; d.FolderID != nil || !slices.Equal(d.Tags, []string{"urgent"}) || d.AIFiling.Status != "undone" {
 		t.Fatalf("after undo: folder %v tags %v filing %+v", d.FolderID, d.Tags, d.AIFiling)
 	}
 	e.do(b, "DELETE", "/api/v1/documents/"+first.ID+"/filing", nil, 200, nil) // twice is fine

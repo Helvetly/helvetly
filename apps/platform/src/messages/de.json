@@ -2012,6 +2012,7 @@
   "noSupplier": "Kein Lieferant",
   "noSupplierYet": "Noch kein Lieferant",
   "noTagsYet": "Noch keine Tags.",
+  "protectedDocumentTagHint": "Wird automatisch anhand der Dokumentdaten gesetzt.",
   "autoTagHint": "Automatisch hinzugefügt. Entfernen Sie es, bleibt es entfernt.",
   "notAMoneyAmount": "Kein Geldbetrag: „{value}“",
   "notBeforeToday": "Nicht vor heute.",

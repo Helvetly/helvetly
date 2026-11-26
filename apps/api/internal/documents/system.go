@@ -182,8 +182,7 @@ func hasSystemRoots(folders []store.Folder) bool {
 	return found["clients"] && found["expenses"]
 }
 
-// BackfillAutoTags tags the files no automatic tagging has seen yet (those from before it), each once: tagging marks
-// the file, so a second run finds nothing, and the people's own tags stay as they are.
+// BackfillAutoTags tags pending files and restores protected facts dismissed before they became read-only.
 func (s *Service) BackfillAutoTags(ctx context.Context) error {
 	const batch = 500
 	for {
