@@ -155,6 +155,7 @@ export const sampleInvoice = (change: Partial<Invoice> = {}): Invoice => ({
   client_number_display: null,
   contract_reference: null,
   contract_document: null,
+  pdf_document: null,
   tax_currency_rate: null,
   intro: null,
   footer: null,

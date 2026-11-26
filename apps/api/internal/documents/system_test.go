@@ -238,6 +238,17 @@ func TestBackfillSystemFolders(t *testing.T) {
 		inFolder[0].Links[0].ID != inv || !inFolder[0].Links[0].Retains {
 		t.Fatalf("invoice PDF: %+v", inFolder)
 	}
+	// the invoice names it as where its PDF sits in Documents
+	err := e.st.Tx(ctx, func(q store.Q) error {
+		got, err := q.Invoice(ctx, b.workspace, inv, "2025-04-01", false)
+		if err == nil && (got.PDFDocument == nil || got.PDFDocument.ID != inFolder[0].ID) {
+			t.Fatalf("pdf_document = %+v, want %s", got.PDFDocument, inFolder[0].ID)
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	// it shares the invoice's object, so it is kept as long as the invoice
 	if out := e.bulk(b, map[string]any{"action": "trash", "document_ids": []string{inFolder[0].ID}}); out.Updated != 0 {
 		t.Fatalf("trashed the invoice's PDF: %+v", out)

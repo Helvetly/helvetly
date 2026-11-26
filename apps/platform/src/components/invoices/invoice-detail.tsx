@@ -22,6 +22,7 @@ import {
   Ellipsis,
   FileCode2,
   ExternalLink,
+  FolderOpen,
   Mail,
   Pencil,
   Send,
@@ -772,6 +773,14 @@ function Detail({
           <span className="mr-auto pl-1 text-[13px] text-muted-foreground">
             {pages ? `${pages} ${pages === 1 ? 'page' : 'pages'}` : translate('loading')}
           </span>
+          {invoice.pdf_document && (
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+              <RecordLink href={`/documents?file=${encodeURIComponent(invoice.pdf_document.id)}`}>
+                <FolderOpen className="size-3.5" />
+                {translate('openInDocuments')}
+              </RecordLink>
+            </Button>
+          )}
           <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
             <a href={localizedHref(pdfUrl(invoice.id))} target="_blank" rel="noreferrer">
               <ExternalLink className="size-3.5" />

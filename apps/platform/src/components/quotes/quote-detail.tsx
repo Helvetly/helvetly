@@ -18,6 +18,7 @@ import {
   Download,
   Ellipsis,
   ExternalLink,
+  FolderOpen,
   Pencil,
   ReceiptText,
   Send,
@@ -479,6 +480,14 @@ function Detail({
                       })
                     : translate('loading')}
               </span>
+              {quote.pdf_document && (
+                <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+                  <RecordLink href={`/documents?file=${encodeURIComponent(quote.pdf_document.id)}`}>
+                    <FolderOpen className="size-3.5" />
+                    {translate('openInDocuments')}
+                  </RecordLink>
+                </Button>
+              )}
               <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
                 <a href={localizedHref(quotePdfUrl(quote.id))} target="_blank" rel="noreferrer">
                   <ExternalLink className="size-3.5" />

@@ -205,6 +205,8 @@ export type Invoice = Totals & {
   contract_reference: string | null
   /** The workspace document the contract is in; never printed. Null when none is linked or it is gone. */
   contract_document: { id: string; name: string } | null
+  /** Where this PDF sits in Documents: an imported invoice's original, else the issued PDF filed there. */
+  pdf_document: { id: string; name: string } | null
   /** RON per unit of `currency` on the issue date, entered by the user; states the VAT in RON (RO e-Factura). */
   tax_currency_rate: string | null
   intro: string | null

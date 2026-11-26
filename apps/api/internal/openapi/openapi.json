@@ -8405,6 +8405,19 @@
             },
             "required": ["id", "name"]
           },
+          "pdf_document": {
+            "type": ["object", "null"],
+            "description": "The document of the workspace holding this PDF (an imported invoice's original, else the issued or sent PDF filed in Documents). Null when there is none.",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name"]
+          },
           "tax_currency_rate": {
             "type": ["string", "null"]
           },
@@ -13215,6 +13228,19 @@
           "contract_document": {
             "type": ["object", "null"],
             "description": "The document of the workspace the contract is in; never printed. Null when none is linked or it is gone.",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name"]
+          },
+          "pdf_document": {
+            "type": ["object", "null"],
+            "description": "The document of the workspace holding this PDF (an imported invoice's original, else the issued or sent PDF filed in Documents). Null when there is none.",
             "properties": {
               "id": {
                 "type": "string"
