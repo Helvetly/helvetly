@@ -897,6 +897,7 @@
   "discountOnTheWholeDocumentPercent": "Discount on the whole document, percent",
   "dismiss": "Dismiss",
   "document": "Document",
+  "documentUnavailableHere": "This document is unavailable in the current workspace.",
   "document2": " (document: {clientName})",
   "documentIs": "document is",
   "documentLanguage": "Document language",

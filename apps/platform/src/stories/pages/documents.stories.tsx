@@ -1,10 +1,12 @@
 import { createTranslators } from '@helvetly/i18n'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { delay, http, HttpResponse } from 'msw'
 import { expect, fireEvent, spyOn, userEvent, waitFor, within } from 'storybook/test'
 
 import { DocumentsPage } from '@/components/documents/documents-page'
 import { FolderName } from '@/components/documents/system-mark'
+import { RecordLink } from '@/components/record-link'
 
 import de from '../../messages/de.json'
 import en from '../../messages/en.json'
@@ -1454,6 +1456,72 @@ export const LockedFileMenu: Story = {
     await expect(body.queryByRole('dialog')).toBeNull()
     await userEvent.keyboard('{Control>}x{/Control}')
     await expect(body.queryByText(/cut\. Paste with/)).toBeNull()
+  },
+}
+
+// The list still has this file. The detail request decides whether its drawer can open.
+let missingFile = Promise.withResolvers<void>()
+let requestedFile = Promise.withResolvers<void>()
+export const MissingFilePreview: Story = {
+  parameters: pageParameters('/documents', { file: 'doc_3', folder: 'fld_contracts' }, [
+    http.get('/api/v1/documents/doc_3', async () => {
+      requestedFile.resolve()
+      await missingFile.promise
+      return HttpResponse.json(
+        { error: { code: 'not_found', message: 'Not found.' } },
+        { status: 404 },
+      )
+    }),
+  ]),
+  beforeEach: () => {
+    requestedFile = Promise.withResolvers<void>()
+    missingFile = Promise.withResolvers<void>()
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await requestedFile.promise
+    try {
+      await expect(body.queryByRole('dialog')).toBeNull()
+    } finally {
+      missingFile.resolve()
+    }
+    await waitFor(() => expect(getRouter().replace).toHaveBeenCalledWith('/documents/'))
+    await expect(body.queryByRole('dialog')).toBeNull()
+  },
+}
+
+export const MissingStackedFile: Story = {
+  render: () => (
+    <Frame>
+      <RecordLink href="/documents?file=doc_gone">Open linked file</RecordLink>
+    </Frame>
+  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('link', { name: 'Open linked file' }))
+    await waitFor(() => expect(getRouter().replace).toHaveBeenCalledWith('/documents/'))
+    await expect(url(canvasElement).getAll('drawer')).toEqual([])
+    await expect(body.queryByRole('dialog')).toBeNull()
+  },
+}
+
+export const RetryFilePreview: Story = {
+  parameters: pageParameters('/documents', { file: 'doc_3' }, [
+    http.get(
+      '/api/v1/documents/doc_3',
+      () =>
+        HttpResponse.json(
+          { error: { code: 'unavailable', message: 'Service unavailable.' } },
+          { status: 503 },
+        ),
+      { once: true },
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const error = within(await body.findByRole('alert'))
+    await userEvent.click(error.getByRole('button', { name: 'Try again' }))
+    await expect(await body.findByRole('dialog', { name: 'Budget 2027.xlsx' })).toBeVisible()
   },
 }
 
