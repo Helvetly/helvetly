@@ -250,6 +250,12 @@ func (s *Service) downloadDocument(w http.ResponseWriter, r *http.Request, sess 
 	if err != nil {
 		return err
 	}
+	if d.ExpiresAt != nil {
+		if !d.ExpiresAt.After(s.now()) {
+			return store.ErrNotFound
+		}
+		return storage.ServeDirect(w, r, s.files, d.ObjectKey, d.Name, d.ContentType)
+	}
 	return storage.Serve(w, r, s.files, sess.Workspace.ID, d.ObjectKey, d.Name, d.ContentType)
 }
 

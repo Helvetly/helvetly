@@ -6,9 +6,10 @@ import (
 )
 
 type DocumentShare struct {
-	ClientID   string    `json:"client_id"`
-	ClientName string    `json:"client_name"`
-	SharedAt   time.Time `json:"shared_at"`
+	ClientID   string     `json:"client_id"`
+	ClientName string     `json:"client_name"`
+	SharedAt   time.Time  `json:"shared_at"`
+	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
 }
 
 type SharedDocument struct {
@@ -39,20 +40,25 @@ type ChangeRequest struct {
 	Reason      *string        `json:"reason"`         // rejected: why, when the decider said
 }
 
-// ShareDocument shares a live document with a live client of the workspace; sharing twice changes nothing.
-// ErrNotFound for a trashed or foreign document or client.
-func (q Q) ShareDocument(ctx context.Context, workspaceID, documentID, clientID, userID string, now time.Time) error {
-	tag, err := q.db.Exec(ctx, `INSERT INTO document_shares (document_id, client_id, workspace_id, shared_by, created_at)
-		SELECT d.id, c.id, $1, nullif($4, ''), $5 FROM documents d, clients c
+// ShareDocument preserves an active share's original settings when repeated; an expired share can be renewed.
+func (q Q) ShareDocument(ctx context.Context, workspaceID, documentID, clientID, userID string, now time.Time, expiresAt ...*time.Time) error {
+	var expiry *time.Time
+	if len(expiresAt) > 0 {
+		expiry = expiresAt[0]
+	}
+	tag, err := q.db.Exec(ctx, `INSERT INTO document_shares (document_id, client_id, workspace_id, shared_by, created_at, expires_at)
+		SELECT d.id, c.id, $1, nullif($4, ''), $5, $6 FROM documents d, clients c
 		WHERE d.workspace_id = $1 AND d.id = $2 AND d.deleted_at IS NULL AND NOT d.hr_private
-		AND c.workspace_id = $1 AND c.id = $3 AND c.deleted_at IS NULL
-		ON CONFLICT DO NOTHING`, workspaceID, documentID, clientID, userID, now)
+		  AND c.workspace_id = $1 AND c.id = $3 AND c.deleted_at IS NULL
+		ON CONFLICT (document_id, client_id) DO UPDATE
+		SET expires_at = EXCLUDED.expires_at, created_at = EXCLUDED.created_at, shared_by = EXCLUDED.shared_by
+		WHERE document_shares.expires_at <= EXCLUDED.created_at`, workspaceID, documentID, clientID, userID, now, expiry)
 	if err != nil || tag.RowsAffected() > 0 {
 		return err
 	}
 	var one int
 	return q.db.QueryRow(ctx, `SELECT 1 FROM document_shares s JOIN documents d ON d.id = s.document_id JOIN clients c ON c.id = s.client_id
-		WHERE s.workspace_id = $1 AND s.document_id = $2 AND s.client_id = $3 AND d.deleted_at IS NULL AND c.deleted_at IS NULL`,
+		WHERE s.workspace_id = $1 AND s.document_id = $2 AND s.client_id = $3 AND d.deleted_at IS NULL AND NOT d.hr_private AND c.deleted_at IS NULL`,
 		workspaceID, documentID, clientID).Scan(&one)
 }
 
@@ -63,8 +69,8 @@ func (q Q) UnshareDocument(ctx context.Context, workspaceID, documentID, clientI
 }
 
 func (q Q) DocumentShares(ctx context.Context, workspaceID, documentID string) ([]DocumentShare, error) {
-	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, s.created_at FROM document_shares s JOIN clients c ON c.id = s.client_id
-		WHERE s.workspace_id = $1 AND s.document_id = $2 AND c.deleted_at IS NULL ORDER BY s.created_at DESC, c.id`, workspaceID, documentID)
+	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, s.created_at, s.expires_at FROM document_shares s JOIN clients c ON c.id = s.client_id
+		WHERE s.workspace_id = $1 AND s.document_id = $2 AND c.deleted_at IS NULL AND (s.expires_at IS NULL OR s.expires_at > now()) ORDER BY s.created_at DESC, c.id`, workspaceID, documentID)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +78,7 @@ func (q Q) DocumentShares(ctx context.Context, workspaceID, documentID string) (
 	out := []DocumentShare{}
 	for rows.Next() {
 		var s DocumentShare
-		if err := rows.Scan(&s.ClientID, &s.ClientName, &s.SharedAt); err != nil {
+		if err := rows.Scan(&s.ClientID, &s.ClientName, &s.SharedAt, &s.ExpiresAt); err != nil {
 			return nil, err
 		}
 		out = append(out, s)
@@ -93,10 +99,10 @@ func (q Q) SharedDocuments(ctx context.Context, workspaceID, clientID string) ([
 	rows, err := q.db.Query(ctx, `SELECT * FROM (
 		SELECT DISTINCT ON (d.id) d.id, d.name, d.size, d.content_type, x.at, x.number, x.revision
 		FROM (SELECT document_id AS id, created_at AS at, NULL AS number, NULL::integer AS revision
-			FROM document_shares WHERE workspace_id = $1 AND client_id = $2
+			FROM document_shares WHERE workspace_id = $1 AND client_id = $2 AND (expires_at IS NULL OR expires_at > now())
 			UNION ALL `+sentQuotePDFs+`) x
 		JOIN documents d ON d.id = x.id
-		WHERE d.workspace_id = $1 AND d.deleted_at IS NULL
+		WHERE d.workspace_id = $1 AND d.deleted_at IS NULL AND NOT d.hr_private
 		ORDER BY d.id, x.revision IS NULL, x.at DESC) o
 		ORDER BY at DESC, id`, workspaceID, clientID)
 	if err != nil {
@@ -119,12 +125,27 @@ func (q Q) SharedDocuments(ctx context.Context, workspaceID, clientID string) ([
 	return out, rows.Err()
 }
 
-// SharedDocument: one document of SharedDocuments (for the download); ErrNotFound when neither shared nor a quote
-// sent to the client, or trashed.
-func (q Q) SharedDocument(ctx context.Context, workspaceID, clientID, documentID string) (Document, error) {
-	return scanDocument(q.db.QueryRow(ctx, documentSelect+`WHERE d.workspace_id = $1 AND d.id = $3 AND d.deleted_at IS NULL
-		AND (EXISTS (SELECT 1 FROM document_shares s WHERE s.document_id = d.id AND s.workspace_id = $1 AND s.client_id = $2)
-			OR d.id IN (SELECT id FROM (`+sentQuotePDFs+`) p))`, workspaceID, clientID, documentID))
+type PortalDocumentDownload struct {
+	ID          string
+	ObjectKey   string
+	Name        string
+	ContentType string
+	ExpiresAt   *time.Time
+}
+
+// SharedDocument authorizes an active portal share or a sent quote PDF. The quote grants its own permanent access.
+func (q Q) SharedDocument(ctx context.Context, workspaceID, clientID, documentID string) (PortalDocumentDownload, error) {
+	var d PortalDocumentDownload
+	err := q.db.QueryRow(ctx, `WITH sent_quote AS (SELECT id FROM (`+sentQuotePDFs+`) p WHERE id = $3)
+		SELECT d.id, d.object_key, d.name, d.content_type,
+		       CASE WHEN EXISTS (SELECT 1 FROM sent_quote) THEN NULL ELSE s.expires_at END
+		FROM documents d
+		LEFT JOIN document_shares s ON s.document_id = d.id AND s.workspace_id = $1 AND s.client_id = $2
+		  AND (s.expires_at IS NULL OR s.expires_at > now())
+		WHERE d.workspace_id = $1 AND d.id = $3 AND d.deleted_at IS NULL AND NOT d.hr_private
+		  AND (s.document_id IS NOT NULL OR EXISTS (SELECT 1 FROM sent_quote))`, workspaceID, clientID, documentID).
+		Scan(&d.ID, &d.ObjectKey, &d.Name, &d.ContentType, &d.ExpiresAt)
+	return d, err
 }
 
 // DocumentSharer: who shared the document with the client, "" when unknown (they left, it predates the column, or

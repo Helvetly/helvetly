@@ -810,12 +810,28 @@ function isFileBody(body: unknown): body is { data: DocFile } {
 
 // ---- sharing with a client's portal (docs/portal-contract.md) ----
 
-export type DocumentShare = { client_id: string; client_name: string; shared_at: string }
+export type DocumentShare = {
+  client_id: string
+  client_name: string
+  shared_at: string
+  expires_at?: string
+}
+
+export type DocumentShareLink = {
+  id: string
+  created_at: string
+  expires_at: string | null
+  single_use: boolean
+  used_at: string | null
+}
 
 export const listShares = async (id: string) =>
   (await request<{ data: DocumentShare[] }>(`${path(id)}/shares`)).data
-export const shareDocument = (id: string, clientId: string) =>
-  request<void>(`${path(id)}/shares`, { method: 'POST', json: { client_id: clientId } })
+export const shareDocument = (id: string, clientId: string, expiresInSeconds?: number) =>
+  request<void>(`${path(id)}/shares`, {
+    method: 'POST',
+    json: { client_id: clientId, expires_in_seconds: expiresInSeconds },
+  })
 export const unshareDocument = (id: string, clientId: string) =>
   request<void>(`${path(id)}/shares?client_id=${encodeURIComponent(clientId)}`, {
     method: 'DELETE',
@@ -823,23 +839,46 @@ export const unshareDocument = (id: string, clientId: string) =>
 
 export const shareKeys = (id: string) => [...queryKeys.documents, 'shares', id] as const
 
-export function useShares(id: string) {
-  return useQuery({ queryKey: shareKeys(id), queryFn: () => listShares(id) })
+export function useShares(id: string, enabled = true) {
+  return useQuery({ queryKey: shareKeys(id), queryFn: () => listShares(id), enabled })
 }
 
+export const shareLinkKeys = (id: string) => [...queryKeys.documents, 'share-links', id] as const
+
+export function useShareLinks(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: shareLinkKeys(id),
+    enabled,
+    queryFn: async () =>
+      (await request<{ data: DocumentShareLink[] }>(`${path(id)}/share-links`)).data,
+  })
+}
+
+export const createShareLink = async (id: string, singleUse: boolean, expiresInSeconds?: number) =>
+  (
+    await request<{ data: DocumentShareLink & { token: string } }>(`${path(id)}/share-links`, {
+      method: 'POST',
+      json: { single_use: singleUse, expires_in_seconds: expiresInSeconds },
+    })
+  ).data
+
+export const revokeShareLink = (id: string, linkId: string) =>
+  request<void>(`${path(id)}/share-links?id=${encodeURIComponent(linkId)}`, { method: 'DELETE' })
+
 /** Active clients for the share picker (the portal is per client; 200 covers a normal book). */
-export function useShareClients() {
+export function useShareClients(enabled = true) {
   return useQuery({
     queryKey: [...queryKeys.clients, 'share-picker'],
+    enabled,
     queryFn: async () =>
       (await request<{ data: Client[] }>('/clients?page_size=200&status=active&sort=name')).data,
   })
 }
 
 /** Share or unshare, then refetch this document's shares. */
-export function useShareMutation(id: string, fn: (clientId: string) => Promise<void>) {
+export function useShareMutation<Input>(id: string, fn: (input: Input) => Promise<void>) {
   const queryClient = useQueryClient()
-  return useMutation<void, ApiError, string>({
+  return useMutation<void, ApiError, Input>({
     mutationFn: fn,
     // The file's `shared_with` (cards, preview) changes with it.
     onSuccess: () => {

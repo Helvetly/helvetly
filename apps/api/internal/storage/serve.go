@@ -49,6 +49,12 @@ func Serve(w http.ResponseWriter, r *http.Request, src Source, workspaceID, key,
 		http.Redirect(w, r, link, http.StatusFound)
 		return nil
 	}
+	return ServeDirect(w, r, src, key, filename, contentType)
+}
+
+// ServeDirect answers an attachment without granting a separate storage URL.
+func ServeDirect(w http.ResponseWriter, r *http.Request, src Source, key, filename, contentType string) error {
+	w.Header().Set("Cache-Control", "private, no-store")
 	obj, err := src.Open(r.Context(), key)
 	if err != nil {
 		return err

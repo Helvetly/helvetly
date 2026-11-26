@@ -17,8 +17,13 @@ import { useAuthConfig, useLoadedSession } from '@/lib/queries'
  * devices and reports split by workspace and plan.
  */
 export function Analytics() {
-  const id = useAuthConfig().data?.google_analytics_id
   const pathname = usePathname()
+  if (pathname === '/share' || pathname === '/share/') return null
+  return <PageAnalytics pathname={pathname} />
+}
+
+function PageAnalytics({ pathname }: { pathname: string }) {
+  const id = useAuthConfig().data?.google_analytics_id
   const session = useLoadedSession()
   const [ga, setGa] = useState<typeof ReactGA>()
 
