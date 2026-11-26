@@ -30,8 +30,8 @@ var (
 	businessLook = look{button: ink, link: ink, bar: "#52525b"}
 )
 
-// SiteURL is the public website's origin (NEXT_PUBLIC_WEB_URL): Helvetly's own footer links its help and legal pages
-// there. main sets it from the configuration.
+// SiteURL is the public website's origin (NEXT_PUBLIC_WEB_URL), used for the footer's attribution, help and legal
+// links. main sets it from the configuration.
 var SiteURL = "https://www.helvetly.com"
 
 const tagline = "The online back office for freelancers and small businesses."
@@ -55,7 +55,7 @@ func layout(m Message, publicURL string) string {
 	lk, footer, header := helvetlyLook, helvetlyFooter(m.Footer, m.NotificationSettings), helvetlyHeader(publicURL)
 	switch {
 	case m.Brand != nil && m.Footer == "":
-		lk, footer, header = businessLook, brandFooter(*m.Brand, m.Language, publicURL), brandHeader(*m.Brand, publicURL)
+		lk, footer, header = businessLook, brandFooter(*m.Brand, m.Language), brandHeader(*m.Brand, publicURL)
 	case m.Brand != nil:
 		lk, footer, header = businessLook, m.Footer, brandHeader(*m.Brand, publicURL)
 	}
@@ -167,7 +167,7 @@ func brandHeader(b Brand, publicURL string) string {
 }
 
 // plainText is the text part: the message, then the business footer for a branded email, Helvetly's for its own.
-func plainText(m Message, publicURL string) string {
+func plainText(m Message) string {
 	if m.Advisory != "" {
 		m.Text = strings.TrimRight(m.Text, "\n") + "\n\n" + m.Advisory
 	}
@@ -175,7 +175,7 @@ func plainText(m Message, publicURL string) string {
 	case m.Text == "" || (m.Brand != nil && m.Footer != ""):
 		return m.Text
 	case m.Brand != nil:
-		return strings.TrimRight(m.Text, "\n") + brandText(*m.Brand, m.Language, publicURL)
+		return strings.TrimRight(m.Text, "\n") + brandText(*m.Brand, m.Language)
 	case strings.Contains(m.Text, "\n--"): // the message closes with its own signature block (a notification's settings)
 		return strings.TrimRight(m.Text, "\n") + "\n\n" + helvetlyText()
 	}

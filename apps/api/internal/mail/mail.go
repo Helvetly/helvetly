@@ -213,7 +213,7 @@ func build(from *mail.Address, m Message, publicURL string, now time.Time) []byt
 		hdr("Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
 	}
 	b.WriteString("\r\n")
-	parts := []struct{ ct, body string }{{"text/plain", plainText(m, publicURL)}, {"text/html", layout(m, publicURL)}}
+	parts := []struct{ ct, body string }{{"text/plain", plainText(m)}, {"text/html", layout(m, publicURL)}}
 	if len(m.Calendar) > 0 {
 		// the .ics has CRLF line ends already; the part after the HTML is the one clients prefer
 		parts = append(parts, struct{ ct, body string }{"text/calendar; method=" + headerSafe(m.CalendarMethod), string(m.Calendar)})

@@ -24,7 +24,7 @@ type Brand struct {
 	Language string // the workspace's document language, for a message without its own
 	ReplyTo  string // the workspace's reply address, else the company email; empty when it has neither
 	Owner    string // the owner's email: replies go there when neither the brand nor the sender names an address
-	SentWith bool   // ends with a muted "Sent with Helvetly" (Free and Basic; plans with remove_branding have none)
+	SentWith bool   // ends with a muted "Sent with Helvetly.com" (Free and Basic; plans with remove_branding have none)
 }
 
 // Branded sends a workspace's email to its clients as the business: its name in From (the address stays MAIL_FROM's),
@@ -99,10 +99,10 @@ func displayName(name string) string {
 type footerCopy struct{ sentWith, vat, pitch string }
 
 var footerWords = map[string]footerCopy{
-	"de": {"Gesendet mit", "MWST", "Angebote, Rechnungen und Kundenportale an einem Ort. Mehr Zeit für Ihre Arbeit."},
-	"fr": {"Envoyé avec", "TVA", "Gérez vos devis, factures et portails clients au même endroit, et consacrez plus de temps à votre métier."},
-	"it": {"Inviato con", "IVA", "Gestisca preventivi, fatture e portali clienti in un unico posto, con più tempo per il suo lavoro."},
-	"en": {"Sent with", "VAT", "Manage quotes, invoices and client portals in one place, so you can spend more time on your work."},
+	"de": {"Gesendet mit", "MWST", "Ihr privates Backoffice, alles an einem Ort"},
+	"fr": {"Envoyé avec", "TVA", "Votre back-office privé, tout au même endroit"},
+	"it": {"Inviato con", "IVA", "Il suo back office privato, tutto in un unico posto"},
+	"en": {"Sent with", "VAT", "Your private back office, all in one place"},
 }
 
 func wordsFor(language string) footerCopy {
@@ -165,8 +165,8 @@ func websiteDomain(u string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(u, "www."), "/")
 }
 
-// brandFooter is the business footer under the card, then, when the brand says so, a muted "Sent with Helvetly".
-func brandFooter(b Brand, language, publicURL string) string {
+// brandFooter is the business footer under the card, with optional Helvetly attribution.
+func brandFooter(b Brand, language string) string {
 	var f strings.Builder
 	for i, l := range b.lines(language, true) {
 		if i == 0 {
@@ -176,17 +176,19 @@ func brandFooter(b Brand, language, publicURL string) string {
 		f.WriteString("<br>" + l)
 	}
 	if b.SentWith {
-		f.WriteString(`<br><br><span style="font-size:11px">` + html.EscapeString(wordsFor(language).sentWith) + ` <a href="` +
-			html.EscapeString(publicURL) + `" style="color:` + muted + `"><strong>Helvetly</strong></a><br>` + html.EscapeString(wordsFor(language).pitch) + "</span>")
+		w := wordsFor(language)
+		f.WriteString(`<br><br><span style="font-size:11px">` + html.EscapeString(w.sentWith) + ` <a href="` +
+			html.EscapeString(SiteURL) + `" style="color:` + muted + `"><strong>Helvetly.com</strong></a> · ` + html.EscapeString(w.pitch) + "</span>")
 	}
 	return f.String()
 }
 
 // brandText is the plain-text part's footer, after the signature delimiter.
-func brandText(b Brand, language, publicURL string) string {
+func brandText(b Brand, language string) string {
 	out := "\n\n-- \n" + strings.Join(b.lines(language, false), "\n") + "\n"
 	if b.SentWith {
-		out += "\n" + wordsFor(language).sentWith + " Helvetly: " + publicURL + "\n" + wordsFor(language).pitch + "\n"
+		w := wordsFor(language)
+		out += "\n" + w.sentWith + " " + SiteURL + " · " + w.pitch + "\n"
 	}
 	return out
 }
@@ -201,11 +203,11 @@ func Preview(m Message, brand Brand, publicURL string) string {
 // without a name, Helvetly's own email.
 func Render(m Message, brand Brand, publicURL string) (htmlPart, textPart string) {
 	if brand.Name == "" {
-		return layout(m, publicURL), plainText(m, publicURL)
+		return layout(m, publicURL), plainText(m)
 	}
 	m.Brand = &brand
 	if m.Language == "" {
 		m.Language = brand.Language
 	}
-	return layout(m, publicURL), plainText(m, publicURL)
+	return layout(m, publicURL), plainText(m)
 }

@@ -235,8 +235,8 @@ are the reference.
   repository's tool), the subscription's quantity is the workspace's people. Per-person limits grow with
   max(paid people, included people). A workspace without a live paid plan (never subscribed, trial over, cancelled, or
   unpaid past the grace) is on Free: never read-only, nothing deleted, additions above Free's limits refused with the
-  usual upgrade answers. The trial is 14 days of Pro for up to 2 people. Free and Basic print "Sent with Helvetly" on
-  client email (`mail.Brand.SentWith`) and PDFs (`invoicepdf`, `contractpdf`); feature `remove_branding` (Pro, Business)
+  usual upgrade answers. The trial is 14 days of Pro for up to 2 people. Free and Basic print "Sent with Helvetly.com"
+  on client email (`mail.Brand.SentWith`) and "Sent with Helvetly" on PDFs (`invoicepdf`, `contractpdf`); feature `remove_branding` (Pro, Business)
   drops it. `helvetly billing reprice -workspace ID [-apply]` moves a live subscription onto the offer's tiered price
   keeping its discounts (dry run by default; operators only).
 - **Plan usage**: a monthly limit counts through `store.ConsumeUsage` in the write's transaction, or
