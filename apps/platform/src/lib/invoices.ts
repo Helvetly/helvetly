@@ -1427,6 +1427,8 @@ export function apiQuery(params: ListParams, paging = true) {
 // The API
 
 const path = (id: string) => `/invoices/${encodeURIComponent(id)}`
+export type BulkResult = { id: string; ok: boolean; error?: string; message?: string }
+
 const post = (json: unknown = {}) => ({ method: 'POST' as const, json })
 type One<T> = { data: T }
 
@@ -1448,6 +1450,9 @@ export const invoicesApi = {
     request<One<Invoice>>(path(id), { method: 'PATCH', json: input }),
   remove: (id: string) => request<void>(path(id), { method: 'DELETE' }),
   issue: (id: string) => request<One<Invoice>>(`${path(id)}/issue`, post()),
+  /** Each id on its own: what one cannot do comes back with its error code, the rest still go ahead. */
+  bulk: (action: 'mark_paid' | 'issue', ids: string[]) =>
+    request<{ data: BulkResult[] }>('/invoices/bulk', post({ action, ids })),
   duplicate: (id: string) => request<One<Invoice>>(`${path(id)}/duplicate`, post()),
   creditNote: (id: string, body: { reason?: string } = {}) =>
     request<One<Invoice>>(`${path(id)}/credit-note`, post(body)),

@@ -10,7 +10,17 @@ import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
-import { CloudOff, Download, FileDown, FilePlus2, ReceiptText, SearchX, Trash2 } from 'lucide-react'
+import {
+  CircleCheck,
+  CloudOff,
+  Download,
+  FileDown,
+  FilePlus2,
+  ReceiptText,
+  SearchX,
+  Stamp,
+  Trash2,
+} from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
   type ComponentProps,
@@ -75,6 +85,7 @@ import {
   useInvoice,
   useInvoiceList,
   type InvoiceKind,
+  type BulkResult,
   type InvoiceListItem,
   LIST_STATUSES,
   type ListParams,
@@ -92,6 +103,7 @@ import { composeQuery, isLegacyEditorPath, parseCompose } from './compose'
 import { DERIVED, DerivePicker, type DeriveFrom } from './derive-picker'
 import { InvoiceNumber, KIND_ICONS, Money, RowStatus } from './invoice-bits'
 import {
+  availableCommands,
   invoiceActions,
   useInvoiceActionState,
   useInvoiceCommands,
@@ -286,6 +298,7 @@ export function InvoicesPage() {
   const [search, setSearch] = useState(params.search)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [deleting, setDeleting] = useState<InvoiceListItem[] | null>(null)
+  const [issuing, setIssuing] = useState<string[] | null>(null)
   const [deriving, setDeriving] = useState<DeriveFrom | null>(null)
   const list = useInvoiceList(params)
   const queryFields = useQueryFields(params)
@@ -350,6 +363,9 @@ export function InvoicesPage() {
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id))
   const selectedRows = rows.filter((row) => selected.has(row.id))
   const selectedDrafts = selectedRows.filter((row) => row.status === 'draft')
+  // Paying and issuing do not depend on the role (only voiding does).
+  const payable = selectedRows.filter((row) => availableCommands(row, false).payment)
+  const issuable = selectedRows.filter((row) => availableCommands(row, false).issue)
   const toggleRow = (id: string) =>
     setSelected((current) => {
       const next = new Set(current)
@@ -387,6 +403,26 @@ export function InvoicesPage() {
       )
   }
 
+  const runBulk = async (action: 'mark_paid' | 'issue', ids: string[]) => {
+    let results: BulkResult[]
+    try {
+      results = (await invoicesApi.bulk(action, ids)).data
+    } catch (error) {
+      toast.error(errorMessage(error))
+      return
+    }
+    void queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    setSelected((current) => new Set([...current].filter((id) => !ids.includes(id))))
+    const done = results.filter((result) => result.ok).length
+    if (done)
+      toast.success(
+        translate(action === 'issue' ? 'bulkIssued' : 'bulkMarkedPaid', { count: done }),
+      )
+    const skipped = results.filter((result) => !result.ok)
+    if (skipped.length)
+      toast.warning(translate('skipped', { length: skipped.length, value2: skipReasons(skipped) }))
+  }
+
   const kind = kindInfo(params.kind)
   const newInvoice = () => openEditor('invoice')
   const tabs = INVOICE_KINDS.map((info) => info.plural)
@@ -398,13 +434,22 @@ export function InvoicesPage() {
   const dropping = useImportDrop('invoices', canImport && !compose && !openId)
   const selection = {
     count: selected.size,
-    actions: bulkActions(selectedDrafts.length, {
-      exportCsv: unlessLocked(exportLock, () =>
-        window.location.assign(exportIdsUrl([...selected])),
-      ),
-      downloadPdfs,
-      removeDrafts: () => setDeleting(selectedDrafts),
-    }),
+    actions: bulkActions(
+      { drafts: selectedDrafts.length, payable: payable.length, issuable: issuable.length },
+      {
+        exportCsv: unlessLocked(exportLock, () =>
+          window.location.assign(exportIdsUrl([...selected])),
+        ),
+        downloadPdfs,
+        removeDrafts: () => setDeleting(selectedDrafts),
+        markPaid: () =>
+          void runBulk(
+            'mark_paid',
+            payable.map((row) => row.id),
+          ),
+        issue: () => setIssuing(issuable.map((row) => row.id)),
+      },
+    ),
   }
   const open = useStableCallback(openInvoice)
   const toggle = useStableCallback(toggleRow)
@@ -677,6 +722,19 @@ export function InvoicesPage() {
           }}
         />
       )}
+      {issuing && (
+        <ConfirmDialog
+          title={translate('bulkIssueTitle', { count: issuing.length })}
+          body={translate('bulkIssueBody')}
+          confirmLabel={translate('bulkIssue', { count: issuing.length })}
+          tone="default"
+          confirmIcon={<Stamp />}
+          onDecide={(approved) => {
+            setIssuing(null)
+            if (approved) void runBulk('issue', issuing)
+          }}
+        />
+      )}
       {deleting && deleting.length > 0 && (
         <ConfirmDialog
           title={
@@ -745,20 +803,57 @@ function useNewInvoiceActions(
 }
 
 /** The bulk bar's buttons; deleting only when the selection holds drafts. */
+/** Why selected invoices were skipped, each reason once; an approval gets the app's own words. */
+export function skipReasons(skipped: BulkResult[]) {
+  const reasons = skipped.map((result) =>
+    result.error === 'approval_required'
+      ? translate('approvalRequiredTitle')
+      : (result.message ?? result.error ?? ''),
+  )
+  return [...new Set(reasons)].join(' ')
+}
+
+/** The selection bar's actions; paying and issuing appear only when a selected invoice qualifies. */
 export function bulkActions(
-  drafts: number,
-  run: { exportCsv: () => void; downloadPdfs: () => void; removeDrafts: () => void },
+  count: { drafts: number; payable: number; issuable: number },
+  run: {
+    exportCsv: () => void
+    downloadPdfs: () => void
+    removeDrafts: () => void
+    markPaid: () => void
+    issue: () => void
+  },
 ) {
   return [
+    ...(count.payable > 0
+      ? [
+          {
+            label: translate('bulkMarkPaid', { count: count.payable }),
+            icon: <CircleCheck />,
+            onClick: run.markPaid,
+            write: true,
+          },
+        ]
+      : []),
+    ...(count.issuable > 0
+      ? [
+          {
+            label: translate('bulkIssue', { count: count.issuable }),
+            icon: <Stamp />,
+            onClick: run.issue,
+            write: true,
+          },
+        ]
+      : []),
     { label: translate('exportCSV'), icon: <Download />, onClick: run.exportCsv },
     { label: translate('downloadPDFs'), icon: <FileDown />, onClick: run.downloadPdfs },
-    ...(drafts > 0
+    ...(count.drafts > 0
       ? [
           {
             label:
-              drafts === 1
+              count.drafts === 1
                 ? translate('deleteDraft2')
-                : translate('deleteDrafts2', { drafts: drafts }),
+                : translate('deleteDrafts2', { drafts: count.drafts }),
             icon: <Trash2 />,
             onClick: run.removeDrafts,
             destructive: true,
