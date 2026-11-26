@@ -24,14 +24,14 @@ func TestInviteMessage(t *testing.T) {
 		t.Errorf("subject %q", m.Subject)
 	}
 	for _, part := range []string{m.HTML, m.Text} {
-		for _, want := range []string{"Hello Beat Kunde,", "Muster AG asks you to review and sign “Services Agreement”.",
+		for _, want := range []string{"Hello Beat Kunde,", "Open the document to review the details before you sign.",
 			"Sent by", "Anna Owner", "23 December 2026", "Review and sign", "https://app.example/sign#T", "ZertES"} {
 			if !strings.Contains(part, want) {
 				t.Errorf("%q missing in %s", want, part)
 			}
 		}
-		if strings.Count(part, "Muster AG") != 1 {
-			t.Errorf("the business is named more than once: %s", part)
+		if strings.Count(part, "Services Agreement") != 1 {
+			t.Errorf("the document's name should appear once: %s", part)
 		}
 	}
 	mailtest.Golden(t, "invite", m)
@@ -56,7 +56,7 @@ func TestInviteMessageInALanguage(t *testing.T) {
 	}
 }
 
-// A long company name is cut in the subject and sentence; a request whose member is gone names the business once.
+// A long company name is shortened in the subject, and the sender row is omitted when the member is gone.
 func TestInviteMessageNamesStayShort(t *testing.T) {
 	req := mailRequest(nil)
 	req.WorkspaceName, req.CreatedBy = strings.Repeat("John Doe", 12), nil
@@ -64,7 +64,7 @@ func TestInviteMessageNamesStayShort(t *testing.T) {
 	if strings.Contains(m.Subject, strings.Repeat("John Doe", 9)) || !strings.Contains(m.Subject, "…") {
 		t.Errorf("subject %q", m.Subject)
 	}
-	if strings.Contains(m.Text, "Sent by") || strings.Count(m.Text, "Joh…") != 1 {
+	if strings.Contains(m.Text, "Sent by") || strings.Contains(m.Text, req.WorkspaceName) {
 		t.Errorf("text %s", m.Text)
 	}
 }

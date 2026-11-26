@@ -140,7 +140,7 @@ func words(event string, d data) message {
 			href: clientHref(d.s("client_id")), actor: d.s("contact_name")}
 	case "portal.domain_active":
 		return message{title: "Your client portal is live at " + d.s("hostname"),
-			body: "Invitations and emails to your clients now link to https://" + d.s("hostname") + "/.", href: "/settings/workspace"}
+			body: "Invitations and emails to your clients now use this address.", href: "/settings/workspace"}
 	case "portal.domain_failed":
 		return message{title: d.s("hostname") + " stopped working for your client portal",
 			body: "Until it works again, your clients sign in at your portal address on Helvetly. Check the DNS record in the settings.",

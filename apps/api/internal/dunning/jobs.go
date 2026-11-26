@@ -143,7 +143,7 @@ func (st state) message(n store.DunningNotice, letter, invoicePDF []byte) mail.M
 	if inv.Seller != nil {
 		signOff += "\n" + inv.Seller.Name
 	}
-	m := mail.Message{Language: inv.Language, To: []string{n.Email}, Subject: title + ": " + strings.TrimSpace(invoices.Title(inv)+" "+number),
+	m := mail.Message{Language: inv.Language, To: []string{n.Email}, Subject: title + ": " + strings.TrimSpace(invoices.Title(inv)+" "+number), Eyebrow: title, Tone: mail.Attention,
 		Attachments: []mail.Attachment{{Name: st.letterName(n), ContentType: "application/pdf", Data: letter}}}
 	if invoicePDF != nil {
 		m.Attachments = append(m.Attachments, mail.Attachment{Name: invoiceName(inv), ContentType: "application/pdf", Data: invoicePDF})
@@ -155,8 +155,8 @@ func (st state) message(n store.DunningNotice, letter, invoicePDF []byte) mail.M
 	for _, a := range m.Attachments {
 		names = append(names, a.Name)
 	}
-	l := mail.NewLetter(inv.Language).Lead(w.Greeting).Message(sentence).Summary(append(rows, amount(w.Total, n.Total))...).
-		Lead(w.PayWithin + " " + w.Settled).Lead(signOff).Attached(names...)
+	l := mail.NewLetter(inv.Language).Lead(w.Greeting).Message(sentence, number, invoicepdf.SwissDate(inv.IssueDate), invoicepdf.SwissDate(inv.DueDate)).Summary(append(rows, amount(w.Total, n.Total))...).
+		Lead(w.PayWithin + " " + w.Settled).Attached(names...).SignOff(signOff)
 	m.Text, m.HTML = l.Text(), l.HTML()
 	return m
 }

@@ -288,11 +288,10 @@ func (s *Service) checkEmailCode(ctx context.Context, email, code string) (strin
 // signInCodeMessage: the code leads the subject, so it shows in the inbox list and mail apps offer to copy it.
 func signInCodeMessage(to, code string) mailer.Message {
 	const why = "You received this email because someone used this address to sign in to Helvetly."
-	l := mailer.NewLetter("en").Lead("Here is your code to sign in to Helvetly:").Code(code).
-		Lead("Type it on the sign-in page you came from. It works once and expires in 10 minutes.").
-		FinePrint("Didn't try to sign in? You can ignore this email: nobody can sign in without this code. Never share it with anyone.")
+	l := mailer.NewLetter("en").Lead("Enter this code on the Helvetly sign-in page. It works once and expires in 10 minutes.").Code(code)
 	return mailer.Message{To: []string{to}, Subject: code + " is your Helvetly sign-in code", Text: l.Text() + "\n" + why + "\n",
-		HTML: mailer.Title("Your sign-in code") + l.HTML(), Footer: why}
+		HTML: mailer.Title("Your sign-in code") + l.HTML(), Footer: why,
+		Advisory: "Didn’t try to sign in? You can ignore this email. Never share this code with anyone."}
 }
 
 // portalCodeWords are the portal code email's words; the subject and lead take the code and the business's name.
@@ -318,9 +317,9 @@ func portalCodeMessage(to, code, workspaceID string, brand mailer.Brand) mailer.
 	if !ok {
 		w = portalCodeWords["en"]
 	}
-	l := mailer.NewLetter(brand.Language).Lead(fmt.Sprintf(w.lead, brand.Name)).Code(code).Lead(w.use).FinePrint(w.ignore)
+	l := mailer.NewLetter(brand.Language).Lead(fmt.Sprintf(w.lead, brand.Name)).Code(code).Lead(w.use)
 	return mailer.Message{Workspace: workspaceID, Uncounted: true, Language: brand.Language, To: []string{to}, Subject: fmt.Sprintf(w.subject, code, brand.Name),
-		Text: l.Text(), HTML: mailer.Title(w.title) + l.HTML()}
+		Text: l.Text(), HTML: mailer.Title(w.title) + l.HTML(), Advisory: w.ignore}
 }
 
 // devCodeBox keeps the last code per address in memory under AUTH_DEV_SIGNIN, so tests and the dev stack

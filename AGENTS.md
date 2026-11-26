@@ -235,8 +235,8 @@ are the reference.
   repository's tool), the subscription's quantity is the workspace's people. Per-person limits grow with
   max(paid people, included people). A workspace without a live paid plan (never subscribed, trial over, cancelled, or
   unpaid past the grace) is on Free: never read-only, nothing deleted, additions above Free's limits refused with the
-  usual upgrade answers. The trial is 14 days of Pro for up to 2 people. Free and Basic print "Sent with Helvetly" on
-  client email (`mail.Brand.SentWith`) and PDFs (`invoicepdf`, `contractpdf`); feature `remove_branding` (Pro, Business)
+  usual upgrade answers. The trial is 14 days of Pro for up to 2 people. Free and Basic print "Sent with Helvetly.com"
+  on client email (`mail.Brand.SentWith`) and "Sent with Helvetly" on PDFs (`invoicepdf`, `contractpdf`); feature `remove_branding` (Pro, Business)
   drops it. `helvetly billing reprice -workspace ID [-apply]` moves a live subscription onto the offer's tiered price
   keeping its discounts (dry run by default; operators only).
 - **Plan usage**: a monthly limit counts through `store.ConsumeUsage` in the write's transaction, or
@@ -251,17 +251,17 @@ are the reference.
   From's display name (the address stays `MAIL_FROM`'s), Reply-To the workspace's reply-to email (`workspaces.reply_to_email`,
   Settings → Workspace), else the company email, else the member who sends, else the owner, never no-reply; its workspace
   logo (never the document logo) and name head the email, its seller details (with its website as a link) sign it. Its body
-  is built from the `mail.Letter` blocks (greeting, lead, typed message, summary panel, details, code, call to action, note, fine print,
-  attachments), with an optional eyebrow pill (`Message.Eyebrow`) above the title, which write the HTML and the text part together; every client email kind has a golden test through
+  is built from the `mail.Letter` blocks (greeting, lead, typed message, summary panel, sections, details, code, call to action, note, fine print,
+  attachments), which write the HTML and text together. The optional eyebrow pill (`Message.Eyebrow`) above the title uses
+  green or red for outcomes and separate tints for reminders and amendments. Conventional sign-offs in document messages go after the details and attachments. Every client email kind has a golden test through
   `mail/mailtest` (`go test -update` rewrites `testdata/*.golden`), which also holds it to the email HTML rule and to words that wrap. Sign-in, security and invitation email is neither counted nor branded and stays Helvetly's, except a client's sign-in
   code for a workspace's portal: it comes from that business (Branded, in its language) and is `Uncounted`, which `Metered`
   never counts or refuses.
-  Every email is one layout (`mail/layout.go`): the sender's mark centred above a white rounded card (the subject as
-  its title unless the body has its own `<h1>`), the footer muted and centred below. Both stand on a white page with a thinly
+  Every email is one layout (`mail/layout.go`): the sender's mark centred above a white card (the subject as
+  its title unless the body has its own `<h1>`). Security advisories sit between the card and the footer, which is muted and centred. Both stand on a white page with a thinly
   bordered card under a thin bar. Two looks: Helvetly's own (the app icon `email-logo.png` and name, a gradient bar,
-  blue buttons, a footer with the tagline, why it came (`Message.Footer`), Help, Privacy and Terms on `NEXT_PUBLIC_WEB_URL`
-  and the company as the imprint names it) and a business's (its logo and name, a slate bar, near-black buttons and
-  links, no Helvetly colours; its footer's phone spaced by `internal/phone`, contact links muted so mail apps do not
+  teal buttons, a footer with the tagline, why it came (`Message.Footer`), Help, Privacy and Terms on `NEXT_PUBLIC_WEB_URL`, and Notification settings with those links for notifications)
+  and a business's (its logo and name, a slate bar, near-black buttons and links, no Helvetly colours; its footer's phone spaced by `internal/phone`, contact links muted so mail apps do not
   turn them blue). Email HTML uses inline styles
   only and may use padding, margin, borders, rounded corners, backgrounds (a gradient always over a solid
   `background-color` and `bgcolor`), widths and max-width, and `bgcolor`/`width`/`align` on tables and cells; buttons are

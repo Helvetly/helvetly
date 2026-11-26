@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"io"
 	"log/slog"
 	"mime/multipart"
@@ -237,9 +236,27 @@ func (s *Service) email(ctx context.Context, sess store.Session, id, kind, descr
 	}
 	label := map[string]string{"problem": "Problem", "feature": "Feature idea"}[kind]
 	from := sess.User.Name + " <" + sess.User.Email + ">"
-	text := fmt.Sprintf("%s from %s\nWorkspace: %s (%s)\nPage: %s\nReport: %s\n\n%s\n", label, from, sess.Workspace.Name, sess.Workspace.ID, pagePath, id, description)
-	m := mail.Message{To: []string{s.to}, ReplyTo: sess.User.Email, Subject: label + ": " + summary(description), Text: text,
-		HTML: "<p>" + strings.ReplaceAll(html.EscapeString(text), "\n", "<br>\n") + "</p>"}
+	heading := "New problem report"
+	lead := "A workspace member reported a problem. The description and the page they were using are below."
+	tone := mail.Attention
+	if kind == "feature" {
+		heading = "New feature suggestion"
+		lead = "A workspace member shared an idea for improving Helvetly. Their suggestion and the page they were using are below."
+		tone = 0
+	}
+	l := mail.NewLetter("en").Lead(lead).Note(description).Summary(
+		mail.Row{Label: "Reported by", Value: from},
+		mail.Row{Label: "Workspace", Value: sess.Workspace.Name + " (" + sess.Workspace.ID + ")"},
+		mail.Row{Label: "Page", Value: pagePath},
+		mail.Row{Label: "Report ID", Value: id},
+	).Lead("Reply directly to this email if you need more detail from the person who sent it.")
+	var names []string
+	for _, shot := range shots {
+		names = append(names, shot.name)
+	}
+	l.Attached(names...)
+	m := mail.Message{To: []string{s.to}, ReplyTo: sess.User.Email, Subject: label + ": " + summary(description), Text: l.Text(),
+		HTML: mail.Title(heading+" from "+sess.Workspace.Name) + l.HTML(), Eyebrow: label, Tone: tone}
 	for _, shot := range shots {
 		m.Attachments = append(m.Attachments, mail.Attachment{Name: shot.name, ContentType: shot.contentType, Data: shot.data})
 	}

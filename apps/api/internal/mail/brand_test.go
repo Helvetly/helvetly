@@ -133,13 +133,13 @@ func TestBrandedLayout(t *testing.T) {
 			`<html lang="de">`, `src="https://app.example.com/api/v1/public/email-logo/w/lgo_1"`, ">Müller &amp; Co AG</strong>",
 			">Müller &amp; Co AG</strong>", "<br>Bahnhofstrasse &#8203;1, &#8203;8001 &#8203;Zürich",
 			`<br><a href="tel:+41441234567" style="color:#71717a;text-decoration:none">+41 44 123 45 67</a> · <a href="mailto:info@mueller.ch" style="color:#71717a;text-decoration:none">info@mueller.ch</a>`,
-			"<br>CHE-123.456.789 MWST", `Gesendet mit <a href="https://app.example.com"`}, []string{"Sent by"}},
+			"<br>CHE-123.456.789 MWST", `Gesendet mit <a href="https://www.helvetly.com"`}, []string{"Sent by"}},
 		{"a website: a link with the domain", Message{HTML: "<p>Hi</p>", Brand: &Brand{Name: "X", Email: "a@x.ch", Website: "https://www.firma.ch/"}},
 			[]string{`">a@x.ch</a> · <a href="https://www.firma.ch/" style="color:#71717a;text-decoration:none">firma.ch</a>`}, nil},
 		{"name only, in French", Message{HTML: "<p>Bonjour</p>", Language: "fr", Brand: &Brand{Name: "Dupont SA", VAT: "FR12345678901", SentWith: true}}, []string{
-			">Dupont SA</strong><br>FR12345678901<br><br>", "Envoyé avec"}, []string{"<img", " · ", " TVA"}},
+			">Dupont SA</strong><br>FR12345678901<br><br>", "Envoyé avec", "Votre back-office privé, tout au même endroit"}, []string{"<img", " TVA"}},
 		{"an unknown language: English", Message{HTML: "<p>Hi</p>", Language: "pl", Brand: &Brand{Name: "X", VAT: "CHE-111.222.333", SentWith: true}},
-			[]string{"CHE-111.222.333 VAT", "Sent with"}, nil},
+			[]string{"CHE-111.222.333 VAT", `Sent with <a href="https://www.helvetly.com" style="color:#71717a"><strong>Helvetly.com</strong></a> · Your private back office, all in one place</span>`}, nil},
 		{"a plan with remove_branding: no Sent with", Message{HTML: "<p>Hi</p>", Brand: &Brand{Name: "X", VAT: "CHE-111.222.333"}},
 			[]string{"CHE-111.222.333 VAT"}, []string{"Sent with", ">Helvetly</a>"}},
 		{"a footer of its own stays", Message{HTML: "<p>Hi</p>", Footer: "Why you got this", Brand: &Brand{Name: "X"}},
@@ -170,11 +170,11 @@ func TestBrandedPlainText(t *testing.T) {
 		want string
 	}{
 		{"branded", Message{Text: "Guten Tag\n", HTML: "<p>x</p>", Language: "de", Brand: brand},
-			"Guten Tag\r\n\r\n-- \r\nMuster GmbH\r\nWeg 1, 3000 Bern\r\ninfo@muster.ch\r\nCHE-123.456.789 MWST\r\n\r\nGesendet mit Helvetly: https://app.example.com\r\n"},
+			"Guten Tag\r\n\r\n-- \r\nMuster GmbH\r\nWeg 1, 3000 Bern\r\ninfo@muster.ch\r\nCHE-123.456.789 MWST\r\n\r\nGesendet mit https://www.helvetly.com · Ihr privates Backoffice, alles an einem Ort\r\n"},
 		{"branded, without Sent with", Message{Text: "Guten Tag\n", HTML: "<p>x</p>", Language: "de", Brand: &unbranded},
 			"Guten Tag\r\n\r\n-- \r\nMuster GmbH\r\nWeg 1, 3000 Bern\r\ninfo@muster.ch\r\nCHE-123.456.789 MWST\r\n"},
 		{"Helvetly's own", Message{Text: "Code: 1\n", HTML: "<p>x</p>"}, "Code: 1\r\n\r\n-- \r\nHelvetly · The online back office for freelancers and small businesses.\r\n" +
-			"Help: https://www.helvetly.com/help\r\nPrivacy: https://www.helvetly.com/privacy\r\nTerms: https://www.helvetly.com/terms\r\nHelvetly, Switzerland\r\n"},
+			"Help: https://www.helvetly.com/help\r\nPrivacy: https://www.helvetly.com/privacy\r\nTerms: https://www.helvetly.com/terms\r\n"},
 		{"a phone spaced as the app shows it", Message{Text: "Hallo\n", HTML: "<p>x</p>", Brand: &Brand{Name: "M", Phone: "+41786533224"}},
 			"Hallo\r\n\r\n-- \r\nM\r\n+41 78 653 32 24\r\n"},
 	} {

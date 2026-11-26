@@ -103,9 +103,9 @@ func (s *Service) sendPortalInvite(ctx context.Context, sess store.Session, c st
 // portalInvite is the client's invitation to the workspace's portal at link.
 func portalInvite(ws store.Workspace, c store.Client, to, link string) mailer.Message {
 	l := mailer.NewLetter("en").Greeting(c.GreetingName()).
-		Lead(ws.Name+" now gives you access to their client portal, where you can see your invoices, engagements and shared documents.").
+		Lead("Use the portal to find your invoices, engagements and shared documents.").
 		Action("Open the client portal", link).
-		FinePrint("Enter this email address there and we send you a code to sign in: there is no password.")
+		FinePrint("Enter this email address on the portal and we’ll send you a one-time sign-in code.")
 	return mailer.Message{Workspace: ws.ID, Language: "en", To: []string{to}, Subject: ws.Name + " invited you to their client portal",
-		Text: l.Text(), HTML: l.HTML()}
+		Text: l.Text(), HTML: mailer.Title("Your client portal at "+ws.Name) + l.HTML()}
 }

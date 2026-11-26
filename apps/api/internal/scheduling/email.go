@@ -401,6 +401,9 @@ func (e *Emails) send(ctx context.Context, m mailCtx, subject string, l letter, 
 	text, body := compose(m, l, method)
 	kind, _, _ := strings.Cut(subject, ": ") // every subject is "<kind>: <title>"; the kind is the eyebrow
 	msg := mail.Message{Workspace: m.ws.ID, To: m.to, Subject: subject, Eyebrow: kind, Text: text, HTML: body, Language: m.lang, Members: m.members}
+	if method == ical.Cancel || kind == wordsOf(m.lang).declined {
+		msg.Tone = mail.Negative
+	}
 	if !m.members {
 		msg.ReplyTo = m.hostMail
 	}
@@ -432,11 +435,30 @@ func compose(m mailCtx, l letter, method ical.Method) (text, body string) {
 		rows = append(rows, mail.Row{Label: w.where, Value: "Online"})
 	}
 	rows = append(rows, mail.Row{Label: w.host, Value: m.host}, mail.Row{Label: w.price, Value: price(m.event)}, mail.Row{Label: w.reason, Value: l.reason})
-	lt := mail.NewLetter(m.lang).Greeting(m.greet).Lead(l.lead).Summary(rows...).Note(l.note)
+	lt := mail.NewLetter(m.lang)
+	if m.greet != "" {
+		lt.Greeting(m.greet)
+	}
+	lt.Lead(l.lead)
+	if m.lang == "en" {
+		switch {
+		case m.members:
+			lt.Lead("Check the time and meeting details below before the session begins.")
+		case l.join != "":
+			lt.Lead("When it’s time for your session, use the meeting link below to join.")
+		case method == ical.Request:
+			lt.Lead("Check the date, time and any notes below so you know what to expect.")
+		}
+	}
+	lt.Summary(rows...).Note(l.note)
 	if l.portalLine {
 		lt.Lead(w.answerInPortal)
 	}
-	lt.Action(w.join, l.join).Action(w.open, m.portal)
+	if l.join == "" {
+		lt.Action(w.open, m.portal)
+	} else {
+		lt.Action(w.join, l.join).Link(w.open, m.portal)
+	}
 	switch method {
 	case ical.Request:
 		lt.FinePrint(w.calendarAdd)

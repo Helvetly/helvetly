@@ -73,11 +73,19 @@ func withRevolut(message string, inv store.Invoice) string {
 	if inv.Payment.RevolutURL == nil || strings.Contains(message, *inv.Payment.RevolutURL) {
 		return message
 	}
-	label, ok := revolutLabel[inv.Language]
+	return message + "\n\n" + revolutPaymentLine(inv)
+}
+
+func revolutPaymentLine(inv store.Invoice) string {
+	return revolutPaymentLabel(inv.Language) + ": " + deref(inv.Payment.RevolutURL)
+}
+
+func revolutPaymentLabel(language string) string {
+	label, ok := revolutLabel[language]
 	if !ok {
 		label = revolutLabel["en"]
 	}
-	return message + "\n\n" + label + ": " + *inv.Payment.RevolutURL
+	return label
 }
 
 // emailDraft: GET /email, what the Send by email dialog starts with.

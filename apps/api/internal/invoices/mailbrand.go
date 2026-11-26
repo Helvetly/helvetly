@@ -40,12 +40,8 @@ func (s *Service) MailBrand(ctx context.Context, workspaceID string) (mail.Brand
 			b.Address = append(b.Address, l)
 		}
 	}
-	logo, err := s.db.WorkspaceLogoID(ctx, workspaceID)
-	if err != nil && !errors.Is(err, store.ErrNotFound) {
+	if b.LogoPath, err = s.EmailLogoPath(ctx, workspaceID); err != nil {
 		return mail.Brand{}, err
-	}
-	if logo != nil {
-		b.LogoPath = emailLogoPath + workspaceID + "/" + *logo
 	}
 	if b.SentWith, err = s.sentWith(ctx, workspaceID); err != nil {
 		return mail.Brand{}, err
@@ -69,6 +65,18 @@ func replyAddress(own *string, set Settings, member string) string {
 		return *set.Seller.Email
 	}
 	return member
+}
+
+// EmailLogoPath returns the public email image of a workspace’s current logo.
+func (s *Service) EmailLogoPath(ctx context.Context, workspaceID string) (string, error) {
+	logo, err := s.db.WorkspaceLogoID(ctx, workspaceID)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return "", err
+	}
+	if logo == nil {
+		return "", nil
+	}
+	return emailLogoPath + workspaceID + "/" + *logo, nil
 }
 
 // ReplyTo is where a client's answer to the email the signed-in member sends goes, for the send dialogs.

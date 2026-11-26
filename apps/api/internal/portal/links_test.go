@@ -2,6 +2,8 @@ package portal
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"strings"
 	"sync"
 	"testing"
@@ -78,7 +80,46 @@ func TestEmailLinks(t *testing.T) {
 			if strings.Count(m.Text, ": http") != len(tc.links) {
 				t.Fatalf("one line per workspace: %q", m.Text)
 			}
+			wantButtons := 0
+			if len(tc.links) == 1 {
+				wantButtons = 1
+			}
+			if got := strings.Count(m.HTML, "text-decoration:none"); got != wantButtons {
+				t.Fatalf("%d primary buttons, want %d", got, wantButtons)
+			}
 		})
+	}
+}
+
+func TestEmailLinksShowsWorkspaceLogosWithFallback(t *testing.T) {
+	e := scopedEnv(t)
+	e.svc.SetEmailLogos("https://app.example.com/", func(_ context.Context, workspace string) (string, error) {
+		switch workspace {
+		case "wsp_a":
+			return "/api/v1/public/email-logo/wsp_a/wlg_1", nil
+		case "wsp_b":
+			return "", errors.New("logo unavailable")
+		default:
+			t.Fatalf("unexpected workspace %q", workspace)
+			return "", nil
+		}
+	})
+	res, _ := e.doAt("", "POST", "/auth/links", map[string]string{"email": "ana@acme.ch"}, nil, "")
+	if res.StatusCode != http.StatusAccepted || len(e.mail.sent) != 1 {
+		t.Fatalf("status %d, sent %d", res.StatusCode, len(e.mail.sent))
+	}
+	msg := e.mail.sent[0]
+	body, plain := mailer.Render(msg, mailer.Brand{}, "https://app.example.com")
+	cardEnd := "</td></tr>\n</table></td></tr>\n"
+	advisory := "If you didn’t request these links, you can ignore this email."
+	for _, fragment := range []string{`src="https://app.example.com/api/v1/public/email-logo/wsp_a/wlg_1"`,
+		`background-color:#ccfbf1">O</span>`, cardEnd + `<tr><td style="padding:10px 0 0">`, `background-color:#fffbeb`, advisory} {
+		if !strings.Contains(body, fragment) {
+			t.Errorf("missing %q in portal email", fragment)
+		}
+	}
+	if strings.Contains(msg.HTML, advisory) || strings.Count(plain, advisory) != 1 {
+		t.Fatal("security note should be outside the card and present once in plain text")
 	}
 }
 

@@ -17,10 +17,11 @@ func withLetter(m mail.Message, t store.Quote) mail.Message {
 	for i, a := range m.Attachments {
 		names[i] = a.Name
 	}
-	l := mail.NewLetter(t.Language).Message(m.Text).Summary(
+	total, validUntil := t.Currency+" "+t.PayableTotal.Swiss("'"), swissDate(t.ValidUntil)
+	l := mail.NewLetter(t.Language).DocumentMessage(m.Text, number, total, validUntil).Summary(
 		mail.Row{Label: invoicepdf.Title(t.Language, "quote"), Value: number},
-		mail.Row{Label: w.Total, Value: t.Currency + " " + t.PayableTotal.Swiss("'")},
-		mail.Row{Label: w.ValidUntil, Value: swissDate(t.ValidUntil)},
+		mail.Row{Label: w.Total, Value: total},
+		mail.Row{Label: w.ValidUntil, Value: validUntil},
 	).Attached(names...)
 	m.Text, m.HTML, m.Eyebrow = l.Text(), l.HTML(), invoicepdf.Title(t.Language, "quote")
 	return m

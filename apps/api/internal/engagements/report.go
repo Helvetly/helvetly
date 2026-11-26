@@ -172,17 +172,17 @@ func (s *Service) report(w http.ResponseWriter, r *http.Request, sess store.Sess
 
 // email is the report's email: the message, the engagement and period, and the PDF attached.
 func (rep report) email(workspaceID, subject, message string) mail.Message {
-	l := mail.NewLetter(rep.language).Message(message).
+	l := mail.NewLetter(rep.language).DocumentMessage(message, rep.period).
 		Summary(mail.Row{Label: reportTexts[rep.language].title, Value: rep.e.Title + "\n" + rep.period}).Attached(rep.name)
 	return mail.Message{Workspace: workspaceID, Language: rep.language, Subject: subject, Text: l.Text(), HTML: l.HTML(),
 		Attachments: []mail.Attachment{{Name: rep.name, ContentType: "application/pdf", Data: rep.pdf}}}
 }
 
 var reportTexts = map[string]struct{ title, greeting, body, signOff string }{
-	"de": {"Leistungsnachweis", "Guten Tag", "Im Anhang finden Sie den Leistungsnachweis «%s» für %s.", "Freundliche Grüsse"},
-	"fr": {"Rapport de prestations", "Bonjour", "Veuillez trouver ci-joint le rapport de prestations « %s » pour %s.", "Meilleures salutations"},
-	"it": {"Rapporto delle prestazioni", "Buongiorno", "In allegato trovate il rapporto delle prestazioni «%s» per %s.", "Cordiali saluti"},
-	"en": {"Service report", "Hello", "Please find attached the service report \"%s\" for %s.", "Kind regards"},
+	"de": {"Leistungsnachweis", "Guten Tag", "Im Anhang finden Sie den Leistungsnachweis «%s» für %s.\n\nDer Bericht zeigt die erfassten Leistungen für diesen Zeitraum. Bei Fragen zu einzelnen Einträgen antworten Sie auf diese E-Mail.", "Freundliche Grüsse"},
+	"fr": {"Rapport de prestations", "Bonjour", "Veuillez trouver ci-joint le rapport de prestations « %s » pour %s.\n\nIl récapitule le travail enregistré pour cette période. Répondez à cet e-mail si vous avez une question sur une ligne.", "Meilleures salutations"},
+	"it": {"Rapporto delle prestazioni", "Buongiorno", "In allegato trovate il rapporto delle prestazioni «%s» per %s.\n\nIl rapporto riepiloga le attività registrate in questo periodo. Per domande su una voce, risponda a questa e-mail.", "Cordiali saluti"},
+	"en": {"Service report", "Hello", "Please find attached the service report \"%s\" for %s.\n\nThe report shows the work recorded for this period. Reply if you’d like to discuss any of the entries.", "Kind regards"},
 }
 
 const maxRecipients = 10

@@ -53,6 +53,7 @@ type env struct {
 	files *fakeFiles
 	store *store.Store
 	mail  *fakeMail
+	svc   *Service
 }
 
 func newEnv(t *testing.T) *env {
@@ -79,7 +80,7 @@ func newEnv(t *testing.T) *env {
 	svc.SetScheduling(scheduling.New(st, a, nil, bytes.Repeat([]byte{7}, 32), "https://helvetly.example.com", srv.URL, discard))
 	svc.Register(mux)
 	front = scopes.Handler(mux)
-	e := &env{t: t, srv: srv, auth: fa, files: files, raw: raw, store: st, mail: mails}
+	e := &env{t: t, srv: srv, auth: fa, files: files, raw: raw, store: st, mail: mails, svc: svc}
 	e.exec = func(sql string, args ...any) {
 		t.Helper()
 		if _, err := raw.Exec(context.Background(), sql, args...); err != nil {

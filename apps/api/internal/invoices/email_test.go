@@ -47,14 +47,14 @@ func TestDraftDefaultsMatchTheBuiltInTexts(t *testing.T) {
 	number := *en.Number
 	if !slices.Equal(got.To, []string{"ap@kunde.ch"}) || got.Subject != "Invoice "+number+" from "+seller ||
 		got.Message != "Hello\n\nPlease find attached our invoice "+number+" for CHF 216.20, payable by "+swissDate(en.DueDate)+
-			".\n\nKind regards\n"+seller {
+			".\n\nThe PDF includes the payment details. If you have a question about the invoice, reply to this email.\n\nKind regards\n"+seller {
 		t.Fatalf("draft %+v", got)
 	}
 	de := e.issued(b, client, map[string]any{"language": "de"})
 	cn := e.invoice(b, "POST", "/api/v1/invoices/"+de.ID+"/credit-note", map[string]any{"lines": []any{line("1", "50.00")}}, http.StatusCreated)
 	cn = e.invoice(b, "POST", "/api/v1/invoices/"+cn.ID+"/issue", nil, http.StatusOK)
 	got = e.draftOf(b, cn.ID, http.StatusOK).Data
-	if want := "Guten Tag\n\nIm Anhang finden Sie unsere Gutschrift " + *cn.Number + " über CHF 54.05.\n\nFreundliche Grüsse\n" + seller; got.Message != want {
+	if want := "Guten Tag\n\nIm Anhang finden Sie unsere Gutschrift " + *cn.Number + " über CHF 54.05.\n\nIm PDF sehen Sie, was gutgeschrieben wurde. Bei Fragen zur Verrechnung antworten Sie auf diese E-Mail.\n\nFreundliche Grüsse\n" + seller; got.Message != want {
 		t.Fatalf("credit note message %q, want %q", got.Message, want)
 	}
 }
@@ -94,6 +94,12 @@ func TestDraftAppendsRevolutOnce(t *testing.T) {
 	got := e.draftOf(b, inv.ID, http.StatusOK).Data
 	if !strings.HasSuffix(got.Message, "\n\nPay with Revolut: "+url) || strings.Count(got.Message, url) != 1 {
 		t.Fatalf("message %q", got.Message)
+	}
+	e.do(b, "POST", "/api/v1/invoices/"+inv.ID+"/send", map[string]any{}, http.StatusOK, nil)
+	msg := e.mail.sent[len(e.mail.sent)-1]
+	if !strings.Contains(msg.HTML, `href="`+url+`">Pay with Revolut</a>`) ||
+		!strings.Contains(msg.Text, "\nPay with Revolut: "+url+"\n") || strings.Count(msg.Text, url) != 1 {
+		t.Fatalf("Revolut payment link missing: %s\n%s", msg.HTML, msg.Text)
 	}
 	e.setTemplate(b, "invoice", "en", "S", "Pay here: "+url)
 	if got := e.draftOf(b, inv.ID, http.StatusOK).Data; got.Message != "Pay here: "+url {

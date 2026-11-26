@@ -385,9 +385,9 @@ func (s *Service) emailMessage(ctx context.Context, sess store.Session, language
 		m.ReplyTo, m.Attachments = sess.User.Email, attachments
 		return m, nil
 	}
-	l := mail.NewLetter("en").Greeting("").Lead(fmt.Sprintf("%s (%s) sent you “%s”. The PDF is attached.", from, sess.Workspace.Name, title))
+	l := mail.NewLetter("en").Lead(fmt.Sprintf("The PDF from %s is attached. If you have any questions for %s, you can reply to this email.", sess.Workspace.Name, from))
 	if message != nil {
-		l.Note(*message)
+		l.DocumentMessage(*message)
 	}
 	l.Summary(mail.Row{Label: documentWord["en"], Value: title}).Attached(name)
 	return mail.Message{Workspace: sess.Workspace.ID, Language: "en", ReplyTo: sess.User.Email, Subject: fmt.Sprintf("%s sent you “%s”", from, title),
@@ -402,7 +402,7 @@ func documentEmail(workspaceID, language string, t emailtemplate.Template, title
 	if !ok {
 		word = documentWord["en"]
 	}
-	l := mail.NewLetter(language).Message(t.Body).Summary(mail.Row{Label: word, Value: title}).Attached(file)
+	l := mail.NewLetter(language).DocumentMessage(t.Body).Summary(mail.Row{Label: word, Value: title}).Attached(file)
 	return mail.Message{Workspace: workspaceID, Language: language, Subject: t.Subject, Text: l.Text(), HTML: l.HTML()}
 }
 

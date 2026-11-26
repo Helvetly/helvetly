@@ -24,19 +24,32 @@ import (
 	"helvetly.com/api/internal/config"
 )
 
+// Tone styles the label above the message title.
+type Tone uint8
+
+const (
+	Positive Tone = iota + 1
+	Negative
+	Attention
+	Amended
+)
+
 type Message struct {
 	// Workspace is the workspace a business email is sent for (an invoice, a reminder, a signature request, a portal
 	// invitation, a report, a notification): Metered counts it against that workspace's allowances. Empty for the
 	// email no business limit may stop: sign-in codes, security notices, invitations to join, feedback to Helvetly.
-	Workspace           string
-	To, Cc              []string
-	Bcc                 []string // envelope recipients only: never written into a header
-	ReplyTo             string   // optional
-	Subject, Text, HTML string
-	Attachments         []Attachment
-	ListUnsubscribe     string // optional: the one-click unsubscribe URL (RFC 8058)
-	Footer              string // optional HTML: why the email came, in Helvetly's own footer; a branded email's whole footer
-	Eyebrow             string // optional: the pill above the title saying what the email is ("Invoice")
+	Workspace            string
+	To, Cc               []string
+	Bcc                  []string // envelope recipients only: never written into a header
+	ReplyTo              string   // optional
+	Subject, Text, HTML  string
+	Attachments          []Attachment
+	ListUnsubscribe      string // optional: the one-click unsubscribe URL (RFC 8058)
+	NotificationSettings string // optional URL for the shared Helvetly footer
+	Advisory             string // optional note between the card and the footer
+	Footer               string // optional HTML: why the email came, in Helvetly's own footer; a branded email's whole footer
+	Eyebrow              string // optional: the pill above the title saying what the email is ("Invoice")
+	Tone                 Tone
 	// Uncounted: a workspace's email no business limit may stop or count (a client's portal sign-in code): branded as
 	// the business, never metered.
 	Uncounted bool
@@ -200,7 +213,7 @@ func build(from *mail.Address, m Message, publicURL string, now time.Time) []byt
 		hdr("Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
 	}
 	b.WriteString("\r\n")
-	parts := []struct{ ct, body string }{{"text/plain", plainText(m, publicURL)}, {"text/html", layout(m, publicURL)}}
+	parts := []struct{ ct, body string }{{"text/plain", plainText(m)}, {"text/html", layout(m, publicURL)}}
 	if len(m.Calendar) > 0 {
 		// the .ics has CRLF line ends already; the part after the HTML is the one clients prefer
 		parts = append(parts, struct{ ct, body string }{"text/calendar; method=" + headerSafe(m.CalendarMethod), string(m.Calendar)})

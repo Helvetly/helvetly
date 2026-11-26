@@ -5,6 +5,40 @@ import (
 	"testing"
 )
 
+func TestDocumentMessageHighlightsFactsAndClosesAfterDetails(t *testing.T) {
+	l := NewLetter("en").
+		DocumentMessage("Invoice 2026-001 for CHF 216.20 is due on 06.12.2026. <Thanks!>\n\nKind regards,\n\nAna & Co",
+			"2026-001", "CHF 216.20", "06.12.2026").
+		Summary(Row{Label: "Invoice", Value: "2026-001"}).Lead("Payment link: https://pay.example.test/").Attached("invoice.pdf")
+	body := l.HTML()
+	for _, fact := range []string{"2026-001", "CHF 216.20", "06.12.2026"} {
+		if !strings.Contains(body, "<strong>"+fact+"</strong>") {
+			t.Errorf("%q was not highlighted", fact)
+		}
+	}
+	if !strings.Contains(body, "&lt;Thanks!&gt;") || !strings.Contains(body, "Ana &amp; Co") ||
+		!strings.Contains(body, "https://pay.example.test/") ||
+		strings.Index(body, "Attached: invoice.pdf") >= strings.Index(body, "Kind regards") ||
+		!strings.HasSuffix(l.Text(), "Attached: invoice.pdf\n\nKind regards,\n\nAna & Co\n") {
+		t.Fatalf("closing or body was lost or misplaced: %s", l.Text())
+	}
+}
+
+func TestLongLetterKeepsItsLayout(t *testing.T) {
+	long := strings.Repeat("é", 2500)
+	l := NewLetter("en").Message(long).Summary(Row{Label: "Outstanding amount for invoice 2026-042", Value: "CHF 1’081.00"})
+	body := layout(Message{Subject: "Payment reminder", HTML: l.HTML()}, "https://app.example.com")
+	if !strings.Contains(body, "overflow-wrap:anywhere") || strings.Contains(body, "white-space:nowrap") {
+		t.Fatal("long messages and summary labels must wrap inside the card")
+	}
+	if strings.Contains(body, "td valign") || !strings.Contains(body, "Outstanding amount for invoice 2026-042</span><strong") {
+		t.Fatal("summary labels must be above their values")
+	}
+	if !strings.Contains(l.Text(), long) {
+		t.Fatal("the text version must preserve the sender's message")
+	}
+}
+
 func TestLetter(t *testing.T) {
 	l := NewLetter("de").Greeting("Anna").Lead("Line <1>\nline 2").Message("One\n\nTwo").
 		Summary(Row{Label: "Wann", Value: "Di, 1. Dez.\nMi, 2. Dez."}, Row{Label: "Leer"}, Row{Label: "Wo", Value: "Weg 1", Link: "https://m.example/?q=a&b", LinkText: "Karte"}).

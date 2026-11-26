@@ -2,6 +2,7 @@ package mail
 
 import (
 	"html"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -12,6 +13,7 @@ import (
 type Letter struct {
 	language   string
 	html, text strings.Builder
+	closing    string
 }
 
 // NewLetter starts a letter in a language (de, fr, it, en; anything else reads as en) for its fixed words.
@@ -23,6 +25,32 @@ type Row struct {
 	Label, Value   string
 	Hint           string
 	Link, LinkText string
+}
+
+// Link is a labelled destination in a letter.
+type Link struct{ Label, URL string }
+
+// Section keeps related links and their context together in a distinct card.
+func (l *Letter) Section(title, icon, description string, links ...Link) *Letter {
+	l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fafafa" style="width:100%;margin:0 0 12px;background-color:#fafafa;border:1px solid ` +
+		line + `"><tr><td style="padding:14px 16px"><h2 style="margin:0 0 6px;font-size:16px;line-height:22px;color:` + ink + `">`)
+	if icon != "" {
+		l.html.WriteString(`<span aria-hidden="true" style="color:` + primary + `">` + html.EscapeString(icon) + `</span> &nbsp;`)
+	}
+	l.html.WriteString(lines(title) + "</h2>")
+	l.text.WriteString(title + "\n")
+	if description != "" {
+		l.html.WriteString(`<p style="margin:0 0 8px;font-size:13px;line-height:20px;color:` + muted + `">` + lines(description) + "</p>")
+		l.text.WriteString(description + "\n")
+	}
+	l.html.WriteString(`<ul style="margin:8px 0 0;padding-left:20px">`)
+	for _, link := range links {
+		l.html.WriteString(`<li style="margin:4px 0"><a href="` + html.EscapeString(link.URL) + `">` + lines(link.Label) + `</a></li>`)
+		l.text.WriteString("- " + link.Label + ": " + link.URL + "\n")
+	}
+	l.html.WriteString("</ul></td></tr></table>\n")
+	l.text.WriteString("\n")
+	return l
 }
 
 var greetings = map[string]string{"de": "Guten Tag", "fr": "Bonjour", "it": "Buongiorno", "en": "Hello"}
@@ -40,25 +68,51 @@ func (l *Letter) Greeting(name string) *Letter {
 }
 
 // Lead is one paragraph of the message; an empty one is left out.
-func (l *Letter) Lead(s string) *Letter {
+func (l *Letter) Lead(s string, facts ...string) *Letter {
 	if s = strings.TrimSpace(s); s != "" {
-		l.html.WriteString(para + lines(s) + "</p>\n")
+		l.html.WriteString(para + highlightedLines(s, facts) + "</p>\n")
 		l.text.WriteString(s + "\n\n")
 	}
 	return l
 }
 
+// Emphasis adds a paragraph with one important value highlighted.
+func (l *Letter) Emphasis(before, value, after string) *Letter {
+	l.html.WriteString(para + html.EscapeString(before) + "<strong>" + html.EscapeString(value) + "</strong>" + html.EscapeString(after) + "</p>\n")
+	l.text.WriteString(before + value + after + "\n\n")
+	return l
+}
+
 // Message is a typed text (an email template, a message the sender wrote): a paragraph per blank-line block.
-func (l *Letter) Message(s string) *Letter {
+func (l *Letter) Message(s string, facts ...string) *Letter {
 	for p := range strings.SplitSeq(strings.ReplaceAll(s, "\r\n", "\n"), "\n\n") {
-		l.Lead(p)
+		l.Lead(p, facts...)
 	}
 	return l
 }
 
-// Summary is the panel of what the email is about: a light grey box of rows, the label muted in a column of its own
-// width (so "Signed copy" stays on one line), the value beside it, thin lines between them. Rows without a value are
-// left out.
+// DocumentMessage separates conventional closing lines from the sender’s prose so the closing follows the details.
+func (l *Letter) DocumentMessage(s string, facts ...string) *Letter {
+	paragraphs := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n\n")
+	for i := len(paragraphs) - 1; i >= 0; i-- {
+		first, _, _ := strings.Cut(strings.TrimSpace(paragraphs[i]), "\n")
+		switch strings.ToLower(strings.TrimRight(strings.TrimSpace(first), ",.!")) {
+		case "kind regards", "best regards", "regards", "sincerely", "freundliche grüsse", "freundliche grüße", "mit freundlichen grüssen", "mit freundlichen grüßen",
+			"meilleures salutations", "cordialement", "cordiali saluti", "distinti saluti":
+			l.SignOff(strings.Join(paragraphs[i:], "\n\n"))
+			return l.Message(strings.Join(paragraphs[:i], "\n\n"), facts...)
+		}
+	}
+	return l.Message(s, facts...)
+}
+
+// SignOff places a closing after all the visible message details and before the sender footer.
+func (l *Letter) SignOff(s string) *Letter {
+	l.closing = strings.TrimSpace(s)
+	return l
+}
+
+// Summary lists the details in a panel. Each value sits beneath its label, leaving the full width for both.
 func (l *Letter) Summary(rows ...Row) *Letter {
 	var h, t strings.Builder
 	for _, r := range rows {
@@ -81,12 +135,12 @@ func (l *Letter) Summary(rows ...Row) *Letter {
 			rule = "border-top:1px solid " + line + ";"
 		}
 		cell := rule + `font-family:` + fonts + `;font-size:14px;line-height:21px;`
-		h.WriteString(`<tr><td valign="top" style="` + cell + `white-space:nowrap;padding:11px 12px 11px 16px;color:` + muted + `">` + html.EscapeString(r.Label) +
-			`</td><td valign="top" width="100%" style="` + cell + `padding:11px 16px 11px 8px;font-weight:500;color:` + ink + `">` + value + "</td></tr>\n")
+		h.WriteString(`<tr><td style="` + cell + `padding:9px 14px;color:` + ink + `"><span style="display:block;font-size:12px;line-height:18px;color:` + muted + `">` +
+			lines(r.Label) + `</span><strong style="font-weight:600">` + value + "</strong></td></tr>\n")
 	}
 	if h.Len() > 0 {
 		l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="` + panel + `" style="width:100%;margin:4px 0 24px;background-color:` +
-			panel + `;border-radius:12px">` + "\n" + h.String() + "</table>\n")
+			panel + `">` + "\n" + h.String() + "</table>\n")
 		l.text.WriteString(t.String() + "\n")
 	}
 	return l
@@ -110,7 +164,7 @@ func (l *Letter) Details(rows ...Row) *Letter {
 	}
 	if h.Len() > 0 {
 		l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fafafa" style="width:100%;margin:0 0 16px;background-color:#fafafa;border:1px solid ` +
-			line + `;border-radius:10px">` + "\n" + h.String() + `<tr><td height="2" style="height:2px;font-size:0;line-height:0">&nbsp;</td></tr></table>` + "\n")
+			line + `">` + "\n" + h.String() + `<tr><td height="2" style="height:2px;font-size:0;line-height:0">&nbsp;</td></tr></table>` + "\n")
 		l.text.WriteString(t.String() + "\n")
 	}
 	return l
@@ -119,7 +173,7 @@ func (l *Letter) Details(rows ...Row) *Letter {
 // Code is a one-time code, large and set apart so it is easy to read and copy.
 func (l *Letter) Code(code string) *Letter {
 	l.html.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="` + panel + `" style="width:100%;margin:4px 0 24px;background-color:` +
-		panel + `;border-radius:12px"><tr><td align="center" style="padding:18px 16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:32px;line-height:40px;` +
+		panel + `"><tr><td align="center" style="padding:18px 16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:32px;line-height:40px;` +
 		`font-weight:700;letter-spacing:6px;color:` + ink + `">` + html.EscapeString(code) + "</td></tr></table>\n")
 	l.text.WriteString(code + "\n\n")
 	return l
@@ -130,6 +184,18 @@ func (l *Letter) Action(label, url string) *Letter {
 	if url != "" {
 		l.html.WriteString(Button(label, url))
 		l.text.WriteString(strings.TrimSuffix(strings.TrimSpace(label), " →") + ": " + url + "\n\n")
+	}
+	return l
+}
+
+// Link adds a secondary action as a text link, leaving the main button prominent.
+func (l *Letter) Link(label, url string) *Letter {
+	if url != "" {
+		l.html.WriteString(para + `<a href="` + html.EscapeString(url) + `">` + lines(label) + "</a></p>\n")
+		if label != url {
+			l.text.WriteString(label + ": ")
+		}
+		l.text.WriteString(url + "\n\n")
 	}
 	return l
 }
@@ -175,24 +241,54 @@ func (l *Letter) Attached(names ...string) *Letter {
 }
 
 // HTML is the body fragment for Message.HTML.
-func (l *Letter) HTML() string { return l.html.String() }
+func (l *Letter) HTML() string {
+	if l.closing == "" {
+		return l.html.String()
+	}
+	return l.html.String() + para + lines(l.closing) + "</p>\n"
+}
 
 // Text is the text part for Message.Text.
-func (l *Letter) Text() string { return strings.TrimRight(l.text.String(), "\n") + "\n" }
+func (l *Letter) Text() string {
+	return strings.TrimRight(l.text.String()+l.closing, "\n") + "\n"
+}
 
 // Button is the call to action's HTML: a filled, rounded cell (bgcolor for Outlook) holding a white, bold link, centred.
-// The fill is a business's near-black; layout makes it Helvetly's blue on Helvetly's own email (buttonFill).
+// The fill is a business's near-black; layout makes it Helvetly's teal on Helvetly's own email (buttonFill).
 func Button(label, url string) string {
 	label = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(label), "→"))
 	return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 24px"><tr><td align="center" ` + buttonFill +
-		`;border-radius:999px;padding:13px 30px;font-family:` + fonts + `;font-size:15px;line-height:20px;font-weight:600">` +
+		`;padding:13px 30px;font-family:` + fonts + `;font-size:15px;line-height:20px;font-weight:600">` +
 		`<a style="color:#ffffff;text-decoration:none" href="` + html.EscapeString(url) + `"><strong style="font-weight:600">` + html.EscapeString(label) + "</strong></a></td></tr></table>\n"
 }
 
 // para is a paragraph's opening tag: its own spacing, never the client's default margins.
-const para = `<p style="margin:0 0 16px">`
+const para = `<p style="margin:0 0 18px;line-height:26px">`
 
 // lines escapes s and keeps its line breaks.
 func lines(s string) string {
 	return strings.ReplaceAll(html.EscapeString(strings.TrimSpace(s)), "\n", "<br>")
+}
+
+// highlightedLines escapes the original text and emphasises only the exact supplied document facts.
+func highlightedLines(s string, facts []string) string {
+	var terms []string
+	for _, fact := range facts {
+		if fact != "" {
+			terms = append(terms, regexp.QuoteMeta(fact))
+		}
+	}
+	if len(terms) == 0 {
+		return lines(s)
+	}
+	matches := regexp.MustCompile(`\b(?:`+strings.Join(terms, "|")+`)\b`).FindAllStringIndex(s, -1)
+	var out strings.Builder
+	start := 0
+	for _, match := range matches {
+		out.WriteString(html.EscapeString(s[start:match[0]]))
+		out.WriteString("<strong>" + html.EscapeString(s[match[0]:match[1]]) + "</strong>")
+		start = match[1]
+	}
+	out.WriteString(html.EscapeString(s[start:]))
+	return strings.ReplaceAll(out.String(), "\n", "<br>")
 }

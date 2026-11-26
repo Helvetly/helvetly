@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // The engagements background job's lookups (docs/engagements-contract.md, "Automatic drafts and reminders").
@@ -29,23 +31,14 @@ func (q Q) AutoInvoiceTargets(ctx context.Context) ([]AutoInvoiceTarget, error) 
 
 // LiveWorkspaces lists the live workspaces (id and time zone) that have at least one live engagement.
 func (q Q) LiveWorkspaces(ctx context.Context) ([]Workspace, error) {
-	return q.workspaceZones(ctx, `SELECT w.id, w.timezone FROM workspaces w WHERE w.deleted_at IS NULL
+	return q.engagementWorkspaces(ctx, `SELECT w.id, w.timezone FROM workspaces w WHERE w.deleted_at IS NULL
 		AND EXISTS (SELECT 1 FROM engagements e WHERE e.workspace_id = w.id AND e.deleted_at IS NULL) ORDER BY w.id`)
 }
 
-func (q Q) workspaceZones(ctx context.Context, sql string) ([]Workspace, error) {
+func (q Q) engagementWorkspaces(ctx context.Context, sql string) ([]Workspace, error) {
 	rows, err := q.db.Query(ctx, sql)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	list := []Workspace{}
-	for rows.Next() {
-		var w Workspace
-		if err := rows.Scan(&w.ID, &w.Timezone); err != nil {
-			return nil, err
-		}
-		list = append(list, w)
-	}
-	return list, rows.Err()
+	return pgx.CollectRows(rows, pgx.RowToStructByNameLax[Workspace])
 }
