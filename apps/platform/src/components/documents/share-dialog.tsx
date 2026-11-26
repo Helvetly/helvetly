@@ -296,7 +296,7 @@ function ShareMode({
           {links.data && links.data.length > 0 && (
             <section className="grid gap-1.5" aria-label={translate('documentShareLinks')}>
               <h3 className="text-body-sm font-medium">{translate('documentShareLinks')}</h3>
-              <ul className="grid max-h-36 gap-1 overflow-y-auto">
+              <ul className="-m-1 grid max-h-38 gap-1 overflow-y-auto p-1">
                 {links.data.map((link) => (
                   <ShareLinkRow
                     key={link.id}
