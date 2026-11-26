@@ -72,7 +72,7 @@ are the reference.
   their own sessions and requests, documents shared with them and, in participants mode, invoices addressed to them and
   signature requests they sign; everything else is 404. A member who can read a client
   opens its portal as a read-only preview (`POST /api/v1/clients/{id}/portal-preview`, session-only: a hashed one-use link for 5 minutes, then a session of at most 30 with `portal_sessions.preview_by` and its own cookie beside the client's), where every write but ending it answers 403 `preview_read_only`, nothing is recorded on the client or notified, and start and end are audited (`portal.preview_*`).
-- **Client people** (`client_contacts`, `clients/contacts.go`, `clients/merge.go`, 00082): each person of a client is a
+- **Client people** (`client_contacts`, `clients/contacts.go`, `clients/merge.go`, 00083): each person of a client is a
   `contact` (billing and correspondence; exactly one primary among contacts, never a participant alone) and/or a
   `participant` (takes the service); only a company has participants (a person client is its own), checked on every
   write with the client's row lock. The client drawer's People tab shows both groups; the Overview keeps the primary

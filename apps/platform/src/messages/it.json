@@ -6109,5 +6109,7 @@
   "switchToParticipantsText": "Le fatture spostate erano intestate alla persona. Passa {company} a Partecipanti perché anche le nuove fatture delle sessioni vadano a loro. Le fatture emesse restano invariate.",
   "switchToParticipants": "Passa a Partecipanti",
   "sendToPerson": "Invia a",
-  "shareWithWholeCompany": "Tutta l’azienda"
+  "shareWithWholeCompany": "Tutta l’azienda",
+  "auditSentencePortalParticipant": "{action, select, participant_signed_in {{participant} ha effettuato l’accesso al portale di {client}} participant_signed_out {{participant} è uscito dal portale di {client}} participant_access_granted {Accesso al portale attivato per {participant} di {client}} other {Accesso al portale disattivato per {participant} di {client}}}",
+  "auditSentenceMergedIntoParticipant": "{client} è diventato partecipante di {company}; i suoi dati sono stati spostati lì"
 }

@@ -55,6 +55,11 @@ export const AUDIT_KINDS = [
   'workspace.reply_to_changed',
   'portal.preview_started',
   'portal.preview_ended',
+  'portal.participant_signed_in',
+  'portal.participant_signed_out',
+  'portal.participant_access_granted',
+  'portal.participant_access_revoked',
+  'client.merged_into_participant',
   'documents.exported',
   'imports.expired',
   'email_template.ai_written',
@@ -296,6 +301,23 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
         action,
         to: text(event.payload.to),
         hostname: text(event.payload.hostname),
+      }),
+      amount: null,
+    }
+  if (area === 'portal' && action.startsWith('participant_'))
+    return {
+      line: translate('auditSentencePortalParticipant', {
+        action,
+        participant: text(event.payload.participant_name),
+        client: text(event.payload.client_name),
+      }),
+      amount: null,
+    }
+  if (event.kind === 'client.merged_into_participant')
+    return {
+      line: translate('auditSentenceMergedIntoParticipant', {
+        client: text(event.payload.client_name),
+        company: text(event.payload.company_name),
       }),
       amount: null,
     }

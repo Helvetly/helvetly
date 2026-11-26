@@ -39,7 +39,7 @@ func (e *env) lorenzoCase(b *browser) lorenzoCase {
 		}
 	}
 	exec(`INSERT INTO closed_periods (workspace_id, month, closed_at) VALUES ($1, '2026-03', now())`, b.workspace)
-	if err := e.st.Q.LogEvent(ctx, store.FinancialEvent{WorkspaceID: b.workspace, Kind: "invoice.imported", SubjectType: "invoice",
+	if err := e.st.Q.LogEvent(ctx, store.FinancialEvent{WorkspaceID: b.workspace, Kind: "invoice.issued", SubjectType: "invoice",
 		SubjectID: "inv_003", At: time.Now(), Payload: json.RawMessage(`{"client_id":"` + person.ID + `"}`)}); err != nil {
 		e.t.Fatal(err)
 	}

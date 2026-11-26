@@ -6109,5 +6109,7 @@
   "switchToParticipantsText": "The moved invoices were addressed to the person. Switch {company} to Participants so new invoices from participants’ sessions go to them too. Issued invoices stay as they are.",
   "switchToParticipants": "Switch to Participants",
   "sendToPerson": "Send to",
-  "shareWithWholeCompany": "The whole company"
+  "shareWithWholeCompany": "The whole company",
+  "auditSentencePortalParticipant": "{action, select, participant_signed_in {{participant} signed in to the portal of {client}} participant_signed_out {{participant} signed out of the portal of {client}} participant_access_granted {Portal access turned on for {participant} of {client}} other {Portal access turned off for {participant} of {client}}}",
+  "auditSentenceMergedIntoParticipant": "{client} made a participant of {company}; their records moved there"
 }

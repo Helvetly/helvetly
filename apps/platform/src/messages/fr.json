@@ -6109,5 +6109,7 @@
   "switchToParticipantsText": "Les factures déplacées étaient adressées à la personne. Passez {company} en mode Participants pour que les nouvelles factures des séances leur soient aussi adressées. Les factures émises restent telles quelles.",
   "switchToParticipants": "Passer en mode Participants",
   "sendToPerson": "Envoyer à",
-  "shareWithWholeCompany": "Toute l’entreprise"
+  "shareWithWholeCompany": "Toute l’entreprise",
+  "auditSentencePortalParticipant": "{action, select, participant_signed_in {{participant} s’est connecté au portail de {client}} participant_signed_out {{participant} s’est déconnecté du portail de {client}} participant_access_granted {Accès au portail activé pour {participant} de {client}} other {Accès au portail désactivé pour {participant} de {client}}}",
+  "auditSentenceMergedIntoParticipant": "{client} est devenu participant de {company} ; ses données y ont été déplacées"
 }

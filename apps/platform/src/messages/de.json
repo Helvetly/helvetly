@@ -6109,5 +6109,7 @@
   "switchToParticipantsText": "Die verschobenen Rechnungen waren an die Person adressiert. Stellen Sie {company} auf Teilnehmende um, damit neue Rechnungen aus Terminen auch an sie gehen. Ausgestellte Rechnungen bleiben unverändert.",
   "switchToParticipants": "Auf Teilnehmende umstellen",
   "sendToPerson": "Senden an",
-  "shareWithWholeCompany": "Die ganze Firma"
+  "shareWithWholeCompany": "Die ganze Firma",
+  "auditSentencePortalParticipant": "{action, select, participant_signed_in {{participant} hat sich im Portal von {client} angemeldet} participant_signed_out {{participant} hat sich vom Portal von {client} abgemeldet} participant_access_granted {Portalzugang für {participant} von {client} eingeschaltet} other {Portalzugang für {participant} von {client} ausgeschaltet}}",
+  "auditSentenceMergedIntoParticipant": "{client} zu Teilnehmenden von {company} gemacht; die Datensätze wurden dorthin verschoben"
 }
