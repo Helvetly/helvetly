@@ -461,16 +461,22 @@ export function DocumentsPage() {
   const byGroup = view.type !== null || view.year !== null || view.client !== null
   const filtered = view.kinds.length > 0 || view.mine || view.date !== null || byGroup || grouping
   const searching = view.search.trim().length > 0
-  const visibleFolders: Folder[] =
+  const crumbs = pathTo(allFolders, current)
+  const onPath = new Set(crumbs.map((folder) => folder.id))
+  const folderTree = childrenOf(withoutEmptySystem(allFolders, onPath))
+  const itemCount = (folder: Folder) => folder.file_count + (folderTree.get(folder.id)?.length ?? 0)
+  const matchingFolders: Folder[] =
     view.section !== 'files' || filtered
       ? []
       : searching
         ? allFolders.filter((folder) =>
             folderLabel(folder).toLowerCase().includes(view.search.trim().toLowerCase()),
           )
-        : (childrenOf(
-            withoutEmptySystem(allFolders, new Set(pathTo(allFolders, current).map((f) => f.id))),
-          ).get(current ?? '') ?? [])
+        : (folderTree.get(current ?? '') ?? [])
+  const visibleFolders = matchingFolders.map((folder) => ({
+    ...folder,
+    itemCount: itemCount(folder),
+  }))
   if (view.sort === 'name' && view.desc) visibleFolders.reverse()
   // At a level of groups there are no files on screen (the list keeps its last page as a placeholder).
   const files = dim === null ? (list.data?.data ?? []) : []
@@ -1019,7 +1025,6 @@ export function DocumentsPage() {
     onSelect: () => downloadZip(),
   })
 
-  const crumbs = pathTo(allFolders, current)
   // ---- header tabs: the fixed "All files" and the views the person pinned. Browsing never opens a
   // tab: anything not pinned (a folder, a section from the sidebar) shows under "All files".
   const headerTabs = pinned.tabs
@@ -1160,6 +1165,9 @@ export function DocumentsPage() {
             {folders.data ? (
               <FolderTree
                 folders={allFolders}
+                tree={folderTree}
+                onPath={onPath}
+                itemCount={itemCount}
                 current={current}
                 section={view.section}
                 trashCount={trashItemsList.length}
