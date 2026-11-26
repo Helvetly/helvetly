@@ -29,6 +29,7 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordPageButton } from '@/components/record-link'
 import { TimelineItem, type TimelineTone } from '@/components/timeline'
+import { Person } from '@/components/user-avatar'
 import { errorMessage } from '@/lib/api'
 import { contentUrl, downloadUrl } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
@@ -293,7 +294,12 @@ function Details({ request }: { request: SignatureRequest }) {
           </dd>
           <dt className="text-muted-foreground">{translate('sentBy')}</dt>
           <dd className="min-w-0 truncate" title={request.created_by?.name ?? undefined}>
-            {request.created_by?.name ?? translate('someone')} · {formatDate(request.created_at)}
+            {request.created_by ? (
+              <Person person={request.created_by} size="xs" />
+            ) : (
+              translate('someone')
+            )}{' '}
+            · {formatDate(request.created_at)}
           </dd>
           {request.message?.trim() && <MessageRow message={request.message.trim()} />}
         </dl>

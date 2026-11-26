@@ -595,3 +595,30 @@ func TestAuditLogFilters(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// TestAuditLogAvatars: the log's actors and its person filter carry each person's photo, "" without one.
+func TestAuditLogAvatars(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	admin := e.join(owner.workspace, "admin")
+	if _, err := e.pool.Exec(context.Background(), `UPDATE users SET photo_key = 'k', photo_type = 'image/png', photo_size = 1,
+		photo_sha256 = repeat('a', 64) WHERE id = $1`, admin.user); err != nil {
+		t.Fatal(err)
+	}
+	want := store.UserAvatarPath + admin.user + "/avatar?v=aaaaaaaaaaaa"
+	e.logEvents(owner.workspace, &admin.user, "inv_a")
+	e.logEvents(owner.workspace, &owner.user, "inv_b")
+
+	var page struct {
+		Data []struct{ Actor *person }
+	}
+	e.do(owner, "GET", "/api/v1/audit-log", nil, 200, &page)
+	if len(page.Data) != 2 || page.Data[0].Actor.AvatarURL != want || page.Data[1].Actor.AvatarURL != "" {
+		t.Fatalf("actors: %+v", page.Data)
+	}
+	var people struct{ Data []person }
+	e.do(owner, "GET", "/api/v1/audit-log/people", nil, 200, &people)
+	if len(people.Data) != 2 || people.Data[0].AvatarURL != want || people.Data[1].AvatarURL != "" {
+		t.Fatalf("people: %+v", people.Data)
+	}
+}

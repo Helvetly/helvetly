@@ -450,7 +450,7 @@ export type Payment = {
   method: PaymentMethod
   note: string | null
   created_at: string
-  created_by: { id: string; name: string }
+  created_by: { id: string; name: string; avatar_url?: string | null }
 }
 
 export type Refund = {
@@ -460,7 +460,7 @@ export type Refund = {
   method: PaymentMethod
   note: string | null
   created_at: string
-  created_by: { id: string; name: string } | null
+  created_by: { id: string; name: string; avatar_url?: string | null } | null
 }
 
 export type Delivery = {
@@ -469,7 +469,7 @@ export type Delivery = {
   kind?: 'invoice' | 'payment_confirmation'
   to: string[]
   sent_at: string
-  sent_by: { id: string; name: string } | null
+  sent_by: { id: string; name: string; avatar_url?: string | null } | null
 }
 
 type CurrencyBalance = {

@@ -3,7 +3,7 @@
 import { request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 
-export type Person = { id: string; name: string }
+export type Person = { id: string; name: string; avatar_url?: string | null }
 export type Period = { month: string; closed_at: string; closed_by: Person | null }
 export type ActivityTotal = { currency: string; amount: string }
 export type ActivitySource = {

@@ -6,6 +6,7 @@ import { BadgeCheck, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 
 import { useOpenHref } from '@/components/record-link'
+import { UserAvatar } from '@/components/user-avatar'
 import { useApprovalInbox, type ApprovalDoc, type InboxItem } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
 import { formatMoney, kindInfo } from '@/lib/invoices'
@@ -69,6 +70,11 @@ export function ApprovalInbox({ doc, onOpen }: { doc: ApprovalDoc; onOpen: (id: 
                 onClick={() => openItem(item)}
                 className="flex w-full flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md px-2 py-1.5 text-left hover:bg-muted/60"
               >
+                <UserAvatar
+                  name={item.submitted_by.name}
+                  url={item.submitted_by.avatar_url}
+                  className="size-6"
+                />
                 <span className="min-w-0 flex-1 basis-48">
                   <span className="block truncate text-body">
                     {item.client_name || kindLabel(item)}

@@ -64,9 +64,10 @@ const auditHandlers = (events: FinancialEvent[], ok = true) => [
   http.get('/api/v1/audit-log/people', () =>
     HttpResponse.json({
       data: [
-        { id: 'usr_mock_1', name: 'Anna Muster' },
-        { id: 'usr_mock_2', name: 'Marco Bernasconi' },
-      ].filter((person) => events.some((event) => event.actor?.id === person.id)),
+        ...new Map(
+          events.flatMap((event) => (event.actor ? [[event.actor.id, event.actor]] : [])),
+        ).values(),
+      ].toSorted((a, b) => a.name.localeCompare(b.name)),
     }),
   ),
   http.get('/api/v1/audit-log/verify', () =>
@@ -139,7 +140,8 @@ export const Periods: Story = {
     await expect(canvas.getByText('Current month')).toBeVisible()
     const closedRow = canvas.getByRole('listitem', { name: last })
     await expect(within(closedRow).getByText('Closed')).toBeVisible()
-    await expect(within(closedRow).getByText(/· Anna Muster$/)).toBeVisible()
+    await expect(within(closedRow).getByText('Anna Muster')).toBeVisible()
+    await expect(closedRow).toHaveTextContent(/· AMAnna Muster/)
     const row = canvas.getByRole('listitem', { name: open })
     await expect(within(row).getByText('Open')).toBeVisible()
     await expect(await within(row).findByText(/\d+ issued/)).toBeVisible()
@@ -352,6 +354,34 @@ export const AuditLog: Story = {
     if (!row) throw new Error('The folded row is not a list item.')
     await expect(row).toHaveTextContent(/08:47.09:14/)
     await expect(row).toHaveTextContent('Marco Bernasconi')
+  },
+}
+
+/** A member with a photo shows it in the rows and the person filter; one without keeps their initials. */
+export const AuditLogPhotos: Story = {
+  parameters: AuditLog.parameters,
+  render: AuditLog.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const screen = body(canvasElement)
+    await canvas.findByRole('region', { name: 'Today' })
+    const marco = canvas.getAllByText('Marco Bernasconi')[0]!.parentElement!
+    await waitFor(() =>
+      expect(marco.querySelector('[data-slot="avatar-image"]')).toBeInTheDocument(),
+    )
+    await expect(marco).not.toHaveTextContent('MB')
+    const withoutPhoto = canvas.getAllByText('Anna Muster')[0]!.parentElement!
+    await expect(withoutPhoto.querySelector('[data-slot="avatar-image"]')).toBeNull()
+    await expect(withoutPhoto).toHaveTextContent('AM')
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Person' }))
+    const item = await screen.findByRole('menuitemradio', { name: /Marco Bernasconi/ })
+    await waitFor(() =>
+      expect(item.querySelector('[data-slot="avatar-image"]')).toBeInTheDocument(),
+    )
+    await expect(screen.getByRole('menuitemradio', { name: /Anna Muster/ })).toHaveTextContent('AM')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
   },
 }
 
