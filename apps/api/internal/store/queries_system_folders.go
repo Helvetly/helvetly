@@ -12,7 +12,7 @@ import (
 	"unicode/utf8"
 )
 
-// System folders (migrations 00040, 00044, 00078): Clients/<client>/<record type>/<year>, Expenses/<year>/<category>
+// System folders (migrations 00040, 00044, 00079): Clients/<client>/<record type>/<year>, Expenses/<year>/<category>
 // and Bank Statements/<year>. The
 // app makes them on demand and nobody renames, moves or deletes them; the stored name of a typed one is English, shown
 // translated.
