@@ -83,7 +83,13 @@ export function useWorkspaceLogo() {
 /** Where the workspace's clients sign in: its own slug and the whole portal address. */
 /** `enabled` false: the workspace turned its whole portal off (nobody signs in, no invitations). */
 /** `canonical_url`: where clients sign in, the active custom domain or else `url` (missing from an older API). */
-export type PortalAddress = { slug: string; url: string; canonical_url?: string; enabled: boolean }
+export type PortalAddress = {
+  slug: string
+  url: string
+  canonical_url?: string
+  enabled: boolean
+  feature_available?: boolean
+}
 
 /** The portal link to show, copy and open: the API's canonical address, else the slug's. */
 export const portalLinkOf = (address: PortalAddress | undefined) =>

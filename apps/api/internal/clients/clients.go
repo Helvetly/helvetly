@@ -179,7 +179,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 	}
 	id := r.PathValue("id")
 	var before, after store.Client
-	err = s.db.Tx(r.Context(), func(q store.Q) error {
+	err = s.inClient(r.Context(), sess, id, func(q store.Q) error {
 		if before, err = q.Client(r.Context(), sess.Workspace.ID, id); err != nil {
 			return err
 		}
@@ -249,14 +249,24 @@ func (s *Service) bulk(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if len(body.IDs) < 1 || len(body.IDs) > 500 {
 		invalid["ids"] = "Choose 1 to 500 clients."
 	}
-	if body.Action != "activate" && body.Action != "deactivate" && body.Action != "delete" {
-		invalid["action"] = "Choose activate, deactivate or delete."
+	switch body.Action {
+	case "activate", "deactivate", "delete", "enable_portal", "disable_portal":
+	default:
+		invalid["action"] = "Choose activate, deactivate, delete, enable_portal or disable_portal."
 	}
 	if len(invalid) > 0 {
 		return validationFailed(invalid)
 	}
 	if body.Action == "delete" && !canDelete(sess) {
 		return errForbidden
+	}
+	if body.Action == "enable_portal" || body.Action == "disable_portal" {
+		result, err := s.bulkPortal(r.Context(), sess, body.IDs, body.Action == "enable_portal")
+		if err != nil {
+			return err
+		}
+		auth.WriteJSON(w, http.StatusOK, data(result))
+		return nil
 	}
 	n, err := s.bulkClients(r.Context(), sess.Workspace.ID, body.IDs, body.Action)
 	if err != nil {

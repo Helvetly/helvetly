@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"helvetly.com/api/internal/eaddress"
 	"helvetly.com/api/internal/tags"
 )
@@ -286,6 +288,28 @@ func (q Q) BulkClients(ctx context.Context, workspaceID string, ids []string, ac
 	tag, err := q.db.Exec(ctx, `UPDATE clients SET `+set+`, updated_at = $3
 		WHERE workspace_id = $1 AND id = ANY($2) AND deleted_at IS NULL`, workspaceID, ids, now)
 	return tag.RowsAffected(), err
+}
+
+// LockClientsChangingPortal selects each live client just once, in a stable lock order for overlapping selections.
+func (q Q) LockClientsChangingPortal(ctx context.Context, workspaceID string, ids []string, enabled bool) ([]Client, error) {
+	rows, err := q.db.Query(ctx, `SELECT `+clientColumns+` FROM clients c
+		WHERE c.workspace_id = $1 AND c.id = ANY($2) AND c.deleted_at IS NULL AND c.portal_enabled <> $3
+		ORDER BY c.id FOR UPDATE OF c`, workspaceID, ids, enabled)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Client, error) { return scanClient(row) })
+}
+
+// SetClientsPortal updates the locked clients and revokes their sessions in the same transaction.
+func (q Q) SetClientsPortal(ctx context.Context, workspaceID string, ids []string, enabled bool, now time.Time) error {
+	_, err := q.db.Exec(ctx, `UPDATE clients SET portal_enabled = $3, updated_at = $4
+		WHERE workspace_id = $1 AND id = ANY($2) AND deleted_at IS NULL`, workspaceID, ids, enabled, now)
+	if err != nil || enabled {
+		return err
+	}
+	_, err = q.db.Exec(ctx, `DELETE FROM portal_sessions WHERE workspace_id = $1 AND client_id = ANY($2)`, workspaceID, ids)
+	return err
 }
 
 // ClientFilter narrows the list and the export; a nil pointer does not narrow.

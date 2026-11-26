@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"testing"
 
 	"helvetly.com/api/internal/billing"
@@ -23,9 +24,21 @@ func TestPortalNeedsPlanWithIt(t *testing.T) {
 	billingtest.On(t, e.st, b.workspace, billing.Business)
 	c := e.create(b, address("Acme"))
 	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"email": "ana@acme.ch", "portal_enabled": true}, 200, nil)
+	other, _ := e.portalClient(b)
 	invites := m.count()
+	bulk := map[string]any{"action": "enable_portal", "ids": []string{c.ID}}
+	ctx := context.Background()
+	if err := e.st.SetPortalOff(ctx, b.workspace, true); err != nil {
+		t.Fatal(err)
+	}
+	e.fails(b, "POST", "/api/v1/clients/bulk", bulk, 409, "portal_closed")
+	if err := e.st.SetPortalOff(ctx, b.workspace, false); err != nil {
+		t.Fatal(err)
+	}
 
 	billingtest.On(t, e.st, b.workspace, billing.Basic)
+	e.do(b, "POST", "/api/v1/clients/bulk", map[string]any{"action": "disable_portal", "ids": []string{other}}, 200, nil)
+	e.fails(b, "POST", "/api/v1/clients/bulk", bulk, 403, "feature_not_in_plan")
 	e.do(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"portal_enabled": false}, 200, nil)
 	e.fails(b, "PATCH", "/api/v1/clients/"+c.ID, map[string]any{"portal_enabled": true}, 403, "feature_not_in_plan")
 	if got := e.client(b, c.ID); got.PortalEnabled {

@@ -298,6 +298,13 @@ export function apiQuery(params: ListParams, paging = true) {
   return query
 }
 
+type BulkClientAction =
+  | 'activate'
+  | 'deactivate'
+  | 'delete'
+  | 'enable_portal'
+  | 'disable_portal'
+
 const path = (id: string) => `/clients/${encodeURIComponent(id)}`
 
 export const clientsApi = {
@@ -316,8 +323,8 @@ export const clientsApi = {
     request<{ data: { url: string; expires_at: string } }>(`${path(id)}/portal-preview`, {
       method: 'POST',
     }),
-  bulk: (ids: string[], action: 'activate' | 'deactivate' | 'delete') =>
-    request<{ data: { updated: number } }>('/clients/bulk', {
+  bulk: (ids: string[], action: BulkClientAction) =>
+    request<{ data: { updated: number; missing_email?: number } }>('/clients/bulk', {
       method: 'POST',
       json: { ids, action },
     }),
@@ -531,13 +538,8 @@ export function useDeleteClient() {
 export function useBulkClients() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      ids,
-      action,
-    }: {
-      ids: string[]
-      action: 'activate' | 'deactivate' | 'delete'
-    }) => clientsApi.bulk(ids, action),
+    mutationFn: ({ ids, action }: { ids: string[]; action: BulkClientAction }) =>
+      clientsApi.bulk(ids, action),
     onSuccess: (_, { ids }) => {
       for (const id of ids) void queryClient.invalidateQueries({ queryKey: clientKeys.detail(id) })
       refresh(queryClient)

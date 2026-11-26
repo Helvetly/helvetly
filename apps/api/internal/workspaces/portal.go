@@ -43,8 +43,13 @@ func (s *Service) writePortal(w http.ResponseWriter, r *http.Request, workspaceI
 		s.auth.WriteError(w, r, err)
 		return
 	}
+	available, err := s.db.FeatureAllowed(r.Context(), workspaceID, store.FeatureClientPortal)
+	if err != nil {
+		s.auth.WriteError(w, r, err)
+		return
+	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"slug": slug, "url": s.portal.URLFor(slug),
-		"canonical_url": canonical, "enabled": !off}})
+		"canonical_url": canonical, "enabled": !off, "feature_available": available}})
 }
 
 // getPortal is where the workspace's clients sign in: its slug, the whole address and whether the portal is on.

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test'
+import { http, HttpResponse } from 'msw'
+import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/test'
 
 import { ClientsPage } from '@/components/clients/clients-page'
 
@@ -27,6 +28,95 @@ type Story = StoryObj<typeof meta>
 export const List: Story = { play: shows('Keller Holzbau AG', 'Changes pending') }
 export const ListDark = dark(List)
 export const ListPhone = phone(List)
+
+const changePortal = fn()
+const portalAvailability = (enabled: boolean, feature_available: boolean) =>
+  http.get('/api/v1/workspace/portal', () =>
+    HttpResponse.json({
+      data: { slug: 'acme', url: 'https://portal.example/w/acme/', enabled, feature_available },
+    }),
+  )
+
+export const BulkPortal: Story = {
+  parameters: pageParameters('/clients', {}, [
+    portalAvailability(true, true),
+    http.post<never, { action: string; ids: string[] }>(
+      '/api/v1/clients/bulk',
+      async ({ request }) => {
+        const body = await request.json()
+        changePortal(body)
+        return HttpResponse.json({
+          data: { updated: 1, missing_email: body.action === 'enable_portal' ? 1 : 0 },
+        })
+      },
+    ),
+  ]),
+  beforeEach: () => {
+    changePortal.mockClear()
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const chooseClients = async () => {
+      await userEvent.click(
+        await body.findByRole(
+          'checkbox',
+          { name: 'Select Alpenglow Studio GmbH' },
+          { timeout: 8000 },
+        ),
+      )
+      await userEvent.click(body.getByRole('checkbox', { name: 'Select Keller Holzbau AG' }))
+    }
+    const apply = async (label: string, action: string) => {
+      const button = await body.findByRole('button', { name: label })
+      const bounds = button.getBoundingClientRect()
+      await expect(bounds.left).toBeGreaterThanOrEqual(0)
+      await expect(bounds.right).toBeLessThanOrEqual(
+        canvasElement.ownerDocument.documentElement.clientWidth,
+      )
+      await userEvent.click(button)
+      const dialog = within(await body.findByRole('dialog', { name: label }))
+      await userEvent.click(dialog.getByRole('button', { name: label }))
+      await waitFor(() =>
+        expect(changePortal).toHaveBeenLastCalledWith({ ids: ['cli_1', 'cli_2'], action }),
+      )
+      await waitFor(() => expect(body.queryByRole('toolbar', { name: 'Selected rows' })).toBeNull())
+    }
+    await chooseClients()
+    await userEvent.click(await body.findByRole('button', { name: 'Enable portal' }))
+    await body.findByRole('dialog', { name: 'Enable portal' })
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body.queryByRole('dialog', { name: 'Enable portal' })).toBeNull())
+    await expect(changePortal).not.toHaveBeenCalled()
+    await apply('Enable portal', 'enable_portal')
+    await expect(
+      await body.findByText('1 client skipped because no email address is on file.'),
+    ).toBeVisible()
+    await chooseClients()
+    await apply('Disable portal', 'disable_portal')
+    await expect(changePortal).toHaveBeenCalledTimes(2)
+  },
+}
+export const BulkPortalPhone = phone(BulkPortal)
+
+const unavailablePortal = (enabled: boolean, feature: boolean): Story => ({
+  parameters: pageParameters('/clients', {}, [portalAvailability(enabled, feature)]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(
+      await body.findByRole(
+        'checkbox',
+        { name: 'Select Alpenglow Studio GmbH' },
+        { timeout: 8000 },
+      ),
+    )
+    const toolbar = within(await body.findByRole('toolbar', { name: 'Selected rows' }))
+    await expect(toolbar.getByRole('button', { name: 'Activate' })).toBeVisible()
+    await expect(toolbar.queryByRole('button', { name: 'Enable portal' })).toBeNull()
+    await expect(toolbar.queryByRole('button', { name: 'Disable portal' })).toBeNull()
+  },
+})
+export const WorkspacePortalOff = unavailablePortal(false, true)
+export const PortalOutsidePlan = unavailablePortal(true, false)
 
 export const Detail: Story = {
   parameters: pageParameters('/clients', { id: 'cli_1' }),

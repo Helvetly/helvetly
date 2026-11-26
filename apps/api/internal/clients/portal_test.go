@@ -298,3 +298,71 @@ func TestPortalNeedsAnAddress(t *testing.T) {
 		t.Fatalf("mails = %d", m.count())
 	}
 }
+
+func TestBulkPortalEnable(t *testing.T) {
+	e, mail := newPortalEnv(t)
+	b := e.workspace()
+	newClient := func(owner *browser, name, field, email string) string {
+		body := address(name)
+		body[field] = email
+		return e.create(owner, body).ID
+	}
+	first := newClient(b, "First", "email", "first@example.com")
+	billing := newClient(b, "Billing", "billing_email", "billing@example.com")
+	alreadyOn, _ := e.portalClient(b)
+	missing := e.create(b, address("Missing")).ID
+	unselected := newClient(b, "Unselected", "email", "unselected@example.com")
+	foreignOwner := e.workspace()
+	foreign := newClient(foreignOwner, "Foreign", "email", "foreign@example.com")
+	trashed := newClient(b, "Trashed", "email", "trashed@example.com")
+	e.do(b, "DELETE", "/api/v1/clients/"+trashed, nil, 204, nil)
+
+	body := map[string]any{"action": "enable_portal", "ids": []string{first, billing, first, alreadyOn, missing, foreign, trashed}}
+	type response struct{ Data bulkPortalResult }
+	var responses [2]response
+	var wg sync.WaitGroup
+	for i := range responses {
+		wg.Go(func() { e.do(b, "POST", "/api/v1/clients/bulk", body, 200, &responses[i]) })
+	}
+	wg.Wait()
+	if responses[0].Data.Updated+responses[1].Data.Updated != 2 || responses[0].Data.MissingEmail != 1 || responses[1].Data.MissingEmail != 1 {
+		t.Fatalf("overlapping selections: %+v", responses)
+	}
+	for _, id := range []string{first, billing, alreadyOn} {
+		if !e.client(b, id).PortalEnabled {
+			t.Fatalf("portal off for %s", id)
+		}
+	}
+	if e.client(b, missing).PortalEnabled || e.client(b, unselected).PortalEnabled || e.client(foreignOwner, foreign).PortalEnabled {
+		t.Fatal("unintended portal access")
+	}
+	recipients := map[string]int{}
+	for _, m := range mail.sent {
+		recipients[m.To[0]]++
+	}
+	if len(mail.sent) != 3 || recipients["first@example.com"] != 1 || recipients["billing@example.com"] != 1 || recipients["ana@acme.ch"] != 1 {
+		t.Fatalf("recipients: %v", recipients)
+	}
+}
+
+func TestBulkPortalDisable(t *testing.T) {
+	e, mail := newPortalEnv(t)
+	b := e.workspace()
+	selected, token := e.portalClient(b)
+	_, otherToken := e.portalClient(b)
+	foreign, foreignToken := e.portalClient(e.workspace())
+	body := map[string]any{"action": "disable_portal", "ids": []string{selected, foreign}}
+	var out struct{ Data bulkPortalResult }
+	e.do(b, "POST", "/api/v1/clients/bulk", body, 200, &out)
+	if out.Data.Updated != 1 || e.client(b, selected).PortalEnabled || mail.count() != 3 {
+		t.Fatalf("disable: %+v, mails %d", out, mail.count())
+	}
+	e.do(b, "POST", "/api/v1/clients/bulk", body, 200, &out)
+	if out.Data.Updated != 0 {
+		t.Fatalf("repeat disable: %+v", out)
+	}
+	e.portalBackOn(b, selected)
+	if !e.sessionGone(token) || e.sessionGone(otherToken) || e.sessionGone(foreignToken) {
+		t.Fatal("only the selected client's original session should end")
+	}
+}
