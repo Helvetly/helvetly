@@ -154,6 +154,8 @@ export type ClientFile = {
   content_type: string
   created_at: string
   uploaded_by: { id: string; name: string; avatar_url?: string | null } | null
+  /** The kind, signed and date tags (`tags.Locked`); the list groups files by them. */
+  locked_tags?: string[]
 }
 
 export type Page<T> = {

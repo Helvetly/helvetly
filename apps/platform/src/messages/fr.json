@@ -1288,6 +1288,8 @@
   "fieldsFor": "Champs pour",
   "file": "Fichier",
   "files": "Fichiers",
+  "clientFilesSigned": "Documents signés",
+  "clientFilesOther": "Autres fichiers",
   "files2": " fichiers",
   "filesSearchOrFilterToFindTheRest": " fichiers. Recherchez ou filtrez pour trouver le reste.",
   "filesTemplatesAndSignatures": "Fichiers, modèles et signatures",

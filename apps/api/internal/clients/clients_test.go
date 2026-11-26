@@ -742,7 +742,8 @@ type fileOut struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"uploaded_by"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt  time.Time `json:"created_at"`
+	LockedTags []string  `json:"locked_tags"`
 }
 
 // multipartBody builds a files[] upload of name → content.
@@ -818,6 +819,15 @@ func TestFiles(t *testing.T) {
 	e.do(b, "GET", base, nil, 200, &list)
 	if len(list.Data) != 3 || list.Data[0].Name != "later.txt" {
 		t.Fatalf("list: %+v", list.Data)
+	}
+	// The list carries each file's kind tag, which the Files tab groups by.
+	if err := e.st.SetDocumentKind(context.Background(), b.workspace, created.Data[0].ID, "contract", time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	e.do(b, "GET", base, nil, 200, &list)
+	if i := slices.IndexFunc(list.Data, func(f fileOut) bool { return f.ID == created.Data[0].ID }); i < 0 ||
+		!slices.Contains(list.Data[i].LockedTags, "contract") {
+		t.Fatalf("kind tags: %+v", list.Data)
 	}
 	var got struct{ Data store.Client }
 	e.do(b, "GET", "/api/v1/clients/"+c.ID, nil, 200, &got)

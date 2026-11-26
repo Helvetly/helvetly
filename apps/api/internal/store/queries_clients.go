@@ -101,6 +101,7 @@ type ClientFile struct {
 	ObjectKey    string             `json:"-"`
 	SHA256       string             `json:"-"` // hex, "" when not computed
 	DocumentType ClientDocumentType `json:"-"`
+	LockedTags   []string           `json:"locked_tags,omitempty"` // the file's kind, signed and date tags (tags.Locked); only the client's list reads them
 }
 
 type Uploader struct {
@@ -540,10 +541,10 @@ const clientFileColumns = `f.id, f.name, f.size, f.content_type, f.created_at, f
 const clientFileFrom = ` FROM documents f JOIN document_links l ON l.document_id = f.id AND l.target_type = 'client'
 	LEFT JOIN users u ON u.id = f.uploaded_by WHERE l.target_id = $1 AND f.deleted_at IS NULL`
 
-func scanClientFile(row interface{ Scan(...any) error }) (ClientFile, error) {
+func scanClientFile(row interface{ Scan(...any) error }, extra ...any) (ClientFile, error) {
 	var f ClientFile
 	var uid, uname, uavatar *string
-	err := row.Scan(&f.ID, &f.Name, &f.Size, &f.ContentType, &f.CreatedAt, &f.ObjectKey, &uid, &uname, &uavatar, &f.SHA256)
+	err := row.Scan(append([]any{&f.ID, &f.Name, &f.Size, &f.ContentType, &f.CreatedAt, &f.ObjectKey, &uid, &uname, &uavatar, &f.SHA256}, extra...)...)
 	f.UploadedBy = uploader(uid, uname, uavatar)
 	return f, err
 }
@@ -621,17 +622,19 @@ func (q Q) createClientFile(ctx context.Context, workspaceID, clientID, uploader
 
 // ClientFiles: the client's live files, newest first.
 func (q Q) ClientFiles(ctx context.Context, clientID string) ([]ClientFile, error) {
-	rows, err := q.db.Query(ctx, `SELECT `+clientFileColumns+clientFileFrom+` ORDER BY f.created_at DESC, f.id DESC`, clientID)
+	rows, err := q.db.Query(ctx, `SELECT `+clientFileColumns+`, coalesce(f.locked_tags, '{}')`+clientFileFrom+` ORDER BY f.created_at DESC, f.id DESC`, clientID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	files := []ClientFile{}
 	for rows.Next() {
-		f, err := scanClientFile(rows)
+		var locked []string
+		f, err := scanClientFile(rows, &locked)
 		if err != nil {
 			return nil, err
 		}
+		f.LockedTags = locked
 		files = append(files, f)
 	}
 	return files, rows.Err()
