@@ -53,10 +53,12 @@ import { StarGlyph } from './star'
 import { FolderName } from './system-mark'
 import { Thumbnail } from './thumbnail'
 
+type FolderItem = Folder & { itemCount: number }
+
 export type ItemsProps = {
   canWrite: boolean
   layout: 'grid' | 'list'
-  folders: Folder[]
+  folders: FolderItem[]
   files: DocFile[]
   selected: ReadonlySet<ItemKey>
   focused: ItemKey | null
@@ -362,25 +364,20 @@ function ItemCheck({
   )
 }
 
-const filesAndSize = (count: number, size: number) =>
-  count === 0
+const folderSummary = (folder: FolderItem) =>
+  folder.itemCount === 0
     ? translate('empty')
-    : `${count} ${count === 1 ? 'file' : 'files'} · ${formatSize(size)}`
+    : `${translate('itemsCount', { count: folder.itemCount })} · ${formatSize(folder.total_size)}`
 
 /** A folder as a big glossy illustration, its name and what is inside. */
-function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
+function FolderTile({ props, folder }: { props: ItemsProps; folder: FolderItem }) {
   const key = folderKey(folder.id)
   const item = useItem(props, key, folderLabel(folder), folder.id, isSystemFolder(folder))
   const renaming = props.renaming === key
   return (
     <div className="group/card relative">
       <ItemMenu props={props} item={key}>
-        <Shell
-          item={item}
-          renaming={renaming}
-          title={filesAndSize(folder.total_files, folder.total_size)}
-          className={tile}
-        >
+        <Shell item={item} renaming={renaming} title={folderSummary(folder)} className={tile}>
           {folder.starred && (
             <span className="absolute top-3 right-3" title={translate('starred')}>
               <StarGlyph className="size-4" />
@@ -388,7 +385,7 @@ function FolderTile({ props, folder }: { props: ItemsProps; folder: Folder }) {
           )}
           {/* The art sits a little smaller inside the box it used to fill, so the tile keeps its size. */}
           <span className="flex aspect-[5/4] w-16 items-center justify-center @2xl:w-[90px]">
-            <FolderArt full={folder.total_files > 0} className="w-14 @2xl:w-[78px]" />
+            <FolderArt full={folder.itemCount > 0} className="w-14 @2xl:w-[78px]" />
           </span>
           <span className="block w-full min-w-0 text-center">
             {renaming ? (
@@ -522,7 +519,7 @@ function FileBadges({ file, className }: { file: DocFile; className?: string }) 
 // ---- list ----
 
 /** A folder or a file: the list shows folders first, in one table. */
-type Row = { key: ItemKey } & ({ folder: Folder } | { file: DocFile })
+type Row = { key: ItemKey } & ({ folder: FolderItem } | { file: DocFile })
 
 /** Which list sort each sortable column asks for. */
 const SORTS: Partial<Record<string, SortField>> = {
@@ -626,7 +623,7 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
               name={folderLabel(row.folder)}
               label={<FolderName folder={row.folder} />}
               isFile={false}
-              detail={filesAndSize(row.folder.total_files, row.folder.total_size)}
+              detail={folderSummary(row.folder)}
             />
           </span>
         ) : (
