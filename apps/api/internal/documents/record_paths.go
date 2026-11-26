@@ -12,8 +12,9 @@ import (
 )
 
 // Record paths: AI filing and organizing put a client's records into Clients/<client>/<record type>/<year> (contracts
-// into Clients/<client>/Documents/<year>/Contracts) and
-// expenses into Expenses/<year>/<category>, the system folders, instead of folders of their own.
+// into Clients/<client>/Documents/<year>/Contracts),
+// expenses into Expenses/<year>/<category> and bank statements into Bank Statements/<year>, the system folders,
+// instead of folders of their own.
 
 const (
 	filingClients = 200    // clients and categories listed to the model
@@ -29,7 +30,9 @@ const recordRules = "Documents of one of the listed clients (issued to them or r
 	"Clients/<the client's name exactly as listed>/Documents/<the year it was signed or starts, else the year of the " +
 	"upload>/" + store.ContractsFolderName + ", any other contract-like file to Clients/<the client>/Documents/<year>. Receipts, supplier bills and other expenses go to Expenses/<the " +
 	"listed expense category that fits, exactly as listed, or " + store.UncategorisedFolder + ">/<the year of their " +
-	"date>. Never make other folders inside Clients or Expenses."
+	"date>. Account statements of a bank or payment provider (not an invoice or receipt that only shows an IBAN) go to " +
+	store.BankStatementsFolderName + "/<the year the statement's period ends>. Never make other folders inside " +
+	"Clients, Expenses or " + store.BankStatementsFolderName + "."
 
 // recordNames: the clients and expense categories a record path may name.
 type recordNames struct {
@@ -47,7 +50,8 @@ func (s *Service) recordNames(ctx context.Context, workspaceID string) (recordNa
 	return recordNames{clients: clients, categories: categories}, err
 }
 
-// recordPlace: where a record path points; client "" for Expenses, category nil for Uncategorised.
+// recordPlace: where a record path points; client "" for Expenses and Bank Statements, category nil for
+// Uncategorised.
 type recordPlace struct {
 	clientID, kind string
 	year           int
@@ -55,13 +59,23 @@ type recordPlace struct {
 	contracts      bool // Clients/<client>/Documents/<year>/Contracts
 }
 
-// recordPath reads a path into the system folders; ok false when it does not start with Clients or Expenses, and
+// recordPath reads a path into the system folders; ok false when it does not start with Clients, Expenses or Bank
+// Statements, and
 // place nil when it does but does not fit their structure (or names no single listed client).
 func recordPath(path []string, names recordNames) (place *recordPlace, ok bool) {
 	if len(path) == 0 {
 		return nil, false
 	}
 	root := strings.ToLower(path[0])
+	if strings.EqualFold(root, store.BankStatementsFolderName) {
+		if len(path) != 2 {
+			return nil, true
+		}
+		if year, good := yearOf(path[1]); good {
+			return &recordPlace{kind: "bank_statements", year: year}, true
+		}
+		return nil, true
+	}
 	if root != "clients" && root != "expenses" {
 		return nil, false
 	}
@@ -122,6 +136,9 @@ func yearOf(s string) (int, bool) {
 func (p recordPlace) folder(ctx context.Context, q store.Q, workspaceID, userID string, now time.Time) (string, error) {
 	if p.contracts {
 		return q.ContractsFolder(ctx, workspaceID, p.clientID, p.year, userID, now)
+	}
+	if p.kind == "bank_statements" {
+		return q.BankStatementsFolder(ctx, workspaceID, p.year, userID, now)
 	}
 	if p.clientID != "" {
 		return q.ClientRecordFolder(ctx, workspaceID, p.clientID, p.kind, p.year, userID, now)

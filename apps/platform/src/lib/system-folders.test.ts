@@ -54,6 +54,20 @@ describe('folderLabel', () => {
     )
   })
 
+  it.each([
+    ['en', 'Bank Statements'],
+    ['de', 'Kontoauszüge'],
+    ['fr', 'Relevés bancaires'],
+    ['it', 'Estratti conto'],
+  ] as const)('shows the Bank Statements folder in %s', (language, label) => {
+    expect(
+      folderLabel(
+        { name: 'Bank Statements', system_kind: 'bank_statements' },
+        translator(language),
+      ),
+    ).toBe(label)
+  })
+
   it('switching the language changes only the labels of typed system folders', () => {
     const german = translator('de')
     expect(folderLabel({ name: 'Acme AG', system_kind: 'client' }, german)).toBe('Acme AG')
@@ -90,6 +104,10 @@ describe('pathLabel', () => {
     expect(pathLabel('Expenses/2025/Travel', t)).toBe('Ausgaben/2025/Travel')
     expect(pathLabel('Expenses/Uncategorised/2025', t)).toBe('Ausgaben/Uncategorised/2025')
   })
+  it('translates the Bank Statements root', () => {
+    expect(pathLabel('Bank Statements/2025', t)).toBe('Kontoauszüge/2025')
+  })
+
   it('leaves other paths alone', () => {
     expect(pathLabel('Invoices/2025', t)).toBe('Invoices/2025')
     expect(pathLabel('', t)).toBe('')

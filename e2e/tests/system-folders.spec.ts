@@ -53,12 +53,17 @@ test('an issued invoice’s PDF is filed in Clients/<client>/Invoices/<year>', a
   await expect(page.getByText(text(pdf.name)).first()).toBeVisible()
 })
 
-test('Clients and Expenses cannot be renamed, moved or deleted', async ({ api, page }) => {
+test('Clients, Expenses and Bank Statements cannot be renamed, moved or deleted', async ({
+  api,
+  page,
+}) => {
   const all = await folders(api)
   const clients = at(all, ['Clients'])
   const expenses = at(all, ['Expenses'])
+  const bank = at(all, ['Bank Statements'])
   expect(clients?.system_kind).toBe('clients')
   expect(expenses?.system_kind).toBe('expenses')
+  expect(bank?.system_kind).toBe('bank_statements')
   const mine = await api.save('/documents/folders', { name: `Mine ${Date.now()}` })
 
   const refused = async (folder: Folder | undefined) => {
@@ -75,7 +80,7 @@ test('Clients and Expenses cannot be renamed, moved or deleted', async ({ api, p
     expect(trashed.updated).toBe(0)
     expect(trashed.skipped).toHaveLength(1)
   }
-  await Promise.all([refused(clients), refused(expenses)])
+  await Promise.all([refused(clients), refused(expenses), refused(bank)])
   expect((await folders(api)).filter((f) => f.system_kind === 'clients')).toHaveLength(1)
 
   // the page shows the mark and offers no rename, move or delete for it

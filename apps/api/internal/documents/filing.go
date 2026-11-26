@@ -49,8 +49,12 @@ const filingInstructions = "You file documents in a small business's document ma
 	"new_folder to that path. When the message says the file stays in its folder, set both to null. Set " +
 	"is_completed_contract to true only for an actual completed contract or agreement (its parties named, dates and key " +
 	"terms filled in, no empty lines, blanks or [Name]-style placeholders, not marked as a template, sample or draft), " +
-	"else false; contract_reason says why in one short sentence for a contract-like file, else is empty. Use only the " +
-	"given information."
+	"else false; contract_reason says why in one short sentence for a contract-like file, else is empty. Set " +
+	"is_bank_statement to true only for an account statement of a bank or payment provider (such as UBS, PostFinance, " +
+	"Raiffeisen, Revolut or Wise, also CAMT.053 or MT940 files) that lists an account's transactions and balances, " +
+	"never for an invoice, receipt or payment slip that only shows an IBAN, else false; for a statement, " +
+	"statement_period_end is the last day of the period it covers and statement_date the day it was made " +
+	"(YYYY-MM-DD, empty when not given), else both are empty. Use only the given information."
 
 var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any{
 	"type": "object",
@@ -60,8 +64,12 @@ var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any
 		"new_folder":            map[string]any{"type": []string{"string", "null"}},
 		"is_completed_contract": map[string]any{"type": "boolean"},
 		"contract_reason":       map[string]any{"type": "string"},
+		"is_bank_statement":     map[string]any{"type": "boolean"},
+		"statement_period_end":  map[string]any{"type": "string"},
+		"statement_date":        map[string]any{"type": "string"},
 	},
-	"required":             []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason"},
+	"required": []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason",
+		"is_bank_statement", "statement_period_end", "statement_date"},
 	"additionalProperties": false,
 }}
 
@@ -163,6 +171,9 @@ type filing struct {
 	// the model's verdict on a contract (is_completed_contract, contract_reason), and the reason recorded
 	completedContract bool
 	contractReason    string
+	// the model's verdict on a bank statement (is_bank_statement) and its dates (YYYY-MM-DD, "" when unknown)
+	bankStatement            bool
+	periodEnd, statementDate string
 }
 
 func (s *Service) file(ctx context.Context, j store.FilingJob) {
@@ -290,6 +301,14 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if mayMove && decided.record == nil {
 		decided = toClient(decided, doc, listed, index.client(doc, text))
 		decided.newFolder = localName(decided.newFolder, lang) // the model may still have named it in the document's language
+		// never the bare system folder: Bank Statements/<year> or nowhere
+		if statementTag([]string{decided.newFolder}) {
+			decided.bankStatement, decided.newFolder = true, ""
+		}
+	}
+	if mayMove && bankStatement(doc, text, decided.bankStatement, decided.tags, decided.record) {
+		year := statementYear(decided.periodEnd, decided.statementDate, doc.CreatedAt, ws.Location())
+		decided = filing{tags: decided.tags, record: &recordPlace{kind: "bank_statements", year: year}}
 	}
 	if decided.record != nil && decided.record.contracts {
 		ok, reason := completedContract(doc.Name, text, decided.completedContract, decided.contractReason)
@@ -387,12 +406,16 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 		NewFolder *string  `json:"new_folder"`
 		Completed bool     `json:"is_completed_contract"`
 		Reason    string   `json:"contract_reason"`
+		Statement bool     `json:"is_bank_statement"`
+		PeriodEnd string   `json:"statement_period_end"`
+		Date      string   `json:"statement_date"`
 	}
 	if json.Unmarshal([]byte(strings.TrimSpace(text)), &out) != nil {
 		return filing{}, errSkip
 	}
 	reason := []rune(strings.Join(strings.Fields(out.Reason), " "))
-	f := filing{completedContract: out.Completed, contractReason: string(reason[:min(len(reason), 200)])}
+	f := filing{completedContract: out.Completed, contractReason: string(reason[:min(len(reason), 200)]),
+		bankStatement: out.Statement, periodEnd: out.PeriodEnd, statementDate: out.Date}
 	for _, t := range out.Tags {
 		if tag := tags.Slug(t); tag != "" && len(f.tags) < filingAITags && !slices.Contains(f.tags, tag) {
 			f.tags = append(f.tags, tag)
@@ -404,6 +427,13 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 		f.folderID = *out.FolderID
 	case out.NewFolder != nil:
 		if path, ok := splitPath(*out.NewFolder, organizeApplyDepth); ok {
+			if statementTag(path) { // a statement folder, in any language: Bank Statements/<year>
+				f.bankStatement = true
+				if _, ok := yearOf(path[len(path)-1]); ok && f.periodEnd == "" && f.statementDate == "" {
+					f.periodEnd = path[len(path)-1]
+				}
+				break
+			}
 			if place, system := recordPath(path, names); system {
 				f.record = place // nil: a made-up place in the system folders, so the file stays
 				break

@@ -187,7 +187,8 @@ func (s *Service) organizeRest(ctx context.Context, sess store.Session, lang str
 		return 0, err
 	}
 	for _, p := range proposals {
-		byID[p.DocumentID] = p
+		i := slices.IndexFunc(docs, func(d store.Document) bool { return d.ID == p.DocumentID })
+		byID[p.DocumentID] = statementProposal(p, docs[i], snippets[p.DocumentID], names, ws.Location())
 	}
 	return len(docs), nil
 }

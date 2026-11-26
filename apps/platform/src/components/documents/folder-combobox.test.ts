@@ -17,6 +17,9 @@ describe('folderProblem', () => {
     ['Clients/Acme/Documents/2027/Contracts/Renewals', 'x'],
     ['Clients/Newco', 'x'],
     ['Expenses/2026/Travel', null],
+    ['Bank Statements/2026', null],
+    ['Bank Statements/2026/UBS', 'x'],
+    ['Bank Statements/UBS', 'x'],
     ['Plain/Sub/Deeper', null],
     ['Brand new', null],
   ])('%s', (path, bad) => {

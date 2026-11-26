@@ -7,7 +7,7 @@ import (
 
 // Record: what the app knows about a file of a record, from the record itself or the system folder it sits in.
 type Record struct {
-	Kind      string // invoice, credit-note, debit-note, quote, contract, receipt, engagement; "" for none
+	Kind      string // invoice, credit-note, debit-note, quote, contract, receipt, engagement, bank-statement; "" for none
 	Period    string // YYYY-MM for a dated record; YYYY when only its year is known
 	Client    string // the client's name
 	Number    string // the record's number, such as 2026/Q/001
@@ -49,7 +49,7 @@ func prefixed(prefix, name string) string {
 // ProtectedPattern matches facts set only by the document's record or filing.
 const reservedFacts = `signed|year-[0-9]{4}(-(0[1-9]|1[0-2]))?|client-.+`
 const ReservedPattern = "^(" + reservedFacts + ")$"
-const ProtectedPattern = "^(" + reservedFacts + "|invoice|credit-note|debit-note|quote|contract|receipt|engagement)$"
+const ProtectedPattern = "^(" + reservedFacts + "|invoice|credit-note|debit-note|quote|contract|receipt|engagement|bank-statement)$"
 
 var reservedTag = regexp.MustCompile(ReservedPattern)
 

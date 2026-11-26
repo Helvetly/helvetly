@@ -175,11 +175,8 @@ export const NoFolders: Story = {
     await expect(folders.queryByRole('list', { name: 'Folder tree' })).toBeNull()
     const suggestions = within(folders.getByRole('list', { name: 'Suggested' }))
     const chips = suggestions.getAllByRole('button').map((chip) => chip.getAttribute('aria-label'))
-    await expect(chips).toEqual([
-      'Create folder Contracts',
-      'Create folder Bank statements',
-      'Create folder Tax 2026',
-    ])
+    // Bank Statements is a system folder, so it is never suggested as a plain one.
+    await expect(chips).toEqual(['Create folder Contracts', 'Create folder Tax 2026'])
     await userEvent.click(suggestions.getByRole('button', { name: 'Create folder Contracts' }))
     await waitFor(() => expect(created).toMatchObject({ name: 'Contracts' }))
   },
@@ -463,8 +460,9 @@ export const SystemFolders: Story = {
     const nav = await body.findByRole('navigation', { name: 'Folders' }, { timeout: 8000 })
     const tree = within(nav)
     const clients = await tree.findByRole('button', { name: /^Clients/ })
-    // Clients and Expenses; the plain folders have none.
-    await expect(tree.getAllByLabelText(lockTip)).toHaveLength(2)
+    // Clients, Expenses and Bank Statements; the plain folders have none.
+    await expect(tree.getAllByLabelText(lockTip)).toHaveLength(3)
+    await expect(await tree.findByRole('button', { name: /^Bank Statements/ })).toBeVisible()
     await expect(within(clients).getByLabelText(lockTip)).toBeVisible()
 
     await userEvent.pointer({ keys: '[MouseRight]', target: clients })

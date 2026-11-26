@@ -12,7 +12,8 @@ import (
 	"unicode/utf8"
 )
 
-// System folders (migrations 00040, 00044): Clients/<client>/<record type>/<year> and Expenses/<year>/<category>. The
+// System folders (migrations 00040, 00044, 00078): Clients/<client>/<record type>/<year>, Expenses/<year>/<category>
+// and Bank Statements/<year>. The
 // app makes them on demand and nobody renames, moves or deletes them; the stored name of a typed one is English, shown
 // translated.
 
@@ -21,7 +22,17 @@ var RecordFolders = map[string]string{"invoices": "Invoices", "quotes": "Quotes"
 	"signatures": "Signatures", "documents": "Documents"}
 
 // SystemRoots: the top-level system folders, by system_kind.
-var SystemRoots = map[string]string{"clients": "Clients", "expenses": "Expenses"}
+var SystemRoots = map[string]string{"clients": "Clients", "expenses": "Expenses", "bank_statements": BankStatementsFolderName}
+
+// BankStatementsFolderName: the stored name of the top-level folder of bank statements.
+const BankStatementsFolderName = "Bank Statements"
+
+// SystemRootKinds: the top-level system folders' kinds, in the order they are made.
+var SystemRootKinds = []string{"clients", "expenses", "bank_statements"}
+
+// bankStatementNames: the names of Bank Statements in the app's languages (lower case); a plain top-level folder by
+// one of them becomes it.
+var bankStatementNames = []string{"bank statements", "kontoauszüge", "relevés bancaires", "estratti conto"}
 
 // UncategorisedFolder: the stored name of the folder in Expenses for expenses without a category.
 const UncategorisedFolder = "Uncategorised"
@@ -74,12 +85,41 @@ func (q Q) ClientsFolder(ctx context.Context, workspaceID, userID string, now ti
 
 // EnsureSystemRoots makes the top-level system folders a workspace is missing.
 func (q Q) EnsureSystemRoots(ctx context.Context, workspaceID string, now time.Time) error {
-	for _, kind := range []string{"clients", "expenses"} {
-		if _, err := q.systemFolder(ctx, workspaceID, nil, kind, "", SystemRoots[kind], "", now); err != nil {
+	for _, kind := range SystemRootKinds {
+		if _, err := q.rootFolder(ctx, workspaceID, kind, "", now); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// rootFolder: the top-level system folder of kind, made when missing. Bank Statements also adopts a plain folder
+// named in another of the app's languages, renamed to its stored English name.
+func (q Q) rootFolder(ctx context.Context, workspaceID, kind, userID string, now time.Time) (string, error) {
+	if kind == "bank_statements" {
+		if err := q.LockContainer(ctx, workspaceID, nil); err != nil {
+			return "", err
+		}
+		_, err := q.db.Exec(ctx, `UPDATE document_folders SET system_kind = 'bank_statements', name = $3, updated_at = $4
+			WHERE id = (SELECT id FROM document_folders WHERE workspace_id = $1 AND parent_id IS NULL AND deleted_at IS NULL
+				AND system_kind IS NULL AND lower(name) = ANY($2)
+				AND NOT EXISTS (SELECT 1 FROM document_folders b WHERE b.workspace_id = $1 AND b.parent_id IS NULL
+					AND b.deleted_at IS NULL AND (b.system_kind = 'bank_statements' OR lower(b.name) = lower($3)))
+				ORDER BY created_at, id LIMIT 1)`, workspaceID, bankStatementNames, SystemRoots[kind], now)
+		if err != nil {
+			return "", err
+		}
+	}
+	return q.systemFolder(ctx, workspaceID, nil, kind, "", SystemRoots[kind], userID, now)
+}
+
+// BankStatementsFolder: Bank Statements/<year>, made where missing. Run it in a transaction.
+func (q Q) BankStatementsFolder(ctx context.Context, workspaceID string, year int, userID string, now time.Time) (string, error) {
+	root, err := q.rootFolder(ctx, workspaceID, "bank_statements", userID, now)
+	if err != nil {
+		return "", err
+	}
+	return q.systemFolder(ctx, workspaceID, &root, "year", "", strconv.Itoa(year), userID, now)
 }
 
 // clientFolderName: the client's name as a folder name (no slashes, at most 60 characters).
@@ -534,7 +574,7 @@ func (q Q) LooseClientFiles(ctx context.Context, limit int) ([]LooseClientFile, 
 // WorkspacesWithoutSystemRoots: up to limit workspaces missing a top-level system folder.
 func (q Q) WorkspacesWithoutSystemRoots(ctx context.Context, limit int) ([]string, error) {
 	rows, err := q.db.Query(ctx, `SELECT w.id FROM workspaces w WHERE (SELECT count(DISTINCT f.system_kind) FROM document_folders f
-		WHERE f.workspace_id = w.id AND f.parent_id IS NULL AND f.deleted_at IS NULL AND f.system_kind IN ('clients', 'expenses')) < 2
+		WHERE f.workspace_id = w.id AND f.parent_id IS NULL AND f.deleted_at IS NULL AND f.system_kind IN ('clients', 'expenses', 'bank_statements')) < 3
 		ORDER BY w.id LIMIT $1`, limit)
 	if err != nil {
 		return nil, err

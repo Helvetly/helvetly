@@ -51,7 +51,7 @@ export type TreeActions = {
   star: (folder: Folder) => void
 }
 
-const SUGGESTED = [translate('contracts'), translate('bankStatements'), translate('tax2026')]
+const SUGGESTED = [translate('contracts'), translate('tax2026')]
 const TYPES: Kind[] = ['pdf', 'image', 'spreadsheet', 'document']
 
 const row =

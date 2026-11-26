@@ -30,7 +30,7 @@ const isYear = (part: string | undefined) => /^(19\d{2}|20\d{2}|21\d{2}|2200)$/.
 export function folderProblem(path: string, existing: ReadonlySet<string>): string | null {
   const parts = clean(path).split('/').filter(Boolean)
   const root = parts[0]?.toLowerCase()
-  if (root !== 'clients' && root !== 'expenses') return null
+  if (root !== 'clients' && root !== 'expenses' && root !== 'bank statements') return null
   if (existing.has(parts.join('/').toLowerCase())) return null
   const kind = parts[2]?.toLowerCase()
   if (root === 'clients' && isYear(parts[3])) {
@@ -43,6 +43,7 @@ export function folderProblem(path: string, existing: ReadonlySet<string>): stri
       return null
   }
   if (root === 'expenses' && parts.length === 3 && isYear(parts[1])) return null
+  if (root === 'bank statements' && parts.length === 2 && isYear(parts[1])) return null
   return translate('organizeSystemOnly')
 }
 

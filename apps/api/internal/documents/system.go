@@ -11,8 +11,8 @@ import (
 )
 
 // System folders (store/queries_system_folders.go): Clients/<client>/<record type>/<year> (and
-// Clients/<client>/Documents/<year>/Contracts) and
-// Expenses/<year>/<category>. Nobody renames, moves or deletes them; typed ones are stored by their English name and
+// Clients/<client>/Documents/<year>/Contracts),
+// Expenses/<year>/<category> and Bank Statements/<year>. Nobody renames, moves or deletes them; typed ones are stored by their English name and
 // answered in the asker's language.
 
 var errSystemFolder = refuse(http.StatusConflict, "system_folder",
@@ -20,11 +20,11 @@ var errSystemFolder = refuse(http.StatusConflict, "system_folder",
 
 // systemNames: the names of the typed system folders in the other languages (English is the stored name).
 var systemNames = map[string]map[string]string{
-	"de": {"clients": "Kunden", "expenses": "Ausgaben", "invoices": "Rechnungen", "quotes": "Offerten",
+	"de": {"clients": "Kunden", "expenses": "Ausgaben", "bank_statements": "Kontoauszüge", "invoices": "Rechnungen", "quotes": "Offerten",
 		"engagements": "Aufträge", "signatures": "Unterschriften", "documents": "Dokumente", "contracts": "Verträge", "uncategorised": "Ohne Kategorie"},
-	"fr": {"clients": "Clients", "expenses": "Dépenses", "invoices": "Factures", "quotes": "Devis",
+	"fr": {"clients": "Clients", "expenses": "Dépenses", "bank_statements": "Relevés bancaires", "invoices": "Factures", "quotes": "Devis",
 		"engagements": "Mandats", "signatures": "Signatures", "documents": "Documents", "contracts": "Contrats", "uncategorised": "Sans catégorie"},
-	"it": {"clients": "Clienti", "expenses": "Spese", "invoices": "Fatture", "quotes": "Preventivi",
+	"it": {"clients": "Clienti", "expenses": "Spese", "bank_statements": "Estratti conto", "invoices": "Fatture", "quotes": "Preventivi",
 		"engagements": "Incarichi", "signatures": "Firme", "documents": "Documenti", "contracts": "Contratti", "uncategorised": "Senza categoria"},
 }
 
@@ -190,7 +190,7 @@ func (s *Service) backfillExpenseFolders(ctx context.Context, batch int) error {
 	}
 }
 
-// hasSystemRoots: both top-level system folders are among folders.
+// hasSystemRoots: every top-level system folder is among folders.
 func hasSystemRoots(folders []store.Folder) bool {
 	found := map[string]bool{}
 	for _, f := range folders {
@@ -198,7 +198,12 @@ func hasSystemRoots(folders []store.Folder) bool {
 			found[*f.SystemKind] = true
 		}
 	}
-	return found["clients"] && found["expenses"]
+	for _, kind := range store.SystemRootKinds {
+		if !found[kind] {
+			return false
+		}
+	}
+	return true
 }
 
 // BackfillAutoTags tags pending files and restores protected facts dismissed before they became read-only.

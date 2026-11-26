@@ -31,6 +31,7 @@ it('protects automatic record kinds, dates, signed status and clients', () => {
     'quote',
     'receipt',
     'engagement',
+    'bank-statement',
     'contract',
     'signed',
     'client-sample',

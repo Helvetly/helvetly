@@ -8,6 +8,7 @@ const kinds = new Map<string, Parameters<typeof translate>[0]>([
   ['contract', 'contract'],
   ['receipt', 'receipt'],
   ['engagement', 'documentTagEngagement'],
+  ['bank-statement', 'bankStatement'],
   ['signed', 'signed'],
 ] as const)
 const date = /^year-(\d{4}(?:-(?:0[1-9]|1[0-2]))?)$/
