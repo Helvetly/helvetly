@@ -132,7 +132,10 @@ func recordLabel(kind string) (label, tag string) {
 	case "debit_note":
 		return "debit note", "debit-note"
 	case "proforma":
-		return "pro forma invoice", "invoice"
+		return "pro forma invoice", tags.InvoiceKinds[kind]
+	}
+	if tag := tags.InvoiceKinds[kind]; tag != "" {
+		return "invoice", tag
 	}
 	return "invoice", "invoice"
 }

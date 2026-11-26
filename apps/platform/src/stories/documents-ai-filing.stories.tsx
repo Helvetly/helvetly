@@ -159,8 +159,9 @@ export const AutomaticTagsMuted: Story = {
         http.get('/api/v1/documents/doc_a', () =>
           HttpResponse.json({
             data: file('doc_a', {
-              tags: ['urgent', 'invoice', 'year-2026-02', 'client-acme-ag', '2026-in-005'],
-              auto_tags: ['invoice', 'year-2026-02', 'client-acme-ag', '2026-in-005'],
+              tags: ['urgent', 'invoice', 'year-2026-02', 'acme-ag', '2026-in-005'],
+              auto_tags: ['invoice', 'year-2026-02', 'acme-ag', '2026-in-005'],
+              locked_tags: ['invoice', 'year-2026-02', '2026-in-005'],
             }),
           }),
         ),
@@ -177,14 +178,15 @@ export const AutomaticTagsMuted: Story = {
     await expect(auto).toHaveAttribute('data-auto-tag')
     await expect(auto).toHaveAttribute('data-variant', 'outline')
     await expect(body.getByText('urgent')).not.toHaveAttribute('data-auto-tag')
-    // A year, client or signed tag comes from the record and cannot be removed.
+    // A kind, date, signed or record number tag follows the record and cannot be removed.
     auto.focus()
     await expect(
-      await body.findByRole('tooltip', { name: /Set automatically from this document/ }),
+      await body.findByRole('tooltip', { name: /Follows this document’s record or filing/ }),
     ).toBeInTheDocument()
     auto.blur()
     await waitFor(() => expect(body.queryByRole('tooltip')).not.toBeInTheDocument())
-    body.getByText('2026-in-005').focus()
+    // The client's tag is automatic too, but a person may remove it.
+    body.getByText('acme-ag').focus()
     await expect(
       await body.findByRole('tooltip', { name: /Added automatically/ }),
     ).toBeInTheDocument()

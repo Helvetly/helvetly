@@ -108,15 +108,21 @@ are the reference.
   the model files outside Clients goes to the client's folder when the file names one client (whole name or UID). When organizing existing documents, a contract tag also puts a document in its
   client's Contracts folder when its client and year are known, unless the file name marks a template, sample or draft.
 - **Automatic tags** (`tags.Auto`, `store/queries_document_autotags.go`): a file's tags say what it is, from its record
-  first, then its system folder: the kind (`invoice`, `credit-note`, `debit-note`, `quote`, `contract`, `receipt`,
-  `engagement`), `signed` once its signature request completed, `year-<yyyy-mm>` (year only if the month is unknown), `client-<name>`, the record's number
-  (`2026-q-001`), `expense-<category>` and `from-quote-<number>`. `store.AutoTag` runs inside the writes that file
-  (`CreateDocument`, `UpdateDocument`, `AddDocumentLink`, `AddQuoteContract`, `AddQuoteRevision`,
-  `CompleteSignatureRequest`) and at startup for untagged files and previously dismissed protected tags (`BackfillAutoTags`).
-  `documents.auto_tags` names them (outlined chips); one no longer computed leaves, one a person removes
-  (`SetOwnDocumentTags`) goes to `removed_auto_tags` and never comes back. The automatic record kind, `signed`, date
-  and `client-<name>` tags follow the record or folder and cannot be changed by hand. The app's own tag writes
-  (`SetDocumentTags`) keep them, and they take no room of a person's 10.
+  first, then its system folder, then its `documents.filed_kind` (the kind AI filing or organizing found, or a client
+  document's upload type): the kind (`tags.Kinds`, one line each: every invoice kind through `tags.InvoiceKinds`, a test
+  failing for a kind without one, plus `quote`, `contract`, `engagement`, `receipt`, `payment-confirmation`, `consent`,
+  `power-of-attorney`), `signed` once its signature request completed, `year-<yyyy-mm>` (year only if the month is
+  unknown), the client's name (`tags.ClientTag`: its slug, `client-<slug>` only when the slug reads as another automatic
+  tag), the record's number (`2026-q-001`), `expense-<category>` and `from-quote-<number>`. `store.AutoTag` runs inside
+  the writes that file (`CreateDocument`, `UpdateDocument`, `AddDocumentLink`, `AddQuoteContract`, `AddQuoteRevision`,
+  `CompleteSignatureRequest`, `SetDocumentKind`, a client's rename) and at startup for files not yet current
+  (`BackfillAutoTags`). `documents.auto_tags` names them (outlined chips), `documents.locked_tags` those only the record
+  or filing sets (`tags.Locked`: kind, signed, date, number): they always follow it, nobody removes them, and kind,
+  signed and date tags (`tags.ProtectedPattern`) are never typed onto a file by a person (422) or the AI's free tags. One
+  no longer computed leaves; another one a person removes (`SetOwnDocumentTags`), such as the client's, goes to
+  `removed_auto_tags` and never comes back, also after the client's rename. The app's own tag writes (`SetDocumentTags`)
+  keep them, and they take no room of a person's 10. The platform's kind labels (`lib/document-tags.ts`) are held to
+  `tags.Kinds` by a Go test.
 - **Document sharing** (`internal/documents/shares.go`, `share_links.go`): client portal shares optionally expire.
   The portal checks expiry for lists and downloads, and streams time-limited shares directly. Public share links are
   session-managed and revocable (`document_share_links`), with only a hash of the random token stored. The link puts

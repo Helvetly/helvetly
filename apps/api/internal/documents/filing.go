@@ -49,8 +49,8 @@ const filingInstructions = "You file documents in a small business's document ma
 	"new_folder to that path. When the message says the file stays in its folder, set both to null. Set " +
 	"is_completed_contract to true only for an actual completed contract or agreement (its parties named, dates and key " +
 	"terms filled in, no empty lines, blanks or [Name]-style placeholders, not marked as a template, sample or draft), " +
-	"else false; contract_reason says why in one short sentence for a contract-like file, else is empty. Use only the " +
-	"given information."
+	"else false; contract_reason says why in one short sentence for a contract-like file, else is empty. " + kindRule +
+	" Use only the given information."
 
 var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any{
 	"type": "object",
@@ -60,10 +60,38 @@ var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any
 		"new_folder":            map[string]any{"type": []string{"string", "null"}},
 		"is_completed_contract": map[string]any{"type": "boolean"},
 		"contract_reason":       map[string]any{"type": "string"},
+		"kind":                  kindSchema,
 	},
-	"required":             []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason"},
+	"required":             []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason", "kind"},
 	"additionalProperties": false,
 }}
+
+// kindSchema: the kind AI filing and organizing name for a file, one of tags.Kinds or "other".
+var kindSchema = map[string]any{"type": "string", "enum": append(slices.Clone(tags.Kinds), "other")}
+
+const kindRule = "Set kind to what the document is, one of the listed values, else other: payment-confirmation for a " +
+	"payment confirmation or proof of payment (a bank transfer confirmation, Zahlungsbestätigung, confirmation de " +
+	"paiement, conferma di pagamento, a provider's payment receipt), receipt for a purchase receipt, consent and " +
+	"power-of-attorney for a signed consent or power of attorney."
+
+// modelTags: the model's tags as tags (at most filingAITags) and its kind: the kind field, else a kind among its tags.
+// A kind, signed or date tag is never a free tag: those come only from the record or filing.
+func modelTags(raw []string, kind string) ([]string, string) {
+	out := []string{}
+	for _, t := range raw {
+		tag := tags.Slug(t)
+		if !tags.Kind(kind) && tags.Kind(tag) {
+			kind = tag
+		}
+		if tag != "" && !tags.Protected(tag) && len(out) < filingAITags && !slices.Contains(out, tag) {
+			out = append(out, tag)
+		}
+	}
+	if !tags.Kind(kind) {
+		kind = ""
+	}
+	return out, kind
+}
 
 // SetFiler turns AI filing on: the model, the budget its calls are counted in and how a file's text is read (the
 // imports' reader, passed in because imports reaches documents through employees). Without it (no model) uploads
@@ -158,6 +186,7 @@ func (s *Service) FileDue(ctx context.Context) error {
 // (a place in the system folders).
 type filing struct {
 	tags                []string
+	kind                string // one of tags.Kinds, "" for none
 	folderID, newFolder string
 	record              *recordPlace
 	// the model's verdict on a contract (is_completed_contract, contract_reason), and the reason recorded
@@ -238,7 +267,7 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 		if err := s.filingGate(ctx, s.db.Q, ws.ID, j.UserID); err != nil {
 			return err
 		}
-		f := filing{tags: []string{m.tag}}
+		f := filing{kind: m.tag}
 		if mayMove {
 			f.record = &m.place
 		}
@@ -387,17 +416,14 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 		NewFolder *string  `json:"new_folder"`
 		Completed bool     `json:"is_completed_contract"`
 		Reason    string   `json:"contract_reason"`
+		Kind      string   `json:"kind"`
 	}
 	if json.Unmarshal([]byte(strings.TrimSpace(text)), &out) != nil {
 		return filing{}, errSkip
 	}
 	reason := []rune(strings.Join(strings.Fields(out.Reason), " "))
 	f := filing{completedContract: out.Completed, contractReason: string(reason[:min(len(reason), 200)])}
-	for _, t := range out.Tags {
-		if tag := tags.Slug(t); tag != "" && len(f.tags) < filingAITags && !slices.Contains(f.tags, tag) {
-			f.tags = append(f.tags, tag)
-		}
-	}
+	f.tags, f.kind = modelTags(out.Tags, out.Kind)
 	switch {
 	case !mayMove:
 	case out.FolderID != nil && folders[*out.FolderID]:
@@ -483,6 +509,12 @@ func (s *Service) applyFiling(ctx context.Context, j store.FilingJob, ws store.W
 			if err := q.SetDocumentTags(ctx, ws.ID, cur.ID, append(slices.Clone(cur.Tags), rec.Tags...), s.now()); err != nil {
 				return err
 			}
+		}
+		if f.kind != "" { // recorded with the filing's tags, so Undo knows it set the kind
+			if err := q.SetDocumentKind(ctx, ws.ID, cur.ID, f.kind, s.now()); err != nil {
+				return err
+			}
+			rec.Tags = append([]string{f.kind}, rec.Tags...)
 		}
 		if j.MayMove && cur.FolderID == nil && !cur.MoveLocked(s.today()) {
 			target, created, err := s.filingFolder(ctx, q, ws.ID, j.UserID, f)
@@ -579,6 +611,11 @@ func (s *Service) undoFiling(w http.ResponseWriter, r *http.Request, sess store.
 		}
 		if cur.DeletedAt != nil {
 			return errTrashed
+		}
+		if slices.ContainsFunc(rec.Tags, tags.Kind) {
+			if err := q.SetDocumentKind(ctx, sess.Workspace.ID, id, "", s.now()); err != nil {
+				return err
+			}
 		}
 		kept := slices.DeleteFunc(slices.Clone(cur.Tags), func(t string) bool { return slices.Contains(rec.Tags, t) })
 		if len(kept) != len(cur.Tags) {

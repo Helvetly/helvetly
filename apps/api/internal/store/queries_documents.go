@@ -48,7 +48,9 @@ type Document struct {
 	Previewable   bool            `json:"previewable"` // set by internal/documents
 	SHA256        *string         `json:"sha256"`
 	Tags          []string        `json:"tags"`
-	AutoTags      []string        `json:"auto_tags"` // those of Tags the app set (tags.Auto)
+	AutoTags      []string        `json:"auto_tags"`   // those of Tags the app set (tags.Auto)
+	LockedTags    []string        `json:"locked_tags"` // those of AutoTags only the record or filing sets (tags.Locked)
+	FiledKind     string          `json:"-"`           // the kind AI filing or organizing recorded, or a client document's type
 	AIFiling      *Filing         `json:"ai_filing"`
 	Links         []DocumentLink  `json:"links"`
 	SharedWith    []DocumentShare `json:"shared_with"` // clients that see it in portal, newest first
@@ -419,7 +421,7 @@ func collect(rows interface {
 var documentSelect = `SELECT d.id, d.name, d.folder_id, f.name, d.size, d.content_type, d.sha256, d.object_key,
 		d.created_at, d.updated_at, d.deleted_at, d.trashed_with, u.id, u.name, ` + avatarColumn + `, x.id, x.name, ` + avatarOf("x") + `, ` + retentionSQL + `,
 		d.tags, ff.status, ff.folder_id, fl.name, coalesce(ff.created_folder, false), coalesce(ff.tags, '{}'),
-		f.system_kind, fl.system_kind, d.auto_tags, ` + recordFileSQL + `
+		f.system_kind, fl.system_kind, d.auto_tags, d.locked_tags, coalesce(d.filed_kind, ''), ` + recordFileSQL + `
 	FROM documents d LEFT JOIN document_folders f ON f.id = d.folder_id AND f.deleted_at IS NULL
 	LEFT JOIN users u ON u.id = d.uploaded_by LEFT JOIN users x ON x.id = d.deleted_by
 	LEFT JOIN document_filings ff ON ff.document_id = d.id
@@ -431,7 +433,7 @@ func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, 
 	var filed Filing
 	err := row.Scan(append([]any{&d.ID, &d.Name, &d.FolderID, &folderName, &d.Size, &d.ContentType, &d.SHA256, &d.ObjectKey,
 		&d.CreatedAt, &d.UpdatedAt, &d.DeletedAt, &d.TrashedWith, &uid, &uname, &uavatar, &xid, &xname, &xavatar, &d.RetainedUntil,
-		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags, &folderKind, &filedKind, &d.AutoTags, &d.RecordFile}, extra...)...)
+		&d.Tags, &filing, &filedID, &filedName, &filed.CreatedFolder, &filed.Tags, &folderKind, &filedKind, &d.AutoTags, &d.LockedTags, &d.FiledKind, &d.RecordFile}, extra...)...)
 	if filing != nil {
 		filed.Status = *filing
 		if filedID != nil && filedName != nil {
@@ -453,6 +455,9 @@ func scanDocument(row interface{ Scan(...any) error }, extra ...any) (Document, 
 	}
 	if d.AutoTags == nil {
 		d.AutoTags = []string{}
+	}
+	if d.LockedTags == nil {
+		d.LockedTags = []string{}
 	}
 	return d, err
 }
@@ -550,24 +555,35 @@ func (q Q) UpdateDocument(ctx context.Context, workspaceID, id, name string, fol
 	return q.AutoTag(ctx, workspaceID, id, now)
 }
 
-// SetDocumentTags replaces a live file's tags for the app (AI filing, organizing, undo); its automatic tags stay.
+// SetDocumentTags replaces a live file's tags for the app (AI filing, organizing, undo); its automatic tags stay, and a
+// kind, signed or date tag it does not already have is left out (those come only from the record or filing).
 func (q Q) SetDocumentTags(ctx context.Context, workspaceID, id string, tags []string, now time.Time) error {
 	_, err := q.db.Exec(ctx, `UPDATE documents SET updated_at = $4,
 			tags = ARRAY(SELECT t FROM unnest($3::text[]) WITH ORDINALITY a(t, i) WHERE t !~ $5 OR t = ANY(documents.tags) OR t = ANY(auto_tags) ORDER BY i)
 			|| ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE NOT t = ANY($3::text[]) ORDER BY i)
-		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now, doctags.ReservedPattern)
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now, doctags.ProtectedPattern)
 	return err
 }
 
-// SetOwnDocumentTags replaces editable tags, keeping protected automatic tags even for older clients.
+// SetDocumentKind records the kind AI filing or organizing found, or a client document's type, ("" for none) and retags the file.
+func (q Q) SetDocumentKind(ctx context.Context, workspaceID, id, kind string, now time.Time) error {
+	if _, err := q.db.Exec(ctx, `UPDATE documents SET filed_kind = nullif($3, '') WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL`,
+		workspaceID, id, kind); err != nil {
+		return err
+	}
+	return q.AutoTag(ctx, workspaceID, id, now)
+}
+
+// SetOwnDocumentTags replaces a person's editable tags. The locked automatic tags (locked_tags) always stay, even for
+// older clients; another automatic tag the person leaves out goes to removed_auto_tags and never comes back.
 func (q Q) SetOwnDocumentTags(ctx context.Context, workspaceID, id string, tags []string, now time.Time) error {
 	_, err := q.db.Exec(ctx, `UPDATE documents SET
-			tags = $3::text[] || ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE t ~ $5 AND NOT t = ANY($3::text[]) ORDER BY i),
+			tags = $3::text[] || ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE t = ANY(locked_tags) AND NOT t = ANY($3::text[]) ORDER BY i),
 			updated_at = $4,
-			auto_tags = ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE t ~ $5 OR t = ANY($3::text[]) ORDER BY i),
+			auto_tags = ARRAY(SELECT t FROM unnest(auto_tags) WITH ORDINALITY a(t, i) WHERE t = ANY(locked_tags) OR t = ANY($3::text[]) ORDER BY i),
 			removed_auto_tags = ARRAY(SELECT unnest(removed_auto_tags) UNION
-				SELECT t FROM unnest(auto_tags) a(t) WHERE t !~ $5 AND NOT t = ANY($3::text[]))
-		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now, doctags.ProtectedPattern)
+				SELECT t FROM unnest(auto_tags) a(t) WHERE NOT t = ANY(locked_tags) AND NOT t = ANY($3::text[]))
+		WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL AND NOT hr_private`, workspaceID, id, tags, now)
 	return err
 }
 

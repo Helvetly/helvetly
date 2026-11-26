@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"helvetly.com/api/internal/eaddress"
+	"helvetly.com/api/internal/tags"
 )
 
 // Clients, their contacts and files (docs/clients-contract.md). The structs are the API's JSON as well.
@@ -228,15 +230,51 @@ func (q Q) UpdateClient(ctx context.Context, workspaceID, id string, fields map[
 	for i, col := range cols {
 		set += ", " + col + " = $" + strconv.Itoa(4+i)
 	}
-	tag, err := q.db.Exec(ctx, `UPDATE clients SET `+set+` WHERE workspace_id = $1 AND id = $2 AND deleted_at IS NULL`,
-		append([]any{workspaceID, id, now}, args...)...)
-	if err != nil || tag.RowsAffected() != 1 {
+	var before string
+	err = q.db.QueryRow(ctx, `UPDATE clients c SET `+set+` FROM (SELECT name FROM clients WHERE workspace_id = $1 AND id = $2 FOR UPDATE) old
+		WHERE c.workspace_id = $1 AND c.id = $2 AND c.deleted_at IS NULL RETURNING old.name`,
+		append([]any{workspaceID, id, now}, args...)...).Scan(&before)
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	} else if err != nil {
 		return false, err
 	}
 	if name, ok := fields["name"].(string); ok {
+		if err := q.retagClient(ctx, workspaceID, before, name, now); err != nil {
+			return false, err
+		}
 		return true, q.RenameClientFolder(ctx, workspaceID, id, name, now)
 	}
 	return true, nil
+}
+
+// retagClient gives the files tagged with a client's old name its new one (tags.ClientTag); a person who removed the
+// old tag has the new one removed too.
+// shortcut: files of another client whose name makes the same tag are retagged too (harmless: AutoTag recomputes their
+// own) and share its removal; key removals by client if two clients of a workspace ever need to differ.
+func (q Q) retagClient(ctx context.Context, workspaceID, before, after string, now time.Time) error {
+	old, next := tags.ClientTag(before), tags.ClientTag(after)
+	if old == next || old == "" {
+		return nil
+	}
+	rows, err := q.db.Query(ctx, `UPDATE documents SET removed_auto_tags = ARRAY(SELECT DISTINCT CASE WHEN t IN ($2, 'client-' || $2) THEN $3 ELSE t END
+			FROM unnest(removed_auto_tags) a(t))
+		WHERE workspace_id = $1 AND deleted_at IS NULL AND NOT hr_private
+			AND ($2 = ANY(auto_tags) OR $2 = ANY(removed_auto_tags) OR 'client-' || $2 = ANY(removed_auto_tags))
+		RETURNING id`, workspaceID, old, next)
+	if err != nil {
+		return err
+	}
+	ids, err := collect(rows)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err := q.AutoTag(ctx, workspaceID, id, now); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // BulkClients applies activate, deactivate or delete to the live clients among ids and counts them.
@@ -497,6 +535,9 @@ var clientDocumentFolders = map[ClientDocumentType]string{
 	"other":                "Other",
 }
 
+// clientDocumentKinds: the kind tag (tags.Kinds) of a client document type a folder alone does not say.
+var clientDocumentKinds = map[ClientDocumentType]string{"consent": "consent", "power_of_attorney": "power-of-attorney"}
+
 func (t ClientDocumentType) Valid() bool {
 	_, ok := clientDocumentFolders[t]
 	return ok
@@ -545,6 +586,11 @@ func (q Q) createClientFile(ctx context.Context, workspaceID, clientID, uploader
 	if err := q.CreateDocument(ctx, workspaceID, uploaderID, Document{ID: f.ID, FolderID: &folder, Name: f.Name, Size: f.Size,
 		ContentType: f.ContentType, SHA256: sum, ObjectKey: f.ObjectKey, CreatedAt: f.CreatedAt}); err != nil {
 		return err
+	}
+	if kind := clientDocumentKinds[f.DocumentType]; kind != "" {
+		if _, err := q.db.Exec(ctx, `UPDATE documents SET filed_kind = $3 WHERE workspace_id = $1 AND id = $2`, workspaceID, f.ID, kind); err != nil {
+			return err
+		}
 	}
 	return q.AddDocumentLink(ctx, workspaceID, f.ID, "client", clientID, uploaderID, f.CreatedAt)
 }
