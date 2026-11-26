@@ -129,6 +129,29 @@ func mustCII(t *testing.T, inv store.Invoice) string {
 	return compact(out)
 }
 
+func TestInternalNoteStaysOutOfInvoiceXML(t *testing.T) {
+	inv := dated()
+	inv.Note = ptr("Private context for workspace staff")
+	factur, err := FacturXML(inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for format, xml := range map[string]string{
+		"UBL":      mustUBL(t, inv, "xrechnung"),
+		"CII":      mustCII(t, inv),
+		"Factur-X": string(factur),
+	} {
+		t.Run(format, func(t *testing.T) {
+			if strings.Contains(xml, *inv.Note) {
+				t.Error("internal note reached the invoice XML")
+			}
+			if !strings.Contains(xml, *inv.Intro) || !strings.Contains(xml, *inv.Footer) {
+				t.Error("public invoice text is missing from the XML")
+			}
+		})
+	}
+}
+
 var betweenTags = regexp.MustCompile(`>\s+<`)
 
 // compact drops the indentation so a test can look for adjacent elements.

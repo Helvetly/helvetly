@@ -88,10 +88,10 @@ func (d doc) sellerContact(required bool) (*Contact, error) {
 	return &c, nil
 }
 
-// note is BT-22: intro, note and footer as one note (Peppol allows only one, R002).
+// note is BT-22: the public intro and footer share the single note Peppol permits (R002).
 func (d doc) note() string {
 	var parts []string
-	for _, p := range []*string{d.inv.Intro, d.inv.Note, d.inv.Footer} {
+	for _, p := range []*string{d.inv.Intro, d.inv.Footer} {
 		if t := strings.TrimSpace(deref(p)); t != "" {
 			parts = append(parts, t)
 		}

@@ -79,7 +79,7 @@ func TestCIUSRORefusesWhatANAFRejects(t *testing.T) {
 		{"Romanian buyer without county", func(i *store.Invoice) { i.Buyer.Region = nil }, "county"},
 		{"Bucharest buyer without sector", func(i *store.Invoice) { i.Buyer.Region = ptr("RO-B") }, "sector"},
 		{"buyer without street", func(i *store.Invoice) { i.Buyer.Street = "" }, "street and city"},
-		{"notes over 300", func(i *store.Invoice) { i.Note = ptr(strings.Repeat("n", 301)) }, "300 characters"},
+		{"public text over 300", func(i *store.Invoice) { i.Intro = ptr(strings.Repeat("n", 301)) }, "300 characters"},
 		{"line name over 100", func(i *store.Invoice) { i.Lines[0].Description = long }, "line 1"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
