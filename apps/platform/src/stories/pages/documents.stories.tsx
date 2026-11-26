@@ -1465,8 +1465,9 @@ export const ProtectedDocumentTags: Story = {
       HttpResponse.json({
         data: {
           ...sampleFiles[0],
-          tags: ['invoice', 'signed', 'year-2026-02', 'client-acme', 'urgent'],
-          auto_tags: ['invoice', 'signed', 'year-2026-02', 'client-acme'],
+          tags: ['urgent', 'invoice', 'signed', 'year-2026-02', 'acme', '2026-in-005'],
+          auto_tags: ['invoice', 'signed', 'year-2026-02', 'acme', '2026-in-005'],
+          locked_tags: ['invoice', 'signed', 'year-2026-02', '2026-in-005'],
         },
       }),
     ),
@@ -1475,15 +1476,25 @@ export const ProtectedDocumentTags: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('button', { name: 'Edit' }))
     await Promise.all(
-      ['Invoice', 'Signed', '2026-02', 'Client: acme'].map(async (tag) => {
+      ['Invoice', 'Signed', '2026-02', '2026-in-005'].map(async (tag) => {
         await expect(body.getByText(tag, { selector: '[data-auto-tag]' })).toBeVisible()
         await expect(body.queryByRole('button', { name: `Remove ${tag}` })).toBeNull()
       }),
     )
+    // A free tag and the client's automatic tag keep their remove control.
     await expect(body.getByRole('button', { name: 'Remove urgent' })).toBeVisible()
-    await userEvent.type(body.getByRole('textbox', { name: 'Tags' }), 'year-2031-09{Enter}')
-    await expect(body.getByText('Set automatically from this document’s record.')).toBeVisible()
-    await expect(body.queryByRole('button', { name: 'Remove year-2031-09' })).toBeNull()
+    await expect(body.getByRole('button', { name: 'Remove acme' })).toBeVisible()
+    // Kind, date and signed tags cannot be typed onto a file.
+    const refused = async (typed: string) => {
+      await userEvent.type(body.getByRole('textbox', { name: 'Tags' }), `${typed}{Enter}`)
+      await expect(
+        body.getByText('Set automatically from a document’s record or filing.'),
+      ).toBeVisible()
+      await expect(body.queryByRole('button', { name: `Remove ${typed}` })).toBeNull()
+      await userEvent.clear(body.getByRole('textbox', { name: 'Tags' }))
+    }
+    await refused('year-2031-09')
+    await refused('payment-confirmation')
   },
 }
 

@@ -13,6 +13,7 @@ import (
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/store/storetest"
+	"helvetly.com/api/internal/tags"
 )
 
 // recordingModel is the development model, keeping each request it was asked and counting its input countings (which
@@ -96,11 +97,13 @@ func TestAIFiling(t *testing.T) {
 		wantCalls   int
 	}{
 		{name: "existing folder", folders: []string{"Contracts", "Invoices"}, file: "invoice-acme.pdf", body: pdf,
-			wantStatus: "filed", wantFolder: "Invoices", wantTags: []string{"invoice", "acme"}, wantCalls: 1},
+			wantStatus: "filed", wantFolder: "Invoices", wantTags: []string{"acme", "invoice"}, wantCalls: 1},
 		{name: "new folder", folders: []string{"Receipts"}, file: "contract baker.txt", body: "Contract between Baker and us",
-			wantStatus: "filed", wantFolder: "Contracts", wantTags: []string{"contract", "baker"}, wantCreated: true, wantCalls: 1},
+			wantStatus: "filed", wantFolder: "Contracts", wantTags: []string{"baker", "contract"}, wantCreated: true, wantCalls: 1},
+		{name: "payment confirmation", file: "payment confirmation acme.pdf", body: pdf, wantStatus: "filed", wantFolder: "Payment",
+			wantTags: []string{"payment", "confirmation", "payment-confirmation"}, wantCreated: true, wantCalls: 1},
 		{name: "into a folder only tags", folders: []string{"Misc", "Invoices"}, intoFolder: "Misc", file: "invoice-acme.pdf",
-			body: pdf, wantStatus: "filed", wantFolder: "Misc", wantTags: []string{"invoice", "acme"}, wantCalls: 1},
+			body: pdf, wantStatus: "filed", wantFolder: "Misc", wantTags: []string{"acme", "invoice"}, wantCalls: 1},
 		{name: "no consent", file: "invoice-acme.pdf", body: pdf, noConsent: true},
 		{name: "filing off", file: "invoice-acme.pdf", body: pdf, off: true},
 		{name: "quota used", folders: []string{"Invoices"}, file: "invoice-acme.pdf", body: pdf, allowance: noTokens,
@@ -153,6 +156,11 @@ func TestAIFiling(t *testing.T) {
 			if folder != tc.wantFolder || !slices.Equal(d.Tags, tc.wantTags) || d.AIFiling.CreatedFolder != tc.wantCreated {
 				t.Fatalf("filed into %q with %v (created %v), want %q with %v (created %v)", folder, d.Tags,
 					d.AIFiling.CreatedFolder, tc.wantFolder, tc.wantTags, tc.wantCreated)
+			}
+			for _, tag := range tc.wantTags {
+				if tags.Kind(tag) != slices.Contains(d.LockedTags, tag) {
+					t.Fatalf("%q locked = %v, want it locked only as a kind", tag, slices.Contains(d.LockedTags, tag))
+				}
 			}
 			if tc.wantCalls == 0 {
 				return
@@ -407,7 +415,7 @@ func TestFilingMatchesRecords(t *testing.T) {
 		t.Fatal("the model was asked")
 	}
 	got := e.get(b, d.ID)
-	if got.FolderID == nil || !slices.Equal(got.Tags, []string{"invoice", "year-2026", "client-acme-ag"}) {
+	if got.FolderID == nil || !slices.Equal(got.Tags, []string{"invoice", "year-2026", "acme-ag"}) {
 		t.Fatalf("filed = %+v", got)
 	}
 	folders := e.allFolders(b)
@@ -416,5 +424,29 @@ func TestFilingMatchesRecords(t *testing.T) {
 	client := folderByID(folders, *kind.ParentID)
 	if year.Name != "2026" || kind.SystemKind == nil || *kind.SystemKind != "invoices" || client.Name != "Acme AG" {
 		t.Fatalf("filed into %s/%s/%s", client.Name, kind.Name, year.Name)
+	}
+}
+
+// The kind AI filing found is the file's protected kind tag, its Group by type, and leaves with Undo.
+func TestAIFilingKindUndo(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	e.filer(nil)
+	e.approveAI(b)
+	up := e.uploaded(b, "zahlungsbestaetigung acme.pdf", pdf)
+	e.fileDue()
+	if d := e.get(b, up.ID); !slices.Equal(d.LockedTags, []string{"payment-confirmation"}) || !slices.Contains(d.AIFiling.Tags, "payment-confirmation") {
+		t.Fatalf("locked %v, filing %+v", d.LockedTags, d.AIFiling)
+	}
+	if p := e.list(b, "type=payment_confirmations"); len(p.Data) != 1 || p.Data[0].ID != up.ID {
+		t.Fatalf("type group = %+v", p.Data)
+	}
+	e.do(b, "PATCH", "/api/v1/documents/"+up.ID, map[string]any{"tags": []string{}}, 200, nil)
+	if d := e.get(b, up.ID); !slices.Contains(d.Tags, "payment-confirmation") {
+		t.Fatalf("a person removed the kind: %v", d.Tags)
+	}
+	e.do(b, "DELETE", "/api/v1/documents/"+up.ID+"/filing", nil, 200, nil)
+	if d := e.get(b, up.ID); len(d.LockedTags) != 0 || slices.Contains(d.Tags, "payment-confirmation") {
+		t.Fatalf("after undo: tags %v, locked %v", d.Tags, d.LockedTags)
 	}
 }

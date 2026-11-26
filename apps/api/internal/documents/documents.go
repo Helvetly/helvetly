@@ -594,8 +594,8 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return errTrashed
 		}
 		if tags != nil {
-			if slices.ContainsFunc(tags, func(t string) bool { return doctags.Reserved(t) && !slices.Contains(d.Tags, t) }) {
-				return validationFailed(map[string]string{"tags": "Signed, date and client tags are set automatically."})
+			if slices.ContainsFunc(tags, func(t string) bool { return doctags.Protected(t) && !slices.Contains(d.Tags, t) }) {
+				return validationFailed(map[string]string{"tags": "Kind, signed and date tags are set automatically from the record or filing."})
 			}
 			// automatic tags take no room of the person's own; tags before the move, which may tag the file anew
 			if len(slices.DeleteFunc(slices.Clone(tags), func(t string) bool { return slices.Contains(d.AutoTags, t) })) > maxTags {

@@ -9401,7 +9401,14 @@
             "items": {
               "type": "string"
             },
-            "description": "Tags derived from the record. Its kind, signed, year-YYYY-MM (year-YYYY when the month is unknown) and client-<name> are protected. Other automatic tags can be dismissed."
+            "description": "Tags derived from the record, its system folder or AI filing: its kind, signed, year-YYYY-MM (year-YYYY when the month is unknown), the client's name, the record's number and more. Those in locked_tags are protected; the others can be dismissed."
+          },
+          "locked_tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Those of auto_tags only the record or filing sets (its kind, signed, its date and its record's number): they cannot be removed, and kind, signed and date tags cannot be added by hand."
           },
           "ai_filing": {
             "anyOf": [
@@ -12527,7 +12534,7 @@
               "type": "string"
             },
             "maxItems": 20,
-            "description": "Replaces the tags: trimmed and lower-cased; each uses letters a–z, digits and hyphens (not first or last), at most 32 characters; at most 10 besides the file's auto_tags. An automatic tag left out is removed for good."
+            "description": "Replaces the tags: trimmed and lower-cased; each uses letters a–z, digits and hyphens (not first or last), at most 32 characters; at most 10 besides the file's auto_tags. A tag in locked_tags always stays; another automatic tag left out is removed for good."
           }
         },
         "examples": [

@@ -41,7 +41,8 @@ const organizeInstructions = "You organize a small business's document manager. 
 	"to 3 short lower-case tags, the first saying what kind of document it is (such as invoice, contract, receipt, " +
 	"insurance or payslip), preferring tags already in use. Set change to false when the document already sits well " +
 	"where it is with fitting tags. An existing contract tag on a client's document is enough to propose its Contracts " +
-	"folder, unless its name marks it as a template, sample or draft. reason is one short sentence. Use only the given information."
+	"folder, unless its name marks it as a template, sample or draft. reason is one short sentence. " + kindRule +
+	" Use only the given information."
 
 var organizeSchema = &aimodel.Schema{Name: "document_organize", JSON: map[string]any{
 	"type": "object",
@@ -54,8 +55,9 @@ var organizeSchema = &aimodel.Schema{Name: "document_organize", JSON: map[string
 				"tags":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 				"reason":      map[string]any{"type": "string"},
 				"change":      map[string]any{"type": "boolean"},
+				"kind":        kindSchema,
 			},
-			"required":             []string{"document_id", "folder", "tags", "reason", "change"},
+			"required":             []string{"document_id", "folder", "tags", "reason", "change", "kind"},
 			"additionalProperties": false,
 		}},
 	},
@@ -333,6 +335,7 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder, na
 			Tags       []string `json:"tags"`
 			Reason     string   `json:"reason"`
 			Change     bool     `json:"change"`
+			Kind       string   `json:"kind"`
 		} `json:"proposals"`
 	}
 	if json.Unmarshal([]byte(strings.TrimSpace(text)), &out) != nil {
@@ -377,11 +380,11 @@ func readOrganize(text string, docs []store.Document, folders []store.Folder, na
 				}
 			}
 		}
-		for _, t := range a.Tags {
-			if tag := tags.Slug(t); tag != "" && len(p.Tags) < filingAITags && !slices.Contains(p.Tags, tag) {
-				p.Tags = append(p.Tags, tag)
-			}
+		free, kind := modelTags(a.Tags, a.Kind)
+		if kind != "" { // proposed first, like a record's kind; applying records it as the file's kind
+			free = append([]string{kind}, free[:min(len(free), filingAITags-1)]...)
 		}
+		p.Tags = free
 		reason := []rune(strings.Join(strings.Fields(a.Reason), " "))
 		p.Reason = string(reason[:min(len(reason), 200)])
 		change := a.Change
@@ -461,6 +464,7 @@ type organizePrevious struct {
 	DocumentID string   `json:"document_id"`
 	FolderID   *string  `json:"folder_id"`
 	Tags       []string `json:"tags"`
+	Kind       string   `json:"kind"` // the kind AI filing or organizing had recorded (store.Document.FiledKind)
 }
 
 type organizeUndo struct {
@@ -563,7 +567,7 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 			if err != nil {
 				return err
 			}
-			prev := organizePrevious{DocumentID: cur.ID, FolderID: cur.FolderID, Tags: slices.Clone(cur.Tags)}
+			prev := organizePrevious{DocumentID: cur.ID, FolderID: cur.FolderID, Tags: slices.Clone(cur.Tags), Kind: cur.FiledKind}
 			changed := false
 			if !samePlace(cur.FolderID, target) {
 				name, err := s.placeFile(q, ctx, sess, cur.ID, cur.Name, target, "keep_both")
@@ -576,14 +580,21 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 				moved++
 				changed = true
 			}
-			tags := slices.Clone(cur.Tags)
+			if i := slices.IndexFunc(it.Tags, tags.Kind); i >= 0 && it.Tags[i] != cur.FiledKind {
+				if err := q.SetDocumentKind(ctx, ws, cur.ID, it.Tags[i], s.now()); err != nil {
+					return err
+				}
+				tagged++
+				changed = true
+			}
+			next := slices.Clone(cur.Tags)
 			for _, t := range it.Tags {
-				if !slices.Contains(tags, t) && len(tags) < maxTags {
-					tags = append(tags, t)
+				if !tags.Protected(t) && !slices.Contains(next, t) && len(next) < maxTags {
+					next = append(next, t)
 				}
 			}
-			if len(tags) != len(cur.Tags) {
-				if err := q.SetDocumentTags(ctx, ws, cur.ID, tags, s.now()); err != nil {
+			if len(next) != len(cur.Tags) {
+				if err := q.SetDocumentTags(ctx, ws, cur.ID, next, s.now()); err != nil {
 					return err
 				}
 				tagged++
@@ -622,6 +633,9 @@ func (s *Service) organizeUndo(w http.ResponseWriter, r *http.Request, sess stor
 			return validationFailed(map[string]string{"previous": problem})
 		}
 		body.Previous[i].Tags = restored
+		if p.Kind != "" && !tags.Kind(p.Kind) {
+			return validationFailed(map[string]string{"previous": "Use one of the document kinds."})
+		}
 	}
 	ctx, ws := r.Context(), sess.Workspace.ID
 	restored, deleted := 0, 0
@@ -650,6 +664,12 @@ func (s *Service) organizeUndo(w http.ResponseWriter, r *http.Request, sess stor
 					return err
 				}
 				if err := q.UpdateDocument(ctx, ws, cur.ID, name, folder, s.now()); err != nil {
+					return err
+				}
+				changed = true
+			}
+			if cur.FiledKind != p.Kind {
+				if err := q.SetDocumentKind(ctx, ws, cur.ID, p.Kind, s.now()); err != nil {
 					return err
 				}
 				changed = true

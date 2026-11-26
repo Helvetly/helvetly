@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/tags"
 )
 
 func TestKindRules(t *testing.T) {
@@ -330,5 +331,17 @@ func TestListKindFilter(t *testing.T) {
 		if list.Meta.Total != want {
 			t.Errorf("kind %q: %d, want %d", kind, list.Meta.Total, want)
 		}
+	}
+}
+
+// A new invoice kind needs its automatic kind tag (tags.InvoiceKinds) before its files can be tagged.
+func TestEveryInvoiceKindHasATag(t *testing.T) {
+	for kind := range typeCodes {
+		if !tags.Kind(tags.InvoiceKinds[kind]) {
+			t.Errorf("invoice kind %q has no kind tag in tags.InvoiceKinds", kind)
+		}
+	}
+	if len(tags.InvoiceKinds) != len(typeCodes) {
+		t.Errorf("tags.InvoiceKinds names %d kinds, invoices has %d", len(tags.InvoiceKinds), len(typeCodes))
 	}
 }

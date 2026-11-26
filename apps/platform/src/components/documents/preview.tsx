@@ -48,7 +48,7 @@ import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordLink, RecordPageButton } from '@/components/record-link'
 import { useAI } from '@/lib/ai'
 import { useClientSearch } from '@/lib/clients'
-import { documentTagLabel, protectedDocumentTag, reservedDocumentTag } from '@/lib/document-tags'
+import { automaticOnlyTag, documentTagLabel } from '@/lib/document-tags'
 import {
   contentUrl,
   daysLeft,
@@ -568,7 +568,7 @@ function TagsPanel({
       refreshDocuments(queryClient)
       toast.success(translate('aiFilingUndone', { count: 1 }))
     }, toastError)
-  const locked = file.auto_tags?.filter(protectedDocumentTag) ?? []
+  const locked = file.locked_tags ?? []
   const filed = file.ai_filing?.status === 'filed' ? file.ai_filing : null
   return (
     <Panel
@@ -595,11 +595,9 @@ function TagsPanel({
           )}
           <InlineTagsEditor
             initial={file.tags.filter((tag) => !locked.includes(tag))}
-            known={known.filter(({ name }) => !reservedDocumentTag(name) && !locked.includes(name))}
+            known={known.filter(({ name }) => !automaticOnlyTag(name))}
             validateTag={(tag) =>
-              reservedDocumentTag(tag) || locked.includes(tag)
-                ? translate('protectedDocumentTagHint')
-                : undefined
+              automaticOnlyTag(tag) ? translate('automaticDocumentTagHint') : undefined
             }
             displayTag={(tag) => (file.auto_tags?.includes(tag) ? documentTagLabel(tag) : tag)}
             save={(tags) =>

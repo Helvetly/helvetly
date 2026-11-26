@@ -9,6 +9,7 @@ import (
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
+	"helvetly.com/api/internal/tags"
 )
 
 // autoEnv: a workspace with two clients and helpers that make records of its files.
@@ -105,7 +106,7 @@ func TestAutoTagsOfEachRecord(t *testing.T) {
 			a.e.invoice(a.b, a.acme, "invoice", "2026/IN/005", 2026, "")
 			a.exec(`UPDATE invoices SET pdf_key = $1 WHERE number = '2026/IN/005'`, a.key(d.ID))
 			return d.ID
-		}, []string{"invoice", "year-2026-01", "client-acme-ag", "2026-in-005"}},
+		}, []string{"invoice", "year-2026-01", "acme-ag", "2026-in-005"}},
 		{"credit note by its link", func() string {
 			d := a.file("")
 			a.e.invoice(a.b, a.beta, "credit_note", "2025/CN/002", 2025, "")
@@ -115,26 +116,26 @@ func TestAutoTagsOfEachRecord(t *testing.T) {
 				t.Fatal(err)
 			}
 			return d.ID
-		}, []string{"credit-note", "year-2025-01", "client-beta-gmbh", "2025-cn-002"}},
+		}, []string{"credit-note", "year-2025-01", "beta-gmbh", "2025-cn-002"}},
 		{"debit note imported from its original", func() string {
 			d := a.file("")
 			a.e.invoice(a.b, a.acme, "debit_note", "D-7", 2024, d.ID)
 			return d.ID
-		}, []string{"debit-note", "year-2024-01", "client-acme-ag", "d-7"}},
+		}, []string{"debit-note", "year-2024-01", "acme-ag", "d-7"}},
 		{"quote by its PDF", func() string {
 			d := a.file(a.e.recordFolder(a.b, a.acme, "quotes", 2026))
 			a.quote(a.acme, "2026/Q/001", a.key(d.ID))
 			return d.ID
-		}, []string{"quote", "year-2026-03", "client-acme-ag", "2026-q-001"}},
+		}, []string{"quote", "year-2026-03", "acme-ag", "2026-q-001"}},
 		{"quote revision", func() string {
 			d := a.file("")
 			q := a.quote(a.beta, "2026/Q/003", "quotes/other.pdf")
 			a.exec(`INSERT INTO quote_revisions (workspace_id, quote_id, revision, sent_to, snapshot, pdf_key, created_at)
 				VALUES ($1, $2, 1, '{}', '{"issue_date":"2025-12-31"}', $3, now())`, a.b.workspace, q, a.key(d.ID))
 			return d.ID
-		}, []string{"quote", "year-2025-12", "client-beta-gmbh", "2026-q-003"}},
+		}, []string{"quote", "year-2025-12", "beta-gmbh", "2026-q-003"}},
 		{"contract from a quote", func() string { return a.contract("2026/Q/002", "2026/C/001").ID },
-			[]string{"contract", "year-2026-02", "client-acme-ag", "2026-c-001", "from-quote-2026-q-002"}},
+			[]string{"contract", "year-2026-02", "acme-ag", "2026-c-001", "from-quote-2026-q-002"}},
 		{"signed copy of a contract", func() string {
 			original := a.contract("2026/Q/004", "2026/C/002")
 			signed := a.file(a.e.recordFolder(a.b, a.acme, "signatures", 2026))
@@ -149,9 +150,9 @@ func TestAutoTagsOfEachRecord(t *testing.T) {
 				t.Fatalf("signed original = %v", got)
 			}
 			return signed.ID
-		}, []string{"contract", "signed", "year-2026-02", "client-acme-ag", "2026-c-002", "from-quote-2026-q-004"}},
+		}, []string{"contract", "signed", "year-2026-02", "acme-ag", "2026-c-002", "from-quote-2026-q-004"}},
 		{"imported completed contract", func() string { return a.file(a.contractsFolder(a.beta, 2025)).ID },
-			[]string{"contract", "year-2025", "client-beta-gmbh"}},
+			[]string{"contract", "year-2025", "beta-gmbh"}},
 		{"receipt of an expense", func() string {
 			d := a.file("")
 			exp := a.e.expense(a.b, a.e.category(a.b, "Büro Material"), "2025-05-05")
@@ -161,9 +162,9 @@ func TestAutoTagsOfEachRecord(t *testing.T) {
 			return d.ID
 		}, []string{"receipt", "year-2025-05", "expense-buero-material"}},
 		{"engagement document", func() string { return a.file(a.e.recordFolder(a.b, a.beta, "engagements", 2026)).ID },
-			[]string{"engagement", "year-2026", "client-beta-gmbh"}},
+			[]string{"engagement", "year-2026", "beta-gmbh"}},
 		{"client upload", func() string { return a.file(a.e.recordFolder(a.b, a.acme, "documents", 2026)).ID },
-			[]string{"year-2026", "client-acme-ag"}},
+			[]string{"year-2026", "acme-ag"}},
 		{"plain file", func() string { return a.file("").ID }, []string{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -185,22 +186,31 @@ func TestProtectedAutoTagsStayAfterEditing(t *testing.T) {
 	a.e.invoice(a.b, a.acme, "invoice", "2026/IN/001", 2026, d.ID)
 	a.retag(d.ID)
 	mine := []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}
-	locked := []string{"invoice", "year-2026-01", "client-acme-ag"}
+	locked := []string{"invoice", "year-2026-01", "2026-in-001"}
 	path := "/api/v1/documents/" + d.ID
+	if got := a.e.get(a.b, d.ID); !slices.Equal(got.LockedTags, locked) || !slices.Equal(got.AutoTags, []string{"invoice", "year-2026-01", "acme-ag", "2026-in-001"}) {
+		t.Fatalf("locked %v, automatic %v", got.LockedTags, got.AutoTags)
+	}
+	// Leaving out every automatic tag removes only the client's; kind, date and number stay.
 	a.e.do(a.b, "PATCH", path, map[string]any{"tags": mine}, 200, nil)
 	got := a.e.get(a.b, d.ID)
 	if !slices.Equal(got.Tags, append(slices.Clone(mine), locked...)) || !slices.Equal(got.AutoTags, locked) {
 		t.Fatalf("manual edit changed protected tags: tags %v, automatic %v", got.Tags, got.AutoTags)
 	}
+	if again := a.retag(d.ID); slices.Contains(again.Tags, "acme-ag") {
+		t.Fatalf("a removed client tag came back: %v", again.Tags)
+	}
 	a.e.fails(a.b, "PATCH", path, map[string]any{"tags": append(slices.Clone(mine), "k")}, 422, "validation_failed")
-	a.e.fails(a.b, "PATCH", path, map[string]any{"tags": []string{"signed", "year-2026-04", "client-other"}}, 422, "validation_failed")
+	for _, typed := range []string{"signed", "year-2026-04", "receipt", "payment-confirmation"} {
+		a.e.fails(a.b, "PATCH", path, map[string]any{"tags": []string{typed}}, 422, "validation_failed")
+	}
 
 	// Before protection, a suppressed automatic tag was recorded here.
-	a.exec(`UPDATE documents SET tags = '{}', auto_tags = '{}', record_tags_current = false, removed_auto_tags = ARRAY['year-2026', 'client-acme-ag', 'invoice'] WHERE id = $1`, d.ID)
+	a.exec(`UPDATE documents SET tags = '{}', auto_tags = '{}', record_tags_current = false, removed_auto_tags = ARRAY['year-2026-01', 'invoice', '2026-in-001'] WHERE id = $1`, d.ID)
 	if err := a.e.svc.BackfillAutoTags(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if got := a.e.get(a.b, d.ID); !slices.Equal(got.AutoTags, append(locked, "2026-in-001")) {
+	if got := a.e.get(a.b, d.ID); !slices.Equal(got.AutoTags, []string{"invoice", "year-2026-01", "acme-ag", "2026-in-001"}) {
 		t.Fatalf("backfill did not restore protected automatic tags: %v", got.AutoTags)
 	}
 
@@ -217,7 +227,7 @@ func TestProtectedAutoTagsStayAfterEditing(t *testing.T) {
 	a.e.do(a.b, "PATCH", "/api/v1/documents/"+signed.ID, map[string]any{
 		"folder_id": newFolder, "tags": []string{"urgent"},
 	}, 200, nil)
-	if got := a.e.get(a.b, signed.ID); !slices.Equal(got.Tags, []string{"urgent", "signed", "year-2026-04", "client-beta-gmbh"}) {
+	if got := a.e.get(a.b, signed.ID); !slices.Equal(got.Tags, []string{"urgent", "signed", "year-2026-04", "beta-gmbh"}) {
 		t.Fatalf("tags do not follow signature and updated folder: %v", got.Tags)
 	}
 }
@@ -233,8 +243,8 @@ func TestBackfillAutoTagsIdempotent(t *testing.T) {
 	a.exec(`UPDATE documents SET tags = '{invoice,urgent,year-2026}', auto_tags = '{year-2026}', record_tags_current = false WHERE id = $1`, inv.ID)
 	a.exec(`UPDATE documents SET tags = '{}', auto_tags = '{}', auto_tagged_at = NULL WHERE id = ANY($1)`, []string{upload.ID, plain.ID})
 	want := map[string][2][]string{
-		inv.ID:    {{"urgent", "invoice", "year-2026-01", "client-acme-ag", "2026-in-009"}, {"invoice", "year-2026-01", "client-acme-ag", "2026-in-009"}},
-		upload.ID: {{"year-2025", "client-beta-gmbh"}, {"year-2025", "client-beta-gmbh"}},
+		inv.ID:    {{"urgent", "invoice", "year-2026-01", "acme-ag", "2026-in-009"}, {"invoice", "year-2026-01", "acme-ag", "2026-in-009"}},
+		upload.ID: {{"year-2025", "beta-gmbh"}, {"year-2025", "beta-gmbh"}},
 		plain.ID:  {{}, {}},
 	}
 	for run := range 2 {
@@ -274,7 +284,7 @@ func TestEngagementDateAndDocumentChangeRefreshTags(t *testing.T) {
 	if err := a.e.st.CreateEngagement(ctx, a.b.workspace, &e, now); err != nil {
 		t.Fatal(err)
 	}
-	if tags := a.e.get(a.b, first.ID).AutoTags; !slices.Equal(tags, []string{"engagement", "year-2024-02", "client-acme-ag"}) {
+	if tags := a.e.get(a.b, first.ID).AutoTags; !slices.Equal(tags, []string{"engagement", "year-2024-02", "acme-ag"}) {
 		t.Fatal(tags)
 	}
 	e.StartDate, e.DocumentID = "2024-07-01", &second.ID
@@ -289,5 +299,105 @@ func TestEngagementDateAndDocumentChangeRefreshTags(t *testing.T) {
 	}
 	if tags := a.e.get(a.b, second.ID).AutoTags; len(tags) != 0 {
 		t.Fatal(tags)
+	}
+}
+
+// A client's tag is its name's slug: renaming the client renames it, and one a person removed stays removed.
+func TestClientTagFollowsRename(t *testing.T) {
+	a := newAutoEnv(t)
+	ctx, now := t.Context(), time.Now()
+	kept, removed := a.file(a.e.recordFolder(a.b, a.acme, "documents", 2026)), a.file(a.e.recordFolder(a.b, a.acme, "documents", 2026))
+	a.e.do(a.b, "PATCH", "/api/v1/documents/"+removed.ID, map[string]any{"tags": []string{"mine"}}, 200, nil)
+	rename := func(name string) {
+		t.Helper()
+		if err := a.e.st.Tx(ctx, func(q store.Q) error {
+			_, err := q.UpdateClient(ctx, a.b.workspace, a.acme, map[string]any{"name": name}, now)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rename("Acme Holding")
+	if got := a.e.get(a.b, kept.ID).Tags; !slices.Equal(got, []string{"year-2026", "acme-holding"}) {
+		t.Fatalf("renamed client's file: %v", got)
+	}
+	if got := a.e.get(a.b, removed.ID).Tags; !slices.Equal(got, []string{"mine", "year-2026"}) {
+		t.Fatalf("a removed client tag came back after the rename: %v", got)
+	}
+	rename("Invoice") // reads as a kind: keeps its prefix
+	if got := a.e.get(a.b, kept.ID).Tags; !slices.Equal(got, []string{"year-2026", "client-invoice"}) {
+		t.Fatalf("client named like a kind: %v", got)
+	}
+}
+
+// A client document uploaded as a consent or power of attorney is tagged with that kind.
+func TestClientDocumentTypeKinds(t *testing.T) {
+	a := newAutoEnv(t)
+	for typ, want := range map[store.ClientDocumentType]string{"consent": "consent", "power_of_attorney": "power-of-attorney", "other": ""} {
+		f := store.ClientFile{ID: auth.NewID("doc"), Name: string(typ) + ".pdf", Size: 3, ContentType: "application/pdf",
+			CreatedAt: time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), ObjectKey: "workspaces/" + a.b.workspace + "/" + auth.NewID("o"), DocumentType: typ}
+		if err := a.e.st.CreateClientFile(t.Context(), a.b.workspace, a.acme, a.b.user, &f); err != nil {
+			t.Fatal(err)
+		}
+		if got := a.e.get(a.b, f.ID).LockedTags; !slices.Equal(got, slices.DeleteFunc([]string{want, "year-2026"}, func(s string) bool { return s == "" })) {
+			t.Fatalf("%s: locked %v", typ, got)
+		}
+	}
+}
+
+// clientTagRewrite is the one-off production rewrite of the client-<name> tags from before (in the pull request's
+// description): <name> unless it could be read as another automatic tag (tags.ClientTag), repeats dropped. It is run
+// once after the deploy; running it again changes nothing.
+const clientTagRewrite = `BEGIN;
+CREATE OR REPLACE FUNCTION pg_temp.unprefixed(t text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+	SELECT CASE WHEN t LIKE 'client-_%'
+		AND substr(t, 8) !~ '^(signed|year-[0-9]{4}(-(0[1-9]|1[0-2]))?|invoice|partial-invoice|prepayment-invoice|corrected-invoice|proforma-invoice|self-billed-invoice|credit-note|debit-note|quote|contract|engagement|receipt|payment-confirmation|consent|power-of-attorney)$'
+		AND substr(t, 8) !~ '^([0-9]|client-|expense-|from-quote-)'
+		THEN substr(t, 8) ELSE t END $$;
+CREATE OR REPLACE FUNCTION pg_temp.rewritten(tags text[]) RETURNS text[] LANGUAGE sql IMMUTABLE AS $$
+	SELECT coalesce(array_agg(t ORDER BY first), '{}') FROM (
+		SELECT pg_temp.unprefixed(t) AS t, min(i) AS first FROM unnest(tags) WITH ORDINALITY a(t, i) GROUP BY 1) u $$;
+UPDATE documents SET tags = pg_temp.rewritten(tags), auto_tags = pg_temp.rewritten(auto_tags),
+	removed_auto_tags = pg_temp.rewritten(removed_auto_tags)
+WHERE EXISTS (SELECT 1 FROM unnest(tags || auto_tags || removed_auto_tags) t WHERE t <> pg_temp.unprefixed(t));
+COMMIT;`
+
+func TestClientTagRewrite(t *testing.T) {
+	if !strings.Contains(clientTagRewrite, "'"+tags.ProtectedPattern+"'") {
+		t.Fatal("the rewrite's protected pattern is not tags.ProtectedPattern")
+	}
+	a := newAutoEnv(t)
+	type row struct{ tags, auto, removed []string }
+	for _, tc := range []struct {
+		name       string
+		have, want row
+	}{
+		{"automatic client tag", row{[]string{"urgent", "invoice", "client-acme-ag"}, []string{"invoice", "client-acme-ag"}, nil},
+			row{[]string{"urgent", "invoice", "acme-ag"}, []string{"invoice", "acme-ag"}, []string{}}},
+		{"a removed one stays removed", row{[]string{"invoice"}, []string{"invoice"}, []string{"client-acme-ag", "expense-x"}},
+			row{[]string{"invoice"}, []string{"invoice"}, []string{"acme-ag", "expense-x"}}},
+		{"the person's own tag of that name stays one tag", row{[]string{"acme-ag", "client-acme-ag"}, []string{"client-acme-ag"}, nil},
+			row{[]string{"acme-ag"}, []string{"acme-ag"}, []string{}}},
+		{"names that read as other tags keep the prefix", row{[]string{"client-invoice", "client-2026", "client-year-2026", "client-expense-a", "client-client-a"}, nil, nil},
+			row{[]string{"client-invoice", "client-2026", "client-year-2026", "client-expense-a", "client-client-a"}, []string{}, []string{}}},
+		{"nothing to do", row{[]string{"client", "clients", "year-2026"}, []string{"year-2026"}, nil},
+			row{[]string{"client", "clients", "year-2026"}, []string{"year-2026"}, []string{}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := a.file("")
+			a.exec(`UPDATE documents SET tags = $2, auto_tags = $3, removed_auto_tags = $4 WHERE id = $1`, d.ID,
+				tc.have.tags, append([]string{}, tc.have.auto...), append([]string{}, tc.have.removed...))
+			for range 2 { // idempotent
+				a.exec(clientTagRewrite)
+				var got row
+				if err := a.e.raw.QueryRow(t.Context(), `SELECT tags, auto_tags, removed_auto_tags FROM documents WHERE id = $1`, d.ID).
+					Scan(&got.tags, &got.auto, &got.removed); err != nil {
+					t.Fatal(err)
+				}
+				if !slices.Equal(got.tags, tc.want.tags) || !slices.Equal(got.auto, tc.want.auto) || !slices.Equal(got.removed, tc.want.removed) {
+					t.Fatalf("got %+v, want %+v", got, tc.want)
+				}
+			}
+		})
 	}
 }

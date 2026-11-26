@@ -64,6 +64,12 @@ func placeDocument(ctx context.Context, q store.Q, sess store.Session, documentI
 	merged := slices.Clone(d.Tags)
 	for _, t := range add {
 		t = tags.Slug(t)
+		if tags.Kind(t) { // what the import found the file to be: its kind tag, never a free one
+			if err := q.SetDocumentKind(ctx, ws, d.ID, t, now); err != nil {
+				return err
+			}
+			continue
+		}
 		if t != "" && !slices.Contains(merged, t) && len(merged) < maxDocumentTags {
 			merged = append(merged, t)
 		}

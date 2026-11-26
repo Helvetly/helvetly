@@ -95,6 +95,8 @@ export type DocFile = {
   tags: string[]
   /** Those of `tags` the app set from what the file is (shown muted); a removed one never comes back. */
   auto_tags?: string[]
+  /** Those of `auto_tags` only the record or filing sets (kind, signed, date, record number): never removable. */
+  locked_tags?: string[]
   ai_filing: AIFiling | null
   previewable: boolean
   links: DocLink[]
@@ -186,6 +188,9 @@ export const DOC_TYPES = [
   'receipts',
   'contracts',
   'engagements',
+  'payment_confirmations',
+  'consents',
+  'powers_of_attorney',
   'other',
 ] as const
 export type DocType = (typeof DOC_TYPES)[number]
@@ -200,6 +205,9 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
   receipts: translate('docTypeReceipts'),
   contracts: translate('docTypeContracts'),
   engagements: translate('docTypeEngagements'),
+  payment_confirmations: translate('docTypePaymentConfirmations'),
+  consents: translate('docTypeConsents'),
+  powers_of_attorney: translate('docTypePowersOfAttorney'),
   other: translate('docTypeOther'),
 }
 export const GROUP_DIM_LABELS: Record<GroupDim, string> = {
@@ -600,7 +608,7 @@ export type OrganizeProposal = {
 }
 export type OrganizeItem = Pick<OrganizeProposal, 'document_id' | 'folder' | 'tags'>
 export type OrganizeUndo = {
-  previous: { document_id: string; folder_id: string | null; tags: string[] }[]
+  previous: { document_id: string; folder_id: string | null; tags: string[]; kind?: string }[]
   created_folders: string[]
 }
 

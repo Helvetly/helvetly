@@ -29,7 +29,9 @@ const (
 
 // typeNames: the type groups' names in a ZIP's folders (the app names them in the reader's language on screen).
 var typeNames = map[string]string{"invoices": "Invoices", "quotes": "Quotes", "credit_notes": "Credit notes",
-	"receipts": "Receipts", "contracts": "Contracts", "engagements": "Engagements", "other": "Other"}
+	"receipts": "Receipts", "contracts": "Contracts", "engagements": "Engagements",
+	"payment_confirmations": "Payment confirmations", "consents": "Consents", "powers_of_attorney": "Powers of attorney",
+	"other": "Other"}
 
 // groupDims: the ?group= dimensions (type, year, client: one to three, each once).
 func groupDims(r *http.Request) ([]string, error) {
