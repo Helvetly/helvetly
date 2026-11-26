@@ -123,6 +123,16 @@ func (e *Emails) load(ctx context.Context, q store.Q, workspaceID, eventID strin
 			}
 		}
 	}
+	// A participant's session is theirs: its mail goes to them (and the extra attendees), not to the company.
+	if p := client.Participant(ev.ParticipantContactID); p != nil && p.Email != nil && *p.Email != "" {
+		to := []string{strings.ToLower(*p.Email)}
+		for _, a := range ev.Attendees {
+			if !slices.Contains(to, a) && !strings.EqualFold(a, deref(client.Email)) && !strings.EqualFold(a, deref(client.BillingEmail)) {
+				to = append(to, a)
+			}
+		}
+		m.to, m.greet = to, p.Name
+	}
 	m.lang = language(deref(client.Language), m.brand.Language)
 	if tz, err := q.ClientTimeZone(ctx, workspaceID, ev.ClientID); err != nil {
 		return m, err

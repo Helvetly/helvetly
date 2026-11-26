@@ -63,18 +63,20 @@ type SchedEvent struct {
 	CreatedBy         *string
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+	// ParticipantContactID: the participant of the (company) client who takes the sessions; their email gets its mail.
+	ParticipantContactID *string
 }
 
 const schedEventColumns = `id, workspace_id, client_id, engagement_id, event_type_id, host_user_id, title, description, client_note, mode,
 	meeting_provider, meeting_url, meeting_ref, location, time_zone, starts_local, duration_minutes, rrule, until_date::text, count,
-	skip_holidays, attendees, units_per_session, unit_price, currency, sequence, materialised_until, created_by, created_at, updated_at`
+	skip_holidays, attendees, units_per_session, unit_price, currency, sequence, materialised_until, created_by, created_at, updated_at, participant_contact_id`
 
 func scanSchedEvent(r interface{ Scan(...any) error }) (SchedEvent, error) {
 	var e SchedEvent
 	err := r.Scan(&e.ID, &e.WorkspaceID, &e.ClientID, &e.EngagementID, &e.EventTypeID, &e.HostUserID, &e.Title, &e.Description,
 		&e.ClientNote, &e.Mode, &e.MeetingProvider, &e.MeetingURL, &e.MeetingRef, &e.Location, &e.TimeZone, &e.StartsLocal,
 		&e.DurationMinutes, &e.RRule, &e.UntilDate, &e.Count, &e.SkipHolidays, &e.Attendees, &e.UnitsPerSession, &e.UnitPrice,
-		&e.Currency, &e.Sequence, &e.MaterialisedUntil, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt)
+		&e.Currency, &e.Sequence, &e.MaterialisedUntil, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt, &e.ParticipantContactID)
 	return e, err
 }
 
@@ -98,11 +100,11 @@ func (q Q) CreateSchedEvent(ctx context.Context, e SchedEvent) error {
 // InsertSchedEvent stores an event without counting it: the new half of a series split ("following").
 func (q Q) InsertSchedEvent(ctx context.Context, e SchedEvent) error {
 	_, err := q.db.Exec(ctx, `INSERT INTO scheduling_events (`+strings.Replace(schedEventColumns, "::text", "", 1)+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-		$11, $12, $13, $14, $15, $16, $17, $18, $19::date, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)`,
+		$11, $12, $13, $14, $15, $16, $17, $18, $19::date, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)`,
 		e.ID, e.WorkspaceID, e.ClientID, e.EngagementID, e.EventTypeID, e.HostUserID, e.Title, e.Description, e.ClientNote, e.Mode,
 		e.MeetingProvider, e.MeetingURL, e.MeetingRef, e.Location, e.TimeZone, wallClock(e.StartsLocal), e.DurationMinutes, e.RRule,
 		e.UntilDate, e.Count, e.SkipHolidays, nonNil(e.Attendees), e.UnitsPerSession, e.UnitPrice, e.Currency, e.Sequence,
-		e.MaterialisedUntil, e.CreatedBy, e.CreatedAt, e.UpdatedAt)
+		e.MaterialisedUntil, e.CreatedBy, e.CreatedAt, e.UpdatedAt, e.ParticipantContactID)
 	return err
 }
 
@@ -113,10 +115,11 @@ func (q Q) SaveSchedEvent(ctx context.Context, e SchedEvent) error {
 		description = $7, client_note = $8, mode = $9, meeting_provider = $10, meeting_url = $11, meeting_ref = $12, location = $13,
 		time_zone = $14, starts_local = $15, duration_minutes = $16, rrule = $17, until_date = $18::date, count = $19,
 		skip_holidays = $20, attendees = $21, units_per_session = $22, unit_price = $23, currency = $24, sequence = $25,
-		updated_at = $26 WHERE workspace_id = $1 AND id = $2`,
+		updated_at = $26, participant_contact_id = $27 WHERE workspace_id = $1 AND id = $2`,
 		e.WorkspaceID, e.ID, e.EngagementID, e.EventTypeID, e.HostUserID, e.Title, e.Description, e.ClientNote, e.Mode,
 		e.MeetingProvider, e.MeetingURL, e.MeetingRef, e.Location, e.TimeZone, wallClock(e.StartsLocal), e.DurationMinutes, e.RRule,
-		e.UntilDate, e.Count, e.SkipHolidays, nonNil(e.Attendees), e.UnitsPerSession, e.UnitPrice, e.Currency, e.Sequence, e.UpdatedAt)
+		e.UntilDate, e.Count, e.SkipHolidays, nonNil(e.Attendees), e.UnitsPerSession, e.UnitPrice, e.Currency, e.Sequence, e.UpdatedAt,
+		e.ParticipantContactID)
 	return affected(tag, err)
 }
 

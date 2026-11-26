@@ -38,6 +38,7 @@ import { useState, type ReactNode } from 'react'
 
 import { ClientSearch } from '@/components/invoices/client-search'
 import { TextareaBox } from '@/components/textarea-box'
+import { peopleWith, useClient } from '@/lib/clients'
 import { useClientEngagements } from '@/lib/engagements'
 import { translate } from '@/lib/i18n'
 import { useMembers } from '@/lib/members'
@@ -107,6 +108,7 @@ export function SessionFields({
   const me = useSession().data?.user.id
   const members = useMembers()
   const engagements = useClientEngagements(values.client?.id ?? '')
+  const clientRecord = useClient(values.client?.id ?? null)
   const eventTypes = useEventTypes()
   const slot = slotOf(values, zone)
   const conflicts = useConflicts(
@@ -129,6 +131,10 @@ export function SessionFields({
     (entry) => entry.status === 'active' || entry.status === 'scheduled',
   )
   const types = (eventTypes.data ?? []).filter((entry) => !entry.archived_at)
+  // A company's participants: the one who takes the session gets its mail.
+  const participants = clientRecord.data?.is_company
+    ? peopleWith(clientRecord.data, 'participant')
+    : []
   const hosts =
     members.data?.map((member) => ({
       value: member.user_id,
@@ -185,7 +191,11 @@ export function SessionFields({
                   selectedId={values.client?.id ?? null}
                   onSelect={(client) => {
                     setClientOpen(false)
-                    set({ client: { id: client.id, name: client.name }, engagement_id: '' })
+                    set({
+                      client: { id: client.id, name: client.name },
+                      engagement_id: '',
+                      participant_id: '',
+                    })
                   }}
                 />
               </PopoverContent>
@@ -213,6 +223,24 @@ export function SessionFields({
                 onClear={() => set({ engagement_id: '' })}
                 clearLabel={translate('schedClearEngagement')}
                 placeholder={translate('schedNoEngagement')}
+              />
+            </Field>
+          )}
+          {values.client && (participants.length > 0 || values.participant_id) && (
+            <Field id={fieldId('participant_id')} error={errors.participant_id}>
+              <Combobox
+                id={fieldId('participant_id')}
+                label={translate('schedParticipant')}
+                value={values.participant_id}
+                options={participants.map((person) => ({
+                  value: person.id,
+                  label: person.name,
+                  hint: person.email ?? undefined,
+                }))}
+                onChange={(participant_id) => set({ participant_id })}
+                onClear={() => set({ participant_id: '' })}
+                clearLabel={translate('schedClearParticipant')}
+                placeholder={translate('schedNoParticipant')}
               />
             </Field>
           )}

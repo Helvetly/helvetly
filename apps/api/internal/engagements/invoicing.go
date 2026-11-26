@@ -141,7 +141,25 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 		return "", store.ErrNotFound
 	}
 	p := v.periods[i]
-	title := e.Title + " · " + swiss(p.StartsOn) + " – " + swiss(p.EndsOn)
+	client, err := q.Client(ctx, sess.Workspace.ID, e.ClientID)
+	if err != nil {
+		return "", err
+	}
+	// In participants mode the invoice of a participant's engagement is addressed to them and names nobody in its lines;
+	// otherwise it goes to the company and each line names the participant it was for.
+	addressed := client.IsCompany && client.DocumentsTo == "participants" && e.ParticipantContactID != nil
+	who := func(p *store.PersonRef) string {
+		if addressed || p == nil {
+			return ""
+		}
+		for _, c := range client.Contacts {
+			if c.ID == p.ID {
+				return " · " + c.Name
+			}
+		}
+		return ""
+	}
+	title := e.Title + " · " + swiss(p.StartsOn) + " – " + swiss(p.EndsOn) + who(e.Participant)
 	price := p.UnitPrice
 	var lines func(unit invoicecalc.Money) []store.InvoiceLine
 	var covered []store.EngagementEntry
@@ -186,6 +204,7 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 				if picked[j].PerformanceOnInvoice && picked[j].ClientPerformance != nil {
 					d += " · " + *picked[j].ClientPerformance
 				}
+				d += who(picked[j].Participant)
 				out = append(out, line(e, d, qty[j], unit))
 			}
 			if len(out) > 0 {
@@ -197,6 +216,9 @@ func (s *Service) InvoicePeriod(ctx context.Context, q store.Q, sess store.Sessi
 	invoiceID, err := s.inv.CreateDraft(ctx, q, sess, e.ClientID, func(inv *store.Invoice) {
 		inv.Currency = e.Currency
 		inv.Reference = e.Reference
+		if addressed {
+			inv.ParticipantContactID = e.ParticipantContactID
+		}
 		inv.ServiceDate, inv.ServiceDateEnd = &p.StartsOn, &p.EndsOn
 		mode, unit := draftPrice(e, price, inv.VATMode)
 		inv.VATMode, inv.Lines = mode, lines(unit)

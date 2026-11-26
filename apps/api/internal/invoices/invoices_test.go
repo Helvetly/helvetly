@@ -263,10 +263,11 @@ type Invoice struct {
 		QRBill  bool `json:"qr_bill"`
 		Revolut bool `json:"revolut"`
 	}
-	Payments      []struct{ ID, Amount string }
-	Seller        *store.Party
-	Buyer         *store.Party
-	ApprovalState *string
+	Payments             []struct{ ID, Amount string }
+	Seller               *store.Party
+	Buyer                *store.Party
+	ApprovalState        *string
+	ParticipantContactID *string
 }
 
 // UnmarshalJSON maps snake_case without tagging every field above.

@@ -748,3 +748,56 @@ export const Today: Story = {
     )
   },
 }
+
+/** A company's participants: the session names who takes it, and its mail goes to them. */
+export const ParticipantPicker: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        team,
+        clients,
+        http.get('/api/v1/clients/cli_01', () =>
+          HttpResponse.json({
+            data: {
+              ...ALPENGLOW,
+              is_company: true,
+              contacts: [
+                {
+                  id: 'con_oliver',
+                  name: 'Oliver Harvey',
+                  roles: ['contact'],
+                  email: 'oliver@alpenglow.ch',
+                  is_primary: true,
+                },
+                {
+                  id: 'con_lorenzo',
+                  name: 'Lorenzo Percic',
+                  roles: ['participant'],
+                  email: 'lorenzo@alpenglow.ch',
+                  is_primary: false,
+                },
+                {
+                  id: 'con_liam',
+                  name: 'Liam Gallagher',
+                  roles: ['contact', 'participant'],
+                  email: null,
+                  is_primary: false,
+                },
+              ],
+            },
+          }),
+        ),
+        ...schedulingHandlers(state),
+      ],
+    },
+  },
+  play: async () => {
+    const sheet = await drawer()
+    await pick(sheet, 'Participant', 'Lorenzo Percic lorenzo@alpenglow.ch')
+    await expect(picker(sheet, 'Participant')).toHaveAccessibleName(/Lorenzo Percic/)
+    await userEvent.type(await titleField(), 'German lesson')
+    await userEvent.click(sheet.getByRole('button', { name: 'Schedule' }))
+    await toastShows('Session scheduled.')
+    await expect(await sheet.findByText('Lorenzo Percic')).toBeVisible()
+  },
+}

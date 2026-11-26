@@ -29,11 +29,12 @@ func (s *Service) today(sess store.PortalSession) string { return sess.Workspace
 func (s *Service) invoices(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
 	// Limit 0 returns every match: the list is never cut off by a page size.
 	today := s.today(sess)
-	list, _, err := s.db.Q.ListInvoices(r.Context(), sess.Workspace.ID, today, store.InvoiceFilter{ClientID: sess.ClientID}, 0, 0)
+	// A participant (participants mode only, see participantAllows) sees the invoices addressed to them.
+	list, _, err := s.db.Q.ListInvoices(r.Context(), sess.Workspace.ID, today, store.InvoiceFilter{ClientID: sess.ClientID, ParticipantID: sess.ParticipantID}, 0, 0)
 	if err != nil {
 		return err
 	}
-	paid, err := s.db.PortalPaymentsByCurrency(r.Context(), sess.Workspace.ID, sess.ClientID, today)
+	paid, err := s.db.PortalPaymentsByCurrency(r.Context(), sess.Workspace.ID, sess.ClientID, sess.ParticipantID, today)
 	if err != nil {
 		return err
 	}
@@ -70,7 +71,8 @@ func (s *Service) invoicePDF(w http.ResponseWriter, r *http.Request, sess store.
 	if err != nil {
 		return err
 	}
-	if inv.ClientID != sess.ClientID || inv.Status == "draft" || inv.PDFKey == nil {
+	if inv.ClientID != sess.ClientID || inv.Status == "draft" || inv.PDFKey == nil ||
+		sess.ParticipantID != "" && (inv.ParticipantContactID == nil || *inv.ParticipantContactID != sess.ParticipantID) {
 		return auth.ErrNotFound
 	}
 	pdf, err := s.files.Get(r.Context(), *inv.PDFKey)
@@ -219,6 +221,14 @@ func (s *Service) engagementEntries(w http.ResponseWriter, r *http.Request, sess
 }
 
 func (s *Service) documents(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
+	if sess.ParticipantID != "" {
+		docs, err := s.db.Q.ParticipantSharedDocuments(r.Context(), sess.Workspace.ID, sess.ClientID, sess.ParticipantID)
+		if err != nil {
+			return err
+		}
+		auth.WriteJSON(w, http.StatusOK, data(docs))
+		return nil
+	}
 	docs, err := s.db.Q.SharedDocuments(r.Context(), sess.Workspace.ID, sess.ClientID)
 	if err != nil {
 		return err
@@ -229,6 +239,9 @@ func (s *Service) documents(w http.ResponseWriter, r *http.Request, sess store.P
 
 func (s *Service) downloadDocument(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
 	d, err := s.db.Q.SharedDocument(r.Context(), sess.Workspace.ID, sess.ClientID, r.PathValue("id"))
+	if sess.ParticipantID != "" {
+		d, err = s.db.Q.ParticipantSharedDocument(r.Context(), sess.Workspace.ID, sess.ClientID, sess.ParticipantID, r.PathValue("id"))
+	}
 	if err != nil {
 		return err
 	}
@@ -260,7 +273,7 @@ func (s *Service) downloadDocument(w http.ResponseWriter, r *http.Request, sess 
 }
 
 func (s *Service) signatures(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
-	list, err := s.db.Q.PortalSignatures(r.Context(), sess.Workspace.ID, sess.ClientID, sess.Email, "", s.now())
+	list, err := s.db.Q.PortalSignatures(r.Context(), sess.Workspace.ID, sess.ClientID, sess.Email, "", participantSigner(sess), s.now())
 	if err != nil {
 		return err
 	}
@@ -275,7 +288,7 @@ func (s *Service) downloadSignature(w http.ResponseWriter, r *http.Request, sess
 	if id == "" {
 		return store.ErrNotFound
 	}
-	list, err := s.db.Q.PortalSignatures(r.Context(), sess.Workspace.ID, sess.ClientID, sess.Email, id, s.now())
+	list, err := s.db.Q.PortalSignatures(r.Context(), sess.Workspace.ID, sess.ClientID, sess.Email, id, participantSigner(sess), s.now())
 	if err != nil {
 		return err
 	}
@@ -287,4 +300,12 @@ func (s *Service) downloadSignature(w http.ResponseWriter, r *http.Request, sess
 		return err
 	}
 	return storage.Serve(w, r, s.files, sess.Workspace.ID, d.ObjectKey, d.Name, d.ContentType)
+}
+
+// participantSigner: a participant sees only the signature requests they sign (by their address); "" for the client.
+func participantSigner(sess store.PortalSession) string {
+	if sess.ParticipantID == "" {
+		return ""
+	}
+	return sess.Email
 }

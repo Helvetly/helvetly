@@ -13,14 +13,14 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
-// recipients resolves the client and the address list: the given one, else the client's billing email, else the
-// buyer's on the document. The client is missing for a deleted one (the error says so).
+// recipients resolves the client and the address list: the given one, else the addressee's email (the participant's
+// when the invoice is addressed to one, else the client's billing email), else the buyer's on the document. The client is missing for a deleted one (the error says so).
 func (s *Service) recipients(ctx context.Context, ws string, inv store.Invoice, given []string) (store.Client, error, []string) {
 	client, err := s.db.Client(ctx, ws, inv.ClientID)
 	to := given
 	if len(to) == 0 {
-		if err == nil && buyerOf(client).Email != nil {
-			to = []string{*buyerOf(client).Email}
+		if err == nil && addressee(client, inv).Email != nil {
+			to = []string{*addressee(client, inv).Email}
 		} else if inv.Buyer != nil && inv.Buyer.Email != nil {
 			to = []string{*inv.Buyer.Email}
 		}

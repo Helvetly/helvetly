@@ -51,6 +51,16 @@ func checkImport(ctx context.Context, q store.Q, workspaceID, today, clientID st
 		client = &c
 	}
 	inv, terms := newDraft(client, set, today)
+	// The import's buyer matched a participant of the (company) client: the invoice is addressed to them.
+	if raw, ok := data["participant_contact_id"]; ok && client != nil {
+		var id string
+		_ = json.Unmarshal(raw, &id)
+		for _, p := range client.Contacts {
+			if p.ID == id && p.Is(store.RoleParticipant) {
+				inv.ParticipantContactID = &p.ID
+			}
+		}
+	}
 	body := map[string]json.RawMessage{}
 	for _, k := range importedKeys {
 		if raw, ok := data[k]; ok {
@@ -112,7 +122,7 @@ func checkImport(ctx context.Context, q store.Q, workspaceID, today, clientID st
 	}
 	elsewhere := checkIssuedElsewhere(inv, data, today, invalid)
 	if elsewhere.on && client != nil {
-		buyer := importedBuyer(*client, data)
+		buyer := importedBuyer(*client, inv, data)
 		inv.Buyer = &buyer
 	}
 	var hasSchedule bool

@@ -144,8 +144,8 @@ func paidInstalments(p *parser, raw json.RawMessage, payment func(string, invoic
 	return out
 }
 
-func importedBuyer(client store.Client, data map[string]json.RawMessage) store.Party {
-	buyer := buyerOf(client)
+func importedBuyer(client store.Client, inv store.Invoice, data map[string]json.RawMessage) store.Party {
+	buyer := addressee(client, inv)
 	if buyer.Zip != "" {
 		return buyer
 	}

@@ -34,6 +34,7 @@ type Event struct {
 	ID              string          `json:"id"`
 	Client          Ref             `json:"client"`
 	Engagement      *EngagementRef  `json:"engagement"`
+	Participant     *Ref            `json:"participant"`
 	EventTypeID     *string         `json:"event_type_id"`
 	Host            *Ref            `json:"host"`
 	Title           string          `json:"title"`
@@ -85,6 +86,7 @@ type Occurrence struct {
 	Host          *Ref           `json:"host"`
 	Client        Ref            `json:"client"`
 	Engagement    *EngagementRef `json:"engagement"`
+	Participant   *Ref           `json:"participant"`
 	IsException   bool           `json:"is_exception"`
 	Sequence      int            `json:"sequence"`
 	Request       *Request       `json:"request"`
@@ -187,6 +189,7 @@ type resolver struct {
 	events      map[string]store.SchedEvent
 	clients     map[string]store.SchedRef
 	engagements map[string]store.SchedRef
+	people      map[string]store.SchedRef
 	members     map[string]store.SchedRef
 	invoices    map[string]store.SchedRef
 	requests    map[string]store.SchedRequest
@@ -232,6 +235,15 @@ func (s *Service) resolve(ctx context.Context, q store.Q, workspaceID string, ev
 	if r.engagements, err = q.SchedEngagements(ctx, workspaceID, engIDs); err != nil {
 		return nil, err
 	}
+	var people []string
+	for _, e := range r.events {
+		if e.ParticipantContactID != nil {
+			people = append(people, *e.ParticipantContactID)
+		}
+	}
+	if r.people, err = q.SchedParticipants(ctx, workspaceID, people); err != nil {
+		return nil, err
+	}
 	if r.members, err = q.SchedMembers(ctx, workspaceID); err != nil {
 		return nil, err
 	}
@@ -267,6 +279,13 @@ func (r *resolver) host(id *string) *Ref {
 
 func (r *resolver) client(id string) Ref { return Ref{ID: id, Name: r.clients[id].Name} }
 
+func (r *resolver) participant(id *string) *Ref {
+	if id == nil {
+		return nil
+	}
+	return &Ref{ID: *id, Name: r.people[*id].Name}
+}
+
 func (r *resolver) engagement(id *string) *EngagementRef {
 	if id == nil {
 		return nil
@@ -291,7 +310,7 @@ func (r *resolver) event(e store.SchedEvent) Event {
 	if attendees == nil {
 		attendees = []string{}
 	}
-	return Event{ID: e.ID, Client: r.client(e.ClientID), Engagement: r.engagement(e.EngagementID), EventTypeID: e.EventTypeID,
+	return Event{ID: e.ID, Client: r.client(e.ClientID), Engagement: r.engagement(e.EngagementID), Participant: r.participant(e.ParticipantContactID), EventTypeID: e.EventTypeID,
 		Host: r.host(e.HostUserID), Title: e.Title, Description: e.Description, ClientNote: e.ClientNote, Mode: e.Mode,
 		Meeting: meeting(e.MeetingProvider, e.MeetingURL), Location: e.Location, TimeZone: e.TimeZone,
 		StartsLocal: e.StartsLocal.Format("2006-01-02T15:04"), DurationMinutes: e.DurationMinutes, Recurrence: recurrenceOut(e),
@@ -304,7 +323,7 @@ func (r *resolver) occurrence(o store.SchedOccurrence) Occurrence {
 	v := Occurrence{ID: o.ID, EventID: o.EventID, OriginalStart: o.OriginalStart, StartsAt: o.StartsAt, EndsAt: o.EndsAt,
 		Status: o.Status, Late: o.Late, Counts: counts(o, r.settings), Title: cmp.Or(deref(o.Title), e.Title),
 		Location: cmp.Or(o.Location, e.Location), Host: r.host(o.HostUserID), Client: r.client(o.ClientID),
-		Engagement: r.engagement(o.EngagementID), IsException: o.IsException, Sequence: o.Sequence, EntryIDs: []string{},
+		Engagement: r.engagement(o.EngagementID), Participant: r.participant(e.ParticipantContactID), IsException: o.IsException, Sequence: o.Sequence, EntryIDs: []string{},
 		UpdatedAt: o.UpdatedAt}
 	if e.Mode == "online" {
 		v.Meeting = meeting(e.MeetingProvider, cmp.Or(o.MeetingURL, e.MeetingURL))

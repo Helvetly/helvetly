@@ -40,7 +40,7 @@ var WorkspaceExportTables = []ExportTable{
 	child("engagement_entry_allocations", "invoices", "invoice_id"), child("engagement_entries", "engagements", "engagement_id"), child("engagement_notices", "engagements", "engagement_id"),
 	{"engagement_invoices", `SELECT to_jsonb(c) FROM engagement_invoices c JOIN engagement_periods ep ON ep.id = c.period_id
 		JOIN engagements p ON p.id = ep.engagement_id WHERE p.workspace_id = $1`},
-	{"documents", `SELECT to_jsonb(t) FROM documents t WHERE t.workspace_id = $1 AND NOT t.hr_private`}, own("document_folders"), own("document_links"), own("document_shares"),
+	{"documents", `SELECT to_jsonb(t) FROM documents t WHERE t.workspace_id = $1 AND NOT t.hr_private`}, own("document_folders"), own("document_links"), own("document_shares"), own("document_participant_shares"),
 	{"document_filings", `SELECT to_jsonb(t) FROM document_filings t JOIN documents d ON d.id = t.document_id
 		WHERE t.workspace_id = $1 AND NOT d.hr_private`}, own("client_change_requests"),
 	{"portal_sessions", `SELECT to_jsonb(t) - 'token_hash' - 'csrf_token' FROM portal_sessions t WHERE t.workspace_id = $1`},

@@ -21,6 +21,8 @@ import type { EventType } from '@/lib/scheduling-settings'
 export type Values = {
   client: Person | null
   engagement_id: string
+  /** The participant of a company client who takes the session; their email gets its mail. */
+  participant_id: string
   event_type_id: string
   host_id: string
   title: string
@@ -62,6 +64,7 @@ export function blankValues(start: {
   return {
     client: start.client ?? null,
     engagement_id: start.engagementId ?? '',
+    participant_id: '',
     event_type_id: '',
     host_id: start.hostId,
     title: start.title ?? '',
@@ -94,6 +97,7 @@ export function valuesFrom(occurrence: Occurrence, event: SchedEvent): Values {
   return {
     client: occurrence.client,
     engagement_id: occurrence.engagement?.id ?? '',
+    participant_id: event.participant?.id ?? '',
     event_type_id: event.event_type_id ?? '',
     host_id: occurrence.host?.id ?? '',
     title: occurrence.title,
@@ -256,6 +260,7 @@ export function toInput(values: Values, zone: string): EventInput {
   return {
     client_id: values.client?.id ?? '',
     engagement_id: orNull(values.engagement_id),
+    participant_contact_id: orNull(values.participant_id),
     event_type_id: orNull(values.event_type_id),
     host_id: values.host_id,
     title: values.title.trim(),
