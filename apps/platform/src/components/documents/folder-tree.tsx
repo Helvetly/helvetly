@@ -31,6 +31,7 @@ import { FolderName } from './system-mark'
 
 export type TreeActions = {
   open: (folder: string | null) => void
+  prefetch: (folder: string) => void
   section: (section: Section) => void
   newFolder: (parent: string | null) => void
   rename: (folder: Folder, name: string) => void
@@ -276,6 +277,7 @@ function StarredRow({
         type="button"
         aria-current={current ? 'page' : undefined}
         onClick={() => actions.open(folder.id)}
+        onPointerEnter={() => actions.prefetch(folder.id)}
         className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 text-left outline-none"
       >
         <span className="flex size-6 shrink-0 items-center justify-center">
@@ -418,6 +420,7 @@ function TreeNode({
                   }
                   onDragEnd={endDrag}
                   onClick={() => actions.open(folder.id)}
+                  onPointerEnter={() => actions.prefetch(folder.id)}
                   onKeyDown={(event) => {
                     if (canWrite && !system && event.key === 'F2') onRenameStart()
                     // Handled arrows stay in the tree; the page would otherwise move the grid's selection too.

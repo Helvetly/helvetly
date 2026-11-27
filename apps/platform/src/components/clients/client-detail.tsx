@@ -672,11 +672,12 @@ function Detail({
         </p>
       </TabsContent>
 
-      <TabsContent value="contacts" className="grid gap-3 p-4 sm:p-5">
+      <TabsContent
+        value="contacts"
+        className="grid grid-cols-[minmax(0,1fr)] content-start gap-3 p-4 sm:p-5"
+      >
         <DocumentsToSwitch client={client} />
-        <Panel title={translate('people')}>
-          <ClientContacts client={client} />
-        </Panel>
+        <ClientContacts client={client} />
       </TabsContent>
 
       <TabsContent value="files" className="p-4 sm:p-5">
