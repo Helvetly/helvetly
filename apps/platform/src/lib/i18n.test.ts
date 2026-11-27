@@ -25,13 +25,13 @@ describe('platform languages', () => {
   })
 
   it.each([
-    ['en', 'Settings', 'March 2026'],
-    ['de', 'Einstellungen', 'März 2026'],
-    ['fr', 'Paramètres', 'mars 2026'],
-    ['it', 'Impostazioni', 'marzo 2026'],
+    ['en', 'Settings', 'March 2026', 'Third reminder'],
+    ['de', 'Einstellungen', 'März 2026', 'Dritte Erinnerung'],
+    ['fr', 'Paramètres', 'mars 2026', 'Troisième rappel'],
+    ['it', 'Impostazioni', 'marzo 2026', 'Terzo promemoria'],
   ])(
     'loads the %s catalog from a language link and remembers it',
-    async (language, label, month) => {
+    async (language, label, month, thirdReminder) => {
       vi.stubEnv('NEXT_PUBLIC_I18N_MODE', 'browser')
       window.history.replaceState(null, '', `/clients?lang=${language}`)
       vi.resetModules()
@@ -39,6 +39,7 @@ describe('platform languages', () => {
       const { translate } = await import('./i18n')
       const { monthLabel } = await import('./payroll')
       expect(translate('settings')).toBe(label)
+      expect(translate('reminder', { rank: 3 })).toBe(thirdReminder)
       expect(monthLabel('2026-03')).toBe(month)
       expect(localStorage.getItem('helvetly.language')).toBe(language)
     },

@@ -2683,7 +2683,7 @@
   "rejectTheRequestedChanges": "Reject the requested changes?",
   "remaining": "Remaining",
   "remind": "Remind",
-  "reminder": "Reminder {rank}",
+  "reminder": "{rank, select, 1 {First reminder} 2 {Second reminder} 3 {Third reminder} 4 {Fourth reminder} 5 {Fifth reminder} 6 {Sixth reminder} 7 {Seventh reminder} 8 {Eighth reminder} 9 {Ninth reminder} 10 {Tenth reminder} other {Reminder}}",
   "reminderEmailed": "Reminder emailed",
   "reminders": "Reminders",
   "reminderSchedule": "Reminder schedule",
