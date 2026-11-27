@@ -5358,6 +5358,7 @@
   "schedTimesIn": "Orari di {zone} (spazio: {workspace})",
   "schedLockedKept": "Le sessioni esistenti restano consultabili.",
   "schedKeyboardHint": "Alt e le frecce spostano la sessione; con Maiusc ne cambiano la durata.",
+  "schedBusyBlock": "Occupato nel calendario, {start}–{end}",
   "schedBusy": "Occupato",
   "schedDayOff": "Giorno libero",
   "schedDayOffHint": "Giorno libero: nessuna prenotazione",

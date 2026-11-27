@@ -51,3 +51,18 @@ export function clipToDay(
 /** A pointer offset in pixels as minutes, snapped to `snap`. */
 export const snapMinutes = (pixels: number, hourHeight: number, snap = 15) =>
   Math.round(((pixels / hourHeight) * 60) / snap) * snap
+
+/** Busy times from now on: those already over drop out, one running now starts at now. */
+export function notPast<T extends { starts_at: string; ends_at: string }>(
+  blocks: readonly T[],
+  now: Date,
+): T[] {
+  const nowMs = now.getTime()
+  return blocks.flatMap((block) =>
+    Date.parse(block.ends_at) <= nowMs
+      ? []
+      : Date.parse(block.starts_at) < nowMs
+        ? [{ ...block, starts_at: now.toISOString() }]
+        : [block],
+  )
+}
