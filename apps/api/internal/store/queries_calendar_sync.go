@@ -37,7 +37,7 @@ func (q Q) WorkspaceCalendarConnections(ctx context.Context, workspaceID string)
 // UnwatchedCalendarSources lists up to limit busy calendars of active connections in live workspaces that have no
 // watch yet.
 func (q Q) UnwatchedCalendarSources(ctx context.Context, limit int) ([]CalendarSource, error) {
-	rows, err := q.db.Query(ctx, `SELECT s.connection_id, s.calendar_id, s.name, s.is_primary, s.busy, s.sync_token, s.due_at, s.full_resync
+	rows, err := q.db.Query(ctx, `SELECT s.connection_id, s.calendar_id, s.name, s.is_primary, s.busy, s.sync_token, s.due_at, s.full_resync, coalesce(s.color, '')
 		FROM calendar_sources s JOIN calendar_connections c ON c.id = s.connection_id JOIN workspaces w ON w.id = c.workspace_id
 		WHERE s.busy AND c.status = 'active' AND w.deleted_at IS NULL
 			AND NOT EXISTS (SELECT 1 FROM calendar_watches x WHERE x.connection_id = s.connection_id AND x.calendar_id = s.calendar_id)

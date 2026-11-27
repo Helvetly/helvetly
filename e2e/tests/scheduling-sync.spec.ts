@@ -88,7 +88,31 @@ test('a host connects Google: the session is pushed, a move in Google comes back
 
   // Settings → Scheduling shows the connected calendar.
   await page.goto('/settings/scheduling')
-  await expect(page.getByText('host@gmail.test').first()).toBeVisible()
+  const card = page.getByRole('region', { name: 'Google Calendar', exact: true })
+  await expect(card.getByText('host@gmail.test').first()).toBeVisible()
+  await expect(card.getByText(/^Synced /)).toBeVisible()
+  // Each calendar with the colour Google gives it; the second one is checked for conflicts and kept on reload.
+  await expect(card.locator('[data-slot="calendar-dot"]')).not.toHaveCount(0)
+  await card.getByRole('checkbox').nth(1).click()
+  await expect
+    .poll(
+      async () =>
+        objects(
+          (await list(await api.request.get('/api/v1/scheduling/calendars')))[0]?.calendars ?? [],
+        ).length,
+    )
+    .toBe(2)
+  await expect
+    .poll(
+      async () =>
+        (await list(await api.request.get('/api/v1/scheduling/calendars')))[0]?.busy_calendar_ids,
+    )
+    .toHaveLength(2)
+  await page.reload()
+  await expect(card.getByRole('checkbox').nth(1)).toBeChecked()
+  await card.getByRole('button', { name: 'More for Google Calendar' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Disconnect' })).toBeVisible()
+  await page.keyboard.press('Escape')
 
   // Another workspace sees no connection of this one and cannot remove it.
   const otherContext = await browser.newContext({ baseURL })

@@ -10,6 +10,7 @@ import {
   presetText,
   schedulingApi,
   splitDuration,
+  syncedAgo,
   windowProblem,
 } from './scheduling-settings'
 
@@ -67,12 +68,12 @@ describe('windowProblem', () => {
     ).toBeNull())
   it('refuses a block that ends before it starts', () =>
     expect(windowProblem([{ day: 1, start: '12:00', end: '08:00' }])).toBe(
-      'Each block must end after it starts.',
+      'The end must be after the start.',
     ))
   it('refuses overlapping blocks on one day only', () => {
     const a = { day: 1, start: '08:00', end: '12:00' }
     expect(windowProblem([a, { day: 1, start: '11:00', end: '14:00' }])).toBe(
-      'Blocks on one day can’t overlap.',
+      'Time ranges on one day can’t overlap.',
     )
     expect(windowProblem([a, { day: 2, start: '11:00', end: '14:00' }])).toBeNull()
   })
@@ -132,5 +133,18 @@ describe('scheduling settings request bodies', () => {
       method: 'PUT',
       json: hours,
     })
+  })
+})
+
+describe('syncedAgo', () => {
+  const now = new Date('2026-11-27T12:00:00Z')
+  it.each([
+    ['2026-11-27T11:59:30Z', 'now'],
+    ['2026-11-27T11:58:00Z', '2 minutes ago'],
+    ['2026-11-27T09:00:00Z', '3 hours ago'],
+    ['2026-11-26T10:00:00Z', 'yesterday'],
+    ['2026-11-01T10:00:00Z', '1 Nov 2026'],
+  ])('words %s as %s', (at, text) => {
+    expect(syncedAgo(at, now)).toBe(text)
   })
 })

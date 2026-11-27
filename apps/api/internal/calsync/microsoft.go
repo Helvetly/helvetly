@@ -82,13 +82,14 @@ func (m *microsoft) revoke(context.Context, string) error { return nil }
 
 func (m *microsoft) calendars(ctx context.Context, s session) ([]calendar, error) {
 	var out []calendar
-	next := m.api + "/me/calendars?$select=id,name,isDefaultCalendar&$top=100"
+	next := m.api + "/me/calendars?$select=id,name,isDefaultCalendar,hexColor&$top=100"
 	for next != "" {
 		var res struct {
 			Value []struct {
 				ID                string `json:"id"`
 				Name              string `json:"name"`
 				IsDefaultCalendar bool   `json:"isDefaultCalendar"`
+				HexColor          string `json:"hexColor"`
 			} `json:"value"`
 			Next string `json:"@odata.nextLink"`
 		}
@@ -96,7 +97,7 @@ func (m *microsoft) calendars(ctx context.Context, s session) ([]calendar, error
 			return nil, err
 		}
 		for _, c := range res.Value {
-			out = append(out, calendar{ID: c.ID, Name: cmpOr(c.Name, c.ID), Primary: c.IsDefaultCalendar})
+			out = append(out, calendar{ID: c.ID, Name: cmpOr(c.Name, c.ID), Primary: c.IsDefaultCalendar, Color: hexColor(c.HexColor)})
 		}
 		next = res.Next
 	}

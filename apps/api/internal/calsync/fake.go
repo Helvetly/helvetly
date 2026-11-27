@@ -404,7 +404,7 @@ func (f *Fake) googleCalendars(w http.ResponseWriter, _ *http.Request) {
 	defer f.mu.Unlock()
 	var items []map[string]any
 	for i, c := range f.calendars("google") {
-		items = append(items, map[string]any{"id": c[0], "summary": c[1], "primary": i == 0})
+		items = append(items, map[string]any{"id": c[0], "summary": c[1], "primary": i == 0, "backgroundColor": []string{"#9FE1E7", "#a47ae2"}[i%2]})
 	}
 	fakeJSON(w, http.StatusOK, map[string]any{"items": items})
 }

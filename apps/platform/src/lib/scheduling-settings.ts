@@ -74,12 +74,14 @@ export type HostHours = {
   color: string | null
   weekly: Window[]
   overrides: Override[]
+  /** False only when the member never saved hours (and so cannot be booked yet). */
+  saved?: boolean
 }
 
 type HostHoursResponse = HostHours & { user_id: string }
 
 export type Provider = 'google' | 'microsoft'
-export type CalendarInfo = { id: string; name: string; primary: boolean }
+export type CalendarInfo = { id: string; name: string; primary: boolean; color?: string | null }
 export type Connection = {
   id: string
   provider: Provider
@@ -387,4 +389,16 @@ export function windowProblem(windows: readonly Window[]): string | null {
       return translate('schedulingSettingsWindowOverlap')
   }
   return null
+}
+
+/** "2 minutes ago", "yesterday": how long since a sync, in words; a date once it is a week or more. */
+export function syncedAgo(at: string, now = new Date()): string {
+  const seconds = Math.round((new Date(at).getTime() - now.getTime()) / 1000)
+  const words = new Intl.RelativeTimeFormat(languageTag, { numeric: 'auto' })
+  const ago = -seconds
+  if (ago < 60) return words.format(0, 'second')
+  if (ago < 3600) return words.format(-Math.floor(ago / 60), 'minute')
+  if (ago < 86400) return words.format(-Math.floor(ago / 3600), 'hour')
+  if (ago < 7 * 86400) return words.format(-Math.floor(ago / 86400), 'day')
+  return new Intl.DateTimeFormat(languageTag, { dateStyle: 'medium' }).format(new Date(at))
 }
