@@ -181,6 +181,7 @@ import {
   type Selection,
 } from './selection'
 import { ShareDialog } from './share-dialog'
+import { StagedUpload } from './staged-upload'
 import { starAction } from './star'
 import { StorageOverview } from './storage-overview'
 import { TrashView } from './trash-view'
@@ -335,7 +336,8 @@ export function DocumentsPage() {
     { template: Template | null; document: DocFile | null } | undefined
   >(undefined)
   const [filling, setFilling] = useState<Template | null | undefined>(undefined)
-  const uploads = useUploads()
+  // With AI approved, uploads are staged first and the person picks "Just upload" or AI smart grouping.
+  const uploads = useUploads({ staging: ai.available && ai.consented })
   useAIFilingToast(uploads.uploads, uploads.clear)
   const importDrawer = useImportDrawer()
   const picker$ = useRef<HTMLInputElement>(null)
@@ -1574,6 +1576,7 @@ export function DocumentsPage() {
       </div>
 
       <UploadTray uploads={uploads.uploads} act={uploads.act} />
+      <StagedUpload uploads={uploads.uploads} dispatch={uploads.dispatch} />
       {importDrawer.isOpen && <ImportDrawer kind="auto" onClose={importDrawer.close} />}
       {extracting && (
         <ImportDrawer

@@ -226,6 +226,7 @@ var ExportExcluded = map[string]string{
 	"portal_slugs":             "routing: the workspace's portal addresses (shown in its settings), not business data",
 	"workspace_domains":        "routing: the workspace's own portal domain and its Cloudflare status (shown in its settings), not business data",
 	"stored_objects":           "storage accounting: the bytes each object counts, not business data",
+	"staged_uploads":           "files uploaded but not placed yet, deleted within a day unless confirmed; not business data",
 	"limits":                   "global plan configuration, not workspace data",
 	"limit_plans":              "global plan configuration, not workspace data",
 	"limit_workspaces":         "an operator's plan limit for the workspace, not business data",

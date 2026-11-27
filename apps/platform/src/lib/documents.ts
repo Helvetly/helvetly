@@ -678,6 +678,24 @@ export const docsApi = {
       method: 'POST',
       json: undo,
     }),
+  /** Proposes a place for some staged files of a batch, as organize does; nothing changes yet. */
+  stagedAnalyze: (batchId: string, ids: string[], folderId: string | null) =>
+    request<{ data: { proposals: OrganizeProposal[]; considered: number } }>(
+      `/documents/staged/${encodeURIComponent(batchId)}/analyze`,
+      { method: 'POST', json: { ids, folder_id: folderId } },
+    ),
+  /**
+   * Files a staged batch into folderId; the items' files then move to their paths with their tags. Without items
+   * the files are queued for AI filing like any upload.
+   */
+  stagedConfirm: (batchId: string, folderId: string | null, items?: OrganizeItem[]) =>
+    request<{ data: { documents: DocFile[]; duplicates: StagedFile[] } }>(
+      `/documents/staged/${encodeURIComponent(batchId)}/confirm`,
+      { method: 'POST', json: { folder_id: folderId, items } },
+    ),
+  /** Deletes a staged batch's files. */
+  stagedCancel: (batchId: string) =>
+    request<void>(`/documents/staged/${encodeURIComponent(batchId)}/cancel`, { method: 'POST' }),
 }
 
 /** One AI organize row; folder paths are "Parent/Child", "" the top level. */
@@ -859,19 +877,54 @@ export function uploadDocument(
   onProgress: (share: number) => void,
   signal?: AbortSignal,
 ): Promise<DocFile & { reused: boolean }> {
-  // A proxy would refuse a bigger request with its own page, so the API's message is given here.
-  if (file.size > DOCUMENT_MAX_BYTES)
-    return Promise.reject(
-      new ApiError(413, 'payload_too_large', translate('uploadFilesOfUpTo25MB')),
-    )
   const form = new FormData()
   form.append('file', file)
   if (options.folderId) form.append('folder_id', options.folderId)
   if (options.onConflict) form.append('on_conflict', options.onConflict)
   if (options.clientId) form.append('client_id', options.clientId)
+  return sendFile<DocFile>(options.url ?? '/api/v1/documents', file, form, onProgress, signal)
+}
+
+/** A file uploaded into the staging area: no Document until its batch is confirmed. */
+export type StagedFile = {
+  id: string
+  batch_id: string
+  name: string
+  size: number
+  content_type: string
+}
+
+/**
+ * Stages one file of an upload batch, with progress; a duplicate rejects with 409 duplicate_file naming the
+ * existing file.
+ */
+export function stageDocument(
+  file: File,
+  batchId: string,
+  onProgress: (share: number) => void,
+  signal?: AbortSignal,
+): Promise<StagedFile> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('batch_id', batchId)
+  return sendFile<StagedFile>('/api/v1/documents/staged', file, form, onProgress, signal)
+}
+
+function sendFile<T extends { id: string }>(
+  url: string,
+  file: File,
+  form: FormData,
+  onProgress: (share: number) => void,
+  signal?: AbortSignal,
+): Promise<T & { reused: boolean }> {
+  // A proxy would refuse a bigger request with its own page, so the API's message is given here.
+  if (file.size > DOCUMENT_MAX_BYTES)
+    return Promise.reject(
+      new ApiError(413, 'payload_too_large', translate('uploadFilesOfUpTo25MB')),
+    )
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', options.url ?? '/api/v1/documents')
+    xhr.open('POST', url)
     xhr.setRequestHeader(translate('accept'), 'application/json')
     const token = getCsrfToken()
     if (token) xhr.setRequestHeader('X-CSRF-Token', token)
@@ -882,7 +935,7 @@ export function uploadDocument(
     xhr.addEventListener('load', () => {
       const body: unknown = xhr.response
       // 200 + reused: the bytes were already in Documents, so the existing file answers.
-      if ((xhr.status === 201 || xhr.status === 200) && isFileBody(body))
+      if ((xhr.status === 201 || xhr.status === 200) && isFileBody<T>(body))
         resolve({ ...body.data, reused: xhr.status === 200 && hasReused(body) })
       else reject(errorFromBody(xhr.status, body))
     })
@@ -899,7 +952,7 @@ export function uploadDocument(
 
 const hasReused = (body: object) => 'reused' in body && body.reused === true
 
-function isFileBody(body: unknown): body is { data: DocFile } {
+function isFileBody<T>(body: unknown): body is { data: T } {
   return (
     typeof body === 'object' &&
     body !== null &&

@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import type { DocFile } from '@/lib/documents'
 
-import { MAX_PARALLEL, newUploads, nextToStart, queueReducer, summarize } from './upload-queue'
+import {
+  MAX_PARALLEL,
+  newUploads,
+  nextToStart,
+  queueReducer,
+  readyBatch,
+  summarize,
+} from './upload-queue'
 
 const file = (name: string, size: number) => new File(['x'.repeat(size)], name)
 
@@ -27,6 +34,14 @@ const uploaded: DocFile = {
   deleted_by: null,
   purge_at: null,
 }
+
+const staged = (id: string) => ({
+  id,
+  batch_id: 'b1',
+  name: `${id}.pdf`,
+  size: 1,
+  content_type: 'application/pdf',
+})
 
 describe('the upload queue', () => {
   it('runs at most a few at a time, oldest first', () => {
@@ -63,6 +78,7 @@ describe('the upload queue', () => {
       reused: 0,
       failed: 1,
       conflicts: 0,
+      staged: 0,
       active: 1,
       progress: 150 / 400,
     })
@@ -110,5 +126,44 @@ describe('the upload queue', () => {
     state = queueReducer(state, { type: 'conflict', id: c ?? '', suggestion: '' })
     state = queueReducer(state, { type: 'resolveAll', onConflict: 'skip' })
     expect(state[2]?.status).toBe('cancelled')
+  })
+
+  it('stages a batch, waits for every file, then files or discards it', () => {
+    let state = queueReducer([], {
+      type: 'add',
+      uploads: newUploads(
+        [file('a.pdf', 1), file('b.pdf', 1), file('c.pdf', 1)],
+        'f',
+        'Inbox',
+        'fail',
+        'b1',
+      ),
+    })
+    const [a, b, c] = state.map((u) => u.id)
+    state = queueReducer(state, { type: 'staged', id: a ?? '', staged: staged('doc_a') })
+    expect(readyBatch(state)).toBeNull() // b and c still on their way
+    state = queueReducer(state, {
+      type: 'duplicate',
+      id: b ?? '',
+      error: 'Already uploaded as x.pdf.',
+    })
+    state = queueReducer(state, { type: 'staged', id: c ?? '', staged: staged('doc_c') })
+    expect(readyBatch(state)).toMatchObject({ batchId: 'b1', folderId: 'f', folderName: 'Inbox' })
+    expect(summarize(state)).toMatchObject({ staged: 2, active: 0 })
+
+    const filed = queueReducer(state, {
+      type: 'filed',
+      batchId: 'b1',
+      filed: { doc_a: { result: { ...uploaded, id: 'doc_a' }, folderName: 'Clients › Kunde AG' } },
+    })
+    expect(filed.map((u) => [u.status, u.folderName])).toEqual([
+      ['done', 'Clients › Kunde AG'],
+      ['duplicate', 'Inbox'],
+      ['reused', 'Inbox'], // stored meanwhile by someone else: not filed twice
+    ])
+    expect(readyBatch(filed)).toBeNull()
+
+    const discarded = queueReducer(state, { type: 'discard', batchId: 'b1' })
+    expect(discarded.map((u) => u.status)).toEqual(['cancelled', 'duplicate', 'cancelled'])
   })
 })

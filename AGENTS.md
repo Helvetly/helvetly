@@ -168,6 +168,21 @@ are the reference.
   client's `Documents/<year>`; the reason is kept (`document_filings.contract_reason`). Imported contracts keep their name. An invoice or quote
   the model files outside Clients goes to the client's folder when the file names one client (whole name or UID). When organizing existing documents, a contract tag also puts a document in its
   client's Contracts folder when its client and year are known, unless the file name marks a template, sample or draft.
+- **Staged uploads** (`staged_uploads`, 00087, `documents/staged.go`, `store/queries_staged_uploads.go`): a file
+  uploaded but not placed yet is no Document, so no list, search, group, count, share, export or Heidi answer sees it;
+  its object is counted (`ReserveObject`) like any upload. With AI approved, Documents' Upload stages each file first
+  (`POST /api/v1/documents/staged`: the upload's checks, a duplicate of a live Document or of the batch refused with 409
+  `duplicate_file`), then the member who staged the batch chooses "Just upload" (`…/staged/{batch}/confirm` into the
+  folder they were in, queued for AI filing as any upload) or AI smart grouping (`…/analyze`, a few files per request,
+  the organize proposals from the automation pool; then `…/confirm` with the reviewed rows, applied as an organize run
+  sets folder, tags and kind; audited `documents.upload_filed`); closing deletes the batch (`…/cancel`). Without AI the
+  upload goes straight into the folder as before. An import's uploads are staged too (purpose `import`, never a
+  Document): a record promotes its file to a Document only when it is the record's original (an invoice issued
+  elsewhere, an expense's own receipt); the rest is deleted once every record is created or skipped, or the import is
+  discarded or expires. A job deletes staged files left for 24 hours (an open import's sources wait for the import's
+  own expiry), and storage releases their bytes once it confirms the delete. Earlier imports' ZIP or CSV sources still
+  in Documents that nobody placed, tagged, linked or shared and that are no record's are moved into the staging area at
+  start (deleted a day later; audited `documents.import_sources_removed`). Session-only.
 - **Automatic tags** (`tags.Auto`, `store/queries_document_autotags.go`): a file's tags say what it is, from its record
   first, then its system folder, then its `documents.filed_kind` (the kind AI filing or organizing found, or a client
   document's upload type): the kind (`tags.Kinds`, one line each: every invoice kind through `tags.InvoiceKinds`, a test

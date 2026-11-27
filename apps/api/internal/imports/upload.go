@@ -26,6 +26,7 @@ type upload struct {
 	entries                []entry
 	documentID, key        string
 	reused                 bool   // the bytes were already stored in the workspace
+	staged                 bool   // kept in the staging area (no Document) while the import needs it
 	written                string // the object this request put, deleted again when unused
 }
 
@@ -197,8 +198,9 @@ func unsupportedFile(err error) error {
 	return auth.Error(http.StatusBadRequest, "unsupported_file", err.Error(), nil)
 }
 
-// store keeps every upload as a Document (reusing the stored object when the bytes are already in the workspace) and
-// records the batch. Objects are put between two transactions, so no lock waits on storage; the second transaction
+// store keeps every upload in the staging area, never in Documents (an HR import's as an HR file; bytes already in
+// the workspace are reused), and records the batch. A record made from a file promotes it to a Document only when it
+// is the record's original; the rest is deleted once the import ends (dropSources). Objects are put between two transactions, so no lock waits on storage; the second transaction
 // repeats the duplicate check under the same locks, which covers simultaneous uploads from any entry point.
 func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, clientID *string, list []upload) (b store.ImportBatch, err error) {
 	if err = s.db.Tx(ctx, func(q store.Q) error { return s.admit(ctx, q, sess, list, kind.Private) }); err != nil {
@@ -232,9 +234,17 @@ func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, clie
 		if err := s.admit(ctx, q, sess, list, kind.Private); err != nil {
 			return err
 		}
-		for _, u := range list {
-			if !u.reused {
-				if err := s.createDocument(ctx, q, sess, u, kind.Private); err != nil {
+		for i := range list {
+			u := &list[i]
+			switch {
+			case u.reused:
+			case kind.Private:
+				if err := s.createDocument(ctx, q, sess, *u, true); err != nil {
+					return err
+				}
+			default:
+				u.staged = true
+				if err := s.stageSource(ctx, q, sess, batch.ID, *u); err != nil {
 					return err
 				}
 			}
@@ -246,7 +256,9 @@ func (s *Service) store(ctx context.Context, sess store.Session, kind Kind, clie
 	}
 	if s.file != nil && !kind.Private && !kind.PlacesDocument {
 		for _, u := range list {
-			s.file(ctx, sess, u.documentID) // a reused file is filed only if it never was (queued once)
+			if !u.staged && strings.HasPrefix(u.documentID, "doc_") { // a Document reused
+				s.file(ctx, sess, u.documentID) // a reused file is filed only if it never was (queued once)
+			}
 		}
 	}
 	return s.db.ImportBatch(ctx, sess.Workspace.ID, sess.User.ID, batch.ID)
@@ -267,10 +279,10 @@ func (s *Service) admit(ctx context.Context, q store.Q, sess store.Session, list
 	var add int64
 	for i := range list {
 		u := &list[i]
-		id, key, err := q.ExistingUpload(ctx, sess.Workspace.ID, u.sum, private)
+		id, key, staged, err := q.ExistingUpload(ctx, sess.Workspace.ID, u.sum, private)
 		switch {
 		case err == nil:
-			u.reused, u.documentID, u.key = true, id, key
+			u.reused, u.staged, u.documentID, u.key = true, staged, id, key
 		case errors.Is(err, store.ErrNotFound):
 			add += int64(len(u.data))
 		default:
@@ -287,13 +299,29 @@ func (s *Service) admit(ctx context.Context, q store.Q, sess store.Session, list
 	return nil
 }
 
+// stageSource keeps an import's uploaded file in the staging area for its batch, counted against storage.
+func (s *Service) stageSource(ctx context.Context, q store.Q, sess store.Session, batchID string, u upload) error {
+	size := int64(len(u.data))
+	if err := q.ReserveObject(ctx, sess.Workspace.ID, u.key, size, true, s.now()); err != nil {
+		return err
+	}
+	return q.CreateStagedUpload(ctx, store.StagedUpload{ID: u.documentID, WorkspaceID: sess.Workspace.ID, UserID: sess.User.ID,
+		Purpose: "import", BatchID: batchID, Name: u.name, Size: size, ContentType: u.contentType, SHA256: u.sum,
+		ObjectKey: u.key, CreatedAt: s.now()})
+}
+
 func (s *Service) createDocument(ctx context.Context, q store.Q, sess store.Session, u upload, private bool) error {
-	name := u.name
 	if private { // an HR file has no place among Documents, so no name there to avoid
 		sum := u.sum
-		return q.CreateDocument(ctx, sess.Workspace.ID, sess.User.ID, store.Document{ID: u.documentID, Name: name,
+		return q.CreateDocument(ctx, sess.Workspace.ID, sess.User.ID, store.Document{ID: u.documentID, Name: u.name,
 			Size: int64(len(u.data)), ContentType: u.contentType, SHA256: &sum, ObjectKey: u.key, CreatedAt: s.now(), HRPrivate: true})
 	}
+	return s.createDocumentSized(ctx, q, sess, u, int64(len(u.data)))
+}
+
+// createDocumentSized makes a top-level Document of u's stored object of size bytes under a free name.
+func (s *Service) createDocumentSized(ctx context.Context, q store.Q, sess store.Session, u upload, size int64) error {
+	name := u.name
 	taken, err := q.FileNameTaken(ctx, sess.Workspace.ID, nil, name, "")
 	if err != nil {
 		return err
@@ -305,15 +333,18 @@ func (s *Service) createDocument(ctx context.Context, q store.Q, sess store.Sess
 	}
 	sum := u.sum
 	return q.CreateDocument(ctx, sess.Workspace.ID, sess.User.ID, store.Document{ID: u.documentID, Name: name,
-		Size: int64(len(u.data)), ContentType: u.contentType, SHA256: &sum, ObjectKey: u.key, CreatedAt: s.now()})
+		Size: size, ContentType: u.contentType, SHA256: &sum, ObjectKey: u.key, CreatedAt: s.now()})
 }
 
 // importFiles: one file to read per plain upload and per ZIP entry; an unreadable entry is a failed file.
 func importFiles(list []upload) []store.ImportFile {
 	var out []store.ImportFile
 	add := func(f store.ImportFile, u upload) {
-		key, doc := u.key, u.documentID
-		f.ID, f.Position, f.ObjectKey, f.DocumentID, f.Reused, f.Status = auth.NewID("imf"), len(out), &key, &doc, u.reused, "queued"
+		key, doc := u.key, &u.documentID
+		if u.staged { // no Document yet; the record that needs one promotes the staged file
+			doc = nil
+		}
+		f.ID, f.Position, f.ObjectKey, f.DocumentID, f.Reused, f.Status = auth.NewID("imf"), len(out), &key, doc, u.reused, "queued"
 		out = append(out, f)
 	}
 	for _, u := range list {

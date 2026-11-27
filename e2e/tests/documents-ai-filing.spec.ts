@@ -12,9 +12,8 @@ test('AI files an upload into a new folder, says so, and Undo puts it back', asy
   await api.approveAI()
   await openPage(page, '/documents', 'Documents')
   const name = `contract-${randomUUID()}.txt`
-  const uploaded = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/api/v1/documents') && response.request().method() === 'POST',
+  const filedUpload = page.waitForResponse(
+    (response) => response.url().endsWith('/confirm') && response.request().method() === 'POST',
   )
   await page
     .locator('input[type=file]')
@@ -24,7 +23,14 @@ test('AI files an upload into a new folder, says so, and Undo puts it back', asy
       mimeType: 'text/plain',
       buffer: Buffer.from(`Contract ${randomUUID()}`),
     })
-  const id = text(object(object(await (await uploaded).json()).data).id)
+  // With AI approved the upload is staged first; "Just upload" files it as before, with AI filing.
+  await page
+    .getByRole('dialog', { name: 'Uploaded 1 file' })
+    .getByRole('button', { name: 'Just upload' })
+    .click()
+  const filedDocs = object(object(await (await filedUpload).json()).data).documents
+  if (!Array.isArray(filedDocs)) throw new Error('Expected the filed documents')
+  const id = text(object(filedDocs[0]).id)
 
   // the development model files by the name: a new top-level "Contracts" folder (a common kind, named in the asker's language), tagged "contract"
   await expect(page.getByText('Filed 1 file into Contracts.')).toBeVisible({ timeout: 30_000 })
