@@ -2317,7 +2317,6 @@
   "openInANewTab": "Öffnen Sie {name} in einem neuen Tab",
   "openInEditor": "Im Editor öffnen",
   "openingBalance": "Eröffnungssaldo",
-  "openingTheAPIReference": "Öffnen der API-Referenz",
   "openingTheDocument": "Öffnen des Dokuments…",
   "openInMaps": "In Karte öffnen",
   "openInNewTab": " In neuem Tab öffnen",
@@ -3182,7 +3181,6 @@
   "theAmountCountsAsOwedBackToTheCustomer": "Der Betrag gilt wieder als dem Kunden geschuldet. Verwenden Sie dies, um einen Fehler zu beheben.",
   "theAnswerStoppedBeforeItWasFinished": "Die Antwort wurde abgebrochen, bevor sie beendet war.",
   "theAPIOffers": " die API-Angebote.",
-  "theAPIReferenceIsNowOn": "Die API-Referenz ist jetzt aktiviert",
   "theBarcodeNumberGTIN81213Or14": "Die Barcodenummer (GTIN-8, 12, 13 oder 14). Nur für physische Produkte.",
   "theBellInHelvetlyStillShowsThemUnlessYou": ". Die Glocke in Helvetly zeigt sie immer noch an, es sei denn, Sie schalten sie auch aus.",
   "theBillingEmail": " · die Rechnungs-E-Mail",
@@ -3227,7 +3225,6 @@
   "theFirstReminder": "Die erste Erinnerung",
   "theFirstReminderCountsFromTheDueDate": "Die erste Mahnung zählt ab dem Fälligkeitsdatum.",
   "theFolder": "den Ordner",
-  "theHelvetlyDocs": "die Helvetly-Dokumente",
   "theInvoicesItIssuedStayAsTheyAreThe": "Die ausgestellten Rechnungen bleiben unverändert; der Rest wird nie ausgegeben. Dies kann nicht rückgängig gemacht werden.",
   "theLastChargeDidnTGoThroughStripeRetries": "Die letzte Ladung wurde nicht durchgeführt. Stripe versucht die Karte erneut;",
   "theLatestClosedMonthIs": "; Der letzte geschlossene Monat ist {value1}.",
@@ -6294,5 +6291,8 @@
   "egThreeDays": "z. B. 3",
   "addADay": "Hinzufügen",
   "daysBeforeCount": "{days, plural, one {# Tag} other {# Tage}} vorher",
-  "daysAfterCount": "{days, plural, one {# Tag} other {# Tage}} danach"
+  "daysAfterCount": "{days, plural, one {# Tag} other {# Tage}} danach",
+  "sessionLocationUnknown": "Standort unbekannt",
+  "sessionSignedInOn": "Angemeldet am {date}",
+  "sessionIpAddress": "IP-Adresse"
 }

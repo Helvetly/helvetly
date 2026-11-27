@@ -86,7 +86,7 @@ test.each([
   ['/books/', 'periods'],
   ['/settings/audit-log', 'audit-log'],
   ['/settings/workspace', 'workspace'],
-  ['/settings/api', 'api'],
+  ['/developers', 'api'],
   ['/settings/security', null],
   ['/employees', 'employees'],
   ['/employees/payroll', 'payroll'],

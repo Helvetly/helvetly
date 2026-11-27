@@ -534,9 +534,9 @@ Pages: /account, /settings/security
 ## Connect Claude or your own scripts (API tokens, MCP, API)
 
 Keywords: api, api token, access token, personal access token, mcp, claude, chatgpt, integration, automation, openapi, developer, zapier, script
-Pages: /settings/api, /developers
+Pages: /developers, /settings/api
 
-1. Go to **Settings → API & MCP** and click **Create token**.
+1. Click **API & MCP** in the sidebar (under **Ask Heidi**) and click **Create token**.
 2. Give it a name, choose its access (**Read everything**, **Full access**, or **Custom** to tick Read and Write per area such as Clients or Invoices) and an expiry. The panel shows what the token can do before you create it.
 3. Copy the token right away. It is shown only once.
 4. Use it as `Authorization: Bearer <token>`: with the API (see **API reference**, where **Try in Playground** on each operation sends a real request with a token you paste), or in an AI tool: **Connect an AI assistant** on the same page has ready-to-paste setups for Claude Code, Claude Desktop and Cursor.

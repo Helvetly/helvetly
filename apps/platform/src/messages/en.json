@@ -2317,7 +2317,6 @@
   "openInANewTab": "Open {name} in a new tab",
   "openInEditor": "Open in editor",
   "openingBalance": "Opening balance",
-  "openingTheAPIReference": "Opening the API reference",
   "openingTheDocument": "Opening the document…",
   "openInMaps": "Open in Maps",
   "openInNewTab": " Open in new tab",
@@ -3182,7 +3181,6 @@
   "theAmountCountsAsOwedBackToTheCustomer": "The amount counts as owed back to the customer again. Use this to fix a mistake.",
   "theAnswerStoppedBeforeItWasFinished": "The answer stopped before it was finished.",
   "theAPIOffers": " the API offers.",
-  "theAPIReferenceIsNowOn": "The API reference is now on",
   "theBarcodeNumberGTIN81213Or14": "The barcode number (GTIN-8, 12, 13 or 14). Only for physical products.",
   "theBellInHelvetlyStillShowsThemUnlessYou": ". The bell in Helvetly still shows them unless you turn that off too.",
   "theBillingEmail": " · the billing email",
@@ -3227,7 +3225,6 @@
   "theFirstReminder": "The first reminder",
   "theFirstReminderCountsFromTheDueDate": "The first reminder counts from the due date.",
   "theFolder": "the folder",
-  "theHelvetlyDocs": "the Helvetly docs",
   "theInvoicesItIssuedStayAsTheyAreThe": "The invoices it issued stay as they are; the rest are never issued. This can’t be undone.",
   "theLastChargeDidnTGoThroughStripeRetries": "The last charge didn’t go through. Stripe retries the card;",
   "theLatestClosedMonthIs": "; the latest closed month is {value1}.",
@@ -6294,5 +6291,8 @@
   "egThreeDays": "e.g. 3",
   "addADay": "Add",
   "daysBeforeCount": "{days, plural, one {# day} other {# days}} before",
-  "daysAfterCount": "{days, plural, one {# day} other {# days}} after"
+  "daysAfterCount": "{days, plural, one {# day} other {# days}} after",
+  "sessionLocationUnknown": "Location unknown",
+  "sessionSignedInOn": "Signed in {date}",
+  "sessionIpAddress": "IP address"
 }
