@@ -204,14 +204,14 @@ func (s *Service) checkRefs(ctx context.Context, q store.Q, sess store.Session, 
 		return failed
 	}
 	if rf.member && rf.memberID != nil {
-		name, err := q.MemberName(ctx, sess.Workspace.ID, *rf.memberID)
+		member, err := q.MemberPerson(ctx, sess.Workspace.ID, *rf.memberID)
 		switch {
 		case errors.Is(err, store.ErrNotFound):
 			invalid["paid_by_member_id"] = "Choose a member of this workspace."
 		case err != nil:
 			return err
 		default:
-			e.PaidByMember = &store.Person{ID: *rf.memberID, Name: name}
+			e.PaidByMember = &member
 		}
 	}
 	if len(invalid) > 0 {
@@ -524,7 +524,7 @@ func (s *Service) save(ctx context.Context, q store.Q, sess store.Session, e sto
 		}
 		if err := notifications.Notify(ctx, q, sess.Workspace.ID, "expense.reimbursed", map[string]any{"expense_id": e.ID,
 			"description": description, "amount": e.Total.String(), "currency": e.Currency, "reimbursed_on": *e.ReimbursedOn,
-			"actor": notifications.Actor(sess.User)}, store.NotifyTo{UserIDs: []string{*e.PaidByID}, Except: sess.User.ID}, s.now()); err != nil {
+			"actor": notifications.Actor(sess.User), "actor_id": sess.User.ID}, store.NotifyTo{UserIDs: []string{*e.PaidByID}, Except: sess.User.ID}, s.now()); err != nil {
 			return err
 		}
 	}

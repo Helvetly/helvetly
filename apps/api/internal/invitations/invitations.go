@@ -212,7 +212,7 @@ func (s *Service) create(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return err
 		}
 		return notifications.Notify(ctx, q, inv.WorkspaceID, "member.invited", map[string]any{"email": email, "role": body.Role,
-			"actor": notifications.Actor(sess.User)}, store.NotifyTo{Roles: notifications.Managers, Except: sess.User.ID}, now)
+			"actor": notifications.Actor(sess.User), "actor_id": sess.User.ID}, store.NotifyTo{Roles: notifications.Managers, Except: sess.User.ID}, now)
 	})
 	if err != nil {
 		return err

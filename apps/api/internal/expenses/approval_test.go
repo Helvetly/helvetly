@@ -6,10 +6,12 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 
 	"helvetly.com/api/internal/approvals"
 	"helvetly.com/api/internal/billing"
 	"helvetly.com/api/internal/billing/billingtest"
+	"helvetly.com/api/internal/store"
 )
 
 func (e *env) approval(b *browser, method, id, action string, body any, want int) approvals.View {
@@ -198,4 +200,46 @@ func TestExpenseApprovalRacesEdit(t *testing.T) {
 		t.Fatal("the edited expense is approved")
 	}
 	e.fails(tm.owner, "POST", "/api/v1/expenses/"+x.ID+"/book", nil, http.StatusConflict, "approval_required")
+}
+
+// The people an expense and its approval name carry their photo: "" (expense) or null (approval) without one.
+func TestExpenseAndApprovalAvatars(t *testing.T) {
+	e := newEnv(t)
+	tm := e.approvalTeam("100")
+	pic := "https://lh3.example.com/claimant.png"
+	if err := e.st.UpdateUserProfile(context.Background(), tm.claimant.user, "Claire", &pic, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	body := claim(e.categories(tm.owner)["6640"].ID)
+	body["paid_by_member_id"] = tm.claimant.user
+	x := e.create(tm.claimant, body)
+	var got struct {
+		Data struct {
+			PaidByMember *store.Person `json:"paid_by_member"`
+			CreatedBy    *store.Person `json:"created_by"`
+		}
+	}
+	e.do(tm.owner, "GET", "/api/v1/expenses/"+x.ID, nil, http.StatusOK, &got)
+	if p := got.Data.PaidByMember; p == nil || p.AvatarURL != pic {
+		t.Fatalf("paid_by_member %+v", p)
+	}
+	if p := got.Data.CreatedBy; p == nil || p.AvatarURL != pic {
+		t.Fatalf("created_by %+v", p)
+	}
+	e.do(tm.claimant, "PATCH", "/api/v1/expenses/"+x.ID, map[string]any{"paid_by_member_id": tm.fin1.user}, http.StatusOK, &got)
+	if p := got.Data.PaidByMember; p == nil || p.ID != tm.fin1.user || p.AvatarURL != "" {
+		t.Fatalf("paid_by_member without a photo %+v", p)
+	}
+
+	v := e.approval(tm.claimant, "POST", x.ID, "", nil, http.StatusOK)
+	var inbox struct{ Data []approvals.InboxItem }
+	e.do(tm.fin2, "GET", "/api/v1/approvals/inbox", nil, http.StatusOK, &inbox)
+	if len(inbox.Data) != 1 || inbox.Data[0].SubmittedBy.AvatarURL == nil || *inbox.Data[0].SubmittedBy.AvatarURL != pic {
+		t.Fatalf("inbox %+v", inbox.Data)
+	}
+	v = e.approval(tm.fin2, "POST", x.ID, "approve", decision(v), http.StatusOK)
+	if len(v.Trail) != 2 || v.Trail[0].User.AvatarURL == nil || *v.Trail[0].User.AvatarURL != pic ||
+		v.Trail[1].User.ID != tm.fin2.user || v.Trail[1].User.AvatarURL != nil {
+		t.Fatalf("trail %+v", v.Trail)
+	}
 }

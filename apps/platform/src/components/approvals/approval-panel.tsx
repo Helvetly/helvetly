@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { fieldErrors, FormDialog } from '@/components/invoices/invoice-dialogs'
 import { TextareaBox } from '@/components/textarea-box'
+import { UserAvatar } from '@/components/user-avatar'
 import {
   useApprovalAction,
   type Approval,
@@ -279,12 +280,16 @@ function TrailRow({ entry }: { entry: TrailEntry }) {
   const look = TRAIL[entry.kind]
   return (
     <li className="flex gap-2.5 text-body-sm">
-      <span
-        aria-hidden
-        className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground [&_svg]:size-3"
-      >
-        {look.icon}
-      </span>
+      {entry.user ? (
+        <UserAvatar name={entry.user.name} url={entry.user.avatar_url} className="mt-0.5 size-5" />
+      ) : (
+        <span
+          aria-hidden
+          className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground [&_svg]:size-3"
+        >
+          {look.icon}
+        </span>
+      )}
       <span className="grid min-w-0 gap-0.5">
         <span>
           {look.label(entry.user?.name ?? translate('approvalSomeone'))}

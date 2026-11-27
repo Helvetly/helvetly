@@ -285,7 +285,7 @@ func (s *Service) Submit(ctx context.Context, q store.Q, sess store.Session, doc
 
 func (s *Service) notice(sess store.Session, doc Doc, comment *string) map[string]any {
 	d := map[string]any{"doc_type": doc.Type, "doc_id": doc.ID, "kind": doc.Kind, "client": doc.Client, "currency": doc.Currency,
-		"amount": doc.Total.String(), "actor": notifications.Actor(sess.User)}
+		"amount": doc.Total.String(), "actor": notifications.Actor(sess.User), "actor_id": sess.User.ID}
 	if slices.Contains(invoiceTypes, doc.Type) {
 		d["invoice_id"] = doc.ID // the invoice's link, as notifications from before quotes and expenses have it
 	}

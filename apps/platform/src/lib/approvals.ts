@@ -39,7 +39,7 @@ export type ApprovalPolicy = {
 export type ApprovalSettings = { groups: ApprovalGroup[]; policies: ApprovalPolicy[] }
 
 export type ApprovalState = 'none' | 'pending' | 'approved' | 'rejected'
-type Person = { id: string; name: string }
+type Person = { id: string; name: string; avatar_url?: string | null }
 
 /** A document waiting for my decision ("Needs my approval"). */
 export type InboxItem = {

@@ -14082,6 +14082,23 @@
         "required": ["id", "name"],
         "description": "A record a session points at, by id and name."
       },
+      "SchedulingHost": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": ["string", "null"],
+            "description": "The member's photo, null when they have none."
+          }
+        },
+        "required": ["id", "name", "avatar_url"],
+        "description": "The member who holds a session."
+      },
       "SchedulingEngagementRef": {
         "type": "object",
         "properties": {
@@ -14203,7 +14220,7 @@
           "host": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SchedulingRef"
+                "$ref": "#/components/schemas/SchedulingHost"
               },
               {
                 "type": "null"
@@ -14528,7 +14545,7 @@
           "host": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SchedulingRef"
+                "$ref": "#/components/schemas/SchedulingHost"
               },
               {
                 "type": "null"
@@ -14655,7 +14672,7 @@
           "host": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SchedulingRef"
+                "$ref": "#/components/schemas/SchedulingHost"
               },
               {
                 "type": "null"

@@ -418,3 +418,24 @@ func TestCancelPolicyAndScopes(t *testing.T) {
 		}
 	}
 }
+
+// TestHostAvatar: a session's host carries their photo, null without one.
+func TestHostAvatar(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	other := e.join(b.workspace, "admin", nil)
+	c := e.client(b, "anna@mueller.example")
+	mine := e.create(b, map[string]any{"client_id": c, "title": "Intro", "starts_local": "2026-12-01T09:00", "duration_minutes": 60})
+	if h := mine.Data.Occurrences[0].Host; h == nil || h.AvatarURL != nil {
+		t.Fatalf("host without a photo: %+v", h)
+	}
+	pic := "https://lh3.example.com/host.png"
+	if err := e.st.UpdateUserProfile(context.Background(), other.user, "Hanna", &pic, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	theirs := e.create(b, map[string]any{"client_id": c, "title": "Review", "starts_local": "2026-12-02T09:00",
+		"duration_minutes": 60, "host_id": other.user})
+	if h := e.occurrence(b, theirs.Data.Occurrences[0].ID).Host; h == nil || h.AvatarURL == nil || *h.AvatarURL != pic {
+		t.Fatalf("host with a photo: %+v", h)
+	}
+}

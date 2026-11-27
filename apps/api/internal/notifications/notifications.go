@@ -188,16 +188,18 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 type notification struct {
-	ID        string     `json:"id"`
-	Event     string     `json:"event"`
-	Category  string     `json:"category"`
-	Title     string     `json:"title"`
-	Body      *string    `json:"body"`
-	Actor     *string    `json:"actor"`
-	Href      string     `json:"href"`
-	CreatedAt time.Time  `json:"created_at"`
-	Read      bool       `json:"read"`
-	ReadAt    *time.Time `json:"read_at"`
+	ID       string  `json:"id"`
+	Event    string  `json:"event"`
+	Category string  `json:"category"`
+	Title    string  `json:"title"`
+	Body     *string `json:"body"`
+	Actor    *string `json:"actor"`
+	// ActorAvatarURL: the actor's photo; null without one, for the system and for notifications from before it was kept.
+	ActorAvatarURL *string    `json:"actor_avatar_url"`
+	Href           string     `json:"href"`
+	CreatedAt      time.Time  `json:"created_at"`
+	Read           bool       `json:"read"`
+	ReadAt         *time.Time `json:"read_at"`
 	// NeedsYou: the reader has something to do (the bell's "Needs you"); Action labels the button to Href.
 	NeedsYou bool   `json:"needs_you"`
 	Action   string `json:"action"`
@@ -238,12 +240,15 @@ func optional(s string) *string {
 }
 
 // view is a notification as the bell shows it; settled is what settled it, if anything did.
-func view(n store.Notification, settled *store.Notification) notification {
+func view(n store.Notification, settled *store.Notification, people map[string]store.Ref) notification {
 	m := render(n)
 	e, _ := lookup(n.Event)
 	v := notification{ID: strconv.FormatInt(n.ID, 10), Event: n.Event, Category: e.Category, Title: m.title, Href: m.href,
 		CreatedAt: n.CreatedAt, Read: n.ReadAt != nil, ReadAt: n.ReadAt, Body: optional(m.body), Actor: optional(m.actor),
 		NeedsYou: needsYou[n.Event], Action: m.action}
+	if m.actorID != "" {
+		v.ActorAvatarURL = people[m.actorID].AvatarURL
+	}
 	if settled != nil {
 		r := render(*settled)
 		v.Resolved = &resolution{Title: r.title, Body: optional(r.body), Action: r.action, CreatedAt: settled.CreatedAt}
@@ -350,9 +355,19 @@ func (s *Service) list(w http.ResponseWriter, r *http.Request, sess store.Sessio
 	if err != nil {
 		return err
 	}
+	var actors []string
+	for _, n := range rows {
+		if id := render(n).actorID; id != "" {
+			actors = append(actors, id)
+		}
+	}
+	people, err := s.db.UserPeople(ctx, actors)
+	if err != nil {
+		return err
+	}
 	out := make([]notification, 0, len(rows))
 	for _, n := range rows {
-		out = append(out, view(n, settled[n.ID]))
+		out = append(out, view(n, settled[n.ID], people))
 	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": out, "unread": unread, "next": next})
 	return nil

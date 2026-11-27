@@ -61,7 +61,7 @@ export type SignatureRequest = {
   final_sha256: string | null
   page_count: number
   expires_at: string
-  created_by: { id: string; name: string } | null
+  created_by: { id: string; name: string; avatar_url?: string | null } | null
   created_at: string
   completed_at: string | null
   signers: Signer[]

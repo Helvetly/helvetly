@@ -48,6 +48,7 @@ import { useMarkSent } from '@/components/invoices/invoice-dialogs'
 import { HeroFact, HeroLink, RecordHero } from '@/components/invoices/record-hero'
 import { RecordLink, RecordPageButton } from '@/components/record-link'
 import { tabIcons } from '@/components/tab-icons'
+import { Person } from '@/components/user-avatar'
 import { errorMessage } from '@/lib/api'
 import { useInvoiceApproval, type Approval } from '@/lib/approvals'
 import { translate } from '@/lib/i18n'
@@ -751,7 +752,11 @@ function Detail({
                       {delivery.kind === 'payment_confirmation' &&
                         `${translate('paymentConfirmation')} · `}
                       {translate('by2')}
-                      {delivery.sent_by?.name ?? translate('system')}
+                      {delivery.sent_by ? (
+                        <Person person={delivery.sent_by} size="xs" />
+                      ) : (
+                        translate('system')
+                      )}
                     </span>
                   </span>
                   <span className="text-[13px] text-muted-foreground tabular-nums">
@@ -983,9 +988,13 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
                     {formatDay(row.on)}
                   </span>
                   <span className="truncate text-[12.5px] text-muted-foreground">
-                    {[row.note, row.created_by?.name && `recorded by ${row.created_by.name}`]
-                      .filter(Boolean)
-                      .join(' · ')}
+                    {row.note}
+                    {row.note && row.created_by && ' · '}
+                    {row.created_by && (
+                      <>
+                        recorded by <Person person={row.created_by} size="xs" />
+                      </>
+                    )}
                   </span>
                 </span>
                 <Money

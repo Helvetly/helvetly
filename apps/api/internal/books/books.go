@@ -80,11 +80,12 @@ func validationFailed(fields map[string]string) error {
 }
 
 type person struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"` // "" without a photo
 }
 
-// people resolves user ids to {id, name} once per request; a deleted account is nil.
+// people resolves user ids to {id, name, avatar_url} once per request; a deleted account is nil.
 type people struct {
 	q     store.Q
 	known map[string]*person
@@ -103,7 +104,7 @@ func (p *people) get(ctx context.Context, id *string) (*person, error) {
 	}
 	var v *person
 	if err == nil {
-		v = &person{ID: u.ID, Name: u.Name}
+		v = &person{ID: u.ID, Name: u.Name, AvatarURL: u.AvatarURL}
 	}
 	p.known[*id] = v
 	return v, nil
@@ -152,7 +153,7 @@ func periodEvent(sess store.Session, kind, month, reason string, at time.Time) s
 func notifyPeriod(ctx context.Context, q store.Q, sess store.Session, event, month string, at time.Time) error {
 	m, _ := time.Parse(monthLayout, month) // validated by the caller
 	return notifications.Notify(ctx, q, sess.Workspace.ID, event, map[string]any{"month": m.Format("January 2006"),
-		"actor": notifications.Actor(sess.User)}, store.NotifyTo{Roles: notifications.Managers, Except: sess.User.ID}, at)
+		"actor": notifications.Actor(sess.User), "actor_id": sess.User.ID}, store.NotifyTo{Roles: notifications.Managers, Except: sess.User.ID}, at)
 }
 
 func (s *Service) closePeriod(w http.ResponseWriter, r *http.Request, sess store.Session) error {
@@ -187,7 +188,7 @@ func (s *Service) closePeriod(w http.ResponseWriter, r *http.Request, sess store
 		return err
 	}
 	auth.WriteJSON(w, http.StatusCreated, data(period{Month: body.Month, ClosedAt: now,
-		ClosedBy: &person{ID: sess.User.ID, Name: sess.User.Name}}))
+		ClosedBy: &person{ID: sess.User.ID, Name: sess.User.Name, AvatarURL: sess.User.AvatarURL}}))
 	return nil
 }
 
@@ -411,7 +412,7 @@ func (s *Service) auditPeople(w http.ResponseWriter, r *http.Request, sess store
 	}
 	out := make([]person, len(users))
 	for i, u := range users {
-		out[i] = person{u.ID, u.Name}
+		out[i] = person{u.ID, u.Name, u.AvatarURL}
 	}
 	auth.WriteJSON(w, http.StatusOK, data(out))
 	return nil

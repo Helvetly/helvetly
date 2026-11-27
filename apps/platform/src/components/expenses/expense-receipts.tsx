@@ -32,6 +32,7 @@ import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from
 import { toast } from 'sonner'
 
 import { promptUpgrade, toastError } from '@/components/billing/upgrade-prompt'
+import { MetaLine } from '@/components/clients/client-files'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { errorMessage } from '@/lib/api'
 import {
@@ -299,7 +300,9 @@ export function ExpenseReceipts({
             <span className="truncate text-body-sm font-medium" title={shown.name}>
               {shown.name}
             </span>
-            <span className="truncate text-xs text-muted-foreground">{receiptMeta(shown)}</span>
+            <span className="truncate text-xs text-muted-foreground" title={receiptMeta(shown)}>
+              <MetaLine size={shown.size} at={shown.created_at} by={shown.uploaded_by} />
+            </span>
           </span>
           <span className="flex shrink-0 items-center">
             <IconAction label={translate('receiptViewFullSize')} onClick={() => setViewing(true)}>

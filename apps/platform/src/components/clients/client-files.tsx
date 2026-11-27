@@ -18,6 +18,7 @@ import { promptUpgrade, toastError } from '@/components/billing/upgrade-prompt'
 import { FileTile, kindOfType } from '@/components/documents/kind'
 import { ShareButton, ShareDialog } from '@/components/documents/share-dialog'
 import { RecordLink } from '@/components/record-link'
+import { Person, type PersonRef } from '@/components/user-avatar'
 import { errorMessage } from '@/lib/api'
 import {
   clientKeys,
@@ -42,6 +43,21 @@ export const fileMeta = (file: ClientFile) =>
   [formatFileSize(file.size), formatDate(file.created_at), file.uploaded_by?.name]
     .filter(Boolean)
     .join(' · ')
+
+/** `fileMeta` with the uploader's photo beside their name. */
+export function MetaLine({ size, at, by }: { size: number; at: string; by: PersonRef | null }) {
+  return (
+    <>
+      {formatFileSize(size)} · {formatDate(at)}
+      {by && (
+        <>
+          {' · '}
+          <Person person={by} size="xs" />
+        </>
+      )}
+    </>
+  )
+}
 
 type Label = Parameters<typeof translate>[0]
 /** The groups in the order they show, each with the kind tags it holds; the plural labels match Documents' Group by type. */
@@ -350,7 +366,9 @@ function FileRow({
         >
           {file.name}
         </a>
-        <span className="truncate text-caption text-muted-foreground">{fileMeta(file)}</span>
+        <span className="truncate text-caption text-muted-foreground" title={fileMeta(file)}>
+          <MetaLine size={file.size} at={file.created_at} by={file.uploaded_by} />
+        </span>
       </span>
       <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-focus-within/file:opacity-100 group-hover/file:opacity-100 max-sm:opacity-100">
         <Tip label={translate('previewInDocuments')}>
