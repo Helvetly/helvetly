@@ -848,8 +848,27 @@ export type DocumentShareLink = {
   used_at: string | null
 }
 
-export const listShares = async (id: string) =>
-  (await request<{ data: DocumentShare[] }>(`${path(id)}/shares`)).data
+/** A document's share with one participant of a company client (only their portal session sees it). */
+export type ParticipantShare = {
+  client_id: string
+  client_name: string
+  participant_id: string
+  participant_name: string
+  shared_at: string
+}
+
+type SharesAnswer = { data: DocumentShare[]; participants?: ParticipantShare[] }
+
+export const listShares = (id: string) => request<SharesAnswer>(`${path(id)}/shares`)
+export const shareWithParticipant = (id: string, clientId: string, participantId: string) =>
+  request<void>(`${path(id)}/shares`, {
+    method: 'POST',
+    json: { client_id: clientId, participant_id: participantId },
+  })
+export const unshareWithParticipant = (id: string, participantId: string) =>
+  request<void>(`${path(id)}/shares?participant_id=${encodeURIComponent(participantId)}`, {
+    method: 'DELETE',
+  })
 export const shareDocument = (id: string, clientId: string, expiresInSeconds?: number) =>
   request<void>(`${path(id)}/shares`, {
     method: 'POST',
@@ -863,7 +882,21 @@ export const unshareDocument = (id: string, clientId: string) =>
 export const shareKeys = (id: string) => [...queryKeys.documents, 'shares', id] as const
 
 export function useShares(id: string, enabled = true) {
-  return useQuery({ queryKey: shareKeys(id), queryFn: () => listShares(id), enabled })
+  return useQuery({
+    queryKey: shareKeys(id),
+    queryFn: () => listShares(id),
+    enabled,
+    select: (answer: SharesAnswer) => answer.data,
+  })
+}
+
+export function useParticipantShares(id: string, enabled = true) {
+  return useQuery({
+    queryKey: shareKeys(id),
+    queryFn: () => listShares(id),
+    enabled,
+    select: (answer: SharesAnswer) => answer.participants ?? [],
+  })
 }
 
 export const shareLinkKeys = (id: string) => [...queryKeys.documents, 'share-links', id] as const

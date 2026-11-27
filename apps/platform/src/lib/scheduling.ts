@@ -54,6 +54,8 @@ export type SchedEvent = {
   id: string
   client: Person
   engagement: { id: string; number: number; title: string; unit: string | null } | null
+  /** The participant of the (company) client who takes the sessions; missing from an older API. */
+  participant?: Person | null
   event_type_id: string | null
   host: Person | null
   title: string
@@ -124,6 +126,8 @@ export type Occurrence = {
   host: Person | null
   client: Person
   engagement: SchedEvent['engagement']
+  /** Who takes the session, for a company client; missing from an older API. */
+  participant?: Person | null
   is_exception: boolean
   sequence: number
   request: SchedRequest | null
@@ -189,6 +193,7 @@ export type Calendars = {
 export type EventInput = {
   client_id: string
   engagement_id: string | null
+  participant_contact_id: string | null
   event_type_id: string | null
   host_id: string
   title: string
@@ -792,3 +797,9 @@ export function changeErrorMessage(error: unknown) {
       : []
   return words.length > 0 ? words.join(' ') : errorMessage(error)
 }
+
+/** Who a session is with: its participant and the company ("Lorenzo Percic · EuroChem Group AG"), else the client. */
+export const withWhom = (occurrence: { client: Person; participant?: Person | null }) =>
+  occurrence.participant
+    ? `${occurrence.participant.name} · ${occurrence.client.name}`
+    : occurrence.client.name

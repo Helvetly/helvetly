@@ -12,6 +12,12 @@ func TestLegacyEntryAllocations(t *testing.T) {
 	if _, err := migrations.UpTo(ctx, 68); err != nil {
 		t.Fatal(err)
 	}
+	// Today's queries name the participant columns of 00085; a version 68 database gets them bare, unreferenced.
+	if _, err := pool.Exec(ctx, `ALTER TABLE engagements ADD COLUMN participant_contact_id text;
+		ALTER TABLE engagement_entries ADD COLUMN participant_contact_id text;
+		ALTER TABLE invoices ADD COLUMN participant_contact_id text;`); err != nil {
+		t.Fatal(err)
+	}
 	now := time.Now().UTC()
 	q := Q{db: pool}
 	check := func(err error) {

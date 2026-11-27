@@ -330,7 +330,7 @@ func (q Q) DueReminders(ctx context.Context, now time.Time, invoiceID string) ([
 			WHERE ($2 = '' OR i.id = $2) AND i.status = 'open' AND i.reminders_enabled AND p.reminders_enabled
 				AND (NOT p.auto_send OR i.sent_at IS NOT NULL))
 		SELECT i.workspace_id, t.invoice_id, t.seq, t.cnt, r.kind, r.off, t.due_date::text, t.open,
-			COALESCE((SELECT cc.email FROM client_contacts cc WHERE cc.client_id = i.client_id AND cc.is_primary), c.billing_email, c.email, ''),
+			`+clientEmail+`,
 			i.language, COALESCE(i.number, ''), ws.today::text
 		FROM targets t JOIN invoices i ON i.id = t.invoice_id JOIN clients c ON c.id = i.client_id JOIN ws ON ws.id = i.workspace_id
 		CROSS JOIN LATERAL (

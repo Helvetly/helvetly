@@ -46,8 +46,11 @@ type Engagement struct {
 	Rollover         bool                 `json:"rollover"`
 	AutoInvoice      bool                 `json:"auto_invoice"`
 	InvoiceDetail    string               `json:"invoice_detail"`
-	CreatedAt        time.Time            `json:"created_at"`
-	UpdatedAt        time.Time            `json:"updated_at"`
+	// ParticipantContactID: the participant of the client who takes the engagement; Participant names them.
+	ParticipantContactID *string    `json:"participant_contact_id"`
+	Participant          *PersonRef `json:"participant"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 // EngagementInvoice: an invoice made from a period (never a void one).
@@ -99,17 +102,20 @@ const dateFmt = `'YYYY-MM-DD'`
 const engagementColumns = `e.id, e.number, e.client_id, c.number, c.name, e.title, e.description, e.product_id, e.unit,
 	e.quantity, e.billing, e.price_basis, e.unit_price, e.overage_unit_price, e.currency, e.vat_category, e.vat_rate,
 	to_char(e.start_date, ` + dateFmt + `), e.recurrence, e.interval, to_char(e.end_date, ` + dateFmt + `), e.reference,
-	e.document_id, to_char(e.cancelled_on, ` + dateFmt + `), e.created_at, e.updated_at, e.rollover, e.auto_invoice, e.invoice_detail`
+	e.document_id, to_char(e.cancelled_on, ` + dateFmt + `), e.created_at, e.updated_at, e.rollover, e.auto_invoice, e.invoice_detail,
+	e.participant_contact_id, (SELECT k.name FROM client_contacts k WHERE k.id = e.participant_contact_id)`
 
 const engagementFrom = ` FROM engagements e JOIN clients c ON c.id = e.client_id`
 
 func scanEngagement(row interface{ Scan(...any) error }) (Engagement, error) {
 	var e Engagement
+	var participantName *string
 	err := row.Scan(&e.ID, &e.Number, &e.ClientID, &e.Client.Number, &e.Client.Name, &e.Title, &e.Description, &e.ProductID,
 		&e.Unit, &e.Quantity, &e.Billing, &e.PriceBasis, &e.UnitPrice, &e.OverageUnitPrice, &e.Currency, &e.VATCategory,
 		&e.VATRate, &e.StartDate, &e.Recurrence, &e.Interval, &e.EndDate, &e.Reference, &e.DocumentID, &e.CancelledOn,
-		&e.CreatedAt, &e.UpdatedAt, &e.Rollover, &e.AutoInvoice, &e.InvoiceDetail)
+		&e.CreatedAt, &e.UpdatedAt, &e.Rollover, &e.AutoInvoice, &e.InvoiceDetail, &e.ParticipantContactID, &participantName)
 	e.Client.ID = e.ClientID
+	e.Participant = personRef(e.ParticipantContactID, participantName)
 	return e, err
 }
 
@@ -121,11 +127,11 @@ func (q Q) createEngagement(ctx context.Context, workspaceID string, e *Engageme
 			RETURNING engagements_seq)
 		INSERT INTO engagements (id, workspace_id, number, client_id, title, description, product_id, unit, quantity, billing,
 			price_basis, unit_price, overage_unit_price, currency, vat_category, vat_rate, start_date, recurrence, interval,
-			end_date, reference, document_id, cancelled_on, rollover, auto_invoice, invoice_detail, created_at, updated_at)
-		SELECT $1, $2, seq.engagements_seq, `+placeholders(3, 20)+`, $23, $24, coalesce(nullif($25, ''), 'summary'), $26, $26 FROM seq RETURNING number`,
+			end_date, reference, document_id, cancelled_on, rollover, auto_invoice, invoice_detail, created_at, updated_at, participant_contact_id)
+		SELECT $1, $2, seq.engagements_seq, `+placeholders(3, 20)+`, $23, $24, coalesce(nullif($25, ''), 'summary'), $26, $26, $27 FROM seq RETURNING number`,
 		e.ID, workspaceID, e.ClientID, e.Title, e.Description, e.ProductID, e.Unit, e.Quantity, e.Billing, e.PriceBasis,
 		e.UnitPrice, e.OverageUnitPrice, e.Currency, e.VATCategory, e.VATRate, e.StartDate, e.Recurrence, e.Interval, e.EndDate,
-		e.Reference, e.DocumentID, e.CancelledOn, e.Rollover, e.AutoInvoice, e.InvoiceDetail, now).Scan(&e.Number)
+		e.Reference, e.DocumentID, e.CancelledOn, e.Rollover, e.AutoInvoice, e.InvoiceDetail, now, e.ParticipantContactID).Scan(&e.Number)
 	if err != nil {
 		return err
 	}
@@ -153,10 +159,11 @@ func (q Q) saveEngagement(ctx context.Context, workspaceID string, e Engagement,
 		UPDATE engagements e SET title = $3, description = $4, product_id = $5, unit = $6, quantity = $7,
 		billing = $8, price_basis = $9, unit_price = $10, overage_unit_price = $11, currency = $12, vat_category = $13,
 		vat_rate = $14, start_date = $15, recurrence = $16, interval = $17, end_date = $18, reference = $19, document_id = $20,
-		cancelled_on = $21, rollover = $23, auto_invoice = $24, invoice_detail = $25, updated_at = $22 FROM previous WHERE e.id = previous.id RETURNING previous.document_id`,
+		cancelled_on = $21, rollover = $23, auto_invoice = $24, invoice_detail = $25, updated_at = $22,
+		participant_contact_id = $26 FROM previous WHERE e.id = previous.id RETURNING previous.document_id`,
 		workspaceID, e.ID, e.Title, e.Description, e.ProductID, e.Unit, e.Quantity, e.Billing, e.PriceBasis, e.UnitPrice,
 		e.OverageUnitPrice, e.Currency, e.VATCategory, e.VATRate, e.StartDate, e.Recurrence, e.Interval, e.EndDate, e.Reference,
-		e.DocumentID, e.CancelledOn, now, e.Rollover, e.AutoInvoice, e.InvoiceDetail).Scan(&oldDoc)
+		e.DocumentID, e.CancelledOn, now, e.Rollover, e.AutoInvoice, e.InvoiceDetail, e.ParticipantContactID).Scan(&oldDoc)
 	if err != nil {
 		return err
 	}

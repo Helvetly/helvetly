@@ -187,7 +187,7 @@ export const PendingChange: Story = {
   play: async () => {
     const notice = await body.findByRole('region', { name: 'Change request' })
     await expect(notice).toHaveTextContent('Lena Brunner asked to change 1 field')
-    await userEvent.click(body.getByRole('tab', { name: /Contacts/ }))
+    await userEvent.click(body.getByRole('tab', { name: /People/ }))
     // The tab change re-renders the notice; wait for its content again.
     await waitFor(() => expect(body.getByRole('region', { name: 'Change request' })).toBeVisible())
     await userEvent.click(within(notice).getByRole('button', { name: 'Review' }))

@@ -25,6 +25,7 @@ export function RecipientFields({
   bcc,
   onBccChange,
   errors,
+  people,
 }: {
   id: string
   to: string
@@ -37,6 +38,8 @@ export function RecipientFields({
   bcc: string
   onBccChange: (value: string) => void
   errors: Record<string, string>
+  /** The client's contacts and participants with an email: one click puts that person in To. */
+  people?: { name: string; email: string }[]
 }) {
   const [open, setOpen] = useState<Record<Copy, boolean>>({ cc: false, bcc: false })
   const focusNext = useRef<Copy | null>(null)
@@ -83,6 +86,22 @@ export function RecipientFields({
           ))}
         </div>
       </div>
+      {people && people.length > 1 && (
+        <div className="-mt-1 flex flex-wrap gap-1.5" aria-label={translate('sendToPerson')}>
+          {people.map((person) => (
+            <button
+              key={person.email}
+              type="button"
+              aria-pressed={to.trim().toLowerCase() === person.email.toLowerCase()}
+              title={person.email}
+              onClick={() => onToChange(person.email)}
+              className="rounded-full border border-border px-2.5 py-0.5 text-body-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-pressed:border-foreground/30 aria-pressed:text-foreground"
+            >
+              {person.name}
+            </button>
+          ))}
+        </div>
+      )}
       {copies.filter(shown).map((copy) => (
         <FormField
           key={copy.key}

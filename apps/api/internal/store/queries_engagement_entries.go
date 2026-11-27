@@ -32,14 +32,30 @@ type EngagementEntry struct {
 
 	InvoicedQuantity   invoicecalc.Quantity `json:"invoiced_quantity"`
 	HistoricalEstimate bool                 `json:"historical_estimate,omitempty"`
+	// Participant: the participant of the client the entry was for (from their session or the engagement), else nil.
+	Participant *PersonRef `json:"participant"`
+}
+
+// PersonRef names one person of a client (client_contacts).
+type PersonRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func personRef(id, name *string) *PersonRef {
+	if id == nil {
+		return nil
+	}
+	return &PersonRef{ID: *id, Name: deref(name)}
 }
 
 var entryColumns = `coalesce(a.covered, 0), coalesce(a.estimate, false), en.id, en.period_id, to_char(en.date, ` + dateFmt + `), en.quantity, en.note, en.client_performance, en.client_performance_on_invoice,
-	pu.id, pu.name, ` + avatarOf("pu") + `, i.id, i.number, i.status, coalesce(ei.kind, 'usage'), en.created_at, cu.id, cu.name, ` + avatarOf("cu")
+	pu.id, pu.name, ` + avatarOf("pu") + `, i.id, i.number, i.status, coalesce(ei.kind, 'usage'), en.created_at, cu.id, cu.name, ` + avatarOf("cu") + `, pc.id, pc.name`
 
 const entryFrom = ` FROM engagement_entries en
 	LEFT JOIN users pu ON pu.id = en.performed_by
 	LEFT JOIN users cu ON cu.id = en.created_by
+	LEFT JOIN client_contacts pc ON pc.id = en.participant_contact_id
 	LEFT JOIN LATERAL (SELECT sum(x.quantity) AS covered, bool_or(x.historical_estimate) AS estimate,
 		(array_agg(b.id ORDER BY b.created_at DESC, b.id DESC))[1] AS latest
 		FROM engagement_entry_allocations x JOIN invoices b ON b.id = x.invoice_id
@@ -49,12 +65,13 @@ const entryFrom = ` FROM engagement_entries en
 
 func scanEntry(row interface{ Scan(...any) error }) (EngagementEntry, error) {
 	var e EngagementEntry
-	var pID, pName, pAvatar, cID, cName, cAvatar, invID, invNumber, invStatus, invKind *string
+	var pID, pName, pAvatar, cID, cName, cAvatar, invID, invNumber, invStatus, invKind, partID, partName *string
 	err := row.Scan(&e.InvoicedQuantity, &e.HistoricalEstimate, &e.ID, &e.PeriodID, &e.Date, &e.Quantity, &e.Note, &e.ClientPerformance, &e.PerformanceOnInvoice, &pID, &pName, &pAvatar, &invID, &invNumber, &invStatus, &invKind,
-		&e.CreatedAt, &cID, &cName, &cAvatar)
+		&e.CreatedAt, &cID, &cName, &cAvatar, &partID, &partName)
 	if err != nil {
 		return e, err
 	}
+	e.Participant = personRef(partID, partName)
 	if pID != nil {
 		e.PerformedBy = &UserRef{ID: *pID, Name: *pName, AvatarURL: deref(pAvatar)}
 	}
@@ -74,11 +91,14 @@ func userID(u *UserRef) *string {
 	return &u.ID
 }
 
-// CreateEntry inserts e (uninvoiced) into the engagement; CreatedAt is set on the stored row.
+// CreateEntry inserts e (uninvoiced) into the engagement; CreatedAt is set on the stored row. Without its own
+// participant (a session's), the entry is for the engagement's participant, if any.
 func (q Q) CreateEntry(ctx context.Context, engagementID string, e EngagementEntry, now time.Time) error {
 	_, err := q.db.Exec(ctx, `INSERT INTO engagement_entries (id, engagement_id, period_id, date, quantity, note, client_performance,
-		client_performance_on_invoice, performed_by, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-		e.ID, engagementID, e.PeriodID, e.Date, e.Quantity, e.Note, e.ClientPerformance, e.PerformanceOnInvoice, userID(e.PerformedBy), userID(e.CreatedBy), now)
+		client_performance_on_invoice, performed_by, created_by, created_at, participant_contact_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+			coalesce($12, (SELECT participant_contact_id FROM engagements WHERE id = $2)))`,
+		e.ID, engagementID, e.PeriodID, e.Date, e.Quantity, e.Note, e.ClientPerformance, e.PerformanceOnInvoice, userID(e.PerformedBy), userID(e.CreatedBy), now,
+		participantID(e.Participant))
 	return err
 }
 
@@ -230,4 +250,11 @@ func (q Q) LatestEntryDate(ctx context.Context, engagementID string) (string, er
 		return "", err
 	}
 	return *d, err
+}
+
+func participantID(p *PersonRef) *string {
+	if p == nil {
+		return nil
+	}
+	return &p.ID
 }

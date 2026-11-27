@@ -91,7 +91,7 @@ func (s *Service) sessions(w http.ResponseWriter, r *http.Request, sess store.Po
 	if err != nil {
 		return err
 	}
-	list, err := s.sched.ClientSessions(r.Context(), sess.Workspace, sess.ClientID, deref(zone), when)
+	list, err := s.sched.ClientSessions(r.Context(), sess.Workspace, sess.ClientID, sess.ParticipantID, deref(zone), when)
 	if err != nil {
 		return err
 	}

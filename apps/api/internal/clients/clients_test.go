@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/config"
 	"helvetly.com/api/internal/sitecheck"
@@ -78,6 +80,7 @@ type env struct {
 	srv   *httptest.Server
 	files *fakeStorage
 	svc   *Service
+	raw   *pgxpool.Pool
 }
 
 func newEnv(t *testing.T) *env {
@@ -89,7 +92,7 @@ func newEnv(t *testing.T) *env {
 func newEnvWith(t *testing.T, register Register) *env {
 	t.Helper()
 	t.Parallel()
-	st, _ := storetest.New(t)
+	st, raw := storetest.New(t)
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
 	a, err := auth.New(config.Config{PublicURL: "https://helvetly.example.com", SecretKey: bytes.Repeat([]byte{7}, 32),
 		SessionTTL: time.Hour}, st, discard)
@@ -106,7 +109,7 @@ func newEnvWith(t *testing.T, register Register) *env {
 	svc.Register(mux)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &env{t: t, st: st, srv: srv, files: files, svc: svc}
+	return &env{t: t, st: st, srv: srv, files: files, svc: svc, raw: raw}
 }
 
 // browser is a signed-in person: their session cookie and CSRF token.

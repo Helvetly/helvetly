@@ -612,6 +612,11 @@ function SessionDetails({
               {occurrence.client.name}
             </RecordLink>
           </Row>
+          {occurrence.participant && (
+            <Row icon={User} label={translate('schedParticipant')}>
+              {occurrence.participant.name}
+            </Row>
+          )}
           <Row icon={User} label={translate('schedHost')}>
             {occurrence.host ? (
               <span className="flex items-center gap-1.5">

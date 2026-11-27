@@ -65,6 +65,12 @@ func (q Q) SchedClients(ctx context.Context, workspaceID string, ids []string) (
 	return q.schedRefs(ctx, `SELECT id, name, NULL, '', NULL, email, NULL FROM clients WHERE workspace_id = $1 AND id = ANY ($2)`, workspaceID, ids)
 }
 
+// SchedParticipants: people of the workspace's clients, with their email (whatever their roles now).
+func (q Q) SchedParticipants(ctx context.Context, workspaceID string, ids []string) (map[string]SchedRef, error) {
+	return q.schedRefs(ctx, `SELECT id, name, NULL, '', NULL, nullif(email, ''), NULL FROM client_contacts WHERE workspace_id = $1 AND id = ANY ($2)`,
+		workspaceID, ids)
+}
+
 // SchedEngagements: the engagements' number (as text), title and unit.
 func (q Q) SchedEngagements(ctx context.Context, workspaceID string, ids []string) (map[string]SchedRef, error) {
 	return q.schedRefs(ctx, `SELECT id, title, number::text, '', unit, NULL, NULL FROM engagements WHERE workspace_id = $1 AND id = ANY ($2)`,

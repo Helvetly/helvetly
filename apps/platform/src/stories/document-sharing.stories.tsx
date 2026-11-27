@@ -48,8 +48,8 @@ const shareHandlers = (start: DocumentShare[]) => {
     http.get('/api/v1/clients', () =>
       HttpResponse.json({
         data: [
-          { id: 'cli_1', name: 'Keller AG', city: 'Zürich' },
-          { id: 'cli_2', name: 'Meier GmbH', city: 'Bern' },
+          { id: 'cli_1', name: 'Keller AG', city: 'Zürich', contacts: [] },
+          { id: 'cli_2', name: 'Meier GmbH', city: 'Bern', contacts: [] },
         ],
       }),
     ),

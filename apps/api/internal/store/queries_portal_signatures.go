@@ -56,12 +56,14 @@ const portalSignaturesSQL = `WITH RECURSIVE up AS (
 		AND (o.client = $2 OR (o.client IS NULL AND EXISTS (SELECT 1 FROM signature_signers s JOIN clients c
 			ON c.id = $2 AND c.workspace_id = $1 AND c.deleted_at IS NULL
 			WHERE s.request_id = r.id AND lower(s.email) = ` + portalLogin + `)))
+		AND ($6 = '' OR EXISTS (SELECT 1 FROM signature_signers s WHERE s.request_id = r.id AND lower(s.email) = lower($6)))
 	ORDER BY r.created_at DESC, r.id`
 
 // PortalSignatures: the signature requests that belong to the client (see portalSignaturesSQL), for a portal session
 // signed in with email; id "" for all of them, else only that one.
-func (q Q) PortalSignatures(ctx context.Context, workspaceID, clientID, email, id string, now time.Time) ([]PortalSignature, error) {
-	rows, err := q.db.Query(ctx, portalSignaturesSQL, workspaceID, clientID, now, email, id)
+// signer "" lists every request of the client; else only those with a signer of that address (a participant's).
+func (q Q) PortalSignatures(ctx context.Context, workspaceID, clientID, email, id, signer string, now time.Time) ([]PortalSignature, error) {
+	rows, err := q.db.Query(ctx, portalSignaturesSQL, workspaceID, clientID, now, email, id, signer)
 	if err != nil {
 		return nil, err
 	}

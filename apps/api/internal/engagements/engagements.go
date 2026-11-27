@@ -580,6 +580,16 @@ func missingRef(ctx context.Context, q store.Q, ws string, e store.Engagement) (
 			return refErr(err, "document_id", "Choose an existing document.")
 		}
 	}
+	if e.ParticipantContactID != nil {
+		const msg = "Choose a participant of this client."
+		p, err := q.Contact(ctx, e.ClientID, *e.ParticipantContactID)
+		if err != nil {
+			return refErr(err, "participant_contact_id", msg)
+		}
+		if !p.Is(store.RoleParticipant) {
+			return map[string]string{"participant_contact_id": msg}, nil
+		}
+	}
 	return nil, nil
 }
 

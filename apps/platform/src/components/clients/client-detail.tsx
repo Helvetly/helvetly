@@ -24,6 +24,7 @@ import {
   Tag,
   type LucideIcon,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useState, type ComponentProps, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -43,7 +44,7 @@ import { useCan } from '@/lib/permissions'
 
 import { ChangeRequestBanner } from './change-request-banner'
 import { addressLines } from './client-bits'
-import { ClientContacts } from './client-contacts'
+import { ClientContacts, DocumentsToSwitch } from './client-contacts'
 import { ClientFiles } from './client-files'
 import {
   ADDRESS_LABELS,
@@ -55,6 +56,7 @@ import {
 import { ClientHeader, mapsHref, websiteHref } from './client-header'
 import { PortalAccess } from './client-portal'
 import { InlineTagsEditor } from './inline-tags'
+import { MakeParticipantDialog } from './make-participant-dialog'
 import { SelfBillingAgreements } from './self-billing-agreements'
 
 /** A label/value row; a missing value offers to add it instead of showing a dash. */
@@ -362,6 +364,8 @@ function Detail({
   const [filling, setFilling] = useState(false)
   const [reviewing, setReviewing] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [merging, setMerging] = useState(false)
+  const router = useRouter()
   const canImportInvoices = useCan('write:invoices')
 
   return (
@@ -375,6 +379,7 @@ function Detail({
         onDelete={() => onCommand('delete', client)}
         onFillTemplate={() => setFilling(true)}
         onImportInvoices={canImportInvoices ? () => setImporting(true) : undefined}
+        onMakeParticipant={canDelete ? () => setMerging(true) : undefined}
         tabs={
           <>
             {/* Scrolls sideways on phones; the padding gives the focus rings room inside the scroller. */}
@@ -384,7 +389,7 @@ function Detail({
                   { value: 'overview' as const, label: translate('overview') },
                   {
                     value: 'contacts' as const,
-                    label: translate('contacts'),
+                    label: translate('people'),
                     count: client.contacts.length,
                   },
                   { value: 'files' as const, label: translate('files'), count: client.files_count },
@@ -605,6 +610,11 @@ function Detail({
               }
             />
           </div>
+          {client.is_company && (
+            <div className="mt-2">
+              <DocumentsToSwitch client={client} />
+            </div>
+          )}
         </Panel>
 
         <Panel
@@ -662,8 +672,9 @@ function Detail({
         </p>
       </TabsContent>
 
-      <TabsContent value="contacts" className="p-4 sm:p-5">
-        <Panel title={translate('contactPersons')}>
+      <TabsContent value="contacts" className="grid gap-3 p-4 sm:p-5">
+        <DocumentsToSwitch client={client} />
+        <Panel title={translate('people')}>
           <ClientContacts client={client} />
         </Panel>
       </TabsContent>
@@ -685,6 +696,16 @@ function Detail({
       </TabsContent>
       {filling && (
         <FillTemplateDrawer template={null} client={client} onClose={() => setFilling(false)} />
+      )}
+      {merging && (
+        <MakeParticipantDialog
+          client={client}
+          onClose={() => setMerging(false)}
+          onDone={(companyId) => {
+            setMerging(false)
+            router.replace(`/clients?id=${encodeURIComponent(companyId)}`)
+          }}
+        />
       )}
       {importing && (
         <ImportDrawer

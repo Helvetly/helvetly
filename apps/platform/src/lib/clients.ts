@@ -79,6 +79,8 @@ export type Client = {
   /** When the register last confirmed it. */
   uid_verified_at?: string | null
   contacts: Contact[]
+  /** Where a company's invoices and documents go: the company, or the participant each is for. */
+  documents_to?: DocumentsTo
   billing_email: string | null
   is_draft: boolean
   missing_fields: AddressField[]
@@ -104,6 +106,12 @@ export type ChangeRequest = {
 export const LANGUAGES = ['de', 'fr', 'it', 'en'] as const
 export type Language = (typeof LANGUAGES)[number]
 
+export type DocumentsTo = 'company' | 'participants'
+
+/** A person's roles at a client: a contact (billing, correspondence), a participant (takes the service) or both. */
+export type PersonRole = 'contact' | 'participant'
+
+/** One person of a client (`client_contacts`). `role` is their job title. */
 export type Contact = {
   id: string
   name: string
@@ -111,9 +119,80 @@ export type Contact = {
   email: string | null
   phone: string | null
   is_primary: boolean
+  /** Missing from an older API: a contact. */
+  roles?: PersonRole[]
+  /** A participant's own portal switch. */
+  portal_enabled?: boolean
+  street?: string | null
+  street_number?: string | null
+  zip?: string | null
+  city?: string | null
+  country?: string | null
+  vat_number?: string | null
 }
 
-export type ContactInput = Pick<Contact, 'name' | 'role' | 'email' | 'phone' | 'is_primary'>
+export const rolesOf = (person: Contact): PersonRole[] => person.roles ?? ['contact']
+
+/** The client's people with the role. */
+export const peopleWith = (client: Pick<Client, 'contacts'>, role: PersonRole) =>
+  client.contacts.filter((person) => rolesOf(person).includes(role))
+
+/** The client's people a document can be sent to: contacts first, then participants, each address once. */
+export function recipientPeople(client: Pick<Client, 'contacts'> | null | undefined) {
+  if (!client) return []
+  const people = [...peopleWith(client, 'contact'), ...peopleWith(client, 'participant')]
+  return people
+    .filter((person, i) => person.email && people.findIndex((p) => p.email === person.email) === i)
+    .map((person) => ({ name: person.name, email: person.email ?? '' }))
+}
+
+/**
+ * The recipient a document defaults to when a company sends to its participants: its only participant with an
+ * email; null otherwise (several to choose from, or company mode).
+ */
+export function participantRecipient(client: Client | null | undefined): string | null {
+  if (!client?.is_company || client.documents_to !== 'participants') return null
+  const withEmail = peopleWith(client, 'participant').filter((person) => person.email)
+  return withEmail.length === 1 ? (withEmail[0]?.email ?? null) : null
+}
+
+export type ContactInput = Pick<
+  Contact,
+  | 'name'
+  | 'role'
+  | 'email'
+  | 'phone'
+  | 'is_primary'
+  | 'roles'
+  | 'portal_enabled'
+  | 'street'
+  | 'street_number'
+  | 'zip'
+  | 'city'
+  | 'country'
+>
+
+/** What "Make participant of…" moves, or moved, from a person client to the company. */
+export type MergeResult = {
+  dry_run: boolean
+  done: boolean
+  company_id: string
+  participant_id: string
+  match: 'chosen' | 'email' | 'name' | 'new' | 'done'
+  counts: {
+    invoices: number
+    quotes: number
+    instalment_plans: number
+    engagements: number
+    sessions: number
+    documents: number
+    folders: number
+    shares: number
+    invoices_addressed_to_person: number
+    portal_enabled: boolean
+  }
+  suggest_participants_mode: boolean
+}
 
 export type ClientInput = Pick<
   Client,
@@ -145,6 +224,7 @@ export type ClientInput = Pick<
   | 'einvoice_format'
   | 'leitweg_id'
   | 'portal_enabled'
+  | 'documents_to'
 >
 
 export type ClientFile = {
@@ -341,6 +421,12 @@ export const clientsApi = {
     }),
   deleteContact: (id: string, contactId: string) =>
     request<void>(`${path(id)}/contacts/${encodeURIComponent(contactId)}`, { method: 'DELETE' }),
+  /** "Make participant of…": a dry run says what moves; without it the person client becomes the participant. */
+  makeParticipant: (
+    id: string,
+    input: { company_id: string; participant_id?: string; dry_run: boolean },
+  ) =>
+    request<{ data: MergeResult }>(`${path(id)}/make-participant`, { method: 'POST', json: input }),
   changeRequest: async (id: string) =>
     (await request<{ data: ChangeRequest | null }>(`${path(id)}/change-request`)).data,
   approveChangeRequest: (id: string, reviewed: ChangeRequest, fields: string[]) =>

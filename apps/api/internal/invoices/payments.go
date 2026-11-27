@@ -303,7 +303,7 @@ func (s *Service) draftPDF(ctx context.Context, sess store.Session, inv store.In
 	if err != nil {
 		return nil, err
 	}
-	buyer := buyerOf(client)
+	buyer := addressee(client, inv)
 	inv.Buyer = &buyer
 	logo, err := s.logoBytes(ctx, sess.Workspace.ID, set)
 	if err != nil {

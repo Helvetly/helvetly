@@ -12,7 +12,7 @@ import (
 )
 
 // Only business fields that Heidi understands leave the workspace. Unknown and newly added API fields stay local.
-var factFields = strings.Fields(`12m 30d 90d accepted_at accepted_by account account_code accounts active address advance_invoice amount
+var factFields = strings.Fields(`documents_to participant participant_contact_id roles 12m 30d 90d accepted_at accepted_by account account_code accounts active address advance_invoice amount
 amount_credited amount_due amount_mode amount_paid amount_refunded applies approval_state approvals apt
 archived_at at attention auto_invoice auto_send auto_tags available avg_days_to_pay balance balance_due
 balances base basis billing billing_email bookable booked booked_at booked_by booking_date booking_mode

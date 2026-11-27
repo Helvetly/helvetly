@@ -53,6 +53,8 @@ export type FormValues = {
   end_date: string
   reference: string
   document_id: string
+  /** The participant of a company client who takes the engagement; '' for the whole company. */
+  participant_id: string
   rollover: boolean
   auto_invoice: boolean
   invoice_detail: Engagement['invoice_detail']
@@ -128,6 +130,7 @@ export function emptyValues(
     end_date: '',
     reference: '',
     document_id: '',
+    participant_id: '',
     rollover: false,
     auto_invoice: false,
     invoice_detail: 'summary',
@@ -156,6 +159,7 @@ export function valuesFromEngagement(e: Engagement): FormValues {
     end_date: e.end_date ?? '',
     reference: e.reference ?? '',
     document_id: e.document_id ?? '',
+    participant_id: e.participant_contact_id ?? '',
     rollover: e.rollover,
     auto_invoice: e.auto_invoice,
     invoice_detail: e.invoice_detail,
@@ -304,6 +308,7 @@ export function toInput(values: FormValues): EngagementInput {
     end_date: orNull(values.end_date),
     reference: orNull(values.reference),
     document_id: orNull(values.document_id),
+    participant_contact_id: orNull(values.participant_id),
     // Rollover only exists for advance + recurring; elsewhere the server answers 422.
     rollover: values.rollover && canRollOver(values),
     auto_invoice: values.auto_invoice && !paid,

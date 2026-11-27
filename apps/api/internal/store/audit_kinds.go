@@ -19,6 +19,8 @@ var AuditKinds = []string{
 	"workspace.portal_turned_off", "workspace.portal_turned_on", "workspace.portal_address_changed",
 	"workspace.portal_domain_added", "workspace.portal_domain_removed", "workspace.reply_to_changed", "workspace.client_emails_changed",
 	"portal.preview_started", "portal.preview_ended",
+	"portal.participant_signed_in", "portal.participant_signed_out", "portal.participant_access_granted",
+	"portal.participant_access_revoked", "client.merged_into_participant",
 	"documents.exported", "documents.folder_repaired", "imports.expired", "email_template.ai_written",
 	"quote.contract_drafted", "quote.contract_written", "contract.signature_applied",
 	"employee.created", "employee.archived", "employee.unarchived", "employee.deleted", "employee.erased",

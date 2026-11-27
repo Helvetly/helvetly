@@ -30,7 +30,7 @@ import { toast } from 'sonner'
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { Initials } from '@/components/initials'
 import { errorMessage } from '@/lib/api'
-import { useStartPortalPreview } from '@/lib/clients'
+import { peopleWith, useStartPortalPreview } from '@/lib/clients'
 import {
   createShareLink,
   revokeShareLink,
@@ -41,6 +41,9 @@ import {
   useShareLinks,
   useShareMutation,
   useShares,
+  useParticipantShares,
+  shareWithParticipant,
+  unshareWithParticipant,
   type DocFile,
   type DocumentShare,
   type DocumentShareLink,
@@ -102,6 +105,8 @@ function ShareMode({
   const clientMode = mode === 'client'
   const queryClient = useQueryClient()
   const shares = useShares(file.id, clientMode)
+  const participantShares = useParticipantShares(file.id, clientMode)
+  const [participant, setParticipant] = useState('')
   const clients = useShareClients(clientMode)
   const links = useShareLinks(file.id, !clientMode)
   const [singleUse, setSingleUse] = useState(false)
@@ -118,8 +123,14 @@ function ShareMode({
       seconds > 0 &&
       seconds <= 9_223_372_036)
   const refreshLinks = () => queryClient.invalidateQueries({ queryKey: shareLinkKeys(file.id) })
+  // With a participant chosen, the file goes to that person of the company only.
   const add = useShareMutation(file.id, (clientId: string) =>
-    shareDocument(file.id, clientId, seconds),
+    participant
+      ? shareWithParticipant(file.id, clientId, participant)
+      : shareDocument(file.id, clientId, seconds),
+  )
+  const removeParticipant = useShareMutation(file.id, (participantId: string) =>
+    unshareWithParticipant(file.id, participantId),
   )
   const remove = useShareMutation(file.id, (clientId: string) => unshareDocument(file.id, clientId))
   const makeLink = useMutation({
@@ -142,7 +153,7 @@ function ShareMode({
   })
   const shared = new Set(shares.data?.map((share) => share.client_id))
   const options = (clients.data ?? [])
-    .filter((client) => !shared.has(client.id))
+    .filter((client) => !shared.has(client.id) || peopleWith(client, 'participant').length > 0)
     .map((client) => ({
       value: client.id,
       label: client.name,
@@ -151,6 +162,13 @@ function ShareMode({
     }))
   const linked = file.links.find((link) => link.type === 'client')?.id ?? ''
   const value = chosen ?? (options.some((option) => option.value === linked) ? linked : '')
+  const chosenClient = clients.data?.find((client) => client.id === value)
+  const participantOptions = chosenClient?.is_company
+    ? peopleWith(chosenClient, 'participant').map((person) => ({
+        value: person.id,
+        label: person.name,
+      }))
+    : []
   const pending = clientMode ? add.isPending : makeLink.isPending
   const error = clientMode
     ? (add.error ?? remove.error ?? shares.error ?? clients.error)
@@ -164,7 +182,13 @@ function ShareMode({
           event.preventDefault()
           if (!valid || pending) return
           if (!clientMode) makeLink.mutate()
-          else if (value) add.mutate(value, { onSuccess: () => setChosen(null) })
+          else if (value)
+            add.mutate(value, {
+              onSuccess: () => {
+                setChosen(null)
+                setParticipant('')
+              },
+            })
         }}
       >
         {clientMode && (
@@ -178,7 +202,22 @@ function ShareMode({
             placeholder={
               options.length === 0 ? translate('noClientsToShareWith') : translate('chooseAClient')
             }
-            onChange={setChosen}
+            onChange={(next) => {
+              setChosen(next)
+              setParticipant('')
+            }}
+          />
+        )}
+        {clientMode && participantOptions.length > 0 && (
+          <Combobox
+            className="min-w-0 flex-1"
+            label={translate('schedParticipant')}
+            value={participant}
+            options={participantOptions}
+            onChange={setParticipant}
+            onClear={() => setParticipant('')}
+            clearLabel={translate('shareWithWholeCompany')}
+            placeholder={translate('shareWithWholeCompany')}
           />
         )}
         <div className="flex items-end gap-2">
@@ -239,7 +278,7 @@ function ShareMode({
         <>
           <section className="grid gap-2" aria-label={translate('sharedWith')}>
             <h3 className="text-body-sm font-medium">{translate('sharedWith')}</h3>
-            {shares.data?.length === 0 ? (
+            {shares.data?.length === 0 && !participantShares.data?.length ? (
               <p className="text-body-sm text-muted-foreground">
                 {translate('notSharedWithAnyClientYet')}
               </p>
@@ -251,6 +290,19 @@ function ShareMode({
                     share={share}
                     removing={remove.isPending}
                     onRemove={() => remove.mutate(share.client_id)}
+                  />
+                ))}
+                {participantShares.data?.map((share) => (
+                  <ShareRow
+                    key={share.participant_id}
+                    share={{
+                      client_id: share.client_id,
+                      client_name: `${share.participant_name} · ${share.client_name}`,
+                      shared_at: share.shared_at,
+                      expires_at: undefined,
+                    }}
+                    removing={removeParticipant.isPending}
+                    onRemove={() => removeParticipant.mutate(share.participant_id)}
                   />
                 ))}
               </ul>

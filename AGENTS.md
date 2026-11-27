@@ -64,8 +64,36 @@ are the reference.
   (`portal_sessions.scoped`, its own cookie per workspace) is valid only there and switches only among that workspace's clients. The shared portal (`PORTAL_URL` itself)
   signs nobody in: unscoped start and verify answer `portal_link_required`, unscoped sessions are not read, and its
   page only emails an address the links of its suppliers' open portals (`POST /api/v1/public/portal/auth/links`:
-  the same 202 for every address, limited per client address and per recipient). Links in email come from `CanonicalURL`, and the platform shows, copies and opens it (`canonical_url` of `GET /api/v1/workspace/portal`). A member who can read a client
+  the same 202 for every address, limited per client address and per recipient). Links in email come from `CanonicalURL`, and the platform shows, copies and opens it (`canonical_url` of `GET /api/v1/workspace/portal`). A person
+  signs in as a participant of a company client (`portal_sessions.participant_id`): their address is a person with the
+  participant role, their own `portal_enabled`, the client's portal and the workspace's on (re-checked on every read;
+  start, end and access changes audited as `portal.participant_*`; the invitation comes from the business in the
+  client's language). Such a session reaches only `portal/participant.go`'s routes, each filtering by the participant:
+  their own sessions and requests, documents shared with them and, in participants mode, invoices addressed to them and
+  signature requests they sign; everything else is 404. A member who can read a client
   opens its portal as a read-only preview (`POST /api/v1/clients/{id}/portal-preview`, session-only: a hashed one-use link for 5 minutes, then a session of at most 30 with `portal_sessions.preview_by` and its own cookie beside the client's), where every write but ending it answers 403 `preview_read_only`, nothing is recorded on the client or notified, and start and end are audited (`portal.preview_*`).
+- **Client people** (`client_contacts`, `clients/contacts.go`, `clients/merge.go`, 00085): each person of a client is a
+  `contact` (billing and correspondence; exactly one primary among contacts, never a participant alone) and/or a
+  `participant` (takes the service); only a company has participants (a person client is its own), checked on every
+  write with the client's row lock. The client drawer's People tab shows both groups; the Overview keeps the primary
+  contact. A company's `clients.documents_to` (`company` default | `participants`) decides where its invoices and
+  documents go, for new drafts and sends only, never an issued invoice. A session's event, an engagement and its entries
+  may name one participant of their client (`participant_contact_id`, validated to be a participant of that client):
+  the session's client email (invitation, update, cancellation, reminders, `.ics`) goes to the participant, entries
+  carry the session's participant, else the engagement's. Invoices stay under the company: in company mode lines made
+  from sessions or entries end with "· <participant>"; in participants mode a session invoice is made per participant
+  and a participant's engagement invoice is addressed to them (`invoices.participant_contact_id`): the buyer is the
+  participant's name with their own address (else the company's) and VAT number (else the company's), and the
+  invoice email, reminders, dunning and payment confirmation go to them (`invoices.addressee`, `store.clientEmail`).
+  Send dialogs offer the client's contacts and participants; in participants mode quotes and templates default to the
+  only participant with an email. An invoice import whose buyer is a participant of a company (email exactly, else
+  name with the person's or company's email domain, else the name alone when unique) goes to that company addressed
+  to them (`store.ImportParticipant`). "Make participant of…" (`POST /api/v1/clients/{id}/make-participant`, owners
+  and admins, `dry_run` previews counts) moves a person client's invoices (number, buyer snapshot and PDF unchanged),
+  quotes, plans, engagements, sessions, links, shares and Clients/<person> folders onto the company with the participant
+  set, fills what the person lacks, deletes the client (`clients.merged_into`, a repeat answers done) and logs
+  `client.merged_into_participant` as a new financial event, never editing older ones. Documents can be shared with one
+  participant (`document_participant_shares`).
 - **Custom portal domains** (`internal/customdomains`, Business feature `custom_portal_domain`, off without
   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID` and `CUSTOM_DOMAIN_TARGET`): a workspace's portal on its own host
   through Cloudflare for SaaS custom hostnames (`workspace_domains`: one per workspace and hostname among rows not
