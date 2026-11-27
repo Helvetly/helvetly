@@ -101,8 +101,13 @@ func TestRecordMatch(t *testing.T) {
 				id = "doc_x"
 			}
 			got := ix.match(store.Document{ID: id, Name: tc.file, ObjectKey: tc.object}, tc.text)
-			if (got == nil) != (tc.want == nil) || got != nil && *got != *tc.want {
+			if (got == nil) != (tc.want == nil) || got != nil && (got.place != tc.want.place || got.client != tc.want.client ||
+				got.tag != tc.want.tag || got.reason != tc.want.reason) {
 				t.Fatalf("got %+v, want %+v", got, tc.want)
+			}
+			// only the stored PDF and the imported original are the record itself; a number only names it
+			if identity := tc.object != "" || tc.id != ""; got != nil && got.identity != identity {
+				t.Fatalf("identity = %v, want %v", got.identity, identity)
 			}
 		})
 	}
@@ -204,5 +209,36 @@ func TestReadOrganizeKeepsClientRecordsInClients(t *testing.T) {
 	}
 	if i := slices.IndexFunc(got, func(p proposal) bool { return p.DocumentID == "doc_in" }); got[i].FromFolder == nil || *got[i].FromFolder != "Invoices/2026" {
 		t.Fatalf("doc_in from = %v", got[i].FromFolder)
+	}
+}
+
+func TestRecordMatchPaid(t *testing.T) {
+	m := recordMatch{label: "invoice 2026/IN/031", words: words("2026/IN/031")}
+	for _, tc := range []struct {
+		name, file    string
+		tags          []string
+		kind, ordinal string
+		wantPaid      bool
+	}{
+		{name: "an instalment suffix", file: "2026_IN_031_Sumara_1st.pdf", kind: "payment-confirmation", ordinal: "1st", wantPaid: true},
+		{name: "a client name only", file: "2026_IN_031_Daza.pdf"},
+		{name: "a space before the suffix", file: "2026-IN-031_Schumer 3rd.pdf", kind: "payment-confirmation", ordinal: "3rd", wantPaid: true},
+		{name: "a lone digit after the number", file: "2026_IN_031_1.pdf", kind: "payment-confirmation", ordinal: "1st", wantPaid: true},
+		{name: "a German instalment", file: "2026_IN_031_Wang 2.Rate.pdf", kind: "payment-confirmation", ordinal: "2nd", wantPaid: true},
+		{name: "paid in the name", file: "Raiffeisen RE 2026-IN-031 bezahlt.pdf", kind: "payment-confirmation", wantPaid: true},
+		{name: "an earlier kind tag", file: "2026_IN_031_Cregan.pdf", tags: []string{"payment-confirmation", "2026-in-031"},
+			kind: "payment-confirmation", wantPaid: true},
+		{name: "a bank statement tag", file: "2026_IN_031.pdf", tags: []string{"bank-statement"}, kind: "bank-statement", wantPaid: true},
+		{name: "the invoice itself", file: "Invoice 2026-IN-031.pdf"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			kind, ordinal, paid := m.paid(store.Document{Name: tc.file, Tags: tc.tags})
+			if kind != tc.kind || ordinal != tc.ordinal || paid != tc.wantPaid {
+				t.Fatalf("paid = %q %q %v, want %q %q %v", kind, ordinal, paid, tc.kind, tc.ordinal, tc.wantPaid)
+			}
+		})
+	}
+	if got := m.paidReason("payment-confirmation", "1st"); got != "Payment confirmation for invoice 2026/IN/031 (1st instalment)." {
+		t.Fatalf("reason = %q", got)
 	}
 }

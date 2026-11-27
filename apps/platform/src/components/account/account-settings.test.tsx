@@ -196,3 +196,42 @@ test('a picked photo opens the crop dialog; cancelling sends nothing; a wrong ty
   expect(screen.queryByRole('dialog')).toBeNull()
   server.events.removeAllListeners()
 })
+
+test('inspects, edits and clears Heidi memory for this workspace', async () => {
+  renderPage()
+  const memory = await screen.findByRole('region', { name: 'Heidi memory' })
+  const controls = within(memory)
+  const enable = await controls.findByRole('switch', { name: 'Learn from my activity' })
+  expect(enable).toBeChecked()
+  await userEvent.click(controls.getByRole('radio', { name: 'Detailed' }))
+  await waitFor(() => expect(controls.getByRole('radio', { name: 'Detailed' })).toBeChecked())
+  await userEvent.click(controls.getByRole('button', { name: 'Clear memory' }))
+  await waitFor(() => expect(controls.getByRole('radio', { name: 'Automatic' })).toBeChecked())
+  await userEvent.click(enable)
+  await waitFor(() => expect(enable).not.toBeChecked())
+  expect(controls.queryByRole('radio')).toBeNull()
+  await userEvent.click(enable)
+  expect(await controls.findByRole('radio', { name: 'Automatic' })).toBeChecked()
+})
+
+test('existing memory can be cleared when the AI provider is disabled', async () => {
+  server.use(
+    http.get('/api/v1/auth/config', () =>
+      HttpResponse.json({
+        google: true,
+        email: true,
+        passkey: true,
+        dev_codes: false,
+        ai_available: false,
+      }),
+    ),
+    http.get('/api/v1/heidi/memory', () =>
+      HttpResponse.json({ enabled: true, reply_style: 'brief', has_memory: true, topics: [] }),
+    ),
+  )
+  renderPage()
+  const memory = await screen.findByRole('region', { name: 'Heidi memory' })
+  await waitFor(() => expect(within(memory).getByRole('radio', { name: 'Brief' })).toBeDisabled())
+  await userEvent.click(within(memory).getByRole('button', { name: 'Clear memory' }))
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'Heidi memory' })).toBeNull())
+})

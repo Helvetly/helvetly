@@ -46,6 +46,7 @@ import type { KnownTag } from '@/components/clients/fields'
 import { InlineTagsEditor } from '@/components/clients/inline-tags'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { RecordLink, RecordPageButton } from '@/components/record-link'
+import { Person } from '@/components/user-avatar'
 import { useAI } from '@/lib/ai'
 import { useClientSearch } from '@/lib/clients'
 import { automaticOnlyTag, documentTagLabel } from '@/lib/document-tags'
@@ -429,7 +430,15 @@ function Details({
     ],
     [
       translate('uploaded2'),
-      `${formatDate(file.created_at)}${file.uploaded_by?.name ? translate('dynamicBy', { name: file.uploaded_by.name }) : ''}`,
+      <span key="uploaded" className="flex min-w-0 flex-wrap items-center">
+        {formatDate(file.created_at)}
+        {file.uploaded_by && (
+          <>
+            {translate('dynamicBy', { name: '' })}
+            <Person person={file.uploaded_by} size="xs" />
+          </>
+        )}
+      </span>,
     ],
     [translate('modified'), formatDate(file.updated_at)],
   ]

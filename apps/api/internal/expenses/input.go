@@ -460,7 +460,7 @@ func ForeignVAT(country string) bool { return country != "CH" && country != "LI"
 func newDraft(d store.WorkspaceDefaults, user store.User) store.Expense {
 	e := store.Expense{ID: auth.NewID("exp"), Status: "draft", Source: "manual", SupplierCountry: "CH", Currency: d.Currency, AmountMode: "gross", EntryMode: "single",
 		InputTax: "none", ExchangeRate: invoicecalc.RateOne, PaymentStatus: "unpaid", Lines: []store.ExpenseLine{},
-		CreatedBy: &store.Person{ID: user.ID, Name: user.Name}}
+		CreatedBy: &store.Person{ID: user.ID, Name: user.Name, AvatarURL: user.AvatarURL}}
 	if d.VATRegistered {
 		e.InputTax, e.DeductiblePercent = "full", invoicecalc.Hundred
 	}

@@ -17,7 +17,20 @@ export type PortalSession = {
   client: { id: string; name: string }
   workspace: { name: string }
   csrf_token: string
-  clients: { id: string; name: string; workspace_name: string }[]
+  /** The logins this address may switch to: the client's own, or one participant of a company client. */
+  clients: {
+    id: string
+    name: string
+    workspace_name: string
+    participant_id?: string
+    participant_name?: string
+  }[]
+  /**
+   * A participant's session (a person of a company client who takes its service): they see only their own sessions,
+   * the documents shared with them and, when `documents` (the company sends to its participants), the invoices
+   * and signature requests addressed to them. null for the client's own session.
+   */
+  participant?: { id: string; name: string; documents: boolean } | null
   /** A member's read-only preview of the client's portal: who started it; null for the client's own session. */
   preview?: { started_by: string } | null
 }
@@ -223,10 +236,15 @@ export async function getPortalSession(): Promise<PortalSession | null> {
   }
 }
 
-export async function switchPortalClient(clientId: string) {
+/** A login's key in the switch menu: the client, and the participant for a participant's login. */
+export const loginKey = (login: { id: string; participant_id?: string }) =>
+  login.participant_id ? `${login.id}:${login.participant_id}` : login.id
+
+export async function switchPortalClient(key: string) {
+  const [clientId, participantId] = key.split(':')
   const result = await call<{ csrf_token: string }>('/session/client', {
     method: 'POST',
-    json: { client_id: clientId },
+    json: { client_id: clientId, ...(participantId ? { participant_id: participantId } : {}) },
   })
   changeSession(result.csrf_token)
 }

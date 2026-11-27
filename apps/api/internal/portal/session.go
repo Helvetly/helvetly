@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -68,8 +69,12 @@ func (s *Service) open(w http.ResponseWriter, r *http.Request, email string, a s
 				return err
 			}
 		}
-		if err := q.CreatePortalSession(r.Context(), auth.NewID("pse"), hashToken(token), csrf, email, a.ClientID, a.WorkspaceID, scopeWorkspace(r) != "", now, expires); err != nil {
+		id := auth.NewID("pse")
+		if err := q.CreatePortalSession(r.Context(), id, hashToken(token), csrf, email, a.ClientID, a.ParticipantID, a.WorkspaceID, scopeWorkspace(r) != "", now, expires); err != nil {
 			return err
+		}
+		if a.ParticipantID != "" { // a participant's access is audited; the client's first sign-in stays the client's own
+			return s.logParticipant(r, q, "portal.participant_signed_in", a.WorkspaceID, a.ClientID, a.ClientName, a.ParticipantID, a.ParticipantName, id)
 		}
 		if first, err := q.MarkPortalSignedIn(r.Context(), a.ClientID, now); err != nil || !first {
 			return err
@@ -174,6 +179,14 @@ func (s *Service) signedIn(h handler) http.HandlerFunc {
 			s.fail(w, r, errPreviewReadOnly)
 			return
 		}
+		if !participantAllows(r, sess) {
+			s.fail(w, r, auth.ErrNotFound)
+			return
+		}
+		if err := s.participantOwns(r, sess); err != nil {
+			s.fail(w, r, schedFail(err))
+			return
+		}
 		// A workspace whose plan no longer has the portal ends its sessions on their next request, without saying why:
 		// the client is not told the workspace's plan.
 		if open, err := s.db.Q.FeatureAllowed(r.Context(), sess.Workspace.ID, store.FeatureClientPortal); err != nil || !open {
@@ -238,9 +251,11 @@ func (s *Service) getSession(w http.ResponseWriter, r *http.Request, sess store.
 		return err
 	}
 	type clientRef struct {
-		ID            string `json:"id"`
-		Name          string `json:"name"`
-		WorkspaceName string `json:"workspace_name"`
+		ID              string `json:"id"`
+		Name            string `json:"name"`
+		WorkspaceName   string `json:"workspace_name"`
+		ParticipantID   string `json:"participant_id,omitempty"`
+		ParticipantName string `json:"participant_name,omitempty"`
 	}
 	avatar, err := s.sessionAvatarURL(r, sess)
 	if err != nil {
@@ -252,23 +267,31 @@ func (s *Service) getSession(w http.ResponseWriter, r *http.Request, sess store.
 	}
 	clients := make([]clientRef, 0, len(access))
 	for _, a := range access {
-		clients = append(clients, clientRef{a.ClientID, a.ClientName, a.WorkspaceName})
+		clients = append(clients, clientRef{a.ClientID, a.ClientName, a.WorkspaceName, a.ParticipantID, a.ParticipantName})
+	}
+	// participant: the session is one participant's, who sees only their sessions (and, in participants mode, the
+	// invoices and documents addressed to them).
+	var participant any
+	if sess.ParticipantID != "" {
+		participant = map[string]any{"id": sess.ParticipantID, "name": sess.ParticipantName, "documents": sess.ParticipantsMode}
 	}
 	auth.WriteJSON(w, http.StatusOK, map[string]any{
-		"email":      sess.Email,
-		"avatar_url": avatar,
-		"client":     map[string]string{"id": sess.ClientID, "name": sess.ClientName},
-		"workspace":  map[string]string{"name": sess.Workspace.Name},
-		"csrf_token": sess.CSRFToken,
-		"clients":    clients,
-		"preview":    preview,
+		"email":       sess.Email,
+		"avatar_url":  avatar,
+		"client":      map[string]string{"id": sess.ClientID, "name": sess.ClientName},
+		"workspace":   map[string]string{"name": sess.Workspace.Name},
+		"csrf_token":  sess.CSRFToken,
+		"clients":     clients,
+		"preview":     preview,
+		"participant": participant,
 	})
 	return nil
 }
 
 func (s *Service) switchClient(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
 	var in struct {
-		ClientID string `json:"client_id"`
+		ClientID      string `json:"client_id"`
+		ParticipantID string `json:"participant_id"`
 	}
 	if !s.auth.Decode(w, r, &in) {
 		return nil
@@ -278,7 +301,7 @@ func (s *Service) switchClient(w http.ResponseWriter, r *http.Request, sess stor
 		return err
 	}
 	for _, a := range access {
-		if a.ClientID == in.ClientID {
+		if a.ClientID == in.ClientID && a.ParticipantID == in.ParticipantID {
 			return s.open(w, r, sess.Email, a, sess.ID)
 		}
 	}
@@ -288,8 +311,15 @@ func (s *Service) switchClient(w http.ResponseWriter, r *http.Request, sess stor
 func (s *Service) deleteSession(w http.ResponseWriter, r *http.Request, sess store.PortalSession) error {
 	name := cookieName(r)
 	err := s.db.Tx(r.Context(), func(q store.Q) error {
-		if err := q.DeletePortalSession(r.Context(), sess.ID); err != nil || sess.PreviewBy == "" {
+		if err := q.DeletePortalSession(r.Context(), sess.ID); err != nil {
 			return err
+		}
+		if sess.ParticipantID != "" {
+			return s.logParticipant(r, q, "portal.participant_signed_out", sess.Workspace.ID, sess.ClientID, sess.ClientName,
+				sess.ParticipantID, sess.ParticipantName, sess.ID)
+		}
+		if sess.PreviewBy == "" {
+			return nil
 		}
 		name = previewCookieName(r)
 		return s.logPreview(r, q, "portal.preview_ended", sess.Workspace.ID, sess.PreviewBy, sess.ClientID, sess.ClientName, sess.ID)
@@ -321,4 +351,15 @@ func (s *Service) access(r *http.Request, email string) ([]store.PortalAccess, e
 		}
 	}
 	return out, nil
+}
+
+// logParticipant audits a participant's portal session starting or ending, on the client.
+func (s *Service) logParticipant(r *http.Request, q store.Q, kind, workspaceID, clientID, clientName, participantID, participantName, sessionID string) error {
+	payload, err := json.Marshal(map[string]string{"client_id": clientID, "client_name": clientName, "participant_id": participantID,
+		"participant_name": participantName, "session_id": sessionID})
+	if err != nil {
+		return err
+	}
+	return q.LogEvent(r.Context(), store.FinancialEvent{WorkspaceID: workspaceID, Kind: kind, SubjectType: "client",
+		SubjectID: clientID, At: s.now(), Payload: payload})
 }

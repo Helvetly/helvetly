@@ -351,7 +351,7 @@ func TestClientDocumentTypeKinds(t *testing.T) {
 const clientTagRewrite = `BEGIN;
 CREATE OR REPLACE FUNCTION pg_temp.unprefixed(t text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
 	SELECT CASE WHEN t LIKE 'client-_%'
-		AND substr(t, 8) !~ '^(signed|year-[0-9]{4}(-(0[1-9]|1[0-2]))?|invoice|partial-invoice|prepayment-invoice|corrected-invoice|proforma-invoice|self-billed-invoice|credit-note|debit-note|quote|contract|engagement|receipt|payment-confirmation|consent|power-of-attorney|bank-statement)$'
+		AND substr(t, 8) !~ '^(signed|year-[0-9]{4}(-(0[1-9]|1[0-2]))?|invoice|partial-invoice|prepayment-invoice|corrected-invoice|proforma-invoice|self-billed-invoice|credit-note|debit-note|quote|contract|engagement|receipt|payment-confirmation|consent|power-of-attorney|bank-statement|tax-document)$'
 		AND substr(t, 8) !~ '^([0-9]|client-|expense-|from-quote-)'
 		THEN substr(t, 8) ELSE t END $$;
 CREATE OR REPLACE FUNCTION pg_temp.rewritten(tags text[]) RETURNS text[] LANGUAGE sql IMMUTABLE AS $$

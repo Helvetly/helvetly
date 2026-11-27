@@ -90,6 +90,11 @@ func (p *openAI) input(in Request) responseInput {
 	}
 	parts := []inputPart{{Type: "input_text", Text: in.Message}}
 	for _, f := range in.Files {
+		if f.ContentType == "text/plain" {
+			content, _ := json.Marshal(map[string]string{"attachment": f.Name, "text": string(f.Bytes)})
+			parts = append(parts, inputPart{Type: "input_text", Text: string(content)})
+			continue
+		}
 		data := "data:" + f.ContentType + ";base64," + base64.StdEncoding.EncodeToString(f.Bytes)
 		if f.ContentType == "application/pdf" {
 			parts = append(parts, inputPart{Type: "input_file", FileData: data, Filename: f.Name})

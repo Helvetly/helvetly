@@ -64,9 +64,10 @@ const auditHandlers = (events: FinancialEvent[], ok = true) => [
   http.get('/api/v1/audit-log/people', () =>
     HttpResponse.json({
       data: [
-        { id: 'usr_mock_1', name: 'Anna Muster' },
-        { id: 'usr_mock_2', name: 'Marco Bernasconi' },
-      ].filter((person) => events.some((event) => event.actor?.id === person.id)),
+        ...new Map(
+          events.flatMap((event) => (event.actor ? [[event.actor.id, event.actor]] : [])),
+        ).values(),
+      ].toSorted((a, b) => a.name.localeCompare(b.name)),
     }),
   ),
   http.get('/api/v1/audit-log/verify', () =>
@@ -139,7 +140,8 @@ export const Periods: Story = {
     await expect(canvas.getByText('Current month')).toBeVisible()
     const closedRow = canvas.getByRole('listitem', { name: last })
     await expect(within(closedRow).getByText('Closed')).toBeVisible()
-    await expect(within(closedRow).getByText(/· Anna Muster$/)).toBeVisible()
+    await expect(within(closedRow).getByText('Anna Muster')).toBeVisible()
+    await expect(closedRow).toHaveTextContent(/Closed 3 Nov·AMAnna Muster/)
     const row = canvas.getByRole('listitem', { name: open })
     await expect(within(row).getByText('Open')).toBeVisible()
     await expect(await within(row).findByText(/\d+ issued/)).toBeVisible()
@@ -355,6 +357,34 @@ export const AuditLog: Story = {
   },
 }
 
+/** A member with a photo shows it in the rows and the person filter; one without keeps their initials. */
+export const AuditLogPhotos: Story = {
+  parameters: AuditLog.parameters,
+  render: AuditLog.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const screen = body(canvasElement)
+    await canvas.findByRole('region', { name: 'Today' })
+    const marco = canvas.getAllByText('Marco Bernasconi')[0]!.parentElement!
+    await waitFor(() =>
+      expect(marco.querySelector('[data-slot="avatar-image"]')).toBeInTheDocument(),
+    )
+    await expect(marco).not.toHaveTextContent('MB')
+    const withoutPhoto = canvas.getAllByText('Anna Muster')[0]!.parentElement!
+    await expect(withoutPhoto.querySelector('[data-slot="avatar-image"]')).toBeNull()
+    await expect(withoutPhoto).toHaveTextContent('AM')
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Person' }))
+    const item = await screen.findByRole('menuitemradio', { name: /Marco Bernasconi/ })
+    await waitFor(() =>
+      expect(item.querySelector('[data-slot="avatar-image"]')).toBeInTheDocument(),
+    )
+    await expect(screen.getByRole('menuitemradio', { name: /Anna Muster/ })).toHaveTextContent('AM')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+  },
+}
+
 /** A folded row opens to each of its entries. */
 export const AuditLogFoldOpen: Story = {
   parameters: AuditLog.parameters,
@@ -421,6 +451,98 @@ export const AuditLogDetails: Story = {
     await expect(drawer.getByText('#9')).toBeVisible()
     await expect(drawer.getByRole('button', { name: 'Copy Hash' })).toBeVisible()
     await expect(drawer.getByRole('button', { name: 'Copy Previous hash' })).toBeVisible()
+  },
+}
+
+const imported = { number: '2026/IN/020', party: 'Muster AG', currency: 'CHF' }
+const sourceEvent = (
+  seq: number,
+  clock: string,
+  over: Partial<FinancialEvent> & Pick<FinancialEvent, 'kind' | 'category'>,
+): FinancialEvent => {
+  const at = new Date()
+  const [hours = 0, minutes = 0] = clock.split(':').map(Number)
+  at.setHours(hours, minutes, 0, 0)
+  return {
+    seq,
+    subject_type: 'invoice',
+    subject_id: 'inv_mock_9',
+    subject: imported,
+    actor: { id: 'usr_mock_1', name: 'Anna Muster' },
+    origin: null,
+    at: at.toISOString(),
+    payload: {},
+    prev_hash: seq === 1 ? '' : `${seq - 1}`.padStart(64, '0'),
+    hash: `${seq}`.padStart(64, '0'),
+    ...over,
+  }
+}
+
+/** Where entries came from: an import is marked, and one without a person names its source. */
+export const AuditLogSources: Story = {
+  parameters: page(
+    'owner',
+    auditHandlers([
+      sourceEvent(1, '08:02', {
+        kind: 'plan.cancelled',
+        category: 'invoices',
+        subject_type: 'plan',
+        subject: null,
+        actor: null,
+      }),
+      sourceEvent(2, '09:20', {
+        kind: 'invoice.issued',
+        category: 'invoices',
+        origin: 'imported',
+        payload: { number: '2026/IN/020', payable_total: '268.60', origin: 'imported' },
+      }),
+      sourceEvent(3, '09:20', {
+        kind: 'payment.added',
+        category: 'payments',
+        origin: 'imported',
+        payload: { amount: '268.60', origin: 'imported' },
+      }),
+      sourceEvent(4, '09:35', {
+        kind: 'scheduling.cancelled',
+        category: 'settings',
+        subject_type: 'scheduling',
+        subject: null,
+        actor: null,
+        payload: { as: 'late', by: 'client' },
+      }),
+      sourceEvent(5, '10:05', {
+        kind: 'payment.added',
+        category: 'payments',
+        payload: { amount: '50.00' },
+      }),
+    ]),
+  ),
+  render: AuditLog.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const row = async (name: string) => {
+      const item = (await canvas.findByRole('button', { name: `Details of: ${name}` })).closest(
+        'li',
+      )
+      if (!item) throw new Error(`No row for ${name}.`)
+      return item
+    }
+    const importedPayment = await row('Payment of CHF 268.60 recorded on 2026/IN/020')
+    await expect(importedPayment).toHaveTextContent('· import')
+    const byHand = await row('Payment of CHF 50.00 recorded on 2026/IN/020')
+    await expect(byHand).not.toHaveTextContent('· import')
+    await expect(byHand).toHaveTextContent('Anna Muster')
+    await expect(await row('Session cancelled late by the client')).toHaveTextContent(
+      'Client (portal)',
+    )
+    await expect(await row('Instalment plan cancelled')).toHaveTextContent('System')
+    await expect(canvas.queryByText('Entry recorded')).toBeNull()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Type' }))
+    await userEvent.click(
+      await body(canvasElement).findByRole('menuitemradio', { name: 'Imported' }),
+    )
+    await expect(await canvas.findByText('2 entries shown')).toBeVisible()
   },
 }
 

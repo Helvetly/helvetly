@@ -30,6 +30,7 @@ it('keeps kinds, dates and signed for the record or filing; client names are fre
     'credit-note',
     'quote',
     'bank-statement',
+    'tax-document',
     'contract',
     'payment-confirmation',
     'power-of-attorney',

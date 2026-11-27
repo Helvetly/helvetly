@@ -117,7 +117,7 @@ func TestSessionValidOnlyInItsScope(t *testing.T) {
 	a, _ := e.signInAt("/w/studio", "ana@acme.ch")
 	// A session opened on the shared portal before it stopped signing anyone in.
 	token := "unscoped-token"
-	if err := e.store.Q.CreatePortalSession(context.Background(), "pse_u", hashToken(token), "csrf", "ana@acme.ch", "cli_1", "wsp_a", false, time.Now(), time.Now().Add(time.Hour)); err != nil {
+	if err := e.store.Q.CreatePortalSession(context.Background(), "pse_u", hashToken(token), "csrf", "ana@acme.ch", "cli_1", "", "wsp_a", false, time.Now(), time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	u := &http.Cookie{Name: sessionCookie, Value: token}

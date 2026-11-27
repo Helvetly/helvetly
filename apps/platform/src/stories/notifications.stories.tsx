@@ -406,6 +406,20 @@ export const Page: Story = {
   },
 }
 
+/** Who did it, with their photo when they have one; a member without one keeps their initials. */
+export const PageActorPhotos: Story = {
+  render: page,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findByRole('region', { name: 'Earlier' })
+    const lea = canvas.getAllByText('Lea Meier')[0]!.parentElement!
+    await waitFor(() => expect(lea.querySelector('[data-slot="avatar-image"]')).toBeInTheDocument())
+    const hans = canvas.getAllByText('Hans Muster')[0]!.parentElement!
+    await expect(hans.querySelector('[data-slot="avatar-image"]')).toBeNull()
+    await expect(hans).toHaveTextContent('HM')
+  },
+}
+
 /** The page as a person first sees it, unread rows included. */
 export const PageOverview: Story = { render: page, parameters: { ownMain: true } }
 

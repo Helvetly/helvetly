@@ -25,6 +25,7 @@ import {
   type Busy,
   type Occurrence,
   type Person,
+  withWhom,
 } from '@/lib/scheduling'
 
 import { hasStarted, HostDot, PAST_HATCH } from './bits'
@@ -575,7 +576,7 @@ function DayColumn({
               </span>
               {height >= 34 && (
                 <span className="w-full truncate text-muted-foreground">
-                  {timeLabel(occurrence.starts_at, zone)} · {occurrence.client.name}
+                  {timeLabel(occurrence.starts_at, zone)} · {withWhom(occurrence)}
                 </span>
               )}
             </button>

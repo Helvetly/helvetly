@@ -17,6 +17,12 @@ import {
   type Settings,
 } from '@/lib/scheduling'
 
+/** The participants the stories' company clients have, by id. */
+export const STORY_PARTICIPANTS: Record<string, string> = {
+  con_lorenzo: 'Lorenzo Percic',
+  con_liam: 'Liam Gallagher',
+}
+
 export const ME = { id: 'usr_story', name: 'Anna Muster' }
 export const LUCA = { id: 'usr_2', name: 'Luca Rossi' }
 export const MIA = { id: 'usr_3', name: 'Mia Keller' }
@@ -447,6 +453,12 @@ export function schedulingHandlers(state: SchedulingState = sampleState(), now =
         meeting: input.meeting,
         recurrence: input.recurrence,
         time_zone: input.time_zone,
+        participant: input.participant_contact_id
+          ? {
+              id: input.participant_contact_id,
+              name: STORY_PARTICIPANTS[input.participant_contact_id] ?? '',
+            }
+          : null,
       })
       state.events.push(created)
       const [date = '', time = '00:00'] = input.starts_local.split('T')
@@ -462,6 +474,7 @@ export function schedulingHandlers(state: SchedulingState = sampleState(), now =
           title: input.title,
           host: created.host,
           client: created.client,
+          participant: created.participant,
         })
       })
       state.occurrences.push(...made)

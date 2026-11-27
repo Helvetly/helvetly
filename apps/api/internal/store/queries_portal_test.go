@@ -67,7 +67,7 @@ func TestPortalSessionLifecycle(t *testing.T) {
 	s, _ := portalFixture(t)
 	ctx := context.Background()
 	q := s.Q
-	if err := q.CreatePortalSession(ctx, "ps_1", "h1", "csrf", "ANA@acme.ch", "cli_1", "wsp_a", false, t0, t0.Add(time.Hour)); err != nil {
+	if err := q.CreatePortalSession(ctx, "ps_1", "h1", "csrf", "ANA@acme.ch", "cli_1", "", "wsp_a", false, t0, t0.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	got, err := q.PortalSessionByToken(ctx, "h1", t0.Add(time.Minute))
@@ -98,7 +98,7 @@ func TestPortalSessionEndsWithTheLogin(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s, exec := portalFixture(t)
 			ctx := context.Background()
-			_ = s.Q.CreatePortalSession(ctx, "ps_1", "h1", "c", "ana@acme.ch", "cli_1", "wsp_a", false, t0, t0.Add(time.Hour))
+			_ = s.Q.CreatePortalSession(ctx, "ps_1", "h1", "c", "ana@acme.ch", "cli_1", "", "wsp_a", false, t0, t0.Add(time.Hour))
 			exec(tc.change)
 			if _, err := s.Q.PortalSessionByToken(ctx, "h1", t0); !errors.Is(err, store.ErrNotFound) {
 				t.Fatalf("got %v", err)
@@ -112,7 +112,7 @@ func TestPortalSessionDeletes(t *testing.T) {
 	ctx := context.Background()
 	q := s.Q
 	for _, id := range []string{"1", "2"} {
-		if err := q.CreatePortalSession(ctx, "ps_"+id, "h"+id, "c", "ana@acme.ch", "cli_1", "wsp_a", false, t0, t0.Add(time.Hour)); err != nil {
+		if err := q.CreatePortalSession(ctx, "ps_"+id, "h"+id, "c", "ana@acme.ch", "cli_1", "", "wsp_a", false, t0, t0.Add(time.Hour)); err != nil {
 			t.Fatal(err)
 		}
 	}

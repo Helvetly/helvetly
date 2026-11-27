@@ -28,22 +28,45 @@ func textValue(s *string) string {
 	return *s
 }
 
-// wantsImport: the message asks to import (English, German, French, Italian, Polish stems).
-func wantsImport(lower string) bool {
-	for _, stem := range []string{"import", "importier", "importuj", "importa"} {
-		if strings.Contains(lower, stem) {
-			return true
-		}
+// Only explicit import commands skip the model. Other languages and ambiguous requests use the classifier.
+var importCommand = regexp.MustCompile(`^(?:(?:please|bitte|prosz[eę]|veuillez|per favore)[, ]+)?(?:import|importe|importa|importez|importieren|importiere|zaimportuj|importuj)(?:[[:space:][:punct:]]|$)`)
+
+func importForm(sess store.Session) *Form {
+	kinds := imports.Offered(func(resource string) bool { return permissions.Allows(sess.Role, sess.Scopes, "write:"+resource) })
+	if len(kinds) == 0 {
+		return nil
 	}
-	return false
+	return &Form{ID: auth.NewID("frm"), Question: "What do the files contain?", Intent: "import", Fields: []Field{{Kind: "choice", Name: "kind", Label: "Import as", Options: kinds}}}
 }
+
+// The offline shortcuts answer only a whole known request; narrower filters, comparisons and multi-step tasks need the planner.
+var localQuestion = regexp.MustCompile(`(?i)^(?:which invoices are overdue|(?:show |list )?(?:my |the )?(?:overdue|recent) invoices|how many hours (?:are )?left|what needs invoicing)[?!.]*$`)
+var otherLocalQuestion = regexp.MustCompile(`(?i)^(?:(?:show |list )?(?:my |the )?recent (?:clients|documents)|which documents were added recently|summari[sz]e (?:this|the current) month(?:['’]s)? expenses|(?:help me )?create (?:a new|an) invoice|new invoice)[?!.]*$`)
+var simpleScheduleQuestion = regexp.MustCompile(`(?i)^(?:what(?:'s|’s| is) on my schedule today|who cancel(?:l)?ed late this month)[?!.]*$`)
+var compoundQuestion = regexp.MustCompile(`(?i)[;\n]|\b(?:and (?:then|show|email|send|create|list|delete|mark|add|tell|how|compare|what)|then|und dann)\b`)
 
 func (s *Service) answer(ctx context.Context, q store.Q, sess store.Session, conversation, message string, hasFiles bool) (turn, error) {
 	if pending, err := q.HeidiConfirmation(ctx, sess.Workspace.ID, sess.User.ID, conversation); err == nil && pending.ExpiresAt.After(s.now()) {
-		if pending.Kind == "select_engagement" {
-			return s.chooseEngagement(ctx, q, sess, pending, message)
+		current := true
+		if pending.Kind == "workspace_operation" {
+			var change proposedChange
+			if err := json.Unmarshal(pending.Payload, &change); err != nil {
+				return turn{}, err
+			}
+			current = change.available(sess)
+		} else {
+			current = permissions.Allows(sess.Role, sess.Scopes, "write:engagements")
 		}
-		return turn{}, auth.Error(409, "confirmation_pending", "Answer the pending confirmation before sending another message.", nil)
+		if current {
+			if pending.Kind == "select_engagement" {
+				return s.chooseEngagement(ctx, q, sess, pending, message)
+			}
+			return turn{}, auth.Error(409, "confirmation_pending", "Answer the pending confirmation before sending another message.", nil)
+		}
+		// A proposal made with old permissions is no longer reviewable. Let the member start a fresh turn.
+		if err := q.DeleteHeidiConfirmation(ctx, sess.Workspace.ID, sess.User.ID, conversation, pending.ID); err != nil {
+			return turn{}, err
+		}
 	} else if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return turn{}, err
 	}
@@ -51,10 +74,9 @@ func (s *Service) answer(ctx context.Context, q store.Q, sess store.Session, con
 		return refusal(sess, message), nil
 	}
 	lower := strings.ToLower(message)
-	if hasFiles && wantsImport(lower) {
-		if kinds := imports.Offered(func(resource string) bool { return permissions.Allows(sess.Role, sess.Scopes, "write:"+resource) }); len(kinds) > 0 {
-			return turn{Text: "I can import records from these files. Choose what they contain: the import opens on that page with your files, the AI model reads them there, and nothing is created until you review the records and choose Import.",
-				Form: &Form{ID: auth.NewID("frm"), Question: "What do these files contain?", Intent: "import", Fields: []Field{{Kind: "choice", Name: "kind", Label: "Import as", Options: kinds}}}}, nil
+	if hasFiles && importCommand.MatchString(lower) {
+		if form := importForm(sess); form != nil {
+			return turn{Text: "I can import records from your files. Choose what they contain: the import opens on that page with the files, the AI model reads them there, and nothing is created until you review the records and choose Import.", Form: form}, nil
 		}
 	}
 	if hasFiles {
@@ -63,11 +85,28 @@ func (s *Service) answer(ctx context.Context, q store.Q, sess store.Session, con
 	if strings.HasPrefix(lower, "import as:") {
 		return turn{Text: "Review the records in the import on that page. Nothing is created until you choose Import."}, nil
 	}
+	if lang := latestInvoiceLanguage(message); lang != "" {
+		return s.latestInvoice(ctx, q, sess, lang)
+	}
+	livePlanner := s.api != nil && s.provider != nil
+	if livePlanner {
+		consent, err := q.AIConsent(ctx, sess.Workspace.ID, sess.User.ID)
+		if err != nil {
+			return turn{}, err
+		}
+		livePlanner = consent.Granted
+	}
+	if compoundQuestion.MatchString(message) {
+		return turn{Provider: true}, nil
+	}
 	if log, ok := parseLog(message); ok {
 		return s.logAnswer(ctx, q, sess, log)
 	}
-	if kind, query, ok := sessionQuestion(message); ok {
+	if kind, query, ok := sessionQuestion(message); ok && (!livePlanner || simpleScheduleQuestion.MatchString(message)) {
 		return s.sessionAnswer(ctx, q, sess, kind, query)
+	}
+	if livePlanner && !localQuestion.MatchString(message) && !otherLocalQuestion.MatchString(message) {
+		return turn{Provider: true}, nil
 	}
 	if strings.Contains(lower, "hours") && strings.Contains(lower, "left") || strings.Contains(lower, "stunden") && strings.Contains(lower, "übrig") || strings.Contains(lower, "needs invoicing") {
 		if err := need(sess, "read:engagements"); err != nil {
@@ -84,7 +123,10 @@ func (s *Service) answer(ctx context.Context, q store.Q, sess store.Session, con
 		if err != nil {
 			return turn{}, err
 		}
-		out := turn{Text: engagementsLead(strings.Contains(lower, "needs invoicing"), query, len(list)), Statuses: []string{"Looking up engagements"}}
+		out := turn{memoryTopic: "list_engagements", Text: engagementsLead(strings.Contains(lower, "needs invoicing"), query, len(list)), Statuses: []string{"Looking up engagements"}}
+		if strings.Contains(lower, "needs invoicing") {
+			out.memoryTopic = "get_engagements_summary"
+		}
 		for i, e := range list {
 			if i == maxRecords {
 				out.Text += fmt.Sprintf(" Here are the first %d; open Engagements for the rest.", maxRecords)
@@ -110,7 +152,10 @@ func (s *Service) answer(ctx context.Context, q store.Q, sess store.Session, con
 			return turn{}, err
 		}
 		overdue := len(f.Statuses) > 0
-		out := turn{Text: invoicesLead(overdue, len(list), total), Statuses: []string{invoiceLookup(f)}}
+		out := turn{memoryTopic: "list_invoices", Text: invoicesLead(overdue, len(list), total), Statuses: []string{invoiceLookup(f)}}
+		if overdue {
+			out.memoryTopic = "overdue_invoices"
+		}
 		if f.Search != "" && total == 0 {
 			out.Text = "No invoices match " + md(f.Search) + "."
 			if overdue {
@@ -139,7 +184,7 @@ func (s *Service) answer(ctx context.Context, q store.Q, sess store.Session, con
 		if err != nil {
 			return turn{}, err
 		}
-		return turn{Statuses: []string{"Totalling this month’s expenses"}, Text: fmt.Sprintf("This month you recorded **%s %s** across %s, with **%s %s** of deductible input VAT booked. This reflects the tax treatment you recorded; it doesn’t establish a legal right to deduct.", summary.ThisMonth.Amount.String(), summary.Currency, count(summary.ThisMonth.Count, "expense", "expenses"), summary.InputVAT.Amount.String(), summary.Currency)}, nil
+		return turn{memoryTopic: "get_expense_summary", Statuses: []string{"Totalling this month’s expenses"}, Text: fmt.Sprintf("This month you recorded **%s %s** across %s, with **%s %s** of deductible input VAT booked. This reflects the tax treatment you recorded; it doesn’t establish a legal right to deduct.", summary.ThisMonth.Amount.String(), summary.Currency, count(summary.ThisMonth.Count, "expense", "expenses"), summary.InputVAT.Amount.String(), summary.Currency)}, nil
 	}
 	if strings.Contains(lower, "recent") && strings.Contains(lower, "client") {
 		if err := need(sess, "read:clients"); err != nil {
@@ -149,7 +194,7 @@ func (s *Service) answer(ctx context.Context, q store.Q, sess store.Session, con
 		if err != nil {
 			return turn{}, err
 		}
-		out := turn{Text: clientsLead(len(list), total), Statuses: []string{"Looking up recent clients"}}
+		out := turn{memoryTopic: "list_clients", Text: clientsLead(len(list), total), Statuses: []string{"Looking up recent clients"}}
 		for _, client := range list {
 			out.Records = append(out.Records, clientRecord(client))
 		}
@@ -163,7 +208,7 @@ func (s *Service) answer(ctx context.Context, q store.Q, sess store.Session, con
 		if err != nil {
 			return turn{}, err
 		}
-		out := turn{Text: documentsLead(len(list), total), Statuses: []string{"Looking up recent documents"}}
+		out := turn{memoryTopic: "list_documents", Text: documentsLead(len(list), total), Statuses: []string{"Looking up recent documents"}}
 		for _, doc := range list {
 			out.Text += "\n- " + md(doc.Name)
 		}

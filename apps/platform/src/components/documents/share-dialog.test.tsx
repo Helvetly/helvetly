@@ -11,8 +11,8 @@ import { ShareDialog } from './share-dialog'
 
 let shares: { client_id: string; client_name: string; shared_at: string }[] = []
 let clients = [
-  { id: 'cli_1', name: 'Keller AG' },
-  { id: 'cli_2', name: 'Meier GmbH' },
+  { id: 'cli_1', name: 'Keller AG', contacts: [] },
+  { id: 'cli_2', name: 'Meier GmbH', contacts: [] },
 ]
 const posted: unknown[] = []
 const deleted: string[] = []
@@ -45,8 +45,8 @@ afterEach(() => {
   server.resetHandlers()
   shares = []
   clients = [
-    { id: 'cli_1', name: 'Keller AG' },
-    { id: 'cli_2', name: 'Meier GmbH' },
+    { id: 'cli_1', name: 'Keller AG', contacts: [] },
+    { id: 'cli_2', name: 'Meier GmbH', contacts: [] },
   ]
   posted.length = 0
   deleted.length = 0

@@ -18,6 +18,7 @@ import { InvoicesPage } from '@/components/invoices/invoices-page'
 import { ProductsPage } from '@/components/products/products-page'
 import { GeneralCard } from '@/components/settings/workspace-settings'
 import type { DocFile } from '@/lib/documents'
+import { heidiMemoryRead } from '@/mocks/account'
 import { listItem, sampleInvoice, sampleSettings } from '@/test/invoice-api'
 import { sampleClient } from '@/test/invoice-fixtures'
 
@@ -190,6 +191,7 @@ export const WorkspaceSaveFailure: Story = {
 
 const savedProfile = fn()
 const accountHandlers = [
+  heidiMemoryRead,
   http.get('/api/v1/account', () =>
     HttpResponse.json({
       data: {

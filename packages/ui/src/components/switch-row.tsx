@@ -34,6 +34,7 @@ function SwitchRow({
   className?: string
 }) {
   const fallbackId = React.useId()
+  const [tipOpen, setTipOpen] = React.useState(false)
   const id = givenId ?? fallbackId
   const locked = disabled || Boolean(disabledReason)
   const describedBy =
@@ -90,11 +91,12 @@ function SwitchRow({
     </label>
   )
 
-  if (!disabledReason) return row
+  // Always the same tree: a reason that arrives later (a plan or allowance loaded) must not remount the switch,
+  // which would drop its focus and leave a stale node behind.
   return (
-    <Tooltip>
+    <Tooltip open={Boolean(disabledReason) && tipOpen} onOpenChange={setTipOpen}>
       <TooltipTrigger asChild>{row}</TooltipTrigger>
-      <TooltipContent>{disabledReason}</TooltipContent>
+      {disabledReason && <TooltipContent>{disabledReason}</TooltipContent>}
     </Tooltip>
   )
 }

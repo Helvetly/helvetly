@@ -63,18 +63,25 @@ test('accepts an auto batch with recognised files and refuses an unknown record 
   ).toBe(false)
 })
 
-test('sends chat files to an import when asked, or when only an import can read them', () => {
+test('starts an import only when the user requests it', () => {
   const pdf = new File(['x'], 'invoice.pdf', { type: 'application/pdf' })
   const zip = new File(['x'], 'invoices.zip', { type: 'application/zip' })
   expect(goesToImport('What is due on this?', [pdf])).toBe(false)
   expect(goesToImport('Zaimportuj te faktury', [pdf])).toBe(true)
   expect(goesToImport('Import these', [pdf])).toBe(true)
-  expect(goesToImport('Here you go', [zip])).toBe(true)
+  expect(goesToImport('Show important dates in this imported document', [pdf])).toBe(false)
+  expect(goesToImport('Summarize this archive', [zip])).toBe(false)
+  expect(goesToImport('Import records', [zip])).toBe(true)
   expect(
     goesToImport(
       'Here you go',
       Array.from({ length: 5 }, () => pdf),
     ),
-  ).toBe(true)
+  ).toBe(false)
+  for (const ext of ['txt', 'csv', 'docx', 'xlsx']) {
+    const document = new File(['x'], 'input.' + ext)
+    expect(goesToImport('Wyjaśnij ten dokument', [document])).toBe(false)
+    expect(goesToImport('Import these records', [document])).toBe(true)
+  }
   expect(goesToImport('Import this', [])).toBe(false)
 })

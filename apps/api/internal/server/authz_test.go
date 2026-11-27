@@ -639,7 +639,7 @@ func TestPortalAndStaffSessionsDoNotCross(t *testing.T) {
 	token, csrf := rand.Text(), rand.Text()
 	sum := sha256.Sum256([]byte(token))
 	if err := st.CreatePortalSession(ctx, auth.NewID("pse"), hex.EncodeToString(sum[:]), csrf, "alpha-secret@example.com",
-		s.ids["clients"], a.workspace, true, now, now.Add(time.Hour)); err != nil {
+		s.ids["clients"], "", a.workspace, true, now, now.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	// Portal sessions live at a workspace's own address only.

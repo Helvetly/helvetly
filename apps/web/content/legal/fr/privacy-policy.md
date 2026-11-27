@@ -104,6 +104,7 @@ Données transmises :
   des chiffres affichés par Heidi) et les fichiers joints à ce message. Une vérification rapide
   visant à déterminer si le message concerne Helvetly ou votre activité est également envoyée à
   OpenAI.
+- Selon votre demande, Heidi envoie aussi des résultats limités tirés des données de l’espace auxquelles vous avez accès (y compris des données commerciales et des données clients), le contenu du document dont vous demandez la lecture, les identifiants de la page et de ses commandes disponibles, ainsi que le style de réponse choisi.
 - L’import par IA transmet le contenu des fichiers sélectionnés, partie par partie ; la lecture des
   justificatifs transmet le justificatif sélectionné.
 - La suggestion de nom d’espace transmet uniquement le nom d’entreprise saisi.
@@ -131,6 +132,8 @@ espace supprimé, elles restent stockées avec ses autres données) ; les fichie
 enregistrements et les documents classés restent dans l’espace comme toute autre donnée. Heidi est
 présentée comme une assistante IA ; ses réponses, les données importées et les propositions de
 classement peuvent être erronées et sont des propositions à vérifier.
+
+Helvetly compte les consultations et les actions réalisées par sujet pour vous suggérer des questions lors de vos prochaines conversations dans cet espace. Dans les paramètres du compte, vous pouvez consulter et effacer ces compteurs et votre style de réponse, ou désactiver la mémoire. Les compteurs restent dans Helvetly.
 
 ## 5. Destinataires et transferts à l’étranger
 

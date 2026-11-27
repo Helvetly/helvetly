@@ -25,6 +25,13 @@ const clients = http.get('/api/v1/clients', () =>
   }),
 )
 
+/** The session form reads the client for its participants; the stories' clients have none unless one says so. */
+const plainClient = http.get<{ id: string }>('/api/v1/clients/:id', ({ params }) =>
+  HttpResponse.json({
+    data: { id: params.id, name: 'Alpenglow Studio GmbH', is_company: false, contacts: [] },
+  }),
+)
+
 function Drawer({ start }: { start: DrawerTarget }) {
   const [target, setTarget] = useState<DrawerTarget | null>(start)
   return (
@@ -59,7 +66,7 @@ const create = (
 
 const meta = {
   title: 'Scheduling/Session drawer',
-  parameters: { msw: { handlers: [team, clients, ...schedulingHandlers(state)] } },
+  parameters: { msw: { handlers: [team, clients, ...schedulingHandlers(state), plainClient] } },
   // Every story starts from the same sessions, whatever the last one wrote.
   beforeEach: () => {
     Object.assign(state, sampleState())
@@ -250,6 +257,7 @@ export const MeetHiddenWhenNotConfigured: Story = {
           HttpResponse.json({ providers: [], data: [] }),
         ),
         ...schedulingHandlers(state),
+        plainClient,
       ],
     },
   },
@@ -336,6 +344,7 @@ export const PendingWrite: Story = {
           return HttpResponse.json({})
         }),
         ...schedulingHandlers(state),
+        plainClient,
       ],
     },
   },
@@ -446,7 +455,14 @@ const pickedCheck = http.get('/api/v1/scheduling/conflicts', ({ request }) => {
 })
 const blockedParameters = (preview: MovePreview) => ({
   msw: {
-    handlers: [previewWith(preview), pickedCheck, team, clients, ...schedulingHandlers(state)],
+    handlers: [
+      previewWith(preview),
+      pickedCheck,
+      team,
+      clients,
+      ...schedulingHandlers(state),
+      plainClient,
+    ],
   },
 })
 /** Edits the series' session to 10:00 and applies it to all sessions: the preview answers. */
@@ -720,7 +736,7 @@ export const EngagementSessions: Story = {
 
 /** A client without sessions: the client detail leaves the panel out. */
 export const ClientWithoutSessions: Story = {
-  parameters: { msw: { handlers: [team, ...schedulingHandlers(emptyState())] } },
+  parameters: { msw: { handlers: [team, ...schedulingHandlers(emptyState()), plainClient] } },
   render: () => (
     <div className="max-w-xl" data-testid="panel">
       <SessionsPanel client={{ id: 'cli_09', name: 'Nobody AG' }} hideEmpty now={STORY_NOW} />
@@ -746,5 +762,59 @@ export const Today: Story = {
     await expect(card.getByRole('link', { name: /Strategy session/ }).getAttribute('href')).toMatch(
       /^\/scheduling\/?\?session=soc_1$/,
     )
+  },
+}
+
+/** A company's participants: the session names who takes it, and its mail goes to them. */
+export const ParticipantPicker: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        team,
+        clients,
+        http.get('/api/v1/clients/cli_01', () =>
+          HttpResponse.json({
+            data: {
+              ...ALPENGLOW,
+              is_company: true,
+              contacts: [
+                {
+                  id: 'con_oliver',
+                  name: 'Oliver Harvey',
+                  roles: ['contact'],
+                  email: 'oliver@alpenglow.ch',
+                  is_primary: true,
+                },
+                {
+                  id: 'con_lorenzo',
+                  name: 'Lorenzo Percic',
+                  roles: ['participant'],
+                  email: 'lorenzo@alpenglow.ch',
+                  is_primary: false,
+                },
+                {
+                  id: 'con_liam',
+                  name: 'Liam Gallagher',
+                  roles: ['contact', 'participant'],
+                  email: null,
+                  is_primary: false,
+                },
+              ],
+            },
+          }),
+        ),
+        ...schedulingHandlers(state),
+        plainClient,
+      ],
+    },
+  },
+  play: async () => {
+    const sheet = await drawer()
+    await pick(sheet, 'Participant', 'Lorenzo Percic lorenzo@alpenglow.ch')
+    await expect(picker(sheet, 'Participant')).toHaveAccessibleName(/Lorenzo Percic/)
+    await userEvent.type(await titleField(), 'German lesson')
+    await userEvent.click(sheet.getByRole('button', { name: 'Schedule' }))
+    await toastShows('Session scheduled.')
+    await expect(await sheet.findByText('Lorenzo Percic')).toBeVisible()
   },
 }

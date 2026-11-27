@@ -40,7 +40,7 @@ var WorkspaceExportTables = []ExportTable{
 	child("engagement_entry_allocations", "invoices", "invoice_id"), child("engagement_entries", "engagements", "engagement_id"), child("engagement_notices", "engagements", "engagement_id"),
 	{"engagement_invoices", `SELECT to_jsonb(c) FROM engagement_invoices c JOIN engagement_periods ep ON ep.id = c.period_id
 		JOIN engagements p ON p.id = ep.engagement_id WHERE p.workspace_id = $1`},
-	{"documents", `SELECT to_jsonb(t) FROM documents t WHERE t.workspace_id = $1 AND NOT t.hr_private`}, own("document_folders"), own("document_links"), own("document_shares"),
+	{"documents", `SELECT to_jsonb(t) FROM documents t WHERE t.workspace_id = $1 AND NOT t.hr_private`}, own("document_folders"), own("document_links"), own("document_shares"), own("document_participant_shares"),
 	{"document_filings", `SELECT to_jsonb(t) FROM document_filings t JOIN documents d ON d.id = t.document_id
 		WHERE t.workspace_id = $1 AND NOT d.hr_private`}, own("client_change_requests"),
 	{"portal_sessions", `SELECT to_jsonb(t) - 'token_hash' - 'csrf_token' FROM portal_sessions t WHERE t.workspace_id = $1`},
@@ -102,6 +102,8 @@ var UserExportTables = []ExportTable{
 	{"feedback", `SELECT jsonb_build_object('id', f.id, 'workspace_id', f.workspace_id, 'kind', f.kind, 'description', f.description,
 		'page_path', f.page_path, 'created_at', f.created_at, 'screenshots', (SELECT count(*) FROM product_feedback_files WHERE feedback_id = f.id))
 		FROM product_feedback f WHERE f.user_id = $1`},
+	{"heidi_memory", `SELECT to_jsonb(m) FROM heidi_memory m WHERE m.user_id=$1`},
+
 	{"heidi_conversations", `SELECT to_jsonb(t) FROM heidi_conversations t WHERE t.user_id = $1`},
 	{"notifications", `SELECT to_jsonb(t) FROM notifications t WHERE t.user_id = $1`},
 	{"document_folder_stars", `SELECT to_jsonb(t) FROM document_folder_stars t WHERE t.user_id = $1`},

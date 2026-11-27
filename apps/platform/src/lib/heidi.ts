@@ -8,6 +8,7 @@ import { STATUS_LABELS, type DisplayStatus } from '@/lib/invoices'
 import { STATUSES as SESSION_STATUSES, type Status as SessionStatus } from '@/lib/scheduling'
 
 export type HeidiAction =
+  | { id: 'screen_action'; label: string; control: string; row?: string; value?: string }
   | { id: 'open_client'; client_id: string; label: string }
   | { id: 'open_engagement'; engagement_id: string; label: string }
   | { id: 'open_invoice'; invoice_id: string; label: string }
@@ -153,6 +154,9 @@ export type HeidiSuggestion = { title: string; prompt: string }
 
 export const HEIDI_PAGES = [
   'dashboard',
+  'quotes',
+  'books',
+  'scheduling',
   'clients',
   'invoices',
   'expenses',
@@ -170,27 +174,23 @@ export const MAX_FILES = 4
 export const MAX_FILE_BYTES = 8 * 1024 * 1024
 export const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf']
 
-/** Heidi reads the file itself in the chat: an image or PDF up to 8 MB. */
+/** Chat reads images, PDFs, text, Word paragraphs and Excel cells up to 8 MB. */
 export const chatReadable = (file: File) =>
-  FILE_TYPES.includes(file.type) && file.size <= MAX_FILE_BYTES
+  file.size <= MAX_FILE_BYTES &&
+  (FILE_TYPES.includes(file.type) ||
+    /\.(?:pdf|gif|jpe?g|png|webp|txt|csv|xlsx|docx)$/i.test(file.name))
 
 /** An import can read it (spreadsheets, Word, CSV and ZIPs too), by its name as the import's picker does. */
 export const importable = (file: File) =>
   IMPORT_ACCEPT.split(',').some((extension) => file.name.toLowerCase().endsWith(extension))
 
-// The stems the API's own import check uses: English, German, French, Italian, Polish.
-const IMPORT_STEMS = ['import', 'importier', 'importuj', 'importa']
+// Keep explicit offline commands aligned with heidi.importCommand. The model handles other phrasings.
+const IMPORT_COMMAND =
+  /^(?:(?:please|bitte|prosz[eę]|veuillez|per favore)[, ]+)?(?:import|importe|importa|importez|importieren|importiere|zaimportuj|importuj)(?:[\s\p{P}]|$)/iu
 
-/** The files go to an import that works out what each one is: the message asks to import them, or only an import
- * can take them (a ZIP, a spreadsheet, more than four files or a big one). */
+/** Only an explicit import request starts a billable import. */
 export function goesToImport(text: string, files: File[]) {
-  if (!files.length) return false
-  const lower = text.toLowerCase()
-  return (
-    IMPORT_STEMS.some((stem) => lower.includes(stem)) ||
-    files.length > MAX_FILES ||
-    !files.every(chatReadable)
-  )
+  return files.length > 0 && IMPORT_COMMAND.test(text.trim())
 }
 
 // The stream is a trust boundary: frames are checked by hand and anything unknown is skipped.
@@ -204,6 +204,15 @@ const isStrings = (value: unknown): value is string[] =>
 function isAction(value: unknown): value is HeidiAction {
   if (!isRecord(value) || !isString(value.label)) return false
   switch (value.id) {
+    case 'screen_action':
+      return (
+        isString(value.control) &&
+        /^(?:open\.\/(?:[a-z-]+(?:\/[a-z-]+)*)?|(?:click|fill|select)\.[A-Za-z][A-Za-z0-9]{0,95})$/.test(
+          value.control,
+        ) &&
+        (value.value === undefined || (isString(value.value) && value.value.length <= 1000)) &&
+        (value.row === undefined || (isString(value.row) && value.row.length <= 256))
+      )
     case 'open_client':
       return isString(value.client_id)
     case 'open_engagement':

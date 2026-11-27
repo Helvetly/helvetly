@@ -31,7 +31,7 @@ import {
 } from '@/components/fix-list'
 import { RecordLink } from '@/components/record-link'
 import { ApiError, errorMessage } from '@/lib/api'
-import { useClient } from '@/lib/clients'
+import { recipientPeople, useClient } from '@/lib/clients'
 import { useInvoiceEmailDraft } from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 import {
@@ -589,6 +589,7 @@ export function SendDialog({
       <NoClientEmail client={client} />
       <EmailComposer
         id="send"
+        people={recipientPeople(client)}
         recipients={{ to: recipients, cc, bcc }}
         onRecipients={(next) => {
           if (next.to !== recipients) setTo(next.to)

@@ -24,6 +24,7 @@ import {
   type Meeting,
   type Occurrence,
   type Status,
+  withWhom,
 } from '@/lib/scheduling'
 
 import { StatusBadge } from './bits'
@@ -310,7 +311,7 @@ function SessionRow({
             {occurrence.title}
           </span>
           <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-caption text-muted-foreground">
-            <span className="truncate">{occurrence.client.name}</span>
+            <span className="truncate">{withWhom(occurrence)}</span>
             {occurrence.engagement && (
               <>
                 <span aria-hidden>·</span>

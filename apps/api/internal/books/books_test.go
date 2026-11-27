@@ -177,6 +177,7 @@ type eventOut struct {
 	SubjectID   string          `json:"subject_id"`
 	Subject     *subject        `json:"subject"`
 	Actor       *person         `json:"actor"`
+	Origin      *string         `json:"origin"`
 	Payload     json.RawMessage `json:"payload"`
 	PrevHash    string          `json:"prev_hash"`
 	Hash        string          `json:"hash"`
@@ -520,7 +521,7 @@ func TestAuditLogFilters(t *testing.T) {
 		actor                        *string
 		payload                      string
 	}{
-		{"invoice.issued", "invoice", "inv_gone", &owner.user, `{"number": "2026-001"}`},
+		{"invoice.issued", "invoice", "inv_gone", &owner.user, `{"number": "2026-001", "origin": "imported"}`},
 		{"payment.added", "invoice", "inv_gone", &admin.user, `{"number": "2026-001", "amount": "10.00"}`},
 		{"expense.booked", "expense", "exp_1", &owner.user, `{"number": 1}`},
 		{"workspace.portal_turned_off", "workspace", ws, &admin.user, `{}`},
@@ -554,6 +555,7 @@ func TestAuditLogFilters(t *testing.T) {
 		{"percent is literal", "q=50%25", []int64{5}},
 		{"underscore is literal", "q=x_y", []int64{}},
 		{"combined", "category=payments&actor=" + owner.user, []int64{}},
+		{"imported", "origin=imported", []int64{1}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var page logPage
@@ -574,11 +576,14 @@ func TestAuditLogFilters(t *testing.T) {
 		*s.Party != "Papeterie SA" || *s.Currency != "EUR" {
 		t.Fatalf("expense subject: %+v %+v", page.Data[2], s)
 	}
+	if o := page.Data[0].Origin; o == nil || *o != "imported" || page.Data[1].Origin != nil {
+		t.Fatalf("origins: %v %v", o, page.Data[1].Origin)
+	}
 	if page.Data[0].Subject != nil || page.Data[3].Subject != nil {
 		t.Fatalf("gone or non-record subjects: %+v %+v", page.Data[0].Subject, page.Data[3].Subject)
 	}
 
-	for _, q := range []string{"order=up", "category=quotes", "since=yesterday", "before=2026-03-01", "q=" + strings.Repeat("a", 201)} {
+	for _, q := range []string{"order=up", "category=quotes", "since=yesterday", "before=2026-03-01", "q=" + strings.Repeat("a", 201), "origin=manual"} {
 		e.fails(owner, "GET", "/api/v1/audit-log?"+q, nil, 400, "invalid_request")
 	}
 
@@ -595,3 +600,30 @@ func TestAuditLogFilters(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// TestAuditLogAvatars: the log's actors and its person filter carry each person's photo, "" without one.
+func TestAuditLogAvatars(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	admin := e.join(owner.workspace, "admin")
+	if _, err := e.pool.Exec(context.Background(), `UPDATE users SET photo_key = 'k', photo_type = 'image/png', photo_size = 1,
+		photo_sha256 = repeat('a', 64) WHERE id = $1`, admin.user); err != nil {
+		t.Fatal(err)
+	}
+	want := store.UserAvatarPath + admin.user + "/avatar?v=aaaaaaaaaaaa"
+	e.logEvents(owner.workspace, &admin.user, "inv_a")
+	e.logEvents(owner.workspace, &owner.user, "inv_b")
+
+	var page struct {
+		Data []struct{ Actor *person }
+	}
+	e.do(owner, "GET", "/api/v1/audit-log", nil, 200, &page)
+	if len(page.Data) != 2 || page.Data[0].Actor.AvatarURL != want || page.Data[1].Actor.AvatarURL != "" {
+		t.Fatalf("actors: %+v", page.Data)
+	}
+	var people struct{ Data []person }
+	e.do(owner, "GET", "/api/v1/audit-log/people", nil, 200, &people)
+	if len(people.Data) != 2 || people.Data[0].AvatarURL != want || people.Data[1].AvatarURL != "" {
+		t.Fatalf("people: %+v", people.Data)
+	}
+}

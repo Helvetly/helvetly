@@ -24,6 +24,7 @@ import (
 )
 
 type Auth interface {
+	CookieSession(context.Context, store.Q, *http.Request) (store.Session, error)
 	SignedIn(func(http.ResponseWriter, *http.Request, store.Session)) http.HandlerFunc
 	WriteError(http.ResponseWriter, *http.Request, error)
 	Decode(http.ResponseWriter, *http.Request, any) bool
@@ -48,6 +49,7 @@ type Options struct {
 	File func(context.Context, store.Session, string)
 }
 type Service struct {
+	api           http.Handler
 	db            *store.Store
 	auth          Auth
 	files         Storage
@@ -81,6 +83,9 @@ func (s *Service) Register(mux *http.ServeMux) {
 		}))
 	}
 	handle("GET /api/v1/heidi/suggestions", s.suggestions)
+	handle("GET /api/v1/heidi/memory", s.memory)
+	handle("PATCH /api/v1/heidi/memory", s.setMemory)
+	handle("DELETE /api/v1/heidi/memory", s.setMemory)
 	handle("GET /api/v1/heidi/usage", s.usage)
 	handle("GET /api/v1/heidi/conversations", s.conversations)
 	handle("GET /api/v1/heidi/conversations/{id}", s.conversation)
@@ -91,7 +96,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 }
 
 var conversationID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
-var pages = []string{"dashboard", "clients", "invoices", "expenses", "engagements", "documents", "products", "members", "billing", "settings", "help"}
+var pages = []string{"dashboard", "books", "quotes", "scheduling", "clients", "invoices", "expenses", "engagements", "documents", "products", "members", "billing", "settings", "help"}
 
 func invalid(message string) error { return auth.Error(400, "invalid_request", message, nil) }
 func need(sess store.Session, scope string) error {
@@ -101,7 +106,7 @@ func need(sess store.Session, scope string) error {
 	return nil
 }
 func (s *Service) conversations(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	rows, err := s.db.HeidiConversations(r.Context(), sess.Workspace.ID, sess.User.ID, 100)
+	rows, err := s.db.HeidiConversations(r.Context(), sess.Workspace.ID, sess.User.ID, accessKey(sess), sess.Role == "owner", 100)
 	if err != nil {
 		return err
 	}
@@ -121,6 +126,7 @@ func (s *Service) conversation(w http.ResponseWriter, r *http.Request, sess stor
 		return invalid("The conversation identifier is invalid.")
 	}
 	list := []Message{}
+	proposals := map[string]int{}
 	err := s.db.Tx(r.Context(), func(q store.Q) error {
 		if err := q.LockHeidiConversation(r.Context(), sess.Workspace.ID, sess.User.ID, id, false, s.now()); err != nil {
 			return err
@@ -134,15 +140,41 @@ func (s *Service) conversation(w http.ResponseWriter, r *http.Request, sess stor
 			if err := json.Unmarshal(raw, &m); err != nil {
 				return err
 			}
+			if m.Role == "assistant" && (m.Access != "" || sess.Role != "owner") && m.Access != accessKey(sess) {
+				m = Message{ID: m.ID, Role: m.Role, Text: "Access to this earlier answer cannot be verified. Ask again with your current permissions.", CreatedAt: m.CreatedAt, GeneratedBy: "helvetly"}
+			}
+			m.Access = ""
+			if m.ProposalID != "" {
+				proposals[m.ProposalID] = len(list)
+				m.ProposalID = ""
+			}
 			list = append(list, m)
 		}
 		pending, err := q.HeidiConfirmation(r.Context(), sess.Workspace.ID, sess.User.ID, id)
-		if err == nil && pending.Kind == "log_entry" && pending.ExpiresAt.After(s.now()) && len(list) > 0 {
-			var request logRequest
-			if err := json.Unmarshal(pending.Payload, &request); err != nil {
-				return err
+		if err == nil && pending.ExpiresAt.After(s.now()) && len(list) > 0 {
+			at, ok := proposals[pending.ID]
+			if !ok {
+				at = len(list) - 1
+			} // A confirmation saved by an older version has no proposal ID.
+			switch pending.Kind {
+			case "log_entry":
+				if need(sess, "write:engagements") != nil {
+					break
+				}
+				var request logRequest
+				if err := json.Unmarshal(pending.Payload, &request); err != nil {
+					return err
+				}
+				list[at].Confirmation = confirmationFor(pending.ID, request)
+			case "workspace_operation":
+				var change proposedChange
+				if e := json.Unmarshal(pending.Payload, &change); e != nil {
+					return e
+				}
+				if change.available(sess) {
+					list[at].Confirmation = change.confirmation(pending.ID)
+				}
 			}
-			list[len(list)-1].Confirmation = confirmationFor(pending.ID, request)
 		}
 		if err != nil && !errors.Is(err, store.ErrNotFound) {
 			return err
@@ -169,6 +201,10 @@ var topics = []suggestion{
 	{"This month’s expenses", "Summarize this month’s expenses", "dashboard", "read:expenses"},
 	{"To invoice", "What needs invoicing?", "dashboard", "read:engagements"},
 	{"Recent invoices", "Show recent invoices", "dashboard", "read:invoices"},
+	{"Close a month", "How do I close a month?", "books", "read:periods"},
+	{"VAT return", "How do I prepare a Swiss VAT return?", "books", "read:vat-return"},
+	{"Create a quote", "How do I make a quote and turn it into an invoice?", "quotes", "read:invoices"},
+	{"Schedule a session", "How do I schedule a session with a client?", "scheduling", "read:scheduling"},
 	{"Recent clients", "Show recent clients", "clients", "read:clients"},
 	{"Client portal", "How do I give a client access to the client portal?", "clients", ""},
 	{"Contact persons", "How do I add contact persons to a client?", "clients", ""},
@@ -232,6 +268,11 @@ func (s *Service) suggestions(w http.ResponseWriter, r *http.Request, sess store
 			}
 		}
 	}
+	personal, err := s.memorySuggestions(r.Context(), sess, page)
+	if err != nil {
+		return err
+	}
+	out = append(out, personal...)
 	for _, want := range []string{page, "help"} {
 		for _, t := range topics {
 			if t.Page == want && allowed(t) && !slices.ContainsFunc(out, func(o suggestion) bool { return o.Prompt == t.Prompt }) {
@@ -271,6 +312,8 @@ func (s *Service) usage(w http.ResponseWriter, r *http.Request, sess store.Sessi
 }
 
 type Message struct {
+	ProposalID   string        `json:"proposal_id,omitempty"` // Matches a pending decision to its own message even if another tab posts later.
+	Access       string        `json:"access,omitempty"`      // Membership when this answer was read; never sent to the platform.
 	ID           string        `json:"id"`
 	Role         string        `json:"role"`
 	Text         string        `json:"text"`
@@ -288,6 +331,9 @@ type Message struct {
 	CreatedAt time.Time `json:"created_at,omitzero"`
 }
 type Action struct {
+	Control      string `json:"control,omitempty"`
+	Value        string `json:"value,omitempty"`
+	Row          string `json:"row,omitempty"`
 	ID           string `json:"id"`
 	Label        string `json:"label"`
 	ClientID     string `json:"client_id,omitempty"`
@@ -316,6 +362,7 @@ type Confirmation struct {
 	Tone         string `json:"tone"`
 }
 type turn struct {
+	memoryTopic      string // catalogue identifier, never an argument or record name
 	Text             string
 	Actions          []Action
 	Records          []Record

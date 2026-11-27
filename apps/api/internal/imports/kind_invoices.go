@@ -180,11 +180,22 @@ func original(ctx context.Context, data Data, src Source) (*string, error) {
 	return &id, nil
 }
 
-// importedClient: the client the person picked, else the live client with the document's buyer name, VAT number or
-// email; "" when none matches (a client is never created by an invoice import).
+// importedClient: the client the person picked, else the company client the buyer is a participant of (data then
+// names the participant), else the live client with the document's buyer name, VAT number or email; "" when none
+// matches (a client is never created by an invoice import).
 func importedClient(ctx context.Context, q store.Q, workspaceID string, data Data) (string, error) {
 	if id := rawText(data["client_id"]); id != "" {
 		return id, nil
+	}
+	// A buyer who is a participant of a company client is that company's, addressed to the participant.
+	company, participant, err := q.ImportParticipant(ctx, workspaceID, rawText(data["client_name"]), rawText(data["client_email"]))
+	if err != nil {
+		return "", err
+	}
+	if company != "" {
+		data["client_id"], _ = json.Marshal(company)
+		data["participant_contact_id"], _ = json.Marshal(participant)
+		return company, nil
 	}
 	match, err := q.SimilarClient(ctx, workspaceID, rawText(data["client_name"]), rawText(data["client_vat_number"]), rawText(data["client_email"]))
 	if match == nil || err != nil {

@@ -11,6 +11,8 @@ type PortalAccess struct {
 	ClientID, ClientName       string
 	WorkspaceID, WorkspaceName string
 	WorkspaceLogoFileID        *string
+	// ParticipantID is the participant of the (company) client the address signs in as, "" for the client's own login.
+	ParticipantID, ParticipantName string
 }
 
 // PortalSession is a live client-portal session with the address it signed in with, its client and workspace.
@@ -23,7 +25,14 @@ type PortalSession struct {
 	Workspace            Workspace
 	// PreviewBy is the member viewing the portal as the client (read-only), "" for the client's own session.
 	PreviewBy, PreviewByName string
+	// ParticipantID binds the session to one participant of the client, who sees only their own records; "" for the
+	// client's own session. ParticipantsMode: the client sends invoices and documents to its participants.
+	ParticipantID, ParticipantName string
+	ParticipantsMode               bool
 }
+
+// participantPortal: person k of company client c may sign in as a participant (role, own switch, email).
+const participantPortal = `'participant' = ANY (k.roles) AND k.portal_enabled AND coalesce(k.email, '') <> '' AND c.is_company`
 
 // portalLogin is a client's portal address: its email, else its billing email.
 const portalLogin = `lower(coalesce(nullif(c.email, ''), nullif(c.billing_email, '')))`
@@ -31,11 +40,17 @@ const portalLogin = `lower(coalesce(nullif(c.email, ''), nullif(c.billing_email,
 // PortalAccessByEmail: the live clients with the portal on whose portal address is this one (any case), only in
 // workspaceID unless it is "".
 func (q Q) PortalAccessByEmail(ctx context.Context, email, workspaceID string) ([]PortalAccess, error) {
-	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, w.id, w.name, w.logo_file_id FROM clients c
+	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, w.id, w.name, w.logo_file_id, '', '' FROM clients c
 		JOIN workspaces w ON w.id = c.workspace_id
 		WHERE `+portalLogin+` = lower($1) AND c.portal_enabled AND NOT w.portal_off AND c.deleted_at IS NULL AND w.deleted_at IS NULL
 			AND ($2 = '' OR w.id = $2)
-		ORDER BY c.name, c.id`, email, workspaceID)
+		UNION ALL
+		SELECT c.id, c.name, w.id, w.name, w.logo_file_id, k.id, k.name FROM client_contacts k
+		JOIN clients c ON c.id = k.client_id AND c.workspace_id = k.workspace_id
+		JOIN workspaces w ON w.id = c.workspace_id
+		WHERE lower(k.email) = lower($1) AND `+participantPortal+` AND c.portal_enabled AND NOT w.portal_off
+			AND c.deleted_at IS NULL AND w.deleted_at IS NULL AND ($2 = '' OR w.id = $2)
+		ORDER BY 2, 1, 6`, email, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +58,7 @@ func (q Q) PortalAccessByEmail(ctx context.Context, email, workspaceID string) (
 	var out []PortalAccess
 	for rows.Next() {
 		var a PortalAccess
-		if err := rows.Scan(&a.ClientID, &a.ClientName, &a.WorkspaceID, &a.WorkspaceName, &a.WorkspaceLogoFileID); err != nil {
+		if err := rows.Scan(&a.ClientID, &a.ClientName, &a.WorkspaceID, &a.WorkspaceName, &a.WorkspaceLogoFileID, &a.ParticipantID, &a.ParticipantName); err != nil {
 			return nil, err
 		}
 		out = append(out, a)
@@ -51,31 +66,35 @@ func (q Q) PortalAccessByEmail(ctx context.Context, email, workspaceID string) (
 	return out, rows.Err()
 }
 
-func (q Q) CreatePortalSession(ctx context.Context, id, tokenHash, csrf, email, clientID, workspaceID string, scoped bool, now, expires time.Time) error {
+func (q Q) CreatePortalSession(ctx context.Context, id, tokenHash, csrf, email, clientID, participantID, workspaceID string, scoped bool, now, expires time.Time) error {
 	// Expired portal sessions are never read again: each portal sign-in clears them, as staff sign-in does its own.
 	if _, err := q.db.Exec(ctx, `DELETE FROM portal_sessions WHERE expires_at < $1`, now); err != nil {
 		return err
 	}
-	_, err := q.db.Exec(ctx, `INSERT INTO portal_sessions (id, token_hash, csrf_token, email, client_id, workspace_id, created_at, expires_at, last_active_at, scoped)
-		VALUES ($1, $2, $3, lower($4), $5, $6, $7, $8, $7, $9)`, id, tokenHash, csrf, email, clientID, workspaceID, now, expires, scoped)
+	_, err := q.db.Exec(ctx, `INSERT INTO portal_sessions (id, token_hash, csrf_token, email, client_id, workspace_id, created_at, expires_at, last_active_at, scoped, participant_id)
+		VALUES ($1, $2, $3, lower($4), $5, $6, $7, $8, $7, $9, nullif($10, ''))`, id, tokenHash, csrf, email, clientID, workspaceID, now, expires, scoped, participantID)
 	return err
 }
 
-// PortalSessionByToken re-checks access on every read: turning the portal off (for the client or the whole
-// workspace) or changing the client's portal address ends the session at once.
+// PortalSessionByToken re-checks access on every read: turning the portal off (for the client, the whole workspace
+// or a participant), changing the portal address or taking a participant's role ends the session at once.
 func (q Q) PortalSessionByToken(ctx context.Context, tokenHash string, now time.Time) (PortalSession, error) {
 	var s PortalSession
 	err := q.db.QueryRow(ctx, `SELECT s.id, s.csrf_token, s.email, c.id, c.name, w.id, w.name, w.timezone, w.onboarded_at IS NOT NULL, s.last_active_at, s.scoped,
-			coalesce(s.preview_by, ''), coalesce(nullif(u.name, ''), u.email, '')
+			coalesce(s.preview_by, ''), coalesce(nullif(u.name, ''), u.email, ''), coalesce(k.id, ''), coalesce(k.name, ''),
+			c.documents_to = 'participants'
 		FROM portal_sessions s
 		JOIN clients c ON c.id = s.client_id
 		JOIN workspaces w ON w.id = s.workspace_id
 		LEFT JOIN users u ON u.id = s.preview_by
-		WHERE s.token_hash = $1 AND s.expires_at > $2 AND c.portal_enabled AND NOT w.portal_off AND `+portalLogin+` = s.email
+		LEFT JOIN client_contacts k ON k.id = s.participant_id AND k.client_id = c.id
+		WHERE s.token_hash = $1 AND s.expires_at > $2 AND c.portal_enabled AND NOT w.portal_off
+			AND CASE WHEN s.participant_id IS NULL THEN `+portalLogin+` = s.email
+				ELSE k.id IS NOT NULL AND lower(k.email) = s.email AND `+participantPortal+` END
 			AND c.deleted_at IS NULL AND w.deleted_at IS NULL`, tokenHash, now).
 		Scan(&s.ID, &s.CSRFToken, &s.Email, &s.ClientID, &s.ClientName,
 			&s.Workspace.ID, &s.Workspace.Name, &s.Workspace.Timezone, &s.Workspace.Onboarded, &s.LastActiveAt, &s.Scoped,
-			&s.PreviewBy, &s.PreviewByName)
+			&s.PreviewBy, &s.PreviewByName, &s.ParticipantID, &s.ParticipantName, &s.ParticipantsMode)
 	return s, err
 }
 
@@ -118,12 +137,14 @@ func (q Q) CreatePortalPreviewSession(ctx context.Context, id, tokenHash, csrf, 
 }
 
 // PortalPaymentsByCurrency totals recorded payments in the current year, according to the workspace's calendar.
-func (q Q) PortalPaymentsByCurrency(ctx context.Context, workspaceID, clientID, today string) (map[string]Money, error) {
+// With participantID, only the invoices addressed to that participant.
+func (q Q) PortalPaymentsByCurrency(ctx context.Context, workspaceID, clientID, participantID, today string) (map[string]Money, error) {
 	rows, err := q.db.Query(ctx, `SELECT i.currency, sum(p.amount)::bigint
 		FROM invoices i JOIN invoice_payments p ON p.invoice_id = i.id
 		WHERE i.workspace_id = $1 AND i.client_id = $2 AND i.status <> 'draft'
 			AND p.paid_on BETWEEN date_trunc('year', $3::date)::date AND $3::date
-		GROUP BY i.currency`, workspaceID, clientID, today)
+			AND ($4 = '' OR i.participant_contact_id = $4)
+		GROUP BY i.currency`, workspaceID, clientID, today, participantID)
 	if err != nil {
 		return nil, err
 	}

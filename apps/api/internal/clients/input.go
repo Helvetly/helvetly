@@ -50,6 +50,7 @@ var clientFields = map[string]fieldParser{
 	"einvoice_format":     einvoiceFormat,
 	"leitweg_id":          text(46, LeitwegID),
 	"portal_enabled":      boolean,
+	"documents_to":        oneOf("Choose company or participants.", "company", "participants"),
 }
 
 // EInvoiceFormats: the e-invoice a client wants on its invoice emails ("none" for the PDF alone; factur_x replaces
@@ -117,10 +118,50 @@ func NormaliseElectronicAddress(raw json.RawMessage) (*eaddress.Address, string)
 }
 
 var contactFields = map[string]fieldParser{
-	"name":  text(200, nil),
-	"role":  text(100, nil),
-	"email": text(254, email),
-	"phone": text(30, phone),
+	"name":           text(200, nil),
+	"role":           text(100, nil),
+	"email":          text(254, email),
+	"phone":          text(30, phone),
+	"roles":          personRoles,
+	"portal_enabled": boolean,
+	"street":         text(200, nil),
+	"street_number":  text(20, nil),
+	"zip":            text(20, nil),
+	"city":           text(100, nil),
+	"country":        text(10, country),
+	"vat_number":     text(30, vatNumber),
+}
+
+// oneOf: one of the given strings.
+func oneOf(msg string, choices ...string) fieldParser {
+	return func(raw json.RawMessage) (any, string) {
+		var v string
+		if isNull(raw) || json.Unmarshal(raw, &v) != nil || !slices.Contains(choices, v) {
+			return nil, msg
+		}
+		return v, ""
+	}
+}
+
+// personRoles: contact, participant or both, each once, in that order.
+func personRoles(raw json.RawMessage) (any, string) {
+	const msg = "Choose contact, participant or both."
+	var in []string
+	if isNull(raw) || json.Unmarshal(raw, &in) != nil || len(in) == 0 {
+		return nil, msg
+	}
+	out := []string{}
+	for _, r := range []string{store.RoleContact, store.RoleParticipant} {
+		if slices.Contains(in, r) {
+			out = append(out, r)
+		}
+	}
+	for _, r := range in {
+		if !slices.Contains(out, r) {
+			return nil, msg
+		}
+	}
+	return out, ""
 }
 
 // parseFields validates a JSON object against parsers. `name` must be given on create and is never cleared.

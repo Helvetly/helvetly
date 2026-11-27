@@ -521,8 +521,14 @@ func (q Q) addLinks(ctx context.Context, docs []Document) error {
 		return err
 	}
 	rows.Close()
-	shares, err := q.db.Query(ctx, `SELECT s.document_id, c.id, c.name, s.created_at, s.expires_at FROM document_shares s JOIN clients c ON c.id = s.client_id
-		WHERE s.document_id = ANY($1) AND c.deleted_at IS NULL AND (s.expires_at IS NULL OR s.expires_at > now()) ORDER BY s.created_at DESC, c.id`, ids)
+	// A share with one participant reads "Participant · Client".
+	shares, err := q.db.Query(ctx, `SELECT * FROM (
+		SELECT s.document_id, c.id, c.name, s.created_at, s.expires_at FROM document_shares s JOIN clients c ON c.id = s.client_id
+		WHERE s.document_id = ANY($1) AND c.deleted_at IS NULL AND (s.expires_at IS NULL OR s.expires_at > now())
+		UNION ALL
+		SELECT s.document_id, c.id, k.name || ' · ' || c.name, s.created_at, NULL::timestamptz FROM document_participant_shares s
+		JOIN clients c ON c.id = s.client_id JOIN client_contacts k ON k.id = s.contact_id
+		WHERE s.document_id = ANY($1) AND c.deleted_at IS NULL) x ORDER BY 4 DESC, 2`, ids)
 	if err != nil {
 		return err
 	}

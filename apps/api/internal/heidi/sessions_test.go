@@ -56,7 +56,7 @@ func (fakeEngagements) AssistantLog(context.Context, store.Q, store.Session, str
 
 func occ(id, title, client string, start time.Time) scheduling.Occurrence {
 	return scheduling.Occurrence{ID: id, Title: title, StartsAt: start, EndsAt: start.Add(time.Hour), Status: "scheduled",
-		Client: scheduling.Ref{ID: "cli_" + id, Name: client}, Host: &scheduling.Ref{ID: "usr_heidi", Name: "Heidi"}}
+		Client: scheduling.Ref{ID: "cli_" + id, Name: client}, Host: &scheduling.Host{ID: "usr_heidi", Name: "Heidi"}}
 }
 
 func TestSessionAnswers(t *testing.T) {

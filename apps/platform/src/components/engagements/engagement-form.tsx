@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Combobox as Picker } from '@helvetly/ui/components/combobox'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField as SharedField } from '@helvetly/ui/components/form-field'
 import { Kbd } from '@helvetly/ui/components/kbd'
@@ -37,7 +38,7 @@ import { ProductPicker } from '@/components/products/product-picker'
 import { PercentInput } from '@/components/shared/percent-input'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError, errorMessage } from '@/lib/api'
-import { useClient, type Client } from '@/lib/clients'
+import { peopleWith, useClient, type Client } from '@/lib/clients'
 import {
   createEngagement,
   linkInvoice,
@@ -236,6 +237,10 @@ function FormSheetBody({
   // A client passed in by id (from the client page) still needs its name shown.
   const preset = useClient(clientId && !engagement ? clientId : null)
   const clientName = values.client_name || preset.data?.name || ''
+  const clientRecord = useClient(values.client_id || null)
+  const participants = clientRecord.data?.is_company
+    ? peopleWith(clientRecord.data, 'participant')
+    : []
 
   const save = useMutation({
     mutationFn: async () => {
@@ -334,6 +339,7 @@ function FormSheetBody({
         : withClientHabits(v, initial, defaults, readHabits(), client.id)),
       client_id: client.id,
       client_name: client.name,
+      participant_id: client.id === v.client_id ? v.participant_id : '',
       currency:
         !engagement && !importing && !v.product_id && client.currency
           ? client.currency
@@ -888,6 +894,29 @@ function FormSheetBody({
                         clientId={values.client_id}
                         invalid={Boolean(errors.document_id)}
                         onChange={(id) => set('document_id', id)}
+                      />
+                    </FormField>
+                  )}
+                  {(participants.length > 0 || values.participant_id) && (
+                    <FormField
+                      field="participant_id"
+                      label={translate('schedParticipant')}
+                      error={errors.participant_id}
+                      tip={translate('engagementParticipantTip')}
+                    >
+                      <Picker
+                        id={fieldId('participant_id')}
+                        label={translate('schedParticipant')}
+                        value={values.participant_id}
+                        options={participants.map((person) => ({
+                          value: person.id,
+                          label: person.name,
+                          hint: person.email ?? undefined,
+                        }))}
+                        onChange={(id) => set('participant_id', id)}
+                        onClear={() => set('participant_id', '')}
+                        clearLabel={translate('schedClearParticipant')}
+                        placeholder={translate('schedNoParticipant')}
                       />
                     </FormField>
                   )}

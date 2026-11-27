@@ -88,6 +88,7 @@ bonnetjes uitlezen en automatische ordening zijn beschikbaar in abonnementen met
 Wat wordt verstuurd:
 
 - Heidi verstuurt je geschreven bericht, maximaal 20 eerdere berichten uit dat gesprek (die door Heidi getoonde cijfers kunnen bevatten) en bestanden die je aan dat bericht toevoegt. Een korte controle of het bericht over Helvetly of je bedrijf gaat wordt ook naar OpenAI verstuurd.
+- Afhankelijk van je vraag verstuurt Heidi ook beperkte resultaten uit werkruimtegegevens waartoe je toegang hebt (waaronder bedrijfs- en klantgegevens), de inhoud van een document dat je haar vraagt te lezen, de identificatiecodes van de huidige pagina en beschikbare bedieningselementen en je gekozen antwoordstijl.
 - AI-import verstuurt de inhoud van je gekozen bestanden, deel voor deel; bonnetjes uitlezen verstuurt de gekozen bon.
 - De suggestie voor een werkruimtenaam verstuurt alleen de ingevoerde bedrijfsnaam.
 - **Automatische ordening:** nadat je een bestand naar Documenten uploadt, verstuurt Helvetly op de achtergrond de naam en het type, het begin van de tekst (tot ongeveer 6.000 bytes) of, als er geen leesbare tekst is, de pdf of afbeelding zelf (tot 4 MiB; een groter bestand alleen met zijn naam), met de namen van maximaal 200 werkruimtemappen en maximaal 50 gebruikte tags. Het model stelt tags en een map voor; je kunt het resultaat ongedaan maken.
@@ -107,6 +108,8 @@ verwijdertermijn, totdat je je account verwijdert (in een verwijderde werkruimte
 met andere gegevens opgeslagen); geïmporteerde bestanden, registraties en geordende documenten
 blijven in de werkruimte zoals andere gegevens. Heidi is aangeduid als AI-assistent; antwoorden,
 geïmporteerde gegevens en ordeningsvoorstellen kunnen onjuist zijn en zijn suggesties die je moet controleren.
+
+Helvetly telt per onderwerp afgeronde zoekopdrachten en acties om vragen voor te stellen in volgende gesprekken in deze werkruimte. In je accountinstellingen kun je de tellingen en je antwoordstijl bekijken en wissen, of het geheugen uitschakelen. De tellingen blijven in Helvetly.
 
 ## 5. Ontvangers en doorgifte naar het buitenland
 

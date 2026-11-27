@@ -82,7 +82,11 @@ export function HeidiPanel() {
   if (mobile)
     return (
       <Sheet open={heidi.open} onOpenChange={heidi.setOpen}>
-        <SheetContent side="right" className="w-full! max-w-none! gap-0 p-0 [&>button]:hidden">
+        <SheetContent
+          data-heidi-panel=""
+          side="right"
+          className="w-full! max-w-none! gap-0 p-0 [&>button]:hidden"
+        >
           <SheetTitle className="sr-only">{translate('heidi')}</SheetTitle>
           <SheetDescription className="sr-only">{translate('yourAssistant')}</SheetDescription>
           {body}
@@ -92,6 +96,7 @@ export function HeidiPanel() {
 
   return (
     <aside
+      data-heidi-panel=""
       aria-label={translate('heidi')}
       inert={!heidi.open}
       // Closed, a negative margin pulls the panel out of the row so the page widens as it slides.

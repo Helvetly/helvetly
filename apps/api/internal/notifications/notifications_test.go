@@ -691,3 +691,31 @@ func TestRenderScheduling(t *testing.T) {
 		}
 	}
 }
+
+// TestActorAvatar: the bell names the actor's photo when the notification kept who did it, else null.
+func TestActorAvatar(t *testing.T) {
+	e := newEnv(t)
+	ws := e.workspace()
+	owner, admin, member := e.join(ws, "owner"), e.join(ws, "admin"), e.join(ws, "member")
+	pic := "https://lh3.example.com/a.png"
+	if err := e.st.UpdateUserProfile(context.Background(), admin.user, "Anna", &pic, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	to := store.NotifyTo{UserIDs: []string{owner.user}}
+	e.notify(ws, "member.role_changed", map[string]any{"role": "admin", "actor": "Anna", "actor_id": admin.user}, to, time.Now())
+	e.notify(ws, "member.role_changed", map[string]any{"role": "admin", "actor": "Max", "actor_id": member.user}, to, time.Now())
+	e.notify(ws, "member.role_changed", map[string]any{"role": "admin", "actor": "Old"}, to, time.Now())
+	var p struct {
+		Data []struct {
+			Actor          *string `json:"actor"`
+			ActorAvatarURL *string `json:"actor_avatar_url"`
+		}
+	}
+	if err := json.Unmarshal(e.want(owner, "GET", "/api/v1/notifications", nil, 200), &p); err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Data) != 3 || p.Data[0].ActorAvatarURL != nil || p.Data[1].ActorAvatarURL != nil ||
+		p.Data[2].ActorAvatarURL == nil || *p.Data[2].ActorAvatarURL != pic {
+		t.Fatalf("avatars: %+v", p.Data)
+	}
+}

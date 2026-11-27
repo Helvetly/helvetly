@@ -11,13 +11,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { formatDate, formatFileSize } from '@helvetly/ui/lib/format'
 import { useQueryClient } from '@tanstack/react-query'
 import { Download, Eye, Paperclip, Trash2, Upload } from 'lucide-react'
-import { useRef, useState, type DragEvent, type ReactElement } from 'react'
+import { useRef, useState, type DragEvent, type ReactElement, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { promptUpgrade, toastError } from '@/components/billing/upgrade-prompt'
 import { FileTile, kindOfType } from '@/components/documents/kind'
 import { ShareButton, ShareDialog } from '@/components/documents/share-dialog'
 import { RecordLink } from '@/components/record-link'
+import { Person, type PersonRef } from '@/components/user-avatar'
 import { errorMessage } from '@/lib/api'
 import {
   clientKeys,
@@ -42,6 +43,64 @@ export const fileMeta = (file: ClientFile) =>
   [formatFileSize(file.size), formatDate(file.created_at), file.uploaded_by?.name]
     .filter(Boolean)
     .join(' · ')
+
+/** `fileMeta` with the uploader's photo beside their name. */
+export function MetaLine({ size, at, by }: { size: number; at: string; by: PersonRef | null }) {
+  return (
+    <>
+      {formatFileSize(size)} · {formatDate(at)}
+      {by && (
+        <>
+          {' · '}
+          <Person person={by} size="xs" />
+        </>
+      )}
+    </>
+  )
+}
+
+type Label = Parameters<typeof translate>[0]
+/** The groups in the order they show, each with the kind tags it holds; the plural labels match Documents' Group by type. */
+const KIND_GROUPS: [Label, string[]][] = [
+  ['contracts', ['contract']],
+  [
+    'invoices',
+    [
+      'invoice',
+      'partial-invoice',
+      'prepayment-invoice',
+      'corrected-invoice',
+      'proforma-invoice',
+      'self-billed-invoice',
+    ],
+  ],
+  ['creditNotes', ['credit-note']],
+  ['debitNotes', ['debit-note']],
+  ['quotes', ['quote']],
+  ['docTypePaymentConfirmations', ['payment-confirmation']],
+  ['engagements', ['engagement']],
+  // A signed file with a kind stays with its kind; this holds signed files of no kind.
+  ['clientFilesSigned', []],
+  ['docTypeConsents', ['consent']],
+  ['docTypePowersOfAttorney', ['power-of-attorney']],
+  ['docTypeReceipts', ['receipt']],
+  ['bankStatements', ['bank-statement']],
+  ['docTypeTaxDocuments', ['tax-document']],
+  ['clientFilesOther', []],
+]
+
+const groupOf = (tags: string[] = []): Label =>
+  KIND_GROUPS.find(([, kinds]) => kinds.some((kind) => tags.includes(kind)))?.[0] ??
+  (tags.includes('signed') ? 'clientFilesSigned' : 'clientFilesOther')
+
+/** The files by kind in a fixed order, empty groups left out; each keeps the list's order (newest first). */
+export function groupFiles(files: ClientFile[]) {
+  return KIND_GROUPS.map(([key]) => ({
+    key,
+    label: translate(key),
+    files: files.filter((file) => groupOf(file.locked_tags) === key),
+  })).filter((group) => group.files.length > 0)
+}
 
 /** Only a drag that carries files lights the drop overlay (not a dragged link or text). */
 const carriesFiles = (event: DragEvent) => event.dataTransfer.types.includes('Files')
@@ -210,16 +269,16 @@ export function ClientFiles({ clientId }: { clientId: string }) {
             className="rounded-lg border border-dashed border-border py-8"
           />
         ) : (
-          <ul className="grid">
-            {files.data.map((file) => (
+          <FileGroups groups={groupFiles(files.data)}>
+            {(file) => (
               <FileRow
                 key={file.id}
                 clientId={clientId}
                 file={file}
                 onDelete={() => setDeleting(file)}
               />
-            ))}
-          </ul>
+            )}
+          </FileGroups>
         )}
       </Panel>
 
@@ -257,6 +316,34 @@ export function ClientFiles({ clientId }: { clientId: string }) {
   )
 }
 
+/** One plain list for a single kind; with several, each kind under a small header with its count. */
+function FileGroups({
+  groups,
+  children,
+}: {
+  groups: ReturnType<typeof groupFiles>
+  children: (file: ClientFile) => ReactNode
+}) {
+  const [only] = groups
+  if (groups.length === 1 && only) return <ul className="grid">{only.files.map(children)}</ul>
+  return (
+    <div className="grid gap-3">
+      {groups.map((group) => (
+        <section key={group.key} aria-labelledby={`client-files-${group.key}`}>
+          <h3
+            id={`client-files-${group.key}`}
+            className="flex items-center gap-1.5 pb-0.5 text-caption font-medium text-muted-foreground"
+          >
+            {group.label}
+            <span className="tabular-nums">{group.files.length}</span>
+          </h3>
+          <ul className="grid">{group.files.map(children)}</ul>
+        </section>
+      ))}
+    </div>
+  )
+}
+
 function FileRow({
   clientId,
   file,
@@ -279,7 +366,9 @@ function FileRow({
         >
           {file.name}
         </a>
-        <span className="truncate text-caption text-muted-foreground">{fileMeta(file)}</span>
+        <span className="truncate text-caption text-muted-foreground" title={fileMeta(file)}>
+          <MetaLine size={file.size} at={file.created_at} by={file.uploaded_by} />
+        </span>
       </span>
       <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-focus-within/file:opacity-100 group-hover/file:opacity-100 max-sm:opacity-100">
         <Tip label={translate('previewInDocuments')}>

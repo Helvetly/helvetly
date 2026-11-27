@@ -36,6 +36,8 @@ export type Notification = {
   body: string | null
   /** Who did it; null for Helvetly's own jobs. */
   actor: string | null
+  /** The actor's photo; null without one, for clients and Helvetly's own jobs. */
+  actor_avatar_url?: string | null
   /** Platform path the notification opens. */
   href: string
   created_at: string

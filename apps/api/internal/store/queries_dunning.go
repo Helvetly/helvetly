@@ -78,10 +78,11 @@ func (q Q) DunningCandidates(ctx context.Context, now time.Time, daysBefore int)
 	})
 }
 
-// clientEmail: where a client's invoices and reminders go (the primary contact, else the billing email, else the
-// client's email), "" for none; the query joins the client as c.
-const clientEmail = `COALESCE((SELECT cc.email FROM client_contacts cc WHERE cc.client_id = c.id AND cc.is_primary),
-	c.billing_email, c.email, '')`
+// clientEmail: where an invoice's reminders go: the participant it is addressed to (participants mode), else the
+// client's primary contact, else the billing email, else the client's email; "" for none. The query joins the
+// invoice as i and its client as c.
+const clientEmail = `COALESCE((SELECT nullif(cc.email, '') FROM client_contacts cc WHERE cc.id = i.participant_contact_id AND cc.client_id = c.id),
+	(SELECT cc.email FROM client_contacts cc WHERE cc.client_id = c.id AND cc.is_primary), c.billing_email, c.email, '')`
 
 // DunningRecipient: the client email of the invoice's client, "" for none.
 func (q Q) DunningRecipient(ctx context.Context, workspaceID, invoiceID string) (string, error) {

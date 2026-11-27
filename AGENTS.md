@@ -64,8 +64,36 @@ are the reference.
   (`portal_sessions.scoped`, its own cookie per workspace) is valid only there and switches only among that workspace's clients. The shared portal (`PORTAL_URL` itself)
   signs nobody in: unscoped start and verify answer `portal_link_required`, unscoped sessions are not read, and its
   page only emails an address the links of its suppliers' open portals (`POST /api/v1/public/portal/auth/links`:
-  the same 202 for every address, limited per client address and per recipient). Links in email come from `CanonicalURL`, and the platform shows, copies and opens it (`canonical_url` of `GET /api/v1/workspace/portal`). A member who can read a client
+  the same 202 for every address, limited per client address and per recipient). Links in email come from `CanonicalURL`, and the platform shows, copies and opens it (`canonical_url` of `GET /api/v1/workspace/portal`). A person
+  signs in as a participant of a company client (`portal_sessions.participant_id`): their address is a person with the
+  participant role, their own `portal_enabled`, the client's portal and the workspace's on (re-checked on every read;
+  start, end and access changes audited as `portal.participant_*`; the invitation comes from the business in the
+  client's language). Such a session reaches only `portal/participant.go`'s routes, each filtering by the participant:
+  their own sessions and requests, documents shared with them and, in participants mode, invoices addressed to them and
+  signature requests they sign; everything else is 404. A member who can read a client
   opens its portal as a read-only preview (`POST /api/v1/clients/{id}/portal-preview`, session-only: a hashed one-use link for 5 minutes, then a session of at most 30 with `portal_sessions.preview_by` and its own cookie beside the client's), where every write but ending it answers 403 `preview_read_only`, nothing is recorded on the client or notified, and start and end are audited (`portal.preview_*`).
+- **Client people** (`client_contacts`, `clients/contacts.go`, `clients/merge.go`, 00085): each person of a client is a
+  `contact` (billing and correspondence; exactly one primary among contacts, never a participant alone) and/or a
+  `participant` (takes the service); only a company has participants (a person client is its own), checked on every
+  write with the client's row lock. The client drawer's People tab shows both groups; the Overview keeps the primary
+  contact. A company's `clients.documents_to` (`company` default | `participants`) decides where its invoices and
+  documents go, for new drafts and sends only, never an issued invoice. A session's event, an engagement and its entries
+  may name one participant of their client (`participant_contact_id`, validated to be a participant of that client):
+  the session's client email (invitation, update, cancellation, reminders, `.ics`) goes to the participant, entries
+  carry the session's participant, else the engagement's. Invoices stay under the company: in company mode lines made
+  from sessions or entries end with "· <participant>"; in participants mode a session invoice is made per participant
+  and a participant's engagement invoice is addressed to them (`invoices.participant_contact_id`): the buyer is the
+  participant's name with their own address (else the company's) and VAT number (else the company's), and the
+  invoice email, reminders, dunning and payment confirmation go to them (`invoices.addressee`, `store.clientEmail`).
+  Send dialogs offer the client's contacts and participants; in participants mode quotes and templates default to the
+  only participant with an email. An invoice import whose buyer is a participant of a company (email exactly, else
+  name with the person's or company's email domain, else the name alone when unique) goes to that company addressed
+  to them (`store.ImportParticipant`). "Make participant of…" (`POST /api/v1/clients/{id}/make-participant`, owners
+  and admins, `dry_run` previews counts) moves a person client's invoices (number, buyer snapshot and PDF unchanged),
+  quotes, plans, engagements, sessions, links, shares and Clients/<person> folders onto the company with the participant
+  set, fills what the person lacks, deletes the client (`clients.merged_into`, a repeat answers done) and logs
+  `client.merged_into_participant` as a new financial event, never editing older ones. Documents can be shared with one
+  participant (`document_participant_shares`).
 - **Custom portal domains** (`internal/customdomains`, Business feature `custom_portal_domain`, off without
   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID` and `CUSTOM_DOMAIN_TARGET`): a workspace's portal on its own host
   through Cloudflare for SaaS custom hostnames (`workspace_domains`: one per workspace and hostname among rows not
@@ -88,10 +116,12 @@ are the reference.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
 - **Documents system folders** (`store/queries_system_folders.go`, `documents/system.go`): every workspace has the
-  top-level `Clients`, `Expenses` and `Bank Statements` folders, and below them `Clients/<client>/<Invoices|Quotes|Engagements|Signatures|Documents>/<year>`
-  (and `Clients/<client>/Documents/<year>/Contracts`, kind `contracts`) , `Expenses/<year>/<category>` and `Bank Statements/<year>`
-  (`document_folders.system_kind`, `system_ref` = the client or the expense category; none for `Uncategorised`). The app makes them on demand (`ClientRecordFolder`, `ExpenseYearFolder`, `BankStatementsFolder`, missing roots on
-  the folder list), adopts a plain folder of the same name (`Bank Statements` also by its German, French or Italian name), renames a client's folder or a category's folders (one per year) with it, moves a
+  top-level `Clients`, `Expenses` and `Tax Documents` folders, and below them `Clients/<client>/<Invoices|Quotes|Engagements|Signatures|Documents>/<year>`
+  (and `Clients/<client>/Documents/<year>/Contracts`, kind `contracts`, and `Clients/<client>/Documents/<year>/Bank Statements`,
+  kind `client_bank_statements`), `Expenses/<year>/<category>` and `Tax Documents/<year>`
+  (`document_folders.system_kind`, `system_ref` = the client or the expense category; none for `Uncategorised`). The app makes them on demand (`ClientRecordFolder`, `ClientBankStatementsFolder`, `ExpenseYearFolder`, `TaxDocumentsFolder`, missing roots on
+  the folder list), adopts a plain folder of the same name (a client's `Bank Statements` and `Tax Documents` also by their German, French or Italian
+  names, stored in English; `Tax Documents` also a plain top-level `Tax`, `Steuern`, `Impôts` or `Tasse` folder, but only one that is empty or AI filing made, never a person's folder with files), renames a client's folder or a category's folders (one per year) with it, moves a
   draft's files that still sit in its folder when its category or year changes, and refuses to rename, move or trash any of them (`409
   system_folder`); people still file into them and make plain folders inside. Typed ones are stored by their English
   name and answered in the asker's language (`?lang`, `Accept-Language`; the platform translates by `system_kind`).
@@ -99,18 +129,40 @@ are the reference.
   `pdf_key` or a sent revision in `quote_revisions` points at it), client uploads go to the client's `Documents/<year>`, receipts to `Expenses/<year>/<category>`;
   `BackfillSystemFolders` (once per start, idempotent) files what came before and turns the earlier
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
-  move along; the emptied old folders are deleted). AI filing and organizing put a known
+  move along; the emptied old folders are deleted). It also takes apart the top-level `Bank Statements/<year>` of
+  migration 00079 (`RepairBankStatementsRoot`: empty, it is deleted with its year folders; else each file of one client
+  moves to that client's `Documents/<year>/Bank Statements`, the emptied year folders go and the rest stays as plain
+  folders, its files keeping the `bank-statement` kind) and empties a plain folder straight in a client's
+  `Documents/<year>` named like a folder of statements or credit advices (`Gutschriften`, `Kontoauszüge`, `Payment
+  confirmations`, … in the app's languages), holding no folders and only `bank-statement` or `payment-confirmation`
+  files of no invoice or expense, into that client's `Documents/<year>/Bank Statements`, then deletes it
+  (`RepairMisfiledStatementFolder`; such folders carry no AI marker in the database, so the name and contents decide).
+  Each repair is audited as `documents.folder_repaired`. AI filing and organizing put a known
   client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
-  An account statement of a bank or payment provider goes to `Bank Statements/<year>` (`documents/bank_statements.go`):
-  filing when the model's `kind` is `bank-statement` (the year its period ends, else its date, else the upload's in the
-  workspace's zone) or its name or text looks like one (statement words, CAMT.053 or MT940, an IBAN with opening and
-  closing balances) and the model names no other kind, organizing when its kind or name and text say so; a file of an
-  invoice, quote or expense, or one the model names another kind or files as an invoice, quote or receipt, never goes
-  there. Existing files move only by an
-  applied organize proposal. Plain folders they make are named in the asker's language (the uploader's, kept on the filing; else the workspace's document language, else English), never the document's: a common kind named otherwise is translated, and an existing folder of that kind in any language is used instead of a new sibling (`documents/folder_language.go`); people's folders are never renamed.
-  Before the model is asked, a file that is one of the workspace's invoices or quotes (by the PDF it shares, the
-  imported invoice it is the original of, or a record number in its name or text, separators ignored) goes straight to
-  its client's folder (`documents/record_match.go`); several records found leave it to the model. A client's contract
+  An account statement of a bank or payment provider, a credit advice (Gutschrift) or a payment confirmation of a known
+  client (the client its record path, record number, client link or text names) goes to that client's
+  `Documents/<year>/Bank Statements` (`documents/bank_statements.go`), the year of its period end or value date, else
+  its folder's or name's, else the upload's in the workspace's zone: filing when the model's `kind` is `bank-statement`
+  or `payment-confirmation` (or, for a statement, its name or text looks like one: statement words, CAMT.053 or MT940,
+  an IBAN with opening and closing balances, and the model names no other kind), organizing when its kind or name and
+  text say so. In that folder a file without a filed kind is a `bank-statement`; a payment confirmation stays one. A
+  statement of nobody keeps its kind and is filed like any other document (a plain folder in the asker's language, or
+  none), never into a system folder; a payment confirmation of nobody as before. A tax document (tax return, assessment,
+  provisional tax bill, VAT return or statement of the tax authority, withholding tax, tax certificate: the model's kind
+  `tax-document`, or its name or text clearly says so, `documents/tax_documents.go`) goes to `Tax Documents/<year>`, the
+  tax year it is about (else its name's year, else the upload's), never into Clients or Expenses; a social security bill
+  is an expense receipt. A file of an invoice, quote or expense, or one the model names another kind or files as an
+  invoice, quote or receipt, never goes to either. Existing files move only by an applied organize proposal (or the
+  start-up repairs above). Plain folders they make are named in the asker's language (the uploader's, kept on the filing; else the workspace's document language, else English), never the document's: a common kind named otherwise is translated, and an existing folder of that kind in any language is used instead of a new sibling (`documents/folder_language.go`); people's folders are never renamed.
+  Before the model is asked, a file that is one of the workspace's invoices or quotes by identity (the PDF it shares,
+  the imported invoice it is the original of) goes straight to its client's folder (`documents/record_match.go`). A
+  record number in its name or text (separators ignored) only names the record's client and year, and the model is told
+  the record and decides the kind: a payment confirmation or bank statement of it (the model's kind, a
+  `payment-confirmation` or `bank-statement` kind the file already has, or its name: paid, bezahlt, Zahlung,
+  Gutschrift, payment or instalment words, an ordinal such as `_1st` or `3rd`, `1. Rate` or a lone digit after the
+  number) goes to the client's `Documents/<year>/Bank Statements` with a reason such as "Payment confirmation for
+  invoice 2026/IN/031 (1st instalment)."; anything else is the record, filed under its Invoices or Quotes as before.
+  Several records found leave it to the model. A client's contract
   goes to its `Contracts` folder only when the model says it is a completed contract (`is_completed_contract`) and
   neither its name nor its text looks like a template, sample, draft or blanks (`completedContract`); else to the
   client's `Documents/<year>`; the reason is kept (`document_filings.contract_reason`). Imported contracts keep their name. An invoice or quote
@@ -120,7 +172,7 @@ are the reference.
   first, then its system folder, then its `documents.filed_kind` (the kind AI filing or organizing found, or a client
   document's upload type): the kind (`tags.Kinds`, one line each: every invoice kind through `tags.InvoiceKinds`, a test
   failing for a kind without one, plus `quote`, `contract`, `engagement`, `receipt`, `payment-confirmation`, `consent`,
-  `power-of-attorney`, `bank-statement`), `signed` once its signature request completed, `year-<yyyy-mm>` (year only if the month is
+  `power-of-attorney`, `bank-statement`, `tax-document`), `signed` once its signature request completed, `year-<yyyy-mm>` (year only if the month is
   unknown), the client's name (`tags.ClientTag`: its slug, `client-<slug>` only when the slug reads as another automatic
   tag), the record's number (`2026-q-001`), `expense-<category>` and `from-quote-<number>`. `store.AutoTag` runs inside
   the writes that file (`CreateDocument`, `UpdateDocument`, `AddDocumentLink`, `AddQuoteContract`, `AddQuoteRevision`,
@@ -141,8 +193,8 @@ are the reference.
   HR files cannot be shared. The workspace export omits public share credentials.
 - **Documents grouped views** (`store/queries_document_groups.go`, `documents/groups.go`): Group by type, year or
   client is computed from each file, never stored, and moves nothing. Type: the record it belongs to (an invoice's or
-  quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder (`Bank Statements`
-  gives Bank statements), its tags, its name, else Other; year: the record's, the year folder's, else the upload's in the workspace's zone; client: the
+  quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder (`Tax Documents`
+  gives Tax documents), its tags (`bank-statement` gives Bank statements, `payment-confirmation` Payment confirmations), its name, else Other; year: the record's, the year folder's, else the upload's in the workspace's zone; client: the
   record's, the `Clients/<client>` folder's, a client link, else none. A group is the list's `type`, `year` and
   `client` filters (the search's chips, combined with AND, with or without a grouping). Repeated types and clients match any selection within that dimension. Upload dates use inclusive workspace calendar days; the levels come in any order,
   each once, up to three (Group by's presets and builder; the last choice in localStorage); `GET /api/v1/documents/groups`
@@ -238,8 +290,8 @@ are the reference.
   future open sessions are cancelled quietly and leave the calendars; a member leaving or a deleted workspace revokes
   the calendar grants (`calsync.Leaving`). The export carries every `scheduling_*` table, never a `calendar_*` one.
   Heidi answers four read questions (today's schedule, the next session with a client, late cancellations this month,
-  sessions left in a package) with `session` records and `open_session`; creating or changing sessions through Heidi
-  is not built. Settings, holidays, event-type writes, host hours, calendars, the feed, request decisions and
+  sessions left in a package) with `session` records and `open_session`. Heidi's workspace operations also reach
+  the scheduling API, including creating or changing a session after confirmation. Settings, holidays, event-type writes, host hours, calendars, the feed, request decisions and
   invoicing sessions are session-only.
 - **Plans and offer** (`internal/billing`, `plans.go`, `offer.go`): one offer on sale, `helvetly-v2` (00067 lowered the
   Business base price to 99 monthly and 951 yearly; operators can publish a new version with `helvetly offer publish`). Plans Free, Basic, Pro, Business;
@@ -296,6 +348,13 @@ are the reference.
   Mailpit's HTML Check therefore scores about 94 %, not 100 %, by choice: Outlook for Windows ignores the corners,
   gradients and max-width and shows the same email square and full width, still readable. The business logo has no
   size attributes: its email URL serves a copy scaled to 44 px high.
+- **Heidi** (`internal/heidi`): local record answers and model-assisted lookups use the current membership. Selected
+  operations run through the signed-in platform API with its permission, billing and approval checks. A proposed
+  API write requires confirmation. The platform can also offer the current screen's available controls for the
+  person to activate. Model inputs can include bounded lookup results and specifically requested non-HR documents
+  under the versioned personal AI approval. Personal memory is held per workspace membership: successful topic
+  counts rank suggestions, and a chosen reply style applies to model answers. Account settings show, clear or
+  disable memory; removing membership deletes it.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
   and a monthly token budget per pool: Heidi's chat (`ai_tokens_per_month`) and the automation pool of AI import

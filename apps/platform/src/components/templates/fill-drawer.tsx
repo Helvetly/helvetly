@@ -35,7 +35,7 @@ import { SesLine } from '@/components/signatures/parts'
 import { DocPreview } from '@/components/signatures/pdf-parts'
 import { failed, Split, StepTitle, WizardSheet } from '@/components/wizard-sheet'
 import { useAI } from '@/lib/ai'
-import type { Client } from '@/lib/clients'
+import { participantRecipient, recipientPeople, type Client } from '@/lib/clients'
 import {
   emailLanguage,
   useEmailPreview,
@@ -200,7 +200,11 @@ export function FillTemplateDrawer({
     setDelivery(chosen.signers.length > 0 ? 'signature' : 'save')
     setPlaceMyself(false)
     setRecipients({
-      to: primaryContact(forClient)?.email ?? forClient.email ?? '',
+      to:
+        participantRecipient(forClient) ??
+        primaryContact(forClient)?.email ??
+        forClient.email ??
+        '',
       cc: '',
       bcc: '',
     })
@@ -543,6 +547,7 @@ export function FillTemplateDrawer({
               ? {
                   recipients,
                   onRecipients: setRecipients,
+                  people: recipientPeople(client),
                   subject: email.subject,
                   onSubject: email.setSubject,
                   attachments: [`${title.trim()}.pdf`],

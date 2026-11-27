@@ -142,6 +142,7 @@ function SessionList({
                 <span className="truncate text-body-sm">{row.title}</span>
                 <span className="truncate text-caption text-muted-foreground">
                   {whenLabel(row.starts_at, zone)}
+                  {row.participant && ` · ${row.participant.name}`}
                 </span>
               </span>
               {row.late && row.counts ? (
