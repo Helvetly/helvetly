@@ -218,8 +218,20 @@ func signatureImage(dataURL string) ([]byte, string) {
 	if err != nil || cfg.Width < 10 || cfg.Height < 10 || cfg.Width > 2000 || cfg.Height > 1000 {
 		return nil, "The signature image is too large or damaged."
 	}
-	return b, ""
+	// Re-encoded from its pixels (bounded by the check above): an uploaded image keeps no metadata or extra chunks.
+	img, err := png.Decode(bytes.NewReader(b))
+	if err != nil {
+		return nil, "The signature image is too large or damaged."
+	}
+	var out bytes.Buffer
+	if err := png.Encode(&out, img); err != nil {
+		return nil, "The signature image is too large or damaged."
+	}
+	return out.Bytes(), ""
 }
+
+// signatureMethods: how a signer may adopt their signature.
+var signatureMethods = map[string]bool{"typed": true, "drawn": true, "uploaded": true, "saved": true}
 
 // openFor checks, under the request's lock, that this signer may act on it now.
 func openFor(req store.SignatureRequest, sid string) error {
@@ -268,8 +280,8 @@ func (s *Service) publicSign(w http.ResponseWriter, r *http.Request) error {
 		if !body.Consent {
 			bad["consent"] = "Agree to sign electronically to continue."
 		}
-		if body.Signature.Method != "typed" && body.Signature.Method != "drawn" {
-			bad["signature"] = "Type or draw your signature."
+		if !signatureMethods[body.Signature.Method] {
+			bad["signature"] = "Type, draw or upload your signature."
 		}
 		img, msg := signatureImage(body.Signature.Image)
 		if msg != "" {
