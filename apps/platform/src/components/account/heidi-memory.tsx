@@ -1,7 +1,6 @@
 'use client'
 
 import { Button } from '@helvetly/ui/components/button'
-import { Segmented } from '@helvetly/ui/components/segmented'
 import { Switch } from '@helvetly/ui/components/switch'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Brain } from 'lucide-react'
@@ -13,14 +12,12 @@ import { errorMessage, request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
-type ReplyStyle = 'auto' | 'brief' | 'detailed'
 type Memory = {
   enabled: boolean
-  reply_style: ReplyStyle
   has_memory: boolean
   topics: { title: string; count: number }[]
 }
-type Change = { enabled: boolean } | { reply_style: ReplyStyle } | 'clear'
+type Change = { enabled: boolean } | 'clear'
 
 export function HeidiMemorySettings() {
   const session = useSession().data
@@ -69,20 +66,6 @@ export function HeidiMemorySettings() {
           </ActionRow>
           {data.enabled && (
             <>
-              <ActionRow title={translate('heidiReplyStyle')}>
-                <fieldset disabled={!canUse}>
-                  <Segmented<ReplyStyle>
-                    label={translate('heidiReplyStyle')}
-                    value={data.reply_style}
-                    options={[
-                      { value: 'auto', label: translate('heidiStyleAuto') },
-                      { value: 'brief', label: translate('heidiStyleBrief') },
-                      { value: 'detailed', label: translate('heidiStyleDetailed') },
-                    ]}
-                    onChange={(reply_style) => save.mutate({ reply_style })}
-                  />
-                </fieldset>
-              </ActionRow>
               <div className="grid gap-2">
                 <h3 className="text-body font-medium">{translate('heidiLearnedTopics')}</h3>
                 {data.topics.length ? (

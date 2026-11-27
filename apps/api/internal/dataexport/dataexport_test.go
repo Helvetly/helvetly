@@ -189,6 +189,9 @@ func TestWorkspaceExport(t *testing.T) {
 func TestAccountExport(t *testing.T) {
 	e := newEnv(t, fakeFiles{})
 	e.sess.Role = "member" // anyone may export their own data
+	if err := e.st.CountHeidiTopic(t.Context(), e.sess.Workspace.ID, e.sess.User.ID, "list_clients"); err != nil {
+		t.Fatal(err)
+	}
 	w := e.get("/api/v1/account/export")
 	var doc map[string]json.RawMessage
 	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &doc) != nil {
@@ -198,6 +201,9 @@ func TestAccountExport(t *testing.T) {
 		if _, ok := doc[key]; !ok {
 			t.Fatalf("missing %s: %s", key, w.Body)
 		}
+	}
+	if memory := string(doc["heidi_memory"]); !strings.Contains(memory, "list_clients") || strings.Contains(memory, "reply_style") {
+		t.Fatalf("Heidi memory export: %s", memory)
 	}
 	var memberships []map[string]any
 	_ = json.Unmarshal(doc["memberships"], &memberships)
