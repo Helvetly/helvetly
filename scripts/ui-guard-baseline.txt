@@ -157,7 +157,7 @@
 8 text-px apps/platform/src/components/shell/app-sidebar.tsx
 3 text-px apps/platform/src/components/shell/mobile-tab-bar.tsx
 9 text-px apps/platform/src/components/shell/plan-gate.tsx
-4 text-px apps/platform/src/components/signatures/adopt-dialog.tsx
+2 text-px apps/platform/src/components/signatures/adopt-dialog.tsx
 7 text-px apps/platform/src/components/signatures/create-drawer.tsx
 1 text-px apps/platform/src/components/signatures/parts.tsx
 7 text-px apps/platform/src/components/signatures/pdf-parts.tsx
