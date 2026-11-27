@@ -451,7 +451,7 @@ export function WorkspaceAuditButton() {
     paused.current = true
     setStopping(true)
   }
-  if (!ai.available) return null
+  if (!ai.available || !billing.data) return null
   if (lock) {
     return (
       <Button asChild variant="outline">
