@@ -54,8 +54,8 @@ func (p proposedChange) confirmation(id string) *Confirmation {
 	return &Confirmation{Type: "confirmation", ID: id, Title: op.Summary, Body: p.Review + "\n\n" + string(details), ConfirmLabel: p.Label, Tone: tone}
 }
 
-func (s *Service) planOperation(r *http.Request, sess store.Session, budget aimodel.Budget, call aimodel.Call, operation string, original ProviderRequest, path, ui, style string, readFile bool, fileNames []string) (turn, error) {
-	instructions := scopePolicy + "\n" + style + "\n" + replyInstruction(ui)
+func (s *Service) planOperation(r *http.Request, sess store.Session, budget aimodel.Budget, call aimodel.Call, operation string, original ProviderRequest, path, ui string, readFile bool, fileNames []string) (turn, error) {
+	instructions := scopePolicy + "\n" + replyInstruction(ui)
 	// Fix the permitted document IDs from the person's words before any record or file contents reach the planner.
 	fileIDs := map[string]bool{}
 	if readFile && canOperate(sess, workspaceOps["get_document_content"]) {

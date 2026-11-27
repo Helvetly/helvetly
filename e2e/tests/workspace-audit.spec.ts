@@ -10,7 +10,11 @@ test('dashboard audit compares originals and links the missing agreement to the 
   const issued = await api.save(`/invoices/${text(draft.id)}/issue`)
   await openPage(page, '/', 'Dashboard')
   await page.getByRole('button', { name: 'AI Audit' }).click()
+  const modal = page.getByRole('dialog', { name: 'AI Audit' })
+  await expect(modal.getByText(/AI automation allowance/)).toBeVisible()
+  await modal.getByRole('button', { name: 'Start audit' }).click()
   const drawer = page.getByRole('dialog', { name: 'AI Audit' })
+  await expect(drawer.getByText('Scope: Full audit')).toBeVisible()
   await drawer.getByText('Contract reference without a file link').click()
   await expect(drawer.getByRole('link', { name: text(issued.number) })).toHaveAttribute(
     'href',
