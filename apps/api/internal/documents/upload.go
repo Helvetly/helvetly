@@ -20,39 +20,51 @@ func contentDisposition(kind, name string) string {
 	return mime.FormatMediaType(kind, map[string]string{"filename": name})
 }
 
-// upload hashes the spooled multipart file before storing it; matching uploads serialize across APIs and instances.
-func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+// receive reads one multipart file of up to maxSize bytes in a supported type; the caller removes form's spooled
+// files.
+func (s *Service) receive(w http.ResponseWriter, r *http.Request) (form *multipart.Form, h *multipart.FileHeader, name, ct string, err error) {
 	limitMB := s.maxSize >> 20
 	tooLarge := refuse(http.StatusRequestEntityTooLarge, "payload_too_large", fmt.Sprintf("Upload files of up to %d MB.", limitMB), nil)
 	r.Body = http.MaxBytesReader(w, r.Body, min(s.maxSize+1<<20, uploads.MaxRequestBytes))
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			return tooLarge
+			return nil, nil, "", "", tooLarge
 		}
-		return badRequest("Send the file as multipart/form-data in file.")
+		return nil, nil, "", "", badRequest("Send the file as multipart/form-data in file.")
 	}
-	defer func() { _ = r.MultipartForm.RemoveAll() }()
-	form := r.MultipartForm
+	form = r.MultipartForm
 	if len(form.File["file"]) != 1 {
-		return validationFailed(map[string]string{"file": "Send one file per request."})
+		return form, nil, "", "", validationFailed(map[string]string{"file": "Send one file per request."})
 	}
-	h := form.File["file"][0]
+	h = form.File["file"][0]
 	if h.Size > s.maxSize {
-		return tooLarge
+		return form, nil, "", "", tooLarge
+	}
+	name = displayName(h.Filename)
+	head, err := readHead(h)
+	if err != nil {
+		return form, nil, "", "", err
+	}
+	ct = detectType(name, head)
+	if ct == "" {
+		return form, nil, "", "", validationFailed(map[string]string{"file": name + " is not a supported file: use PDF, images, Office or " +
+			"OpenDocument files, CSV, text, XML, JSON or ZIP."})
+	}
+	return form, h, name, ct, nil
+}
+
+// upload hashes the spooled multipart file before storing it; matching uploads serialize across APIs and instances.
+func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	form, h, name, ct, err := s.receive(w, r)
+	if form != nil {
+		defer func() { _ = form.RemoveAll() }()
+	}
+	if err != nil {
+		return err
 	}
 	mode, err := onConflict(formValue(form, "on_conflict"))
 	if err != nil {
 		return err
-	}
-	name := displayName(h.Filename)
-	head, err := readHead(h)
-	if err != nil {
-		return err
-	}
-	ct := detectType(name, head)
-	if ct == "" {
-		return validationFailed(map[string]string{"file": name + " is not a supported file: use PDF, images, Office or " +
-			"OpenDocument files, CSV, text, XML, JSON or ZIP."})
 	}
 	var folder *string
 	if id := formValue(form, "folder_id"); id != "" {

@@ -63,6 +63,8 @@ export const AUDIT_KINDS = [
   'client.merged_into_participant',
   'documents.exported',
   'documents.folder_repaired',
+  'documents.upload_filed',
+  'documents.import_sources_removed',
   'imports.expired',
   'email_template.ai_written',
   'quote.contract_drafted',
@@ -288,6 +290,21 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
       return {
         line: translate('auditSentenceDocumentsFolderRepaired', {
           count: Number(event.payload.files) || 0,
+        }),
+        amount: null,
+      }
+    case 'documents.upload_filed':
+      return {
+        line: translate('auditSentenceDocumentsUploadFiled', {
+          count: Number(event.payload.files) || 0,
+          placed: Number(event.payload.placed_by_ai) || 0,
+        }),
+        amount: null,
+      }
+    case 'documents.import_sources_removed':
+      return {
+        line: translate('auditSentenceDocumentsImportSourcesRemoved', {
+          count: Number(event.payload.count) || 0,
         }),
         amount: null,
       }

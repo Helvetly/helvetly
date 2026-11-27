@@ -34,9 +34,9 @@ test('imports clients from a CSV: upload, review, fix nothing, commit once', asy
   expect(names).toEqual(expect.arrayContaining([first, second]))
   expect(names.filter((name) => name === first)).toHaveLength(1)
 
-  // The CSV is now a Document: the same bytes again are read from it, not stored twice.
+  // The CSV was only the import's source: it never shows in Documents and is gone once the import is done.
   const documents = object(await (await api.request.get('/api/v1/documents')).json()).data
-  expect(JSON.stringify(documents)).toContain('clients.csv')
+  expect(JSON.stringify(documents)).not.toContain('clients.csv')
 })
 
 test('a CSV dropped anywhere on the clients page opens its import with the file, and imports it', async ({

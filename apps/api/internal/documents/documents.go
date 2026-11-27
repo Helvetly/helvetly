@@ -103,17 +103,21 @@ func (s *Service) Register(mux *http.ServeMux) {
 	s.registerShares(handle)
 	s.registerShareLinks(mux, handle)
 	s.registerOrganize(handle)
+	s.registerStaged(handle)
 }
 
-// Run files what came before the system folders and tags the files from before automatic tags once, then purges the Trash of what is older than 30 days, hourly,
-// until ctx ends.
+// Run files what came before the system folders, tags the files from before automatic tags and takes earlier imports'
+// sources out of Documents once, then purges the Trash of what is older than 30 days and deletes unconfirmed staged
+// uploads, hourly, until ctx ends.
 func (s *Service) Run(ctx context.Context) {
 	s.untilDone(ctx, "file records into system folders", s.BackfillSystemFolders)
 	s.untilDone(ctx, "tag files automatically", s.BackfillAutoTags)
+	s.untilDone(ctx, "take import sources out of Documents", s.StageLegacySources)
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
 	for {
 		s.PurgeExpired(ctx)
+		s.ExpireStaged(ctx)
 		select {
 		case <-ctx.Done():
 			return

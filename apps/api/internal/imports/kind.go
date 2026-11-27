@@ -89,7 +89,7 @@ func (k Kind) write(ctx context.Context, q store.Q, sess store.Session, data Dat
 // Source is the file a record was read from.
 type Source struct {
 	// DocumentID is the Document holding the file (an existing one when its bytes were reused); nil for a ZIP entry,
-	// whose bytes are not a Document of their own.
+	// whose bytes are not a Document of their own, and for a staged upload (Staged).
 	DocumentID *string
 	Name       string
 	// ContentType is the file's type, sniffed from its bytes (the entry's, for a ZIP entry).
@@ -100,6 +100,8 @@ type Source struct {
 	// Document returns DocumentID, or for a ZIP entry stores the entry as a Document of its own (reusing equal bytes
 	// already in the workspace) and returns its id.
 	Document func(ctx context.Context) (string, error)
+	// Staged: the file is the person's own upload, kept outside Documents while the import runs; Document makes it one.
+	Staged bool
 }
 
 func (k Kind) labelField() string {
