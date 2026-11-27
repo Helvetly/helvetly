@@ -185,6 +185,12 @@ export async function getPortalScope(): Promise<PortalScope | null> {
   }
 }
 
+export const portalScopeQuery = {
+  queryKey: portalKeys.scope,
+  queryFn: getPortalScope,
+  retry: false,
+}
+
 export const startPortalSignIn = (email: string) =>
   call<EmailCodeSent>('/auth/start', { method: 'POST', json: { email } })
 

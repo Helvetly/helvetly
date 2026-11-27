@@ -172,6 +172,7 @@ export function ContractSignatureEditor({
         <Suspense>
           <AdoptDialog
             name={name}
+            purpose="save"
             onClose={() => setDrawing(false)}
             onAdopt={({ image }) => {
               setDrawing(false)
