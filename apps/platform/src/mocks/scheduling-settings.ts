@@ -53,12 +53,22 @@ export const googleConnection: Connection = {
   calendars: [
     { id: 'primary', name: 'anna@muster.ch', primary: true },
     { id: 'team', name: 'Team', primary: false },
+    {
+      id: 'holidays',
+      name: 'Feiertage in der Schweiz und Ferien der Kantone Zürich, Bern und Luzern',
+      primary: false,
+    },
+    { id: 'shared', name: 'Shared with me', primary: false, color: null },
   ],
-  last_synced_at: '2026-11-23T08:00:00Z',
+  // Read when answered, so "Synced 2 minutes ago" reads the same in every run.
+  get last_synced_at() {
+    return new Date(Date.now() - 2 * 60_000).toISOString()
+  },
   error: null,
 }
 
 export const sampleHours: HostHours = {
+  saved: true,
   time_zone: 'Europe/Zurich',
   bookable: true,
   color: null,
@@ -179,7 +189,7 @@ export const schedulingSettingsHandlers = [
   http.get('/api/v1/scheduling/hosts/:id', () => HttpResponse.json({ data: hours })),
   http.put<never, HostHours>('/api/v1/scheduling/hosts/:id', async ({ request }) => {
     note(request)
-    hours = await request.json()
+    hours = { ...(await request.json()), saved: true }
     return HttpResponse.json({ data: hours })
   }),
   http.get('/api/v1/scheduling/calendars', () => HttpResponse.json(connections)),

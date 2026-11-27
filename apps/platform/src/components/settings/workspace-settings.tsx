@@ -122,6 +122,38 @@ export function timeZoneOptions(current: string, now = new Date()): Option[] {
   ]
 }
 
+/** The one time zone picker: the city with its clock and offset, the usual zones first. */
+export function TimeZoneSelect({
+  id,
+  value,
+  onChange,
+  invalid,
+}: {
+  id: string
+  value: string
+  onChange: (zone: string) => void
+  invalid?: boolean
+}) {
+  const zones = useMemo(() => timeZoneOptions(value), [value])
+  return (
+    <Combobox
+      id={id}
+      value={value}
+      options={zones}
+      renderValue={(option) => (
+        <span className="flex items-baseline gap-2">
+          {option.label}
+          <span className="text-muted-foreground tabular-nums">{option.hint}</span>
+        </span>
+      )}
+      contentClassName="w-96"
+      invalid={invalid}
+      placeholder={translate('chooseATimeZone')}
+      onChange={onChange}
+    />
+  )
+}
+
 export function GeneralCard({
   name,
   timezone,
@@ -134,7 +166,6 @@ export function GeneralCard({
   const update = useUpdateWorkspace()
   const owner = membershipRole === 'owner'
   const canZone = owner || membershipRole === 'admin'
-  const zones = useMemo(() => timeZoneOptions(timezone), [timezone])
   const form = useSectionForm({
     initial: { name, timezone },
     sections: [{ id: 'general', fields: ['name', 'timezone'] }],
@@ -199,19 +230,10 @@ export function GeneralCard({
             status={canZone ? undefined : translate('onlyAnOwnerOrAdminCanChangeTheTime')}
           >
             {canZone ? (
-              <Combobox
+              <TimeZoneSelect
                 id="workspace-timezone"
                 value={form.values.timezone}
-                options={zones}
-                renderValue={(option) => (
-                  <span className="flex items-baseline gap-2">
-                    {option.label}
-                    <span className="text-muted-foreground tabular-nums">{option.hint}</span>
-                  </span>
-                )}
-                contentClassName="w-96"
                 invalid={Boolean(form.errors.timezone)}
-                placeholder={translate('chooseATimeZone')}
                 onChange={(next) => form.set('timezone', next)}
               />
             ) : (

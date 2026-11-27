@@ -43,12 +43,15 @@ function Part({
 function Form({
   save,
   fieldErrors,
+  draft,
 }: {
   save: (values: Values) => Promise<unknown>
   fieldErrors?: (error: unknown) => FieldErrors | null
+  draft?: Values
 }) {
   const form = useSectionForm({
     initial,
+    draft,
     sections: [
       { id: 'company', fields: ['name', 'city'] },
       { id: 'defaults', fields: ['days'] },
@@ -109,6 +112,15 @@ test('a section is dirty only for its own fields, and discard puts them back', a
   await user.click(button('Company', 'Discard'))
   expect(screen.getByLabelText('city')).toHaveValue('Zürich')
   expect(screen.getByText('dirty: none')).toBeVisible()
+})
+
+test('a draft starts unsaved: its section is dirty and Discard goes back to what was saved', async () => {
+  const user = userEvent.setup()
+  render(<Form save={vi.fn<() => Promise<unknown>>()} draft={{ ...initial, days: '45' }} />)
+  expect(screen.getByLabelText('days')).toHaveValue('45')
+  expect(screen.getByText('dirty: defaults')).toBeVisible()
+  await user.click(button('Defaults', 'Discard'))
+  expect(screen.getByLabelText('days')).toHaveValue('30')
 })
 
 test('saving a section sends the saved values with only its own edits, then says Saved', async () => {

@@ -115,6 +115,11 @@ func TestConnectAndPush(t *testing.T) {
 				len(conn["busy_calendar_ids"].([]any)) != 1 || conn["busy_calendar_ids"].([]any)[0] != primary {
 				t.Fatalf("%d %v", status, out)
 			}
+			// Google gives each calendar its colour (normalised to lower case); the fake Microsoft gives none.
+			first := conn["calendars"].([]any)[0].(map[string]any)
+			if want := map[string]any{"google": "#9fe1e7", "microsoft": nil}[provider]; first["color"] != want {
+				t.Fatalf("colour %v, want %v", first["color"], want)
+			}
 			if strings.Contains(stringOf(out), "at-") || strings.Contains(stringOf(out), "rt-") {
 				t.Fatal("tokens answered")
 			}
@@ -980,5 +985,13 @@ func TestFakeControl(t *testing.T) {
 	var listed struct{ Events []FakeEvent }
 	if err := json.NewDecoder(res.Body).Decode(&listed); err != nil || res.StatusCode != 200 || len(listed.Events) != 1 || listed.Events[0].ID != id {
 		t.Fatalf("events: %d %+v %v", res.StatusCode, listed, err)
+	}
+}
+
+func TestHexColor(t *testing.T) {
+	for raw, want := range map[string]string{"#A47AE2": "#a47ae2", " #9fe1e7 ": "#9fe1e7", "": "", "red": "", "#fff": "", "#12345g": "", "#a47ae2; x": ""} {
+		if got := hexColor(raw); got != want {
+			t.Errorf("hexColor(%q) = %q, want %q", raw, got, want)
+		}
 	}
 }

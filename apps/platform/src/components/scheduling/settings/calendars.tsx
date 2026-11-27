@@ -1,5 +1,6 @@
 'use client'
-import { languageTag } from '@helvetly/i18n'
+import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
+import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
@@ -12,9 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@helvetly/ui/components/dialog'
-import { FormField } from '@helvetly/ui/components/form-field'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
+import { FormField, HelpTip } from '@helvetly/ui/components/form-field'
 import { Loader } from '@helvetly/ui/components/loader'
-import { CalendarSync, Lock, RefreshCw, Unplug } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
+import { TruncatedText } from '@helvetly/ui/components/truncated-text'
+import { CalendarSync, Lock, MoreHorizontal, RefreshCw, Unplug } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
@@ -29,6 +33,7 @@ import {
   useDisconnectCalendar,
   usePatchCalendar,
   useSyncCalendar,
+  syncedAgo,
   type Connection,
   type Provider,
 } from '@/lib/scheduling-settings'
@@ -142,7 +147,7 @@ function Providers({
         <ConnectionCard key={connection.id} connection={connection} />
       ))}
       {open.length > 0 && (
-        <ul className="grid divide-y">
+        <ul className="grid divide-y rounded-xl border px-4">
           {open.map((provider) => (
             <SettingsRow
               key={provider}
@@ -151,11 +156,11 @@ function Providers({
               meta={translate('schedulingSettingsNotConnected')}
             >
               {locked ? (
-                <Button size="sm" variant="outline" disabled>
+                <Button variant="outline" disabled>
                   {translate('schedulingSettingsConnect')}
                 </Button>
               ) : (
-                <Button asChild size="sm" variant="outline">
+                <Button asChild variant="outline">
                   {/* A full page load: the provider's consent screen follows. */}
                   <a href={connectHref(provider)}>{translate('schedulingSettingsConnect')}</a>
                 </Button>
@@ -168,102 +173,168 @@ function Providers({
   )
 }
 
-const lastSynced = (at: string | null) =>
-  at
-    ? translate('schedulingSettingsLastSynced', {
-        time: new Intl.DateTimeFormat(languageTag, {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        }).format(new Date(at)),
-      })
-    : translate('schedulingSettingsNeverSynced')
+/** The calendar's own colour as a dot, or a neutral one when the provider gave none. */
+function CalendarDot({ color }: { color?: string | null }) {
+  return (
+    <span
+      aria-hidden
+      data-slot="calendar-dot"
+      className="size-2.5 shrink-0 rounded-full bg-muted-foreground/40"
+      style={color ? { backgroundColor: color } : undefined}
+    />
+  )
+}
+
+function ConnectionStatus({ connection }: { connection: Connection }) {
+  if (connection.status === 'active')
+    return (
+      <span className="flex items-center gap-1.5 text-body-sm text-muted-foreground">
+        <span
+          aria-hidden
+          className={
+            connection.last_synced_at
+              ? 'size-2 rounded-full bg-success-solid'
+              : 'size-2 rounded-full bg-muted-foreground/40'
+          }
+        />
+        {connection.last_synced_at
+          ? translate('schedulingSettingsSynced', { time: syncedAgo(connection.last_synced_at) })
+          : translate('schedulingSettingsNeverSynced')}
+      </span>
+    )
+  return (
+    <span role="alert" className="flex items-center gap-1.5 text-body-sm text-destructive">
+      <span aria-hidden className="size-2 shrink-0 rounded-full bg-destructive" />
+      {connection.status === 'revoked'
+        ? translate('schedulingSettingsRevoked')
+        : translate('schedulingSettingsProblem', {
+            error: connection.error ?? translate('schedulingSettingsConnectFailed'),
+          })}
+    </span>
+  )
+}
 
 function ConnectionCard({ connection }: { connection: Connection }) {
   const patch = usePatchCalendar()
   const sync = useSyncCalendar()
   const [disconnecting, setDisconnecting] = useState(false)
   const name = PROVIDER_NAME[connection.provider]()
-  const broken = connection.status !== 'active'
+  const active = connection.status === 'active'
   const change = (input: { push_calendar_id?: string | null; busy_calendar_ids?: string[] }) =>
     patch.mutate({ id: connection.id, ...input }, { onError: toastError })
   return (
-    <div className="grid gap-4 rounded-xl border p-4" data-slot="calendar-connection">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="grid gap-0.5">
-          <p className="text-body font-medium">{name}</p>
-          <p className="text-body-sm text-muted-foreground">{connection.account_email}</p>
-          <p
-            role={broken ? 'alert' : undefined}
-            className={
-              broken ? 'text-body-sm text-destructive' : 'text-body-sm text-muted-foreground'
-            }
-          >
-            {connection.status === 'revoked'
-              ? translate('schedulingSettingsRevoked')
-              : connection.status === 'error'
-                ? translate('schedulingSettingsProblem', {
-                    error: connection.error ?? translate('schedulingSettingsConnectFailed'),
-                  })
-                : lastSynced(connection.last_synced_at)}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <section
+      aria-label={name}
+      className="overflow-hidden rounded-xl border"
+      data-slot="calendar-connection"
+    >
+      <header className="flex items-center gap-3 p-4">
+        <span
+          data-slot="row-icon"
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg border [&_svg]:size-5"
+        >
+          {PROVIDER_MARK[connection.provider]()}
+        </span>
+        <span className="grid min-w-0 flex-1 gap-0.5">
+          <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+            <span className="text-sm font-medium">{name}</span>
+            <TruncatedText className="text-body-sm text-muted-foreground">
+              {connection.account_email}
+            </TruncatedText>
+          </span>
+          <ConnectionStatus connection={connection} />
+        </span>
+        <span className="flex shrink-0 items-center gap-1">
           {connection.status === 'revoked' ? (
-            <Button asChild size="sm">
+            <Button asChild variant="outline">
               <a href={connectHref(connection.provider)}>
                 {translate('schedulingSettingsReconnect')}
               </a>
             </Button>
           ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={sync.isPending}
-              onClick={() =>
-                sync.mutate(connection.id, {
-                  onSuccess: () => toast.success(translate('schedulingSettingsSyncStarted')),
-                  onError: toastError,
-                })
-              }
-            >
-              <RefreshCw />
-              {translate('schedulingSettingsSyncNow')}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground"
+                  aria-label={translate('schedulingSettingsSyncNow')}
+                  disabled={sync.isPending}
+                  onClick={() =>
+                    sync.mutate(connection.id, {
+                      onSuccess: () => toast.success(translate('schedulingSettingsSyncStarted')),
+                      onError: toastError,
+                    })
+                  }
+                >
+                  <RefreshCw className={sync.isPending ? 'animate-spin' : undefined} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{translate('schedulingSettingsSyncNow')}</TooltipContent>
+            </Tooltip>
           )}
-          <Button size="sm" variant="outline" onClick={() => setDisconnecting(true)}>
-            <Unplug />
-            {translate('schedulingSettingsDisconnect')}
-          </Button>
-        </div>
-      </div>
-      {!broken && (
-        <>
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground"
+                    aria-label={translate('schedulingSettingsMoreFor', { name })}
+                  >
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>{translate('moreActions')}</TooltipContent>
+            </Tooltip>
+            <ActionMenuContent
+              kind="dropdown"
+              menu={{
+                header: connection.account_email,
+                actions: [
+                  {
+                    id: 'disconnect',
+                    group: 'danger',
+                    icon: <Unplug />,
+                    label: translate('schedulingSettingsDisconnect'),
+                    onSelect: () => setDisconnecting(true),
+                  },
+                ],
+              }}
+            />
+          </DropdownMenu>
+        </span>
+      </header>
+      {active && (
+        <div className="grid gap-5 border-t bg-muted/30 p-4">
           <FormField
             id={`push-${connection.id}`}
             label={translate('schedulingSettingsPushCalendar')}
-            width="md"
             tip={translate('schedulingSettingsPushCalendarTip')}
           >
             <Combobox
               id={`push-${connection.id}`}
               value={connection.push_calendar_id ?? ''}
               placeholder={translate('schedulingSettingsChooseCalendar')}
-              disabled={patch.isPending}
+              disabled={patch.isPending || connection.calendars.length === 0}
               options={connection.calendars.map((calendar) => ({
                 value: calendar.id,
                 label: calendar.name,
+                adornment: <CalendarDot color={calendar.color} />,
               }))}
               onChange={(id) => change({ push_calendar_id: id })}
             />
           </FormField>
-          <fieldset className="grid gap-1.5">
+          <fieldset className="grid w-full min-w-0 gap-1.5">
             <legend className="mb-1 flex items-center gap-1.5 text-body-sm font-medium">
               {translate('schedulingSettingsBusyCalendars')}
+              <HelpTip label={translate('schedulingSettingsBusyCalendars')}>
+                {translate('schedulingSettingsBusyCalendarsHint')}
+              </HelpTip>
             </legend>
-            <p className="text-body-sm text-muted-foreground">
-              {translate('schedulingSettingsBusyCalendarsHint')}
-            </p>
-            <ul className="grid gap-0.5">
+            <ul className="grid w-full divide-y rounded-lg border bg-card">
               {connection.calendars.map((calendar) => {
                 const on = connection.busy_calendar_ids.includes(calendar.id)
                 const id = `busy-${connection.id}-${calendar.id}`
@@ -271,7 +342,7 @@ function ConnectionCard({ connection }: { connection: Connection }) {
                   <li key={calendar.id}>
                     <label
                       htmlFor={id}
-                      className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/60"
+                      className="flex min-h-10 cursor-pointer items-center gap-3 px-3 py-2 transition-colors hover:bg-muted/50"
                     >
                       <Checkbox
                         id={id}
@@ -285,14 +356,20 @@ function ConnectionCard({ connection }: { connection: Connection }) {
                           })
                         }
                       />
-                      <span className="truncate text-sm">{calendar.name}</span>
+                      <CalendarDot color={calendar.color} />
+                      <TruncatedText className="flex-1 text-sm">{calendar.name}</TruncatedText>
+                      {calendar.primary && (
+                        <Badge variant="outline" size="sm" tone="neutral">
+                          {translate('schedulingSettingsPrimaryCalendar')}
+                        </Badge>
+                      )}
                     </label>
                   </li>
                 )
               })}
             </ul>
           </fieldset>
-        </>
+        </div>
       )}
       {disconnecting && (
         <DisconnectDialog
@@ -301,7 +378,7 @@ function ConnectionCard({ connection }: { connection: Connection }) {
           onClose={() => setDisconnecting(false)}
         />
       )}
-    </div>
+    </section>
   )
 }
 

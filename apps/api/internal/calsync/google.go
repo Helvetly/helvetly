@@ -99,8 +99,8 @@ func (g *google) calendars(ctx context.Context, s session) ([]calendar, error) {
 	for {
 		var res struct {
 			Items []struct {
-				ID, Summary, SummaryOverride string
-				Primary                      bool
+				ID, Summary, SummaryOverride, BackgroundColor string
+				Primary                                       bool
 			} `json:"items"`
 			NextPageToken string `json:"nextPageToken"`
 		}
@@ -112,7 +112,7 @@ func (g *google) calendars(ctx context.Context, s session) ([]calendar, error) {
 			return nil, err
 		}
 		for _, c := range res.Items {
-			out = append(out, calendar{ID: c.ID, Name: cmpOr(c.SummaryOverride, c.Summary, c.ID), Primary: c.Primary})
+			out = append(out, calendar{ID: c.ID, Name: cmpOr(c.SummaryOverride, c.Summary, c.ID), Primary: c.Primary, Color: hexColor(c.BackgroundColor)})
 		}
 		if page = res.NextPageToken; page == "" {
 			return out, nil
