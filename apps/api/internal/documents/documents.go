@@ -107,12 +107,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 // Run files what came before the system folders and tags the files from before automatic tags once, then purges the Trash of what is older than 30 days, hourly,
 // until ctx ends.
 func (s *Service) Run(ctx context.Context) {
-	if err := s.BackfillSystemFolders(ctx); err != nil {
-		s.log.ErrorContext(ctx, "file records into system folders", "error", err)
-	}
-	if err := s.BackfillAutoTags(ctx); err != nil {
-		s.log.ErrorContext(ctx, "tag files automatically", "error", err)
-	}
+	s.untilDone(ctx, "file records into system folders", s.BackfillSystemFolders)
+	s.untilDone(ctx, "tag files automatically", s.BackfillAutoTags)
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
 	for {
@@ -121,6 +117,27 @@ func (s *Service) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-tick.C:
+		}
+	}
+}
+
+// backfillRetry: how long a failed start-up backfill waits before it tries again.
+var backfillRetry = time.Minute
+
+// untilDone runs an idempotent start-up step again until it succeeds or ctx ends. A deploy starts the new process
+// while the old one still holds its connections, so the first try can find the database full; giving up there left
+// the step undone until the next deploy.
+func (s *Service) untilDone(ctx context.Context, what string, step func(context.Context) error) {
+	for {
+		err := step(ctx)
+		if err == nil {
+			return
+		}
+		s.log.ErrorContext(ctx, what, "error", err, "retry_in", backfillRetry)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backfillRetry):
 		}
 	}
 }
