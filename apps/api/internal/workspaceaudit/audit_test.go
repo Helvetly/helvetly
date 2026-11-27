@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -34,7 +35,7 @@ func TestAuditCrossChecksEvidenceAndMoney(t *testing.T) {
 	tax := source("tax", facts{Kind: "tax-document", TaxYear: "2024", Complete: true})
 	tax.FolderYear = "2025"
 	s := snapshot{clients: []store.AuditClient{{ID: "c", Name: "Alice", Number: 15}, {ID: "other", Name: "Bob", Number: 16}}, invoices: []store.AuditInvoice{invoice, second}, payments: []store.AuditPayment{{ID: "p", Invoice: "i", Amount: 6000, Date: "2026-01-01"}}, docs: []store.AuditDocument{source("inv", facts{Kind: "invoice", Currency: "CHF", Total: amt(12000), Complete: true}), contract, bank, tax}}
-	out, err := evaluate(s, access{clients: true, invoices: true, documents: true})
+	out, err := evaluate(s, access{clients: true, invoices: true, documents: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +55,7 @@ func TestAuditCrossChecksEvidenceAndMoney(t *testing.T) {
 	s.docs[2].Name = "2026-IN-01.pdf"
 	s.docs[1].Owners = []string{"other", "c"}
 	s.invoices[0].Contract = contract.ID
-	out, _ = evaluate(s, access{clients: true, invoices: true, documents: true})
+	out, _ = evaluate(s, access{clients: true, invoices: true, documents: true}, nil)
 	for _, f := range out.Findings {
 		if slices.Contains([]string{"payment_link", "contract_link", "contract_owner", "filename_reference"}, f.Code) {
 			t.Error("false positive", f)
@@ -71,7 +72,7 @@ func TestInvoiceCopiesAndIncorrectOriginals(t *testing.T) {
 	linked := source("linked", facts{Kind: "invoice", Reference: "INV12", Complete: true})
 	linked.Invoices = []string{"i"}
 	s := snapshot{invoices: []store.AuditInvoice{invoice, draft}, docs: []store.AuditDocument{other, copy, receipt, linked}}
-	r, err := evaluate(s, access{documents: true, invoices: true})
+	r, err := evaluate(s, access{documents: true, invoices: true}, nil)
 	if err != nil || len(r.Findings) != 2 {
 		t.Fatalf("%+v %v", r.Findings, err)
 	}
@@ -86,12 +87,68 @@ func TestInvoiceCopiesAndIncorrectOriginals(t *testing.T) {
 
 func TestPartialReadAndLimitedScope(t *testing.T) {
 	d := source("statement", facts{Kind: "bank-statement", Complete: false, Credits: []entry{{Reference: "private"}}})
-	out, err := evaluate(snapshot{docs: []store.AuditDocument{d, {ID: "pending"}, {ID: "unavailable", Status: "unsupported"}, {ID: "broken", Status: "integrity"}}}, access{documents: true})
+	out, err := evaluate(snapshot{docs: []store.AuditDocument{d, {ID: "pending"}, {ID: "unavailable", Status: "unsupported"}, {ID: "broken", Status: "integrity"}}}, access{documents: true}, nil)
 	if err != nil || out.Partial != 3 || len(out.Pending) != 1 || len(out.Findings) != 3 {
 		t.Fatal(out, err)
 	}
 	if _, ok := out.Counts["invoices"]; ok {
 		t.Fatal("leaked hidden scope")
+	}
+}
+
+func TestAuditSelectedAreas(t *testing.T) {
+	s := snapshot{docs: []store.AuditDocument{
+		{ID: "statement", Kind: "bank_statements"},
+		{ID: "invoice-original", Kind: "credit_notes", ContractEvidence: true},
+		{ID: "unclassified", Kind: "other"},
+		{ID: "possible-proof", Kind: "other", Client: "client"},
+		{ID: "tax-original", Kind: "tax_documents"},
+		{ID: "broken", Status: "integrity"},
+		source("read-tax", facts{Kind: "tax-document", Complete: true, Issues: []observation{{Evidence: "Tax issue"}}}),
+	}}
+	a := access{clients: true, documents: true, invoices: true}
+	for _, tt := range []struct {
+		query      string
+		pending    []string
+		counts     map[string]int
+		categories []string
+	}{
+		{"", []string{"statement", "invoice-original", "unclassified", "possible-proof", "tax-original"}, map[string]int{"clients": 0, "documents": 7, "invoices": 0, "payments": 0}, []string{"documents", "tax"}},
+		{"payments, tax", []string{"statement", "tax-original"}, map[string]int{"payments": 0}, []string{"tax"}},
+		{"contracts", []string{"invoice-original"}, nil, nil},
+		{"clients", []string{"possible-proof"}, map[string]int{"clients": 0}, nil},
+		{"documents", []string{"statement", "invoice-original", "unclassified", "possible-proof", "tax-original"}, map[string]int{"documents": 7}, []string{"documents"}},
+	} {
+		t.Run(tt.query, func(t *testing.T) {
+			selected, err := parseAreas(tt.query)
+			if err != nil {
+				t.Fatal(err)
+			}
+			out, err := evaluate(s, a, selected)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var categories []string
+			for _, f := range out.Findings {
+				categories = append(categories, f.Category)
+			}
+			if !slices.Equal(out.Pending, tt.pending) || !maps.Equal(out.Counts, tt.counts) || !slices.Equal(categories, tt.categories) {
+				t.Fatal(out)
+			}
+		})
+	}
+}
+
+func TestAuditRoutesRejectUnknownArea(t *testing.T) {
+	a := &sessionAuth{Service: &auth.Service{}}
+	mux := http.NewServeMux()
+	New(nil, a, nil, nil, aimodel.Budget{}).Register(mux)
+	for _, path := range []string{"", "/documents/own"} {
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, httptest.NewRequest("POST", "/api/v1/reports/workspace-audit"+path+"?areas=quotes,unknown", nil))
+		if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), `"invalid_areas"`) {
+			t.Fatalf("%s got %d: %s", path, w.Code, w.Body.String())
+		}
 	}
 }
 
@@ -135,7 +192,7 @@ func TestAuditRoutesScopeConsentCacheAndOriginals(t *testing.T) {
 	check(db.AddMember(ctx, ws.ID, user.ID, "owner", now))
 	file := &sourceFiles{content: "A source document for the audit."}
 	_, err := raw.Exec(ctx, `INSERT INTO documents(id,workspace_id,name,size,content_type,object_key,hr_private,created_at,updated_at)
- SELECT id,ws,id||'.txt',$1,'text/plain',id,hr,now(),now() FROM (VALUES ('own','ws',false),('hr','ws',true),('foreign','outside',false)) s(id,ws,hr)`, len(file.content))
+		SELECT id,ws,id||'.txt',$1,'text/plain',id,hr,now(),now() FROM (VALUES ('own','ws',false),('quote','ws',false),('hr','ws',true),('foreign','outside',false)) s(id,ws,hr)`, len(file.content))
 	check(err)
 	a := &sessionAuth{current: store.Session{User: user, Workspace: ws, Role: "owner"}}
 	budget := aimodel.Budget{DB: db, Pool: aimodel.PoolAutomation, Allowance: func(context.Context, store.Q, string) (int64, error) { return 500000, nil }, Now: time.Now}
@@ -157,9 +214,34 @@ func TestAuditRoutesScopeConsentCacheAndOriginals(t *testing.T) {
 	}
 	check(db.SetAIConsent(ctx, ws.ID, user.ID, true, now))
 	var r report
-	check(json.Unmarshal(call("", 200), &r))
-	if !slices.Equal(r.Pending, []string{"own"}) || r.Counts["documents"] != 1 {
+	full := call("", 200)
+	if string(call("?areas=", 200)) != string(full) {
+		t.Fatal("empty areas changed the full audit")
+	}
+	check(json.Unmarshal(full, &r))
+	if !slices.Equal(r.Pending, []string{"own", "quote"}) || r.Counts["documents"] != 2 {
 		t.Fatal(r)
+	}
+	var scoped report
+	check(json.Unmarshal(call("?areas=quotes", 200), &scoped))
+	if !slices.Equal(scoped.Pending, []string{"quote"}) || !maps.Equal(scoped.Counts, map[string]int{"quotes": 0}) {
+		t.Fatal(scoped)
+	}
+	if !strings.Contains(string(call("/documents/own?areas=quotes", 200)), `"skipped"`) {
+		t.Fatal("an out-of-scope original must be skipped")
+	}
+	readings, err := json.Marshal(facts{Kind: "tax-document", Complete: true, Issues: []observation{{Evidence: "Tax issue"}}})
+	check(err)
+	quote, err := db.AuditSource(ctx, ws.ID, "en", "quote")
+	check(err)
+	check(db.SaveAuditEvidence(ctx, ws.ID, "en", "quote", quote.Fingerprint, "read", readings))
+	check(json.Unmarshal(call("?areas=quotes,tax", 200), &scoped))
+	if len(scoped.Pending) != 0 || len(scoped.Findings) != 1 || scoped.Findings[0].Category != "tax" {
+		t.Fatal(scoped)
+	}
+	check(json.Unmarshal(call("?areas=quotes", 200), &scoped))
+	if len(scoped.Findings) != 0 {
+		t.Fatal(scoped)
 	}
 	for _, id := range []string{"hr", "foreign"} {
 		call("/documents/"+id, 200)
@@ -177,18 +259,19 @@ func TestAuditRoutesScopeConsentCacheAndOriginals(t *testing.T) {
 		t.Fatal("released a different reader's lease")
 	}
 	check(db.ReleaseAuditDocument(ctx, ws.ID, "en", "own", "first"))
-	call("/documents/own", 200)
+	call("/documents/own?areas=documents", 200)
 	call("/documents/own", 200)
 	if file.opened != 1 {
 		t.Fatal("cache miss", file.opened)
 	}
 	check(json.Unmarshal(call("", 200), &r))
-	if r.Read != 1 || len(r.Pending) != 0 {
+	if r.Read != 2 || len(r.Pending) != 0 {
 		t.Fatal(r)
 	}
 	a.current.Role = "member"
 	a.current.Scopes = []string{"read:clients"}
 	call("/documents/own", 403)
+	call("/documents/own?areas=documents", 403)
 	payload := call("", 200)
 	if strings.Contains(string(payload), "documents") {
 		t.Fatal(string(payload))
