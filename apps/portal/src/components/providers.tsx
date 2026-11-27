@@ -27,7 +27,7 @@ function PortalFavicon() {
     initialsOf(scope.data.name),
     (char) => `&#${char.codePointAt(0)};`,
   ).join('')
-  const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#e2e8f0"/><text x="16" y="21" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#0f172a">${initials}</text></svg>`
+  const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="ButtonFace"/><text x="16" y="21" text-anchor="middle" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="ButtonText">${initials}</text></svg>`
   return (
     <>
       <link rel="icon" href={`data:image/svg+xml,${encodeURIComponent(icon)}`} />
