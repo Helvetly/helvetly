@@ -93,10 +93,23 @@ var reminderTexts = map[string]reminderLabels{
 	},
 }
 
-// ReminderWords: the wording of a reminder in language (English when unknown). A note before the due date has its
-// own; otherwise rank (1-based) of ranks, the reminders after the due date: the first is the payment reminder, the
-// last of two or more the final reminder, one between them is numbered.
+var englishOrdinalReminders = [dunningcalc.MaxSteps]string{
+	"First reminder", "Second reminder", "Third reminder", "Fourth reminder", "Fifth reminder",
+	"Sixth reminder", "Seventh reminder", "Eighth reminder", "Ninth reminder", "Tenth reminder",
+}
+
+// ReminderWords returns the wording for a note before due or a ranked reminder after due.
+// The first reminder asks for payment and the last of two or more gives the final warning.
 func ReminderWords(language string, rank, ranks int, beforeDue bool) Words {
+	return reminderWords(language, rank, ranks, beforeDue, false)
+}
+
+// LegacyReminderWords recovers the wording of a notice sent before its title was stored.
+func LegacyReminderWords(language string, rank, ranks int) Words {
+	return reminderWords(language, rank, ranks, false, true)
+}
+
+func reminderWords(language string, rank, ranks int, beforeDue, legacy bool) Words {
 	t, ok := reminderTexts[language]
 	if !ok {
 		t = reminderTexts["en"]
@@ -111,6 +124,8 @@ func ReminderWords(language string, rank, ranks int, beforeDue bool) Words {
 		w.Title, w.Sentence = t.titles[0], t.sentences[0]
 	case rank >= ranks:
 		w.Title, w.Sentence = t.titles[2], t.sentences[2]
+	case !legacy && (language == "en" || !ok) && rank <= len(englishOrdinalReminders):
+		w.Title, w.Sentence = englishOrdinalReminders[rank-1], t.sentences[1]
 	default:
 		w.Title, w.Sentence = fmt.Sprintf(t.titles[1], rank), t.sentences[1]
 	}
