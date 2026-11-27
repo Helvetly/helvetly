@@ -144,7 +144,7 @@ func (s *Service) load(ctx context.Context, q store.Q, ws store.Workspace, id st
 // level of the three levels; the step's current text replaces the sentence either way.
 func (st state) words(n store.DunningNotice) (invoicepdf.Words, string) {
 	if n.StoredTitle == nil {
-		w := invoicepdf.ReminderWords(st.inv.Language, n.Level, n.Levels, false)
+		w := invoicepdf.LegacyReminderWords(st.inv.Language, n.Level, n.Levels)
 		return w, w.Title
 	}
 	w, _ := st.set.Words(st.inv.Language, n.Level, beforeDue(st.inv, n.SentOn))

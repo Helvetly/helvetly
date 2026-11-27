@@ -60,8 +60,8 @@ export const sampleSettings = (change: Partial<InvoiceSettings> = {}): InvoiceSe
     enabled: false,
     steps: [
       { name: null, timing: 'after_due', days: 10, fee: '0.00', qr_bill: true },
-      { name: null, timing: 'after_previous', days: 14, fee: '0.00', qr_bill: true },
-      { name: null, timing: 'after_previous', days: 14, fee: '0.00', qr_bill: true },
+      { name: null, timing: 'after_previous', days: 10, fee: '0.00', qr_bill: true },
+      { name: null, timing: 'after_previous', days: 10, fee: '0.00', qr_bill: true },
     ],
     interest_enabled: false,
     interest_rate: '5',
