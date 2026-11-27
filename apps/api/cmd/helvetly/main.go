@@ -65,6 +65,9 @@ import (
 	"helvetly.com/api/internal/workspaces"
 )
 
+// version is the release, set at build time (-ldflags -X main.version=…).
+var version = "dev"
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" { // the container's probe: the image has no shell or curl
 		if err := healthcheck(os.Getenv("HTTP_ADDR"), os.Args[2:]); err != nil {
@@ -301,6 +304,24 @@ func run() error {
 		importModel = aimodel.Fake{}
 	}
 	authSvc.AIAvailable = importModel != nil
+	if cfg.TelegramBotToken != "" {
+		bot := admintelegram.NewBot(cfg.TelegramBotToken, cfg.TelegramAdminChatID, db, slog.Default())
+		bot.Model, bot.Version = importModel, version
+		bot.Limits = func(ctx context.Context, workspaceID string) (int64, int64, int64, error) {
+			r, err := billingSvc.Entitlements(ctx, db.Q, workspaceID)
+			if err != nil {
+				return 0, 0, 0, err
+			}
+			caps := [3]int64{}
+			for i, l := range []billing.Limit{billing.Storage, billing.AITokens, billing.AIAutomationTokens} {
+				if caps[i], err = r.Cap(l); err != nil {
+					caps[i] = -2 // unknown
+				}
+			}
+			return caps[0], caps[1], caps[2], nil
+		}
+		bg.Go(ctx, "admin Telegram bot", bot.Run) // long-polls the admin chat while this instance holds the lease
+	}
 	importsSvc := imports.New(db, authSvc, files, slog.Default(), imports.Options{
 		Provider: importModel, Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost, AllowStorage: billingSvc.AllowStorage,
 		File: documentsSvc.QueueFiling,
