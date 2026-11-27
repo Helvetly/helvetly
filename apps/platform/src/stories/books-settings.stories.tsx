@@ -25,7 +25,10 @@ const anna = { id: 'usr_story', name: 'Anna Muster' }
 // Relative to today, so the stories never age: last month and the one before are closed.
 const [lastMonth = '', twoMonthsAgo = '', threeMonthsAgo = ''] = endedMonths(today(), 3)
 let periods: Period[] = []
+// null: the books show the last twelve ended months; else every month since this one's January.
+let firstMonth: string | null = null
 const resetPeriods = () => {
+  firstMonth = null
   periods = [
     { month: lastMonth, closed_at: '2026-11-03T09:15:00Z', closed_by: anna },
     { month: twoMonthsAgo, closed_at: '2026-10-02T08:40:00Z', closed_by: null },
@@ -33,7 +36,9 @@ const resetPeriods = () => {
 }
 
 const periodHandlers = [
-  http.get('/api/v1/periods', () => HttpResponse.json({ data: periods })),
+  http.get('/api/v1/periods', () =>
+    HttpResponse.json({ data: periods, ...(firstMonth && { first_month: firstMonth }) }),
+  ),
   http.post<never, { month: string }>('/api/v1/periods', async ({ request }) => {
     const { month } = await request.json()
     const period = { month, closed_at: new Date().toISOString(), closed_by: anna }
@@ -246,9 +251,9 @@ export const PeriodsCloseUpTo: Story = {
   },
 }
 
-// Nothing closed yet: every month of the last year is open, the long list the picker groups.
-const allOpen = endedMonths(today(), 12)
-const yearsOf = (months: string[]) => [...new Set(months.map((month) => month.slice(0, 4)))]
+// Nothing closed since last January: the picker opens on last year (?year=), its twelve months all open.
+const lastYear = String(Number(today().slice(0, 4)) - 1)
+const lastYearMonths = endedMonths(`${Number(lastYear) + 1}-01-15`, 12)
 const visibleHeadings = (picker: HTMLElement) =>
   [...picker.querySelectorAll('[cmdk-group]:not([hidden]) [cmdk-group-heading]')].map(
     (heading) => heading.textContent,
@@ -262,15 +267,19 @@ const openPicker = async (canvasElement: HTMLElement) => {
 
 /** The split button's menu: every open month, grouped by year, newest first, with how many it closes. */
 export const PeriodsPicker: Story = {
-  parameters: page('owner'),
+  parameters: {
+    ...page('owner'),
+    nextjs: { navigation: { pathname: '/books', query: { year: lastYear } } },
+  },
   beforeEach: () => {
     periods = []
+    firstMonth = `${lastYear}-01`
   },
   render: Periods.render,
   play: async ({ canvasElement }) => {
     const picker = await openPicker(canvasElement)
     await expect(within(picker).getByPlaceholderText('Search months…')).toHaveFocus()
-    await expect(visibleHeadings(picker)).toEqual(yearsOf(allOpen))
+    await expect(visibleHeadings(picker)).toEqual([lastYear])
     const options = within(picker).getAllByRole('option')
     await expect(options).toHaveLength(12)
     await expect(options[0]).toHaveTextContent(/12 months$/)
@@ -301,13 +310,9 @@ export const PeriodsPickerSearch: Story = {
   play: async ({ canvasElement }) => {
     const picker = await openPicker(canvasElement)
     const search = within(picker).getByPlaceholderText('Search months…')
-    const oldest = allOpen.at(-1) ?? ''
-    const year = oldest.slice(0, 4)
-    await userEvent.type(search, year)
-    await expect(visibleHeadings(picker)).toEqual([year])
-    await expect(within(picker).getAllByRole('option')).toHaveLength(
-      allOpen.filter((month) => month.startsWith(year)).length,
-    )
+    const oldest = lastYearMonths.at(-1) ?? ''
+    await userEvent.type(search, 'mar')
+    await expect(within(picker).getAllByRole('option')).toHaveLength(1)
     await userEvent.clear(search)
     await userEvent.type(search, 'zzz')
     await expect(within(picker).getByText('No open month matches.')).toBeVisible()
@@ -320,7 +325,77 @@ export const PeriodsPickerSearch: Story = {
       await body(canvasElement).findByRole('dialog', { name: `Close ${monthLabel(oldest)}?` }),
     )
     await userEvent.click(dialog.getByRole('button', { name: 'Close month' }))
-    await expect(await within(canvasElement).findByText('11 months to close')).toBeVisible()
+    await expect(
+      await within(canvasElement).findByText(`11 months to close in ${lastYear}`),
+    ).toBeVisible()
+  },
+}
+
+/** One year with open months and nothing open before it: no word about other years. */
+export const PeriodsSingleYear: Story = {
+  parameters: page('owner'),
+  beforeEach: () => {
+    // Every month before this year is closed, so only this year's ended months are open.
+    periods = endedMonths(today(), 12)
+      .filter((month) => !month.startsWith(today().slice(0, 4)))
+      .map((month) => ({ month, closed_at: '2026-01-05T09:00:00Z', closed_by: anna }))
+  },
+  render: Periods.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findByRole('button', { name: /^Year / })
+    await expect(canvas.queryByText(/Other years still have/)).toBeNull()
+    await expect(canvas.getAllByRole('list', { name: /^\d{4}$/ })).toHaveLength(1)
+  },
+}
+
+/**
+ * Open months in more than one year: the page shows the latest, says how many are open elsewhere with a link to
+ * each year, and that closing this year closes the earlier ones first.
+ */
+export const PeriodsYears: Story = {
+  parameters: page('owner'),
+  beforeEach: () => {
+    periods = []
+    firstMonth = `${lastYear}-01`
+  },
+  render: Periods.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByText(/Other years still have 12 open months/)).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: `Show ${lastYear}: 12 open months` }))
+    await expect(await canvas.findByText(`12 months to close in ${lastYear}`)).toBeVisible()
+    await expect(canvas.getByRole('list', { name: lastYear })).toBeVisible()
+  },
+}
+
+export const PeriodsYearsPhone: Story = {
+  ...PeriodsYears,
+  render: PeriodsPhone.render,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByText(/Other years still have/)
+    await fitsPhone(canvasElement)
+  },
+}
+
+/** Every ended month of every year closed: the books are closed through last month. */
+export const PeriodsAllClosed: Story = {
+  parameters: page('owner'),
+  beforeEach: () => {
+    periods = endedMonths(today(), 12).map((month) => ({
+      month,
+      closed_at: '2026-01-05T09:00:00Z',
+      closed_by: anna,
+    }))
+  },
+  render: Periods.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      await canvas.findByText(`Books closed through ${monthLabel(lastMonth)}`),
+    ).toBeVisible()
+    await expect(canvas.queryByRole('button', { name: /^Close through/ })).toBeNull()
+    await expect(canvas.queryByText(/Other years still have/)).toBeNull()
   },
 }
 
