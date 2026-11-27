@@ -7,7 +7,6 @@ import {
   CreditCard,
   FileText,
   Mail,
-  PlugZap,
   ReceiptText,
   ScrollText,
   Store,
@@ -37,7 +36,6 @@ export const SETTINGS_PAGES: Page[] = [
   { label: translate('approvals'), href: '/settings/approvals', icon: BadgeCheck },
   { label: translate('employment'), href: '/settings/employment', icon: BriefcaseBusiness },
   { label: translate('schedulingSettingsTitle'), href: '/settings/scheduling', icon: CalendarDays },
-  { label: translate('apiMCP'), href: '/settings/api', icon: PlugZap },
   { label: translate('billing'), href: '/settings/billing', icon: CreditCard },
   { label: translate('auditLog'), href: '/settings/audit-log', icon: ScrollText },
 ]

@@ -43,7 +43,7 @@ import { Sessions } from './sessions'
 import { SignInMethods } from './sign-in-methods'
 import { TwoFactor } from './two-factor'
 
-/** The person's own settings, the same in every workspace: profile, sign-in, 2FA, sessions. API tokens: Settings → API & MCP;
+/** The person's own settings, the same in every workspace: profile, sign-in, 2FA, sessions. API tokens: the API & MCP page;
  * calendars and hours: Settings → Scheduling; the contract signature: Settings → Documents (both per workspace). */
 export function AccountSettings() {
   const user = useSession().data?.user
