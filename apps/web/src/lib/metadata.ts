@@ -1,8 +1,8 @@
-import { type Locale, localeDetails, locales, localizedAlternates } from '@helvetly/i18n'
-import { publicHref } from '@helvetly/i18n/public-href'
+import { type Locale, localeDetails, locales } from '@helvetly/i18n'
 import type { Metadata } from 'next'
 
 import { translatorFor } from '@/lib/i18n'
+import { publicAlternates } from '@/lib/public-paths'
 
 export const SITE_URL = 'https://www.helvetly.com'
 export const TITLE_TEMPLATE = '%s · Helvetly'
@@ -22,8 +22,9 @@ export function pageMetadata(
   description: string,
 ): Metadata {
   const fullTitle = typeof title === 'string' ? TITLE_TEMPLATE.replace('%s', title) : title.absolute
+  const alternates = publicAlternates(path, lang)
   return {
-    alternates: localizedAlternates(path, lang, publicHref),
+    alternates,
     title,
     description,
     openGraph: {
@@ -31,10 +32,10 @@ export function pageMetadata(
       siteName: 'Helvetly',
       title: fullTitle,
       description,
-      url: publicHref(path, lang),
+      url: alternates.canonical,
       locale: ogLocale(localeDetails(lang).languageTag),
       alternateLocale: Object.entries(locales)
-        .filter(([code]) => code !== lang)
+        .filter(([code]) => code !== lang && code in alternates.languages)
         .map(([, { languageTag }]) => ogLocale(languageTag)),
       images: [IMAGE],
     },

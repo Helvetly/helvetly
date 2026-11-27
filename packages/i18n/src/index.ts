@@ -130,17 +130,16 @@ export function localizedAlternates(
   path: string,
   language: Locale,
   hrefFor: (path: string, language: Locale) => string = localizedHref,
+  available = Object.keys(locales).filter(isLocale),
 ) {
   return {
     canonical: hrefFor(path, language),
     languages: {
       ...Object.fromEntries(
-        Object.keys(locales)
-          .filter(isLocale)
-          .flatMap((code) => [
-            [code, hrefFor(path, code)],
-            [localeDetails(code).languageTag, hrefFor(path, code)],
-          ]),
+        available.flatMap((code) => [
+          [code, hrefFor(path, code)],
+          [localeDetails(code).languageTag, hrefFor(path, code)],
+        ]),
       ),
       'x-default': hrefFor(path, defaultLocale),
     },

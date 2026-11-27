@@ -1,12 +1,12 @@
 'use client'
 
-import { defaultLocale, languageHref, type Locale } from '@helvetly/i18n'
+import { type Locale } from '@helvetly/i18n'
 import { publicHref } from '@helvetly/i18n/public-href'
 import { useEffect } from 'react'
 
 import { confirms, OFFER_URL, projectPlans, type PublicOfferValues } from '@/lib/offer'
 import { SELF_SERVICE_SEATS, TRIAL } from '@/lib/plans'
-import { PLATFORM_URL } from '@/lib/site'
+import { siteIn } from '@/lib/site'
 
 /** A WebMCP tool (https://github.com/webmachinelearning/webmcp): what an AI agent in the browser can call here. */
 export type WebMcpTool = {
@@ -49,8 +49,7 @@ const PATHS: Record<Exclude<PageName, 'sign_up'>, string> = {
 
 export function pageUrl(page: PageName, lang: Locale): string {
   if (page === 'sign_up') {
-    // Sign-in is passwordless and makes the account on first use (lib/site.ts).
-    return `${PLATFORM_URL}${lang === defaultLocale ? '/login' : languageHref('/login', lang)}`
+    return siteIn(lang).SIGN_IN_URL
   }
   return publicHref(PATHS[page], lang)
 }

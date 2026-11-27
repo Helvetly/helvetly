@@ -1,8 +1,10 @@
 import { defaultLocale, isLocale, locales, localizedHref } from '@helvetly/i18n'
 import { publicHref } from '@helvetly/i18n/public-href'
 import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from 'next/constants'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
+import * as content from '@/lib/content'
+import { pageMetadata, SITE_URL } from '@/lib/metadata'
 import { publicPaths } from '@/lib/public-paths'
 
 import slugs from '../../../../packages/i18n/src/route-slugs.json'
@@ -27,6 +29,34 @@ describe('sitemap language links', () => {
       })
       expect(Object.values(entry.alternates?.languages ?? {})).toContain(entry.url)
       expect(Object.keys(entry.alternates?.languages ?? {})).toHaveLength(15)
+    }
+  })
+
+  it('canonicalizes a missing article translation to English and omits it from the cluster', () => {
+    const path = '/guides/back-office-software-for-small-businesses'
+    const original = content.hasArticleTranslation
+    const translation = vi
+      .spyOn(content, 'hasArticleTranslation')
+      .mockImplementation((collection, slug, lang) =>
+        lang !== 'de' || `/${collection}/${slug}` !== path
+          ? original(collection, slug, lang)
+          : false,
+      )
+    try {
+      expect(
+        pageMetadata('de', path, 'English title', 'English description').alternates?.canonical,
+      ).toBe(path)
+      const cluster = sitemap().filter(
+        ({ alternates }) => alternates?.languages?.['x-default'] === SITE_URL + path,
+      )
+      expect(cluster).toHaveLength(6)
+      for (const entry of cluster) {
+        expect(entry.url).not.toBe(SITE_URL + publicHref(path, 'de'))
+        expect(entry.alternates?.languages).not.toHaveProperty('de')
+        expect(entry.alternates?.languages).not.toHaveProperty('de-CH')
+      }
+    } finally {
+      translation.mockRestore()
     }
   })
 

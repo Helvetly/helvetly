@@ -410,7 +410,7 @@ func run() error {
 	guarded = portalScopes.Handler(guarded) // /w/<slug>/… on the portal's host: resolved and unprefixed first
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           auth.ForwardedFor(cfg.TrustedProxies, openapi.CORS(cfg.DocsURL, guarded)), // the client address first; the docs playground's CORS before the guards
+		Handler:           server.Robots(cfg.APIURL, auth.ForwardedFor(cfg.TrustedProxies, openapi.CORS(cfg.DocsURL, guarded))), // the client address and CORS before the guards
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second, // no ReadTimeout: it would cut large uploads
 	}

@@ -11,9 +11,9 @@ import (
 
 func TestRoutes(t *testing.T) {
 	frontend := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("frontend")) })
-	h := New(frontend, func(mux *http.ServeMux) {
+	h := Robots("", New(frontend, func(mux *http.ServeMux) {
 		mux.Handle("GET /api/ready", Ready(func(context.Context) error { return nil }))
-	})
+	}))
 
 	tests := []struct {
 		method, path string
@@ -38,6 +38,33 @@ func TestRoutes(t *testing.T) {
 			}
 			if got := rec.Header().Get("X-Robots-Tag"); got != "noindex, nofollow" {
 				t.Fatalf("X-Robots-Tag = %q, want noindex, nofollow", got)
+			}
+		})
+	}
+}
+
+func TestRobots(t *testing.T) {
+	guarded := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/robots.txt" {
+			_, _ = w.Write([]byte("User-agent: *\nAllow: /\n"))
+			return
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	h := Robots("https://api.helvetly.com", guarded)
+	for _, tt := range []struct {
+		host, path, body string
+		status           int
+	}{
+		{"API.helvetly.com", "/robots.txt", "User-agent: *\nDisallow: /\n", http.StatusOK},
+		{"app.helvetly.com", "/robots.txt", "User-agent: *\nAllow: /\n", http.StatusOK},
+		{"api.helvetly.com", "/api/v1/ledger", "", http.StatusUnauthorized},
+	} {
+		t.Run(tt.host+tt.path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "https://"+tt.host+tt.path, nil))
+			if rec.Code != tt.status || rec.Body.String() != tt.body || rec.Header().Get("X-Robots-Tag") != "noindex, nofollow" {
+				t.Fatalf("response = %d %q %v, want status %d with %q and noindex", rec.Code, rec.Body.String(), rec.Header(), tt.status, tt.body)
 			}
 		})
 	}

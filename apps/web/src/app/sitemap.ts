@@ -1,27 +1,20 @@
-import { defaultLocale, isLocale, locales, localizedAlternates } from '@helvetly/i18n'
-import { publicHref } from '@helvetly/i18n/public-href'
+import { defaultLocale } from '@helvetly/i18n'
 import type { MetadataRoute } from 'next'
 
-import { publicPaths } from '@/lib/public-paths'
-
-const SITE = 'https://www.helvetly.com'
+import { SITE_URL } from '@/lib/metadata'
+import { publicAlternates, publicPaths } from '@/lib/public-paths'
 
 // Generated once at build time: the site is a static export.
 export const dynamic = 'force-static'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return publicPaths().flatMap((path) =>
-    Object.keys(locales)
-      .filter(isLocale)
-      .map((language) => ({
-        url: SITE + publicHref(path, language),
-        alternates: {
-          languages: Object.fromEntries(
-            Object.entries(localizedAlternates(path, defaultLocale, publicHref).languages).map(
-              ([languageTag, href]) => [languageTag, SITE + href],
-            ),
-          ),
-        },
-      })),
-  )
+  return publicPaths().flatMap((path) => {
+    const languages = Object.fromEntries(
+      Object.entries(publicAlternates(path, defaultLocale).languages).map(([tag, href]) => [
+        tag,
+        SITE_URL + href,
+      ]),
+    )
+    return [...new Set(Object.values(languages))].map((url) => ({ url, alternates: { languages } }))
+  })
 }

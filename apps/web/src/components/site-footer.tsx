@@ -5,11 +5,11 @@ import { LanguageSwitcher } from '@helvetly/ui/components/language-switcher'
 import { Logo } from '@helvetly/ui/components/logo'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { Bell, CircleCheck, Landmark, type LucideIcon } from 'lucide-react'
-import Link from 'next/link'
 
 import { Cta } from '@/components/cta'
 import { Ridge } from '@/components/ridge'
 import { Container } from '@/components/section'
+import { SiteLink } from '@/components/site-link'
 import { translatorFor } from '@/lib/i18n'
 import { TRIAL_DAYS } from '@/lib/plans'
 import { siteIn } from '@/lib/site'
@@ -134,13 +134,13 @@ export function SiteFooter({ lang }: { lang: Locale }) {
                       className={`flex flex-col gap-2 ${key === 'comparisons' ? 'sm:block sm:columns-2 sm:gap-x-10 sm:*:mb-2 sm:*:block sm:*:break-inside-avoid' : ''}`}
                     >
                       {group.links.map((link) => (
-                        <Link
+                        <SiteLink
                           key={link.href}
                           href={link.href}
                           className="w-fit max-w-full text-body-sm wrap-break-word hyphens-auto text-white/55 underline-offset-4 transition-colors hover:text-white hover:underline"
                         >
                           {link.label}
-                        </Link>
+                        </SiteLink>
                       ))}
                     </div>
                   </nav>

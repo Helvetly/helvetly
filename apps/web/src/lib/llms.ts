@@ -80,7 +80,7 @@ export function llmsTxt(): string {
     link(
       'Pricing',
       '/pricing',
-      'the Free, Basic, Pro and Business plans, their prices, limits and a plan comparison',
+      'the Free, Basic, Pro and Business plans, their prices, limits and a plan comparison. Sign up from the website by email code, Google or passkey',
     ),
     link(
       'Security',
@@ -88,7 +88,6 @@ export function llmsTxt(): string {
       'hosted in Frankfurt, Germany (EU), encryption, sign-in and data protection',
     ),
     link('Questions', '/faq', 'frequent questions about plans, data and switching'),
-    `- [Sign up](${PLATFORM_URL}/login): sign-in by email code, Google or passkey creates the account; start on Free or with the Pro trial`,
     '',
     '## Comparisons',
     '',
