@@ -406,14 +406,11 @@ function PlanText({
 }
 
 function UserAvatar({ user, className }: { user: User; className?: string }) {
+  // A rounded square like the icon rail's buttons; the shared Avatar draws the ring. Without a photo, initials on a soft blue tint.
   return (
-    // A rounded square in a thin border with a 2px gap: the gap sits inside the box, so the icon rail's 32px
-    // button does not cut the border off. Without a photo, the initials on a soft blue tint.
-    <Avatar
-      className={cn('size-9 rounded-xl border border-foreground/15 p-0.5 after:hidden', className)}
-    >
-      {user.avatar_url && <AvatarImage src={user.avatar_url} alt="" className="rounded-lg" />}
-      <AvatarFallback className="rounded-lg bg-info-surface text-caption font-semibold tracking-wide text-info">
+    <Avatar className={cn('size-9 rounded-xl', className)}>
+      {user.avatar_url && <AvatarImage src={user.avatar_url} alt="" />}
+      <AvatarFallback className="bg-info-surface text-caption font-semibold tracking-wide text-info">
         {initialsOf(displayName(user))}
       </AvatarFallback>
     </Avatar>
