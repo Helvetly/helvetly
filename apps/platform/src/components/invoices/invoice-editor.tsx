@@ -12,6 +12,7 @@ import {
 } from '@helvetly/ui/components/dropdown-menu'
 import { inputClass } from '@helvetly/ui/components/input'
 import { Kbd } from '@helvetly/ui/components/kbd'
+import { LanguageSelect } from '@helvetly/ui/components/language-select'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import {
@@ -93,6 +94,7 @@ import {
   type InvoiceKind,
   type IssueReason,
   type InvoiceSettings,
+  DOC_LANGUAGES,
 } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
 import { useSession } from '@/lib/queries'
@@ -115,7 +117,6 @@ import {
   changeVatMode,
   emptyValues,
   isBlankLine,
-  LANGUAGE_CHOICES,
   reasonTarget,
   serverErrors,
   lockedInput,
@@ -823,13 +824,15 @@ function Editor({
                   />
                 </div>
               )}
-              <Segmented
-                size="sm"
-                label={translate('documentLanguage')}
-                value={values.language}
-                options={LANGUAGE_CHOICES}
-                onChange={(language) => set('language', language)}
-              />
+              <div className="w-[136px]">
+                <LanguageSelect
+                  value={values.language}
+                  languages={DOC_LANGUAGES}
+                  label={translate('documentLanguage')}
+                  placeholder={translate('documentLanguage')}
+                  onChange={(language) => set('language', language)}
+                />
+              </div>
               {!credit && (
                 <Segmented
                   size="sm"

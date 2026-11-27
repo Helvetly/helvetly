@@ -3,6 +3,7 @@ import { localizedHref } from '@helvetly/i18n'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { describedBy, FormField } from '@helvetly/ui/components/form-field'
+import { LanguageSelect } from '@helvetly/ui/components/language-select'
 import { Loader } from '@helvetly/ui/components/loader'
 import { PhoneInput } from '@helvetly/ui/components/phone-input'
 import { Segmented } from '@helvetly/ui/components/segmented'
@@ -84,6 +85,7 @@ import {
   useInvoiceSettings,
   useSaveInvoiceSettings,
   VAT_RATES,
+  DOC_LANGUAGES,
   type DocLanguage,
   type DunningSettings,
   type IbanInfo,
@@ -100,7 +102,13 @@ import { legalFormOptions, suggestLegalForm, useLegalForms } from '@/lib/legal-f
 import { useCan } from '@/lib/permissions'
 
 import { DunningSteps, stepErrors, timingProblems, type StepDraft } from './dunning-steps'
-import { SettingsNotice, SettingsPage, SettingsPreview, SettingsSection } from './layout'
+import {
+  InstalmentRemindersHeading,
+  ReminderDaysInput,
+  ReminderTimeline,
+  reminderDays,
+} from './instalment-reminders'
+import { SettingsNotice, SettingsPage, SettingsSection } from './layout'
 import { LogoDropzone } from './logo-upload'
 import { SettingsHeader } from './settings-tabs'
 import { UnitInput } from './unit-input'
@@ -171,7 +179,7 @@ const joinDays = (days: number[]) =>
 export function reminderSummary(beforeTyped: string, afterTyped: string): string {
   const before = Number(beforeTyped) || 0
   // Half-typed input ("3, 1x") shows only the days that already read as days.
-  const after = afterDays(afterTyped).filter((day) => Number.isInteger(day) && day > 0)
+  const after = reminderDays(afterTyped)
   const parts = [
     before > 0 && `${before} ${before === 1 ? 'day' : 'days'} before`,
     after.length > 0 && `${joinDays(after)} ${after.at(-1) === 1 ? 'day' : 'days'} after`,
@@ -392,13 +400,6 @@ export const formField = (name: string) =>
         .replace('seller.', '')
         .replace('instalments.', 'instalments_')
         .replace('dunning.', 'dunning_')
-
-const LANGUAGE_CHOICES: { value: DocLanguage; label: string }[] = [
-  { value: 'de', label: translate('deutsch') },
-  { value: 'fr', label: translate('franAis') },
-  { value: 'it', label: translate('italiano') },
-  { value: 'en', label: translate('english') },
-]
 
 /** What issuing needs, in the contract's missing_fields order; computed live from the form. */
 export function missingFrom(values: Values): string[] {
@@ -1441,11 +1442,16 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                       />
                     </fieldset>
                   </FormField>
-                  <FormField id={inputId('language')} label={translate('documentLanguage')} group>
-                    <Segmented
-                      label={translate('documentLanguage')}
+                  <FormField
+                    id={inputId('language')}
+                    label={translate('documentLanguage')}
+                    width="md"
+                  >
+                    <LanguageSelect
+                      id={inputId('language')}
                       value={values.language}
-                      options={LANGUAGE_CHOICES}
+                      languages={DOC_LANGUAGES}
+                      placeholder={translate('chooseALanguage')}
                       onChange={(language) => set('language', language)}
                     />
                   </FormField>
@@ -1570,7 +1576,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     }
                   />
                 </FormField>
-                <ClientEmailsLink />
+                <InstalmentRemindersHeading />
                 <FormField
                   id={inputId('instalments_remind_before_days')}
                   label={translate('beforeTheDueDate')}
@@ -1596,22 +1602,22 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                   label={translate('afterTheDueDateIfUnpaid')}
                   width="md"
                   error={shown.instalments_remind_after_days}
-                  tip={translate('upToThreeRemindersSeparatedByCommas310')}
+                  tip={translate('upToThreeRemindersTypeADayAndPressEnter')}
                 >
-                  <UnitInput
+                  <ReminderDaysInput
                     {...describe('instalments_remind_after_days')}
-                    unit={translate('daysAfter')}
                     value={values.instalments_remind_after_days}
-                    onChange={(e) => set('instalments_remind_after_days', e.target.value)}
-                    placeholder="3, 10"
+                    onChange={(days) => set('instalments_remind_after_days', days)}
                   />
                 </FormField>
-                <SettingsPreview label={translate('reminderSchedule')}>
-                  {reminderSummary(
+                <ReminderTimeline
+                  before={Number(values.instalments_remind_before_days) || 0}
+                  after={reminderDays(values.instalments_remind_after_days)}
+                  summary={reminderSummary(
                     values.instalments_remind_before_days,
                     values.instalments_remind_after_days,
                   )}
-                </SettingsPreview>
+                />
               </Section>
             )}
 

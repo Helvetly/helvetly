@@ -727,7 +727,8 @@ describe('the welcome', () => {
 
     await user.click(screen.getByRole('button', { name: 'Skip' }))
     expect(await screen.findByRole('heading', { name: 'Invoice defaults' })).toBeInTheDocument()
-    await user.click(screen.getByRole('radio', { name: 'Français' }))
+    await user.click(screen.getByRole('button', { name: /Invoice language/ }))
+    await user.click(await screen.findByRole('option', { name: /Français/ }))
     await user.click(screen.getByRole('radio', { name: 'Custom' }))
     await user.clear(screen.getByLabelText('Number of days'))
     await user.type(screen.getByLabelText('Number of days'), '45')
