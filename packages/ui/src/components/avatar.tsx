@@ -4,8 +4,8 @@ import { cn } from 'cn'
 import { Avatar as AvatarPrimitive } from 'radix-ui'
 import * as React from 'react'
 
-/** Ring (1px) plus gap: 2px on tiny avatars, up to 4px on large ones, each side. */
-const inner = 'size-[calc(100%-clamp(4px,18%,8px))] rounded-[inherit]'
+/** Ring (1px) plus gap: 2px on tiny avatars, up to 4px on large ones, each side; rounded to even px so centred text stays on whole pixels. */
+const inner = 'size-[round(down,calc(100%-clamp(4px,18%,8px)),2px)] rounded-[inherit]'
 
 function Avatar({
   className,
