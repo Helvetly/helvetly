@@ -868,8 +868,10 @@ export const TypesMultiSelect: Story = {
     await expect(panel.getByRole('button', { name: /^Type / })).toHaveTextContent(
       /Invoices.*Quotes/,
     )
-    await expect(panel.getByRole('button', { name: /^Client / })).toHaveTextContent(
-      /Acme AG.*Bern Bau GmbH/,
+    await waitFor(() =>
+      expect(panel.getByRole('button', { name: /^Client / })).toHaveTextContent(
+        /Acme AG.*Bern Bau GmbH/,
+      ),
     )
     await userEvent.click(panel.getByRole('button', { name: /^Type / }))
     await userEvent.click(await body.findByRole('option', { name: 'Receipts' }))
