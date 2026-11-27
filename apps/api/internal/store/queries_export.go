@@ -102,6 +102,8 @@ var UserExportTables = []ExportTable{
 	{"feedback", `SELECT jsonb_build_object('id', f.id, 'workspace_id', f.workspace_id, 'kind', f.kind, 'description', f.description,
 		'page_path', f.page_path, 'created_at', f.created_at, 'screenshots', (SELECT count(*) FROM product_feedback_files WHERE feedback_id = f.id))
 		FROM product_feedback f WHERE f.user_id = $1`},
+	{"heidi_memory", `SELECT to_jsonb(m) FROM heidi_memory m WHERE m.user_id=$1`},
+
 	{"heidi_conversations", `SELECT to_jsonb(t) FROM heidi_conversations t WHERE t.user_id = $1`},
 	{"notifications", `SELECT to_jsonb(t) FROM notifications t WHERE t.user_id = $1`},
 	{"document_folder_stars", `SELECT to_jsonb(t) FROM document_folder_stars t WHERE t.user_id = $1`},

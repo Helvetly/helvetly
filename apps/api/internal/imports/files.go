@@ -233,6 +233,11 @@ func splitText(text string) []chunk {
 
 // xlsxSheets returns each non-empty sheet as CSV text headed by its name, at most maxSheetRows rows each.
 func xlsxSheets(b []byte) ([]string, error) {
+	return readSheets(b, -1)
+}
+
+// A chat reads the sheets together, with their names and a limit on the whole text.
+func readSheets(b []byte, remaining int) ([]string, error) {
 	f, err := excelize.OpenReader(bytes.NewReader(b), excelize.Options{UnzipSizeLimit: maxXLSXBytes, UnzipXMLSizeLimit: maxEntryBytes})
 	if err != nil {
 		return nil, unsupported{"the Excel file can't be opened: save it again as .xlsx."}
@@ -245,6 +250,9 @@ func xlsxSheets(b []byte) ([]string, error) {
 			return nil, fmt.Errorf("read sheet: %w", err)
 		}
 		var buf strings.Builder
+		if remaining >= 0 {
+			buf.WriteString("Sheet: " + sheet + "\n")
+		}
 		w := csv.NewWriter(&buf)
 		n := 0
 		for rows.Next() {
@@ -253,7 +261,19 @@ func xlsxSheets(b []byte) ([]string, error) {
 				_ = rows.Close()
 				return nil, fmt.Errorf("read row: %w", err)
 			}
-			if strings.TrimSpace(strings.Join(cols, "")) == "" {
+			nonempty := false
+			rowBytes := 0
+			for _, cell := range cols {
+				rowBytes += len(cell)
+				if strings.TrimSpace(cell) != "" {
+					nonempty = true
+				}
+				if remaining >= 0 && rowBytes > remaining-buf.Len() {
+					_ = rows.Close()
+					return nil, errChatTextLimit
+				}
+			}
+			if !nonempty {
 				continue
 			}
 			if n == maxSheetRows {
@@ -264,7 +284,18 @@ func xlsxSheets(b []byte) ([]string, error) {
 				_ = rows.Close()
 				return nil, err
 			}
+			if remaining >= 0 {
+				w.Flush()
+				if buf.Len() > remaining {
+					_ = rows.Close()
+					return nil, errChatTextLimit
+				}
+			}
 			n++
+		}
+		if err := rows.Error(); err != nil {
+			_ = rows.Close()
+			return nil, err
 		}
 		if err := rows.Close(); err != nil {
 			return nil, err
@@ -272,6 +303,9 @@ func xlsxSheets(b []byte) ([]string, error) {
 		w.Flush()
 		if n > 0 {
 			out = append(out, buf.String())
+			if remaining >= 0 {
+				remaining -= buf.Len()
+			}
 		}
 	}
 	if len(out) == 0 {
@@ -357,4 +391,47 @@ func Text(b []byte, limit int) string {
 		out.WriteString(c.text)
 	}
 	return strings.ToValidUTF8(out.String()[:min(out.Len(), limit)], "")
+}
+
+var errChatTextLimit = errors.New("the extracted text is too long for one chat request; split the file or select fewer files")
+
+// ChatAttachment returns the original storage type and the input Heidi can read.
+// Word paragraphs and worksheet cells become a separate text attachment. Preserve each PDF or image.
+func ChatAttachment(name string, data []byte, textBudget int) (string, aimodel.File, error) {
+	kind := http.DetectContentType(data)
+	if kind != "image/gif" {
+		var err error
+		kind, err = sniff(name, data)
+		if err != nil {
+			return "", aimodel.File{}, err
+		}
+	}
+	file := aimodel.File{Name: name, ContentType: kind, Bytes: data}
+	var content string
+	var err error
+	switch kind {
+	case typeText:
+		content = string(bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")))
+	case typeDOCX:
+		content, err = docxText(data)
+	case typeXLSX:
+		var sheets []string
+		sheets, err = readSheets(data, textBudget)
+		content = strings.Join(sheets, "")
+	case typeZIP:
+		return "", aimodel.File{}, unsupported{"use the import for ZIP archives"}
+	default:
+		return kind, file, nil
+	}
+	if err != nil {
+		return "", aimodel.File{}, err
+	}
+	if len(content) > textBudget {
+		return "", aimodel.File{}, errChatTextLimit
+	}
+	if strings.TrimSpace(content) == "" {
+		return "", aimodel.File{}, unsupported{"the attachment has no readable text"}
+	}
+	file.ContentType, file.Bytes = typeText, []byte(content)
+	return kind, file, nil
 }

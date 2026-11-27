@@ -223,3 +223,15 @@ func TestParticipantOfAnotherWorkspaceIsNotALogin(t *testing.T) {
 		t.Fatalf("other workspace's participant: %d", res.StatusCode)
 	}
 }
+
+func TestParticipantShareShowsOnTheFile(t *testing.T) {
+	e := newEnv(t)
+	e.participants()
+	d, err := e.store.Q.Document(t.Context(), "wsp_a", "doc_lorenzo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.SharedWith) != 1 || d.SharedWith[0].ClientName != "Lorenzo Percic · EuroChem Group AG" {
+		t.Fatalf("shared with: %+v", d.SharedWith)
+	}
+}

@@ -37,6 +37,7 @@ import { translate } from '@/lib/i18n'
 import { useSession } from '@/lib/queries'
 
 import { DeletedWorkspaces } from './deleted-workspaces'
+import { HeidiMemorySettings } from './heidi-memory'
 import { ProfilePhoto } from './profile-photo'
 import { Sessions } from './sessions'
 import { SignInMethods } from './sign-in-methods'
@@ -59,6 +60,7 @@ export function AccountSettings() {
           <>
             <Profile user={user} />
             <Language />
+            <HeidiMemorySettings />
             <SignInMethods email={user.email} />
             <TwoFactor />
             <Sessions />

@@ -104,13 +104,14 @@ export function EmptyState({
   onPick: (prompt: string) => void
 }) {
   const [hour] = useState(() => new Date().getHours())
-  const user = useSession().data?.user
+  const session = useSession().data
+  const user = session?.user
   const firstName = user?.name.split(' ')[0] || user?.email.split('@')[0]
   // A client's drawer is open on the clients list as ?id=…; its own questions come first.
   const openClient = useSearchParams()?.get('id')
   const client = page === 'clients' ? (openClient ?? undefined) : undefined
   const suggestions = useQuery({
-    queryKey: ['heidi', 'suggestions', page, client],
+    queryKey: ['heidi', 'suggestions', session?.workspace.id, user?.id, page, client],
     queryFn: () => heidiApi.suggestions(page, client),
     staleTime: 5 * 60_000,
   })

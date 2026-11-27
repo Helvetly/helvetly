@@ -194,7 +194,7 @@ func TestAccountExport(t *testing.T) {
 	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &doc) != nil {
 		t.Fatalf("account export: %d %s", w.Code, w.Body)
 	}
-	for _, key := range []string{"user", "sign_in_identities", "passkeys", "two_factor", "sessions", "api_tokens", "memberships", "heidi_messages", "exported_at"} {
+	for _, key := range []string{"user", "sign_in_identities", "passkeys", "two_factor", "sessions", "api_tokens", "memberships", "heidi_messages", "heidi_memory", "exported_at"} {
 		if _, ok := doc[key]; !ok {
 			t.Fatalf("missing %s: %s", key, w.Body)
 		}

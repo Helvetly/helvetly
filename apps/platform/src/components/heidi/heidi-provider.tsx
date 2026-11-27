@@ -11,14 +11,22 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 
-import { featureLock, PLANS_HREF, toastLocked } from '@/components/billing/feature-lock'
+import {
+  employeesHidden,
+  featureLock,
+  PLANS_HREF,
+  toastLocked,
+} from '@/components/billing/feature-lock'
 import { addFiles as addImportFiles } from '@/components/import/import-files'
 import { useAI } from '@/lib/ai'
 import { useBilling } from '@/lib/billing'
 import { chatReadable, importable, type HeidiPage } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
+import { effectiveScopes } from '@/lib/permissions'
+import { useSession } from '@/lib/queries'
 import { useShortcut } from '@/lib/shortcuts'
 
+import { accessibleScreens } from './screen-controls'
 import { useHeidiChat, type HeidiChat } from './use-heidi'
 
 /** The page Heidi is asked from, and how to name it in a sentence. */
@@ -31,7 +39,9 @@ const PAGES: Record<string, [HeidiPage, string]> = {
   documents: ['documents', translate('yourDocuments')],
   products: ['products', translate('yourProductsAndServices')],
   members: ['members', translate('yourTeam')],
-  books: ['settings', translate('yourBooks')],
+  books: ['books', translate('yourBooks')],
+  quotes: ['quotes', translate('quotes')],
+  scheduling: ['scheduling', translate('schedulingSettingsTitle')],
   settings: ['settings', translate('yourSettings')],
   'settings/billing': ['billing', translate('yourPlanAndBilling')],
 }
@@ -88,14 +98,26 @@ const HeidiContext = createContext<HeidiContextValue | null>(null)
 /** Heidi's state lives here, above the pages, so the conversation survives navigation and collapse. */
 export function HeidiProvider({ children, scope }: { children: ReactNode; scope: string }) {
   const { page, name } = pageOf(usePathname())
-  const chat = useHeidiChat(page, scope)
+  const session = useSession().data
+  const { data: billing, isLoading: loadingBilling } = useBilling()
+  const paths = useMemo(
+    () =>
+      session
+        ? accessibleScreens(
+            effectiveScopes(session.role, session.scopes),
+            session.role,
+            employeesHidden(billing, loadingBilling),
+          )
+        : [],
+    [session, billing, loadingBilling],
+  )
+  const chat = useHeidiChat(page, scope, paths)
   const [panel, setPanel] = useState(loadPanel)
   const [max, setMaxState] = useState(false)
   const [draft, setDraft] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const returnFocus = useRef<HTMLElement | null>(null)
   const router = useRouter()
-  const billing = useBilling().data
   // Heidi needs a plan with it: the panel stays shut and says which plan has it
   const lock = useMemo(() => featureLock(billing, 'heidi'), [billing])
 
@@ -134,7 +156,7 @@ export function HeidiProvider({ children, scope }: { children: ReactNode; scope:
   )
 
   const addFiles = useCallback((incoming: File[]) => {
-    // Images and PDFs Heidi reads itself; anything an import reads (a ZIP, a spreadsheet) goes to one when sent.
+    // Archives go through the import review when sent.
     const accepted = incoming.filter((file) => chatReadable(file) || importable(file))
     if (accepted.length < incoming.length) toast.error(translate('heidiAcceptedImports'))
     setFiles((current) => {

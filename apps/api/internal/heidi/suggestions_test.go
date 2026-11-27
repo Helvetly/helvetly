@@ -68,6 +68,9 @@ func TestSuggestionsFollowThePage(t *testing.T) {
 	}
 	tests := []struct{ query, first string }{
 		{"page=dashboard", "Which invoices are overdue?"},
+		{"page=books", "How do I close a month?"},
+		{"page=quotes", "How do I make a quote and turn it into an invoice?"},
+		{"page=scheduling", "How do I schedule a session with a client?"},
 		{"page=billing", "How do I choose or change my plan?"},
 		{"page=products", "How do I add products and services to my catalogue?"},
 		{"page=documents", "Which documents were added recently?"},

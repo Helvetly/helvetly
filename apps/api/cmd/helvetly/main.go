@@ -381,8 +381,9 @@ func run() error {
 	}
 
 	guarded := permissions.Guard(authSvc, billingSvc.Guard(server.New(platform.Handler(cfg.PortalURL, strings.HasPrefix(cfg.PublicURL, "https://"), portalscope.OnDomain), api))) // scopes, then plan limits, before the handlers
-	mcpSvc.SetAPI(guarded)                                                                                                                                                        // tool calls pass the same guards as REST
-	guarded = portalScopes.Handler(guarded)                                                                                                                                       // /w/<slug>/… on the portal's host: resolved and unprefixed first
+	heidiSvc.SetAPI(guarded)
+	mcpSvc.SetAPI(guarded)                  // tool calls pass the same guards as REST
+	guarded = portalScopes.Handler(guarded) // /w/<slug>/… on the portal's host: resolved and unprefixed first
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           auth.ForwardedFor(cfg.TrustedProxies, openapi.CORS(cfg.DocsURL, guarded)), // the client address first; the docs playground's CORS before the guards

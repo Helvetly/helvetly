@@ -34,6 +34,8 @@ type Operation struct {
 	BodyRequired                                          bool
 	// Upload: the body is multipart/form-data; its file fields have "format": "binary" (or are arrays of them).
 	Upload bool
+	// JSONOnly is true when every successful response has a JSON body or no content.
+	JSONOnly bool
 }
 
 // Operations is the catalogue, in document order (paths sorted, then GET before writes).
@@ -47,6 +49,9 @@ type document struct {
 }
 
 type rawOperation struct {
+	Responses map[string]struct {
+		Content map[string]json.RawMessage `json:"content"`
+	} `json:"responses"`
 	OperationID string   `json:"operationId"`
 	Tags        []string `json:"tags"`
 	Summary     string   `json:"summary"`
@@ -100,6 +105,17 @@ func load(raw []byte) ([]Operation, error) {
 					return nil, fmt.Errorf("%s: %s: %w", op.ID, prm.Name, err)
 				}
 				op.Params[i].Schema = s
+			}
+			op.JSONOnly = true
+			for status, response := range ro.Responses {
+				if !strings.HasPrefix(status, "2") {
+					continue
+				}
+				for media := range response.Content {
+					if media != "application/json" {
+						op.JSONOnly = false
+					}
+				}
 			}
 			if ro.RequestBody != nil {
 				body, ok := ro.RequestBody.Content["application/json"]

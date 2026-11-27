@@ -97,6 +97,7 @@ Cosa viene inviato:
 - Heidi invia il messaggio che scrivi, fino a 20 messaggi precedenti della conversazione (che possono
   contenere cifre mostrate da Heidi) e i file allegati a quel messaggio. Viene inviato a OpenAI anche
   un breve controllo per stabilire se il messaggio riguarda Helvetly o l’attività.
+- In base alla richiesta, Heidi invia anche risultati limitati dei dati dello spazio di lavoro a cui hai accesso (compresi dati aziendali e dei clienti), il contenuto del documento che le chiedi di leggere, gli identificativi della pagina e dei comandi disponibili e lo stile di risposta scelto.
 - L’importazione IA invia il contenuto dei file selezionati, una parte alla volta; la lettura delle
   ricevute invia la ricevuta selezionata.
 - Il suggerimento del nome dello spazio invia solo il nome dell’azienda inserito.
@@ -123,6 +124,8 @@ Helvetly, per ora senza un termine di cancellazione fissato, fino all’eliminaz
 archiviati restano nello spazio come qualsiasi altro dato. Heidi è indicata come assistente IA; le sue
 risposte, i record importati e le proposte di archiviazione possono essere errati e sono
 suggerimenti da verificare.
+
+Helvetly conta le consultazioni e le azioni completate per argomento per suggerirti domande nelle chat successive in questo spazio di lavoro. Nelle impostazioni dell’account puoi vedere e cancellare i conteggi e lo stile di risposta oppure disattivare la memoria. I conteggi restano in Helvetly.
 
 ## 5. Destinatari e trasferimenti all’estero
 

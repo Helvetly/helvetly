@@ -72,7 +72,7 @@ are the reference.
   their own sessions and requests, documents shared with them and, in participants mode, invoices addressed to them and
   signature requests they sign; everything else is 404. A member who can read a client
   opens its portal as a read-only preview (`POST /api/v1/clients/{id}/portal-preview`, session-only: a hashed one-use link for 5 minutes, then a session of at most 30 with `portal_sessions.preview_by` and its own cookie beside the client's), where every write but ending it answers 403 `preview_read_only`, nothing is recorded on the client or notified, and start and end are audited (`portal.preview_*`).
-- **Client people** (`client_contacts`, `clients/contacts.go`, `clients/merge.go`, 00083): each person of a client is a
+- **Client people** (`client_contacts`, `clients/contacts.go`, `clients/merge.go`, 00085): each person of a client is a
   `contact` (billing and correspondence; exactly one primary among contacts, never a participant alone) and/or a
   `participant` (takes the service); only a company has participants (a person client is its own), checked on every
   write with the client's row lock. The client drawer's People tab shows both groups; the Overview keeps the primary
@@ -266,8 +266,8 @@ are the reference.
   future open sessions are cancelled quietly and leave the calendars; a member leaving or a deleted workspace revokes
   the calendar grants (`calsync.Leaving`). The export carries every `scheduling_*` table, never a `calendar_*` one.
   Heidi answers four read questions (today's schedule, the next session with a client, late cancellations this month,
-  sessions left in a package) with `session` records and `open_session`; creating or changing sessions through Heidi
-  is not built. Settings, holidays, event-type writes, host hours, calendars, the feed, request decisions and
+  sessions left in a package) with `session` records and `open_session`. Heidi's workspace operations also reach
+  the scheduling API, including creating or changing a session after confirmation. Settings, holidays, event-type writes, host hours, calendars, the feed, request decisions and
   invoicing sessions are session-only.
 - **Plans and offer** (`internal/billing`, `plans.go`, `offer.go`): one offer on sale, `helvetly-v2` (00067 lowered the
   Business base price to 99 monthly and 951 yearly; operators can publish a new version with `helvetly offer publish`). Plans Free, Basic, Pro, Business;
@@ -323,6 +323,13 @@ are the reference.
   Mailpit's HTML Check therefore scores about 94 %, not 100 %, by choice: Outlook for Windows ignores the corners,
   gradients and max-width and shows the same email square and full width, still readable. The business logo has no
   size attributes: its email URL serves a copy scaled to 44 px high.
+- **Heidi** (`internal/heidi`): local record answers and model-assisted lookups use the current membership. Selected
+  operations run through the signed-in platform API with its permission, billing and approval checks. A proposed
+  API write requires confirmation. The platform can also offer the current screen's available controls for the
+  person to activate. Model inputs can include bounded lookup results and specifically requested non-HR documents
+  under the versioned personal AI approval. Personal memory is held per workspace membership: successful topic
+  counts rank suggestions, and a chosen reply style applies to model answers. Account settings show, clear or
+  disable memory; removing membership deletes it.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
   and a monthly token budget per pool: Heidi's chat (`ai_tokens_per_month`) and the automation pool of AI import

@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 
 	"helvetly.com/api/internal/store"
@@ -104,4 +105,37 @@ func TestPeopleWorkspaceIsolation(t *testing.T) {
 	theirs := e.create(other, map[string]any{"name": "Theirs AG", "is_company": true})
 	// Another client's person is not this client's, even in the same call shape.
 	e.fails(other, "PATCH", "/api/v1/clients/"+theirs.ID+"/contacts/"+p.Data.ID, map[string]any{"name": "Hijack"}, 404, "not_found")
+}
+
+func TestParticipantInvitation(t *testing.T) {
+	e, mails := newPortalEnv(t)
+	b := e.workspace()
+	company := e.create(b, map[string]any{"name": "EuroChem Group AG", "is_company": true, "email": "office@eurochem.ch", "language": "de"})
+	base := "/api/v1/clients/" + company.ID + "/contacts"
+	var p struct{ Data store.Contact }
+	e.do(b, "POST", base, map[string]any{"name": "Lorenzo Percic", "email": "lorenzo@eurochem.ch", "roles": []string{"participant"},
+		"portal_enabled": true}, 201, &p)
+	// The client's portal is off: no invitation yet. Turning it on (one or in bulk) invites the client and Lorenzo.
+	if mails.count() != 0 {
+		t.Fatalf("invited before the client's portal: %d", mails.count())
+	}
+	e.do(b, "POST", "/api/v1/clients/bulk", map[string]any{"ids": []string{company.ID}, "action": "enable_portal"}, 200, nil)
+	var toLorenzo []string
+	for _, m := range mails.sent {
+		if slices.Contains(m.To, "lorenzo@eurochem.ch") {
+			toLorenzo = append(toLorenzo, m.Language+":"+m.Subject)
+		}
+	}
+	if len(toLorenzo) != 1 || !strings.HasPrefix(toLorenzo[0], "de:") {
+		t.Fatalf("participant invitation: %v", toLorenzo)
+	}
+	// With portal invitations off (Settings → Client emails) none goes out.
+	if _, err := e.raw.Exec(t.Context(), `UPDATE workspaces SET portal_invitations = false WHERE id = $1`, b.workspace); err != nil {
+		t.Fatal(err)
+	}
+	before := mails.count()
+	e.do(b, "POST", base, map[string]any{"name": "Liam", "email": "liam@eurochem.ch", "roles": []string{"participant"}, "portal_enabled": true}, 201, nil)
+	if mails.count() != before {
+		t.Fatalf("invitation with the switch off")
+	}
 }

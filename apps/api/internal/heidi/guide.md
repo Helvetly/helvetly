@@ -487,12 +487,9 @@ Keywords: billing, plan, subscription, trial, upgrade, pricing, per person, per 
 Pages: /settings/billing, /settings/billing/plans, /choose-plan, /activating
 
 1. Go to **Settings → Billing** (Plan & billing) to see your plan, its status and usage against limits.
-2. Under **Plans**, choose **Monthly** or **Yearly**, then pick **Basic**, **Pro** or **Business**; **Compare plans** shows every limit side by side. Prices include Swiss VAT. A new workspace can start a free Basic trial, and a card is required.
-   Prices are per person per month (or year): Basic CHF 19, Pro CHF 49, Business CHF 99 a month, or CHF 183, 471 and 951 a year. Everyone in the workspace counts (owners, admins and members); open invitations don't count until accepted. The billing page shows the total, for example "CHF 49 × 3 people = CHF 147 / month incl. VAT". There is no limit on people on these plans.
-   A workspace that subscribed before per-person pricing keeps its earlier flat price and its member limit until it changes plan or switches between monthly and yearly; from then on it pays per person.
-3. To enter a discount, click **Have a promotion code?**.
-4. To update your card, cancel or get invoices, click **Manage billing**. Past invoices are listed under **Invoices**.
-   There is no free plan. Without an active plan the workspace is read-only: nothing is deleted, and it opens again once a plan is chosen. Only owners and admins can change the plan. When a limit is reached, you see a prompt with **See plans**.
+2. **Free** includes one person. A new workspace can start a 14-day **Pro** trial for up to two people. When it ends without a paid subscription, Free applies. Existing records stay available; adding records beyond the plan limits requires an upgrade.
+3. Under **Plans**, compare **Basic**, **Pro** and **Business** and choose **Monthly** or **Yearly**. The base price includes one person on Basic, two on Pro or five on Business. Each additional person adds the plan's extra-person price. The billing page shows the total including VAT for your team and billing interval.
+4. Choose **Have a promotion code?** to enter a discount. **Manage billing** opens payment details, invoices and cancellation. Only owners and admins can change the plan.
 
 ## Update your profile
 
@@ -578,12 +575,11 @@ Keywords: export, backup, download data, data export, zip, json, csv, gdpr, date
 
 Keywords: heidi, assistant, ai, chat, ask, chatbot, openai, consent, allow ai, token budget, ai allowance, what can heidi do
 
-1. Press ⌘J (Ctrl+J) or click **Ask Heidi** in the sidebar. Type a question, or pick one under **Try asking**.
-2. Heidi can show overdue and recent invoices, this month's expenses and input VAT, recent clients and documents, and engagement balances. She can open invoices and engagements, start a new invoice and log work on an engagement.
-3. To attach images or PDFs, use **Attach files** or drop them on the panel. Up to 4 files per message, 8 MB each.
-4. Before Heidi logs work or sends an invoice, she asks you to confirm. Use **New chat**, **Search in conversation** or **Max view** in the panel header.
-5. For full AI answers, an owner or admin clicks **Allow OpenAI** in the panel, or turns on **AI answers with OpenAI** in **Settings → Workspace**. Until then, Heidi answers from your records and this guide only.
-   Heidi can make mistakes, so check figures against the source. She can't issue invoices, book expenses or change settings on her own. The footer shows how much of this month's AI budget is used; the budget is shared with AI import.
+1. Press ⌘J (Ctrl+J) or click **Ask Heidi**. Ask in your own language and include the client, record or date range when relevant. For example, “What was our latest issued invoice?” returns the invoice from this workspace.
+2. Heidi looks up permitted records such as clients, invoices, quotes, expenses, documents and sessions. For a change, review the proposed operation and its values before confirming. The same permissions, plan limits and approval rules apply as on the corresponding page. When Heidi offers a button for the current screen, you choose whether to activate it.
+3. Add up to four PDFs, images, text or CSV files, Word documents (.docx) or Excel workbooks (.xlsx) per message, up to 8 MiB each. Heidi can also read a supported file already in Documents when you ask. Employee and payroll records are excluded from AI lookups.
+4. Each member approves model use for themselves in the current workspace before requests go to the AI provider. Without approval, local lookups and the built-in guide remain available. The footer shows the chat token allowance, which is separate from AI import and filing.
+5. **Account settings → Heidi memory** shows your frequently used topics in this workspace. They personalise **Try asking** across chats. Choose a reply style, clear memory, or switch learning off there. **New chat** starts a conversation with its own history.
 
 ## Get help or send feedback
 

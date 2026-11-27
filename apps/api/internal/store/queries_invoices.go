@@ -887,10 +887,11 @@ var InvoiceSorts = map[string]string{"number": "i.number", "issue_date": "i.issu
 
 // InvoiceFilter narrows the list and the export; empty fields do not narrow.
 type InvoiceFilter struct {
-	Search   string
-	Statuses []string // draft, open, paid, void, replaced, overdue, refund_due
-	Kind     string   // any document kind
-	ClientID string
+	IssuedSales bool // Issued sales invoices, including instalments, advances and corrections.
+	Search      string
+	Statuses    []string // draft, open, paid, void, replaced, overdue, refund_due
+	Kind        string   // any document kind
+	ClientID    string
 	// ParticipantID: only the invoices addressed to this participant of the client.
 	ParticipantID string
 	Credited      string // credit notes of this invoice
@@ -907,6 +908,9 @@ func (f InvoiceFilter) where(workspaceID, today string) (string, []any) {
 	args := []any{workspaceID, today}
 	arg := func(v any) string { args = append(args, v); return "$" + strconv.Itoa(len(args)) }
 	conds := []string{"i.workspace_id = $1"}
+	if f.IssuedSales {
+		conds = append(conds, "i.status <> 'draft' AND i.kind IN ('invoice','partial','prepayment','corrected')")
+	}
 	if term := strings.TrimSpace(f.Search); term != "" {
 		p := arg("%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(term) + "%")
 		conds = append(conds, "(i.number ILIKE "+p+" OR "+invoiceClientName+" ILIKE "+p+" OR i.reference ILIKE "+p+")")
@@ -963,6 +967,9 @@ func (f InvoiceFilter) where(workspaceID, today string) (string, []any) {
 }
 
 func (f InvoiceFilter) orderBy() string {
+	if f.IssuedSales && f.Sort == "" {
+		return "i.issue_date DESC, i.issued_at DESC NULLS LAST, i.created_at DESC, i.id"
+	}
 	key, dir := strings.TrimPrefix(f.Sort, "-"), " ASC"
 	if strings.HasPrefix(f.Sort, "-") {
 		dir = " DESC"

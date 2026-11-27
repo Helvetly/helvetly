@@ -27,6 +27,12 @@ type testAuth struct {
 	api     *auth.Service
 }
 
+func (a testAuth) CookieSession(context.Context, store.Q, *http.Request) (store.Session, error) {
+	if a.session == nil {
+		return store.Session{}, auth.Error(401, "unauthenticated", "Sign in.", nil)
+	}
+	return *a.session, nil
+}
 func (a testAuth) SignedIn(fn func(http.ResponseWriter, *http.Request, store.Session)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if a.session == nil {

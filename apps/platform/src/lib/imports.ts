@@ -556,6 +556,9 @@ export const isImportKind = (value: string): value is ImportKind => value in IMP
 
 /** The kind whose label is `label` ("Products & services" → products), as Heidi's form offers them. */
 export function importKindByLabel(label: string): ImportKind | null {
+  // The API sends these stable English labels even when the picker uses the interface language.
+  const wire = label === 'Products & services' ? 'products' : label.toLowerCase()
+  if (isImportKind(wire)) return wire
   for (const kind of Object.keys(IMPORT_KINDS))
     if (isImportKind(kind) && IMPORT_KINDS[kind].label === label) return kind
   return null

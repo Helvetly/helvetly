@@ -43,7 +43,7 @@ func (m *fakeMailer) count() int {
 func newPortalEnv(t *testing.T) (*env, *fakeMailer) {
 	t.Helper()
 	t.Parallel()
-	st, _ := storetest.New(t)
+	st, raw := storetest.New(t)
 	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
 	a, err := auth.New(config.Config{PublicURL: "https://helvetly.example.com", SecretKey: bytes.Repeat([]byte{7}, 32),
 		SessionTTL: time.Hour}, st, discard)
@@ -59,7 +59,7 @@ func newPortalEnv(t *testing.T) (*env, *fakeMailer) {
 	svc.Register(mux)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &env{t: t, st: st, srv: srv, files: files}, m
+	return &env{t: t, st: st, srv: srv, files: files, raw: raw}, m
 }
 
 // portalClient makes a client with an email, the portal on and a live session; it returns the id and the token.

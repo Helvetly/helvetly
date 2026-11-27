@@ -89,6 +89,11 @@ func (s *Service) bulkPortal(ctx context.Context, sess store.Session, ids []stri
 		workers.Go(func() {
 			for c := range jobs {
 				s.invitePortal(ctx, sess, c)
+				// Its participants with their own access on get theirs: their switch follows the client's.
+				c.PortalEnabled = true
+				for _, p := range c.Contacts {
+					s.inviteParticipant(ctx, sess, c, store.Contact{}, p)
+				}
 			}
 		})
 	}
@@ -190,9 +195,16 @@ func portalInvite(ws store.Workspace, c store.Client, to, link string) mailer.Me
 }
 
 // inviteParticipant mails a participant the portal link once their access starts (or their address changes) and the
-// client's portal and the workspace's are open. A failure is logged, never returned.
+// client's portal and the workspace's are open, unless portal invitations are off. A failure is logged, never returned.
 func (s *Service) inviteParticipant(ctx context.Context, sess store.Session, c store.Client, before, after store.Contact) {
 	if s.mail == nil || !participantPortal(after) || !c.PortalEnabled || participantPortal(before) && *before.Email == *after.Email {
+		return
+	}
+	// The workspace's switch for portal invitations (Settings → Client emails) covers participants too.
+	if emails, err := s.db.Q.WorkspaceClientEmails(ctx, sess.Workspace.ID); err != nil || !emails.PortalInvitations {
+		if err != nil {
+			s.log.WarnContext(ctx, "check participant invitation", "client", c.ID, "error", err)
+		}
 		return
 	}
 	access, err := s.db.Q.PortalAccessByEmail(ctx, *after.Email, sess.Workspace.ID)

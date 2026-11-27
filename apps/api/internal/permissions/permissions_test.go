@@ -179,6 +179,9 @@ var scopedInHandler = []string{
 	"GET /api/v1/reports/key-figures",
 	"GET /api/v1/heidi/suggestions",
 	"GET /api/v1/heidi/usage",
+	"GET /api/v1/heidi/memory", // a member's personal settings and currently permitted topics
+	"PATCH /api/v1/heidi/memory",
+	"DELETE /api/v1/heidi/memory",
 	"GET /api/v1/heidi/conversations",
 	"GET /api/v1/heidi/conversations/x",
 	"POST /api/v1/heidi/chat",
