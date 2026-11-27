@@ -252,6 +252,14 @@ IDs instead of email addresses, feedback text or screenshots. Keep `FEEDBACK_EMA
 the full reports. Alerts queue in PostgreSQL from the time the integration is enabled, retry for up to seven
 days and may arrive twice if delivery succeeds before the server can confirm it in the database.
 
+The same bot answers the operator's questions in that chat, and only there (messages from any other chat are
+ignored and logged without their text). Its commands are read-only aggregates: `/stats`, `/users`, `/workspaces`,
+`/paid` (plans, trials, past due, cancellations, seats, and MRR and ARR estimated from list prices), `/signups [n]`,
+`/workspace <id|slug|email>`, `/usage`, `/health` and `/help`. With `OPENAI_API_KEY` set, a question in plain words is
+routed by the model to one of these commands; the model never sees the data, and its tokens count against a small
+daily allowance of the operator's own, never a workspace's. The API long-polls Telegram, so the bot needs no public
+endpoint and must have no webhook set; during a deploy only the instance holding a lease in PostgreSQL polls.
+
 ### Billing
 
 Billing is optional. With `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, prices are read from your Stripe

@@ -236,6 +236,8 @@ var ExportExcluded = map[string]string{
 	"offer_audit":              "operators' audit of offer and limit changes, not business data",
 	"stripe_events":            "global webhook idempotency log, not workspace data",
 	"admin_alerts":             "global operator notification queue, deleted on delivery or expiry",
+	"admin_bot_lease":          "which instance polls the operator's Telegram bot, not workspace data",
+	"operator_ai_usage":        "the operator bot's own daily model usage, not workspace data",
 	"billing_checkouts":        "what a plan Checkout was opened for, to settle its subscription; not business data",
 	"trial_claims":             "digests that recognise a customer's one trial, kept across workspaces for 24 months; not business data",
 	"usage_events":             "what the workspace used of its plan's monthly limits, not business data",

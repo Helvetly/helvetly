@@ -31,7 +31,8 @@ COPY apps/api/ ./
 RUN rm -rf internal/platform/dist internal/platform/portal-dist
 COPY --from=web /src/apps/platform/out internal/platform/dist
 COPY --from=web /src/apps/portal/out internal/platform/portal-dist
-RUN go build -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o /out/helvetly ./cmd/helvetly
+ARG VERSION=dev
+RUN go build -trimpath -buildvcs=false -ldflags="-s -w -buildid= -X main.version=${VERSION}" -o /out/helvetly ./cmd/helvetly
 
 # --- 3. Runtime: no shell, no package manager, uid 65532 -------------------------------------------------------------
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:aafe993665bf6200db38a02c11a9351e782a84b6a45e7f33b6695638c88e3931

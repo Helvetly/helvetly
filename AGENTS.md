@@ -528,6 +528,12 @@ artifact. A step added to `check` goes into a CI job too. Rules:
 - Background loops run under a supervisor in `cmd/helvetly/jobs.go` (a panic restarts the loop after a minute);
   SIGTERM drains requests, then waits for ticks in flight within the 15 s budget.
 - Self-hosting: README, "Self-hosting" (image contract, settings, releases, PostgreSQL, object storage).
+- Operator bot (`internal/admintelegram`, with `TELEGRAM_BOT_TOKEN`/`TELEGRAM_ADMIN_CHAT_ID`): besides the queued
+  alerts (`admin_alerts`), `Bot` long-polls `getUpdates` while its instance holds `admin_bot_lease` (one poller across
+  a blue/green deploy; a 409 waits 30 s) and answers only the admin chat, at most 20 messages a minute. Commands are
+  read-only aggregates from `store/queries_operator.go` (no secrets, sealed or HR data, document contents); MRR and ARR
+  use billing's prices. With a model, free text is routed to one command by a strict schema and counted per UTC day in
+  `operator_ai_usage` (100 000 tokens), never a workspace's pools. The version comes from `-X main.version`.
 
 ## 10. Git
 
