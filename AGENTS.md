@@ -375,7 +375,10 @@ are the reference.
   compares stored amounts, schedules, ownership and document links. Reading each original uses personal AI consent
   and the automation budget. The model extracts printed facts from one file; the server compares them with the
   ledger. Readings are cached by workspace, document, source fingerprint and interface language. A short database
-  lease serializes each reading. Partial or unreadable sources remain visible. The drawer groups findings by
+  lease serializes each reading. The member first picks a full audit or some areas (`areas`: clients, invoices, quotes,
+  payments, expenses, contracts, documents, tax; unknown ones 400 `invalid_areas`), which narrow the findings, counts
+  and the `pending` originals; a scoped reading of an original no chosen check needs answers `skipped` without AI.
+  While an audit runs the dashboard button shows its progress and reopens it, never a second one. Partial or unreadable sources remain visible. The drawer groups findings by
   severity and area and opens their evidence; recommendations never change business records.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
