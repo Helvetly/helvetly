@@ -8,7 +8,7 @@ import { scheduledInvoice } from '@/mocks/data'
 
 import { filtersPlay } from './filters'
 import {
-  barsBetweenDataColumns,
+  showsResizeHandles,
   closeHeidi,
   dark,
   desktop,
@@ -37,7 +37,7 @@ type Story = StoryObj<typeof meta>
 export const List: Story = { play: shows('Sophie Meier', 'Overdue') }
 export const ListDark = dark(List)
 export const ListResizeBars: Story = {
-  play: async ({ canvasElement }) => barsBetweenDataColumns(canvasElement),
+  play: async ({ canvasElement }) => showsResizeHandles(canvasElement),
 }
 export const ListPhone = phone(List)
 

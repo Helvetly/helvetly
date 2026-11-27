@@ -110,7 +110,9 @@ export const Week: Story = {
     // Another host's session is not mine.
     await expect(page.queryByRole('button', { name: /Design review/ })).not.toBeInTheDocument()
     // Busy times, requests and sessions to mark are requests of their own: wait for each.
-    await expect(await page.findByText('Busy')).toBeInTheDocument()
+    // Only the one ahead: Tuesday's busy hour is over and not drawn.
+    await expect(await page.findByText('Busy in the calendar, 13:00–14:30')).toBeInTheDocument()
+    await expect(page.getAllByText(/^Busy in the calendar/)).toHaveLength(1)
     await expect(await page.findByRole('button', { name: '2 requests waiting' })).toBeVisible()
     await expect(await page.findByRole('button', { name: '1 session to mark' })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Calendar view:/ })).toHaveTextContent('Week')
