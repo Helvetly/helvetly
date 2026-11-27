@@ -22,6 +22,13 @@ const portalRequest = fn()
 let dashboardFailed = true
 let invoicesFailed = true
 const cashPoint = (income: number, expenses: number) => [{ date: '2026-11-08', income, expenses }]
+/** A dashboard card by its title, once it is on the page. */
+async function cardIn(canvas: ReturnType<typeof within>, title: string) {
+  const heading = await canvas.findByRole('heading', { name: title, level: 2 })
+  const section = heading.closest('section')
+  if (!section) throw new Error(`${title} is not a card`)
+  return within(section)
+}
 const meta = {
   title: 'Financial overview/Live states',
   decorators: [
@@ -81,7 +88,7 @@ export const CashFlowCurrenciesAndPeriods: Story = {
   },
   render: () => <Dashboard />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
+    const canvas = await cardIn(within(canvasElement), 'Cash flow')
     const net = await canvas.findByLabelText('Net cash flow')
     await waitFor(() => expect(net).toHaveTextContent(/CHF\s*150\s*net/))
     await userEvent.click(canvas.getByRole('radio', { name: '30D' }))
@@ -101,7 +108,7 @@ export const CashFlowCurrenciesAndPeriods: Story = {
 
 const month = (date: string, income: number, expenses: number) => ({ date, income, expenses })
 
-/** Years: two years with data, this year against last year's same months; years switch on and off. */
+/** Year over year: two years with data, this year against last year's same months; years switch on and off. */
 export const CashFlowYears: Story = {
   parameters: {
     msw: {
@@ -128,13 +135,15 @@ export const CashFlowYears: Story = {
   },
   render: () => <Dashboard />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await userEvent.click(await canvas.findByRole('radio', { name: 'Years' }))
-    // Measure and period sit side by side in the card's title row, not stacked.
-    const measureTop = canvas.getByRole('radio', { name: 'Net' }).getBoundingClientRect().top
-    const periodTop = canvas.getByRole('radio', { name: 'Years' }).getBoundingClientRect().top
-    await expect(Math.abs(measureTop - periodTop)).toBeLessThan(2)
-    const total = canvas.getByLabelText('2026 year to date')
+    const canvas = await cardIn(within(canvasElement), 'Year over year')
+    // The measure sits in the card's title row, beside its title.
+    const title = canvas.getByRole('heading', { name: 'Year over year' })
+    const measure = await canvas.findByRole('radio', { name: 'Income' })
+    await expect(measure).toBeChecked()
+    await expect(
+      Math.abs(measure.getBoundingClientRect().top - title.getBoundingClientRect().top),
+    ).toBeLessThan(12)
+    const total = await canvas.findByLabelText('2026 year to date')
     await expect(total).toHaveTextContent(/CHF\s*240\s*2026 to date · \+20% vs 2025/)
     await userEvent.click(canvas.getByRole('radio', { name: 'Net' }))
     await expect(total).toHaveTextContent(/CHF\s*200.*\+67% vs 2025/)
@@ -151,7 +160,7 @@ export const CashFlowYears: Story = {
   },
 }
 
-/** One year of data: there is nothing to compare, so Years is not offered. */
+/** One year of data: there is nothing to compare, so the year card says so and offers no measure. */
 export const CashFlowOneYear: Story = {
   parameters: {
     msw: {
@@ -168,10 +177,13 @@ export const CashFlowOneYear: Story = {
   },
   render: () => <Dashboard />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
+    const canvas = await cardIn(within(canvasElement), 'Cash flow')
     await canvas.findByRole('radio', { name: '12M' })
     await waitFor(() => expect(canvas.getByLabelText('Net cash flow')).toHaveTextContent(/net/))
     await expect(canvas.queryByRole('radio', { name: 'Years' })).toBeNull()
+    const years = await cardIn(within(canvasElement), 'Year over year')
+    await expect(await years.findByText('Not enough history yet')).toBeVisible()
+    await expect(years.queryByRole('radio', { name: 'Net' })).toBeNull()
   },
 }
 
@@ -261,7 +273,7 @@ export const CashFlowFailureAndRetry: Story = {
   },
   render: () => <Dashboard />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
+    const canvas = await cardIn(within(canvasElement), 'Cash flow')
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Cash flow couldn’t be loaded')
     dashboardFailed = false
     await userEvent.click(canvas.getByRole('button', { name: 'Retry cash flow' }))
