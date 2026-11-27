@@ -64,6 +64,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Check migration order
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        env:
+          MIGRATION_BASE_REF: ${{ github.event.pull_request.base.ref || github.event.merge_group.base_ref }}
+          MIGRATION_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: bash scripts/check-migrations.sh "$MIGRATION_BASE_REF" "$MIGRATION_BASE_SHA"
       - &pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1; pnpm's version comes from `packageManager`
       - &node

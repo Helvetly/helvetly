@@ -155,9 +155,10 @@ var (
 )
 
 type calendarView struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Primary bool   `json:"primary"`
+	ID      string  `json:"id"`
+	Name    string  `json:"name"`
+	Primary bool    `json:"primary"`
+	Color   *string `json:"color"`
 }
 
 type connectionView struct {
@@ -180,7 +181,11 @@ func (s *Service) view(ctx context.Context, c store.CalendarConnection) (connect
 	v := connectionView{ID: c.ID, Provider: c.Provider, AccountEmail: c.AccountEmail, Status: c.Status, PushCalendarID: c.PushCalendarID,
 		BusyCalendarIDs: []string{}, Calendars: []calendarView{}, LastSyncedAt: c.LastSyncedAt, Error: c.Error}
 	for _, src := range sources {
-		v.Calendars = append(v.Calendars, calendarView{ID: src.CalendarID, Name: src.Name, Primary: src.Primary})
+		view := calendarView{ID: src.CalendarID, Name: src.Name, Primary: src.Primary}
+		if src.Color != "" {
+			view.Color = &src.Color
+		}
+		v.Calendars = append(v.Calendars, view)
 		if src.Busy {
 			v.BusyCalendarIDs = append(v.BusyCalendarIDs, src.CalendarID)
 		}
@@ -375,7 +380,7 @@ func (s *Service) refreshCalendars(ctx context.Context, c store.CalendarConnecti
 func sourcesOf(connectionID string, cals []calendar, busy []string) []store.CalendarSource {
 	out := make([]store.CalendarSource, len(cals))
 	for i, c := range cals {
-		out[i] = store.CalendarSource{ConnectionID: connectionID, CalendarID: c.ID, Name: c.Name, Primary: c.Primary, Busy: slices.Contains(busy, c.ID)}
+		out[i] = store.CalendarSource{ConnectionID: connectionID, CalendarID: c.ID, Name: c.Name, Primary: c.Primary, Color: c.Color, Busy: slices.Contains(busy, c.ID)}
 	}
 	return out
 }

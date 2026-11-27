@@ -466,13 +466,18 @@ func (s *Service) getHost(w http.ResponseWriter, r *http.Request, sess store.Ses
 		return err
 	}
 	h, err := s.db.SchedulingHost(ctx, sess.Workspace.ID, id)
+	saved := err == nil
 	if isNotFound(err) {
 		h, err = store.SchedHost{UserID: id, Bookable: true, Weekly: []store.SchedWindow{}, Overrides: []store.SchedOverride{}}, nil
 	}
 	if err != nil {
 		return err
 	}
-	auth.WriteJSON(w, http.StatusOK, data(h))
+	// saved: false tells the platform the member was never bookable, so it can suggest hours to save.
+	auth.WriteJSON(w, http.StatusOK, data(struct {
+		store.SchedHost
+		Saved bool `json:"saved"`
+	}{h, saved}))
 	return nil
 }
 

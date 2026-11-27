@@ -78,14 +78,16 @@ export type RequestOptions = {
   form?: FormData
   public?: boolean
   signal?: AbortSignal
+  idempotencyKey?: string
 }
 
 async function send(
   path: string,
-  { method = 'GET', json, form, signal }: RequestOptions,
+  { method = 'GET', json, form, signal, idempotencyKey }: RequestOptions,
 ): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (json !== undefined) headers['Content-Type'] = 'application/json'
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken
   try {
     return await fetch(apiUrl(path), {

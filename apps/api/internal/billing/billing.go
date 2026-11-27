@@ -281,12 +281,7 @@ func (s *Service) overview(w http.ResponseWriter, r *http.Request, sess store.Se
 	}
 	if plan != "" {
 		out["offer_id"] = rights.OfferID
-		var reset *time.Time // a trial's allowances last the whole trial
-		if !rights.Trial {
-			next := store.UsagePeriodStart(now).AddDate(0, 1, 0)
-			reset = &next
-		}
-		out["entitlements"] = entitlementItems(rights, u, reset)
+		out["entitlements"] = entitlementItems(rights, u, now)
 		if b.PerSeat {
 			out["paid_seats"] = paidSeats(b)
 		}

@@ -25,6 +25,8 @@ export type Option = {
   label: string
   hint?: string
   group?: string
+  /** Before the label in the list, e.g. a flag. */
+  icon?: ReactNode
   adornment?: ReactNode
 }
 
@@ -226,6 +228,7 @@ export function Combobox({
                             chosen.includes(option.value) ? 'opacity-100' : 'opacity-0',
                           )}
                         />
+                        {option.icon}
                         {renderOption?.(option) ?? (
                           <span className="min-w-0 flex-1 truncate" title={option.label}>
                             {option.label}

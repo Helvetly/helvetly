@@ -395,6 +395,7 @@ export const PhoneWithSessions: Story = {
     await expect(card.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       documents.getBoundingClientRect().top,
     )
+    await canvas.findByText('Amount due')
     const tiles = [...canvasElement.querySelectorAll('dl[aria-label="Summary"] > div')]
     await expect(tiles[0]!.getBoundingClientRect().height).toBe(
       tiles[1]!.getBoundingClientRect().height,

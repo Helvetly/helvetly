@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/billing"
 	"helvetly.com/api/internal/imports"
 	"helvetly.com/api/internal/permissions"
 	"helvetly.com/api/internal/store"
@@ -84,10 +86,11 @@ type Service struct {
 	files  fileStore
 	model  aimodel.Provider
 	budget aimodel.Budget
+	now    func() time.Time
 }
 
 func New(db *store.Store, a authenticator, files fileStore, model aimodel.Provider, budget aimodel.Budget) *Service {
-	return &Service{db, a, files, model, budget}
+	return &Service{db, a, files, model, budget, time.Now}
 }
 func language(r *http.Request) string {
 	lang := r.URL.Query().Get("lang")
@@ -119,10 +122,14 @@ func parseAreas(raw string) (areas, error) {
 func (a areas) includes(area string) bool { return len(a) == 0 || a[area] }
 
 func (s *Service) Register(mux *http.ServeMux) {
-	handle := func(path string, fn func(context.Context, store.Session, string, string, areas) (any, error)) {
+	handle := func(path string, fn func(*http.Request, store.Session, areas) (any, error)) {
 		mux.HandleFunc("POST "+path, s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
 			selected, err := parseAreas(strings.Join(r.URL.Query()["areas"], ","))
 			if err != nil {
+				s.auth.WriteError(w, r, err)
+				return
+			}
+			if err := s.db.RequireFeature(r.Context(), sess.Workspace.ID, store.FeatureWorkspaceAudit); err != nil {
 				s.auth.WriteError(w, r, err)
 				return
 			}
@@ -134,7 +141,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 				s.auth.WriteError(w, r, err)
 				return
 			}
-			result, err := fn(r.Context(), sess, language(r), r.PathValue("id"), selected)
+			result, err := fn(r, sess, selected)
 			if err != nil {
 				s.auth.WriteError(w, r, err)
 				return
@@ -143,8 +150,34 @@ func (s *Service) Register(mux *http.ServeMux) {
 			auth.WriteJSON(w, http.StatusOK, result)
 		}))
 	}
-	handle("/api/v1/reports/workspace-audit", s.report)
-	handle("/api/v1/reports/workspace-audit/documents/{id}", s.inspect)
+	handle("/api/v1/reports/workspace-audit", s.run)
+	handle("/api/v1/reports/workspace-audit/documents/{id}", func(r *http.Request, sess store.Session, selected areas) (any, error) {
+		return s.inspect(r.Context(), sess, language(r), r.PathValue("id"), selected)
+	})
+}
+
+func (s *Service) run(r *http.Request, sess store.Session, selected areas) (any, error) {
+	if auditAccess(sess) == (access{}) {
+		return nil, denied()
+	}
+	key := r.Header.Get("Idempotency-Key")
+	if len(key) > 128 {
+		return nil, auth.Error(http.StatusBadRequest, "invalid_idempotency_key", "Idempotency-Key may be at most 128 bytes.", nil)
+	}
+	if key == "" {
+		key = auth.NewID("aud")
+	}
+	op := store.UsageOp{
+		Resource: string(billing.WorkspaceAudits), ID: sess.User.ID + ":" + key,
+		Params: strings.Join(slices.Sorted(maps.Keys(selected)), ","), Amount: 1,
+	}
+	if _, err := s.db.ConsumeUsage(r.Context(), sess.Workspace.ID, op, s.now()); err != nil {
+		if errors.Is(err, store.ErrUsageConflict) {
+			return nil, auth.Error(http.StatusConflict, "idempotency_conflict", "This audit run uses a different scope.", nil)
+		}
+		return nil, err
+	}
+	return s.report(r.Context(), sess, language(r), selected)
 }
 func denied() error {
 	return auth.Error(http.StatusForbidden, "forbidden", "You do not have access to these records.", nil)

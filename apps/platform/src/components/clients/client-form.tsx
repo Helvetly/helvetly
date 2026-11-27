@@ -3,6 +3,7 @@ import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { FormField as SharedField } from '@helvetly/ui/components/form-field'
 import { Kbd } from '@helvetly/ui/components/kbd'
+import { LanguageSelect } from '@helvetly/ui/components/language-select'
 import { PhoneInput } from '@helvetly/ui/components/phone-input'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
@@ -19,7 +20,7 @@ import { FormChoiceCards, FormSection } from '@/components/form-section'
 import { useImportSubmit, type FormImport } from '@/components/import/form-import'
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
-import { EINVOICE_FORMATS, useSaveClient, type Client } from '@/lib/clients'
+import { EINVOICE_FORMATS, LANGUAGES, useSaveClient, type Client } from '@/lib/clients'
 import { useHabits, withHabits } from '@/lib/habits'
 import { translate } from '@/lib/i18n'
 import type { RegisterCompany } from '@/lib/uid-register'
@@ -29,7 +30,6 @@ import {
   emptyValues,
   FIELD_ORDER,
   formatUid,
-  LANGUAGE_OPTIONS,
   missingAddress,
   NOTE_MAX,
   RO_COUNTIES,
@@ -48,8 +48,6 @@ import { invitationText, portalLogin, PortalStatus } from './client-portal'
 import { Combobox, COUNTRY_OPTIONS, CURRENCY_OPTIONS, inputClass, TagsInput } from './fields'
 import { RegisterCheckHint, RegisterNameInput } from './uid-register-fields'
 import { registerApplies, registerFill, replacedFields, uidToCheck } from './uid-register-model'
-
-const LANGUAGE_CHOICES = LANGUAGE_OPTIONS.map(({ code, name }) => ({ value: code, label: name }))
 
 const fieldId = (field: keyof FormValues) => `client-${field}`
 
@@ -614,12 +612,12 @@ export function ClientForm({
               label={translate('documentLanguage')}
               error={errors.language}
             >
-              <Combobox
+              <LanguageSelect
                 id={fieldId('language')}
                 value={values.language}
-                options={LANGUAGE_CHOICES}
+                languages={LANGUAGES}
                 placeholder={translate('chooseALanguage')}
-                onChange={(code) => set('language', code as FormValues['language'])}
+                onChange={(code) => set('language', code)}
               />
             </FormField>
             <FormField field="currency" label={translate('currency')} error={errors.currency}>

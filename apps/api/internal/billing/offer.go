@@ -168,7 +168,7 @@ func (o Offer) Validate(defs []store.LimitDef) error {
 		o.validateRecord(r, def, fail)
 	}
 	for _, d := range defs {
-		if !seen[d.Key] {
+		if !seen[d.Key] && !slices.Contains(additivePlanKeys, d.Key) {
 			fail("%s: missing; a published offer must give every key a value", d.Key)
 		}
 	}

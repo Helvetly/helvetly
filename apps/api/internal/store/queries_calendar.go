@@ -121,6 +121,7 @@ type CalendarSource struct {
 	CalendarID   string
 	Name         string
 	Primary      bool
+	Color        string // "#rrggbb", or empty
 	Busy         bool
 	SyncToken    *string // Google's syncToken or Microsoft's delta link
 	DueAt        time.Time
@@ -131,24 +132,25 @@ type CalendarSource struct {
 // there; a new calendar is due at once and needs a full sync.
 func (q Q) SaveCalendarSources(ctx context.Context, connectionID string, list []CalendarSource, now time.Time) error {
 	return q.writeTx(ctx, func(q Q) error {
-		ids, names, primary, busy := make([]string, len(list)), make([]string, len(list)), make([]bool, len(list)), make([]bool, len(list))
+		ids, names, colors := make([]string, len(list)), make([]string, len(list)), make([]string, len(list))
+		primary, busy := make([]bool, len(list)), make([]bool, len(list))
 		for i, s := range list {
-			ids[i], names[i], primary[i], busy[i] = s.CalendarID, s.Name, s.Primary, s.Busy
+			ids[i], names[i], colors[i], primary[i], busy[i] = s.CalendarID, s.Name, s.Color, s.Primary, s.Busy
 		}
 		if _, err := q.db.Exec(ctx, `DELETE FROM calendar_sources WHERE connection_id = $1 AND NOT calendar_id = ANY ($2)`,
 			connectionID, ids); err != nil {
 			return err
 		}
-		_, err := q.db.Exec(ctx, `INSERT INTO calendar_sources (connection_id, calendar_id, name, is_primary, busy, due_at, full_resync)
-			SELECT $1, i, n, p, b, $6, true FROM unnest($2::text[], $3::text[], $4::bool[], $5::bool[]) AS s(i, n, p, b)
-			ON CONFLICT (connection_id, calendar_id) DO UPDATE SET name = excluded.name, is_primary = excluded.is_primary`,
-			connectionID, ids, names, primary, busy, now)
+		_, err := q.db.Exec(ctx, `INSERT INTO calendar_sources (connection_id, calendar_id, name, is_primary, busy, due_at, full_resync, color)
+			SELECT $1, i, n, p, b, $6, true, NULLIF(c, '') FROM unnest($2::text[], $3::text[], $4::bool[], $5::bool[], $7::text[]) AS s(i, n, p, b, c)
+			ON CONFLICT (connection_id, calendar_id) DO UPDATE SET name = excluded.name, is_primary = excluded.is_primary, color = excluded.color`,
+			connectionID, ids, names, primary, busy, now, colors)
 		return err
 	})
 }
 
 func (q Q) CalendarSources(ctx context.Context, connectionID string) ([]CalendarSource, error) {
-	rows, err := q.db.Query(ctx, `SELECT connection_id, calendar_id, name, is_primary, busy, sync_token, due_at, full_resync
+	rows, err := q.db.Query(ctx, `SELECT connection_id, calendar_id, name, is_primary, busy, sync_token, due_at, full_resync, coalesce(color, '')
 		FROM calendar_sources WHERE connection_id = $1 ORDER BY NOT is_primary, lower(name), calendar_id`, connectionID)
 	if err != nil {
 		return nil, err
@@ -158,7 +160,7 @@ func (q Q) CalendarSources(ctx context.Context, connectionID string) ([]Calendar
 
 func scanSource(r pgx.CollectableRow) (CalendarSource, error) {
 	var s CalendarSource
-	return s, r.Scan(&s.ConnectionID, &s.CalendarID, &s.Name, &s.Primary, &s.Busy, &s.SyncToken, &s.DueAt, &s.FullResync)
+	return s, r.Scan(&s.ConnectionID, &s.CalendarID, &s.Name, &s.Primary, &s.Busy, &s.SyncToken, &s.DueAt, &s.FullResync, &s.Color)
 }
 
 // SetBusyCalendars imports busy times from exactly calendarIDs. Busy times are not kept per calendar, so the
@@ -181,7 +183,7 @@ func (q Q) ClaimDueSources(ctx context.Context, now, lease time.Time, limit int)
 		JOIN workspaces w ON w.id = c.workspace_id
 		WHERE x.busy AND x.due_at <= $1 AND c.status = 'active' AND w.deleted_at IS NULL
 		ORDER BY x.due_at LIMIT $3 FOR UPDATE OF x SKIP LOCKED)
-		RETURNING s.connection_id, s.calendar_id, s.name, s.is_primary, s.busy, s.sync_token, s.due_at, s.full_resync`, now, lease, limit)
+		RETURNING s.connection_id, s.calendar_id, s.name, s.is_primary, s.busy, s.sync_token, s.due_at, s.full_resync, coalesce(s.color, '')`, now, lease, limit)
 	if err != nil {
 		return nil, err
 	}

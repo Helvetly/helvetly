@@ -47,6 +47,7 @@ export type FeatureKey =
   | 'document_approvals'
   | 'einvoice_xml'
   | 'employees'
+  | 'workspace_audit'
   | 'scheduling'
   | 'calendar_sync'
 
@@ -349,6 +350,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   document_approvals: translate('documentApprovals'),
   einvoice_xml: translate('eInvoiceXML2'),
   employees: translate('planEmployees'),
+  workspace_audit: translate('workspaceAuditAudit'),
   scheduling: translate('schedFeatureName'),
   calendar_sync: translate('calendarSyncFeatureName'),
 }
@@ -449,6 +451,7 @@ export const isLimitKey = (key: string): key is LimitKey => Object.hasOwn(LIMIT_
 /** The usage panel's names for every customer allowance of the offer (monthly ones say so). */
 const USAGE_LABELS: Record<string, string> = {
   ...LIMIT_LABELS,
+  workspace_audits_per_month: translate('workspaceAuditAudit'),
   invoices_per_month: translate('invoiceIssuesThisMonth'),
   engagements: translate('activeEngagements'),
   emails_per_month: translate('emailRecipientsThisMonth'),

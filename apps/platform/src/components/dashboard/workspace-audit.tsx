@@ -15,13 +15,17 @@ import {
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { cn } from '@helvetly/ui/lib/utils'
+import { useQueryClient } from '@tanstack/react-query'
 import { CheckCheck, ChevronRight, FileSearch, LoaderCircle, Sparkles } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
+import { featureLock, PLANS_HREF, PlanTag } from '@/components/billing/feature-lock'
 import { RecordLink } from '@/components/record-link'
 import { useAI } from '@/lib/ai'
 import { ApiError, errorMessage } from '@/lib/api'
+import { billingKeys, usageItems, useBilling, type UsageItem } from '@/lib/billing'
 import { translate } from '@/lib/i18n'
 import {
   auditAreas,
@@ -224,6 +228,8 @@ function ScopeDialog({
   onOpenChange,
   initial,
   hasReport,
+  allowance,
+  checkingAllowance,
   onShowReport,
   onStart,
 }: {
@@ -231,12 +237,23 @@ function ScopeDialog({
   onOpenChange: (open: boolean) => void
   initial: AuditArea[]
   hasReport: boolean
+  allowance: Pick<UsageItem, 'used' | 'max'> | undefined
+  checkingAllowance: boolean
   onShowReport: () => void
   onStart: (areas: AuditArea[]) => void
 }) {
   const [mode, setMode] = useState<'full' | 'areas'>(initial.length ? 'areas' : 'full')
   const [picked, setPicked] = useState<AuditArea[]>(initial)
   const ready = mode === 'full' || picked.length > 0
+  const limit = allowance?.max ?? null
+  const remaining = limit === null ? null : Math.max(0, limit - (allowance?.used ?? 0))
+  let allowanceText = ''
+  if (checkingAllowance) allowanceText = translate('workspaceAuditCheckingAllowance')
+  else if (!allowance) allowanceText = translate('workspaceAuditAllowanceUnavailable')
+  else if (remaining === 0) allowanceText = translate('workspaceAuditLimitReached')
+  else if (remaining !== null && limit !== null) {
+    allowanceText = translate('workspaceAuditRunsLeft', { remaining, limit })
+  }
   const id = useId()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -293,6 +310,9 @@ function ScopeDialog({
           <Sparkles aria-hidden className="mt-px size-3.5 shrink-0 text-heidi" />
           {translate('workspaceAuditAllowance')}
         </p>
+        {allowanceText && (
+          <output className="text-body-sm text-muted-foreground">{allowanceText}</output>
+        )}
         <DialogFooter>
           {hasReport && (
             <Button variant="outline" onClick={onShowReport}>
@@ -300,7 +320,7 @@ function ScopeDialog({
             </Button>
           )}
           <Button
-            disabled={!ready}
+            disabled={!ready || checkingAllowance || !allowance || remaining === 0}
             onClick={() =>
               onStart(
                 mode === 'full'
@@ -320,6 +340,12 @@ function ScopeDialog({
 export function WorkspaceAuditButton() {
   const ai = useAI('automation')
   const approval = useAIApproval()
+  const billing = useBilling()
+  const queryClient = useQueryClient()
+  const lock = featureLock(billing.data, 'workspace_audit')
+  const allowance = billing.data?.enabled
+    ? usageItems(billing.data).find((item) => item.limit === 'workspace_audits_per_month')
+    : billing.data && { used: 0, max: null }
   const [choosing, setChoosing] = useState(false)
   const [open, setOpen] = useState(false)
   const [areas, setAreas] = useState<AuditArea[]>([])
@@ -329,6 +355,7 @@ export function WorkspaceAuditButton() {
   const [error, setError] = useState('')
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
   const active = useRef<AbortController | null>(null)
+  const runKey = useRef('')
   const paused = useRef(false)
   useEffect(
     () => () => {
@@ -350,7 +377,7 @@ export function WorkspaceAuditButton() {
     try {
       if (!(await approval.ensure()) || signal.aborted) return
       setOpen(true)
-      const snapshot = await fetchAudit(signal, scope)
+      const snapshot = await fetchAudit(signal, scope, runKey.current)
       if (signal.aborted) return
       setReport(snapshot)
       started = true
@@ -367,20 +394,24 @@ export function WorkspaceAuditButton() {
         await inspectOriginal(id, signal, scope)
         if (signal.aborted) return
         if ((index + 1) % 10 === 0 && index + 1 < queue.length) {
-          const latest = await fetchAudit(signal, scope)
+          const latest = await fetchAudit(signal, scope, runKey.current)
           if (!signal.aborted) setReport(latest)
         }
         return inspectNext(index + 1)
       }
       await inspectNext(0)
       if (queue.length && !signal.aborted) {
-        const latest = await fetchAudit(signal, scope)
+        const latest = await fetchAudit(signal, scope, runKey.current)
         if (!signal.aborted) setReport(latest)
       }
     } catch (cause) {
       if (signal.aborted) return
       setOpen(true)
-      setError(errorMessage(cause))
+      setError(
+        !started && cause instanceof ApiError && cause.code === 'limit_reached'
+          ? translate('workspaceAuditLimitReached')
+          : errorMessage(cause),
+      )
       if (
         cause instanceof ApiError &&
         (cause.status === 401 || cause.code === 'forbidden' || cause.code === 'ai_consent_required')
@@ -388,13 +419,14 @@ export function WorkspaceAuditButton() {
         setReport(null)
       else if (started) {
         try {
-          const latest = await fetchAudit(signal, scope)
+          const latest = await fetchAudit(signal, scope, runKey.current)
           if (!signal.aborted) setReport(latest)
         } catch {
           /* Keep the last snapshot and the original error. */
         }
       }
     } finally {
+      void queryClient.invalidateQueries({ queryKey: billingKeys.overview })
       if (!signal.aborted) {
         active.current = null
         setRunning(false)
@@ -404,6 +436,7 @@ export function WorkspaceAuditButton() {
     }
   }
   function start(scope: AuditArea[]) {
+    runKey.current = crypto.randomUUID()
     setChoosing(false)
     setAreas(scope)
     setReport(null)
@@ -412,12 +445,24 @@ export function WorkspaceAuditButton() {
   function chooseAgain() {
     setOpen(false)
     setChoosing(true)
+    void billing.refetch()
   }
   function pause() {
     paused.current = true
     setStopping(true)
   }
-  if (!ai.available) return null
+  if (!ai.available || !billing.data) return null
+  if (lock) {
+    return (
+      <Button asChild variant="outline">
+        <Link href={PLANS_HREF}>
+          <Sparkles aria-hidden className="text-heidi" />
+          <span className="@max-2xl:sr-only">{translate('workspaceAuditAudit')}</span>
+          <PlanTag lock={lock} />
+        </Link>
+      </Button>
+    )
+  }
   const status = stopping
     ? translate('workspaceAuditPausing')
     : progress
@@ -433,7 +478,7 @@ export function WorkspaceAuditButton() {
       <Button
         variant="outline"
         aria-label={running ? status : translate('workspaceAuditAudit')}
-        onClick={() => (running ? setOpen(true) : setChoosing(true))}
+        onClick={() => (running ? setOpen(true) : chooseAgain())}
       >
         {running ? (
           <LoaderCircle aria-hidden className="animate-spin text-heidi" />
@@ -442,13 +487,13 @@ export function WorkspaceAuditButton() {
         )}
         {running && progress ? (
           <span className="tabular-nums">
-            <span className="hidden sm:inline">{translate('workspaceAuditRunning', progress)}</span>
-            <span className="sm:hidden">
+            <span className="@max-2xl:hidden">{translate('workspaceAuditRunning', progress)}</span>
+            <span className="@2xl:hidden">
               {progress.current}/{progress.total}
             </span>
           </span>
         ) : (
-          <span className="hidden sm:inline">
+          <span className="@max-2xl:hidden">
             {running ? translate('workspaceAuditRunningShort') : translate('workspaceAuditAudit')}
           </span>
         )}
@@ -459,6 +504,8 @@ export function WorkspaceAuditButton() {
           onOpenChange={setChoosing}
           initial={areas}
           hasReport={!!report}
+          allowance={allowance}
+          checkingAllowance={billing.isFetching}
           onShowReport={() => {
             setChoosing(false)
             setOpen(true)

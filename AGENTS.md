@@ -374,7 +374,9 @@ are the reference.
   person to activate. Model inputs can include bounded lookup results and specifically requested non-HR documents
   under the versioned personal AI approval. Personal memory is held per workspace membership: successful topic
   counts rank suggestions. Account settings show, clear or disable memory; removing membership deletes it.
-- **Dashboard AI Audit** (`internal/workspaceaudit`, session-only): the dashboard checks all dates in the current
+- **Dashboard AI Audit** (`internal/workspaceaudit`, session-only): available on Business and without billing.
+  Each new run uses one of the workspace's 10 audits per UTC calendar month, recorded in `usage_events`.
+  Report refreshes and resumes reuse the same `Idempotency-Key`. The audit checks all dates in the current
   workspace and only the member's readable clients, sales records, expenses and general documents. A snapshot
   compares stored amounts, schedules, ownership and document links. Reading each original uses personal AI consent
   and the automation budget. The model extracts printed facts from one file; the server compares them with the

@@ -91,6 +91,7 @@ const features: Record<PlanId | 'free', Gated[]> = {
     'document_approvals',
     'einvoice_xml',
     'employees',
+    'workspace_audit',
   ],
 }
 /** A plan's tiered prices: `month` for its included people, each further one `extra` (offer helvetly-v2). */
@@ -199,6 +200,12 @@ type Allowance = [
 
 // The allowances of offer helvetly-v1 for one person, in the offer's order, as GET /api/v1/billing lists them.
 const ALLOWANCES: Allowance[] = [
+  [
+    'workspace_audits_per_month',
+    'period_counter',
+    false,
+    { free: 0, basic: 0, pro: 0, business: 10 },
+  ],
   ['clients', 'resource_state', false, { free: 5, basic: 30, pro: 300, business: null }],
   ['products', 'resource_state', false, { free: 10, basic: 25, pro: 250, business: null }],
   ['engagements', 'resource_state', false, { free: 1, basic: 3, pro: 20, business: null }],

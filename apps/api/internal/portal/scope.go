@@ -80,8 +80,8 @@ func (s *Service) getScopeLogo(w http.ResponseWriter, r *http.Request) {
 	case scope.LogoFileID == nil:
 		err = auth.ErrNotFound
 	default:
-		// App chrome like the staff app's logo: no download allowance (the empty billing workspace).
-		err = storage.Serve(w, r, s.files, "", store.WorkspaceLogoKey(scope.WorkspaceID, *scope.LogoFileID), "logo", "")
+		// Keep the favicon on the portal origin and check access on every image request.
+		err = storage.ServeDirect(w, r, s.files, store.WorkspaceLogoKey(scope.WorkspaceID, *scope.LogoFileID), "logo", "")
 	}
 	if err != nil {
 		s.fail(w, r, err)

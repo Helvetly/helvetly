@@ -59,6 +59,7 @@ type Usage struct {
 	InvoiceDrafts, QuotesRetained                          int64
 	AutomationsThisMonth                                   int64 // automatic actions used and reserved
 	EmailsThisMonth                                        int64
+	WorkspaceAuditsThisMonth                               int64
 }
 
 func (q Q) WorkspaceBilling(ctx context.Context, workspaceID string) (Billing, error) {
@@ -151,7 +152,8 @@ func (q Q) RecordStripeEvent(ctx context.Context, id, typ string, now time.Time)
 func (q Q) WorkspaceUsage(ctx context.Context, ws Workspace, from string, now time.Time) (Usage, error) {
 	var u Usage
 	err := q.db.QueryRow(ctx, `WITH monthly AS (SELECT resource, sum(consumed + reserved) AS n FROM usage_events
-			WHERE workspace_id = $1 AND period BETWEEN $2 AND $4 GROUP BY resource)
+			WHERE workspace_id = $1 AND period BETWEEN $2 AND $4
+		AND (resource <> 'workspace_audits_per_month' OR period = $4) GROUP BY resource)
 		SELECT
 			greatest((SELECT count(*) FROM workspace_members WHERE workspace_id = $1) - 1, 0),
 			(SELECT count(*) FROM clients WHERE workspace_id = $1 AND deleted_at IS NULL),
@@ -168,10 +170,11 @@ func (q Q) WorkspaceUsage(ctx context.Context, ws Workspace, from string, now ti
 			(SELECT count(*) FROM quotes WHERE workspace_id = $1),
 			coalesce((SELECT n FROM monthly WHERE resource = 'automation_actions_per_month'), 0),
 			coalesce((SELECT n FROM monthly WHERE resource = 'emails_per_month'), 0),
-			coalesce((SELECT n FROM monthly WHERE resource = 'quotes_per_month'), 0)`,
+			coalesce((SELECT n FROM monthly WHERE resource = 'quotes_per_month'), 0),
+		coalesce((SELECT n FROM monthly WHERE resource = 'workspace_audits_per_month'), 0)`,
 		ws.ID, from, ws.Today(now), UsagePeriod(now)).Scan(&u.Members, &u.Clients, &u.InvoicesThisMonth, &u.ExpensesThisMonth,
 		&u.Products, &u.Engagements, &u.SignaturesThisMonth, &u.StorageBytes, &u.AITokensThisMonth, &u.AIAutomationTokensThisMonth, &u.InvoiceDrafts, &u.QuotesRetained,
-		&u.AutomationsThisMonth, &u.EmailsThisMonth, &u.QuotesThisMonth)
+		&u.AutomationsThisMonth, &u.EmailsThisMonth, &u.QuotesThisMonth, &u.WorkspaceAuditsThisMonth)
 	return u, err
 }
 

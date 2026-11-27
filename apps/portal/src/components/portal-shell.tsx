@@ -44,9 +44,10 @@ import { toast } from 'sonner'
 
 import { translate } from '@/lib/i18n'
 import {
-  getPortalScope,
   getPortalSession,
+  isPortalClosed,
   portalKeys,
+  portalScopeQuery,
   signOutPortal,
   loginKey,
   switchPortalClient,
@@ -57,6 +58,7 @@ import { scoped, unscoped } from '@/lib/scope'
 import { shorten } from '@/lib/text'
 
 import { LoginAvatar, PortalLoadError, WorkspaceMark } from './portal-bits'
+import { PortalNotFound } from './portal-not-found'
 
 const NAV = [
   { href: '/', label: translate('overview'), icon: House },
@@ -366,18 +368,15 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
     retry: false,
   })
 
-  const { data: scope } = useQuery({
-    queryKey: portalKeys.scope,
-    queryFn: getPortalScope,
-    retry: false,
-  })
+  const scope = useQuery(portalScopeQuery)
 
   useEffect(() => {
     if (session === null) router.replace(scoped('/login'))
   }, [session, router])
 
+  if (isPortalClosed(scope.error)) return <PortalNotFound closed />
   if (!session && sessionError) return <PortalLoadError retry={() => void refetch()} />
-  if (isPending || !session) return <Loader size="page" className="min-h-svh" />
+  if (isPending || scope.isPending || !session) return <Loader size="page" className="min-h-svh" />
 
   const switchClient = async (id: string) => {
     if (id === loginKey({ id: session.client.id, participant_id: session.participant?.id })) return
@@ -415,7 +414,7 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
           <div className="flex h-16 items-center gap-4 px-4 sm:px-6 md:gap-6 lg:px-8">
             <WorkspaceBrand
               name={session.workspace.name}
-              logoUrl={logoUrl ?? scope?.logo_url ?? undefined}
+              logoUrl={logoUrl ?? (scope.isSuccess ? scope.data?.logo_url : null) ?? undefined}
             />
             <PortalNav pathname={pathname} />
             <div className="shrink-0">

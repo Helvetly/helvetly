@@ -79,7 +79,7 @@ describe('home page', () => {
       screen
         .getByRole('link', { name: new RegExp(`Start your ${TRIAL_DAYS}-day Pro trial`) })
         .getAttribute('href'),
-    ).toBe('http://localhost:8000/login')
+    ).toBe('http://localhost:8000/login/')
   })
 
   it('shows Heidi’s first example answered, and another one on request', async () => {
@@ -142,7 +142,7 @@ describe('home page in German', () => {
       '/de/preise',
     )
     expect(screen.getByRole('link', { name: /Starten Sie Ihre/ }).getAttribute('href')).toBe(
-      'http://localhost:8000/login?lang=de',
+      'http://localhost:8000/login/?lang=de',
     )
     const internal = screen
       .getAllByRole('link')
@@ -175,7 +175,8 @@ describe.each(['fr', 'it', 'nl', 'cs', 'sv'] as const)('home page in %s', (langu
     )
     const anchors = screen.getAllByRole('link')
     const trial = anchors.find((link) => link.textContent?.includes(translate('startYour').trim()))
-    expect(trial?.getAttribute('href')).toBe(`http://localhost:8000/login?lang=${language}`)
+    expect(trial?.getAttribute('href')).toBe(`http://localhost:8000/login/?lang=${language}`)
+    expect(trial?.getAttribute('rel')).toBe('nofollow')
     const internal = anchors
       .map((link) => link.getAttribute('href') ?? '')
       .filter((href) => href.startsWith('/'))
@@ -263,7 +264,7 @@ describe('pricing page', () => {
       within(card(1))
         .getByRole('link', { name: /Choose Basic/ })
         .getAttribute('href'),
-    ).toBe('http://localhost:8000/login')
+    ).toBe('http://localhost:8000/login/')
     expect(within(card(2)).getByRole('link', { name: /Try Pro free for 14 days/ })).toBeTruthy()
   })
 

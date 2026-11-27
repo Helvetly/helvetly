@@ -23,6 +23,7 @@ const (
 	FeatureClientPortal         = "client_portal"
 	FeatureEInvoiceXML          = "einvoice_xml"
 	FeatureEmployees            = "employees"
+	FeatureWorkspaceAudit       = "workspace_audit"
 	FeatureCustomPortalDomain   = "custom_portal_domain"
 	FeatureDocumentApprovals    = "document_approvals"
 	FeatureScheduling           = "scheduling"

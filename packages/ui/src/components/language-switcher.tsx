@@ -19,10 +19,9 @@ import {
 } from '@helvetly/ui/components/dropdown-menu'
 import { Flag } from '@helvetly/ui/components/flag'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
+import { languageFlags } from '@helvetly/ui/components/language-select'
 import { Check, Globe, Languages } from 'lucide-react'
 import type { ReactNode, RefObject } from 'react'
-
-const languageFlags: Record<string, string> = { de: 'DE', en: 'GB', fr: 'FR', it: 'IT' }
 
 /** Reloads the page in `language`, so module-level labels change too. */
 function switchLanguage(language: string) {
@@ -31,9 +30,9 @@ function switchLanguage(language: string) {
     window.location.assign(languageHref(path, language))
     return
   }
-  const alternate = document.querySelector<HTMLLinkElement>(
-    `link[rel="alternate"][hreflang="${language}"]`,
-  )
+  const alternate =
+    document.querySelector<HTMLLinkElement>(`link[rel="alternate"][hreflang="${language}"]`) ??
+    document.querySelector<HTMLLinkElement>('link[rel="alternate"][hreflang="x-default"]')
   const publicUrl = alternate
     ? new URL(alternate.href).pathname + window.location.search + window.location.hash
     : localizedHref(path, language)

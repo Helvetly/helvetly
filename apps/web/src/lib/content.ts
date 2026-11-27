@@ -58,6 +58,10 @@ export function parseFrontMatter(source: string, file: string) {
   return { field, optional: (key: string) => fields.get(key), body: match[2] ?? '' }
 }
 
+export function hasArticleTranslation(collection: Collection, slug: string, language: Locale) {
+  return existsSync(join(contentDir(collection), language, `${slug}.md`))
+}
+
 function read(collection: Collection, file: string, language: Locale): Article {
   const { field, optional, body } = parseFrontMatter(
     readFileSync(localizedContentFile(contentDir(collection), file, language), 'utf8'),

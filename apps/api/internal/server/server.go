@@ -5,13 +5,15 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
-// New routes /api to the API (liveness, and the routes `register` adds) and everything else to the frontend; every
-// response asks search engines not to index it.
+// New routes /api to the API (liveness, and the routes `register` adds) and everything else to the frontend.
 func New(frontend http.Handler, register func(*http.ServeMux)) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, _ *http.Request) {
@@ -22,10 +24,23 @@ func New(frontend http.Handler, register func(*http.ServeMux)) http.Handler {
 		writeJSON(w, http.StatusNotFound, map[string]any{"error": map[string]string{"code": "not_found", "message": "Not found."}})
 	})
 	mux.Handle("/", frontend)
+	return mux
+}
+
+// Robots applies the index policy before authentication and other guards can write a response.
+// Only a separately configured API origin blocks crawling. App and portal robots.txt come from their builds.
+func Robots(apiURL string, next http.Handler) http.Handler {
+	api, _ := url.Parse(apiURL) // config validates the origin
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Only the public website is for search engines: the app, portal, API and media hosts all stay out of the index.
 		w.Header().Set("X-Robots-Tag", "noindex, nofollow")
-		mux.ServeHTTP(w, r)
+		if api != nil && api.Host != "" && strings.EqualFold(r.Host, api.Host) && r.URL.Path == "/robots.txt" &&
+			(r.Method == http.MethodGet || r.Method == http.MethodHead) {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-cache")
+			_, _ = io.WriteString(w, "User-agent: *\nDisallow: /\n")
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 

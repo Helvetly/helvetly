@@ -40,7 +40,7 @@ func TestRequire(t *testing.T) {
 		e := newEnv(t, false)
 		ws := e.workspace().workspace
 		all, err := allFeatures(ctx, e.st.Q)
-		if err != nil || len(all) != 43 {
+		if err != nil || len(all) != 44 {
 			t.Fatalf("features: %v %v", all, err)
 		}
 		for _, f := range all {
@@ -127,7 +127,7 @@ func TestOverviewFeatures(t *testing.T) {
 	}
 	t.Run("billing off", func(t *testing.T) {
 		e := newEnv(t, false)
-		if own, _ := features(t, e, e.workspace()); len(own) != 43 {
+		if own, _ := features(t, e, e.workspace()); len(own) != 44 {
 			t.Fatalf("features without billing: %v", own)
 		}
 	})

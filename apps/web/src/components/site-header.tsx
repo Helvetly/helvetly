@@ -4,11 +4,11 @@ import { useLanguage } from '@helvetly/ui/components/language-provider'
 import { Logo } from '@helvetly/ui/components/logo'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@helvetly/ui/components/sheet'
 import { Menu } from 'lucide-react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { Cta } from '@/components/cta'
+import { SiteLink } from '@/components/site-link'
 import { cn } from '@/lib/cn'
 import { translatorFor } from '@/lib/i18n'
 import { siteIn } from '@/lib/site'
@@ -42,7 +42,7 @@ export function SiteHeader() {
             : 'bg-site/55 dark:border-site-line border-white/60 shadow-[0_4px_20px_-10px_rgb(85_39_201/0.15)]',
         )}
       >
-        <Link
+        <SiteLink
           href={publicHref('/', language)}
           className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
@@ -50,31 +50,31 @@ export function SiteHeader() {
           <span className="text-title-sm font-semibold tracking-tight">
             {translate('helvetly')}
           </span>
-        </Link>
+        </SiteLink>
 
         <nav
           aria-label={translate('main')}
           className="hidden flex-1 items-center justify-center gap-0.5 xl:flex"
         >
           {NAV.map((item) => (
-            <Link
+            <SiteLink
               key={item.href}
               href={item.href}
               aria-current={current(item.href) ? 'page' : undefined}
               className="hover:bg-lilac/60 aria-[current=page]:bg-lilac aria-[current=page]:text-lilac-ink inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-body font-medium text-foreground/75 transition-colors hover:text-foreground"
             >
               {item.label}
-            </Link>
+            </SiteLink>
           ))}
         </nav>
 
         <div className="ml-auto hidden shrink-0 items-center gap-2 xl:flex">
-          <a
+          <SiteLink
             href={SIGN_IN_URL}
             className="hover:bg-lilac/60 rounded-full px-3.5 py-1.5 text-body font-medium text-foreground/75 transition-colors hover:text-foreground"
           >
             {translate('signIn')}
-          </a>
+          </SiteLink>
           <Cta href={START_URL} className="min-h-9 px-4 py-1.5 text-body-sm">
             {translate('startFreeTrial')}
           </Cta>
@@ -94,14 +94,14 @@ export function SiteHeader() {
             </SheetTitle>
             <nav aria-label={translate('mobile')} className="flex flex-col gap-1 p-3 pt-6">
               {NAV.map((item) => (
-                <Link
+                <SiteLink
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
                   className="hover:bg-site-tint rounded-xl px-3 py-3 text-title-sm font-medium"
                 >
                   {item.label}
-                </Link>
+                </SiteLink>
               ))}
             </nav>
             <div className="border-site-line mt-auto flex flex-col gap-2 border-t p-4">

@@ -86,8 +86,9 @@ Also, depending on the change:
   "Pages/…" story (each screen in the real shell) at 1440 light, 1440 dark and 390 light.
 - **Auth, sessions or request handling:** sign in end to end locally with an email code (read
   it in Mailpit at http://localhost:8026) and, if touched, a passkey.
-- **Database schema:** add a new goose migration in `apps/api/internal/store/migrations`; never
-  edit one that has been merged. Migrations run on startup, so start the API once to check it.
+- **Database schema:** add a new goose migration in `apps/api/internal/store/migrations` and start the API to check it.
+  Keep merged migrations intact. Run `pnpm check:migrations` before merging. If `main` gained a
+  migration since CI passed, rerun CI against the current base and renumber yours above it if needed.
 - **API contract:** update the typed client in `apps/platform/src/lib/api.ts` in the same pull request, and
   `apps/api/internal/openapi/openapi.json` when the route is part of the public API (drift tests check both).
 

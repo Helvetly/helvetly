@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,6 +41,18 @@ type account struct {
 type calendar struct {
 	ID, Name string
 	Primary  bool
+	Color    string // "#rrggbb", or empty
+}
+
+var hexColorRe = regexp.MustCompile(`^#[0-9a-f]{6}$`)
+
+// hexColor is a provider's calendar colour as "#rrggbb", or empty when it is anything else.
+func hexColor(raw string) string {
+	c := strings.ToLower(strings.TrimSpace(raw))
+	if !hexColorRe.MatchString(c) {
+		return ""
+	}
+	return c
 }
 
 // event is a session as pushed to the host's calendar.

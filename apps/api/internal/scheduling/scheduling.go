@@ -65,6 +65,7 @@ type Change struct {
 	EndedEventID  string // a "following" split: the old series, whose calendar entry now ends before EventID's
 	ActorID       string // the member, or "" for the client
 	Notify        bool   // staff's notify flag: false sends no email to the client
+	CancelReason  string // the reason entered in the host's cancel dialog
 }
 
 const (

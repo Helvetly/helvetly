@@ -125,7 +125,8 @@ const (
 	AICost      Limit = "ai_cost_usd_micros"     // Heidi's internal model cost guard in micro-USD, never shown as a limit
 	MaxSeats    Limit = "max_self_service_seats" // the seats a workspace can buy itself; the members cap on a flat price
 
-	AutomationActions Limit = store.AutomationActions // automatic actions this quota month (usage_events)
+	AutomationActions Limit = store.AutomationActions      // automatic actions this quota month (usage_events)
+	WorkspaceAudits   Limit = "workspace_audits_per_month" // AI audit runs started this UTC month (usage_events)
 
 	// The automation pool: model tokens AI import and automatic filing used this month, apart from Heidi's
 	// (heidi_usage, the automation pool), and its internal cost guard in micro-USD.
@@ -150,6 +151,27 @@ const (
 
 // Unlimited: the plan has no cap on that limit.
 const Unlimited int64 = -1
+
+const workspaceAuditsBusiness = 10
+
+// These capabilities were introduced after offers were published. Give those offers the new defaults
+// without changing their Stripe price keys or requiring existing workspaces to switch offers.
+var additivePlanKeys = []string{store.FeatureWorkspaceAudit, string(WorkspaceAudits)}
+
+func additivePlanValue(plan, key string) store.PlanValue {
+	p := store.PlanValue{Plan: plan, Key: key, State: StateDisabled}
+	business := slices.Index(planOrder, plan) >= slices.Index(planOrder, Business)
+	if key == string(WorkspaceAudits) {
+		var limit int64
+		if business {
+			limit = workspaceAuditsBusiness
+		}
+		p.State, p.Value = StateLimited, &limit
+	} else if business {
+		p.State = StateEnabled
+	}
+	return p
+}
 
 const gb = 1_000_000_000 // storage is sold in decimal gigabytes (the offer)
 
@@ -257,6 +279,8 @@ func used(u store.Usage, l Limit) int64 {
 		return u.AutomationsThisMonth
 	case Emails:
 		return u.EmailsThisMonth
+	case WorkspaceAudits:
+		return u.WorkspaceAuditsThisMonth
 	}
 	return 0
 }

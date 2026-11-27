@@ -64,6 +64,7 @@ export type SectionState = {
  */
 export function useSectionForm<V extends object, S extends string>({
   initial,
+  draft,
   sections,
   validate,
   save,
@@ -71,6 +72,8 @@ export function useSectionForm<V extends object, S extends string>({
   savedMessage,
 }: {
   initial: V
+  /** Unsaved values to start from, e.g. suggested defaults the person still has to save. */
+  draft?: V
   sections: readonly { id: S; fields: readonly (keyof V & string)[] }[]
   /** Problems by field ("name", or "dunning_levels.0.fee" inside a list). */
   validate?: (values: V) => FieldErrors
@@ -80,7 +83,7 @@ export function useSectionForm<V extends object, S extends string>({
   fieldErrors?: (error: unknown) => FieldErrors | null
   savedMessage: (section: S) => string
 }) {
-  const [values, setValues] = useState(initial)
+  const [values, setValues] = useState(draft ?? initial)
   const [base, setBase] = useState(initial)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set())

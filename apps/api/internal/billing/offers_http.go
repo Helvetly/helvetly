@@ -30,11 +30,12 @@ type entitlementItem struct {
 
 // metered are the limits counted today (WorkspaceUsage), monthly ones in the UTC quota month.
 var metered = []Limit{Clients, Invoices, Quotes, Expenses, Products, Engagements, Signatures, Storage, AITokens, AIAutomationTokens, InvoiceDrafts, QuotesRetained,
-	AutomationActions, Emails}
+	AutomationActions, Emails, WorkspaceAudits}
 
 // entitlementItems lists the workspace's entitlements for its panel, without the internal AI cost budget: the panel
 // shows tokens. reset is when the monthly counts start again (nil in the trial, whose allowances last it whole).
-func entitlementItems(r Rights, u store.Usage, reset *time.Time) []entitlementItem {
+func entitlementItems(r Rights, u store.Usage, now time.Time) []entitlementItem {
+	reset := store.UsagePeriodStart(now).AddDate(0, 1, 0)
 	out := make([]entitlementItem, 0, len(r.Order))
 	for _, key := range r.Order {
 		e := r.Items[key]
@@ -52,8 +53,8 @@ func entitlementItems(r Rights, u store.Usage, reset *time.Time) []entitlementIt
 		if slices.Contains(metered, Limit(key)) {
 			n := used(u, Limit(key))
 			item.Used = &n
-			if e.Period != "" {
-				item.ResetAt = reset
+			if e.Period != "" && (!r.Trial || key == string(WorkspaceAudits)) {
+				item.ResetAt = &reset
 			}
 		}
 		out = append(out, item)

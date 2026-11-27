@@ -20,9 +20,17 @@ import {
   monthMatches,
   monthsBefore,
   openThrough,
+  otherOpenYears,
   PeriodsCard,
+  shownYear,
 } from './periods-settings'
 
+const replaceState = vi.spyOn(window.history, 'replaceState')
+let urlQuery = new URLSearchParams()
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/books',
+  useSearchParams: () => urlQuery,
+}))
 vi.mock('sonner', () => ({ toast: { error: vi.fn<() => void>(), success: vi.fn<() => void>() } }))
 
 const server = setupServer(...handlers)
@@ -133,6 +141,28 @@ describe('bookMonths', () => {
   })
 })
 
+describe('shownYear', () => {
+  const years = ['2026', '2025', '2024']
+  it('keeps the asked year when the books have it', () => {
+    expect(shownYear(years, ['2026-03'], '2024', '2026-11-12')).toBe('2024')
+  })
+  it('else takes the latest year with an open month, else the current year', () => {
+    expect(shownYear(years, ['2025-12', '2024-01'], null, '2026-11-12')).toBe('2025')
+    expect(shownYear(years, ['2025-12'], '1999', '2026-11-12')).toBe('2025')
+    expect(shownYear(years, [], 'x', '2026-11-12')).toBe('2026')
+  })
+})
+
+describe('otherOpenYears', () => {
+  it('groups the open months of the other years, newest first', () => {
+    expect(otherOpenYears(['2026-02', '2025-12', '2025-11', '2024-01'], '2026')).toEqual([
+      ['2025', ['2025-12', '2025-11']],
+      ['2024', ['2024-01']],
+    ])
+    expect(otherOpenYears(['2026-02'], '2026')).toEqual([])
+  })
+})
+
 describe('activityWindows', () => {
   it('cuts a long range into windows of at most 36 months, newest first', () => {
     expect(activityWindows('2020-01', '2026-11')).toEqual([
@@ -147,6 +177,7 @@ describe('activityWindows', () => {
 describe('PeriodsCard', () => {
   beforeEach(() => {
     vi.setSystemTime(new Date('2026-11-12T10:00:00Z'))
+    urlQuery = new URLSearchParams()
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -191,9 +222,13 @@ describe('PeriodsCard', () => {
       }),
     )
     wrap('owner', <PeriodsCard />)
-    expect(await screen.findByText('10 months to close')).toBeTruthy()
+    // The latest year with open months: 2026's eight, and 2025's two before them.
+    expect(await screen.findByText('8 months to close in 2026')).toBeTruthy()
+    expect(screen.getByText(/Other years still have 2 open months/)).toBeTruthy()
+    expect(screen.getByText(/Closing 2026 closes the earlier ones first/)).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: /^Close through August/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Close 10 months?' })
+    expect(within(dialog).getByText(/includes 2 open months of 2025/)).toBeTruthy()
     // The mock dates drafts in February, June and October, and in January, June and November.
     const drafts = within(dialog).getByRole('list', { name: 'Drafts in these months' })
     expect(within(drafts).getByText(/June 2026: 2 draft invoices and 1 draft expense/)).toBeTruthy()
@@ -225,20 +260,26 @@ describe('PeriodsCard', () => {
         (heading) => heading.textContent,
       )
     expect(within(picker).getAllByText('Close every open month through')).not.toHaveLength(0)
-    expect(headings()).toEqual(['2026', '2025'])
+    // Only the shown year's months, counted in it; the earlier year's months are named apart.
+    expect(headings()).toEqual(['2026'])
     expect(
       within(picker)
         .getAllByRole('option')
         .map((option) => option.textContent),
-    ).toContain('August 202610 months')
+    ).toContain('August 20268 months')
+    expect(within(picker).getByText('Also closes 2 open months before 2026 first.')).toBeTruthy()
     const search = within(picker).getByPlaceholderText('Search months…')
     await userEvent.type(search, 'zzz')
     expect(within(picker).getByText('No open month matches.')).toBeTruthy()
-    await userEvent.clear(search)
-    await userEvent.type(search, '2025')
-    expect(headings()).toEqual(['2025'])
+    await userEvent.keyboard('{Escape}')
+    // One click from the summary to the earlier year, remembered in the URL.
+    await userEvent.click(screen.getByRole('button', { name: 'Show 2025: 2 open months' }))
+    expect(replaceState).toHaveBeenLastCalledWith(null, '', '/books?year=2025')
+    expect(await screen.findByText('2 months to close in 2025')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Close through an earlier month' }))
+    const earlier = await screen.findByRole('dialog')
     expect(
-      within(picker)
+      within(earlier)
         .getAllByRole('option')
         .map((option) => option.textContent),
     ).toEqual(['December 20252 months', 'November 20251 month'])
@@ -292,18 +333,42 @@ describe('PeriodsCard', () => {
       }),
     )
     wrap('owner', <PeriodsCard />)
-    for (const year of ['2024', '2025']) {
-      const months = within(await screen.findByRole('list', { name: year })).getAllByRole(
-        'listitem',
-      )
-      expect(months).toHaveLength(12)
-      expect(months.at(-1)).toHaveAccessibleName(`January ${year}`)
-    }
+    // One year at a time: the latest with open months, the others a pick away.
     expect(
-      within(screen.getByRole('list', { name: '2026' })).getAllByRole('listitem'),
+      within(await screen.findByRole('list', { name: '2026' })).getAllByRole('listitem'),
     ).toHaveLength(11)
+    expect(screen.queryByRole('list', { name: '2025' })).toBeNull()
+    expect(screen.getByText(/Other years still have 24 open months/)).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Show 2024: 12 open months' }))
+    const months = within(await screen.findByRole('list', { name: '2024' })).getAllByRole(
+      'listitem',
+    )
+    expect(months).toHaveLength(12)
+    expect(months.at(-1)).toHaveAccessibleName('January 2024')
     // 35 months: one activity request.
     await waitFor(() => expect(asked).toEqual(['2024-01..2026-11']))
+  })
+
+  it('opens the year in the URL and says when it is closed', async () => {
+    urlQuery = new URLSearchParams('year=2025')
+    server.use(
+      http.get('/api/v1/periods', () =>
+        HttpResponse.json({
+          // Every month of 2025 closed; 2026's open.
+          data: endedMonths('2026-01-12', 12).map((month) => ({
+            month,
+            closed_at: '2026-01-05T10:00:00Z',
+            closed_by: null,
+          })),
+          first_month: '2025-11',
+        }),
+      ),
+    )
+    wrap('owner', <PeriodsCard />)
+    expect(await screen.findByText('2025 is closed')).toBeTruthy()
+    expect(screen.getByRole('list', { name: '2025' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Close through/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show 2026: 10 open months' })).toBeTruthy()
   })
 
   it('lets a member with view of period closing read but not change', async () => {
