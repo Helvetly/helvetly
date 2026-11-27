@@ -81,7 +81,7 @@ const sampleSessions = (): AccountSession[] => [
     browser: 'Edge 141',
     os: 'Windows 11',
     device: 'desktop',
-    ip: '198.51.100.9',
+    ip: '2001:db8:5780:2180:8485:95c5:68f7:7430',
     location: null,
     workspace_name: 'My workspace',
     created_at: ago(60 * 24 * 20),

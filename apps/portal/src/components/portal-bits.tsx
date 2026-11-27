@@ -53,11 +53,15 @@ export function WorkspaceMark({
     // A tile, not a face: square corners on every layer and no avatar ring.
     <Avatar aria-hidden className={cn('after:hidden', radius, large ? 'size-12' : 'size-9')}>
       {logoUrl && (
-        <AvatarImage src={logoUrl} alt="" className={cn('bg-card object-contain', radius)} />
+        <AvatarImage
+          src={logoUrl}
+          alt=""
+          className={cn('size-full bg-card object-contain', radius)}
+        />
       )}
       <AvatarFallback
         // Not cn(): tailwind-merge would drop the type-scale size for the colour.
-        className={`${radius} ${large ? 'text-title' : 'text-body-sm'} bg-brand-surface font-semibold text-brand`}
+        className={`size-full ${radius} ${large ? 'text-title' : 'text-body-sm'} bg-brand-surface font-semibold text-brand`}
       >
         {initialsOf(name)}
       </AvatarFallback>
@@ -79,7 +83,7 @@ export function LoginAvatar({
     <Avatar aria-hidden className={large ? 'size-16' : 'size-8'}>
       {src && <AvatarImage src={src} alt="" />}
       <AvatarFallback
-        className={`${large ? 'text-title-sm' : 'text-caption'} bg-card font-medium text-foreground/80 shadow-[0_1px_2px_rgb(0_0_0/0.08)] ring-1 ring-black/[0.06] ring-inset dark:bg-muted dark:ring-white/10`}
+        className={`${large ? 'text-title-sm' : 'text-caption'} font-medium text-foreground/80`}
       >
         {initialsOf(name)}
       </AvatarFallback>
