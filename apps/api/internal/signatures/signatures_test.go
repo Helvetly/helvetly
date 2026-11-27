@@ -6,9 +6,11 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/png"
@@ -747,6 +749,8 @@ func TestSigningValidation(t *testing.T) {
 			"values": map[string]string{}}, "consent"},
 		{"not a png", map[string]any{"consent": true, "signature": map[string]string{"method": "typed", "image": "data:image/jpeg;base64,AAAA"},
 			"values": map[string]string{}}, "signature"},
+		{"unknown method", map[string]any{"consent": true, "signature": map[string]string{"method": "stamped", "image": sig},
+			"values": map[string]string{"x": "y"}}, "signature"},
 		{"text missing", map[string]any{"consent": true, "signature": map[string]string{"method": "drawn", "image": sig},
 			"values": map[string]string{}}, "values."},
 	} {
@@ -949,5 +953,46 @@ func TestSigningWithANonUTF8UserAgent(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("view with User-Agent %q: %d", ua, resp.StatusCode)
 		}
+	}
+}
+
+// An uploaded image is accepted as its own method and stored re-encoded: a text chunk it carried (metadata) is gone.
+func TestUploadedSignatureIsStoredWithoutMetadata(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	doc, _ := e.pdfDocument(b, samplePDF(t, 2), "application/pdf")
+	req := e.create(b, newRequest(doc, "parallel", "one@example.com"))
+	token := e.mail.link("one@example.com")
+
+	raw, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(signatureDataURL(t), "data:image/png;base64,"))
+	payload := []byte("Comment\x00GPS 47.37N 8.54E")
+	chunk := binary.BigEndian.AppendUint32(nil, uint32(len(payload)))
+	chunk = append(chunk, "tEXt"...)
+	chunk = append(chunk, payload...)
+	chunk = binary.BigEndian.AppendUint32(chunk, crc32.ChecksumIEEE(append([]byte("tEXt"), payload...)))
+	const afterIHDR = 8 + 25
+	tagged := append(append(append([]byte{}, raw[:afterIHDR]...), chunk...), raw[afterIHDR:]...)
+	if _, err := png.Decode(bytes.NewReader(tagged)); err != nil {
+		t.Fatalf("test image: %v", err)
+	}
+
+	e.do(nil, "POST", "/api/v1/public/sign/"+token, map[string]any{"consent": true,
+		"signature": map[string]string{"method": "uploaded", "image": "data:image/png;base64," + base64.StdEncoding.EncodeToString(tagged)},
+		"values":    map[string]string{}}, http.StatusOK, nil)
+
+	var method string
+	var stored []byte
+	if err := e.raw.QueryRow(context.Background(), `SELECT signature_method, signature_png FROM signature_signers WHERE request_id = $1`,
+		req.ID).Scan(&method, &stored); err != nil {
+		t.Fatal(err)
+	}
+	if method != "uploaded" {
+		t.Fatalf("method %q, want uploaded", method)
+	}
+	if bytes.Contains(stored, []byte("GPS")) || bytes.Contains(stored, []byte("tEXt")) {
+		t.Fatal("stored signature still carries the text chunk")
+	}
+	if _, err := png.Decode(bytes.NewReader(stored)); err != nil {
+		t.Fatalf("stored signature is not a PNG: %v", err)
 	}
 }

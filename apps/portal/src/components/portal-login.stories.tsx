@@ -27,6 +27,7 @@ export const EmailThenCode: Story = {
     await userEvent.type(await canvas.findByLabelText('Email'), 'anna@example.ch')
     await userEvent.click(canvas.getByRole('button', { name: 'Continue' }))
     await expect(await canvas.findByText('Check your email')).toBeVisible()
+    await expect(canvas.getByText('MT', { exact: true })).toBeVisible()
     await expect(canvas.getByRole('button', { name: /Resend code in/ })).toBeDisabled()
   },
 }

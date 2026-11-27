@@ -142,11 +142,10 @@ export const SignatureDialog: Story = {
     const action = await body.findByRole('button', { name: 'Cancel' })
     await waitFor(() => expect(action).toBeVisible())
     await sameAction(action, within(canvasElement).getByTestId('reference-action'))
-    const natural = body.getByRole('button', { name: 'Anna Muster, Natural style' })
-    await userEvent.click(natural)
-    await expect(natural).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(body.getByRole('button', { name: /^Style/ }))
+    await userEvent.click(await body.findByRole('option', { name: /Caveat/ }))
+    await expect(body.getByRole('button', { name: /^Style/ })).toHaveTextContent('Caveat')
     await userEvent.clear(body.getByRole('textbox', { name: 'Your name' }))
-    await expect(body.getByRole('button', { name: 'Your name, Natural style' })).toBeVisible()
     await expect(body.getByRole('button', { name: 'Adopt and sign' })).toBeDisabled()
   },
 }

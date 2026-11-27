@@ -23,6 +23,9 @@ vi.mock('./ink', () => ({
   INK: '#000',
   typedPng: async () => 'data:image/png;base64,AAAA',
   trimmedPng: () => 'data:image/png;base64,AAAA',
+  uploadedPng: async () => 'data:image/png;base64,AAAA',
+  UPLOAD_TYPES: ['image/png'],
+  UPLOAD_MAX_BYTES: 1,
 }))
 
 const field = (id: string, kind: Field['kind'], label: string | null = null): Field => ({

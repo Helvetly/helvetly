@@ -9,7 +9,7 @@ import { translate } from '@helvetly/ui/lib/i18n'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 const CODE_LENGTH = 6
@@ -129,6 +129,7 @@ export function EmailAddressForm({
  * work. Submits by itself at six digits.
  */
 export function EmailCodeForm<Result>({
+  brand,
   email,
   sent,
   verify,
@@ -136,6 +137,7 @@ export function EmailCodeForm<Result>({
   onDone,
   onBack,
 }: {
+  brand?: ReactNode
   email: string
   sent: EmailCodeSent
   verify: (code: string) => Promise<Result>
@@ -191,7 +193,7 @@ export function EmailCodeForm<Result>({
   return (
     <div className="grid gap-6">
       <div className="grid justify-items-center gap-2 text-center">
-        <Logo className="mb-4 size-11" />
+        {brand ?? <Logo className="mb-4 size-11" />}
         <h1 className="text-xl font-semibold tracking-tight">{translate('checkYourEmail')}</h1>
         <p className="text-sm text-balance text-muted-foreground">
           {translate('weSentA6DigitCodeTo')}
