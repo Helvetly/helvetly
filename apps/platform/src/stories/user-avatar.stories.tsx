@@ -1,7 +1,9 @@
+import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from '@helvetly/ui/components/avatar'
 import { Meter } from '@helvetly/ui/components/meter'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
+import { Initials } from '@/components/initials'
 import { UserAvatar } from '@/components/user-avatar'
 import { samplePhoto } from '@/mocks/data'
 
@@ -40,6 +42,45 @@ export const MemberPhotoOrInitials: Story = {
     expect(without).toHaveTextContent('LB')
   },
 }
+
+const SIZES = ['size-4', 'size-5', 'size-6', 'size-7', 'size-8', 'size-9', 'size-12', 'size-16']
+
+/** Every avatar has the same thin ring with a small gap, from inline-text size to profile size, photo or initials. */
+export const RingAllSizes: Story = {
+  render: () => (
+    <div className="grid gap-4">
+      {[picture, null].map((url) => (
+        <div key={String(url)} className="flex items-center gap-3">
+          {SIZES.map((size) => (
+            <UserAvatar key={size} name="Renata Giannini" url={url} className={size} />
+          ))}
+          <Initials name="Acme AG" className="size-9" />
+        </div>
+      ))}
+      <AvatarGroup>
+        {[
+          { id: 'a', url: picture },
+          { id: 'b', url: picture },
+          { id: 'c', url: null },
+        ].map(({ id, url }) => (
+          <Avatar key={id}>
+            {url && <AvatarImage src={url} alt="" />}
+            <AvatarFallback>RG</AvatarFallback>
+          </Avatar>
+        ))}
+      </AvatarGroup>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const rings = canvasElement.querySelectorAll('[data-slot="avatar"]')
+    expect(rings.length).toBeGreaterThan(10)
+    for (const avatar of rings) {
+      expect(getComputedStyle(avatar, '::after').borderTopWidth).toBe('1px')
+    }
+  },
+}
+
+export const RingAllSizesDark: Story = { ...RingAllSizes, parameters: { dark: true } }
 
 /** The "expected by now" notch stays visible over the coloured fill and over the grey track, with a tooltip. */
 export const ExpectedMarker: Story = {
