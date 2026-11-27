@@ -47,6 +47,7 @@ const SAVED_FOR_MS = 2000
 /** What a section card needs for its footer and its ⌘/Ctrl+Enter. */
 export type SectionState = {
   dirty: boolean
+  canSave: boolean
   saving: boolean
   /** Just saved: true for about two seconds. */
   saved: boolean
@@ -72,7 +73,7 @@ export function useSectionForm<V extends object, S extends string>({
   savedMessage,
 }: {
   initial: V
-  /** Unsaved values to start from, e.g. suggested defaults the person still has to save. */
+  /** Suggestions the person can save before making any edits. */
   draft?: V
   sections: readonly { id: S; fields: readonly (keyof V & string)[] }[]
   /** Problems by field ("name", or "dunning_levels.0.fee" inside a list). */
@@ -85,6 +86,7 @@ export function useSectionForm<V extends object, S extends string>({
 }) {
   const [values, setValues] = useState(draft ?? initial)
   const [base, setBase] = useState(initial)
+  const [baseline, setBaseline] = useState(draft ?? initial)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set())
   const [saving, setSaving] = useState<S | null>(null)
@@ -111,12 +113,15 @@ export function useSectionForm<V extends object, S extends string>({
   }
 
   const fieldsOf = (id: S) => sections.find((section) => section.id === id)?.fields ?? []
-  const isDirty = (id: S) => fieldsOf(id).some((field) => !same(values[field], base[field]))
+  const differsFrom = (id: S, reference: V) =>
+    fieldsOf(id).some((field) => !same(values[field], reference[field]))
+  const isDirty = (id: S) => differsFrom(id, baseline)
+  const canSave = (id: S) => isDirty(id) || differsFrom(id, base)
   const dirtySections = sections.map((section) => section.id).filter(isDirty)
 
   const saveSection = (id: S) => {
     const fields = fieldsOf(id)
-    if (saving !== null || !isDirty(id)) return
+    if (saving !== null || !canSave(id)) return
     const next = withFields(base, values, fields)
     const refused = Object.entries(validate?.(next) ?? {}).filter(([key]) => inFields(fields, key))
     if (refused.length > 0) {
@@ -129,6 +134,7 @@ export function useSectionForm<V extends object, S extends string>({
       () => {
         setSaving(null)
         setBase(next)
+        setBaseline((current) => withFields(current, next, fields))
         clearErrors(fields)
         setSaved(id)
         clearTimeout(timer.current)
@@ -154,13 +160,14 @@ export function useSectionForm<V extends object, S extends string>({
 
   const section = (id: S): SectionState => ({
     dirty: isDirty(id),
+    canSave: canSave(id),
     saving: saving === id,
     saved: saved === id,
     blocked: saving !== null && saving !== id,
     save: () => saveSection(id),
     discard: () => {
       const fields = fieldsOf(id)
-      setValues((current) => withFields(current, base, fields))
+      setValues((current) => withFields(current, baseline, fields))
       clearErrors(fields)
       setTouched((current) => new Set([...current].filter((key) => !inFields(fields, key))))
     },
@@ -319,7 +326,7 @@ export function SectionFooter({ state, className }: { state: SectionState; class
           type="button"
           size="sm"
           aria-keyshortcuts={translate('metaEnterControlEnter')}
-          disabled={!state.dirty || state.saving || state.blocked}
+          disabled={!state.canSave || state.saving || state.blocked}
           onClick={state.save}
         >
           {state.saving ? translate('saving') : translate('save2')}

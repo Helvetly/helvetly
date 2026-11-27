@@ -114,13 +114,25 @@ test('a section is dirty only for its own fields, and discard puts them back', a
   expect(screen.getByText('dirty: none')).toBeVisible()
 })
 
-test('a draft starts unsaved: its section is dirty and Discard goes back to what was saved', async () => {
+test('suggestions can be saved without counting as edits', async () => {
   const user = userEvent.setup()
-  render(<Form save={vi.fn<() => Promise<unknown>>()} draft={{ ...initial, days: '45' }} />)
+  const save = vi.fn<(values: Values) => Promise<unknown>>().mockResolvedValue(null)
+  render(<Form save={save} draft={{ ...initial, days: '45' }} />)
   expect(screen.getByLabelText('days')).toHaveValue('45')
+  expect(screen.getByText('dirty: none')).toBeVisible()
+  expect(button('Defaults', 'Save')).toBeEnabled()
+
+  await user.clear(screen.getByLabelText('days'))
+  await user.type(screen.getByLabelText('days'), '30')
   expect(screen.getByText('dirty: defaults')).toBeVisible()
+  expect(button('Defaults', 'Save')).toBeEnabled()
   await user.click(button('Defaults', 'Discard'))
-  expect(screen.getByLabelText('days')).toHaveValue('30')
+  expect(screen.getByLabelText('days')).toHaveValue('45')
+  expect(screen.getByText('dirty: none')).toBeVisible()
+
+  await user.click(button('Defaults', 'Save'))
+  expect(save).toHaveBeenCalledWith({ ...initial, days: '45' }, 'defaults', initial)
+  expect(button('Defaults', 'Save')).toBeDisabled()
 })
 
 test('saving a section sends the saved values with only its own edits, then says Saved', async () => {

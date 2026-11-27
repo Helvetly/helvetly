@@ -1,6 +1,7 @@
 import { SidebarInset, SidebarProvider } from '@helvetly/ui/components/sidebar'
 import { Toaster } from '@helvetly/ui/components/sonner'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
@@ -72,7 +73,11 @@ const colouredGoogle = {
 
 const meta = {
   title: 'Scheduling/Settings',
-  parameters: { layout: 'fullscreen', ownMain: true },
+  parameters: {
+    layout: 'fullscreen',
+    ownMain: true,
+    nextjs: { navigation: { pathname: '/settings/scheduling/' } },
+  },
   beforeEach: () => resetSchedulingSettings(),
 } satisfies Meta
 export default meta
@@ -499,11 +504,11 @@ export const WeeklyHoursSuggested: Story = {
   beforeEach: () =>
     resetSchedulingSettings({
       providers: [],
-      hours: { saved: false, time_zone: null, weekly: [], overrides: [] },
+      hours: { saved: false, bookable: true, time_zone: null, weekly: [], overrides: [] },
     }),
   render: () => (
     <Shell>
-      <Calendars userId="usr_story" />
+      <SchedulingSettingsPage />
     </Shell>
   ),
   play: async ({ canvasElement }) => {
@@ -511,7 +516,46 @@ export const WeeklyHoursSuggested: Story = {
     await expect(await canvas.findByLabelText('From, Monday')).toHaveValue('09:00')
     await expect(canvas.getByLabelText('To, Friday')).toHaveValue('17:00')
     await expect(canvas.getByRole('switch', { name: 'Saturday' })).not.toBeChecked()
-    await expect(canvas.getByText('Unsaved changes')).toBeVisible()
+    const workspace = canvas.getByRole('button', { name: 'Workspace' })
+    getRouter().push.mockClear()
+    await userEvent.click(workspace)
+    await expect(getRouter().push).toHaveBeenCalledWith('/settings/workspace')
+    await expect(body(canvasElement).queryByRole('dialog')).not.toBeInTheDocument()
+    await expect(canvas.queryByText('Unsaved changes')).not.toBeInTheDocument()
+
+    getRouter().push.mockClear()
+    await userEvent.click(canvas.getByRole('switch', { name: 'I can be booked' }))
+    await userEvent.click(workspace)
+    const dialog = await body(canvasElement).findByRole('dialog', { name: 'Leave without saving?' })
+    await expect(getRouter().push).not.toHaveBeenCalled()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Stay' }))
+
+    const hours = within(canvas.getByRole('region', { name: 'Weekly hours' }))
+    await userEvent.click(hours.getByRole('button', { name: 'Discard' }))
+    await expect(hours.getByLabelText('From, Monday')).toHaveValue('09:00')
+    await expect(hours.getByRole('switch', { name: 'I can be booked' })).toBeChecked()
+    await userEvent.click(hours.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(schedulingCalls()).toContain('PUT /scheduling/hosts/usr_story'))
+  },
+}
+
+export const LeaveWithSavedHours: Story = {
+  parameters: page('owner'),
+  beforeEach: () =>
+    resetSchedulingSettings({ providers: ['google'], connections: [colouredGoogle] }),
+  render: () => (
+    <Shell>
+      <SchedulingSettingsPage />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('region', { name: 'Google Calendar' })).toBeVisible()
+    await expect(await canvas.findByLabelText('To, Tuesday')).toHaveValue('17:00')
+    getRouter().push.mockClear()
+    await userEvent.click(canvas.getByRole('button', { name: 'Workspace' }))
+    await expect(getRouter().push).toHaveBeenCalledWith('/settings/workspace')
+    await expect(body(canvasElement).queryByRole('dialog')).not.toBeInTheDocument()
   },
 }
 

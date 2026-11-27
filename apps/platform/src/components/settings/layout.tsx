@@ -199,7 +199,7 @@ export function SettingsSection({
       </header>
       <div className="@container grid min-w-0 content-start gap-3">
         {children && <div data-slot="settings-fields">{children}</div>}
-        {section && (section.dirty || section.saving || section.saved) && (
+        {section && (section.canSave || section.saving || section.saved) && (
           <div
             data-slot="settings-section-footer"
             className={cn(
