@@ -20,6 +20,19 @@
       "bearerAuth": []
     }
   ],
+  "x-helvetly-session-routes": {
+    "POST /api/v1/reports/workspace-audit": {
+      "description": "Start an AI audit or refresh its report. Requires a signed-in browser session, CSRF token, AI consent and the workspace_audit plan feature (Business by default, available without billing). Each new run uses one workspace audit for the UTC calendar month. Send a fresh Idempotency-Key (at most 128 bytes) for each new audit and reuse it when retrying, refreshing or resuming the same run. The key is scoped to the member and workspace. A different set of areas with the same key returns 409 idempotency_conflict. A missing key starts a new run.",
+      "errors": { "402": "limit_reached", "403": "feature_not_in_plan" }
+    },
+    "POST /api/v1/reports/workspace-audit/documents/{id}": {
+      "description": "Inspect one original with the same session, consent and plan requirements. Inspection uses the existing AI automation allowance and does not count toward the audit run limit.",
+      "errors": { "403": "feature_not_in_plan" }
+    },
+    "GET /api/v1/billing": {
+      "description": "The workspace_audits_per_month entitlement reports the UTC month's used runs, its cap and its reset time. Billing-disabled installations are uncapped."
+    }
+  },
   "tags": [
     {
       "name": "Clients",

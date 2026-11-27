@@ -227,7 +227,7 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 	}
 	limit := Limit(resource)
 	if !slices.Contains([]Limit{Members, Clients, Invoices, Quotes, Expenses, Products, Engagements, Signatures, Storage, InvoiceDrafts, QuotesRetained,
-		AutomationActions, Emails, ScheduledEvents}, limit) {
+		AutomationActions, Emails, ScheduledEvents, WorkspaceAudits}, limit) {
 		return fmt.Errorf("unknown quota resource %q", resource)
 	}
 	if add < 0 {
@@ -268,6 +268,9 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 		return err
 	}
 	if fits(n, add, max) {
+		if limit == WorkspaceAudits {
+			return nil
+		}
 		return notifyNear(ctx, q, workspaceID, plan, limit, now, store.UsagePeriod(quotaStart(b, now)), n+add, max)
 	}
 	s.noteRefused(workspaceID, limit, add)
@@ -278,6 +281,11 @@ func (s *Service) AllowResource(ctx context.Context, q store.Q, workspaceID, res
 // usedAt is the workspace's usage of limit: a monthly limit's recorded in usage_events from its first quota month
 // (quotaStart) through the month being admitted (AdmissionPeriod); a state limit's, what exists at now.
 func usedAt(ctx context.Context, q store.Q, ws store.Workspace, b store.Billing, limit Limit, now time.Time) (int64, error) {
+	if limit == WorkspaceAudits {
+		month := q.AdmissionPeriod(now)
+		u, err := q.UsageInPeriods(ctx, ws.ID, string(limit), month, month)
+		return u.Total(), err
+	}
 	if monthlyLimits[limit] && limit != AITokens { // AI tokens are reserved by aimodel.Budget in heidi_usage
 		u, err := q.UsageInPeriods(ctx, ws.ID, string(limit), store.UsagePeriod(quotaStart(b, now)), q.AdmissionPeriod(now))
 		return u.Total(), err
@@ -370,6 +378,8 @@ func limitMessage(plan string, limit Limit, max int64) string {
 		return fmt.Sprintf("The %s plan includes %d AI tokens a month. Upgrade the workspace or add people to use more.", name, max)
 	case ScheduledEvents:
 		return fmt.Sprintf("The %s plan includes %d scheduled sessions a month. Upgrade the workspace to schedule more.", name, max)
+	case WorkspaceAudits:
+		return fmt.Sprintf("The %s plan includes %d AI audits a month. Start a new audit next month.", name, max)
 	case Emails:
 		return fmt.Sprintf("The %s plan includes %d business email recipients a month. Download the PDF to send it yourself, or upgrade the workspace or add people to send more.", name, max)
 	}

@@ -84,8 +84,11 @@ const options = (signal: AbortSignal) => ({ method: 'POST' as const, signal })
 /** No areas is the full audit. */
 export const auditQuery = (areas: AuditArea[]) =>
   `?lang=${locale}` + (areas.length ? `&areas=${areas.join(',')}` : '')
-export const fetchAudit = (signal: AbortSignal, areas: AuditArea[]) =>
-  request<WorkspaceAudit>(`/reports/workspace-audit${auditQuery(areas)}`, options(signal))
+export const fetchAudit = (signal: AbortSignal, areas: AuditArea[], idempotencyKey: string) =>
+  request<WorkspaceAudit>(`/reports/workspace-audit${auditQuery(areas)}`, {
+    ...options(signal),
+    idempotencyKey,
+  })
 export const inspectOriginal = (id: string, signal: AbortSignal, areas: AuditArea[]) =>
   request<{ status: string }>(
     `/reports/workspace-audit/documents/${encodeURIComponent(id)}${auditQuery(areas)}`,

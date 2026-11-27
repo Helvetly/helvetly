@@ -1,11 +1,14 @@
 package billing
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"helvetly.com/api/internal/store"
 )
 
 func TestPublicCurrentOffer(t *testing.T) {
@@ -167,7 +170,7 @@ func TestOverviewEntitlements(t *testing.T) {
 	expires := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
 	e.override(b.workspace, Products, StateLimited, n64(260), &expires)
 	data, items := entitlements(t, e, b)
-	if data["offer_id"] != currentOffer || len(items) != 72 {
+	if data["offer_id"] != currentOffer || len(items) != 74 {
 		t.Fatalf("offer %v, %d entitlements", data["offer_id"], len(items))
 	}
 	if _, ok := items["ai_cost_usd_micros"]; ok {
@@ -197,9 +200,43 @@ func TestOverviewEntitlements(t *testing.T) {
 	if p := items["client_portal"]; p["state"] != "disabled" {
 		t.Fatalf("portal on pro: %v", p)
 	}
+	if a := items[string(WorkspaceAudits)]; a["value"] != 0.0 || a["used"] != 0.0 {
+		t.Fatalf("audit allowance on Pro: %v", a)
+	}
 	// The earlier fields stay for the deployed platform.
 	usage, _ := data["usage"].([]any)
 	if len(usage) != 11 || data["features"] == nil || data["plans"] == nil {
 		t.Fatalf("earlier fields: %v", data)
 	}
+}
+
+func TestOverviewWorkspaceAuditUsage(t *testing.T) {
+	e := newEnv(t, true)
+	b := e.workspace()
+	e.subscribe(b.workspace, "price_xm")
+	now := time.Now().UTC()
+	for _, at := range []time.Time{now, store.UsagePeriodStart(now).AddDate(0, -1, 0)} {
+		op := store.UsageOp{Resource: string(WorkspaceAudits), ID: store.UsagePeriod(at), Amount: 1}
+		if _, err := e.st.ConsumeUsage(context.Background(), b.workspace, op, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	code, body := e.do(b, http.MethodGet, "/api/v1/billing", nil)
+	if code != http.StatusOK {
+		t.Fatalf("overview: %d %v", code, body)
+	}
+	data, _ := body["data"].(map[string]any)
+	items, _ := data["entitlements"].([]any)
+	for _, item := range items {
+		a, _ := item.(map[string]any)
+		if a["key"] != string(WorkspaceAudits) {
+			continue
+		}
+		reset := store.UsagePeriodStart(now).AddDate(0, 1, 0).Format(time.RFC3339)
+		if a["value"] != 10.0 || a["used"] != 1.0 || a["per_seat"] != false || a["reset_at"] != reset {
+			t.Fatalf("audit allowance on Business: %v", a)
+		}
+		return
+	}
+	t.Fatal("Business overview omitted the audit allowance")
 }

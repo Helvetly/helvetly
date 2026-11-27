@@ -362,7 +362,7 @@ export function PageHeader({
       {start && !showTabs && (
         <div className="flex min-w-0 flex-auto items-center gap-2 md:px-2.5">{start}</div>
       )}
-      <div className="ml-auto flex shrink-0 items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2 @max-2xl:max-w-full @max-2xl:flex-wrap @max-2xl:justify-end">
         {menu?.some(Boolean) && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

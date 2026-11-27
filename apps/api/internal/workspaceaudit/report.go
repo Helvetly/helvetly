@@ -53,11 +53,8 @@ func auditAccess(sess store.Session) access {
 	return access{may("clients"), may("invoices"), may("documents"), may("invoices"), may("expenses")}
 }
 
-func (s *Service) report(ctx context.Context, sess store.Session, lang, _ string, selected areas) (any, error) {
+func (s *Service) report(ctx context.Context, sess store.Session, lang string, selected areas) (any, error) {
 	a := auditAccess(sess)
-	if a == (access{}) {
-		return nil, denied()
-	}
 	var data snapshot
 	ws := sess.Workspace.ID
 	err := s.db.DashboardRead(ctx, func(q store.Q) error {
