@@ -10,7 +10,7 @@ export const SUPPORT_EMAIL = 'support@helvetly.com'
 /** The site's links and their labels in one language, every page link in that language. */
 export const siteIn = perLanguage((translate, language) => {
   // Sign-in is passwordless and makes the account on first use, so starting and signing in share a page.
-  const SIGN_IN_URL = `${PLATFORM_URL}${language === defaultLocale ? '/login' : languageHref('/login', language)}`
+  const SIGN_IN_URL = `${PLATFORM_URL}${language === defaultLocale ? '/login/' : languageHref('/login/', language)}`
   const localize = (links: { href: string; label: string }[]) =>
     links.map(({ href, label }) => ({ href: publicHref(href, language), label }))
 

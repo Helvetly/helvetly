@@ -1,8 +1,7 @@
-import { localizedHref } from '@helvetly/i18n'
 import { ArrowRight } from 'lucide-react'
-import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+import { SiteLink } from '@/components/site-link'
 import { cn } from '@/lib/cn'
 
 // The website's call-to-action pill: larger and rounder than the app's buttons, one role per variant.
@@ -32,7 +31,6 @@ export function Cta({
   /** Inert: a disabled button in place of the link. */
   disabled?: boolean
 }) {
-  const external = href.startsWith('http')
   const classes = cn(
     'inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-center text-body font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
     variants[variant],
@@ -50,13 +48,9 @@ export function Cta({
         {content}
       </button>
     )
-  return external ? (
-    <a href={localizedHref(href)} className={classes}>
+  return (
+    <SiteLink href={href} className={classes}>
       {content}
-    </a>
-  ) : (
-    <Link href={href} className={classes}>
-      {content}
-    </Link>
+    </SiteLink>
   )
 }

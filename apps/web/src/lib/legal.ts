@@ -43,6 +43,10 @@ function legalDir(from = process.cwd()): string {
   return legalDir(parent)
 }
 
+export function hasLegalTranslation(slug: LegalSlug, language: Locale) {
+  return existsSync(join(legalDir(), language, LEGAL[slug].file))
+}
+
 export function readLegal(slug: LegalSlug, language: Locale) {
   // The file's own `# Title` is dropped: the page sets the title as its one h1.
   const markdown = readFileSync(

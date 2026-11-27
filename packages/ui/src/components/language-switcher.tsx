@@ -30,9 +30,9 @@ function switchLanguage(language: string) {
     window.location.assign(languageHref(path, language))
     return
   }
-  const alternate = document.querySelector<HTMLLinkElement>(
-    `link[rel="alternate"][hreflang="${language}"]`,
-  )
+  const alternate =
+    document.querySelector<HTMLLinkElement>(`link[rel="alternate"][hreflang="${language}"]`) ??
+    document.querySelector<HTMLLinkElement>('link[rel="alternate"][hreflang="x-default"]')
   const publicUrl = alternate
     ? new URL(alternate.href).pathname + window.location.search + window.location.hash
     : localizedHref(path, language)

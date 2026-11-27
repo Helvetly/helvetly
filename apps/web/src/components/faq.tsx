@@ -6,6 +6,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { Container, SectionHeading } from '@/components/section'
+import { SiteLink } from '@/components/site-link'
 import { faqIn, type Question } from '@/lib/faq'
 import { translatorFor } from '@/lib/i18n'
 
@@ -113,12 +114,12 @@ export function FaqSection({
               <div>
                 <p className="text-title-sm font-semibold">{card.title}</p>
                 <p className="mt-1 text-body-sm text-white/70">{card.body}</p>
-                <Link
+                <SiteLink
                   href={card.href}
                   className="mt-3 inline-block text-body-sm font-medium text-white underline underline-offset-4 hover:text-heidi-ink"
                 >
                   {card.link}
-                </Link>
+                </SiteLink>
               </div>
             </div>
           </div>
