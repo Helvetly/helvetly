@@ -946,7 +946,14 @@ export const StatusActionsBeforeStart: Story = {
     const attended = await drawer.findByRole('button', { name: 'Attended' })
     await expect(attended).toHaveAttribute('aria-disabled', 'true')
     await userEvent.click(drawer.getByRole('button', { name: 'Cancel session' }))
-    const cancel = within(await page.findByRole('dialog', { name: 'Cancel this session?' }))
+    const dialog = await page.findByRole('dialog', { name: 'Cancel this session?' })
+    const cancel = within(dialog)
+    await expect(
+      cancel.getByRole('textbox', { name: 'Cancellation reason (optional)' }),
+    ).toBeVisible()
+    await expect(dialog).toHaveAccessibleDescription(
+      /The client will see the reason if you email them\./,
+    )
     // Within 24 hours of the start: the policy calls it late.
     await expect(cancel.getByRole('radio', { name: 'Late' })).toBeChecked()
     await expect(cancel.getByText('A late cancellation counts as a used session.')).toBeVisible()

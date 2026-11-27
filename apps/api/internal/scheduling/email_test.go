@@ -132,6 +132,39 @@ func TestNoEmailWithoutAddressOrWithNotifyOff(t *testing.T) {
 	}
 }
 
+func TestCancellationReasonEmail(t *testing.T) {
+	e := newEnv(t)
+	box, _ := e.withEmails()
+	b := e.workspace()
+	for _, c := range []struct{ lang, label string }{
+		{"en", "Reason"}, {"de", "Grund"}, {"fr", "Motif"}, {"it", "Motivo"},
+	} {
+		t.Run(c.lang, func(t *testing.T) {
+			client := e.clientIn(b, "anna@mueller.example", c.lang)
+			session := e.create(b, map[string]any{"client_id": client, "title": "Training", "starts_local": "2026-12-01T09:00",
+				"duration_minutes": 60, "description": "Private host note", "client_note": "Bring contract"})
+			one(t, box)
+			path := "/api/v1/scheduling/occurrences/" + session.Data.Occurrences[0].ID + "/cancel"
+			e.do(b, "POST", path, map[string]any{"reason": strings.Repeat("é", 501)}, http.StatusUnprocessableEntity, nil)
+			e.do(b, "POST", path, map[string]any{"reason": " <script> &\r\nNext, please; "}, http.StatusOK, nil)
+			m := one(t, box)
+			if m.Language != c.lang || strings.Contains(m.HTML, "<script>") || m.CalendarMethod != "CANCEL" || len(m.Attachments) != 1 {
+				t.Fatalf("unexpected cancellation email: %+v", m)
+			}
+			contains(t, "HTML", m.HTML, ">"+c.label+"</span>", "&lt;script&gt; &amp;<br>Next, please;")
+			contains(t, "text", m.Text, c.label+": <script> &\n  Next, please;")
+			if strings.Index(m.Text, c.label+":") > strings.Index(m.Text, wordsOf(c.lang).session+":") {
+				t.Fatalf("reason should precede the session details: %s", m.Text)
+			}
+			ics := strings.ReplaceAll(string(m.Attachments[0].Data), "\r\n ", "")
+			contains(t, "ICS", ics, `DESCRIPTION:`+c.label+`: <script> &\nNext\, please\;\n\nBring contract`)
+			if strings.Contains(m.HTML+m.Text+ics, "Private host note") {
+				t.Fatal("private host note leaked into cancellation email")
+			}
+		})
+	}
+}
+
 func TestSeriesEmails(t *testing.T) {
 	e := newEnv(t)
 	box, _ := e.withEmails()
@@ -172,15 +205,19 @@ func TestSeriesEmails(t *testing.T) {
 	}
 
 	// Cancelling one session cancels that instance; cancelling the rest cancels the series' UID.
-	e.do(b, "POST", "/api/v1/scheduling/occurrences/"+occs[0].ID+"/cancel", map[string]any{"scope": "this"}, http.StatusOK, nil)
+	e.do(b, "POST", "/api/v1/scheduling/occurrences/"+occs[0].ID+"/cancel", map[string]any{"scope": "this", "reason": " \n "}, http.StatusOK, nil)
 	cancel := one(t, box)
 	if cancel.CalendarMethod != "CANCEL" || cancel.Subject != "Cancelled: Training" {
 		t.Fatalf("cancel %+v", cancel)
 	}
 	contains(t, "cancel one", string(cancel.Calendar), "METHOD:CANCEL", "RECURRENCE-ID;TZID=Europe/Zurich:20261201T090000", "STATUS:CANCELLED")
-	e.do(b, "POST", "/api/v1/scheduling/occurrences/"+occs[1].ID+"/cancel", map[string]any{"scope": "following"}, http.StatusOK, nil)
+	if strings.Contains(cancel.HTML+cancel.Text, "Reason") || strings.Contains(string(cancel.Calendar), "DESCRIPTION:") {
+		t.Fatal("blank cancellation reason should be omitted")
+	}
+	e.do(b, "POST", "/api/v1/scheduling/occurrences/"+occs[1].ID+"/cancel", map[string]any{"scope": "following", "reason": "Host unavailable"}, http.StatusOK, nil)
 	all := one(t, box)
-	contains(t, "cancel all", string(all.Calendar), "METHOD:CANCEL", "UID:"+ev+"@app.example.com", "RRULE:")
+	contains(t, "cancel all", string(all.Calendar), "METHOD:CANCEL", "UID:"+ev+"@app.example.com", "RRULE:", "DESCRIPTION:Reason: Host unavailable")
+	contains(t, "cancel all text", all.Text, "Reason: Host unavailable")
 	if strings.Contains(string(all.Calendar), "RECURRENCE-ID") {
 		t.Fatalf("the whole series is cancelled by its UID: %s", all.Calendar)
 	}
@@ -262,10 +299,11 @@ func TestRequestEmailsAndHostNotifications(t *testing.T) {
 	// An on-time cancellation, approved at once: the client gets the cancellation, the host hears of it.
 	later := e.create(b, map[string]any{"client_id": c, "title": "Later", "starts_local": "2026-12-10T09:00", "duration_minutes": 60})
 	box.take()
-	if _, cancelled, err := e.svc.RequestCancel(ctx, ws, c, later.Data.Occurrences[0].ID, "", nil); err != nil || !cancelled {
+	note := "Note for the host"
+	if _, cancelled, err := e.svc.RequestCancel(ctx, ws, c, later.Data.Occurrences[0].ID, "", &note); err != nil || !cancelled {
 		t.Fatalf("on time %v %v", cancelled, err)
 	}
-	if m := one(t, box); m.CalendarMethod != "CANCEL" {
+	if m := one(t, box); m.CalendarMethod != "CANCEL" || strings.Contains(m.HTML+m.Text+string(m.Calendar), note) {
 		t.Fatalf("cancellation %+v", m)
 	}
 	if n := e.notes(b, "scheduling.cancelled_by_client"); len(n) != 1 {
