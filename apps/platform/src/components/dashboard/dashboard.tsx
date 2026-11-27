@@ -72,6 +72,7 @@ import { DashboardCard, LIST_ROW, ToneTile, type Tone } from './dashboard-card'
 import { DashboardKpis } from './dashboard-kpis'
 import { firstName, greetingKey } from './figures'
 import { SpendingCard } from './spending-card'
+import { WorkspaceAuditButton } from './workspace-audit'
 
 const GREETINGS = {
   goodMorningName: [
@@ -100,6 +101,8 @@ export function Dashboard() {
   const session = useSession()
   const [period, setPeriod] = useRememberedPeriod()
   const canInvoice = useCan('write:invoices')
+  const canReadClients = useCan('read:clients')
+  const canReadDocuments = useCan('read:documents')
   const canReadInvoices = useCan('read:invoices')
   const canReadExpenses = useCan('read:expenses')
   const canReadEngagements = useCan('read:engagements')
@@ -136,7 +139,21 @@ export function Dashboard() {
         tabIcons={[LayoutGrid]}
         primary={canInvoice ? translate('newInvoice') : undefined}
         onPrimary={() => drawers.open({ kind: 'invoice', mode: 'new' })}
-        actions={canReadInvoices && <PeriodFilter value={period} onChange={setPeriod} />}
+        actions={
+          <>
+            {canReadInvoices && <PeriodFilter value={period} onChange={setPeriod} />}
+            {(canReadInvoices || canReadExpenses || canReadClients || canReadDocuments) && (
+              <WorkspaceAuditButton
+                key={[
+                  session.data.workspace.id,
+                  session.data.user.id,
+                  session.data.role,
+                  ...(session.data.scopes ?? []),
+                ].join('/')}
+              />
+            )}
+          </>
+        }
       />
       <div className="grid flex-1 content-start gap-4 p-4 md:p-6">
         <div className="grid min-w-0 gap-1">

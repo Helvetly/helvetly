@@ -41,6 +41,7 @@ Each item below is implemented and covered by tests in this repository:
 - **Notifications**: in-app and email notifications with per-person preferences.
 - **Subscription billing (optional)**: a free plan for one person, paid plans with tiered team prices through Stripe
   Checkout and webhooks, and plan limits. Off without a Stripe key.
+- **Workspace audit (optional AI)**: from the dashboard, review inconsistencies between clients, invoices, quotes, expenses, contracts, bank evidence and tax documents. Findings show severity, linked evidence and a suggested next step.
 - **AI features (optional)**: an assistant (Heidi) and AI-assisted imports through an OpenAI-compatible API, used
   only after each user approves AI use for themselves in that workspace. Heidi answers from permitted workspace
   records, reads attachments and documents on request, and proposes actions for confirmation. Each member can

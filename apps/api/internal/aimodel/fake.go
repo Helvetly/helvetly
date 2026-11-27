@@ -51,6 +51,9 @@ func (f Fake) Answer(ctx context.Context, r Request) (Reply, error) {
 		b, _ := json.Marshal(map[string]string{"name": string(name[:min(len(name), 40)])})
 		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
 	}
+	if r.Schema.Name == "workspace_audit_document_v1" {
+		return Reply{Text: `{"kind":"other","complete":true,"issues":[],"credits":[],"instalments":[]}`, Tokens: &tokens, Usage: usage}, nil
+	}
 	if r.Schema.Name == "receipt_v2" {
 		b, _ := json.Marshal(map[string]any{"records": []any{fakeReceipt(r.Instructions)}})
 		return Reply{Text: string(b), Tokens: &tokens, Usage: usage}, nil
