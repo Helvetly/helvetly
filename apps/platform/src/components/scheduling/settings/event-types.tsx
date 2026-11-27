@@ -10,12 +10,13 @@ import {
   InputGroupInput,
   InputGroupText,
 } from '@helvetly/ui/components/input-group'
+import { MetaItem, MetaList } from '@helvetly/ui/components/meta-list'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@helvetly/ui/components/sheet'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
-import { CalendarCheck, MapPin, Pencil, Plus, Trash2, Video } from 'lucide-react'
+import { CalendarCheck, Clock, MapPin, Pencil, Plus, Trash2, Video } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
@@ -121,15 +122,21 @@ export function EventTypesSection({ canEdit }: { canEdit: boolean }) {
               key={type.id}
               icon={type.mode === 'online' ? <Video /> : <MapPin />}
               title={type.name}
-              meta={[
-                durationText(type.duration_minutes),
-                type.mode === 'online'
-                  ? translate('schedulingSettingsOnline')
-                  : translate('schedulingSettingsLive'),
-                type.bookable ? translate('schedulingSettingsBookable') : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+              meta={
+                <MetaList>
+                  <MetaItem icon={<Clock />}>{durationText(type.duration_minutes)}</MetaItem>
+                  {type.mode === 'online' ? (
+                    <MetaItem icon={<Video />}>{translate('schedulingSettingsOnline')}</MetaItem>
+                  ) : (
+                    <MetaItem icon={<MapPin />}>{translate('schedulingSettingsLive')}</MetaItem>
+                  )}
+                  {type.bookable && (
+                    <MetaItem tone="success" icon={<CalendarCheck />}>
+                      {translate('schedulingSettingsBookable')}
+                    </MetaItem>
+                  )}
+                </MetaList>
+              }
             >
               {canEdit ? (
                 <>

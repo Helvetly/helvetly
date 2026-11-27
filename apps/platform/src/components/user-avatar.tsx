@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@helvetly/ui/components/avatar'
 import { cn } from '@helvetly/ui/lib/utils'
 
 import { Initials } from '@/components/initials'
@@ -13,14 +12,7 @@ export function UserAvatar({
   url?: string | null
   className?: string
 }) {
-  return (
-    <Avatar className={cn('size-7 after:hidden', className)}>
-      {url && <AvatarImage src={url} alt="" className="ring-1 ring-black/[0.05] ring-inset" />}
-      <AvatarFallback className="bg-transparent">
-        <Initials name={name} className={cn('size-full', className)} />
-      </AvatarFallback>
-    </Avatar>
-  )
+  return <Initials name={name} url={url} className={className} />
 }
 
 /** A member as the API names one: `avatar_url` empty or null without a photo. */

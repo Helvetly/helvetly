@@ -1,6 +1,7 @@
 'use client'
 // The signed-in person's own settings, typed by hand from docs/auth-contract.md ("User settings").
 // Account and passkey endpoints are served by Go; src/mocks/account.ts is a test-only fake.
+import { formatDate } from '@helvetly/ui/lib/format'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { request, type ApiError, type Session, type User } from '@/lib/api'
@@ -215,7 +216,7 @@ export function lastActive(iso: string, now = new Date()): string {
       days: days,
       value2: days === 1 ? translate('dynamicDay') : translate('days'),
     })
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(iso))
+  return formatDate(iso)
 }
 
 /** The secret as an authenticator app shows it: groups of four. */

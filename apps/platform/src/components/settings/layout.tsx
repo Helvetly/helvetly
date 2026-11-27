@@ -306,10 +306,10 @@ export function SettingsRow({
       >
         {icon}
       </span>
-      <span className="grid min-w-0 flex-1 gap-0.5">
+      <div className="grid min-w-0 flex-1 gap-0.5">
         <span className="flex flex-wrap items-center gap-2 text-sm font-medium">{title}</span>
-        {meta && <span className="text-body-sm text-pretty text-muted-foreground">{meta}</span>}
-      </span>
+        {meta && <div className="text-body-sm text-pretty text-muted-foreground">{meta}</div>}
+      </div>
       {children && <span className="flex shrink-0 items-center gap-1">{children}</span>}
     </li>
   )

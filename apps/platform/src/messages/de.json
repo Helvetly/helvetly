@@ -6296,5 +6296,8 @@
   "pickerAlsoEarlier": "Schliesst zuerst auch {count, plural, one {# offenen Monat} other {# offene Monate}} vor {year} ab.",
   "alsoClosesEarlierYears": "Dazu gehören {count, plural, one {# offener Monat} other {# offene Monate}} aus {years}, damit die Bücher in Reihenfolge abgeschlossen werden.",
   "monthCount": "{count, plural, one {# Monat} other {# Monate}}",
-  "openCount": "{count} offen"
+  "openCount": "{count} offen",
+  "sessionLocationUnknown": "Standort unbekannt",
+  "sessionSignedInOn": "Angemeldet am {date}",
+  "sessionIpAddress": "IP-Adresse"
 }

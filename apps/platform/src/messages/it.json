@@ -6296,5 +6296,8 @@
   "pickerAlsoEarlier": "Chiude prima anche {count, plural, one {# mese aperto} other {# mesi aperti}} prima del {year}.",
   "alsoClosesEarlierYears": "Include {count, plural, one {# mese aperto} other {# mesi aperti}} del {years}, così i conti si chiudono in ordine.",
   "monthCount": "{count, plural, one {# mese} other {# mesi}}",
-  "openCount": "{count} aperti"
+  "openCount": "{count} aperti",
+  "sessionLocationUnknown": "Posizione sconosciuta",
+  "sessionSignedInOn": "Accesso il {date}",
+  "sessionIpAddress": "Indirizzo IP"
 }
