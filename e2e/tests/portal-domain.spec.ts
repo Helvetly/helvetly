@@ -1,20 +1,51 @@
 import { randomUUID } from 'node:crypto'
 
-import type { APIRequestContext } from '@playwright/test'
+import type { APIRequestContext, Page } from '@playwright/test'
 
-import { expect, object, test, text, uniqueName } from './fixtures'
+import { expect, object, portalURL, test, text, uniqueName } from './fixtures'
 
 // The Go API itself (e2e/scripts/e2e-server.mjs), against a fake Cloudflare: requests carry a customer's Host as
 // Cloudflare and Caddy pass it, which the next dev servers in front of it would not.
 const apiOrigin = 'http://127.0.0.1:3338'
 const portalHost = 'localhost:8009'
 
+async function checkLoginBrand(page: Page, email: string, name: string, logo: string) {
+  const mark = page.locator(`img[src="${logo}"]`)
+  await expect(page.getByRole('heading', { name: 'Client portal', exact: true })).toBeVisible()
+  await expect(mark).toBeVisible()
+  await page.getByLabel('Email', { exact: true }).fill(email)
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible()
+  await expect(mark).toBeVisible()
+  await expect(page).toHaveTitle(`Sign in · Client portal · ${name}`)
+  await expect(page.locator(`head link[rel="icon"][href="${logo}"]`)).toHaveCount(1)
+}
+
 test('a workspace adds its own portal domain, Cloudflare and its TXT record make it active and that host serves its portal', async ({
   api,
+  browser,
+  page,
   playwright,
 }) => {
   const name = uniqueName('Domain')
   await api.save('/workspace', { name }, 'PATCH')
+  const image = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 64
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Canvas is unavailable')
+    context.fillStyle = '#a83122'
+    context.fillRect(0, 0, 64, 64)
+    return canvas.toDataURL().split(',')[1] ?? ''
+  })
+  await expect(
+    await api.request.put('/api/v1/workspace/logo', {
+      headers: { 'X-CSRF-Token': api.csrf },
+      multipart: {
+        file: { name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from(image, 'base64') },
+      },
+    }),
+  ).toBeOK()
   const email = `domain-${randomUUID()}@example.test`
   const client = await api.save('/clients', {
     name: uniqueName('Client'),
@@ -50,6 +81,13 @@ test('a workspace adds its own portal domain, Cloudflare and its TXT record make
     })
   const domain = await on(host)
   const portal = await on(portalHost)
+  const custom = await browser.newContext({ baseURL: portalURL })
+  const slugContext = await browser.newContext({
+    baseURL: portalURL,
+    viewport: { width: 390, height: 844 },
+    colorScheme: 'dark',
+  })
+  const pendingScope = Promise.withResolvers<void>()
   try {
     // Not served while pending: no portal, no API.
     expect((await domain.get('/')).status()).toBe(404)
@@ -74,22 +112,54 @@ test('a workspace adds its own portal domain, Cloudflare and its TXT record make
     expect(scope.name).toBe(name)
     expect(scope.url).toBe(`http://${host}/`)
 
+    // Next dev serves the UI. Send its unprefixed requests to Go as the customer's host.
+    let cookie = ''
+    await custom.route('**/api/v1/public/portal/**', async (route) => {
+      const request = route.request()
+      const url = new URL(request.url())
+      const path = url.pathname + url.search
+      if (path.endsWith('/scope')) await pendingScope.promise
+      const response = await route.fetch({
+        url: new URL(path, apiOrigin).href,
+        headers: { ...(await request.allHeaders()), Host: host },
+        maxRedirects: 0,
+      })
+      if (path.endsWith('/auth/verify')) cookie = response.headers()['set-cookie'] ?? ''
+      await route.fulfill({ response })
+    })
+    const clientPortal = await custom.newPage()
+    const logo = text(scope.logo_url)
+    await clientPortal.goto('/login')
+    await expect(clientPortal.locator('[data-slot="loader"][aria-busy="true"]')).toBeVisible()
+    await expect(clientPortal.locator('main img, main .logo-teal')).toHaveCount(0)
+    pendingScope.resolve()
+    await checkLoginBrand(clientPortal, email, name, logo)
     // A client signs in there; the session holds on that host only.
-    await expect(
-      await domain.post('/api/v1/public/portal/auth/start', { data: { email } }),
-    ).toBeOK()
     const dev = await api.request.get(
       `/api/v1/auth/email/dev-code?email=${encodeURIComponent(email)}`,
     )
-    const verified = await domain.post('/api/v1/public/portal/auth/verify', {
-      data: { email, code: text(object(await dev.json()).code) },
-    })
+    const code = text(object(await dev.json()).code)
+    const [verified, session] = await Promise.all([
+      clientPortal.waitForResponse('**/api/v1/public/portal/auth/verify'),
+      clientPortal.waitForResponse(
+        (response) => response.ok() && response.url().endsWith('/api/v1/public/portal/session'),
+      ),
+      clientPortal.getByLabel('Code', { exact: true }).fill(code),
+    ])
     expect(verified.status()).toBe(201)
-    const cookie = verified.headers()['set-cookie'] ?? ''
+    expect(cookie).toContain('portal_session')
     expect(cookie).not.toMatch(/domain=/i)
-    expect(
-      object(object(await (await domain.get('/api/v1/public/portal/session')).json()).client).id,
-    ).toBe(client.id)
+    expect(object(object(await session.json()).client).id).toBe(client.id)
+    await expect(clientPortal.locator(`header img[src="${logo}"]`)).toBeVisible()
+
+    await api.save('/workspace/portal/access', { enabled: false }, 'PUT')
+    await clientPortal.goto('/login')
+    await expect(
+      clientPortal.getByRole('heading', { name: 'The client portal is not available' }),
+    ).toBeVisible()
+    await expect(clientPortal.getByText(name, { exact: true })).toHaveCount(0)
+    await expect(clientPortal.locator(`head link[href="${logo}"]`)).toHaveCount(0)
+    await api.save('/workspace/portal/access', { enabled: true }, 'PUT')
 
     // Never the staff app or its API on a customer's host, and an unknown host is no portal at all.
     expect((await domain.get('/api/v1/workspace')).status()).toBe(404)
@@ -113,7 +183,13 @@ test('a workspace adds its own portal domain, Cloudflare and its TXT record make
         timeout: 35_000,
       })
       .toBe(404)
+    const slugPage = await slugContext.newPage()
+    await slugPage.goto(`/w/${slug}/login`)
+    await checkLoginBrand(slugPage, `slug-${randomUUID()}@example.test`, name, `/w/${slug}${logo}`)
   } finally {
+    pendingScope.resolve()
+    await custom.close()
+    await slugContext.close()
     await domain.dispose()
     await portal.dispose()
   }

@@ -1,9 +1,11 @@
 package portal
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -260,5 +262,48 @@ func TestCustomDomains(t *testing.T) {
 	res, out = e.onHost("portal.studio.ch", "GET", api+"/scope", nil, "")
 	if res.StatusCode != 200 || out["slug"] != "studio" || out["url"] != "http://portal.studio.ch/" || out["logo_url"] != api+"/scope/logo?v=logo1" {
 		t.Fatalf("scope on the domain: %d %v", res.StatusCode, out)
+	}
+}
+
+func TestScopeLogoStaysOnPortalOrigin(t *testing.T) {
+	e := newEnv(t)
+	e.exec(`UPDATE workspaces SET logo_file_id = 'logo1' WHERE id = 'wsp_a'`)
+	e.exec(`INSERT INTO workspace_domains (id, workspace_id, hostname, status, next_check_at, created_by, created_at, updated_at, status_since)
+		VALUES ('dom_a', 'wsp_a', 'portal.studio.ch', 'active', now(), 'usr', now(), now(), now())`)
+	logo := encode(t, "png", 64, 64, 20)
+	e.files.objects[store.WorkspaceLogoKey("wsp_a", "logo1")] = logo
+
+	for _, origin := range []struct{ name, url string }{
+		{"custom domain", "http://portal.studio.ch"},
+		{"slug", e.srv.URL + "/w/studio"},
+	} {
+		t.Run(origin.name, func(t *testing.T) {
+			const scopePath = "/api/v1/public/portal/scope"
+			get := func(path string) *httptest.ResponseRecorder {
+				w := httptest.NewRecorder()
+				e.srv.Config.Handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, origin.url+path, nil))
+				return w
+			}
+			scope := get(scopePath)
+			if scope.Code != http.StatusOK || scope.Header().Get("Cache-Control") != "no-store" {
+				t.Fatalf("open scope: %d %v", scope.Code, scope.Header())
+			}
+			w := get(scopePath + "/logo?v=logo1")
+			if w.Code != http.StatusOK || w.Header().Get("Content-Type") != "image/png" ||
+				w.Header().Get("Cache-Control") != "private, no-store" || !bytes.Equal(w.Body.Bytes(), logo) {
+				t.Fatalf("logo: %d %v", w.Code, w.Header())
+			}
+
+			e.exec(`UPDATE workspaces SET portal_off = true WHERE id = 'wsp_a'`)
+			defer e.exec(`UPDATE workspaces SET portal_off = false WHERE id = 'wsp_a'`)
+			for _, path := range []string{scopePath, scopePath + "/logo?v=logo1"} {
+				w := get(path)
+				if w.Code != http.StatusNotFound || w.Header().Get("Cache-Control") != "no-store" ||
+					!strings.Contains(w.Body.String(), "portal_closed") ||
+					strings.Contains(w.Body.String(), "Studio") || strings.Contains(w.Body.String(), "logo1") {
+					t.Fatalf("closed portal at %s: %d %s", path, w.Code, w.Body)
+				}
+			}
+		})
 	}
 }

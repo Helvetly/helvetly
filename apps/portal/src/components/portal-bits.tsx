@@ -24,19 +24,12 @@ import type { ReactNode } from 'react'
 import { translate } from '@/lib/i18n'
 import { portalInvoicePdfUrl, type PortalInvoice } from '@/lib/portal'
 import { scoped } from '@/lib/scope'
+import { initialsOf } from '@/lib/text'
 
 /** Every portal card: the soft shadow the Overview's amount-due hero introduced, so all pages match. */
 export const cardClass = 'rounded-xl bg-card shadow-elevation-soft'
 /** A list row inside a card: the same side padding as a card's `p-4 sm:p-6`. */
 export const rowClass = 'flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-6'
-
-export const initialsOf = (name: string) =>
-  name
-    .split(/[\s._@-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join('')
 
 /** The supplier's mark: its logo when it has one (and it loads), else its initials on the brand tile. */
 export function WorkspaceMark({

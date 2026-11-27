@@ -3,7 +3,6 @@ import { Callout } from '@helvetly/ui/components/callout'
 import { EmailAddressForm, EmailCodeForm } from '@helvetly/ui/components/email-code'
 import { LanguageDialogButton } from '@helvetly/ui/components/language-switcher'
 import { Loader } from '@helvetly/ui/components/loader'
-import { Logo } from '@helvetly/ui/components/logo'
 import type { EmailCodeSent } from '@helvetly/ui/lib/http'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ShieldCheck, TriangleAlert } from 'lucide-react'
@@ -12,10 +11,10 @@ import { useEffect, useState } from 'react'
 
 import { translate } from '@/lib/i18n'
 import {
-  getPortalScope,
   getPortalSession,
   isPortalClosed,
   portalKeys,
+  portalScopeQuery,
   startPortalSignIn,
   verifyPortalCode,
 } from '@/lib/portal'
@@ -48,7 +47,7 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
     retry: false,
   })
   // Under a workspace's own address (/w/<slug>/ or its own domain), that workspace's mark and name.
-  const scope = useQuery({ queryKey: portalKeys.scope, queryFn: getPortalScope, retry: false })
+  const scope = useQuery(portalScopeQuery)
   const workspace =
     props.workspace ??
     (scope.data ? { name: scope.data.name, logoUrl: scope.data.logo_url ?? undefined } : undefined)
@@ -69,6 +68,16 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
     )
   if (session.isPending || scope.isPending || signedIn)
     return <Loader size="page" className="min-h-svh" />
+  if (!workspace && !shared) return <PortalNotFound />
+
+  const brand = workspace && (
+    <>
+      <span className="mb-3">
+        <WorkspaceMark name={workspace.name} logoUrl={workspace.logoUrl} large />
+      </span>
+      <p className="text-body-sm font-medium text-muted-foreground">{workspace.name}</p>
+    </>
+  )
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background bg-[radial-gradient(80rem_36rem_at_50%_-8rem,var(--brand-surface),transparent_70%)] px-4 py-10">
@@ -89,6 +98,7 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
             <PortalLinksRequest />
           ) : step ? (
             <EmailCodeForm
+              brand={brand}
               email={step.email}
               sent={step.sent}
               verify={(code) => verifyPortalCode(step.email, code)}
@@ -102,16 +112,7 @@ export function PortalLogin(props: { workspace?: { name: string; logoUrl?: strin
           ) : (
             <div className="grid gap-7">
               <div className="grid justify-items-center gap-2 text-center">
-                <span className="mb-3">
-                  {workspace ? (
-                    <WorkspaceMark name={workspace.name} logoUrl={workspace.logoUrl} large />
-                  ) : (
-                    <Logo className="size-12" />
-                  )}
-                </span>
-                {workspace && (
-                  <p className="text-body-sm font-medium text-muted-foreground">{workspace.name}</p>
-                )}
+                {brand}
                 <h1 className="text-page font-semibold tracking-tight">
                   {translate('clientPortal')}
                 </h1>
