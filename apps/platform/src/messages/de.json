@@ -5358,6 +5358,7 @@
   "schedTimesIn": "Zeiten in {zone} (Arbeitsbereich: {workspace})",
   "schedLockedKept": "Bestehende Termine bleiben lesbar.",
   "schedKeyboardHint": "Alt und die Pfeiltasten verschieben den Termin, mit Umschalt ändern sie seine Dauer.",
+  "schedBusyBlock": "Im Kalender belegt, {start}–{end}",
   "schedBusy": "Belegt",
   "schedDayOff": "Freier Tag",
   "schedDayOffHint": "Freier Tag: keine Buchungen",

@@ -5358,6 +5358,7 @@
   "schedTimesIn": "Times in {zone} (workspace: {workspace})",
   "schedLockedKept": "Sessions you already have stay readable.",
   "schedKeyboardHint": "Alt and the arrow keys move the session; with Shift they change its length.",
+  "schedBusyBlock": "Busy in the calendar, {start}–{end}",
   "schedBusy": "Busy",
   "schedDayOff": "Day off",
   "schedDayOffHint": "Day off: no bookings",

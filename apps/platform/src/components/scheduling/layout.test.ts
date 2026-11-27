@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { clipToDay, layoutDay, snapMinutes, type Span } from './layout'
+import { clipToDay, layoutDay, notPast, snapMinutes, type Span } from './layout'
 
 const at = (spans: Span[]) =>
   Object.fromEntries(layoutDay(spans).map(({ id, col, cols }) => [id, [col, cols]]))
@@ -88,5 +88,27 @@ describe('snapMinutes', () => {
     [-30, -30],
   ])('%d px at 48 px an hour is %d minutes', (pixels, minutes) => {
     expect(snapMinutes(pixels, 48)).toBe(minutes)
+  })
+})
+
+const block = (starts_at: string, ends_at: string) => ({ host_id: 'h', starts_at, ends_at })
+
+describe('notPast', () => {
+  const now = new Date('2026-12-02T12:00:00Z')
+  it('drops blocks that ended, clips one running now to start now, keeps later ones', () => {
+    expect(
+      notPast(
+        [
+          block('2026-12-02T09:00:00Z', '2026-12-02T10:00:00Z'),
+          block('2026-12-02T11:00:00Z', '2026-12-02T12:00:00Z'),
+          block('2026-12-02T11:30:00Z', '2026-12-02T13:00:00Z'),
+          block('2026-12-02T14:00:00Z', '2026-12-02T15:00:00Z'),
+        ],
+        now,
+      ),
+    ).toEqual([
+      block('2026-12-02T12:00:00.000Z', '2026-12-02T13:00:00Z'),
+      block('2026-12-02T14:00:00Z', '2026-12-02T15:00:00Z'),
+    ])
   })
 })

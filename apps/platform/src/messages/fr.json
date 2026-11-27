@@ -5358,6 +5358,7 @@
   "schedTimesIn": "Heures de {zone} (espace : {workspace})",
   "schedLockedKept": "Les séances existantes restent consultables.",
   "schedKeyboardHint": "Alt et les flèches déplacent la séance ; avec Maj, elles changent sa durée.",
+  "schedBusyBlock": "Occupé dans le calendrier, {start}–{end}",
   "schedBusy": "Occupé",
   "schedDayOff": "Jour de congé",
   "schedDayOffHint": "Jour de congé : aucune réservation",
