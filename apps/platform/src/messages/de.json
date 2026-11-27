@@ -1929,7 +1929,6 @@
   "message12m": "12M",
   "message12Months": "12 Monate",
   "message1DayOverdue": "1 Tag überfällig",
-  "message1MonthToClose": "1 Monat bis zum Abschluss",
   "message1OtherSession": "1 weitere Sitzung",
   "message1Year": "1 Jahr",
   "message2": "",
@@ -1966,7 +1965,6 @@
   "months": "Monate",
   "monthsClosed": " Monate geschlossen",
   "monthsClosedThrough": "{length} Monate abgeschlossen, bis {value2}.",
-  "monthsToClose": "{length} Monate bis zum Abschluss",
   "more": "Mehr",
   "moreActions": "Weitere Aktionen",
   "moreExports": "Mehr Exporte ",
@@ -6254,5 +6252,16 @@
   "auditDocumentsUploadFiled": "Upload abgelegt",
   "auditDocumentsImportSourcesRemoved": "Importdateien entfernt",
   "auditSentenceDocumentsUploadFiled": "{count, plural, one {# hochgeladene Datei abgelegt} other {# hochgeladene Dateien abgelegt}}, {placed} durch KI platziert",
-  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly hat # Import-Quelldatei aus Dokumente entfernt} other {Helvetly hat # Import-Quelldateien aus Dokumente entfernt}}"
+  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly hat # Import-Quelldatei aus Dokumente entfernt} other {Helvetly hat # Import-Quelldateien aus Dokumente entfernt}}",
+  "monthsToCloseIn": "{count, plural, one {# Monat} other {# Monate}} in {year} abzuschliessen",
+  "yearIsClosed": "{year} ist abgeschlossen",
+  "nothingToCloseInYet": "In {year} gibt es noch nichts abzuschliessen",
+  "everyEndedMonthOfYearIsClosed": "Jeder abgelaufene Monat von {year} ist abgeschlossen.",
+  "openInOtherYears": "Andere Jahre haben noch {count, plural, one {# offenen Monat} other {# offene Monate}}:",
+  "showYearOpen": "{year} anzeigen: {count, plural, one {# offener Monat} other {# offene Monate}}",
+  "closingAlsoClosesEarlier": "Wer {year} abschliesst, schliesst zuerst die früheren ab, damit die Bücher in Reihenfolge bleiben.",
+  "pickerAlsoEarlier": "Schliesst zuerst auch {count, plural, one {# offenen Monat} other {# offene Monate}} vor {year} ab.",
+  "alsoClosesEarlierYears": "Dazu gehören {count, plural, one {# offener Monat} other {# offene Monate}} aus {years}, damit die Bücher in Reihenfolge abgeschlossen werden.",
+  "monthCount": "{count, plural, one {# Monat} other {# Monate}}",
+  "openCount": "{count} offen"
 }

@@ -1929,7 +1929,6 @@
   "message12m": "12M",
   "message12Months": "12 months",
   "message1DayOverdue": "1 day overdue",
-  "message1MonthToClose": "1 month to close",
   "message1OtherSession": "1 other session",
   "message1Year": "1 year",
   "message2": "",
@@ -1966,7 +1965,6 @@
   "months": "Months",
   "monthsClosed": " months closed",
   "monthsClosedThrough": "{length} months closed, through {value2}.",
-  "monthsToClose": "{length} months to close",
   "more": "More",
   "moreActions": "More actions",
   "moreExports": "More exports ",
@@ -6254,5 +6252,16 @@
   "auditDocumentsUploadFiled": "Upload filed",
   "auditDocumentsImportSourcesRemoved": "Import files removed",
   "auditSentenceDocumentsUploadFiled": "{count, plural, one {Filed # uploaded file} other {Filed # uploaded files}}, {placed} placed by AI",
-  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly took # import source file out of Documents} other {Helvetly took # import source files out of Documents}}"
+  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly took # import source file out of Documents} other {Helvetly took # import source files out of Documents}}",
+  "monthsToCloseIn": "{count, plural, one {# month} other {# months}} to close in {year}",
+  "yearIsClosed": "{year} is closed",
+  "nothingToCloseInYet": "Nothing to close in {year} yet",
+  "everyEndedMonthOfYearIsClosed": "Every month of {year} that has ended is closed.",
+  "openInOtherYears": "Other years still have {count, plural, one {# open month} other {# open months}}:",
+  "showYearOpen": "Show {year}: {count, plural, one {# open month} other {# open months}}",
+  "closingAlsoClosesEarlier": "Closing {year} closes the earlier ones first, so the books stay in order.",
+  "pickerAlsoEarlier": "Also closes {count, plural, one {# open month} other {# open months}} before {year} first.",
+  "alsoClosesEarlierYears": "This includes {count, plural, one {# open month} other {# open months}} of {years}, so the books close in order.",
+  "monthCount": "{count, plural, one {# month} other {# months}}",
+  "openCount": "{count} open"
 }

@@ -3,6 +3,7 @@ import { languageTag } from '@helvetly/i18n'
 import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
+import { Combobox } from '@helvetly/ui/components/combobox'
 import {
   Command,
   CommandEmpty,
@@ -29,6 +30,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, CircleDot, Lock, LockOpen, MoreHorizontal, TriangleAlert } from 'lucide-react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -40,6 +42,7 @@ import { booksApi, type ActivitySource, type MonthActivity, type Period } from '
 import { translate } from '@/lib/i18n'
 import { formatAmount, today } from '@/lib/invoices'
 import { useCan } from '@/lib/permissions'
+import { setUrlQuery } from '@/lib/url-query'
 
 import { SettingsPage } from './layout'
 
@@ -57,10 +60,35 @@ export const monthLabel = (month: string) => monthName.format(utc(month))
 const longName = new Intl.DateTimeFormat(languageTag, { month: 'long', timeZone: 'UTC' })
 const shortName = new Intl.DateTimeFormat(languageTag, { month: 'short', timeZone: 'UTC' })
 const closedOn = new Intl.DateTimeFormat(languageTag, { day: 'numeric', month: 'short' })
+const yearList = new Intl.ListFormat(languageTag, { type: 'conjunction' })
 
 /** The open, ended months up to and including `through`, oldest first: what "Close through" closes. */
 export function openThrough(open: string[], through: string): string[] {
   return open.filter((month) => month <= through).toSorted()
+}
+
+/**
+ * The year the page shows: the asked one when the books have it, else the latest year with an open month that has
+ * ended (`open` is newest first), else the current year.
+ */
+export function shownYear(
+  years: string[],
+  open: string[],
+  asked: string | null,
+  todayIso: string,
+): string {
+  if (asked && years.includes(asked)) return asked
+  return open[0]?.slice(0, 4) ?? todayIso.slice(0, 4)
+}
+
+/** The open months of other years than `year`, per year, newest first: [["2025", [...]], ["2024", [...]]]. */
+export function otherOpenYears(open: string[], year: string): [string, string[]][] {
+  return [
+    ...Map.groupBy(
+      open.filter((month) => !month.startsWith(year)),
+      (m) => m.slice(0, 4),
+    ),
+  ]
 }
 
 /** The `count` months that have ended before `todayIso`, newest first: "2026-10", "2026-09", … */
@@ -235,6 +263,16 @@ export function PeriodsCard() {
   })
   const [confirming, setConfirming] = useState<string[] | null>(null)
   const [reopening, setReopening] = useState<string | null>(null)
+  const pathname = usePathname()
+  const query = useSearchParams()
+  // Kept here too: the URL only remembers it across a reload.
+  const [asked, setAsked] = useState(query.get('year'))
+  const showYear = (next: string) => {
+    setAsked(next)
+    const params = new URLSearchParams(query)
+    params.set('year', next)
+    setUrlQuery(pathname, params)
+  }
 
   if (periods.error)
     return <p className="text-body text-muted-foreground">{errorMessage(periods.error)}</p>
@@ -247,37 +285,48 @@ export function PeriodsCard() {
   const busy = close.isPending || reopen.isPending
   const stateOf = (month: string): State =>
     closedSet.has(month) ? 'closed' : month === current ? 'current' : 'open'
-  const years = Map.groupBy(months, (month) => month.slice(0, 4))
+  const years = [...new Set(months.map((month) => month.slice(0, 4)))]
+  const year = shownYear(years, open, asked, now)
+  const inYear = open.filter((month) => month.startsWith(year))
 
   return (
     <>
       <CloseStatus
+        year={year}
+        ended={months.some((month) => month.startsWith(year) && month !== current)}
         through={through}
         open={open}
-        withDrafts={open.filter((month) => draftsOf(byMonth.get(month)) !== null)}
+        withDrafts={inYear.filter((month) => draftsOf(byMonth.get(month)) !== null)}
         canEdit={canEdit}
         busy={busy}
         onClose={setConfirming}
+        onYear={showYear}
       />
-      {[...years].map(([year, yearMonths]) => (
-        <YearCard
-          key={year}
-          year={year}
-          months={yearMonths}
-          stateOf={stateOf}
-          closed={closed}
-          activity={activity.data ? byMonth : null}
-          actions={
-            canEdit
-              ? {
-                  disabled: busy,
-                  close: (month) => setConfirming([month]),
-                  reopen: setReopening,
-                }
-              : null
-          }
-        />
-      ))}
+      <YearCard
+        key={year}
+        year={year}
+        years={years.map((value) => ({
+          value,
+          label: value,
+          hint: openIn(open, value)
+            ? translate('openCount', { count: openIn(open, value) })
+            : undefined,
+        }))}
+        onYear={showYear}
+        months={months.filter((month) => month.startsWith(year))}
+        stateOf={stateOf}
+        closed={closed}
+        activity={activity.data ? byMonth : null}
+        actions={
+          canEdit
+            ? {
+                disabled: busy,
+                close: (month) => setConfirming([month]),
+                reopen: setReopening,
+              }
+            : null
+        }
+      />
       {confirming && confirming.length > 0 && (
         <ConfirmDialog
           key={confirming.join()}
@@ -287,14 +336,14 @@ export function PeriodsCard() {
               ? translate('close4', { value1: monthLabel(confirming[0] ?? '') })
               : translate('closeMonths2', { length: confirming.length })
           }
-          body={
+          body={`${
             confirming.length === 1
               ? translate('nothingDatedInItCanThenBeIssuedPaid')
               : translate('throughNothingDatedInThemCanThenBeIssued', {
                   value1: monthLabel(confirming[0] ?? ''),
                   value2: monthLabel(confirming.at(-1) ?? ''),
                 })
-          }
+          }${earlierNote(confirming)}`}
           confirmLabel={
             confirming.length === 1 ? translate('closeMonth') : translate('closeMonths')
           }
@@ -321,22 +370,48 @@ export function PeriodsCard() {
   )
 }
 
-/** Where the books stand, and the page's one primary action: close every open month through the latest. */
+const openIn = (open: string[], year: string) =>
+  open.filter((month) => month.startsWith(year)).length
+
+/** " It also closes the 2 open months of 2025 first, …" when a batch reaches into earlier years than its last month. */
+function earlierNote(batch: string[]): string {
+  const last = batch.at(-1)?.slice(0, 4) ?? ''
+  const earlier = batch.filter((month) => month.slice(0, 4) < last)
+  if (earlier.length === 0) return ''
+  const years = [...new Set(earlier.map((month) => month.slice(0, 4)))]
+  return ` ${translate('alsoClosesEarlierYears', { count: earlier.length, years: yearList.format(years) })}`
+}
+
+/**
+ * Where the shown year stands, and the page's one primary action: close every open month through the year's latest.
+ * Closing stays in order, so it also closes earlier years' open months, and says so.
+ */
 function CloseStatus({
+  year,
+  ended,
   through,
-  open,
+  open: allOpen,
   withDrafts,
   canEdit,
   busy,
   onClose,
+  onYear,
 }: {
+  year: string
+  /** whether a month of the year has ended */
+  ended: boolean
   through: string | null
   open: string[]
   withDrafts: string[]
   canEdit: boolean
   busy: boolean
   onClose: (batch: string[]) => void
+  onYear: (year: string) => void
 }) {
+  const open = allOpen.filter((month) => month.startsWith(year))
+  const others = otherOpenYears(allOpen, year)
+  const othersCount = others.reduce((sum, [, months]) => sum + months.length, 0)
+  const earlier = allOpen.filter((month) => month.slice(0, 4) < year)
   const latest = open[0]
   const done = open.length === 0
   const Icon = done ? Lock : LockOpen
@@ -357,17 +432,23 @@ function CloseStatus({
         </span>
         <div className="grid min-w-0 gap-0.5">
           <h2 className="text-body font-semibold">
-            {done
-              ? through
-                ? translate('booksClosedThrough', { value1: monthLabel(through) })
-                : translate('nothingToCloseYet')
-              : open.length === 1
-                ? translate('message1MonthToClose')
-                : translate('monthsToClose', { length: open.length })}
+            {!done
+              ? translate('monthsToCloseIn', { count: open.length, year })
+              : allOpen.length > 0
+                ? ended
+                  ? translate('yearIsClosed', { year })
+                  : translate('nothingToCloseInYet', { year })
+                : through
+                  ? translate('booksClosedThrough', { value1: monthLabel(through) })
+                  : translate('nothingToCloseYet')}
           </h2>
           <p className="text-body-sm text-pretty text-muted-foreground">
             {done
-              ? translate('everyMonthThatHasEndedIsClosed')
+              ? allOpen.length > 0
+                ? ended
+                  ? translate('everyEndedMonthOfYearIsClosed', { year })
+                  : ''
+                : translate('everyMonthThatHasEndedIsClosed')
               : `${open.length === 1 ? translate('hasEndedAndIsStillOpen', { value1: monthLabel(latest ?? '') }) : translate('toHaveEndedAndAreStillOpen', { value1: monthLabel(open.at(-1) ?? ''), value2: monthLabel(latest ?? '') })}${through ? translate('theLatestClosedMonthIs', { value1: monthLabel(through) }) : '.'}`}
             {withDrafts.length > 0 && (
               <span className="text-warning">
@@ -378,6 +459,29 @@ function CloseStatus({
               </span>
             )}
           </p>
+          {others.length > 0 && (
+            <p className="text-body-sm text-pretty text-muted-foreground">
+              {translate('openInOtherYears', { count: othersCount })}{' '}
+              {others.map(([other, months], i) => (
+                <span key={other}>
+                  {i > 0 && ' · '}
+                  <button
+                    type="button"
+                    className="font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-2 hover:decoration-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                    aria-label={translate('showYearOpen', { year: other, count: months.length })}
+                    onClick={() => onYear(other)}
+                  >
+                    {other}
+                  </button>{' '}
+                  <span className="tabular-nums">({months.length})</span>
+                </span>
+              ))}
+              .
+              {canEdit && open.length > 0 && earlier.length > 0 && (
+                <> {translate('closingAlsoClosesEarlier', { year })}</>
+              )}
+            </p>
+          )}
         </div>
       </div>
       {canEdit && latest && (
@@ -385,14 +489,16 @@ function CloseStatus({
           <Button
             disabled={busy}
             className={cn(open.length > 1 && 'rounded-r-none')}
-            onClick={() => onClose(openThrough(open, latest))}
+            onClick={() => onClose(openThrough(allOpen, latest))}
           >
             <Lock aria-hidden />
             {open.length === 1
               ? translate('close3', { value1: monthLabel(latest) })
               : translate('closeThrough', { value1: monthLabel(latest) })}
           </Button>
-          {open.length > 1 && <CloseThroughPicker open={open} disabled={busy} onClose={onClose} />}
+          {open.length > 1 && (
+            <CloseThroughPicker year={year} open={allOpen} disabled={busy} onClose={onClose} />
+          )}
         </div>
       )}
       {!canEdit && (
@@ -405,18 +511,21 @@ function CloseStatus({
   )
 }
 
-/** Picks an earlier month to close through: searchable, grouped by year, newest first. */
+/** Picks an earlier month of the year to close through: searchable, newest first, with what it closes. */
 function CloseThroughPicker({
+  year,
   open,
   disabled,
   onClose,
 }: {
+  year: string
   open: string[]
   disabled: boolean
   onClose: (batch: string[]) => void
 }) {
   const [shown, setShown] = useState(false)
-  const years = Map.groupBy(open, (month) => month.slice(0, 4))
+  const months = open.filter((month) => month.startsWith(year))
+  const earlier = open.filter((month) => month.slice(0, 4) < year).length
   return (
     <Popover open={shown} onOpenChange={setShown}>
       <PopoverTrigger asChild>
@@ -445,34 +554,38 @@ function CloseThroughPicker({
           <CommandInput placeholder={translate('searchMonths')} />
           <CommandList className="max-h-[min(18rem,50dvh)]">
             <CommandEmpty>{translate('noOpenMonthMatches')}</CommandEmpty>
-            {[...years].map(([year, months]) => (
-              <CommandGroup key={year} heading={year}>
-                {months.map((month) => {
-                  const batch = openThrough(open, month)
-                  return (
-                    <CommandItem
-                      key={month}
-                      value={month}
-                      className="[&>svg]:hidden"
-                      onSelect={() => {
-                        setShown(false)
-                        onClose(batch)
-                      }}
-                    >
-                      <span className="flex-1">
-                        {longName.format(utc(month))}
-                        <span className="sr-only"> {year}</span>
-                      </span>
-                      <span className="text-caption text-muted-foreground tabular-nums">
-                        {batch.length} {batch.length === 1 ? 'month' : 'months'}
-                      </span>
-                    </CommandItem>
-                  )
-                })}
-              </CommandGroup>
-            ))}
+            <CommandGroup heading={year}>
+              {months.map((month) => {
+                const batch = openThrough(open, month)
+                const inYear = batch.length - earlier
+                return (
+                  <CommandItem
+                    key={month}
+                    value={month}
+                    className="[&>svg]:hidden"
+                    onSelect={() => {
+                      setShown(false)
+                      onClose(batch)
+                    }}
+                  >
+                    <span className="flex-1">
+                      {longName.format(utc(month))}
+                      <span className="sr-only"> {year}</span>
+                    </span>
+                    <span className="text-caption text-muted-foreground tabular-nums">
+                      {translate('monthCount', { count: inYear })}
+                    </span>
+                  </CommandItem>
+                )
+              })}
+            </CommandGroup>
           </CommandList>
         </Command>
+        {earlier > 0 && (
+          <p className="border-t border-border/60 px-2 pt-2 pb-1 text-caption text-pretty text-muted-foreground">
+            {translate('pickerAlsoEarlier', { count: earlier, year })}
+          </p>
+        )}
       </PopoverContent>
     </Popover>
   )
@@ -519,6 +632,8 @@ const SEGMENT = {
 /** One year: a strip of its twelve months, then a row per month with what was recorded in it. */
 function YearCard({
   year,
+  years,
+  onYear,
   months,
   stateOf,
   closed,
@@ -526,6 +641,8 @@ function YearCard({
   actions,
 }: {
   year: string
+  years: { value: string; label: string; hint?: string }[]
+  onYear: (year: string) => void
   months: string[]
   stateOf: (month: string) => State
   closed: Map<string, Period>
@@ -540,11 +657,18 @@ function YearCard({
   const closedInYear = endedInYear.filter((month) => stateOf(month) === 'closed').length
   const all = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`)
   return (
-    <section aria-labelledby={`year-${year}`} className="overflow-hidden rounded-xl border bg-card">
+    <section aria-label={year} className="overflow-hidden rounded-xl border bg-card">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border/60 px-5 py-3.5">
-        <h2 id={`year-${year}`} className="text-body font-semibold tabular-nums">
-          {year}
-        </h2>
+        <Combobox
+          value={year}
+          options={years}
+          onChange={onYear}
+          label={translate('year')}
+          placeholder={translate('year')}
+          disabled={years.length < 2}
+          className="w-32 font-semibold tabular-nums"
+          contentClassName="w-48"
+        />
         <span className="text-body-sm text-muted-foreground tabular-nums">
           {endedInYear.length > 0
             ? translate('ofClosed', { closedInYear: closedInYear, length: endedInYear.length })
