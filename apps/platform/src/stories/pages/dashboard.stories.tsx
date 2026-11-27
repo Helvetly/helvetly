@@ -54,7 +54,7 @@ export const WithData: Story = {
       'href',
       '/invoices/?status=overdue',
     )
-    await expect(figures.getByRole('link', { name: /^Spent this month/ })).toHaveAttribute(
+    await expect(await figures.findByRole('link', { name: /^Spent this month/ })).toHaveAttribute(
       'href',
       '/expenses/',
     )
