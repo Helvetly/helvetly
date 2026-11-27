@@ -138,15 +138,24 @@ export const NoSpending: Story = {
   },
 }
 
+const auditUsage = http.get('/api/v1/heidi/usage', () =>
+  HttpResponse.json({ provider_available: true, consent: { granted: true } }),
+)
+let auditQueries: string[] = []
+
+/** The scope modal first; the drawer opens on Start with a severity summary and one-line rows. */
 export const WorkspaceAudit: Story = {
+  beforeEach: () => {
+    auditQueries = []
+    return closeHeidi()
+  },
   parameters: pageParameters('/', {}, [
     ...attentionHandlers(),
-    http.get('/api/v1/heidi/usage', () =>
-      HttpResponse.json({ provider_available: true, consent: { granted: true } }),
-    ),
-    http.post('/api/v1/reports/workspace-audit', () =>
-      HttpResponse.json({
-        counts: { clients: 1, invoices: 1, documents: 1, payments: 0 },
+    auditUsage,
+    http.post('/api/v1/reports/workspace-audit', ({ request }) => {
+      auditQueries.push(new URL(request.url).search)
+      return HttpResponse.json({
+        counts: { clients: 1, invoices: 1, documents: 1, payments: 1 },
         read: 1,
         partial: 0,
         pending: [],
@@ -163,24 +172,86 @@ export const WorkspaceAudit: Story = {
               { kind: 'invoice', id: 'inv_example', label: '2026/IN/010' },
             ],
           },
+          {
+            id: 'credits',
+            code: 'unreferenced_transfer',
+            class: 'review',
+            severity: 'low',
+            category: 'payments',
+            values: ['3'],
+            evidence: [{ kind: 'document', id: 'doc_bank', label: 'Statement March.pdf' }],
+          },
         ],
-      }),
-    ),
+      })
+    }),
   ]),
   play: async () => {
-    const trigger = await body().findByRole('button', { name: 'AI Audit' })
-    await userEvent.click(trigger)
-    const dialog = within(await body().findByRole('dialog', { name: 'AI Audit' }))
-    await userEvent.click(await dialog.findByText('Original and record totals differ'))
-    await expect(dialog.getByRole('link', { name: 'Original.pdf' })).toHaveAttribute(
+    await userEvent.click(await body().findByRole('button', { name: 'AI Audit' }))
+    const modal = within(await body().findByRole('dialog', { name: 'AI Audit' }))
+    await expect(modal.getByText(/AI automation allowance/)).toBeVisible()
+    await userEvent.click(modal.getByRole('radio', { name: 'Choose areas' }))
+    const start = modal.getByRole('button', { name: 'Start audit' })
+    await expect(start).toBeDisabled()
+    await userEvent.click(modal.getByRole('checkbox', { name: /Invoices and amounts/ }))
+    await userEvent.click(modal.getByRole('checkbox', { name: /Payments and bank/ }))
+    await userEvent.click(start)
+    const drawer = within(await body().findByRole('dialog', { name: 'AI Audit' }))
+    await expect(
+      await drawer.findByText('Scope: Invoices and amounts and Payments and bank'),
+    ).toBeVisible()
+    await waitFor(() => expect(auditQueries).toEqual(['?lang=en&areas=invoices,payments']))
+    await expect(drawer.getByRole('button', { name: /^1\s*High$/ })).toBeVisible()
+    await userEvent.click(await drawer.findByText('Original and record totals differ'))
+    await expect(drawer.getByRole('link', { name: 'Original.pdf' })).toHaveAttribute(
       'href',
       '/documents/?file=doc_example',
     )
-    await expect(dialog.getByText(/Original · CHF 800.00.*Record · CHF 880.00/)).toBeVisible()
-    await userEvent.selectOptions(dialog.getByRole('combobox', { name: 'Severity' }), 'critical')
-    await expect(dialog.getByText('No findings match these filters.')).toBeVisible()
-    await userEvent.selectOptions(dialog.getByRole('combobox', { name: 'Severity' }), 'high')
-    await expect(dialog.getByText('Original and record totals differ')).toBeVisible()
+    await expect(drawer.getByText('CHF 880.00')).toBeVisible()
+    await userEvent.click(drawer.getByText('Bank credits without invoice references'))
+    await expect(drawer.getByText('3 bank credits without a reference')).toBeVisible()
+    await userEvent.click(drawer.getByRole('button', { name: /^1\s*High$/ }))
+    await expect(drawer.queryByText('Bank credits without invoice references')).toBeNull()
+    await userEvent.click(drawer.getByRole('button', { name: /^1\s*High$/ }))
+    await userEvent.click(drawer.getByRole('button', { name: /^Payments\s*1$/ }))
+    await expect(drawer.queryByText('Original and record totals differ')).toBeNull()
+  },
+}
+
+/** While originals are read the button shows progress and reopens the running audit, never a new one. */
+export const WorkspaceAuditRunning: Story = {
+  parameters: pageParameters('/', {}, [
+    ...attentionHandlers(),
+    auditUsage,
+    http.post('/api/v1/reports/workspace-audit', () =>
+      HttpResponse.json({
+        counts: { documents: 2 },
+        read: 0,
+        partial: 0,
+        pending: ['doc_a', 'doc_b'],
+        findings: [],
+      }),
+    ),
+    http.post('/api/v1/reports/workspace-audit/documents/:id', async () => {
+      await delay('infinite')
+      return HttpResponse.json({ status: 'read' })
+    }),
+  ]),
+  play: async () => {
+    await userEvent.click(await body().findByRole('button', { name: 'AI Audit' }))
+    const modal = within(await body().findByRole('dialog', { name: 'AI Audit' }))
+    await userEvent.click(modal.getByRole('button', { name: 'Start audit' }))
+    const drawer = within(await body().findByRole('dialog', { name: 'AI Audit' }))
+    await expect(await drawer.findByText('Checking original 1 of 2')).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    const running = await body().findByRole('button', { name: 'Checking original 1 of 2' })
+    await expect(running).toHaveTextContent(/Auditing 1\/2/)
+    await userEvent.click(running)
+    await expect(
+      await within(await body().findByRole('dialog', { name: 'AI Audit' })).findByRole('button', {
+        name: 'Pause audit',
+      }),
+    ).toBeVisible()
+    await expect(body().queryByRole('button', { name: 'Start audit' })).toBeNull()
   },
 }
 

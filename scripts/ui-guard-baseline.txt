@@ -50,7 +50,7 @@
 4 radius apps/platform/src/components/documents/items-view.tsx
 2 radius apps/platform/src/components/documents/kind.tsx
 1 radius apps/platform/src/components/documents/storage-overview.tsx
-3 radius apps/platform/src/components/documents/thumbnail.tsx
+2 radius apps/platform/src/components/documents/thumbnail.tsx
 2 radius apps/platform/src/components/documents/trash-view.tsx
 1 radius apps/platform/src/components/heidi/heidi-panel.tsx
 1 radius apps/platform/src/components/heidi/markdown.tsx

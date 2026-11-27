@@ -70,13 +70,6 @@ func (s *Service) modelAnswer(r *http.Request, sess store.Session, id, message, 
 		}
 		request.History = append(request.History, aimodel.Turn{Role: m.Role, Text: m.Text})
 	}
-	style, err := s.replyStyle(ctx, sess)
-	if err != nil {
-		return turn{}, err
-	}
-	if style != "" {
-		request.Instructions += "\n\n" + style
-	}
 	request.Instructions += "\n\n" + replyInstruction(ui)
 	for _, f := range files {
 		request.Files = append(request.Files, f.ModelFile)
@@ -118,7 +111,7 @@ func (s *Service) modelAnswer(r *http.Request, sess store.Session, id, message, 
 				return t, e
 			}
 			budget.Calling = func() { progress("Preparing workspace action") }
-			t, err := s.planOperation(r, sess, budget, call, operation, request, path, ui, style, readFile, fileNames)
+			t, err := s.planOperation(r, sess, budget, call, operation, request, path, ui, readFile, fileNames)
 			t.Tokens += tokens
 			return t, err
 		}
