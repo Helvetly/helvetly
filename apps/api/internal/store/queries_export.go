@@ -206,6 +206,8 @@ func eachJSON(ctx context.Context, tx pgx.Tx, t ExportTable, id string, row func
 // ExportExcluded: tables neither export reads, each with the reason. TestExportCoversEveryTable fails on a table
 // that is in no export and not here.
 var ExportExcluded = map[string]string{
+	"workspace_audit_evidence": "regenerable AI readings of original documents already included in the export",
+	"workspace_audit_claims":   "short-lived processing leases for document readings",
 	"account_login_challenges": "sign-in secret (token hash), minutes long",
 	"account_recovery_codes":   "sign-in secret (code hashes)",
 	"api_request_windows":      "API request counts of the last two minutes, a rate limit's state",

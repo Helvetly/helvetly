@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
-import { expect, waitFor, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { Dashboard } from '@/components/dashboard/dashboard'
 
@@ -122,5 +122,51 @@ export const NoSpending: Story = {
     await expect(await figures.findByRole('link', { name: /^Spent this month/ })).toHaveTextContent(
       '0 expenses',
     )
+  },
+}
+
+export const WorkspaceAudit: Story = {
+  parameters: pageParameters('/', {}, [
+    ...attentionHandlers(),
+    http.get('/api/v1/heidi/usage', () =>
+      HttpResponse.json({ provider_available: true, consent: { granted: true } }),
+    ),
+    http.post('/api/v1/reports/workspace-audit', () =>
+      HttpResponse.json({
+        counts: { clients: 1, invoices: 1, documents: 1, payments: 0 },
+        read: 1,
+        partial: 0,
+        pending: [],
+        findings: [
+          {
+            id: 'mismatch',
+            code: 'original_total',
+            class: 'error',
+            severity: 'high',
+            category: 'invoices',
+            values: ['CHF 800.00', 'CHF 880.00'],
+            evidence: [
+              { kind: 'document', id: 'doc_example', label: 'Original.pdf' },
+              { kind: 'invoice', id: 'inv_example', label: '2026/IN/010' },
+            ],
+          },
+        ],
+      }),
+    ),
+  ]),
+  play: async () => {
+    const trigger = await body().findByRole('button', { name: 'AI Audit' })
+    await userEvent.click(trigger)
+    const dialog = within(await body().findByRole('dialog', { name: 'AI Audit' }))
+    await userEvent.click(await dialog.findByText('Original and record totals differ'))
+    await expect(dialog.getByRole('link', { name: 'Original.pdf' })).toHaveAttribute(
+      'href',
+      '/documents/?file=doc_example',
+    )
+    await expect(dialog.getByText(/Original · CHF 800.00.*Record · CHF 880.00/)).toBeVisible()
+    await userEvent.selectOptions(dialog.getByRole('combobox', { name: 'Severity' }), 'critical')
+    await expect(dialog.getByText('No findings match these filters.')).toBeVisible()
+    await userEvent.selectOptions(dialog.getByRole('combobox', { name: 'Severity' }), 'high')
+    await expect(dialog.getByText('Original and record totals differ')).toBeVisible()
   },
 }

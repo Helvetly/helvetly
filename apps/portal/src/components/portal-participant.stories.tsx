@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { portalHandlers, portalSession } from '@/mocks/portal'
 import { schedulingHandlers } from '@/mocks/scheduling'
@@ -63,6 +63,7 @@ export const SessionsOnly: Story = {
     await expect(menu.getByText('Lorenzo Percic · EuroChem Group AG')).toBeVisible()
     await expect(menu.queryByRole('menuitem', { name: /Profile/ })).toBeNull()
     await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(account).toHaveFocus())
   },
 }
 

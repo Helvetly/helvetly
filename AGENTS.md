@@ -370,6 +370,13 @@ are the reference.
   under the versioned personal AI approval. Personal memory is held per workspace membership: successful topic
   counts rank suggestions, and a chosen reply style applies to model answers. Account settings show, clear or
   disable memory; removing membership deletes it.
+- **Dashboard AI Audit** (`internal/workspaceaudit`, session-only): the dashboard checks all dates in the current
+  workspace and only the member's readable clients, sales records, expenses and general documents. A snapshot
+  compares stored amounts, schedules, ownership and document links. Reading each original uses personal AI consent
+  and the automation budget. The model extracts printed facts from one file; the server compares them with the
+  ledger. Readings are cached by workspace, document, source fingerprint and interface language. A short database
+  lease serializes each reading. Partial or unreadable sources remain visible. The drawer groups findings by
+  severity and area and opens their evidence; recommendations never change business records.
 - **Optional integrations**: Stripe billing (`internal/billing`, off without `STRIPE_SECRET_KEY`), the AI model
   (`internal/aimodel`, off without `OPENAI_API_KEY`, gated by each user's approval in each workspace
   and a monthly token budget per pool: Heidi's chat (`ai_tokens_per_month`) and the automation pool of AI import

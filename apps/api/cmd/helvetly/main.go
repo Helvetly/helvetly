@@ -61,6 +61,7 @@ import (
 	"helvetly.com/api/internal/templates"
 	"helvetly.com/api/internal/uidregister"
 	"helvetly.com/api/internal/vatreturn"
+	"helvetly.com/api/internal/workspaceaudit"
 	"helvetly.com/api/internal/workspaces"
 )
 
@@ -372,6 +373,7 @@ func run() error {
 		workspacesSvc.Register(mux)
 		customDomainsSvc.Register(mux)
 		dashboardSvc.Register(mux)
+		workspaceaudit.New(db, authSvc, files, importModel, aimodel.Budget{DB: db, Pool: aimodel.PoolAutomation, Allowance: billingSvc.AIAutomationTokens, CostAllowance: billingSvc.AIAutomationCost, Now: time.Now}).Register(mux)
 		heidiSvc.Register(mux)
 		aiWriteSvc.Register(mux)
 		feedbackSvc.Register(mux)
