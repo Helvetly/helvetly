@@ -1,6 +1,5 @@
 'use client'
 
-import { Loader } from '@helvetly/ui/components/loader'
 import { cn } from '@helvetly/ui/lib/utils'
 import Image from 'next/image'
 import type * as PdfJsModule from 'pdfjs-dist'
@@ -99,6 +98,7 @@ export function Thumbnail({ file, className }: { file: DocFile; className?: stri
   const [ref, near] = useNear<HTMLDivElement>()
   const [pdf, setPdf] = useState<Page | null>(null)
   const [failed, setFailed] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const isPdf = file.kind === 'pdf'
   const isImage = file.kind === 'image'
 
@@ -116,6 +116,7 @@ export function Thumbnail({ file, className }: { file: DocFile; className?: stri
   }, [near, isPdf, file])
 
   const { icon: Icon, tint } = KIND_STYLE[file.kind]
+  const fade = cn('motion-safe:transition-opacity motion-safe:duration-200', !loaded && 'opacity-0')
   const fallback = (
     <div className="flex size-full items-center justify-center">
       <div
@@ -142,27 +143,34 @@ export function Thumbnail({ file, className }: { file: DocFile; className?: stri
           unoptimized
           sizes="240px"
           draggable={false}
+          onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}
-          className="object-cover"
+          className={cn('object-cover', fade)}
         />
-      ) : isPdf && pdf ? (
+      ) : isPdf && pdf && !failed ? (
         <div className="flex size-full items-start justify-center px-[14%] pt-[9%]">
           <span
-            className="relative w-full overflow-hidden rounded-t-[3px] bg-white shadow-elevation-2"
+            className={cn(
+              'relative w-full overflow-hidden rounded-t-[3px] bg-white shadow-elevation-2',
+              fade,
+            )}
             style={{ aspectRatio: `1 / ${pdf.ratio}` }}
           >
-            <Image src={pdf.url} alt="" fill unoptimized sizes="240px" draggable={false} />
+            <Image
+              src={pdf.url}
+              alt=""
+              fill
+              unoptimized
+              sizes="240px"
+              draggable={false}
+              onLoad={() => setLoaded(true)}
+              onError={() => setFailed(true)}
+            />
           </span>
         </div>
-      ) : isPdf && !failed ? (
-        <div className="flex size-full items-start justify-center px-[14%] pt-[9%]">
-          <div className="grid aspect-[1/1.414] w-full place-items-center rounded-t-[3px] bg-white/80 shadow-elevation-1 dark:bg-white/10">
-            <Loader className="min-h-0" />
-          </div>
-        </div>
-      ) : (
+      ) : failed || (!isPdf && !isImage) ? (
         fallback
-      )}
+      ) : null}
     </div>
   )
 }
