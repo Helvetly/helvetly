@@ -273,27 +273,46 @@ export function ExpensesPage() {
   const dropping = useImportDrop('expenses', canAdd && !formState && !openId)
 
   const exportLock = useFeatureLock('data_export')
+  // Rows of another page can be selected too: their state is unknown, so their actions stay.
+  const selectedRows = rows.filter((row) => selected.has(row.id))
+  const unseen = selectedRows.length < selected.size
+  const some = (test: (expense: Expense) => boolean) => unseen || selectedRows.some(test)
+  const payment = { label: translate('payment'), icon: <CircleCheck /> }
   const selection = {
     count: selected.size,
     actions: [
-      {
-        label: translate('book2'),
-        icon: <BookCheck />,
-        onClick: () => runBulk('book'),
-        write: true,
-      },
-      {
-        label: translate('markPaid2'),
-        icon: <CircleCheck />,
-        onClick: () => runBulk('mark_paid'),
-        write: true,
-      },
-      {
-        label: translate('markUnpaid2'),
-        icon: <CircleDashed />,
-        onClick: () => runBulk('mark_unpaid'),
-        write: true,
-      },
+      ...(some((expense) => expense.status === 'draft')
+        ? [
+            {
+              label: translate('book2'),
+              icon: <BookCheck />,
+              onClick: () => runBulk('book'),
+              write: true,
+            },
+          ]
+        : []),
+      ...(some((expense) => expense.status !== 'void' && expense.payment_status === 'unpaid')
+        ? [
+            {
+              label: translate('markPaid2'),
+              icon: <CircleCheck />,
+              onClick: () => runBulk('mark_paid'),
+              write: true,
+              group: payment,
+            },
+          ]
+        : []),
+      ...(some((expense) => expense.status !== 'void' && expense.payment_status !== 'unpaid')
+        ? [
+            {
+              label: translate('markUnpaid2'),
+              icon: <CircleDashed />,
+              onClick: () => runBulk('mark_unpaid'),
+              write: true,
+              group: payment,
+            },
+          ]
+        : []),
       {
         label: translate('exportCSV'),
         icon: <Download />,
@@ -304,7 +323,7 @@ export function ExpensesPage() {
       {
         label: translate('deleteDrafts'),
         icon: <Trash2 />,
-        onClick: () => setDeleting(rows.filter((row) => selected.has(row.id))),
+        onClick: () => setDeleting(selectedRows),
         destructive: true,
         write: true,
       },

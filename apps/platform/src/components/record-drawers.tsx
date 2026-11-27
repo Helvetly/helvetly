@@ -5,7 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
-import { ClientDetail, type ClientCommand } from '@/components/clients/client-detail'
+import {
+  ClientDetail,
+  useClientArchive,
+  type ClientCommand,
+} from '@/components/clients/client-detail'
 import { ClientForm } from '@/components/clients/client-form'
 import { Preview } from '@/components/documents/preview'
 import { EngagementDetail } from '@/components/engagements/engagement-detail'
@@ -358,10 +362,12 @@ function StackedClient({ id, onClose }: { id: string; onClose: () => void }) {
   const save = useSaveClient()
   const remove = useDeleteClient()
 
+  const archive = useClientArchive()
   const command = (name: ClientCommand, client: Client) => {
     if (name === 'edit') setForm({ client })
     if (name === 'complete') setForm({ client, focus: 'address' })
     if (name === 'delete') setDeleting(client)
+    if (name === 'archive' || name === 'unarchive') archive.run(name, [client.id])
     if (name === 'toggle')
       save.mutate(
         { id: client.id, input: { is_active: !client.is_active } },

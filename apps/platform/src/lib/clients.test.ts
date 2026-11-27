@@ -1,14 +1,44 @@
+import { setupServer } from 'msw/node'
+
+import { clientArchiveHandlers } from '@/mocks/clients'
+import { sampleClient } from '@/test/invoice-fixtures'
+
 import {
   apiQuery,
   canDeleteClients,
+  clientsApi,
   DEFAULT_PARAMS,
   effectiveSearch,
+  exportIdsUrl,
   isLeitwegId,
   listParamsToQuery,
   parseListParams,
   statusView,
   streetLine,
 } from './clients'
+
+test('archives a client and restores it to inactive through the bulk action', async () => {
+  const client = sampleClient()
+  const server = setupServer(...clientArchiveHandlers([client]))
+  server.listen()
+
+  try {
+    const archived = await clientsApi.setArchived(client.id, 'archive')
+    expect(archived.data.archived_at).toBeTruthy()
+    expect((await clientsApi.bulk([client.id], 'unarchive')).data.updated).toBe(1)
+    const restored = await clientsApi.setArchived(client.id, 'unarchive')
+    expect(restored.data).toMatchObject({ archived_at: null, is_active: false })
+  } finally {
+    server.close()
+  }
+})
+
+test('keeps the archive status in list and export requests', () => {
+  const params = parseListParams(new URLSearchParams('status=archived'))
+  expect(statusView(params.status)).toBe('archived')
+  expect(apiQuery(params).get('status')).toBe('archived')
+  expect(exportIdsUrl(['cli_1'], true)).toBe('/api/v1/clients/export?ids=cli_1&status=archived')
+})
 
 test('reads the list state from the URL and ignores what it does not know', () => {
   expect(

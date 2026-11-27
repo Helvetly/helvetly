@@ -5,6 +5,7 @@ import { expect, fireEvent, fn, userEvent, waitFor, within } from 'storybook/tes
 import { ClientsPage } from '@/components/clients/clients-page'
 
 import { ringClipper } from '../focus-ring'
+import { resetClientArchive } from './api'
 import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 import { sameRowMenus } from './menus'
@@ -12,7 +13,10 @@ import { dropOpensImport, emptyList, emptyOffersImport, noDropTarget, readOnly }
 
 const meta = {
   title: 'Pages/Clients',
-  beforeEach: closeHeidi,
+  beforeEach: () => {
+    resetClientArchive()
+    closeHeidi()
+  },
   parameters: pageParameters('/clients'),
   render: () => (
     <Frame>
@@ -91,9 +95,11 @@ export const BulkPortal: Story = {
     await waitFor(() =>
       expect(body.getByText('1 client skipped because no email address is on file.')).toBeVisible(),
     )
+    // Neither has the portal on, so there is nothing to disable.
     await chooseClients()
-    await apply('Disable portal', 'disable_portal')
-    await expect(changePortal).toHaveBeenCalledTimes(2)
+    await expect(body.queryByRole('button', { name: 'Disable portal' })).toBeNull()
+    await expect(body.queryByRole('button', { name: 'Portal' })).toBeNull()
+    await expect(changePortal).toHaveBeenCalledTimes(1)
   },
 }
 export const BulkPortalPhone = phone(BulkPortal)
@@ -110,7 +116,7 @@ const unavailablePortal = (enabled: boolean, feature: boolean): Story => ({
       ),
     )
     const toolbar = within(await body.findByRole('toolbar', { name: 'Selected rows' }))
-    await expect(toolbar.getByRole('button', { name: 'Activate' })).toBeVisible()
+    await expect(toolbar.getByRole('button', { name: 'Status' })).toBeVisible()
     await expect(toolbar.queryByRole('button', { name: 'Enable portal' })).toBeNull()
     await expect(toolbar.queryByRole('button', { name: 'Disable portal' })).toBeNull()
   },
@@ -172,6 +178,35 @@ export const StatusViews: Story = {
     await expect(url.searchParams.getAll('status')).toEqual(['draft'])
   },
 }
+
+/** Two clients archived from the Status menu leave the list at once; Undo in the toast brings them back. */
+export const BulkArchive: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const select = async (name: string) =>
+      userEvent.click(
+        await body.findByRole('checkbox', { name: `Select ${name}` }, { timeout: 8000 }),
+      )
+    await select('Alpenglow Studio GmbH')
+    await select('Keller Holzbau AG')
+    const bar = within(body.getByRole('toolbar', { name: 'Selected rows' }))
+    await expect(bar.queryByRole('button', { name: 'Archive' })).toBeNull()
+    await userEvent.click(bar.getByRole('button', { name: 'Status' }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Archive' }))
+    await waitFor(() => expect(body.getByText('2 clients archived.')).toBeVisible())
+    await waitFor(() => expect(body.queryAllByText('Keller Holzbau AG')).toHaveLength(0))
+    await userEvent.click(body.getByRole('button', { name: 'Undo' }))
+    await waitFor(() => expect(body.getByText('2 clients unarchived.')).toBeVisible())
+    await waitFor(() => expect(body.getAllByText('Keller Holzbau AG')[0]).toBeVisible())
+  },
+}
+
+/** The Archived tab says what archiving does when nothing is archived. */
+export const ArchivedEmpty: Story = {
+  parameters: pageParameters('/clients', { status: 'archived' }),
+  play: shows('No archived clients'),
+}
+export const ArchivedEmptyPhone = phone(ArchivedEmpty)
 
 /** The Drafts view lists only clients still missing address details, its counts unchanged. */
 export const DraftsView: Story = {
@@ -441,7 +476,7 @@ export const RowMenu: Story = {
     const order = await sameRowMenus(button)
     await expect(order[0]).toMatch(/^#\d+ · Keller Holzbau AG$/)
     await expect(order.slice(1).join(', ')).toMatch(
-      /^Open details, \|, (Deactivate|Activate), \|, Edit, \|, Delete$/,
+      /^Open details, \|, (Deactivate|Activate), Archive, \|, Edit, \|, Delete$/,
     )
   },
 }

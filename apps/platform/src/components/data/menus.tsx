@@ -26,7 +26,7 @@ import type { MouseEvent, ReactElement } from 'react'
 import { translate } from '@/lib/i18n'
 import { useCanWriteHere } from '@/lib/permissions'
 
-import type { BulkAction } from './table-page'
+import { type BulkAction, bulkEntries, bulkMenuAction } from './table-page'
 
 /** An item's menu: its header line ("#12 · Muster AG") and its actions, written once. */
 export type RowMenuSpec = ActionMenuSpec
@@ -103,16 +103,17 @@ function BulkMenu({ count, actions }: { count: number; actions: BulkAction[] }) 
       kind="context"
       menu={{
         header: translate('dynamicSelected', { count }),
-        actions: actions
-          .filter((action) => writable || !action.write)
-          .map((action) => ({
-            id: action.label,
-            group: action.destructive ? 'danger' : 'edit',
-            label: action.label,
-            icon: action.icon,
-            onSelect: action.onClick,
-            disabledReason: action.disabled,
-          })),
+        actions: bulkEntries(actions, writable).map((entry) =>
+          entry.kind === 'action'
+            ? bulkMenuAction(entry.action)
+            : {
+                id: entry.group.label,
+                group: 'edit',
+                label: entry.group.label,
+                icon: entry.group.icon,
+                submenu: entry.actions.map(bulkMenuAction),
+              },
+        ),
       }}
     />
   )

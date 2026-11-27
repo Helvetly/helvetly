@@ -8,6 +8,7 @@ export const sampleClient = (change: Partial<Client> = {}): Client => ({
   preferred_name: null,
   is_company: true,
   is_active: true,
+  archived_at: null,
   email: 'hello@alpenglow.ch',
   phone: null,
   street: 'Seefeldstrasse',

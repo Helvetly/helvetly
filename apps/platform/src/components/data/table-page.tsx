@@ -1,8 +1,10 @@
 'use client'
+import { type Action, ActionMenuContent } from '@helvetly/ui/components/action-menu'
+import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { X } from 'lucide-react'
+import { ChevronDown, X } from 'lucide-react'
 import { type ReactNode } from 'react'
 
 import { translate } from '@/lib/i18n'
@@ -22,12 +24,59 @@ export type BulkAction = {
   label: string
   icon: ReactNode
   onClick: () => void
-  /** Goes last, in red, in a row's right-click menu. */
+  /** Goes last, apart and in red; also last, in red, in a row's right-click menu. */
   destructive?: boolean
   /** Changes records: hidden from a member without write on the page's resource. */
   write?: boolean
   /** Why the action cannot run now: shown in its tooltip, the button stays focusable. */
   disabled?: string
+  /**
+   * Paired or related actions (Activate / Deactivate, Mark paid / unpaid) share one menu button
+   * named by the group; a group left with one action shows it as a plain button.
+   */
+  group?: BulkGroup
+}
+
+export type BulkGroup = { label: string; icon: ReactNode }
+
+type BulkEntry =
+  | { kind: 'action'; action: BulkAction }
+  | { kind: 'group'; group: BulkGroup; actions: BulkAction[] }
+
+/** The actions a member may run, groups gathered where their first action stood, destructive last. */
+export function bulkEntries(actions: BulkAction[], writable: boolean): BulkEntry[] {
+  const allowed = actions.filter((action) => writable || !action.write)
+  const ordered = [
+    ...allowed.filter((action) => !action.destructive),
+    ...allowed.filter((action) => action.destructive),
+  ]
+  const entries: BulkEntry[] = []
+  for (const action of ordered) {
+    const group = action.group
+    const existing = group
+      ? entries.find((entry) => entry.kind === 'group' && entry.group.label === group.label)
+      : undefined
+    if (existing?.kind === 'group') existing.actions.push(action)
+    else if (group) entries.push({ kind: 'group', group, actions: [action] })
+    else entries.push({ kind: 'action', action })
+  }
+  return entries.map((entry) =>
+    entry.kind === 'group' && entry.actions.length === 1
+      ? { kind: 'action', action: entry.actions[0]! }
+      : entry,
+  )
+}
+
+/** A bulk action as an item of an action menu. */
+export function bulkMenuAction(action: BulkAction): Action {
+  return {
+    id: action.label,
+    group: action.destructive ? 'danger' : 'edit',
+    label: action.label,
+    icon: action.icon,
+    onSelect: action.onClick,
+    disabledReason: action.disabled,
+  }
 }
 
 /** The floating dark bar while rows are selected: the count, then the actions as icon buttons. */
@@ -60,35 +109,82 @@ export function BulkBar({
           {translate('selected')}
           {count}
         </span>
-        {actions
-          .filter((action) => writable || !action.write)
-          .map(({ label, icon, onClick, destructive, disabled }) => (
-            <span key={label} className="contents">
+        {bulkEntries(actions, writable).map((entry) => {
+          const key = entry.kind === 'group' ? entry.group.label : entry.action.label
+          const apart = entry.kind === 'action' && entry.action.destructive
+          return (
+            <span key={key} className="contents">
+              {apart ? <span aria-hidden className="w-1 sm:w-2" /> : null}
               <Divider />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={label}
-                    aria-disabled={Boolean(disabled)}
-                    className={cn(
-                      bulkIcon,
-                      destructive && bulkDestructive,
-                      disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent',
-                    )}
-                    onClick={disabled ? undefined : onClick}
-                  >
-                    {icon}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-64 text-pretty">
-                  {disabled ? `${label}: ${disabled}` : label}
-                </TooltipContent>
-              </Tooltip>
+              {entry.kind === 'group' ? (
+                <BulkGroupButton group={entry.group} actions={entry.actions} />
+              ) : (
+                <BulkButton action={entry.action} />
+              )}
             </span>
-          ))}
+          )
+        })}
       </div>
     </div>
+  )
+}
+
+function BulkButton({
+  action: { label, icon, onClick, destructive, disabled },
+}: {
+  action: BulkAction
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          aria-disabled={Boolean(disabled)}
+          className={cn(
+            bulkIcon,
+            destructive && bulkDestructive,
+            disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent',
+          )}
+          onClick={disabled ? undefined : onClick}
+        >
+          {icon}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64 text-pretty">
+        {disabled ? `${label}: ${disabled}` : label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** A group's button: its icon and name (the name from sm up), opening its actions above the bar. */
+function BulkGroupButton({ group, actions }: { group: BulkGroup; actions: BulkAction[] }) {
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={group.label}
+              className={cn(bulkIcon, 'w-auto gap-1.5 px-2 text-sm data-[state=open]:bg-white/10')}
+            >
+              {group.icon}
+              <span className="hidden sm:inline">{group.label}</span>
+              <ChevronDown aria-hidden className="size-3.5! text-white/60" />
+            </button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{group.label}</TooltipContent>
+      </Tooltip>
+      <ActionMenuContent
+        kind="dropdown"
+        align="center"
+        className="min-w-44"
+        menu={{ actions: actions.map(bulkMenuAction) }}
+      />
+    </DropdownMenu>
   )
 }
 

@@ -147,6 +147,7 @@ export function bulkActions(
   run: { downloadPdfs: () => void; duplicate: () => void; ask: (kind: BulkKind) => void },
 ): BulkAction[] {
   const targets = bulkTargets(selected)
+  const status = { label: translate('status'), icon: <CircleCheck /> }
   const change = (kind: BulkKind, label: string, icon: ReactNode): BulkAction[] =>
     targets[kind].length > 0
       ? [
@@ -156,6 +157,7 @@ export function bulkActions(
             onClick: () => run.ask(kind),
             write: true,
             destructive: kind === 'remove',
+            group: kind === 'remove' ? undefined : status,
           },
         ]
       : []

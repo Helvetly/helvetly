@@ -355,6 +355,31 @@ func TestToolsFollowTokenScopeAndPermissions(t *testing.T) {
 	}
 }
 
+func TestArchiveClientTools(t *testing.T) {
+	e := newEnv(t)
+	ws, writer := e.person("", "owner", nil, "read:clients", "write:clients")
+	_, reader := e.person(ws, "member", []string{"read:clients"}, "read:clients")
+	created := e.call(writer, "create_client", map[string]any{"body": map[string]any{"name": "Archive me"}})
+	var client struct{ Data store.Client }
+	if created.IsError || json.Unmarshal([]byte(created.Content[0].Text), &client) != nil || client.Data.ID == "" {
+		t.Fatalf("create_client: %+v", created)
+	}
+	id := map[string]any{"id": client.Data.ID}
+	if e.tools(reader)["archive_client"] != nil {
+		t.Fatal("read token can see archive_client")
+	}
+	if got := e.call(writer, "archive_client", id); got.IsError {
+		t.Fatalf("archive_client: %+v", got)
+	}
+	if got := e.call(reader, "list_clients", map[string]any{"status": "archived"}); got.IsError || !strings.Contains(got.Content[0].Text, client.Data.ID) {
+		t.Fatalf("list_clients archived: %+v", got)
+	}
+	if got := e.call(writer, "unarchive_client", id); got.IsError || json.Unmarshal([]byte(got.Content[0].Text), &client) != nil ||
+		client.Data.ArchivedAt != nil || client.Data.IsActive {
+		t.Fatalf("unarchive_client: %+v", got)
+	}
+}
+
 func TestToolCallsAreWorkspaceScoped(t *testing.T) {
 	e := newEnv(t)
 	_, a := e.person("", "owner", nil, "read:*", "write:*")

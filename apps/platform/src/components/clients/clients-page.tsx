@@ -17,6 +17,8 @@ import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { usePageSize } from '@helvetly/ui/lib/table-storage'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
+  Archive,
+  ArchiveRestore,
   CircleCheck,
   CloudOff,
   Download,
@@ -36,7 +38,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { memo, useEffect, useMemo, useState, type ComponentProps } from 'react'
+import { memo, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { useExportAction, unlessLocked, useFeatureLock } from '@/components/billing/feature-lock'
@@ -49,7 +51,7 @@ import {
   RowMenuButton,
   type RowMenuSpec,
 } from '@/components/data/menus'
-import { BulkBar, LoadingRows, State } from '@/components/data/table-page'
+import { BulkBar, LoadingRows, State, type BulkAction } from '@/components/data/table-page'
 import { useHiddenColumns } from '@/components/data/use-hidden-columns'
 import { useImportAction, useImportDrawer } from '@/components/import/import-button'
 import { ImportDrawer } from '@/components/import/import-drawer'
@@ -75,6 +77,7 @@ import {
   clientQuery,
   useSaveClient,
   type Client,
+  type ClientArchiveAction,
   type ClientStatus,
   type ListParams,
   type SortField,
@@ -88,7 +91,7 @@ import { useStableCallback } from '@/lib/use-stable-callback'
 import { usePortalAddress } from '@/lib/workspaces'
 
 import { ChangesPendingBadge, ClientRowStatus, ClientTypeBadge } from './client-bits'
-import { ClientDetail, type ClientCommand } from './client-detail'
+import { ClientDetail, useClientArchive, type ClientCommand } from './client-detail'
 import { ClientForm } from './client-form'
 import { COUNTRY_OPTIONS } from './fields'
 
@@ -97,6 +100,7 @@ const VIEW_ICONS: Record<StatusView, LucideIcon> = {
   active: CircleCheck,
   draft: FilePen,
   inactive: PauseCircle,
+  archived: Archive,
 }
 
 /** Which list sort each sortable column asks for. */
@@ -113,6 +117,7 @@ export function ClientsPage() {
   const query = useSearchParams()
   const [pageSize, setPageSize] = usePageSize('clients')
   const params = { ...parseListParams(query), pageSize }
+  const archived = params.status.includes('archived')
   const openId = query.get('id')
   const role = useSession().data?.role
   const canWrite = useCan('write:clients')
@@ -132,14 +137,19 @@ export function ClientsPage() {
   const save = useSaveClient()
   const remove = useDeleteClient()
   const bulk = useBulkClients()
+  const archive = useClientArchive()
   const prefetch = usePrefetch(clientQuery)
 
   const navigate = (next: URLSearchParams) => {
     setUrlQuery(pathname, next)
   }
   const statusCounts = useClientStatusCounts(params)
-  const update = (change: Partial<ListParams>) =>
+  const update = (change: Partial<ListParams>) => {
+    if (change.status && change.status.includes('archived') !== archived) {
+      setSelected(new Set())
+    }
     navigate(listParamsToQuery({ ...params, page: 1, ...change }, query))
+  }
   const openClient = (id: string | null) => {
     const next = new URLSearchParams(query)
     if (id) next.set('id', id)
@@ -199,6 +209,7 @@ export function ClientsPage() {
     if (name === 'edit') setForm({ client })
     if (name === 'complete') setForm({ client, focus: 'address' })
     if (name === 'toggle') setActive(client, !client.is_active)
+    if (name === 'archive' || name === 'unarchive') archive.run(name, [client.id])
     if (name === 'delete') setDeleting([client])
   }
 
@@ -246,9 +257,11 @@ export function ClientsPage() {
   const dropping = useImportDrop('clients', canImport && !formState && !openId)
   const selection = {
     count: selected.size,
-    actions: bulkActions(canDelete, {
-      activate: () => runBulk('activate'),
-      deactivate: () => runBulk('deactivate'),
+    actions: bulkActions(canDelete, selectionState(rows, selected), {
+      status: (action) =>
+        action === 'archive' || action === 'unarchive'
+          ? archive.run(action, [...selected], () => setSelected(new Set()))
+          : runBulk(action),
       portal:
         canWrite && portal?.enabled && portal.feature_available
           ? {
@@ -257,7 +270,7 @@ export function ClientsPage() {
             }
           : undefined,
       exportCsv: unlessLocked(exportLock, () =>
-        window.location.assign(exportIdsUrl([...selected])),
+        window.location.assign(exportIdsUrl([...selected], archived)),
       ),
       remove: () => setDeleting(rows.filter((row) => selected.has(row.id))),
     }),
@@ -365,7 +378,13 @@ export function ClientsPage() {
           ) : !list.data ? (
             <LoadingRows />
           ) : rows.length === 0 ? (
-            filtered ? (
+            archived && !params.search ? (
+              <State
+                icon={<Archive />}
+                title={translate('noArchivedClients')}
+                text={translate('archivedClientsExplained')}
+              />
+            ) : filtered ? (
               <State
                 icon={<SearchX />}
                 title={
@@ -566,39 +585,71 @@ export function ClientsPage() {
   )
 }
 
-/** The bulk bar's buttons; deleting only for those allowed to. */
+/** What the selected clients allow; a selected row of another page may be anything. */
+export type SelectionState = {
+  inactive: boolean
+  active: boolean
+  live: boolean
+  archived: boolean
+  portalOff: boolean
+  portalOn: boolean
+}
+
+export function selectionState(rows: Client[], selected: ReadonlySet<string>): SelectionState {
+  const chosen = rows.filter((row) => selected.has(row.id))
+  const unseen = chosen.length < selected.size
+  const some = (test: (client: Client) => boolean) => unseen || chosen.some(test)
+  return {
+    inactive: some((client) => !client.archived_at && !client.is_active),
+    active: some((client) => !client.archived_at && client.is_active),
+    live: some((client) => !client.archived_at),
+    archived: some((client) => Boolean(client.archived_at)),
+    portalOff: some((client) => !client.archived_at && !client.portal_enabled),
+    portalOn: some((client) => Boolean(client.portal_enabled)),
+  }
+}
+
+type StatusAction = 'activate' | 'deactivate' | ClientArchiveAction
+
+/**
+ * The bulk bar's buttons: status changes in one Status menu and the portal's in one Portal menu,
+ * each action only when a selected client allows it; deleting only for those allowed to.
+ */
 export function bulkActions(
   canDelete: boolean,
+  has: SelectionState,
   run: {
-    activate: () => void
-    deactivate: () => void
+    status: (action: StatusAction) => void
     exportCsv: () => void
     remove: () => void
     portal?: { change: (enabled: boolean) => void; disabled?: string }
   },
-) {
+): BulkAction[] {
+  const status = { label: translate('status'), icon: <CircleCheck /> }
+  const portalGroup = { label: translate('portal'), icon: <KeyRound /> }
   const { portal } = run
-  return [
-    { label: translate('activate'), icon: <Power />, onClick: run.activate, write: true },
-    { label: translate('deactivate'), icon: <PowerOff />, onClick: run.deactivate, write: true },
-    ...(portal
+  const statusAction = (action: StatusAction, label: string, icon: ReactNode, when: boolean) =>
+    when ? [{ label, icon, onClick: () => run.status(action), write: true, group: status }] : []
+  const portalAction = (enabled: boolean, label: string, icon: ReactNode, when: boolean) =>
+    portal && when
       ? [
           {
-            label: translate('bulkEnablePortal'),
-            icon: <KeyRound />,
-            onClick: () => portal.change(true),
+            label,
+            icon,
+            onClick: () => portal.change(enabled),
             disabled: portal.disabled,
             write: true,
-          },
-          {
-            label: translate('bulkDisablePortal'),
-            icon: <LockKeyhole />,
-            onClick: () => portal.change(false),
-            disabled: portal.disabled,
-            write: true,
+            group: portalGroup,
           },
         ]
-      : []),
+      : []
+  return [
+    ...statusAction('activate', translate('activate'), <Power />, has.inactive),
+    ...statusAction('deactivate', translate('deactivate'), <PowerOff />, has.active),
+    ...statusAction('archive', translate('archiveAction'), <Archive />, has.live),
+    ...statusAction('unarchive', translate('unarchive'), <ArchiveRestore />, has.archived),
+    ...portalAction(true, translate('bulkEnablePortal'), <KeyRound />, has.portalOff),
+    ...portalAction(false, translate('bulkDisablePortal'), <LockKeyhole />, has.portalOn),
     { label: translate('exportCSV'), icon: <Download />, onClick: run.exportCsv },
     ...(canDelete
       ? [
@@ -653,12 +704,20 @@ function clientMenu(
         label: translate('openDetails'),
         onSelect: onOpen,
       },
+      can.canWrite &&
+        !client.archived_at && {
+          id: 'toggle',
+          group: 'status',
+          icon: client.is_active ? <PowerOff /> : <Power />,
+          label: client.is_active ? translate('deactivate') : translate('activate'),
+          onSelect: () => onCommand('toggle', client),
+        },
       can.canWrite && {
-        id: 'toggle',
+        id: 'archive',
         group: 'status',
-        icon: client.is_active ? <PowerOff /> : <Power />,
-        label: client.is_active ? translate('deactivate') : translate('activate'),
-        onSelect: () => onCommand('toggle', client),
+        icon: client.archived_at ? <ArchiveRestore /> : <Archive />,
+        label: translate(client.archived_at ? 'unarchive' : 'archiveAction'),
+        onSelect: () => onCommand(client.archived_at ? 'unarchive' : 'archive', client),
       },
       can.canWrite && {
         id: 'edit',
@@ -683,6 +742,7 @@ const STATUS_LABELS: Record<ClientStatus, string> = {
   inactive: translate('inactive'),
   draft: translate('draft'),
   complete: translate('completeAddress'),
+  archived: translate('archived'),
 }
 
 /** The search's field terms: `status:`, `type:`, `tag:`, `country:`, `name:`, `email:`, `city:`. */

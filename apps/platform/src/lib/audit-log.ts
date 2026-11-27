@@ -63,6 +63,8 @@ export const AUDIT_KINDS = [
   'portal.participant_access_granted',
   'portal.participant_access_revoked',
   'client.merged_into_participant',
+  'client.archived',
+  'client.unarchived',
   'documents.exported',
   'documents.folder_repaired',
   'documents.upload_filed',
@@ -358,6 +360,13 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
         client: text(event.payload.client_name),
         company: text(event.payload.company_name),
       }),
+      amount: null,
+    }
+  if (event.kind === 'client.archived' || event.kind === 'client.unarchived')
+    return {
+      line: translate(
+        event.kind === 'client.archived' ? 'auditClientArchived' : 'auditClientRestored',
+      ),
       amount: null,
     }
   if (area === 'portal')

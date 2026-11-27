@@ -414,7 +414,7 @@ func TestList(t *testing.T) {
 		t.Fatalf("past the end: %+v", p.Meta)
 	}
 
-	for _, q := range []string{"sort=deleted_at", "sort=name%27--", "sort=lower(name)", "status=archived", "type=robot", "page=0",
+	for _, q := range []string{"sort=deleted_at", "sort=name%27--", "sort=lower(name)", "status=deleted", "type=robot", "page=0",
 		"page_size=201", "page=x", "country=XX", "created_from=2026-02-30", "created_from=yesterday", "name=" + strings.Repeat("a", 201), "city=" + strings.Repeat("b", 201)} {
 		e.fails(b, "GET", "/api/v1/clients?"+q, nil, 400, "invalid_request")
 	}
@@ -538,11 +538,66 @@ func TestBulk(t *testing.T) {
 	}{
 		{map[string]any{"ids": []string{}, "action": "activate"}, 422, "validation_failed", []string{"ids"}},
 		{map[string]any{"ids": many, "action": "activate"}, 422, "validation_failed", []string{"ids"}},
-		{map[string]any{"ids": []string{a.ID}, "action": "archive"}, 422, "validation_failed", []string{"action"}},
+		{map[string]any{"ids": []string{a.ID}, "action": "unknown"}, 422, "validation_failed", []string{"action"}},
 		{map[string]any{"ids": []string{a.ID}}, 422, "validation_failed", []string{"action"}},
 		{map[string]any{"ids": []string{a.ID}, "action": "activate", "all": true}, 400, "invalid_request", nil},
 	} {
 		e.fails(b, "POST", "/api/v1/clients/bulk", tc.body, tc.status, tc.code, tc.fields...)
+	}
+}
+
+func TestArchiveClients(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	member := e.join(owner.workspace, "member")
+	other := e.workspace()
+	a := e.create(owner, map[string]any{"name": "Active"})
+	b := e.create(owner, map[string]any{"name": "Inactive", "is_active": false})
+	foreign := e.create(other, map[string]any{"name": "Foreign"})
+	path := "/api/v1/clients/" + a.ID
+	var client struct{ Data store.Client }
+	e.do(member, "POST", path+"/archive", nil, 200, &client)
+	var out struct{ Data struct{ Updated int } }
+	e.do(member, "POST", "/api/v1/clients/bulk", map[string]any{
+		"ids": []string{a.ID, b.ID, b.ID, foreign.ID}, "action": "archive",
+	}, 200, &out)
+	if out.Data.Updated != 1 {
+		t.Fatalf("archive updated %d clients", out.Data.Updated)
+	}
+	for _, query := range []string{"", "status=active", "status=inactive", "status=draft", "search=Active"} {
+		if got := e.list(member, query); got.Meta.Total != 0 || len(got.Data) != 0 {
+			t.Fatalf("archived clients in %q: %+v", query, got)
+		}
+	}
+	archived := e.list(member, "status=archived&page_size=1")
+	if archived.Meta.Total != 2 || len(archived.Data) != 1 || archived.Data[0].ArchivedAt == nil {
+		t.Fatalf("archived page: %+v", archived)
+	}
+	e.do(member, "GET", path, nil, 200, &client)
+	if client.Data.ArchivedAt == nil || client.Data.Name != a.Name {
+		t.Fatalf("archived client: %+v", client.Data)
+	}
+	e.fails(member, "POST", "/api/v1/clients/"+foreign.ID+"/archive", nil, 404, "not_found")
+	e.do(member, "POST", path+"/unarchive", nil, 200, &client)
+	if client.Data.ArchivedAt != nil || client.Data.IsActive {
+		t.Fatalf("restored client: %+v", client.Data)
+	}
+	for i, want := range []int{1, 0} {
+		e.do(member, "POST", "/api/v1/clients/bulk", map[string]any{
+			"ids": []string{a.ID, b.ID}, "action": "unarchive",
+		}, 200, &out)
+		if out.Data.Updated != want {
+			t.Fatalf("restore attempt %d updated %d clients", i+1, out.Data.Updated)
+		}
+	}
+	if got := e.list(member, "status=inactive&sort=number"); !slices.Equal(numbers(got.Data), []int64{1, 2}) {
+		t.Fatalf("inactive after restore: %+v", got)
+	}
+	var auditCount int
+	if err := e.raw.QueryRow(context.Background(), `SELECT count(*) FROM financial_events WHERE workspace_id = $1
+		AND subject_id = ANY($2) AND kind IN ('client.archived', 'client.unarchived') AND actor_id IS NOT NULL`,
+		owner.workspace, []string{a.ID, b.ID}).Scan(&auditCount); err != nil || auditCount != 4 {
+		t.Fatalf("archive audit count = %d, err = %v", auditCount, err)
 	}
 }
 
