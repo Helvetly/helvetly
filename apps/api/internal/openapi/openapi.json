@@ -5440,7 +5440,7 @@
         "operationId": "list_closed_periods",
         "tags": ["Books"],
         "summary": "List closed months",
-        "description": "Closed months, newest first. Invoices, payments, refunds, voids and expense bookings dated in a closed month are refused with 409 period_closed. A member needs the settings permission.",
+        "description": "Closed months, newest first, and first_month, the month the books start in. Invoices, payments, refunds, voids and expense bookings dated in a closed month are refused with 409 period_closed. A member needs the settings permission.",
         "responses": {
           "200": {
             "description": "OK",
@@ -11578,9 +11578,14 @@
             "items": {
               "$ref": "#/components/schemas/PeriodClosing"
             }
+          },
+          "first_month": {
+            "type": ["string", "null"],
+            "description": "YYYY-MM of the earliest issued invoice or booked expense the caller may read, else of the earliest closed month; null when there is none.",
+            "example": "2024-03"
           }
         },
-        "required": ["data"]
+        "required": ["data", "first_month"]
       },
       "PeriodActivityList": {
         "type": "object",

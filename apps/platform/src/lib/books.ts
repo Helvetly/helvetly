@@ -77,7 +77,8 @@ const agreements = (clientId: string) =>
   `/clients/${encodeURIComponent(clientId)}/self-billing-agreements`
 
 export const booksApi = {
-  periods: () => request<One<Period[]>>('/periods'),
+  /** Closed months, newest first, and the month the books start in (null without records). */
+  periods: () => request<One<Period[]> & { first_month: string | null }>('/periods'),
   close: (month: string) => request<One<Period>>('/periods', { method: 'POST', json: { month } }),
   reopen: (month: string, reason = '') =>
     request<One<{ month: string }>>(`/periods/${encodeURIComponent(month)}/reopen`, {

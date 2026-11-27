@@ -627,3 +627,36 @@ func TestAuditLogAvatars(t *testing.T) {
 		t.Fatalf("people: %+v", people.Data)
 	}
 }
+
+// TestPeriodsFirstMonth: the list names the month the books start in, from the records the session may read.
+func TestPeriodsFirstMonth(t *testing.T) {
+	e := newEnv(t)
+	owner := e.workspace()
+	var out struct {
+		FirstMonth *string `json:"first_month"`
+	}
+	e.do(owner, "GET", "/api/v1/periods", nil, 200, &out)
+	if out.FirstMonth != nil {
+		t.Fatalf("no records: first_month %q", *out.FirstMonth)
+	}
+	if _, err := e.pool.Exec(context.Background(), `INSERT INTO invoices (id,workspace_id,kind,status,number,client_id,
+		issue_date,due_date,currency,language,vat_mode,discount_percent,subtotal,discount_amount,net_total,
+		vat_total,total,rounding_amount,vat_breakdown,amount_paid,amount_credited,created_at,updated_at)
+		VALUES ('inv-first',$1,'invoice','open','2024-001',$2,'2024-03-15','2024-04-15','CHF','en','none',0,100,0,100,
+		0,100,0,'[]',0,0,now(),now())`, owner.workspace, e.client(owner.workspace)); err != nil {
+		t.Fatal(err)
+	}
+	e.do(owner, "GET", "/api/v1/periods", nil, 200, &out)
+	if out.FirstMonth == nil || *out.FirstMonth != "2024-03" {
+		t.Fatalf("owner: first_month %v, want 2024-03", out.FirstMonth)
+	}
+	member := e.join(owner.workspace, "member")
+	if _, err := e.pool.Exec(context.Background(), `UPDATE workspace_members SET scopes = '{read:periods}'
+		WHERE workspace_id = $1 AND user_id = $2`, owner.workspace, member.user); err != nil {
+		t.Fatal(err)
+	}
+	e.do(member, "GET", "/api/v1/periods", nil, 200, &out)
+	if out.FirstMonth != nil {
+		t.Fatalf("member without invoices: first_month %q", *out.FirstMonth)
+	}
+}

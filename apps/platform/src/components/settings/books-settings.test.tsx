@@ -12,6 +12,8 @@ import { handlers } from '@/mocks/handlers'
 
 import { AuditLog, eventLook } from './audit-log'
 import {
+  activityWindows,
+  bookMonths,
   closedThrough,
   draftsOf,
   endedMonths,
@@ -107,6 +109,38 @@ describe('draftsOf', () => {
     [undefined, null],
   ])('%j → %s', (activity, want) => {
     expect(draftsOf(activity)).toBe(want)
+  })
+})
+
+describe('bookMonths', () => {
+  it('shows whole years from the first record through the current month', () => {
+    const months = bookMonths('2026-11-12', '2024-03', ['2025-01'])
+    expect(months).toHaveLength(35)
+    expect(months[0]).toBe('2026-11')
+    expect(months.at(-1)).toBe('2024-01')
+  })
+
+  it('starts at an earlier closed month, and never after the current year', () => {
+    expect(bookMonths('2026-11-12', '2025-06', ['2023-12']).at(-1)).toBe('2023-01')
+    expect(bookMonths('2026-02-01', '2027-01', []).toReversed()).toEqual(['2026-01', '2026-02'])
+  })
+
+  it('keeps the last twelve ended months and the closed ones without records', () => {
+    const months = bookMonths('2026-11-12', null, ['2020-05'])
+    expect(months.slice(0, 2)).toEqual(['2026-11', '2026-10'])
+    expect(months.at(-2)).toBe('2025-11')
+    expect(months.at(-1)).toBe('2020-05')
+  })
+})
+
+describe('activityWindows', () => {
+  it('cuts a long range into windows of at most 36 months, newest first', () => {
+    expect(activityWindows('2020-01', '2026-11')).toEqual([
+      ['2023-12', '2026-11'],
+      ['2020-12', '2023-11'],
+      ['2020-01', '2020-11'],
+    ])
+    expect(activityWindows('2026-01', '2026-11')).toEqual([['2026-01', '2026-11']])
   })
 })
 
@@ -245,6 +279,31 @@ describe('PeriodsCard', () => {
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith('Only an owner or admin can do this.'),
     )
+  })
+
+  it('shows every month of every year since the first invoice', async () => {
+    const asked: string[] = []
+    server.use(
+      http.get('/api/v1/periods', () => HttpResponse.json({ data: [], first_month: '2024-03' })),
+      http.get('/api/v1/periods/activity', ({ request }) => {
+        const query = new URL(request.url).searchParams
+        asked.push(`${query.get('from')}..${query.get('to')}`)
+        return HttpResponse.json({ data: [] })
+      }),
+    )
+    wrap('owner', <PeriodsCard />)
+    for (const year of ['2024', '2025']) {
+      const months = within(await screen.findByRole('list', { name: year })).getAllByRole(
+        'listitem',
+      )
+      expect(months).toHaveLength(12)
+      expect(months.at(-1)).toHaveAccessibleName(`January ${year}`)
+    }
+    expect(
+      within(screen.getByRole('list', { name: '2026' })).getAllByRole('listitem'),
+    ).toHaveLength(11)
+    // 35 months: one activity request.
+    await waitFor(() => expect(asked).toEqual(['2024-01..2026-11']))
   })
 
   it('lets a member with view of period closing read but not change', async () => {

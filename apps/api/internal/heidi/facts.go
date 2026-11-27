@@ -29,7 +29,7 @@ deleted_by description discount_amount discount_percent document document_date d
 due_date due_on dunning_enabled duplicate_of duration_minutes effective einvoice_format electronic_address
 email enabled end end_date ending_soon ends_at ends_on engagement engagement_id entries entry_ids entry_mode
 event_id exchange_rate exchange_rate_date exchange_rate_source expected expense_count expenses expenses_count
-expires_at feature_available features fee file_count filed_kind files_count first_due_date first_used_at
+expires_at feature_available features fee file_count filed_kind files_count first_due_date first_month first_used_at
 folder folder_id footer from full_quantity gtin has_more has_pdf historical_estimate holiday host host_id
 host_ids host_reminders host_user_id hours id inbox included income incomplete index input_tax input_tax_box
 input_vat instalments interest interest_from interest_rate internal_id interval intro invoice invoice_count

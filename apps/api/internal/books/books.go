@@ -135,7 +135,13 @@ func (s *Service) periods(w http.ResponseWriter, r *http.Request, sess store.Ses
 		}
 		out[i] = period{Month: p.Month, ClosedAt: p.ClosedAt, ClosedBy: by}
 	}
-	auth.WriteJSON(w, http.StatusOK, data(out))
+	// first_month: where the books' months start, from the records this session may read.
+	first, err := s.db.FirstRecordMonth(r.Context(), sess.Workspace.ID,
+		permissions.Allows(sess.Role, sess.Scopes, "read:invoices"), permissions.Allows(sess.Role, sess.Scopes, "read:expenses"))
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": out, "first_month": first})
 	return nil
 }
 
