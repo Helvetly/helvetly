@@ -22,13 +22,3 @@ export function Initials({ name, className }: { name: string; className?: string
     </span>
   )
 }
-
-/** Initials and a name, as the first cell of a row. */
-export function Person({ name, className }: { name: string; className?: string }) {
-  return (
-    <span className={cn('flex min-w-0 items-center gap-2.5', className)}>
-      <Initials name={name} />
-      <span className="truncate">{name}</span>
-    </span>
-  )
-}

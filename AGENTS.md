@@ -116,10 +116,12 @@ are the reference.
 - **Financial records**: issuing and payments check closed periods and write the hash-chained `financial_events`
   log in the same transaction; a database trigger refuses edits. Signatures keep their own append-only trail.
 - **Documents system folders** (`store/queries_system_folders.go`, `documents/system.go`): every workspace has the
-  top-level `Clients`, `Expenses` and `Bank Statements` folders, and below them `Clients/<client>/<Invoices|Quotes|Engagements|Signatures|Documents>/<year>`
-  (and `Clients/<client>/Documents/<year>/Contracts`, kind `contracts`) , `Expenses/<year>/<category>` and `Bank Statements/<year>`
-  (`document_folders.system_kind`, `system_ref` = the client or the expense category; none for `Uncategorised`). The app makes them on demand (`ClientRecordFolder`, `ExpenseYearFolder`, `BankStatementsFolder`, missing roots on
-  the folder list), adopts a plain folder of the same name (`Bank Statements` also by its German, French or Italian name), renames a client's folder or a category's folders (one per year) with it, moves a
+  top-level `Clients`, `Expenses` and `Tax Documents` folders, and below them `Clients/<client>/<Invoices|Quotes|Engagements|Signatures|Documents>/<year>`
+  (and `Clients/<client>/Documents/<year>/Contracts`, kind `contracts`, and `Clients/<client>/Documents/<year>/Bank Statements`,
+  kind `client_bank_statements`), `Expenses/<year>/<category>` and `Tax Documents/<year>`
+  (`document_folders.system_kind`, `system_ref` = the client or the expense category; none for `Uncategorised`). The app makes them on demand (`ClientRecordFolder`, `ClientBankStatementsFolder`, `ExpenseYearFolder`, `TaxDocumentsFolder`, missing roots on
+  the folder list), adopts a plain folder of the same name (a client's `Bank Statements` and `Tax Documents` also by their German, French or Italian
+  names, stored in English; `Tax Documents` also a plain top-level `Tax`, `Steuern`, `Impôts` or `Tasse` folder, but only one that is empty or AI filing made, never a person's folder with files), renames a client's folder or a category's folders (one per year) with it, moves a
   draft's files that still sit in its folder when its category or year changes, and refuses to rename, move or trash any of them (`409
   system_folder`); people still file into them and make plain folders inside. Typed ones are stored by their English
   name and answered in the asker's language (`?lang`, `Accept-Language`; the platform translates by `system_kind`).
@@ -127,18 +129,40 @@ are the reference.
   `pdf_key` or a sent revision in `quote_revisions` points at it), client uploads go to the client's `Documents/<year>`, receipts to `Expenses/<year>/<category>`;
   `BackfillSystemFolders` (once per start, idempotent) files what came before and turns the earlier
   `Expenses/<category>/<year>` folders into `Expenses/<year>/<category>` (files and people's folders, trashed ones too,
-  move along; the emptied old folders are deleted). AI filing and organizing put a known
+  move along; the emptied old folders are deleted). It also takes apart the top-level `Bank Statements/<year>` of
+  migration 00079 (`RepairBankStatementsRoot`: empty, it is deleted with its year folders; else each file of one client
+  moves to that client's `Documents/<year>/Bank Statements`, the emptied year folders go and the rest stays as plain
+  folders, its files keeping the `bank-statement` kind) and empties a plain folder straight in a client's
+  `Documents/<year>` named like a folder of statements or credit advices (`Gutschriften`, `Kontoauszüge`, `Payment
+  confirmations`, … in the app's languages), holding no folders and only `bank-statement` or `payment-confirmation`
+  files of no invoice or expense, into that client's `Documents/<year>/Bank Statements`, then deletes it
+  (`RepairMisfiledStatementFolder`; such folders carry no AI marker in the database, so the name and contents decide).
+  Each repair is audited as `documents.folder_repaired`. AI filing and organizing put a known
   client's records and expenses only into these paths (`documents/record_paths.go`), never folders of their own there.
-  An account statement of a bank or payment provider goes to `Bank Statements/<year>` (`documents/bank_statements.go`):
-  filing when the model's `kind` is `bank-statement` (the year its period ends, else its date, else the upload's in the
-  workspace's zone) or its name or text looks like one (statement words, CAMT.053 or MT940, an IBAN with opening and
-  closing balances) and the model names no other kind, organizing when its kind or name and text say so; a file of an
-  invoice, quote or expense, or one the model names another kind or files as an invoice, quote or receipt, never goes
-  there. Existing files move only by an
-  applied organize proposal. Plain folders they make are named in the asker's language (the uploader's, kept on the filing; else the workspace's document language, else English), never the document's: a common kind named otherwise is translated, and an existing folder of that kind in any language is used instead of a new sibling (`documents/folder_language.go`); people's folders are never renamed.
-  Before the model is asked, a file that is one of the workspace's invoices or quotes (by the PDF it shares, the
-  imported invoice it is the original of, or a record number in its name or text, separators ignored) goes straight to
-  its client's folder (`documents/record_match.go`); several records found leave it to the model. A client's contract
+  An account statement of a bank or payment provider, a credit advice (Gutschrift) or a payment confirmation of a known
+  client (the client its record path, record number, client link or text names) goes to that client's
+  `Documents/<year>/Bank Statements` (`documents/bank_statements.go`), the year of its period end or value date, else
+  its folder's or name's, else the upload's in the workspace's zone: filing when the model's `kind` is `bank-statement`
+  or `payment-confirmation` (or, for a statement, its name or text looks like one: statement words, CAMT.053 or MT940,
+  an IBAN with opening and closing balances, and the model names no other kind), organizing when its kind or name and
+  text say so. In that folder a file without a filed kind is a `bank-statement`; a payment confirmation stays one. A
+  statement of nobody keeps its kind and is filed like any other document (a plain folder in the asker's language, or
+  none), never into a system folder; a payment confirmation of nobody as before. A tax document (tax return, assessment,
+  provisional tax bill, VAT return or statement of the tax authority, withholding tax, tax certificate: the model's kind
+  `tax-document`, or its name or text clearly says so, `documents/tax_documents.go`) goes to `Tax Documents/<year>`, the
+  tax year it is about (else its name's year, else the upload's), never into Clients or Expenses; a social security bill
+  is an expense receipt. A file of an invoice, quote or expense, or one the model names another kind or files as an
+  invoice, quote or receipt, never goes to either. Existing files move only by an applied organize proposal (or the
+  start-up repairs above). Plain folders they make are named in the asker's language (the uploader's, kept on the filing; else the workspace's document language, else English), never the document's: a common kind named otherwise is translated, and an existing folder of that kind in any language is used instead of a new sibling (`documents/folder_language.go`); people's folders are never renamed.
+  Before the model is asked, a file that is one of the workspace's invoices or quotes by identity (the PDF it shares,
+  the imported invoice it is the original of) goes straight to its client's folder (`documents/record_match.go`). A
+  record number in its name or text (separators ignored) only names the record's client and year, and the model is told
+  the record and decides the kind: a payment confirmation or bank statement of it (the model's kind, a
+  `payment-confirmation` or `bank-statement` kind the file already has, or its name: paid, bezahlt, Zahlung,
+  Gutschrift, payment or instalment words, an ordinal such as `_1st` or `3rd`, `1. Rate` or a lone digit after the
+  number) goes to the client's `Documents/<year>/Bank Statements` with a reason such as "Payment confirmation for
+  invoice 2026/IN/031 (1st instalment)."; anything else is the record, filed under its Invoices or Quotes as before.
+  Several records found leave it to the model. A client's contract
   goes to its `Contracts` folder only when the model says it is a completed contract (`is_completed_contract`) and
   neither its name nor its text looks like a template, sample, draft or blanks (`completedContract`); else to the
   client's `Documents/<year>`; the reason is kept (`document_filings.contract_reason`). Imported contracts keep their name. An invoice or quote
@@ -148,7 +172,7 @@ are the reference.
   first, then its system folder, then its `documents.filed_kind` (the kind AI filing or organizing found, or a client
   document's upload type): the kind (`tags.Kinds`, one line each: every invoice kind through `tags.InvoiceKinds`, a test
   failing for a kind without one, plus `quote`, `contract`, `engagement`, `receipt`, `payment-confirmation`, `consent`,
-  `power-of-attorney`, `bank-statement`), `signed` once its signature request completed, `year-<yyyy-mm>` (year only if the month is
+  `power-of-attorney`, `bank-statement`, `tax-document`), `signed` once its signature request completed, `year-<yyyy-mm>` (year only if the month is
   unknown), the client's name (`tags.ClientTag`: its slug, `client-<slug>` only when the slug reads as another automatic
   tag), the record's number (`2026-q-001`), `expense-<category>` and `from-quote-<number>`. `store.AutoTag` runs inside
   the writes that file (`CreateDocument`, `UpdateDocument`, `AddDocumentLink`, `AddQuoteContract`, `AddQuoteRevision`,
@@ -169,8 +193,8 @@ are the reference.
   HR files cannot be shared. The workspace export omits public share credentials.
 - **Documents grouped views** (`store/queries_document_groups.go`, `documents/groups.go`): Group by type, year or
   client is computed from each file, never stored, and moves nothing. Type: the record it belongs to (an invoice's or
-  quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder (`Bank Statements`
-  gives Bank statements), its tags, its name, else Other; year: the record's, the year folder's, else the upload's in the workspace's zone; client: the
+  quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder (`Tax Documents`
+  gives Tax documents), its tags (`bank-statement` gives Bank statements, `payment-confirmation` Payment confirmations), its name, else Other; year: the record's, the year folder's, else the upload's in the workspace's zone; client: the
   record's, the `Clients/<client>` folder's, a client link, else none. A group is the list's `type`, `year` and
   `client` filters (the search's chips, combined with AND, with or without a grouping); the levels come in any order,
   each once, up to three (Group by's presets and builder; the last choice in localStorage); `GET /api/v1/documents/groups`

@@ -16,7 +16,7 @@ import {
   type ReactNode,
 } from 'react'
 
-import { UserAvatar } from '@/components/user-avatar'
+import { Person, type PersonRef } from '@/components/user-avatar'
 import {
   docQuery,
   formatSize,
@@ -668,7 +668,7 @@ function listColumns(props: ItemsProps, picked: number, total: number): DataColu
       showFrom: 850,
       className: 'text-muted-foreground',
       cell: (row) => (
-        <Person person={'folder' in row ? row.folder.created_by : row.file.uploaded_by} />
+        <Uploader person={'folder' in row ? row.folder.created_by : row.file.uploaded_by} />
       ),
     },
     {
@@ -757,14 +757,9 @@ function NameCell({
   )
 }
 
-function Person({ person }: { person: { name: string; avatar_url?: string | null } | null }) {
+function Uploader({ person }: { person: PersonRef | null }) {
   if (!person?.name) return <span>—</span>
-  return (
-    <span className="flex min-w-0 items-center gap-2">
-      <UserAvatar name={person.name} url={person.avatar_url} className="size-6" />
-      <span className="truncate text-foreground/85">{person.name}</span>
-    </span>
-  )
+  return <Person person={person} className="gap-2 text-foreground/85" />
 }
 
 /** "Business record" or "Linked", as a quiet pill. */

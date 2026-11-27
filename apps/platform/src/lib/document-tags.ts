@@ -21,6 +21,7 @@ const kinds = new Map<string, Parameters<typeof translate>[0]>([
   ['consent', 'documentTagConsent'],
   ['power-of-attorney', 'documentTagPowerOfAttorney'],
   ['bank-statement', 'bankStatement'],
+  ['tax-document', 'documentTagTaxDocument'],
 ] as const)
 /** Every kind tag, for callers that must cover each one. */
 export const documentKinds = [...kinds.keys()]

@@ -34,6 +34,7 @@ import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { BooksHeader } from '@/components/books/books-tabs'
+import { Person } from '@/components/user-avatar'
 import { errorMessage } from '@/lib/api'
 import { booksApi, type ActivitySource, type MonthActivity, type Period } from '@/lib/books'
 import { translate } from '@/lib/i18n'
@@ -594,15 +595,28 @@ function MonthRow({
         <Icon aria-hidden className={cn('size-4 shrink-0', ICON_TONE[state])} />
         <span className="grid min-w-0 gap-0.5">
           <span className="text-body font-medium">{longName.format(utc(month))}</span>
-          <span className="truncate text-caption text-muted-foreground">
-            {period
-              ? translate('closed2', {
-                  value1: closedOn.format(new Date(period.closed_at)),
-                  value2: period.closed_by ? ` · ${period.closed_by.name}` : '',
-                })
-              : state === 'current'
-                ? translate('currentMonth')
-                : translate('endedStillOpen')}
+          <span className="flex min-w-0 items-center gap-1 text-caption text-muted-foreground">
+            {period ? (
+              <>
+                <span className="shrink-0">
+                  {translate('closed2', {
+                    value1: closedOn.format(new Date(period.closed_at)),
+                    value2: '',
+                  })}
+                </span>
+                {period.closed_by && (
+                  <>
+                    <span aria-hidden>·</span>
+                    {/* The name gives way on a narrow row; the photo never gets cut. */}
+                    <Person person={period.closed_by} size="xs" />
+                  </>
+                )}
+              </>
+            ) : (
+              <span className="truncate">
+                {state === 'current' ? translate('currentMonth') : translate('endedStillOpen')}
+              </span>
+            )}
           </span>
         </span>
       </span>

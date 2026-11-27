@@ -48,7 +48,7 @@ export type Recurrence = {
 
 export type MeetingProvider = 'manual' | 'google_meet' | 'teams'
 export type Meeting = { provider: MeetingProvider; url: string | null }
-export type Person = { id: string; name: string }
+export type Person = { id: string; name: string; avatar_url?: string | null }
 
 export type SchedEvent = {
   id: string

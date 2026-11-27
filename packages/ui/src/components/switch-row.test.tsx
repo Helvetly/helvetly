@@ -73,3 +73,12 @@ test('a locked row says why', async () => {
     'Only an owner or admin can change this.',
   )
 })
+
+test('keeps the same switch when a reason to lock it arrives later', () => {
+  const { rerender } = render(<Row checked />)
+  const toggle = screen.getByRole('switch', { name: 'Payment reminders' })
+  rerender(<Row checked={false} disabledReason="Allowance used up." />)
+  expect(toggle).toBeInTheDocument()
+  expect(toggle).not.toBeChecked()
+  expect(toggle).toBeDisabled()
+})

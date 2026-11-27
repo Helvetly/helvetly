@@ -62,6 +62,7 @@ export const AUDIT_KINDS = [
   'portal.participant_access_revoked',
   'client.merged_into_participant',
   'documents.exported',
+  'documents.folder_repaired',
   'imports.expired',
   'email_template.ai_written',
   'quote.contract_drafted',
@@ -279,6 +280,13 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
     case 'documents.exported':
       return {
         line: translate('auditSentenceDocumentsExported', {
+          count: Number(event.payload.files) || 0,
+        }),
+        amount: null,
+      }
+    case 'documents.folder_repaired':
+      return {
+        line: translate('auditSentenceDocumentsFolderRepaired', {
           count: Number(event.payload.files) || 0,
         }),
         amount: null,

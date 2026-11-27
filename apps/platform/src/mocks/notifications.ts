@@ -3,6 +3,7 @@
 import { http, HttpResponse } from 'msw'
 
 import type { Notification, NotificationChoice, NotificationPrefs } from '@/lib/notifications'
+import { samplePhoto } from '@/mocks/data'
 
 const ago = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString()
 
@@ -14,6 +15,7 @@ export const sampleNotifications = (): Notification[] => [
     title: 'Invoice RE-2026-0042 was paid',
     body: "CHF 1'250.00 received from Muster AG.",
     actor: 'Lea Meier',
+    actor_avatar_url: samplePhoto,
     href: '/invoices?id=inv_42',
     // Just now, so it is "Today" at any hour (an hour ago is yesterday just after midnight).
     created_at: ago(0),
@@ -91,6 +93,7 @@ export const sampleNotifications = (): Notification[] => [
     title: 'Lea Meier joined the workspace',
     body: 'As admin',
     actor: 'Lea Meier',
+    actor_avatar_url: samplePhoto,
     href: '/members',
     created_at: ago(24 * 9),
     read: true,

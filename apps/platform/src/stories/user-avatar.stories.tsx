@@ -3,9 +3,9 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { UserAvatar } from '@/components/user-avatar'
+import { samplePhoto } from '@/mocks/data'
 
-const picture =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA5UlEQVR42u3PhUECAAAAQea0u7u727d7BJDuThHGcgQX+NvgAj10e+n20emnM8DvIL9DtIdpj/Azys8YrXFaEzQnaU7RmKYxQ32W+hy1eWoLVBepLlFZprJCeZXyGqV1ShsUNyluUdimsEN+l/weuX1yB2QPyR6ROSZzQvqU9Bmpc1IXJC9JXpG4JnFD/JY4xO6I3RN9IPpI5InIM+EXwq98v/H9TuiD0CfBL4IBAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwMB/gT+jseGWU2gTOAAAAABJRU5ErkJggg=='
+const picture = samplePhoto
 
 const meta = {
   title: 'Design system/People and markers',

@@ -3,7 +3,7 @@
 import { request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 
-export type Person = { id: string; name: string }
+export type Person = { id: string; name: string; avatar_url?: string | null }
 export type Period = { month: string; closed_at: string; closed_by: Person | null }
 export type ActivityTotal = { currency: string; amount: string }
 export type ActivitySource = {
@@ -134,6 +134,7 @@ export const EVENT_LABELS: Record<string, string> = {
   'portal.preview_started': translate('auditPortalPreviewStarted'),
   'portal.preview_ended': translate('auditPortalPreviewEnded'),
   'documents.exported': translate('auditDocumentsExported'),
+  'documents.folder_repaired': translate('auditDocumentsFolderRepaired'),
   'imports.expired': translate('auditImportExpired'),
   'approval.submitted': translate('auditApprovalSubmitted'),
   'approval.approved': translate('auditApprovalApproved'),

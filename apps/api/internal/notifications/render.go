@@ -11,7 +11,7 @@ import (
 
 // message: what the bell and the email say. actor is who did it ("" for Helvetly's own jobs); action labels the
 // email's button to href.
-type message struct{ title, body, href, actor, action string }
+type message struct{ title, body, href, actor, actorID, action string }
 
 // actions label the email's button per event: what the reader does next on the page it opens.
 var actions = map[string]string{
@@ -55,8 +55,8 @@ func render(n store.Notification) message {
 	d := data{}
 	_ = json.Unmarshal(n.Data, &d)
 	m := words(n.Event, d)
-	if m.actor == "" {
-		m.actor = d.s("actor")
+	if m.actor == "" { // the photo only of the member data names, never of a client a message names instead
+		m.actor, m.actorID = d.s("actor"), d.s("actor_id")
 	}
 	if m.href == "" {
 		m.href = "/notifications"

@@ -29,9 +29,13 @@ type RuleProgress struct {
 	Approved  int     `json:"approved"`
 }
 
-type Person struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+// Person is who submitted or decided: name and photo (null without one); a deleted account keeps its id.
+type Person = store.Ref
+
+func personOf(people map[string]Person, id string) *Person {
+	p := people[id]
+	p.ID = id
+	return &p
 }
 
 // Step is one entry of the trail: submitted, approved, rejected, withdrawn or reset.
@@ -68,11 +72,11 @@ func (s *Service) View(ctx context.Context, q store.Q, sess store.Session, doc D
 			people = append(people, d.UserID)
 		}
 	}
-	names, err := q.UserNames(ctx, people)
+	names, err := q.UserPeople(ctx, people)
 	if err != nil {
 		return v, err
 	}
-	person := func(id string) *Person { return &Person{ID: id, Name: names[id]} }
+	person := func(id string) *Person { return personOf(names, id) }
 	for _, r := range requests {
 		v.Trail = append(v.Trail, Step{Kind: "submitted", User: person(r.SubmittedBy), At: r.SubmittedAt})
 		for _, d := range r.Decisions {
@@ -179,7 +183,7 @@ func inbox(ctx context.Context, q store.Q, sess store.Session) ([]InboxItem, err
 	if err != nil {
 		return nil, err
 	}
-	names, err := q.UserNames(ctx, people)
+	names, err := q.UserPeople(ctx, people)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +191,7 @@ func inbox(ctx context.Context, q store.Q, sess store.Session) ([]InboxItem, err
 	for _, r := range mayI {
 		if d, ok := docs[r.DocID]; ok {
 			out = append(out, InboxItem{DocType: r.DocType, ApprovalItem: d,
-				SubmittedBy: Person{ID: r.SubmittedBy, Name: names[r.SubmittedBy]}, SubmittedAt: r.SubmittedAt})
+				SubmittedBy: *personOf(names, r.SubmittedBy), SubmittedAt: r.SubmittedAt})
 		}
 	}
 	return out, nil

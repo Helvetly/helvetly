@@ -52,7 +52,7 @@ import { toast } from 'sonner'
 
 import { ListSearch, ListToolbar } from '@/components/data/list-toolbar'
 import { RecordLink } from '@/components/record-link'
-import { UserAvatar } from '@/components/user-avatar'
+import { Person, type PersonRef } from '@/components/user-avatar'
 import { errorMessage } from '@/lib/api'
 import {
   AUDIT_CATEGORIES,
@@ -390,17 +390,14 @@ function SentenceText({ sentence }: { sentence: Sentence }) {
 }
 
 function Actor({ event }: { event: FinancialEvent }) {
+  if (event.actor)
+    return <Person person={event.actor} size="sm" className="text-body-sm text-muted-foreground" />
   const source = eventSource(event)
-  const name = event.actor?.name ?? (source ? SOURCE_LABELS[source] : translate('system'))
   const SourceIcon = source ? SOURCE_ICONS[source] : UserRound
   return (
     <span className="flex min-w-0 items-center gap-1.5 text-body-sm text-muted-foreground">
-      {event.actor ? (
-        <UserAvatar name={name} className="size-5" />
-      ) : (
-        <SourceIcon className="size-4 shrink-0" aria-hidden />
-      )}
-      <span className="truncate">{name}</span>
+      <SourceIcon className="size-4 shrink-0" aria-hidden />
+      <span className="truncate">{source ? SOURCE_LABELS[source] : translate('system')}</span>
     </span>
   )
 }
@@ -571,7 +568,7 @@ function PersonFilter({
   onChange,
 }: {
   value: string
-  people: { id: string; name: string }[]
+  people: (PersonRef & { id: string })[]
   onChange: (value: string) => void
 }) {
   const current = people.find((person) => person.id === value)
@@ -589,8 +586,7 @@ function PersonFilter({
           <DropdownMenuSeparator />
           {people.map((person) => (
             <DropdownMenuRadioItem key={person.id} value={person.id}>
-              <UserAvatar name={person.name} className="size-5" />
-              <span className="truncate">{person.name}</span>
+              <Person person={person} size="sm" />
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

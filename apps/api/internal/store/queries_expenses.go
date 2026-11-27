@@ -339,12 +339,12 @@ func (q Q) UpdateExpenseCategory(ctx context.Context, workspaceID, id string, na
 	return tag.RowsAffected() == 1, categoryErr(err)
 }
 
-// MemberName: the person's name when they are a member of the workspace.
-func (q Q) MemberName(ctx context.Context, workspaceID, userID string) (string, error) {
-	var name string
-	err := q.db.QueryRow(ctx, `SELECT u.name FROM workspace_members m JOIN users u ON u.id = m.user_id
-		WHERE m.workspace_id = $1 AND m.user_id = $2`, workspaceID, userID).Scan(&name)
-	return name, err
+// MemberPerson: the person when they are a member of the workspace.
+func (q Q) MemberPerson(ctx context.Context, workspaceID, userID string) (Person, error) {
+	p := Person{ID: userID}
+	err := q.db.QueryRow(ctx, `SELECT u.name, `+avatarColumn+` FROM workspace_members m JOIN users u ON u.id = m.user_id
+		WHERE m.workspace_id = $1 AND m.user_id = $2`, workspaceID, userID).Scan(&p.Name, &p.AvatarURL)
+	return p, err
 }
 
 // ---- expenses ----
@@ -353,33 +353,27 @@ var expenseColumns = `e.id, e.number, e.status, e.source, e.supplier_name, e.sup
 	e.category_id, c.name, c.account_code, c.preset, e.document_date::text, e.due_date::text, e.currency, e.amount_mode, e.input_tax,
 	e.deductible_percent, e.net_total, e.vat_total, e.total, e.deductible_vat, e.vat_breakdown, e.exchange_rate,
 	e.exchange_rate_date::text, e.exchange_rate_source, e.base_currency, e.base_net_total, e.base_vat_total, e.base_total,
-	e.base_deductible_vat, e.payment_status, e.paid_on::text, e.payment_method, e.paid_by, pb.name, e.reimbursed_on::text, e.note,
-	e.receipt_missing_reason, (SELECT count(*) FROM expense_receipts r WHERE r.expense_id = e.id), e.created_by, cb.name,
-	e.booked_at, e.booked_by, bb.name, e.voided_at, e.voided_by, vb.name, e.void_reason, e.created_at, e.updated_at,
+	e.base_deductible_vat, e.payment_status, e.paid_on::text, e.payment_method, e.paid_by, pb.name, ` + avatarOf("pb") + `, e.reimbursed_on::text, e.note,
+	e.receipt_missing_reason, (SELECT count(*) FROM expense_receipts r WHERE r.expense_id = e.id), e.created_by, cb.name, ` + avatarOf("cb") + `,
+	e.booked_at, e.booked_by, bb.name, ` + avatarOf("bb") + `, e.voided_at, e.voided_by, vb.name, ` + avatarOf("vb") + `, e.void_reason, e.created_at, e.updated_at,
 	e.reverse_charge, e.input_tax_box, e.entry_mode, ` + unnamedItemsSQL + `, ` + approvalStateOf("e")
 
 const expenseFrom = ` FROM expenses e LEFT JOIN expense_categories c ON c.id = e.category_id
 	LEFT JOIN users pb ON pb.id = e.paid_by LEFT JOIN users cb ON cb.id = e.created_by
 	LEFT JOIN users bb ON bb.id = e.booked_by LEFT JOIN users vb ON vb.id = e.voided_by`
 
-func person(id, name *string) *Person {
-	if id == nil || name == nil {
-		return nil
-	}
-	return &Person{ID: *id, Name: *name}
-}
-
 func scanExpense(row interface{ Scan(...any) error }, today string) (Expense, error) {
 	var e Expense
 	var catName, catCode, catPreset, paidByName, createdBy, createdByName, bookedBy, bookedByName, voidedBy, voidedByName *string
+	var paidByAvatar, createdByAvatar, bookedByAvatar, voidedByAvatar *string
 	var breakdown []byte
 	err := row.Scan(&e.ID, &e.Number, &e.Status, &e.Source, &e.SupplierName, &e.SupplierVATNumber, &e.SupplierCountry, &e.Reference, &e.Description,
 		&e.CategoryID, &catName, &catCode, &catPreset, &e.DocumentDate, &e.DueDate, &e.Currency, &e.AmountMode, &e.InputTax,
 		&e.DeductiblePercent, &e.NetTotal, &e.VATTotal, &e.Total, &e.DeductibleVAT, &breakdown, &e.ExchangeRate,
 		&e.ExchangeRateDate, &e.ExchangeRateSource, &e.Base.Currency, &e.Base.NetTotal, &e.Base.VATTotal, &e.Base.Total,
-		&e.Base.DeductibleVAT, &e.PaymentStatus, &e.PaidOn, &e.PaymentMethod, &e.PaidByID, &paidByName, &e.ReimbursedOn, &e.Note,
-		&e.ReceiptMissingReason, &e.ReceiptsCount, &createdBy, &createdByName,
-		&e.BookedAt, &bookedBy, &bookedByName, &e.VoidedAt, &voidedBy, &voidedByName, &e.VoidReason, &e.CreatedAt, &e.UpdatedAt,
+		&e.Base.DeductibleVAT, &e.PaymentStatus, &e.PaidOn, &e.PaymentMethod, &e.PaidByID, &paidByName, &paidByAvatar, &e.ReimbursedOn, &e.Note,
+		&e.ReceiptMissingReason, &e.ReceiptsCount, &createdBy, &createdByName, &createdByAvatar,
+		&e.BookedAt, &bookedBy, &bookedByName, &bookedByAvatar, &e.VoidedAt, &voidedBy, &voidedByName, &voidedByAvatar, &e.VoidReason, &e.CreatedAt, &e.UpdatedAt,
 		&e.ReverseCharge, &e.InputTaxBox, &e.EntryMode, &e.UnnamedItems, &e.ApprovalState)
 	if err != nil {
 		return e, err
@@ -387,8 +381,9 @@ func scanExpense(row interface{ Scan(...any) error }, today string) (Expense, er
 	if e.CategoryID != nil && catName != nil {
 		e.Category = &CategoryRef{ID: *e.CategoryID, Name: *catName, AccountCode: *catCode, Preset: catPreset}
 	}
-	e.PaidByMember, e.CreatedBy, e.BookedBy, e.VoidedBy = person(e.PaidByID, paidByName), person(createdBy, createdByName),
-		person(bookedBy, bookedByName), person(voidedBy, voidedByName)
+	e.PaidByMember, e.CreatedBy, e.BookedBy, e.VoidedBy = uploader(e.PaidByID, paidByName, paidByAvatar),
+		uploader(createdBy, createdByName, createdByAvatar), uploader(bookedBy, bookedByName, bookedByAvatar),
+		uploader(voidedBy, voidedByName, voidedByAvatar)
 	if err := json.Unmarshal(breakdown, &e.VATBreakdown); err != nil {
 		return e, fmt.Errorf("expense %s breakdown: %w", e.ID, err)
 	}

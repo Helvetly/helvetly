@@ -205,7 +205,7 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return err
 		}
 		return notifications.Notify(r.Context(), q, sess.Workspace.ID, "member.role_changed",
-			map[string]any{"role": to, "actor": notifications.Actor(sess.User)},
+			map[string]any{"role": to, "actor": notifications.Actor(sess.User), "actor_id": sess.User.ID},
 			store.NotifyTo{UserIDs: []string{r.PathValue("user_id")}, Except: sess.User.ID}, time.Now())
 	})
 	if err != nil {
@@ -258,7 +258,7 @@ func (s *Service) remove(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return err
 		}
 		return notifications.Notify(r.Context(), q, sess.Workspace.ID, "member.removed", map[string]any{"user_id": gone.ID,
-			"name": gone.Name, "email": gone.Email, "actor": notifications.Actor(sess.User)},
+			"name": gone.Name, "email": gone.Email, "actor": notifications.Actor(sess.User), "actor_id": sess.User.ID},
 			store.NotifyTo{Roles: notifications.Managers, Except: sess.User.ID}, time.Now())
 	})
 	if err != nil {

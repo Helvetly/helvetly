@@ -24,7 +24,7 @@ export type Person = { id: string; name: string; avatar_url?: string | null }
 export type SystemKind =
   | 'clients'
   | 'expenses'
-  | 'bank_statements'
+  | 'tax_documents'
   | 'client'
   | 'invoices'
   | 'quotes'
@@ -33,6 +33,7 @@ export type SystemKind =
   | 'documents'
   | 'expense_category'
   | 'contracts'
+  | 'client_bank_statements'
   | 'year'
 
 /** A folder named inside a file, filing or Trash row. */
@@ -193,6 +194,7 @@ export const DOC_TYPES = [
   'consents',
   'powers_of_attorney',
   'bank_statements',
+  'tax_documents',
   'other',
 ] as const
 export type DocType = (typeof DOC_TYPES)[number]
@@ -211,6 +213,7 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
   consents: translate('docTypeConsents'),
   powers_of_attorney: translate('docTypePowersOfAttorney'),
   bank_statements: translate('docTypeBankStatements'),
+  tax_documents: translate('docTypeTaxDocuments'),
   other: translate('docTypeOther'),
 }
 export const GROUP_DIM_LABELS: Record<GroupDim, string> = {

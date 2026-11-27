@@ -17,6 +17,13 @@ type Ref struct {
 	Name string `json:"name"`
 }
 
+// Host is the member who holds a session, with their photo (null without one).
+type Host struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	AvatarURL *string `json:"avatar_url"`
+}
+
 type EngagementRef struct {
 	ID     string  `json:"id"`
 	Number int64   `json:"number"`
@@ -36,7 +43,7 @@ type Event struct {
 	Engagement      *EngagementRef  `json:"engagement"`
 	Participant     *Ref            `json:"participant"`
 	EventTypeID     *string         `json:"event_type_id"`
-	Host            *Ref            `json:"host"`
+	Host            *Host           `json:"host"`
 	Title           string          `json:"title"`
 	Description     *string         `json:"description"`
 	ClientNote      *string         `json:"client_note"`
@@ -83,7 +90,7 @@ type Occurrence struct {
 	Title         string         `json:"title"`
 	Location      *string        `json:"location"`
 	Meeting       *Meeting       `json:"meeting"`
-	Host          *Ref           `json:"host"`
+	Host          *Host          `json:"host"`
 	Client        Ref            `json:"client"`
 	Engagement    *EngagementRef `json:"engagement"`
 	Participant   *Ref           `json:"participant"`
@@ -128,7 +135,7 @@ type OccurrenceSummary struct {
 	EndsAt   time.Time `json:"ends_at"`
 	Status   string    `json:"status"`
 	Client   Ref       `json:"client"`
-	Host     *Ref      `json:"host"`
+	Host     *Host     `json:"host"`
 }
 
 // RequestItem is a request in the staff's list.
@@ -266,7 +273,7 @@ func (s *Service) resolve(ctx context.Context, q store.Q, workspaceID string, ev
 	return r, err
 }
 
-func (r *resolver) host(id *string) *Ref {
+func (r *resolver) host(id *string) *Host {
 	if id == nil {
 		return nil
 	}
@@ -274,7 +281,7 @@ func (r *resolver) host(id *string) *Ref {
 	if !ok {
 		return nil // left the workspace
 	}
-	return &Ref{ID: m.ID, Name: m.Name}
+	return &Host{ID: m.ID, Name: m.Name, AvatarURL: m.Avatar}
 }
 
 func (r *resolver) client(id string) Ref { return Ref{ID: id, Name: r.clients[id].Name} }

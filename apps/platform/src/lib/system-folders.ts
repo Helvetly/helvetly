@@ -13,6 +13,7 @@ type SystemLabelKey =
   | 'contracts'
   | 'uncategorisedFolder'
   | 'bankStatementsFolder'
+  | 'taxDocumentsFolder'
 
 // The stored name of the folder in Expenses for expenses without a category (store.UncategorisedFolder).
 const UNCATEGORISED = 'Uncategorised'
@@ -21,13 +22,14 @@ const UNCATEGORISED = 'Uncategorised'
 const LABEL_KEYS: Partial<Record<SystemKind, SystemLabelKey>> = {
   clients: 'clients',
   expenses: 'expenses',
-  bank_statements: 'bankStatementsFolder',
+  tax_documents: 'taxDocumentsFolder',
   invoices: 'invoices',
   quotes: 'quotes',
   engagements: 'engagements',
   signatures: 'signatures',
   documents: 'documents',
   contracts: 'contracts',
+  client_bank_statements: 'bankStatementsFolder',
 }
 
 const RECORD_KEYS: Record<string, SystemLabelKey> = {
@@ -55,8 +57,7 @@ export function folderLabel(
 /** A canonical "/"-joined path (organize proposals) with its system segments translated. */
 export function pathLabel(path: string, t: Translate = translate) {
   const parts = path.split('/')
-  if (parts[0] === 'Bank Statements')
-    return [t('bankStatementsFolder'), ...parts.slice(1)].join('/')
+  if (parts[0] === 'Tax Documents') return [t('taxDocumentsFolder'), ...parts.slice(1)].join('/')
   const root = parts[0] === 'Clients' ? 'clients' : parts[0] === 'Expenses' ? 'expenses' : null
   if (!root) return path
   const shown = [...parts]
@@ -64,6 +65,7 @@ export function pathLabel(path: string, t: Translate = translate) {
   const record = root === 'clients' ? RECORD_KEYS[parts[2] ?? ''] : undefined
   if (record) shown[2] = t(record)
   if (record === 'documents' && parts[4] === 'Contracts') shown[4] = t('contracts')
+  if (record === 'documents' && parts[4] === 'Bank Statements') shown[4] = t('bankStatementsFolder')
   if (root === 'expenses' && parts[2] === UNCATEGORISED) shown[2] = t('uncategorisedFolder')
   return shown.join('/')
 }
@@ -76,13 +78,14 @@ const HIDEABLE = new Set<SystemKind>([
   'signatures',
   'documents',
   'contracts',
+  'client_bank_statements',
   'expense_category',
   'year',
 ])
 
 /**
  * The folders without the system sub-folders that hold nothing (no files, no folder a person made);
- * the roots Clients, Expenses and Bank Statements and anything in `keep` (the open folder and its path) always stay.
+ * the roots Clients, Expenses and Tax Documents and anything in `keep` (the open folder and its path) always stay.
  */
 export function withoutEmptySystem(folders: Folder[], keep: ReadonlySet<string> = new Set()) {
   const children = new Map<string, Folder[]>()

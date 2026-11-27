@@ -271,22 +271,30 @@ func (q Q) OpenInvoiceApprovalDrafts(ctx context.Context, workspaceID string) ([
 	return pgx.CollectRows(rows, pgx.RowTo[string])
 }
 
-// UserNames: each person's name, else their email, by id (people who left a workspace too).
-func (q Q) UserNames(ctx context.Context, ids []string) (map[string]string, error) {
-	rows, err := q.db.Query(ctx, `SELECT id, COALESCE(NULLIF(name, ''), email) FROM users WHERE id = ANY($1)`, ids)
+// UserPeople: each person's name, else their email, and photo, by id (people who left a workspace too).
+func (q Q) UserPeople(ctx context.Context, ids []string) (map[string]Ref, error) {
+	rows, err := q.db.Query(ctx, `SELECT u.id, COALESCE(NULLIF(u.name, ''), u.email), NULLIF(`+avatarColumn+`, '')
+		FROM users u WHERE u.id = ANY($1)`, ids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := map[string]string{}
+	out := map[string]Ref{}
 	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
+		var r Ref
+		if err := rows.Scan(&r.ID, &r.Name, &r.AvatarURL); err != nil {
 			return nil, err
 		}
-		out[id] = name
+		out[r.ID] = r
 	}
 	return out, rows.Err()
+}
+
+// Ref names a person on a trail: their name (else email) and photo (null without one).
+type Ref struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	AvatarURL *string `json:"avatar_url"`
 }
 
 // ApprovalItem: what the "Needs my approval" list shows of a draft waiting for approval. ClientName is an expense's
