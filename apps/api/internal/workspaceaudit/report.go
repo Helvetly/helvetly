@@ -6,12 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"helvetly.com/api/internal/invoicecalc"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
 	"unicode"
 
+	"helvetly.com/api/internal/invoicecalc"
 	"helvetly.com/api/internal/permissions"
 	"helvetly.com/api/internal/store"
 )
@@ -47,9 +48,13 @@ type snapshot struct {
 	quotes, expenses []store.AuditOtherRecord
 }
 
-func (s *Service) report(ctx context.Context, sess store.Session, lang, _ string) (any, error) {
+func auditAccess(sess store.Session) access {
 	may := func(kind string) bool { return permissions.Allows(sess.Role, sess.Scopes, "read:"+kind) }
-	a := access{may("clients"), may("invoices"), may("documents"), may("invoices"), may("expenses")}
+	return access{may("clients"), may("invoices"), may("documents"), may("invoices"), may("expenses")}
+}
+
+func (s *Service) report(ctx context.Context, sess store.Session, lang, _ string, selected areas) (any, error) {
+	a := auditAccess(sess)
 	if a == (access{}) {
 		return nil, denied()
 	}
@@ -86,14 +91,15 @@ func (s *Service) report(ctx context.Context, sess store.Session, lang, _ string
 			}
 		}
 		if a.documents {
-			data.docs, err = q.AuditDocuments(ctx, ws, lang, sess.Workspace.Timezone)
+			contractChecks := a.invoices && selected["contracts"] && !selected["documents"]
+			data.docs, err = q.AuditDocuments(ctx, ws, lang, sess.Workspace.Timezone, "", contractChecks)
 		}
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	return evaluate(data, a)
+	return evaluate(data, a, selected)
 }
 func severityLevel(kind string) string {
 	switch kind {
@@ -142,7 +148,36 @@ func relevantClient(kind string) bool {
 	return slices.Contains([]string{"contracts", "payment_confirmations", "bank_statements"}, kind)
 }
 
-func evaluate(s snapshot, a access) (report, error) {
+func (selected areas) includesDocument(d store.AuditDocument, a access) bool {
+	// Every original can produce a file integrity or completeness finding.
+	if selected.includes("documents") {
+		return true
+	}
+	var area string
+	switch d.Kind {
+	case "invoices", "credit_notes":
+		area = "invoices"
+	case "quotes", "contracts":
+		area = d.Kind
+	case "bank_statements", "payment_confirmations":
+		area = "payments"
+	case "receipts":
+		area = "expenses"
+	case "tax_documents":
+		area = "tax"
+	}
+	if selected.includes(area) {
+		return true
+	}
+	// An original can support a second check through its record links.
+	return (a.invoices && selected["contracts"] && d.ContractEvidence) ||
+		(a.invoices && selected["payments"] && len(d.Payments)+len(d.Refunds) > 0) ||
+		(a.expenses && selected["expenses"] && len(d.Expenses) == 1) ||
+		(a.clients && a.invoices && selected["clients"] && d.Kind == "other" &&
+			(len(d.Owners) > 0 || (d.Client != "" && d.Client != store.NoClient)))
+}
+
+func evaluate(s snapshot, a access, selected areas) (report, error) {
 	out := report{Findings: []finding{}, Pending: []string{}, Counts: map[string]int{}}
 	if a.clients {
 		out.Counts["clients"] = len(s.clients)
@@ -327,7 +362,9 @@ func evaluate(s snapshot, a access) (report, error) {
 		}
 		switch d.Status {
 		case "":
-			out.Pending = append(out.Pending, d.ID)
+			if selected.includesDocument(d, a) {
+				out.Pending = append(out.Pending, d.ID)
+			}
 			continue
 		case "missing", "integrity":
 			out.Partial++
@@ -435,10 +472,14 @@ func evaluate(s snapshot, a access) (report, error) {
 			}
 		}
 	}
+	maps.DeleteFunc(out.Counts, func(area string, _ int) bool { return !selected.includes(area) })
 	// Two equivalent explanations from the same evidence are one finding in the drawer.
 	seen := map[string]bool{}
 	unique := out.Findings[:0]
 	for _, f := range out.Findings {
+		if !selected.includes(f.Category) {
+			continue
+		}
 		raw, err := json.Marshal(f)
 		if err != nil {
 			return out, err

@@ -49,7 +49,7 @@
 4 radius apps/platform/src/components/documents/items-view.tsx
 2 radius apps/platform/src/components/documents/kind.tsx
 1 radius apps/platform/src/components/documents/storage-overview.tsx
-3 radius apps/platform/src/components/documents/thumbnail.tsx
+2 radius apps/platform/src/components/documents/thumbnail.tsx
 2 radius apps/platform/src/components/documents/trash-view.tsx
 1 radius apps/platform/src/components/heidi/heidi-panel.tsx
 1 radius apps/platform/src/components/heidi/markdown.tsx
@@ -84,7 +84,7 @@
 1 shadow packages/ui/src/components/hover-card.tsx
 1 shadow packages/ui/src/components/sidebar.tsx
 2 text-px apps/platform/src/components/billing/upgrade-prompt.tsx
-4 text-px apps/platform/src/components/clients/client-contacts.tsx
+1 text-px apps/platform/src/components/clients/client-contacts.tsx
 11 text-px apps/platform/src/components/clients/client-detail.tsx
 4 text-px apps/platform/src/components/clients/client-engagements.tsx
 1 text-px apps/platform/src/components/clients/client-form.tsx

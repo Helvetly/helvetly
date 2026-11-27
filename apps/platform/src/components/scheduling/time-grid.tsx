@@ -1,7 +1,7 @@
 'use client'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { Check, ChevronDown, ChevronUp, Lock, Plus } from 'lucide-react'
+import { CalendarClock, Check, ChevronDown, ChevronUp, Lock, Plus } from 'lucide-react'
 import {
   useId,
   useLayoutEffect,
@@ -31,7 +31,7 @@ import {
 import { hasStarted, HostDot, PAST_HATCH } from './bits'
 import { DAY_OFF_TINT, dayOffHint, type DaysOff } from './day-off'
 import type { Hours } from './hours-menu'
-import { clipToDay, layoutDay, snapMinutes } from './layout'
+import { clipToDay, layoutDay, notPast, snapMinutes } from './layout'
 
 const HOUR = 80
 const SNAP = 15
@@ -52,7 +52,7 @@ type Drag = {
   moved: boolean
 }
 
-/** Day or week as a time grid: sessions placed by their wall-clock time in `zone`, busy times hatched, `lanes` side by side. */
+/** Day or week as a time grid: sessions placed by their wall-clock time in `zone`, busy times from now on as grey blocks, `lanes` side by side. */
 export function TimeGrid({
   days,
   zone,
@@ -110,6 +110,7 @@ export function TimeGrid({
   const pastUntil = (day: string) =>
     day < today.date ? 1440 : day === today.date ? today.minutes : 0
 
+  const upcomingBusy = notPast(busy, now)
   const laneList = lanes ?? [null]
   const laneOf = (hostId: string | null | undefined) =>
     lanes
@@ -362,7 +363,9 @@ export function TimeGrid({
                   occurrences={occurrences.filter(
                     (entry) => !lanes || laneOf(entry.host?.id) === laneIndex,
                   )}
-                  busy={busy.filter((block) => !lanes || laneOf(block.host_id) === laneIndex)}
+                  busy={upcomingBusy.filter(
+                    (block) => !lanes || laneOf(block.host_id) === laneIndex,
+                  )}
                   canWrite={canWrite}
                   movable={movable}
                   now={now}
@@ -500,18 +503,37 @@ function DayColumn({
               style={{ top: y(i * 30), height: HOUR / 2 }}
             />
           ))}
-      {busyBlocks.map((block) => (
-        <div
-          key={block.key}
-          className="pointer-events-none absolute inset-x-0.5 rounded-md bg-[repeating-linear-gradient(135deg,var(--color-muted)_0_6px,transparent_6px_12px)] ring-1 ring-border ring-inset"
-          style={{
-            top: y(block.start),
-            height: ((block.end - block.start) / 60) * HOUR,
-          }}
-        >
-          <span className="sr-only">{translate('schedBusy')}</span>
-        </div>
-      ))}
+      {busyBlocks.map((block) => {
+        const height = ((block.end - block.start) / 60) * HOUR
+        return (
+          <div
+            key={block.key}
+            className="pointer-events-none absolute inset-x-0.5 flex flex-col overflow-hidden rounded-md border-l-[3px] border-muted-foreground/35 bg-muted px-1.5 text-caption leading-tight text-muted-foreground ring-1 ring-border/70 ring-inset"
+            style={{ top: y(block.start), height }}
+          >
+            <span className="sr-only">
+              {translate('schedBusyBlock', { start: clock(block.start), end: clock(block.end) })}
+            </span>
+            {height >= 18 && (
+              <span
+                aria-hidden
+                className={cn(
+                  'flex items-center gap-1 font-medium',
+                  height >= 34 ? 'pt-0.5' : 'my-auto',
+                )}
+              >
+                <CalendarClock aria-hidden className="size-3 shrink-0" />
+                <span className="truncate">{translate('schedBusy')}</span>
+              </span>
+            )}
+            {height >= 34 && (
+              <span aria-hidden className="truncate tabular-nums">
+                {clock(block.start)}–{clock(block.end)}
+              </span>
+            )}
+          </div>
+        )
+      })}
       {placed.map((block) => {
         const occurrence = spans.find((span) => span.id === block.id)?.occurrence
         if (!occurrence) return null
