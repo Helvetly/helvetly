@@ -246,7 +246,8 @@ test('the quotes list sorts by its headers and changes picked quotes in one go',
   // Both picked: the draft is marked sent, the sent one is left as it was.
   await page.getByRole('checkbox', { name: 'Select all quotes' }).click()
   const bar = page.getByRole('toolbar', { name: 'Selected rows' })
-  await bar.getByRole('button', { name: 'Mark 1 as sent' }).click()
+  await bar.getByRole('button', { name: 'Status' }).click()
+  await page.getByRole('menuitem', { name: 'Mark 1 as sent' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Mark as sent' }).click()
   await expect(page.getByText('1 quote updated.')).toBeVisible()
   expect(await api.read(`/quotes/${text(draft.id)}`)).toMatchObject({ status: 'sent' })
