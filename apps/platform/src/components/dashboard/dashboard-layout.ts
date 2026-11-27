@@ -53,3 +53,61 @@ export function moveDashboardCard(order: string[], id: string, target: string): 
   next.splice(to, 0, id)
   return next
 }
+
+/**
+ * Whether a dragged card over `target` should take its place: once the pointer is past the target's
+ * middle in the direction the card moves (across in the same row, down or up between rows), so a
+ * card that has just made room does not swap straight back.
+ */
+export function passesMiddle(
+  target: { left: number; top: number; width: number; height: number },
+  pointer: { x: number; y: number },
+  forward: boolean,
+  sameRow: boolean,
+) {
+  const along = sameRow
+    ? pointer.x - (target.left + target.width / 2)
+    : pointer.y - (target.top + target.height / 2)
+  return forward ? along > 0 : along < 0
+}
+
+/** How much of a 12-column row a card takes: its preferred share, never less than its minimum. */
+export type CardSpan = { min: number; preferred: number }
+export const DASHBOARD_COLUMNS = 12
+
+/**
+ * Lays cards out in rows, in order: a card joins the row while every card in it still gets its
+ * minimum, else it starts the next. Each row is then filled exactly: over-full rows give back down to
+ * the minimums, the widest first; room left over is shared evenly (the last card takes any rest), so a
+ * row never has a gap or an odd narrow leftover.
+ */
+export function packDashboardRows<T extends CardSpan & { id: string }>(
+  cards: readonly T[],
+  columns = DASHBOARD_COLUMNS,
+): { id: string; span: number }[][] {
+  const rows: T[][] = []
+  for (const card of cards) {
+    const row = rows.at(-1)
+    const used = row?.reduce((sum, other) => sum + other.min, 0) ?? columns
+    if (row && used + card.min <= columns) row.push(card)
+    else rows.push([card])
+  }
+  return rows.map((row) => {
+    const spans = row.map((card) => Math.min(card.preferred, columns))
+    let extra = spans.reduce((sum, span) => sum + span, 0) - columns
+    while (extra > 0) {
+      // Take one column from the widest card still above its minimum.
+      let widest = -1
+      for (const [i, card] of row.entries())
+        if (spans[i]! > card.min && (widest === -1 || spans[i]! > spans[widest]!)) widest = i
+      spans[widest]! -= 1
+      extra -= 1
+    }
+    const share = Math.floor(-extra / row.length)
+    const rest = -extra - share * row.length
+    return row.map((card, i) => ({
+      id: card.id,
+      span: spans[i]! + share + (i === row.length - 1 ? rest : 0),
+    }))
+  })
+}

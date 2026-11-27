@@ -22,7 +22,7 @@ import { useCan } from '@/lib/permissions'
 import { useDashboard } from '@/lib/queries'
 
 import { monthRows, yearToDate, yearsWithData, type Measure } from './cash-flow-years'
-import { DashboardCard } from './dashboard-card'
+import { CHART_BODY, CHART_PLOT, CHART_SUMMARY, DashboardCard, SERIES } from './dashboard-card'
 
 const PERIODS = [
   { value: '30d', label: translate('message30d') },
@@ -35,14 +35,8 @@ const MEASURES = [
   { value: 'expenses', label: translate('expenses') },
   { value: 'net', label: translate('cashFlowNet') },
 ] as const
-// This year in the brand colour, the year before in grey, older years in calm accents.
-const YEAR_COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-4)',
-  'var(--chart-3)',
-  'var(--chart-5)',
-]
+// This year in blue, the year before in violet, then amber, teal and rose: apart at a glance.
+const YEAR_COLORS = [SERIES[0], SERIES[3], SERIES[4], SERIES[2], SERIES[1]]
 const calendarMonth = (month: number, style: 'short' | 'long') =>
   new Date(Date.UTC(2026, month, 1)).toLocaleDateString(languageTag, {
     month: style,
@@ -58,8 +52,8 @@ const compact = new Intl.NumberFormat(languageTag, {
   maximumFractionDigits: 1,
 })
 const chartConfig = {
-  income: { label: translate('income2'), color: 'var(--chart-1)' },
-  expenses: { label: translate('expenses'), color: 'var(--chart-2)' },
+  income: { label: translate('income2'), color: SERIES[0] },
+  expenses: { label: translate('expenses'), color: SERIES[1] },
 } satisfies ChartConfig
 const tickDate = (period: Period) => (iso: string) =>
   new Date(iso).toLocaleDateString(
@@ -109,7 +103,7 @@ function PartialNote() {
 
 function LoadError({ error, onRetry }: { error: Error; onRetry: () => void }) {
   return (
-    <div className="grid h-60 content-center justify-items-start gap-3">
+    <div className={`grid content-center justify-items-start gap-3 ${CHART_BODY}`}>
       <p role="alert" className="text-sm text-muted-foreground">
         {translate('cashFlowCouldnTBeLoaded')}
         {errorMessage(error)}
@@ -152,34 +146,33 @@ export function CashFlowCard({ className }: { className?: string }) {
       }
     >
       <div className="flex flex-1 flex-col gap-4 px-4 pt-1 pb-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <output
-            aria-label={translate('netCashFlow')}
-            className="flex items-baseline gap-1.5 text-display leading-none tracking-[-0.02em] tabular-nums"
-          >
-            <span className="text-body-sm tracking-normal text-muted-foreground">{unit}</span>
-            {dashboard.data ? formatWhole(income - expenses) : '—'}
-            <span className="text-body-sm tracking-normal text-muted-foreground">
-              {translate('net')}
-            </span>
-          </output>
-          <p className="flex flex-wrap items-center gap-2 text-body-sm">
-            <LegendChip swatch="bg-(--chart-1)" label={translate('income2')}>
-              {dashboard.data && `${unit} ${formatWhole(income)}`}
-            </LegendChip>
-            <LegendChip
-              swatch="border-t-2 border-dashed border-(--chart-2) bg-transparent"
-              label={translate('expenses')}
-            >
-              {dashboard.data && `${unit} ${formatWhole(expenses)}`}
-            </LegendChip>
-          </p>
-        </div>
+        {!dashboard.error && (
+          <div className={SUMMARY_ROW}>
+            <output aria-label={translate('netCashFlow')} className={HEADLINE}>
+              <span className="text-body-sm tracking-normal text-muted-foreground">{unit}</span>
+              {dashboard.data ? formatWhole(income - expenses) : '—'}
+              <span className="text-body-sm tracking-normal text-muted-foreground">
+                {translate('net')}
+              </span>
+            </output>
+            <p className={LEGEND}>
+              <LegendChip color={SERIES[0]} label={translate('income2')}>
+                {dashboard.data && `${unit} ${formatWhole(income)}`}
+              </LegendChip>
+              <LegendChip color={SERIES[1]} label={translate('expenses')}>
+                {dashboard.data && `${unit} ${formatWhole(expenses)}`}
+              </LegendChip>
+            </p>
+          </div>
+        )}
         <PartialNote />
         {dashboard.error ? (
           <LoadError error={dashboard.error} onRetry={() => void dashboard.refetch()} />
         ) : dashboard.data ? (
-          <ChartContainer config={chartConfig} className="mt-auto aspect-auto h-60 w-full">
+          <ChartContainer
+            config={chartConfig}
+            className={`mt-auto aspect-auto w-full ${CHART_PLOT}`}
+          >
             <ComposedChart data={points} margin={{ left: 0, right: 4, top: 8, bottom: 0 }}>
               <defs>
                 <linearGradient id="dashboard-income" x1="0" y1="0" x2="0" y2="1">
@@ -233,7 +226,7 @@ export function CashFlowCard({ className }: { className?: string }) {
                   <Bar
                     dataKey="expenses"
                     fill="var(--color-expenses)"
-                    fillOpacity={0.55}
+                    fillOpacity={0.8}
                     radius={[4, 4, 0, 0]}
                     maxBarSize={18}
                   />
@@ -262,7 +255,7 @@ export function CashFlowCard({ className }: { className?: string }) {
             </ComposedChart>
           </ChartContainer>
         ) : (
-          <Loader className="min-h-60" />
+          <Loader className={`mt-auto ${CHART_PLOT}`} />
         )}
       </div>
     </DashboardCard>
@@ -308,13 +301,13 @@ export function YearOverYearCard({ className }: { className?: string }) {
         {dashboard.error ? (
           <LoadError error={dashboard.error} onRetry={() => void dashboard.refetch()} />
         ) : !dashboard.data ? (
-          <Loader className="min-h-72" />
+          <Loader className={CHART_BODY} />
         ) : !comparable ? (
           <EmptyState
             icon={CalendarRange}
             title={translate('yearOverYearEmpty')}
             description={translate('yearOverYearEmptyBody')}
-            className="my-auto"
+            className={`content-center ${CHART_BODY}`}
           />
         ) : (
           <YearsChart
@@ -363,20 +356,20 @@ function YearsChart({
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className={SUMMARY_ROW}>
         <output
           aria-label={translate('cashFlowYearToDate', { year: String(latest) })}
-          className="flex flex-wrap items-baseline gap-1.5 text-display leading-none tracking-[-0.02em] tabular-nums"
+          className={HEADLINE}
         >
           <span className="text-body-sm tracking-normal text-muted-foreground">{unit}</span>
           {formatWhole(total)}
-          <span className="text-body-sm tracking-normal text-muted-foreground">
+          <span className="truncate text-body-sm tracking-normal text-muted-foreground">
             {translate('cashFlowYearToDateShort', { year: String(latest) })}
             {change !== null &&
               ` · ${translate('cashFlowVsYear', { change: percent.format(change), year: String(latest - 1) })}`}
           </span>
         </output>
-        <fieldset className="flex flex-wrap gap-2">
+        <fieldset className={LEGEND}>
           <legend className="sr-only">{translate('cashFlowYearsShown')}</legend>
           {years.map((year) => (
             <button
@@ -386,11 +379,11 @@ function YearsChart({
               // The last year shown stays: an empty chart says nothing.
               disabled={shown.length === 1 && shown[0] === year}
               onClick={() => toggle(year)}
-              className="inline-flex items-center gap-2 rounded-full bg-muted px-2.5 py-1 text-body-sm tabular-nums transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-default aria-[pressed=false]:text-muted-foreground"
+              className={`${CHIP} transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-default aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-muted-foreground`}
             >
               <span
                 aria-hidden
-                className="h-0.5 w-3.5 rounded-full"
+                className="size-2 rounded-full"
                 style={{ background: shown.includes(year) ? color(year) : 'var(--border)' }}
               />
               {year}
@@ -399,7 +392,7 @@ function YearsChart({
         </fieldset>
       </div>
       <PartialNote />
-      <ChartContainer config={config} className="mt-auto aspect-auto h-60 w-full">
+      <ChartContainer config={config} className={`mt-auto aspect-auto w-full ${CHART_PLOT}`}>
         <ComposedChart
           data={monthRows(points, measure)}
           margin={{ left: 0, right: 4, top: 8, bottom: 0 }}
@@ -451,21 +444,29 @@ function YearsChart({
   )
 }
 
-/** A legend entry as a soft chip: the series' swatch, its name and its total. */
+// The figure, then the legend: two lines of fixed height wherever the card is.
+const SUMMARY_ROW = `grid content-center gap-2 ${CHART_SUMMARY}`
+const HEADLINE =
+  'flex min-w-0 items-baseline gap-1.5 text-display leading-none tracking-[-0.02em] whitespace-nowrap tabular-nums'
+const LEGEND = 'flex min-w-0 flex-wrap items-center gap-1.5'
+const CHIP =
+  'inline-flex h-6 items-center gap-1.5 rounded-full bg-muted px-2 text-caption whitespace-nowrap tabular-nums'
+
+/** A legend entry as a small chip: the series' colour dot, its name and its total. */
 function LegendChip({
-  swatch,
+  color,
   label,
   children,
 }: {
-  swatch: string
+  color: string
   label: string
-  children?: string | false
+  children: string | undefined
 }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-muted px-2.5 py-1">
-      <span aria-hidden className={`h-0.5 w-3.5 rounded-full ${swatch}`} />
+    <span className={CHIP}>
+      <span aria-hidden className="size-2 rounded-full" style={{ background: color }} />
       <span>{label}</span>
-      {children && <span className="text-muted-foreground tabular-nums">{children}</span>}
+      {children && <span className="text-muted-foreground">{children}</span>}
     </span>
   )
 }

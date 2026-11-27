@@ -28,6 +28,11 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -245,6 +250,12 @@
   --chart-3: oklch(0.53 0.12 164);
   --chart-4: oklch(0.68 0.12 230);
   --chart-5: oklch(0.78 0.14 75);
+  /* Dashboard series, in an order that stays apart for colour-blind readers: blue, rose, teal, violet, amber. */
+  --series-1: var(--brand-solid);
+  --series-2: oklch(0.66 0.14 15);
+  --series-3: oklch(0.6 0.1 185);
+  --series-4: oklch(0.6 0.15 295);
+  --series-5: oklch(0.72 0.14 70);
   /* Heidi: electric violet into bright magenta; --heidi is the solid for text and rings. */
   --heidi: #7b3dff;
   --heidi-soft: #f0e9ff;
@@ -326,6 +337,11 @@
   --chart-3: oklch(0.72 0.14 163);
   --chart-4: oklch(0.68 0.12 230);
   --chart-5: oklch(0.78 0.14 75);
+  --series-1: var(--brand-solid);
+  --series-2: oklch(0.72 0.13 15);
+  --series-3: oklch(0.72 0.1 185);
+  --series-4: oklch(0.72 0.14 295);
+  --series-5: oklch(0.8 0.13 75);
   --elevation-1: 0 0 0 1px oklch(1 0 0 / 0.07), 0 1px 2px oklch(0 0 0 / 0.3);
   --elevation-soft: 0 0 0 1px oklch(1 0 0 / 0.07), 0 8px 24px oklch(0 0 0 / 0.35);
   --sticky-shadow: 0 1px 0 oklch(1 0 0 / 0.08), 0 8px 16px -6px oklch(0 0 0 / 0.9);
