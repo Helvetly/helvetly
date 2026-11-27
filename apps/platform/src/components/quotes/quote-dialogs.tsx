@@ -20,7 +20,7 @@ import {
 import { TextareaBox } from '@/components/textarea-box'
 import { ApiError } from '@/lib/api'
 import { isApprovalRequired, toastApprovalRequired } from '@/lib/approvals'
-import { useClient } from '@/lib/clients'
+import { participantRecipient, recipientPeople, useClient } from '@/lib/clients'
 import { useQuoteEmailDraft } from '@/lib/email-texts'
 import { translate } from '@/lib/i18n'
 import {
@@ -57,7 +57,8 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
   const [mailDown, setMailDown] = useState(false)
   const queryClient = useQueryClient()
   const send = useQuoteAction((input: QuoteSendInput) => quotesApi.send(quote.id, input))
-  const recipients = to ?? (draft.data?.to.join(', ') || fallback)
+  // A company sending to its participants defaults to its only participant.
+  const recipients = to ?? (participantRecipient(client) || draft.data?.to.join(', ') || fallback)
   const shownSubject = subject ?? draft.data?.subject ?? ''
   const shownMessage = message ?? draft.data?.message ?? ''
   const name = quoteName(quote)
@@ -129,6 +130,7 @@ export function QuoteSendDialog({ quote, onClose }: { quote: Quote; onClose: () 
       <NoClientEmail client={client} />
       <EmailComposer
         id="quote-send"
+        people={recipientPeople(client)}
         recipients={{ to: recipients, cc, bcc }}
         onRecipients={(next) => {
           if (next.to !== recipients) setTo(next.to)

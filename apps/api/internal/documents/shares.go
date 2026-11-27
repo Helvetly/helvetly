@@ -1,6 +1,7 @@
 package documents
 
 import (
+	"errors"
 	"net/http"
 
 	"helvetly.com/api/internal/auth"
@@ -23,7 +24,11 @@ func (s *Service) listShares(w http.ResponseWriter, r *http.Request, sess store.
 	if err != nil {
 		return err
 	}
-	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": shares})
+	participants, err := s.db.DocumentParticipantShares(r.Context(), sess.Workspace.ID, r.PathValue("id"))
+	if err != nil {
+		return err
+	}
+	auth.WriteJSON(w, http.StatusOK, map[string]any{"data": shares, "participants": participants})
 	return nil
 }
 
@@ -31,6 +36,8 @@ func (s *Service) share(w http.ResponseWriter, r *http.Request, sess store.Sessi
 	var body struct {
 		ClientID         string `json:"client_id"`
 		ExpiresInSeconds *int64 `json:"expires_in_seconds"`
+		// ParticipantID shares with one participant of the client only (their portal session sees it), never expiring.
+		ParticipantID string `json:"participant_id"`
 	}
 	if !s.auth.Decode(w, r, &body) {
 		return nil
@@ -39,6 +46,16 @@ func (s *Service) share(w http.ResponseWriter, r *http.Request, sess store.Sessi
 		return validationFailed(map[string]string{"client_id": "Choose a client."})
 	}
 	now := s.now()
+	if body.ParticipantID != "" {
+		err := s.db.ShareDocumentWithParticipant(r.Context(), sess.Workspace.ID, r.PathValue("id"), body.ClientID, body.ParticipantID, sess.User.ID, now)
+		if errors.Is(err, store.ErrNotFound) {
+			return validationFailed(map[string]string{"participant_id": "Choose a participant of this client."})
+		}
+		if err != nil {
+			return err
+		}
+		return s.listShares(w, r, sess)
+	}
 	expiry, err := shareExpiry(now, body.ExpiresInSeconds)
 	if err != nil {
 		return err
@@ -51,6 +68,13 @@ func (s *Service) share(w http.ResponseWriter, r *http.Request, sess store.Sessi
 }
 
 func (s *Service) unshare(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+	if participant := r.URL.Query().Get("participant_id"); participant != "" {
+		if err := s.db.UnshareDocumentWithParticipant(r.Context(), sess.Workspace.ID, r.PathValue("id"), participant); err != nil {
+			return err
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
 	clientID := r.URL.Query().Get("client_id")
 	if clientID == "" {
 		return auth.Error(http.StatusBadRequest, "invalid_request", "Give the client_id to stop sharing with.", nil)

@@ -240,7 +240,7 @@ func (q Q) AuditEntries(ctx context.Context, workspaceID string, f AuditFilter, 
 
 // AuditActors: every user who has an entry in the workspace's log and still has an account, by name.
 func (q Q) AuditActors(ctx context.Context, workspaceID string) ([]User, error) {
-	rows, err := q.db.Query(ctx, `SELECT u.id, u.name FROM users u WHERE u.id IN
+	rows, err := q.db.Query(ctx, `SELECT u.id, u.name, `+avatarColumn+` FROM users u WHERE u.id IN
 		(SELECT DISTINCT actor_id FROM financial_events WHERE workspace_id = $1 AND actor_id IS NOT NULL)
 		ORDER BY lower(u.name), u.id`, workspaceID)
 	if err != nil {
@@ -250,7 +250,7 @@ func (q Q) AuditActors(ctx context.Context, workspaceID string) ([]User, error) 
 	out := []User{}
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Name); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.AvatarURL); err != nil {
 			return nil, fmt.Errorf("audit actors: %w", err)
 		}
 		out = append(out, u)

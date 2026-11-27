@@ -47,6 +47,7 @@ import { InlineTagsEditor } from '@/components/clients/inline-tags'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { LoadError } from '@/components/load-error'
 import { RecordLink, RecordPageButton, RecordPageContext } from '@/components/record-link'
+import { Person } from '@/components/user-avatar'
 import { useAI } from '@/lib/ai'
 import { ApiError } from '@/lib/api'
 import { useClientSearch } from '@/lib/clients'
@@ -454,7 +455,15 @@ function Details({
     ],
     [
       translate('uploaded2'),
-      `${formatDate(file.created_at)}${file.uploaded_by?.name ? translate('dynamicBy', { name: file.uploaded_by.name }) : ''}`,
+      <span key="uploaded" className="flex min-w-0 flex-wrap items-center">
+        {formatDate(file.created_at)}
+        {file.uploaded_by && (
+          <>
+            {translate('dynamicBy', { name: '' })}
+            <Person person={file.uploaded_by} size="xs" />
+          </>
+        )}
+      </span>,
     ],
     [translate('modified'), formatDate(file.updated_at)],
   ]

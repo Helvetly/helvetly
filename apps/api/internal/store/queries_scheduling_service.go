@@ -57,28 +57,35 @@ type SchedRef struct {
 	Status string  `json:"-"`
 	Unit   *string `json:"-"`
 	Email  *string `json:"-"`
+	Avatar *string `json:"-"` // a member's photo, nil without one
 }
 
 // SchedClients names the workspace's clients with these ids (deleted ones too: their past sessions stay).
 func (q Q) SchedClients(ctx context.Context, workspaceID string, ids []string) (map[string]SchedRef, error) {
-	return q.schedRefs(ctx, `SELECT id, name, NULL, '', NULL, email FROM clients WHERE workspace_id = $1 AND id = ANY ($2)`, workspaceID, ids)
+	return q.schedRefs(ctx, `SELECT id, name, NULL, '', NULL, email, NULL FROM clients WHERE workspace_id = $1 AND id = ANY ($2)`, workspaceID, ids)
+}
+
+// SchedParticipants: people of the workspace's clients, with their email (whatever their roles now).
+func (q Q) SchedParticipants(ctx context.Context, workspaceID string, ids []string) (map[string]SchedRef, error) {
+	return q.schedRefs(ctx, `SELECT id, name, NULL, '', NULL, nullif(email, ''), NULL FROM client_contacts WHERE workspace_id = $1 AND id = ANY ($2)`,
+		workspaceID, ids)
 }
 
 // SchedEngagements: the engagements' number (as text), title and unit.
 func (q Q) SchedEngagements(ctx context.Context, workspaceID string, ids []string) (map[string]SchedRef, error) {
-	return q.schedRefs(ctx, `SELECT id, title, number::text, '', unit, NULL FROM engagements WHERE workspace_id = $1 AND id = ANY ($2)`,
+	return q.schedRefs(ctx, `SELECT id, title, number::text, '', unit, NULL, NULL FROM engagements WHERE workspace_id = $1 AND id = ANY ($2)`,
 		workspaceID, ids)
 }
 
 // SchedInvoices: the invoices' number and status.
 func (q Q) SchedInvoices(ctx context.Context, workspaceID string, ids []string) (map[string]SchedRef, error) {
-	return q.schedRefs(ctx, `SELECT id, '', number, status, NULL, NULL FROM invoices WHERE workspace_id = $1 AND id = ANY ($2)`,
+	return q.schedRefs(ctx, `SELECT id, '', number, status, NULL, NULL, NULL FROM invoices WHERE workspace_id = $1 AND id = ANY ($2)`,
 		workspaceID, ids)
 }
 
 // SchedMembers names the workspace's current members (name, else email), by user id; someone who left is absent.
 func (q Q) SchedMembers(ctx context.Context, workspaceID string) (map[string]SchedRef, error) {
-	return q.schedRefs(ctx, `SELECT u.id, coalesce(nullif(u.name, ''), u.email), NULL, m.role, NULL, u.email FROM workspace_members m
+	return q.schedRefs(ctx, `SELECT u.id, coalesce(nullif(u.name, ''), u.email), NULL, m.role, NULL, u.email, nullif(`+avatarColumn+`, '') FROM workspace_members m
 		JOIN users u ON u.id = m.user_id WHERE m.workspace_id = $1 AND (cardinality($2::text[]) = 0 OR u.id = ANY ($2))`, workspaceID, nil)
 }
 
@@ -89,7 +96,7 @@ func (q Q) schedRefs(ctx context.Context, sql, workspaceID string, ids []string)
 	}
 	out := map[string]SchedRef{}
 	var r SchedRef
-	_, err = pgx.ForEachRow(rows, []any{&r.ID, &r.Name, &r.Number, &r.Status, &r.Unit, &r.Email}, func() error {
+	_, err = pgx.ForEachRow(rows, []any{&r.ID, &r.Name, &r.Number, &r.Status, &r.Unit, &r.Email, &r.Avatar}, func() error {
 		out[r.ID] = r
 		return nil
 	})

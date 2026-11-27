@@ -46,7 +46,7 @@ func (s *Service) recordPayment(ctx context.Context, q store.Q, sess store.Sessi
 	}
 	to := store.NotifyTo{Roles: notifications.Managers, Except: sess.User.ID}
 	data := map[string]any{"invoice_id": inv.ID, "number": deref(inv.Number), "client": inv.Client.Name,
-		"currency": inv.Currency, "actor": notifications.Actor(sess.User)}
+		"currency": inv.Currency, "actor": notifications.Actor(sess.User), "actor_id": sess.User.ID}
 	if p.Amount < inv.AmountDue {
 		data["amount"], data["open"] = p.Amount.String(), (inv.AmountDue - p.Amount).String()
 		return notifications.Notify(ctx, q, sess.Workspace.ID, "invoice.partly_paid", data, to, s.now())
@@ -303,7 +303,7 @@ func (s *Service) draftPDF(ctx context.Context, sess store.Session, inv store.In
 	if err != nil {
 		return nil, err
 	}
-	buyer := buyerOf(client)
+	buyer := addressee(client, inv)
 	inv.Buyer = &buyer
 	logo, err := s.logoBytes(ctx, sess.Workspace.ID, set)
 	if err != nil {

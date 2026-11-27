@@ -152,6 +152,9 @@ func (s *Service) addEntry(ctx context.Context, q store.Q, a actor, o store.Sche
 	if o.HostUserID != nil {
 		entry.PerformedBy = &store.UserRef{ID: *o.HostUserID}
 	}
+	if e.ParticipantContactID != nil { // the entry carries the session's participant
+		entry.Participant = &store.PersonRef{ID: *e.ParticipantContactID}
+	}
 	if a.id != "" {
 		entry.CreatedBy = &store.UserRef{ID: a.id}
 	}
@@ -308,8 +311,11 @@ func (s *Service) invoiceOccurrences(w http.ResponseWriter, r *http.Request, ses
 		if err != nil {
 			return err
 		}
-		byClient := map[string][]store.SchedOccurrence{}
-		var clients []string
+		// One draft per client or, for a company sending to its participants, per participant: never two on one.
+		type addressee struct{ client, participant string }
+		byClient := map[addressee][]store.SchedOccurrence{}
+		var clients []addressee
+		records := map[string]store.Client{}
 		for _, o := range occs {
 			if o.InvoiceID != nil && invoices[*o.InvoiceID].Status != "void" { // a deleted draft clears it; a voided invoice releases it
 				return errAlreadyInvoiced
@@ -317,10 +323,21 @@ func (s *Service) invoiceOccurrences(w http.ResponseWriter, r *http.Request, ses
 			if !counts(o, set) || o.EngagementID != nil || events[o.EventID].UnitPrice == nil {
 				return errNotBillable
 			}
-			if _, ok := byClient[o.ClientID]; !ok {
-				clients = append(clients, o.ClientID)
+			c, ok := records[o.ClientID]
+			if !ok {
+				if c, err = q.Client(ctx, sess.Workspace.ID, o.ClientID); err != nil {
+					return err
+				}
+				records[o.ClientID] = c
 			}
-			byClient[o.ClientID] = append(byClient[o.ClientID], o)
+			key := addressee{client: o.ClientID}
+			if p := c.Participant(events[o.EventID].ParticipantContactID); p != nil && c.IsCompany && c.DocumentsTo == "participants" {
+				key.participant = p.ID
+			}
+			if _, ok := byClient[key]; !ok {
+				clients = append(clients, key)
+			}
+			byClient[key] = append(byClient[key], o)
 		}
 		var vat struct {
 			Rate invoicecalc.Percent `json:"default_vat_rate"`
@@ -329,16 +346,25 @@ func (s *Service) invoiceOccurrences(w http.ResponseWriter, r *http.Request, ses
 		if _, err := q.InvoiceSettings(ctx, sess.Workspace.ID, &vat); err != nil {
 			return err
 		}
-		for _, clientID := range clients {
-			list := byClient[clientID]
-			id, err := s.inv.CreateDraft(ctx, q, sess, clientID, func(inv *store.Invoice) {
+		for _, key := range clients {
+			list := byClient[key]
+			c := records[key.client]
+			id, err := s.inv.CreateDraft(ctx, q, sess, key.client, func(inv *store.Invoice) {
+				if key.participant != "" {
+					inv.ParticipantContactID = &key.participant
+				}
 				for _, o := range list {
 					e := events[o.EventID]
 					title := e.Title
 					if o.Title != nil {
 						title = *o.Title
 					}
-					inv.Lines = append(inv.Lines, store.InvoiceLine{Description: title + " · " + o.StartsAt.In(loadZone(e.TimeZone)).Format("2 Jan 2006"),
+					description := title + " · " + o.StartsAt.In(loadZone(e.TimeZone)).Format("2 Jan 2006")
+					// The company's invoice names who took each session; a participant's own invoice names them already.
+					if p := c.Participant(e.ParticipantContactID); p != nil && key.participant == "" {
+						description += " · " + p.Name
+					}
+					inv.Lines = append(inv.Lines, store.InvoiceLine{Description: description,
 						Quantity: 1000, UnitPrice: *e.UnitPrice, VATCategory: "S", VATRate: vat.Rate})
 				}
 			})

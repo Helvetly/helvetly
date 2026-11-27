@@ -204,7 +204,7 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 	}
 	inv.Number = &number
 	inv.Seller = &set.Seller.Party
-	buyer := snapshotBuyer(client, credited)
+	buyer := snapshotBuyer(client, inv, credited)
 	inv.Buyer = &buyer
 	inv.Payment = store.InvoicePaymentInfo{IBAN: set.IBAN, ReferenceType: "NON"}
 	inv.PaymentMethods = usableMethods(inv.PaymentMethods, set, inv.Currency) // what the editor showed
@@ -388,7 +388,7 @@ func issueReasons(inv store.Invoice, set Settings, client *store.Client, credite
 	snapshot := client == nil && credited != nil && credited.Buyer != nil
 	add(client == nil && !snapshot, "client_deleted", "client_id", "The client was deleted: choose another one.")
 	if client != nil || snapshot {
-		buyer := snapshotBuyer(client, credited)
+		buyer := snapshotBuyer(client, inv, credited)
 		selfBilled := inv.Kind == "self_billed" || (credited != nil && credited.Kind == "self_billed")
 		add(selfBilled && inv.VATMode != invoicecalc.None && buyer.VATNumber == nil, "supplier_vat_missing", "client.vat_number",
 			"A self-billed VAT invoice needs the supplier's VAT number.")
@@ -520,13 +520,47 @@ func buyerOf(c store.Client) store.Party {
 		ElectronicAddress: c.ElectronicAddress, RegistrationNumber: c.RegistrationNumber, Region: c.Region}
 }
 
-// snapshotBuyer: the live client's party or, once the client is deleted, the buyer snapshot of the invoice the
-// document refers to (issueReasons refuses a document with neither).
-func snapshotBuyer(client *store.Client, credited *store.Invoice) store.Party {
+// snapshotBuyer: the live client's party (addressee) or, once the client is deleted, the buyer snapshot of the invoice
+// the document refers to (issueReasons refuses a document with neither).
+func snapshotBuyer(client *store.Client, inv store.Invoice, credited *store.Invoice) store.Party {
 	if client != nil {
-		return buyerOf(*client)
+		return addressee(*client, inv)
 	}
 	return *credited.Buyer
+}
+
+// addressee is who a document is addressed to: the client or, when it names a participant of the client
+// (participants mode), the participant: their name and email, their own address when they have one (else the
+// company's), their VAT number when they have one (else the company's). The document stays the company client's.
+func addressee(c store.Client, inv store.Invoice) store.Party {
+	b := buyerOf(c)
+	if inv.ParticipantContactID == nil {
+		return b
+	}
+	for _, p := range c.Contacts {
+		if p.ID != *inv.ParticipantContactID {
+			continue
+		}
+		b.Name, b.Phone, b.ElectronicAddress, b.RegistrationNumber = p.Name, p.Phone, nil, nil
+		if p.Email != nil {
+			b.Email = p.Email
+		}
+		if deref(p.Street) != "" && deref(p.City) != "" {
+			b.Street, b.StreetNumber, b.Apt, b.Zip, b.City = deref(p.Street), deref(p.StreetNumber), nil, deref(p.Zip), deref(p.City)
+			b.Country, b.Region = cmpOr(deref(p.Country), b.Country), nil
+		}
+		if p.VATNumber != nil {
+			b.VATNumber = p.VATNumber
+		}
+	}
+	return b
+}
+
+func cmpOr(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }
 
 // Title: "Rechnung", "Gutschrift"… in the document's language.

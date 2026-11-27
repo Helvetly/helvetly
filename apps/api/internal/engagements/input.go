@@ -18,7 +18,7 @@ import (
 
 var inputKeys = []string{"client_id", "title", "description", "product_id", "unit", "quantity", "billing", "price_basis",
 	"unit_price", "overage_unit_price", "currency", "vat_category", "vat_rate", "start_date", "recurrence", "interval",
-	"end_date", "reference", "document_id", "rollover", "auto_invoice", "invoice_detail"}
+	"end_date", "reference", "document_id", "rollover", "auto_invoice", "invoice_detail", "participant_contact_id"}
 
 var units = []string{"hour", "day", "piece", "month", "km", "flat"}
 
@@ -183,6 +183,8 @@ func applyFields(e *store.Engagement, body map[string]json.RawMessage, d store.W
 			e.Reference = text(k, raw, 100, nil, fail)
 		case "document_id":
 			e.DocumentID = text(k, raw, 100, nil, fail)
+		case "participant_contact_id":
+			e.ParticipantContactID = text(k, raw, 100, nil, fail)
 		case "rollover", "auto_invoice":
 			var b bool
 			if json.Unmarshal(raw, &b) != nil {

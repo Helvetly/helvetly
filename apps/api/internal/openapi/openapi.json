@@ -7463,6 +7463,36 @@
       "Contact": {
         "type": "object",
         "properties": {
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["contact", "participant"]
+            },
+            "description": "contact: billing and correspondence; participant: takes the service. A person client has no participants."
+          },
+          "portal_enabled": {
+            "type": "boolean",
+            "description": "A participant's own client portal switch; it follows the client's and the workspace's."
+          },
+          "street": {
+            "type": ["string", "null"]
+          },
+          "street_number": {
+            "type": ["string", "null"]
+          },
+          "zip": {
+            "type": ["string", "null"]
+          },
+          "city": {
+            "type": ["string", "null"]
+          },
+          "country": {
+            "type": ["string", "null"]
+          },
+          "vat_number": {
+            "type": ["string", "null"]
+          },
           "id": {
             "type": "string"
           },
@@ -7482,11 +7512,31 @@
             "type": "boolean"
           }
         },
-        "required": ["id", "name", "role", "email", "phone", "is_primary"]
+        "required": [
+          "id",
+          "name",
+          "role",
+          "email",
+          "phone",
+          "is_primary",
+          "roles",
+          "portal_enabled",
+          "street",
+          "street_number",
+          "zip",
+          "city",
+          "country",
+          "vat_number"
+        ]
       },
       "Client": {
         "type": "object",
         "properties": {
+          "documents_to": {
+            "type": "string",
+            "enum": ["company", "participants"],
+            "description": "Where a company's invoices and documents go: the company, or the participant each is for. Changing it never changes issued invoices."
+          },
           "id": {
             "type": "string"
           },
@@ -7656,12 +7706,17 @@
           "files_count",
           "pending_change_request",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "documents_to"
         ]
       },
       "ClientInput": {
         "type": "object",
         "properties": {
+          "documents_to": {
+            "type": "string",
+            "enum": ["company", "participants"]
+          },
           "name": {
             "type": "string",
             "maxLength": 200
@@ -8308,6 +8363,10 @@
       "Invoice": {
         "type": "object",
         "properties": {
+          "participant_contact_id": {
+            "type": ["string", "null"],
+            "description": "The participant of the client the invoice is addressed to (participants mode); null for the client itself."
+          },
           "send_uncertain_at": { "type": ["string", "null"], "format": "date-time" },
           "unconfirmed_reminders": {
             "type": "array",
@@ -8319,7 +8378,7 @@
                 "offset_days": { "type": "integer" },
                 "at": { "type": "string", "format": "date-time" }
               },
-              "required": ["seq", "kind", "offset_days", "at"]
+              "required": ["seq", "kind", "offset_days", "at", "participant_contact_id"]
             }
           },
           "id": {
@@ -9673,6 +9732,23 @@
       "Engagement": {
         "type": "object",
         "properties": {
+          "participant_contact_id": {
+            "type": ["string", "null"],
+            "description": "The participant of the client who takes the engagement."
+          },
+          "participant": {
+            "type": ["object", "null"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name", "participant_contact_id", "participant"],
+            "description": "The participant of the client (a person with the participant role)."
+          },
           "id": {
             "type": "string"
           },
@@ -10017,6 +10093,36 @@
       "ContactInput": {
         "type": "object",
         "properties": {
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["contact", "participant"]
+            },
+            "description": "Only a company's people can be participants; only a contact can be primary."
+          },
+          "portal_enabled": {
+            "type": "boolean",
+            "description": "A participant's portal switch; needs the participant role and an email."
+          },
+          "street": {
+            "type": ["string", "null"]
+          },
+          "street_number": {
+            "type": ["string", "null"]
+          },
+          "zip": {
+            "type": ["string", "null"]
+          },
+          "city": {
+            "type": ["string", "null"]
+          },
+          "country": {
+            "type": ["string", "null"]
+          },
+          "vat_number": {
+            "type": ["string", "null"]
+          },
           "name": {
             "type": "string",
             "maxLength": 200
@@ -11648,6 +11754,19 @@
       "EngagementEntry": {
         "type": "object",
         "properties": {
+          "participant": {
+            "type": ["object", "null"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name", "participant"],
+            "description": "The participant of the client (a person with the participant role)."
+          },
           "historical_estimate": { "type": "boolean" },
           "invoiced_quantity": { "type": "string" },
           "id": {
@@ -11977,6 +12096,10 @@
       "EngagementInput": {
         "type": "object",
         "properties": {
+          "participant_contact_id": {
+            "type": ["string", "null"],
+            "description": "A participant of the client; entries without a session's participant carry this one."
+          },
           "client_id": {
             "type": "string",
             "description": "Required on create. Cannot change once the engagement has entries or an advance invoice."
@@ -14082,6 +14205,23 @@
         "required": ["id", "name"],
         "description": "A record a session points at, by id and name."
       },
+      "SchedulingHost": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatar_url": {
+            "type": ["string", "null"],
+            "description": "The member's photo, null when they have none."
+          }
+        },
+        "required": ["id", "name", "avatar_url"],
+        "description": "The member who holds a session."
+      },
       "SchedulingEngagementRef": {
         "type": "object",
         "properties": {
@@ -14181,6 +14321,19 @@
       "SchedulingEvent": {
         "type": "object",
         "properties": {
+          "participant": {
+            "type": ["object", "null"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name", "participant"],
+            "description": "The participant of the client (a person with the participant role)."
+          },
           "id": {
             "type": "string"
           },
@@ -14203,7 +14356,7 @@
           "host": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SchedulingRef"
+                "$ref": "#/components/schemas/SchedulingHost"
               },
               {
                 "type": "null"
@@ -14459,6 +14612,19 @@
       "SchedulingOccurrence": {
         "type": "object",
         "properties": {
+          "participant": {
+            "type": ["object", "null"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "name", "participant"],
+            "description": "The participant of the client (a person with the participant role)."
+          },
           "id": {
             "type": "string"
           },
@@ -14528,7 +14694,7 @@
           "host": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SchedulingRef"
+                "$ref": "#/components/schemas/SchedulingHost"
               },
               {
                 "type": "null"
@@ -14655,7 +14821,7 @@
           "host": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SchedulingRef"
+                "$ref": "#/components/schemas/SchedulingHost"
               },
               {
                 "type": "null"
@@ -14869,6 +15035,10 @@
       "SchedulingEventInput": {
         "type": "object",
         "properties": {
+          "participant_contact_id": {
+            "type": ["string", "null"],
+            "description": "A participant of the session's client (a person with the participant role); its emails go to them."
+          },
           "client_id": {
             "type": "string",
             "description": "Required on create: a live client."

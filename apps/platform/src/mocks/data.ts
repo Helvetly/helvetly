@@ -698,7 +698,11 @@ export const closedPeriods: Period[] = [
   { month: '2026-09', closed_at: '2026-10-02T08:40:00Z', closed_by: anna },
 ]
 
-const marco = { id: 'usr_mock_2', name: 'Marco Bernasconi' }
+// A member's uploaded photo (a 64 px PNG): stories show it in place of their initials.
+export const samplePhoto =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA5UlEQVR42u3PhUECAAAAQea0u7u727d7BJDuThHGcgQX+NvgAj10e+n20emnM8DvIL9DtIdpj/Azys8YrXFaEzQnaU7RmKYxQ32W+hy1eWoLVBepLlFZprJCeZXyGqV1ShsUNyluUdimsEN+l/weuX1yB2QPyR6ROSZzQvqU9Bmpc1IXJC9JXpG4JnFD/JY4xO6I3RN9IPpI5InIM+EXwq98v/H9TuiD0CfBL4IBAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwMB/gT+jseGWU2gTOAAAAABJRU5ErkJggg=='
+
+const marco = { id: 'usr_mock_2', name: 'Marco Bernasconi', avatar_url: samplePhoto }
 const hex = (n: number) => n.toString(16).padStart(64, '0')
 
 type Sample = [
@@ -707,7 +711,7 @@ type Sample = [
   kind: string,
   category: FinancialEvent['category'],
   subject: [type: string, id: string, number?: string, party?: string, currency?: string],
-  actor: typeof anna | null,
+  actor: FinancialEvent['actor'],
   payload: Record<string, unknown>,
 ]
 

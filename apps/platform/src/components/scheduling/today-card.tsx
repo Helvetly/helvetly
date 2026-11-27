@@ -7,7 +7,15 @@ import { useFeatureLock } from '@/components/billing/feature-lock'
 import { DashboardCard, LIST_ROW } from '@/components/dashboard/dashboard-card'
 import { RecordLink } from '@/components/record-link'
 import { translate } from '@/lib/i18n'
-import { addDays, instantOf, timeLabel, useOccurrences, useRequests, zoned } from '@/lib/scheduling'
+import {
+  addDays,
+  instantOf,
+  timeLabel,
+  useOccurrences,
+  useRequests,
+  withWhom,
+  zoned,
+} from '@/lib/scheduling'
 import { getWorkspaceTimezone } from '@/lib/timezone'
 
 import { HostDot, StatusBadge } from './bits'
@@ -70,7 +78,7 @@ export function TodayCard({ className, now: fixedNow }: { className?: string; no
                   <span className="truncate">{row.title}</span>
                   <span className="flex min-w-0 items-center gap-1.5 truncate text-body-sm text-muted-foreground">
                     <HostDot id={row.host?.id} />
-                    {row.client.name}
+                    {withWhom(row)}
                   </span>
                 </span>
                 {row.status === 'requested' && (

@@ -21,6 +21,7 @@ import {
   Power,
   PowerOff,
   Trash2,
+  Users,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -124,6 +125,7 @@ export function ClientHeader({
   onDelete,
   onFillTemplate,
   onImportInvoices,
+  onMakeParticipant,
   tabs,
 }: {
   client: Client
@@ -135,6 +137,8 @@ export function ClientHeader({
   onFillTemplate: () => void
   /** Opens the invoice import for this client; without it (no right to write invoices) no menu. */
   onImportInvoices?: () => void
+  /** "Make participant of…" for a person client; without it (no right to delete clients) not offered. */
+  onMakeParticipant?: () => void
   tabs: ReactNode
 }) {
   const facts = headerFacts(client)
@@ -176,6 +180,14 @@ export function ClientHeader({
                     label: translate('editDetails'),
                     onSelect: onEdit,
                   },
+                  !client.is_company &&
+                    onMakeParticipant && {
+                      id: 'make-participant',
+                      group: 'edit',
+                      icon: <Users />,
+                      label: translate('makeParticipantOf'),
+                      onSelect: onMakeParticipant,
+                    },
                   canDelete && {
                     id: 'delete',
                     group: 'danger',

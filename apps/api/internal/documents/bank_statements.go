@@ -1,10 +1,10 @@
 package documents
 
 import (
+	"cmp"
 	"path"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -12,11 +12,13 @@ import (
 	"helvetly.com/api/internal/tags"
 )
 
-// Bank statements: AI filing and organizing put an account statement of a bank or payment provider into
-// Bank Statements/<year>, the year its period ends (else its date, else the upload's in the workspace's time zone).
-// The model says whether a file is one; a cheap check of its name and text helps. A file of the workspace's own
-// invoices and quotes is matched before (record_match.go), and a file the model reads as an invoice, quote or receipt
-// never goes there.
+// Bank statements: an account statement of a bank or payment provider, a credit advice (Gutschrift) or a payment
+// confirmation about a known client goes to that client's Documents/<year>/Bank Statements, the year of its value or
+// statement date (else the upload's in the workspace's time zone). The model says what a file is; a cheap check of a
+// statement's name and text helps. Without a known client a statement keeps its kind and is filed like any other
+// document (a plain folder or none), and a payment confirmation as before. A file of the workspace's own invoices
+// and quotes is matched before (record_match.go), and a file the model reads as an invoice, quote or receipt never
+// counts as a statement.
 
 // statementNameWords: words of a file name that say it is an account statement (en, de, fr, it).
 var statementNameWords = []string{"statement", "statements", "kontoauszug", "kontoauszüge", "kontoauszuege",
@@ -50,23 +52,28 @@ func looksLikeStatement(name, text string) bool {
 		ibanText.MatchString(text) && openingText.MatchString(text) && closingText.MatchString(text)
 }
 
-// otherRecord: the file belongs to an invoice or expense, the model names another kind for it, or the model put it
-// into another record's place.
-func otherRecord(d store.Document, kind string, place *recordPlace) bool {
-	if slices.ContainsFunc(d.Links, func(l store.DocumentLink) bool { return l.Type == "invoice" || l.Type == "expense" }) {
-		return true
-	}
-	return place != nil && place.kind != "bank_statements" || kind != "" && kind != "bank-statement"
+// linkedRecord: the file belongs to an invoice or expense.
+func linkedRecord(d store.Document) bool {
+	return slices.ContainsFunc(d.Links, func(l store.DocumentLink) bool { return l.Type == "invoice" || l.Type == "expense" })
 }
 
-// bankStatement: whether a file goes to Bank Statements: the model names it one (kind bank-statement), or names no
-// kind and its name or text looks like a statement; never a file of another record.
+// bankStatement: whether a file is a bank statement: the model names it one (kind bank-statement), or names no kind
+// and its name or text looks like a statement; never a file of another record or one the model put into another
+// record's place.
 func bankStatement(d store.Document, text, kind string, place *recordPlace) bool {
-	return !otherRecord(d, kind, place) && (kind == "bank-statement" || looksLikeStatement(d.Name, text))
+	if linkedRecord(d) || place != nil && !place.statements {
+		return false
+	}
+	return kind == "bank-statement" || kind == "" && looksLikeStatement(d.Name, text)
 }
 
-// statementYear: the year of the statement's period end, else its date (YYYY-MM-DD each, "" when unknown), else of
-// the upload in the workspace's time zone.
+// clientStatementKind: the kinds a client's Bank Statements folder holds.
+func clientStatementKind(kind string) bool {
+	return kind == "bank-statement" || kind == "payment-confirmation"
+}
+
+// statementYear: the year of the statement's period end, else its (value) date (YYYY-MM-DD each, "" when unknown),
+// else of the upload in the workspace's time zone.
 func statementYear(periodEnd, date string, uploaded time.Time, zone *time.Location) int {
 	for _, d := range []string{periodEnd, date} {
 		if y, ok := yearOf(d[:min(len(d), 4)]); ok {
@@ -76,34 +83,83 @@ func statementYear(periodEnd, date string, uploaded time.Time, zone *time.Locati
 	return uploaded.In(zone).Year()
 }
 
-// statementProposal: a proposal for a bank statement (its kind or first tag says so, or it has no kind and its name
-// or text looks like one, and the model put it into no other record's place) goes to Bank Statements/<year>: the year a path or the file's name
-// names, else the upload's in zone. A file already there keeps its place.
-func statementProposal(p proposal, d store.Document, text string, names recordNames, zone *time.Location) proposal {
+// fileClient: the one live client a file is linked to, "" for none or several.
+func fileClient(d store.Document) string {
+	client := ""
+	for _, l := range d.Links {
+		if l.Type != "client" {
+			continue
+		}
+		if client != "" && client != l.ID {
+			return ""
+		}
+		client = l.ID
+	}
+	return client
+}
+
+// pathClient: the client a record path's Clients/<client> names, "" for none.
+func pathClient(path []string, names recordNames) string {
+	if len(path) < 2 || !strings.EqualFold(path[0], store.SystemRoots["clients"]) {
+		return ""
+	}
+	match := ""
+	for _, c := range names.clients {
+		if strings.EqualFold(strings.Join(strings.Fields(c.Name), " "), path[1]) {
+			if match != "" {
+				return ""
+			}
+			match = c.ID
+		}
+	}
+	return match
+}
+
+// statementProposal: a proposal for a bank statement or payment confirmation (its kind tag says so, or it has no kind
+// and its name or text looks like a statement) of a known client (the path's, the file's client link, the client the
+// file names) goes to Clients/<client>/Documents/<year>/Bank Statements: the year a path or the file's name names,
+// else the upload's in zone. A statement of nobody keeps the model's place with its kind. A file already there keeps
+// its place.
+func statementProposal(p proposal, d store.Document, text string, names recordNames, named *store.ClientName, zone *time.Location) proposal {
 	path, _ := splitPath(p.Folder, organizeApplyDepth)
 	place, _ := recordPath(path, names)
 	kind := "" // organizing proposes the kind as the first tag
 	if len(p.Tags) > 0 && tags.Kind(p.Tags[0]) {
 		kind = p.Tags[0]
 	}
-	if place != nil && place.kind == "bank_statements" || otherRecord(d, kind, place) ||
+	if linkedRecord(d) || place != nil && place.statements || kind != "" && !clientStatementKind(kind) ||
 		kind == "" && !statementTag(p.Tags) && !looksLikeStatement(d.Name, text) {
 		return p
 	}
 	if kind == "" {
-		p.Tags = append([]string{"bank-statement"}, p.Tags[:min(len(p.Tags), filingAITags-1)]...)
+		kind = "bank-statement"
+		p.Tags = append([]string{kind}, p.Tags[:min(len(p.Tags), filingAITags-1)]...)
+	}
+	from := []string{}
+	if p.FromFolder != nil {
+		from, _ = splitPath(*p.FromFolder, organizeApplyDepth)
+	}
+	client := cmp.Or(pathClient(path, names), pathClient(from, names), fileClient(d))
+	if client == "" && named != nil {
+		client = named.ID
 	}
 	year := d.CreatedAt.In(zone).Year()
-	for _, seg := range append(path, words(d.Name)...) {
+	for _, seg := range append(append(slices.Clone(path), from...), words(d.Name)...) {
 		if y, ok := yearOf(seg); ok {
 			year = y
 			break
 		}
 	}
-	p.Folder = store.BankStatementsFolderName + "/" + strconv.Itoa(year)
+	folder, ok := clientRecordPath(names, recordPlace{clientID: client, kind: "documents", year: year})
+	if client == "" || !ok {
+		p.Change = p.Change || slices.ContainsFunc(p.Tags, func(t string) bool { return !slices.Contains(d.Tags, t) })
+		return p
+	}
+	p.Folder = folder + "/" + store.BankStatementsFolderName
 	p.Change = p.FromFolder == nil || *p.FromFolder != p.Folder ||
 		slices.ContainsFunc(p.Tags, func(t string) bool { return !slices.Contains(d.Tags, t) })
-	p.Reason = "A bank statement, so it goes in the Bank Statements folder."
+	p.Reason = map[string]string{"bank-statement": "A bank statement of the client, so it goes in the client's Bank Statements folder.",
+		"payment-confirmation": "A payment confirmation of the client, so it goes in the client's Bank Statements folder."}[kind]
 	return p
 }
 
@@ -115,4 +171,33 @@ var statementSlugs = []string{"bank-statement", "bank-statements", "account-stat
 // statementTag: the first (kind) tag, or a folder name, says bank statement.
 func statementTag(tagList []string) bool {
 	return len(tagList) > 0 && slices.Contains(statementSlugs, tags.Slug(tagList[0]))
+}
+
+// statementPlace: where filing puts a bank statement or payment confirmation of a known client (the one its record
+// path names, else the one the file names): its Documents/<year>/Bank Statements; nil for any other file.
+func statementPlace(d store.Document, kind string, record *recordPlace, named *store.ClientName, year int) *recordPlace {
+	if linkedRecord(d) || !clientStatementKind(kind) {
+		return nil
+	}
+	client := ""
+	if record != nil {
+		client = record.clientID
+	}
+	if client == "" && named != nil {
+		client = named.ID
+	}
+	if client == "" {
+		return nil
+	}
+	return &recordPlace{clientID: client, kind: "documents", year: year, statements: true}
+}
+
+// nameYear: the first year in a file's name, 0 for none.
+func nameYear(name string) int {
+	for _, w := range words(name) {
+		if y, ok := yearOf(w); ok {
+			return y
+		}
+	}
+	return 0
 }

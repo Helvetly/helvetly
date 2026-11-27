@@ -46,6 +46,9 @@ export type Engagement = {
   id: string
   number: number
   client: { id: string; number: number; name: string }
+  /** The participant of the (company) client who takes it; missing from an older API. */
+  participant_contact_id?: string | null
+  participant?: { id: string; name: string } | null
   title: string
   description: string | null
   product_id: string | null
@@ -87,6 +90,7 @@ export const billingOf = (engagement: Pick<Engagement, 'billing' | 'unit_price'>
 
 export type EngagementInput = {
   client_id: string
+  participant_contact_id?: string | null
   title: string
   description: string | null
   product_id: string | null

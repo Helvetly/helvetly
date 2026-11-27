@@ -119,7 +119,7 @@ func decode(body map[string]json.RawMessage, allowed ...string) error {
 // eventFields are EventInput's fields (scheduling-contract.md).
 var eventFields = []string{"client_id", "engagement_id", "event_type_id", "host_id", "title", "description", "client_note", "mode",
 	"meeting", "location", "time_zone", "starts_local", "duration_minutes", "recurrence", "skip_holidays", "attendees",
-	"units_per_session", "unit_price", "currency"}
+	"units_per_session", "unit_price", "currency", "participant_contact_id"}
 
 // ruleFields change a series' slots.
 var ruleFields = []string{"recurrence", "starts_local", "time_zone", "duration_minutes", "skip_holidays"}
@@ -322,6 +322,17 @@ func (s *Service) applyEvent(ctx context.Context, q store.Q, sess store.Session,
 		}
 	} else if create {
 		f.fail("client_id", "Choose a client.")
+	}
+	if raw, ok := body["participant_contact_id"]; ok && f["client_id"] == "" {
+		id, msg, err := ParticipantOf(ctx, q, e.ClientID, raw)
+		if err != nil {
+			return in, err
+		}
+		if msg != "" {
+			f.fail("participant_contact_id", msg)
+		} else {
+			e.ParticipantContactID = id
+		}
 	}
 	var etype *store.SchedEventType
 	if raw, ok := body["event_type_id"]; ok {
@@ -562,4 +573,24 @@ func literal(raw json.RawMessage) string {
 		return u
 	}
 	return string(raw)
+}
+
+// ParticipantOf reads a participant_contact_id: null clears it; else a person of the client (so of its workspace) with
+// the participant role. A message says why it is refused.
+func ParticipantOf(ctx context.Context, q store.Q, clientID string, raw json.RawMessage) (*string, string, error) {
+	if isNull(raw) {
+		return nil, "", nil
+	}
+	var id string
+	if json.Unmarshal(raw, &id) != nil || id == "" || clientID == "" {
+		return nil, "Choose a participant of this client.", nil
+	}
+	p, err := q.Contact(ctx, clientID, id)
+	if errors.Is(err, store.ErrNotFound) || err == nil && !p.Is(store.RoleParticipant) {
+		return nil, "Choose a participant of this client.", nil
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	return &p.ID, "", nil
 }

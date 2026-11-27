@@ -38,6 +38,7 @@ export function EmailComposer({
   context,
   language,
   attachments,
+  people,
 }: {
   id: string
   /** None for an email whose recipients are chosen elsewhere (a signature request's signers). */
@@ -66,6 +67,8 @@ export function EmailComposer({
   language?: EmailLanguage
   /** The files the email carries, by name. */
   attachments?: string[]
+  /** The client's contacts and participants, offered as recipients. */
+  people?: { name: string; email: string }[]
 }) {
   return (
     <>
@@ -82,6 +85,7 @@ export function EmailComposer({
           bcc={recipients.bcc}
           onBccChange={(bcc) => onRecipients({ ...recipients, bcc })}
           errors={errors}
+          people={people}
         />
       )}
       {subject !== undefined && onSubject && (

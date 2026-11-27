@@ -45,6 +45,7 @@ import { inputClass } from '@/components/clients/fields'
 import { loadProblemText } from '@/components/data/load-problem'
 import { ApprovalBadge } from '@/components/invoices/invoice-bits'
 import { RecordPageButton } from '@/components/record-link'
+import { Person, type PersonRef } from '@/components/user-avatar'
 import { useAI } from '@/lib/ai'
 import { useApproval } from '@/lib/approvals'
 import { useFolders, type Folder } from '@/lib/documents'
@@ -364,7 +365,7 @@ function Detail({
             <p className="text-[14px] font-medium">
               {translate('voided')}
               {expense.voided_at && formatDate(expense.voided_at)}
-              {expense.voided_by && translate('dynamicBy', { name: expense.voided_by.name })}
+              {expense.voided_by && <By person={expense.voided_by} />}
             </p>
             {expense.void_reason && (
               <p className="text-[13px] text-muted-foreground">{expense.void_reason}</p>
@@ -420,9 +421,9 @@ function Detail({
         <p className="text-xs leading-relaxed text-muted-foreground">
           {translate('created5')}
           {formatDate(expense.created_at)}
-          {expense.created_by && translate('dynamicBy', { name: expense.created_by.name })}
+          {expense.created_by && <By person={expense.created_by} />}
           {expense.booked_at && translate('booked', { value1: formatDate(expense.booked_at) })}
-          {expense.booked_by && translate('dynamicBy', { name: expense.booked_by.name })}
+          {expense.booked_by && <By person={expense.booked_by} />}
           {translate('bookedExpensesAndTheirReceiptsAreKeptFor10')}
         </p>
       </div>
@@ -560,7 +561,7 @@ function SupplierCard({ expense }: { expense: Expense }) {
   )
 }
 
-type Step = { label: string; detail?: string; state: 'done' | 'open' | 'late' }
+type Step = { label: string; detail?: ReactNode; state: 'done' | 'open' | 'late' }
 
 /** From the receipt's date to the payment (and the payback of what a member paid), as a short timeline. */
 function PaymentCard({ expense }: { expense: Expense }) {
@@ -590,12 +591,17 @@ function PaymentCard({ expense }: { expense: Expense }) {
       expense.reimbursed_on
         ? {
             label: translate('reimbursedOnDate', { date: formatDay(expense.reimbursed_on) }),
-            detail: expense.paid_by_member.name,
+            detail: <Person person={expense.paid_by_member} size="xs" />,
             state: 'done',
           }
         : {
             label: translate('toReimburse'),
-            detail: translate('paidOutOfPocketByName', { name: expense.paid_by_member.name }),
+            detail: (
+              <>
+                {translate('paidOutOfPocketByName', { name: '' })}
+                <Person person={expense.paid_by_member} size="xs" />
+              </>
+            ),
             state: 'open',
           },
     )
@@ -798,5 +804,15 @@ export function VoidDialog({
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** " by Anna", her photo beside her name; every language puts the name last. */
+function By({ person }: { person: PersonRef }) {
+  return (
+    <>
+      {translate('dynamicBy', { name: '' })}
+      <Person person={person} size="xs" />
+    </>
   )
 }

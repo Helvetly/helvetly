@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 
 	"helvetly.com/api/internal/aimodel"
@@ -131,14 +132,28 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
-	byID, clients := map[string]proposal{}, map[string]store.ClientName{}
+	byID, clients, numbers := map[string]proposal{}, map[string]store.ClientName{}, map[string]recordMatch{}
 	var rest []store.Document // the files no record decides, for the model
 	for _, d := range docs {
-		if p, ok := matchedProposal(index.match(d, snippets[d.ID]), d, folders, names); ok {
-			byID[d.ID] = p
-			continue
+		m := index.match(d, snippets[d.ID])
+		if m != nil && m.identity {
+			if p, ok := matchedProposal(m, d, folders, names); ok {
+				byID[d.ID] = p
+				continue
+			}
 		}
-		if c := index.client(d, snippets[d.ID]); c != nil {
+		if m != nil { // a record number names the client; a payment of it goes to its Bank Statements
+			if i := slices.IndexFunc(names.clients, func(c store.ClientName) bool { return c.ID == m.place.clientID }); i >= 0 {
+				clients[d.ID] = names.clients[i]
+			}
+			if kind, ordinal, paid := m.paid(d); paid {
+				if p, ok := paidProposal(*m, d, folders, names, kind, ordinal, ws.Location()); ok {
+					byID[d.ID] = p
+					continue
+				}
+			}
+			numbers[d.ID] = *m
+		} else if c := index.client(d, snippets[d.ID]); c != nil {
 			clients[d.ID] = *c
 		}
 		rest = append(rest, d)
@@ -147,7 +162,7 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
-	considered, err := s.organizeRest(ctx, sess, lang, rest, snippets, folders, names, clients, used, byID)
+	considered, err := s.organizeRest(ctx, sess, lang, rest, snippets, folders, names, clients, numbers, used, byID)
 	if err != nil {
 		return err
 	}
@@ -164,7 +179,8 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 // organizeRest asks the model about the files no record decides and adds its checked proposals to byID, new folders
 // named in lang; the number of files it considered.
 func (s *Service) organizeRest(ctx context.Context, sess store.Session, lang string, docs []store.Document, snippets map[string]string,
-	folders []store.Folder, names recordNames, clients map[string]store.ClientName, used []string, byID map[string]proposal) (int, error) {
+	folders []store.Folder, names recordNames, clients map[string]store.ClientName, numbers map[string]recordMatch, used []string,
+	byID map[string]proposal) (int, error) {
 	if len(docs) == 0 {
 		return 0, nil
 	}
@@ -175,11 +191,11 @@ func (s *Service) organizeRest(ctx context.Context, sess store.Session, lang str
 	}
 	call := aimodel.Call{Kind: "organize", Operation: auth.NewID("org"), Step: "organize", MaxOutput: organizeMaxOutput,
 		Caps: aimodel.OrganizeCaps}
-	reply, err := budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, used, lang), call)
+	reply, err := budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, numbers, used, lang), call)
 	if errors.Is(err, aimodel.ErrCap) || errors.Is(err, aimodel.ErrTooLarge) {
 		// too large: fewer documents, by name only
 		docs, snippets, call.Step = docs[:min(len(docs), organizeShort)], nil, "short"
-		reply, err = budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, used, lang), call)
+		reply, err = budget.Generate(ctx, s.filer, ws, organizeRequest(docs, snippets, folders, names, numbers, used, lang), call)
 	}
 	if err != nil {
 		return 0, organizeError(err)
@@ -190,7 +206,27 @@ func (s *Service) organizeRest(ctx context.Context, sess store.Session, lang str
 	}
 	for _, p := range proposals {
 		i := slices.IndexFunc(docs, func(d store.Document) bool { return d.ID == p.DocumentID })
-		byID[p.DocumentID] = statementProposal(p, docs[i], snippets[p.DocumentID], names, ws.Location())
+		var named *store.ClientName
+		if c, ok := clients[p.DocumentID]; ok {
+			named = &c
+		}
+		p = statementProposal(p, docs[i], snippets[p.DocumentID], names, named, ws.Location())
+		p = taxProposal(p, docs[i], snippets[p.DocumentID], names, ws.Location())
+		if m, ok := numbers[p.DocumentID]; ok { // named by number: a payment of the record, else the record as before
+			if len(p.Tags) > 0 && clientStatementKind(p.Tags[0]) {
+				p.Reason = m.paidReason(p.Tags[0], "")
+			} else if mp, ok := matchedProposal(&m, docs[i], folders, names); ok {
+				p = mp
+			}
+		}
+		byID[p.DocumentID] = p
+	}
+	for _, d := range docs { // named by number, unanswered: the record, as before
+		if m, ok := numbers[d.ID]; ok && byID[d.ID].DocumentID == "" {
+			if p, ok := matchedProposal(&m, d, folders, names); ok {
+				byID[d.ID] = p
+			}
+		}
 	}
 	return len(docs), nil
 }
@@ -210,6 +246,27 @@ func matchedProposal(m *recordMatch, d store.Document, folders []store.Folder, n
 		p.FromFolder = &from
 	}
 	p.Change = folder != from || !slices.Contains(d.Tags, m.tag)
+	if !p.Change {
+		p.Folder = from
+	}
+	return p, true
+}
+
+// paidProposal: the proposal for a payment confirmation or bank statement of a record the file names by number: the
+// client's Documents/<year>/Bank Statements (the year its folder or name says, else the upload's in zone) with its kind.
+func paidProposal(m recordMatch, d store.Document, folders []store.Folder, names recordNames, kind, ordinal string, zone *time.Location) (proposal, bool) {
+	from := currentPath(folders, d.FolderID)
+	p := proposal{DocumentID: d.ID, Name: d.Name, Folder: from, Tags: []string{kind}, Change: true}
+	if d.FolderID != nil {
+		p.FromFolder = &from
+	}
+	client := store.ClientName{ID: m.place.clientID, Name: m.client}
+	p = statementProposal(p, d, "", names, &client, zone)
+	if !strings.HasSuffix(p.Folder, "/"+store.BankStatementsFolderName) {
+		return proposal{}, false // the client's name is not one a record path can name: the model decides
+	}
+	p.Reason = m.paidReason(kind, ordinal)
+	p.Change = p.Folder != from || !slices.Contains(d.Tags, kind)
 	if !p.Change {
 		p.Folder = from
 	}
@@ -277,7 +334,8 @@ func currentPath(folders []store.Folder, id *string) string {
 }
 
 // organizeRequest: the folder tree, the language of new folders, the tags in use and one JSON line per document.
-func organizeRequest(docs []store.Document, snippets map[string]string, folders []store.Folder, names recordNames, tags []string, lang string) aimodel.Request {
+func organizeRequest(docs []store.Document, snippets map[string]string, folders []store.Folder, names recordNames,
+	numbers map[string]recordMatch, tags []string, lang string) aimodel.Request {
 	var msg strings.Builder
 	msg.WriteString("Folders:\n")
 	paths := make([]string, 0, len(folders))
@@ -297,8 +355,12 @@ func organizeRequest(docs []store.Document, snippets map[string]string, folders 
 	}
 	msg.WriteString("\nDocuments:\n")
 	for _, d := range docs {
-		line, _ := json.Marshal(map[string]any{"id": d.ID, "name": d.Name, "type": d.ContentType,
-			"folder": currentPath(folders, d.FolderID), "tags": d.Tags, "text": snippets[d.ID]})
+		item := map[string]any{"id": d.ID, "name": d.Name, "type": d.ContentType,
+			"folder": currentPath(folders, d.FolderID), "tags": d.Tags, "text": snippets[d.ID]}
+		if m, ok := numbers[d.ID]; ok {
+			item["record"] = m.hint()
+		}
+		line, _ := json.Marshal(item)
 		msg.Write(line)
 		msg.WriteString("\n")
 	}

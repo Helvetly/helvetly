@@ -48,6 +48,7 @@ import {
   getPortalSession,
   portalKeys,
   signOutPortal,
+  loginKey,
   switchPortalClient,
   type PortalSession,
 } from '@/lib/portal'
@@ -66,6 +67,14 @@ const NAV = [
 
 /** Shown when the plan has Scheduling and the client has sessions or may book (`useSessionsVisible`). */
 const SESSIONS = { href: '/sessions', label: translate('sessions'), icon: CalendarDays }
+
+/**
+ * A participant's tabs: their sessions (the home page) and the documents shared with them, plus their invoices
+ * when the company sends to its participants; never the company's overview or engagements.
+ */
+export function participantNav(documents: boolean) {
+  return [{ ...SESSIONS, href: '/' }, ...(documents ? [NAV[1]!] : []), NAV[3]!]
+}
 
 const SessionContext = createContext<PortalSession | null>(null)
 
@@ -136,6 +145,8 @@ function AccountMenu({
   // Radix gives focus back to the button when the menu closes; after a mouse that focus must not draw the
   // keyboard ring, so the button is focused again without it. The keyboard still gets the ring.
   const openedByPointer = useRef(false)
+  // A participant is shown as themselves; the client's own login as the client.
+  const who = session.participant?.name ?? session.client.name
   return (
     <DropdownMenu>
       <Tooltip>
@@ -150,21 +161,21 @@ function AccountMenu({
               className="h-10 min-w-10 gap-2 rounded-full p-0 lg:max-w-60 lg:justify-start lg:pr-4 lg:pl-1"
             >
               <span className="sr-only">
-                {translate('accountMenu')}, {session.client.name}
+                {translate('accountMenu')}, {who}
               </span>
-              <LoginAvatar name={session.client.name} src={session.avatar_url} />
+              <LoginAvatar name={who} src={session.avatar_url} />
               <span
                 aria-hidden
                 className="hidden truncate text-body font-medium text-foreground lg:block"
-                title={session.client.name}
+                title={who}
               >
-                {session.client.name}
+                {who}
               </span>
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
         {/* Only the lone avatar needs it; from lg up the name is on the button. */}
-        <TooltipContent className="lg:hidden">{session.client.name}</TooltipContent>
+        <TooltipContent className="lg:hidden">{who}</TooltipContent>
       </Tooltip>
       <DropdownMenuContent
         align="end"
@@ -177,9 +188,13 @@ function AccountMenu({
         className="w-72 max-w-[calc(100vw-2rem)] rounded-xl p-1.5 shadow-elevation-2 [&_[role=menuitem]]:h-9 [&_[role=menuitemradio]]:min-h-9"
       >
         <DropdownMenuLabel className="flex items-center gap-2.5 px-2 py-2 font-normal">
-          <LoginAvatar name={session.client.name} src={session.avatar_url} />
+          <LoginAvatar name={who} src={session.avatar_url} />
           <span className="grid min-w-0 leading-tight">
-            <span className="truncate text-body text-foreground">{session.client.name}</span>
+            <span className="truncate text-body text-foreground">
+              {session.participant
+                ? `${session.participant.name} · ${session.client.name}`
+                : session.client.name}
+            </span>
             {session.email && (
               <span className="truncate text-body-sm text-muted-foreground">{session.email}</span>
             )}
@@ -191,11 +206,18 @@ function AccountMenu({
             <DropdownMenuLabel className="px-2 pt-1 pb-1 text-xs font-normal text-muted-foreground">
               {translate('switchClient')}
             </DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={session.client.id} onValueChange={onSwitch}>
+            <DropdownMenuRadioGroup
+              value={loginKey({ id: session.client.id, participant_id: session.participant?.id })}
+              onValueChange={onSwitch}
+            >
               {session.clients.map((client) => (
-                <DropdownMenuRadioItem key={client.id} value={client.id}>
+                <DropdownMenuRadioItem key={loginKey(client)} value={loginKey(client)}>
                   <span className="grid min-w-0 leading-tight">
-                    <span className="truncate">{client.name}</span>
+                    <span className="truncate">
+                      {client.participant_name
+                        ? `${client.participant_name} · ${client.name}`
+                        : client.name}
+                    </span>
                     {client.workspace_name !== session.workspace.name && (
                       <span className="truncate text-xs text-muted-foreground">
                         {client.workspace_name}
@@ -208,12 +230,14 @@ function AccountMenu({
           </>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href={scoped('/profile')}>
-            <UserRound />
-            {translate('profile2')}
-          </Link>
-        </DropdownMenuItem>
+        {!session.participant && (
+          <DropdownMenuItem asChild>
+            <Link href={scoped('/profile')}>
+              <UserRound />
+              {translate('profile2')}
+            </Link>
+          </DropdownMenuItem>
+        )}
         <LanguageMenuItem onSelect={onLanguage} />
         <DropdownMenuSeparator />
         {/* The platform account menu's Theme row. */}
@@ -238,7 +262,13 @@ function AccountMenu({
  * pill in the platform sidebar's active colours (on phones only the icon carries it), never an underline.
  */
 function PortalNav({ pathname }: { pathname: string }) {
-  const nav = useSessionsVisible() ? [NAV[0]!, SESSIONS, ...NAV.slice(1)] : NAV
+  const visible = useSessionsVisible()
+  const participant = useContext(SessionContext)?.participant
+  const nav = participant
+    ? participantNav(participant.documents)
+    : visible
+      ? [NAV[0]!, SESSIONS, ...NAV.slice(1)]
+      : NAV
   return (
     <nav
       aria-label={translate('portal')}
@@ -350,7 +380,7 @@ export function PortalShell({ children, logoUrl }: { children: ReactNode; logoUr
   if (isPending || !session) return <Loader size="page" className="min-h-svh" />
 
   const switchClient = async (id: string) => {
-    if (id === session.client.id) return
+    if (id === loginKey({ id: session.client.id, participant_id: session.participant?.id })) return
     try {
       await switchPortalClient(id)
       // Not clear(): on '/' nothing re-renders the shell, which would keep the old client. Resetting

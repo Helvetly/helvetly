@@ -32,7 +32,7 @@ export type MissingField =
   | 'items'
   | 'exchange_rate'
   | 'receipt'
-type Person = { id: string; name: string }
+type Person = { id: string; name: string; avatar_url?: string | null }
 
 /** `preset`: the catalogue entry the category still is (shown in the user's language); null once someone renamed it. */
 export type CategoryRef = { id: string; name: string; account_code: string; preset: string | null }

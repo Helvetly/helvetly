@@ -30,6 +30,7 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadProblem } from '@/components/data/load-problem'
 import { RecordLink, RecordPageButton, useDrawers } from '@/components/record-link'
 import { apiFieldErrors } from '@/components/section-form'
+import { Person } from '@/components/user-avatar'
 import { ApiError } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
@@ -611,11 +612,16 @@ function SessionDetails({
               {occurrence.client.name}
             </RecordLink>
           </Row>
+          {occurrence.participant && (
+            <Row icon={User} label={translate('schedParticipant')}>
+              {occurrence.participant.name}
+            </Row>
+          )}
           <Row icon={User} label={translate('schedHost')}>
             {occurrence.host ? (
               <span className="flex items-center gap-1.5">
                 <HostDot id={occurrence.host.id} />
-                {occurrence.host.name}
+                <Person person={occurrence.host} size="sm" />
               </span>
             ) : (
               <span className="text-muted-foreground">{translate('schedHostLeft')}</span>

@@ -6,6 +6,7 @@ import { ArrowRight, Check } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 
 import { RecordLink } from '@/components/record-link'
+import { Person } from '@/components/user-avatar'
 import { translate } from '@/lib/i18n'
 import { categoryOf, rowStep, shortTime, type Notification } from '@/lib/notifications'
 
@@ -28,7 +29,7 @@ export function NotificationMeta({ n, className }: { n: Notification; className?
     >
       {n.actor && (
         <>
-          <span className="truncate">{n.actor}</span>
+          <Person person={{ name: n.actor, avatar_url: n.actor_avatar_url }} size="xs" />
           <span aria-hidden>·</span>
         </>
       )}

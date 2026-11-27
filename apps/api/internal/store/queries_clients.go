@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -58,12 +59,14 @@ type Client struct {
 	VerifiedUID        *string           `json:"verified_uid"`        // the UID the Swiss UID register knows the client under
 	UIDVerifiedAt      *time.Time        `json:"uid_verified_at"`     // when the register last confirmed it
 	Contacts           []Contact         `json:"contacts"`
-	IsDraft            bool              `json:"is_draft"`
-	MissingFields      []string          `json:"missing_fields"`
-	FilesCount         int               `json:"files_count"`
-	PendingChange      bool              `json:"pending_change_request"` // the client asked for a change in the portal
-	CreatedAt          time.Time         `json:"created_at"`
-	UpdatedAt          time.Time         `json:"updated_at"`
+	// DocumentsTo: where a company's invoices and documents go, "company" or "participants" (the participant each is for).
+	DocumentsTo   string    `json:"documents_to"`
+	IsDraft       bool      `json:"is_draft"`
+	MissingFields []string  `json:"missing_fields"`
+	FilesCount    int       `json:"files_count"`
+	PendingChange bool      `json:"pending_change_request"` // the client asked for a change in the portal
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // GreetingName is how an email greets the client: its preferred name, a company's primary contact, else its name.
@@ -82,13 +85,43 @@ func (c Client) GreetingName() string {
 	return strings.TrimSpace(c.Name)
 }
 
+// Contact is one person of a client: a contact (billing and correspondence), a participant (takes the service) or both.
 type Contact struct {
-	ID        string  `json:"id"`
-	Name      string  `json:"name"`
-	Role      *string `json:"role"`
-	Email     *string `json:"email"`
-	Phone     *string `json:"phone"`
-	IsPrimary bool    `json:"is_primary"`
+	ID            string   `json:"id"`
+	Name          string   `json:"name"`
+	Role          *string  `json:"role"` // the person's job title
+	Email         *string  `json:"email"`
+	Phone         *string  `json:"phone"`
+	IsPrimary     bool     `json:"is_primary"`
+	Roles         []string `json:"roles"`
+	PortalEnabled bool     `json:"portal_enabled"` // a participant's own portal switch
+	Street        *string  `json:"street"`
+	StreetNumber  *string  `json:"street_number"`
+	Zip           *string  `json:"zip"`
+	City          *string  `json:"city"`
+	Country       *string  `json:"country"`
+	VATNumber     *string  `json:"vat_number"`
+}
+
+const (
+	RoleContact     = "contact"
+	RoleParticipant = "participant"
+)
+
+// Is reports whether the person has the role.
+func (c Contact) Is(role string) bool { return slices.Contains(c.Roles, role) }
+
+// Participant is the client's person id with the participant role, nil when there is none (or no id).
+func (c Client) Participant(id *string) *Contact {
+	if id == nil {
+		return nil
+	}
+	for i, p := range c.Contacts {
+		if p.ID == *id && p.Is(RoleParticipant) {
+			return &c.Contacts[i]
+		}
+	}
+	return nil
 }
 
 type ClientFile struct {
@@ -133,10 +166,11 @@ type TagCount struct {
 // ClientColumns: the columns a client write may set; the keys of a write's fields map must be among them.
 var ClientColumns = []string{"name", "preferred_name", "is_company", "is_active", "email", "billing_email", "phone", "website",
 	"street", "street_number", "apt", "zip", "city", "country", "vat_number", "language", "currency", "payment_terms_days",
-	"internal_id", "note", "tags", "electronic_address", "registration_number", "dunning_enabled", "einvoice_format", "leitweg_id", "region", "portal_enabled"}
+	"internal_id", "note", "tags", "electronic_address", "registration_number", "dunning_enabled", "einvoice_format", "leitweg_id", "region", "portal_enabled", "documents_to"}
 
 // ContactColumns: the same for a contact (is_primary is set through its own queries).
-var ContactColumns = []string{"name", "role", "email", "phone"}
+var ContactColumns = []string{"name", "role", "email", "phone", "roles", "portal_enabled", "street", "street_number", "zip", "city",
+	"country", "vat_number"}
 
 // ClientSorts maps the list's sort keys to their SQL.
 var ClientSorts = map[string]string{"number": "c.number", "name": "lower(c.name)", "email": "c.email", "city": "lower(c.city)",
@@ -144,18 +178,19 @@ var ClientSorts = map[string]string{"number": "c.number", "name": "lower(c.name)
 
 const clientColumns = `c.id, c.number, c.name, c.preferred_name, c.is_company, c.is_active, c.email, c.billing_email, c.phone,
 	c.website, c.street, c.street_number, c.apt, c.zip, c.city, c.country, c.vat_number, c.language, c.currency,
-	c.payment_terms_days, c.internal_id, c.note, c.tags, c.created_at, c.updated_at, c.electronic_address, c.registration_number, c.dunning_enabled, c.einvoice_format, c.leitweg_id, c.region, c.portal_enabled, c.portal_invited_at, c.portal_signed_in_at, c.verified_uid, c.uid_verified_at,
+	c.payment_terms_days, c.internal_id, c.note, c.tags, c.created_at, c.updated_at, c.electronic_address, c.registration_number, c.dunning_enabled, c.einvoice_format, c.leitweg_id, c.region, c.portal_enabled, c.portal_invited_at, c.portal_signed_in_at, c.verified_uid, c.uid_verified_at, c.documents_to,
 	(SELECT count(*) FROM document_links l JOIN documents d ON d.id = l.document_id AND d.deleted_at IS NULL
 		WHERE l.target_type = 'client' AND l.target_id = c.id),
 	EXISTS (SELECT 1 FROM client_change_requests r WHERE r.client_id = c.id AND r.status = 'pending'),
 	COALESCE((SELECT json_agg(json_build_object('id', k.id, 'name', k.name, 'role', k.role, 'email', k.email, 'phone', k.phone,
-		'is_primary', k.is_primary) ORDER BY k.is_primary DESC, k.created_at, k.id) FROM client_contacts k WHERE k.client_id = c.id), '[]')`
+		'is_primary', k.is_primary, 'roles', k.roles, 'portal_enabled', k.portal_enabled, 'street', k.street,
+		'street_number', k.street_number, 'zip', k.zip, 'city', k.city, 'country', k.country, 'vat_number', k.vat_number) ORDER BY k.is_primary DESC, k.created_at, k.id) FROM client_contacts k WHERE k.client_id = c.id), '[]')`
 
 func scanClient(row interface{ Scan(...any) error }) (Client, error) {
 	var c Client
 	err := row.Scan(&c.ID, &c.Number, &c.Name, &c.PreferredName, &c.IsCompany, &c.IsActive, &c.Email, &c.BillingEmail, &c.Phone,
 		&c.Website, &c.Street, &c.StreetNumber, &c.Apt, &c.Zip, &c.City, &c.Country, &c.VATNumber, &c.Language, &c.Currency,
-		&c.PaymentTermsDays, &c.InternalID, &c.Note, &c.Tags, &c.CreatedAt, &c.UpdatedAt, &c.ElectronicAddress, &c.RegistrationNumber, &c.DunningEnabled, &c.EInvoiceFormat, &c.LeitwegID, &c.Region, &c.PortalEnabled, &c.PortalInvitedAt, &c.PortalSignedInAt, &c.VerifiedUID, &c.UIDVerifiedAt, &c.FilesCount, &c.PendingChange, &c.Contacts)
+		&c.PaymentTermsDays, &c.InternalID, &c.Note, &c.Tags, &c.CreatedAt, &c.UpdatedAt, &c.ElectronicAddress, &c.RegistrationNumber, &c.DunningEnabled, &c.EInvoiceFormat, &c.LeitwegID, &c.Region, &c.PortalEnabled, &c.PortalInvitedAt, &c.PortalSignedInAt, &c.VerifiedUID, &c.UIDVerifiedAt, &c.DocumentsTo, &c.FilesCount, &c.PendingChange, &c.Contacts)
 	address := map[string]*string{"street": c.Street, "street_number": c.StreetNumber, "zip": c.Zip, "city": c.City, "country": c.Country}
 	c.MissingFields = []string{}
 	for _, f := range DraftFields {
@@ -464,11 +499,12 @@ func (q Q) ClientTags(ctx context.Context, workspaceID string) ([]TagCount, erro
 
 // ---- contacts (call inside a transaction holding LockClient, so the one-primary rule holds) ----
 
-const contactColumns = `id, name, role, email, phone, is_primary`
+const contactColumns = `id, name, role, email, phone, is_primary, roles, portal_enabled, street, street_number, zip, city, country, vat_number`
 
 func scanContact(row interface{ Scan(...any) error }) (Contact, error) {
 	var c Contact
-	err := row.Scan(&c.ID, &c.Name, &c.Role, &c.Email, &c.Phone, &c.IsPrimary)
+	err := row.Scan(&c.ID, &c.Name, &c.Role, &c.Email, &c.Phone, &c.IsPrimary, &c.Roles, &c.PortalEnabled, &c.Street, &c.StreetNumber,
+		&c.Zip, &c.City, &c.Country, &c.VATNumber)
 	return c, err
 }
 
@@ -488,8 +524,25 @@ func (q Q) CreateContact(ctx context.Context, workspaceID, clientID, id string, 
 		}
 	}
 	_, err = q.db.Exec(ctx, `INSERT INTO client_contacts (id, workspace_id, client_id, is_primary, created_at, updated_at, `+
-		strings.Join(cols, ", ")+`) VALUES ($1, $2, $3, $4 OR NOT EXISTS (SELECT 1 FROM client_contacts WHERE client_id = $3), $5, $5, `+
+		strings.Join(cols, ", ")+`) VALUES ($1, $2, $3, $4, $5, $5, `+
 		placeholders(6, len(cols))+`)`, append([]any{id, workspaceID, clientID, primary, now}, args...)...)
+	if err != nil {
+		return err
+	}
+	return q.fixPrimaryContact(ctx, clientID)
+}
+
+// fixPrimaryContact keeps the rule: exactly one primary among the client's contacts (the role) while any exist, and
+// never a participant who is no contact; the oldest contact takes over when needed.
+func (q Q) fixPrimaryContact(ctx context.Context, clientID string) error {
+	_, err := q.db.Exec(ctx, `UPDATE client_contacts SET is_primary = false
+		WHERE client_id = $1 AND is_primary AND NOT ('contact' = ANY (roles))`, clientID)
+	if err != nil {
+		return err
+	}
+	_, err = q.db.Exec(ctx, `UPDATE client_contacts SET is_primary = true WHERE id = (
+			SELECT id FROM client_contacts WHERE client_id = $1 AND 'contact' = ANY (roles) ORDER BY created_at, id LIMIT 1)
+		AND NOT EXISTS (SELECT 1 FROM client_contacts WHERE client_id = $1 AND is_primary)`, clientID)
 	return err
 }
 
@@ -510,7 +563,10 @@ func (q Q) UpdateContact(ctx context.Context, clientID, id string, fields map[st
 		set += ", " + col + " = $" + strconv.Itoa(4+i)
 	}
 	_, err = q.db.Exec(ctx, `UPDATE client_contacts SET `+set+` WHERE client_id = $1 AND id = $2`, append([]any{clientID, id, now}, args...)...)
-	return err
+	if err != nil {
+		return err
+	}
+	return q.fixPrimaryContact(ctx, clientID)
 }
 
 func (q Q) clearPrimaryContact(ctx context.Context, clientID string) error {
@@ -526,8 +582,7 @@ func (q Q) DeleteContact(ctx context.Context, clientID, id string) error {
 		return err
 	}
 	if wasPrimary {
-		_, err = q.db.Exec(ctx, `UPDATE client_contacts SET is_primary = true WHERE id = (
-			SELECT id FROM client_contacts WHERE client_id = $1 ORDER BY created_at, id LIMIT 1)`, clientID)
+		err = q.fixPrimaryContact(ctx, clientID)
 	}
 	return err
 }

@@ -3,16 +3,18 @@ package documents
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"helvetly.com/api/internal/auth"
 	"helvetly.com/api/internal/store"
 )
 
 // System folders (store/queries_system_folders.go): Clients/<client>/<record type>/<year> (and
-// Clients/<client>/Documents/<year>/Contracts),
-// Expenses/<year>/<category> and Bank Statements/<year>. Nobody renames, moves or deletes them; typed ones are stored by their English name and
+// Clients/<client>/Documents/<year>/Contracts and …/Bank Statements), Expenses/<year>/<category> and Tax
+// Documents/<year>. Nobody renames, moves or deletes them; typed ones are stored by their English name and
 // answered in the asker's language.
 
 var errSystemFolder = refuse(http.StatusConflict, "system_folder",
@@ -20,12 +22,12 @@ var errSystemFolder = refuse(http.StatusConflict, "system_folder",
 
 // systemNames: the names of the typed system folders in the other languages (English is the stored name).
 var systemNames = map[string]map[string]string{
-	"de": {"clients": "Kunden", "expenses": "Ausgaben", "bank_statements": "Kontoauszüge", "invoices": "Rechnungen", "quotes": "Offerten",
-		"engagements": "Aufträge", "signatures": "Unterschriften", "documents": "Dokumente", "contracts": "Verträge", "uncategorised": "Ohne Kategorie"},
-	"fr": {"clients": "Clients", "expenses": "Dépenses", "bank_statements": "Relevés bancaires", "invoices": "Factures", "quotes": "Devis",
-		"engagements": "Mandats", "signatures": "Signatures", "documents": "Documents", "contracts": "Contrats", "uncategorised": "Sans catégorie"},
-	"it": {"clients": "Clienti", "expenses": "Spese", "bank_statements": "Estratti conto", "invoices": "Fatture", "quotes": "Preventivi",
-		"engagements": "Incarichi", "signatures": "Firme", "documents": "Documenti", "contracts": "Contratti", "uncategorised": "Senza categoria"},
+	"de": {"clients": "Kunden", "expenses": "Ausgaben", "tax_documents": "Steuerunterlagen", "invoices": "Rechnungen", "quotes": "Offerten",
+		"engagements": "Aufträge", "signatures": "Unterschriften", "documents": "Dokumente", "contracts": "Verträge", "client_bank_statements": "Kontoauszüge", "uncategorised": "Ohne Kategorie"},
+	"fr": {"clients": "Clients", "expenses": "Dépenses", "tax_documents": "Documents fiscaux", "invoices": "Factures", "quotes": "Devis",
+		"engagements": "Mandats", "signatures": "Signatures", "documents": "Documents", "contracts": "Contrats", "client_bank_statements": "Relevés bancaires", "uncategorised": "Sans catégorie"},
+	"it": {"clients": "Clienti", "expenses": "Spese", "tax_documents": "Documenti fiscali", "invoices": "Fatture", "quotes": "Preventivi",
+		"engagements": "Incarichi", "signatures": "Firme", "documents": "Documenti", "contracts": "Contratti", "client_bank_statements": "Estratti conto", "uncategorised": "Senza categoria"},
 }
 
 // language: the asker's language among en, de, fr and it: ?lang, else the first supported of Accept-Language.
@@ -73,8 +75,9 @@ func localizeDocument(r *http.Request, d *store.Document) {
 
 // BackfillSystemFolders files what came before the system folders: the missing top-level ones, the stored PDFs of
 // issued invoices and sent quotes (one document each, sharing the record's object), the client files the app put
-// straight into Clients and the earlier Expenses/<category>/<year> folders, turned into Expenses/<year>/<category>.
-// Idempotent: each step only picks what is still missing, under the workspace's lock.
+// straight into Clients and the earlier Expenses/<category>/<year> folders, turned into Expenses/<year>/<category>;
+// then it repairs bank statements (repairStatementFolders). Idempotent: each step only picks what is still missing,
+// under the workspace's lock.
 func (s *Service) BackfillSystemFolders(ctx context.Context) error {
 	const batch = 200
 	for {
@@ -162,7 +165,58 @@ func (s *Service) BackfillSystemFolders(ctx context.Context) error {
 			break
 		}
 	}
-	return s.backfillExpenseFolders(ctx, batch)
+	if err := s.backfillExpenseFolders(ctx, batch); err != nil {
+		return err
+	}
+	return s.repairStatementFolders(ctx, batch)
+}
+
+// repairStatementFolders takes the top-level Bank Statements folders of migration 00079 apart and empties the plain
+// folders of statements or payment confirmations in a client's Documents/<year> (such as "Gutschriften") into its
+// Bank Statements, one folder per transaction under the workspace's lock, each audited (documents.folder_repaired).
+func (s *Service) repairStatementFolders(ctx context.Context, batch int) error {
+	for _, step := range []struct {
+		what   string
+		list   func(context.Context, int) ([]store.OldExpenseFolder, error)
+		repair func(store.Q, context.Context, string, string, time.Time) (store.FolderRepair, error)
+	}{
+		{"bank_statements_root", s.db.BankStatementRoots, store.Q.RepairBankStatementsRoot},
+		{"client_statements", s.db.MisfiledStatementFolders, store.Q.RepairMisfiledStatementFolder},
+	} {
+		for {
+			found, err := step.list(ctx, batch)
+			if err != nil {
+				return err
+			}
+			for _, f := range found {
+				var r store.FolderRepair
+				err := s.db.Tx(ctx, func(q store.Q) error {
+					if err := q.LockAddress(ctx, "system-folders:"+f.WorkspaceID); err != nil {
+						return err
+					}
+					if r, err = step.repair(q, ctx, f.WorkspaceID, f.ID, s.now()); err != nil {
+						return err
+					}
+					raw, err := json.Marshal(map[string]any{"repair": step.what, "folder": f.ID, "files": r.Moved,
+						"deleted": r.Deleted, "unlocked": r.Unlocked})
+					if err != nil {
+						return err
+					}
+					return q.LogEvent(ctx, store.FinancialEvent{WorkspaceID: f.WorkspaceID, Kind: "documents.folder_repaired",
+						SubjectType: "workspace", SubjectID: f.WorkspaceID, At: s.now(), Payload: raw})
+				})
+				if err != nil {
+					return err
+				}
+				s.log.InfoContext(ctx, "documents: folder repaired", "repair", step.what, "workspace", f.WorkspaceID,
+					"folder", f.ID, "files", r.Moved, "deleted", r.Deleted, "unlocked", r.Unlocked)
+			}
+			if len(found) < batch {
+				break
+			}
+		}
+	}
+	return nil
 }
 
 // backfillExpenseFolders turns the earlier Expenses/<category>/<year> folders into Expenses/<year>/<category>, one

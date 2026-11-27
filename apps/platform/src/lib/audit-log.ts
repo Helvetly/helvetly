@@ -53,9 +53,16 @@ export const AUDIT_KINDS = [
   'workspace.portal_domain_added',
   'workspace.portal_domain_removed',
   'workspace.reply_to_changed',
+  'workspace.client_emails_changed',
   'portal.preview_started',
   'portal.preview_ended',
+  'portal.participant_signed_in',
+  'portal.participant_signed_out',
+  'portal.participant_access_granted',
+  'portal.participant_access_revoked',
+  'client.merged_into_participant',
   'documents.exported',
+  'documents.folder_repaired',
   'imports.expired',
   'email_template.ai_written',
   'quote.contract_drafted',
@@ -277,6 +284,13 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
         }),
         amount: null,
       }
+    case 'documents.folder_repaired':
+      return {
+        line: translate('auditSentenceDocumentsFolderRepaired', {
+          count: Number(event.payload.files) || 0,
+        }),
+        amount: null,
+      }
     case 'approvals.group_deleted':
       return { line: translate('auditSentenceGroupDeleted'), amount: null }
     case 'approvals.policy_saved':
@@ -296,6 +310,23 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
         action,
         to: text(event.payload.to),
         hostname: text(event.payload.hostname),
+      }),
+      amount: null,
+    }
+  if (area === 'portal' && action.startsWith('participant_'))
+    return {
+      line: translate('auditSentencePortalParticipant', {
+        action,
+        participant: text(event.payload.participant_name),
+        client: text(event.payload.client_name),
+      }),
+      amount: null,
+    }
+  if (event.kind === 'client.merged_into_participant')
+    return {
+      line: translate('auditSentenceMergedIntoParticipant', {
+        client: text(event.payload.client_name),
+        company: text(event.payload.company_name),
       }),
       amount: null,
     }

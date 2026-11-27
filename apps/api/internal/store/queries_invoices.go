@@ -130,59 +130,61 @@ type UnconfirmedReminder struct {
 }
 
 type Invoice struct {
-	ID               string              `json:"id"`
-	Kind             string              `json:"kind"`
-	Number           *string             `json:"number"`
-	Status           string              `json:"status"`
-	IsOverdue        bool                `json:"is_overdue"`
-	ClientID         string              `json:"client_id"`
-	Client           InvoiceClient       `json:"client"`
-	Quote            *InvoiceRef         `json:"quote"` // the accepted quote this draft was made from (docs/quotes-contract.md)
-	CreditedInvoice  *InvoiceRef         `json:"credited_invoice"`
-	IssueDate        string              `json:"issue_date"`
-	DueDate          string              `json:"due_date"`
-	ServiceDate      *string             `json:"service_date"`
-	ServiceDateEnd   *string             `json:"service_date_end"`
-	Currency         string              `json:"currency"`
-	Language         string              `json:"language"`
-	VATMode          string              `json:"vat_mode"`
-	Reference        *string             `json:"reference"`
-	TaxCurrencyRate  *string             `json:"tax_currency_rate"` // RON per unit of Currency for BT-111 (RO e-Factura), entered by the user
-	Intro            *string             `json:"intro"`
-	Footer           *string             `json:"footer"`
-	Note             *string             `json:"note"`
-	Lines            []InvoiceLine       `json:"lines"`
-	DiscountPercent  Percent             `json:"discount_percent"`
-	Subtotal         Money               `json:"subtotal"`
-	DiscountAmount   Money               `json:"discount_amount"`
-	NetTotal         Money               `json:"net_total"`
-	VATBreakdown     []invoicecalc.Group `json:"vat_breakdown"`
-	VATTotal         Money               `json:"vat_total"`
-	Total            Money               `json:"total"`
-	RoundingAmount   Money               `json:"rounding_amount"`
-	PayableTotal     Money               `json:"payable_total"` // total + rounding_amount: what the buyer owes in all
-	PrepaidTotal     Money               `json:"prepaid_total"` // final invoice: the gross prepaid amount, already out of the totals
-	Prepayments      []PrepaymentRef     `json:"prepayments"`
-	DeductedOn       *InvoiceRef         `json:"deducted_on"` // prepayment: the final invoice it was deducted on
-	AmountPaid       Money               `json:"amount_paid"`
-	AmountCredited   Money               `json:"amount_credited"`
-	AmountDue        Money               `json:"amount_due"`
-	AmountRefunded   Money               `json:"amount_refunded"` // Σ refunds
-	RefundDue        Money               `json:"refund_due"`      // credit balance still to pay back to the buyer, ≥ 0
-	PaymentMethods   PaymentMethods      `json:"payment_methods"`
-	Payment          InvoicePaymentInfo  `json:"payment"`
-	Seller           *Party              `json:"seller"`
-	Buyer            *Party              `json:"buyer"`
-	Payments         []Payment           `json:"payments"`
-	Refunds          []Refund            `json:"refunds"`
-	Instalments      *InstalmentSchedule `json:"instalments"`
-	Plan             *PlanRef            `json:"plan"`
-	RemindersEnabled bool                `json:"reminders_enabled"`
-	IssuedAt         *time.Time          `json:"issued_at"`
-	SentAt           *time.Time          `json:"sent_at"`
-	CreatedAt        time.Time           `json:"created_at"`
-	UpdatedAt        time.Time           `json:"updated_at"`
-	PDFKey           *string             `json:"-"`
+	ID              string              `json:"id"`
+	Kind            string              `json:"kind"`
+	Number          *string             `json:"number"`
+	Status          string              `json:"status"`
+	IsOverdue       bool                `json:"is_overdue"`
+	ClientID        string              `json:"client_id"`
+	Client          InvoiceClient       `json:"client"`
+	Quote           *InvoiceRef         `json:"quote"` // the accepted quote this draft was made from (docs/quotes-contract.md)
+	CreditedInvoice *InvoiceRef         `json:"credited_invoice"`
+	IssueDate       string              `json:"issue_date"`
+	DueDate         string              `json:"due_date"`
+	ServiceDate     *string             `json:"service_date"`
+	ServiceDateEnd  *string             `json:"service_date_end"`
+	Currency        string              `json:"currency"`
+	Language        string              `json:"language"`
+	VATMode         string              `json:"vat_mode"`
+	Reference       *string             `json:"reference"`
+	TaxCurrencyRate *string             `json:"tax_currency_rate"` // RON per unit of Currency for BT-111 (RO e-Factura), entered by the user
+	Intro           *string             `json:"intro"`
+	Footer          *string             `json:"footer"`
+	Note            *string             `json:"note"`
+	Lines           []InvoiceLine       `json:"lines"`
+	DiscountPercent Percent             `json:"discount_percent"`
+	Subtotal        Money               `json:"subtotal"`
+	DiscountAmount  Money               `json:"discount_amount"`
+	NetTotal        Money               `json:"net_total"`
+	VATBreakdown    []invoicecalc.Group `json:"vat_breakdown"`
+	VATTotal        Money               `json:"vat_total"`
+	Total           Money               `json:"total"`
+	RoundingAmount  Money               `json:"rounding_amount"`
+	PayableTotal    Money               `json:"payable_total"` // total + rounding_amount: what the buyer owes in all
+	PrepaidTotal    Money               `json:"prepaid_total"` // final invoice: the gross prepaid amount, already out of the totals
+	Prepayments     []PrepaymentRef     `json:"prepayments"`
+	DeductedOn      *InvoiceRef         `json:"deducted_on"` // prepayment: the final invoice it was deducted on
+	AmountPaid      Money               `json:"amount_paid"`
+	AmountCredited  Money               `json:"amount_credited"`
+	AmountDue       Money               `json:"amount_due"`
+	AmountRefunded  Money               `json:"amount_refunded"` // Σ refunds
+	RefundDue       Money               `json:"refund_due"`      // credit balance still to pay back to the buyer, ≥ 0
+	PaymentMethods  PaymentMethods      `json:"payment_methods"`
+	Payment         InvoicePaymentInfo  `json:"payment"`
+	Seller          *Party              `json:"seller"`
+	Buyer           *Party              `json:"buyer"`
+	// ParticipantContactID: the participant of the client the invoice is addressed to (participants mode), else nil.
+	ParticipantContactID *string             `json:"participant_contact_id"`
+	Payments             []Payment           `json:"payments"`
+	Refunds              []Refund            `json:"refunds"`
+	Instalments          *InstalmentSchedule `json:"instalments"`
+	Plan                 *PlanRef            `json:"plan"`
+	RemindersEnabled     bool                `json:"reminders_enabled"`
+	IssuedAt             *time.Time          `json:"issued_at"`
+	SentAt               *time.Time          `json:"sent_at"`
+	CreatedAt            time.Time           `json:"created_at"`
+	UpdatedAt            time.Time           `json:"updated_at"`
+	PDFKey               *string             `json:"-"`
 	// Origin is "imported" for an invoice issued in another system: its own number, no counter, and the legal
 	// original is the Document SourceDocumentID (served as its PDF; never sent, exported or delivered by Helvetly).
 	Origin           string  `json:"origin"`
@@ -381,7 +383,7 @@ var invoiceColumns = `i.id, i.kind, i.number, i.status, ` + fmt.Sprintf(isOverdu
 	i.updated_at, i.pdf_key, i.prepaid_total, di.id, di.number, i.reminders_enabled, i.instalment_interval, pl.id, COALESCE(i.plan_seq, 0), pl.count,
 	trim_scale(i.tax_currency_rate)::text, i.origin, i.source_document_id, i.client_number_display, i.contract_reference,
 	i.contract_document_id, ` + fmt.Sprintf(contractDocumentName, "i") + `, ` + approvalState + `,
-	` + fmt.Sprintf(pdfDocument, "i", "i.source_document_id")
+	` + fmt.Sprintf(pdfDocument, "i", "i.source_document_id") + `, i.participant_contact_id`
 
 // approvalState: a draft's latest approval request as pending, approved or rejected; null without one or once it was
 // withdrawn or reset. An issued document shows only approved (one issued after its policy was turned off was not).
@@ -410,7 +412,7 @@ func scanInvoice(row pgx.Row) (Invoice, error) {
 		&i.Payment.ReferenceType, &i.Payment.Reference, &i.Payment.QRBill, &i.Payment.RevolutURL, &i.PaymentMethods.QRBill,
 		&i.PaymentMethods.Revolut, &i.Seller, &i.Buyer, &i.IssuedAt, &i.SentAt, &i.SendUncertainAt, &i.UnconfirmedReminders, &i.CreatedAt,
 		&i.UpdatedAt, &i.PDFKey, &i.PrepaidTotal, &deductedID, &deductedNumber, &i.RemindersEnabled, &interval, &planID, &planSeq, &planCount,
-		&i.TaxCurrencyRate, &i.Origin, &i.SourceDocumentID, &i.ClientNumberDisplay, &i.ContractReference, &contractDocID, &contractDocName, &i.ApprovalState, &i.PDFDocument)
+		&i.TaxCurrencyRate, &i.Origin, &i.SourceDocumentID, &i.ClientNumberDisplay, &i.ContractReference, &contractDocID, &contractDocName, &i.ApprovalState, &i.PDFDocument, &i.ParticipantContactID)
 	i.Client.ID = i.ClientID
 	i.ContractDocument = DocumentRefOf(contractDocID, contractDocName)
 	i.PayableTotal = i.Payable()
@@ -587,20 +589,21 @@ func (q Q) saveDraft(ctx context.Context, workspaceID string, inv Invoice, now t
 	tag, err := q.db.Exec(ctx, `INSERT INTO invoices (id, workspace_id, kind, status, client_id, credited_invoice_id, issue_date, due_date,
 			service_date, service_date_end, currency, language, vat_mode, reference, intro, footer, note, discount_percent, subtotal,
 			discount_amount, net_total, vat_total, total, rounding_amount, vat_breakdown, pay_qr_bill, pay_revolut, prepaid_total, created_at, updated_at,
-			tax_currency_rate, client_number_display, contract_reference, contract_document_id)
+			tax_currency_rate, client_number_display, contract_reference, contract_document_id, participant_contact_id)
 		VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24,
-			$26, $27, $28, $25, $25, $29::text::numeric, $30, $31, $32)
+			$26, $27, $28, $25, $25, $29::text::numeric, $30, $31, $32, $33)
 		ON CONFLICT (id) DO UPDATE SET client_id = $4, issue_date = $6, due_date = $7, service_date = $8, service_date_end = $9,
 			currency = $10, language = $11, vat_mode = $12, reference = $13, intro = $14, footer = $15, note = $16,
 			discount_percent = $17, subtotal = $18, discount_amount = $19, net_total = $20, vat_total = $21, total = $22,
 			rounding_amount = $23, vat_breakdown = $24, pay_qr_bill = $26, pay_revolut = $27, prepaid_total = $28, updated_at = $25,
-			tax_currency_rate = $29::text::numeric, client_number_display = $30, contract_reference = $31, contract_document_id = $32
+			tax_currency_rate = $29::text::numeric, client_number_display = $30, contract_reference = $31, contract_document_id = $32,
+			participant_contact_id = CASE WHEN invoices.client_id = $4 THEN invoices.participant_contact_id END
 		WHERE invoices.status = 'draft' AND invoices.workspace_id = $2`,
 		inv.ID, workspaceID, inv.Kind, inv.ClientID, refID(inv.CreditedInvoice), inv.IssueDate, inv.DueDate, inv.ServiceDate,
 		inv.ServiceDateEnd, inv.Currency, inv.Language, inv.VATMode, inv.Reference, inv.Intro, inv.Footer, inv.Note, inv.DiscountPercent,
 		inv.Subtotal, inv.DiscountAmount, inv.NetTotal, inv.VATTotal, inv.Total, inv.RoundingAmount, breakdown, now,
 		inv.PaymentMethods.QRBill, inv.PaymentMethods.Revolut, inv.PrepaidTotal, inv.TaxCurrencyRate, inv.ClientNumberDisplay,
-		inv.ContractReference, docRefID(inv.ContractDocument))
+		inv.ContractReference, docRefID(inv.ContractDocument), inv.ParticipantContactID)
 	if err != nil {
 		return err
 	}
@@ -889,14 +892,16 @@ type InvoiceFilter struct {
 	Statuses    []string // draft, open, paid, void, replaced, overdue, refund_due
 	Kind        string   // any document kind
 	ClientID    string
-	Credited    string // credit notes of this invoice
-	IssuedFrom  string
-	IssuedTo    string
-	TotalMin    *int64 // in cents, inclusive, of the total shown (with rounding)
-	TotalMax    *int64
-	IDs         []string
-	Unlinked    bool   // not linked to any engagement
-	Sort        string // a key of InvoiceSorts, "-" prefixed for descending; "" for the default
+	// ParticipantID: only the invoices addressed to this participant of the client.
+	ParticipantID string
+	Credited      string // credit notes of this invoice
+	IssuedFrom    string
+	IssuedTo      string
+	TotalMin      *int64 // in cents, inclusive, of the total shown (with rounding)
+	TotalMax      *int64
+	IDs           []string
+	Unlinked      bool   // not linked to any engagement
+	Sort          string // a key of InvoiceSorts, "-" prefixed for descending; "" for the default
 }
 
 func (f InvoiceFilter) where(workspaceID, today string) (string, []any) {
@@ -930,6 +935,9 @@ func (f InvoiceFilter) where(workspaceID, today string) (string, []any) {
 		conds = append(conds, prepaymentLike)
 	default:
 		conds = append(conds, "i.kind = "+arg(f.Kind))
+	}
+	if f.ParticipantID != "" {
+		conds = append(conds, "i.participant_contact_id = "+arg(f.ParticipantID))
 	}
 	if f.ClientID != "" {
 		conds = append(conds, "i.client_id = "+arg(f.ClientID))

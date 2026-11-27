@@ -61,8 +61,9 @@ const meetingLead = 24 * time.Hour
 
 // ClientSessions are the client's sessions: "upcoming" (open, not yet ended, by start, plus a series' cancelled
 // sessions still to come, so its card shows them among its dates) or "past" (ended or closed, the last 12 months,
-// newest first). Without the plan's Scheduling the client still reads them but asks nothing.
-func (s *Service) ClientSessions(ctx context.Context, ws store.Workspace, clientID, zone, when string) ([]ClientSession, error) {
+// newest first). Without the plan's Scheduling the client still reads them but asks nothing. With participantID, only
+// the sessions that name that participant.
+func (s *Service) ClientSessions(ctx context.Context, ws store.Workspace, clientID, participantID, zone, when string) ([]ClientSession, error) {
 	now := s.now()
 	from, to := now.Add(-24*time.Hour), now.AddDate(0, 0, horizonDays+1)
 	if when == "past" {
@@ -79,6 +80,9 @@ func (s *Service) ClientSessions(ctx context.Context, ws store.Workspace, client
 			return err
 		}
 		occs = slices.DeleteFunc(occs, func(o store.SchedOccurrence) bool {
+			if participantID != "" && deref(r.events[o.EventID].ParticipantContactID) != participantID {
+				return true
+			}
 			upcoming := o.EndsAt.After(now) && (isOpen(o.Status) || r.events[o.EventID].RRule != nil)
 			return upcoming != (when != "past")
 		})
@@ -210,6 +214,36 @@ func (s *Service) ClientOccurrenceICS(ctx context.Context, ws store.Workspace, c
 		return err
 	})
 	return out, err
+}
+
+// ParticipantOwns is ErrNotFound unless the client's occurrence, series or request (kind) names the participant:
+// a participant's portal session reaches only their own sessions.
+func (s *Service) ParticipantOwns(ctx context.Context, ws store.Workspace, clientID, participantID, kind, id string) error {
+	q := s.db.Q
+	eventID := id
+	switch kind {
+	case "request":
+		req, err := q.SchedRequest(ctx, ws.ID, id, false)
+		if err != nil {
+			return err
+		}
+		id = req.OccurrenceID
+		fallthrough
+	case "occurrence":
+		o, err := q.SchedOccurrence(ctx, ws.ID, id, false)
+		if err != nil {
+			return err
+		}
+		eventID = o.EventID
+	}
+	e, err := q.SchedEvent(ctx, ws.ID, eventID, false)
+	if err != nil {
+		return err
+	}
+	if participantID == "" || e.ClientID != clientID || deref(e.ParticipantContactID) != participantID {
+		return store.ErrNotFound
+	}
+	return nil
 }
 
 // BookableType is an event type the client can book, with its hosts and, when several of the client's packages fit,

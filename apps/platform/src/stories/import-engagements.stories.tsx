@@ -96,6 +96,11 @@ export const PickClientWhenUnmatched: Story = {
           }),
         ),
         http.get('/api/v1/imports/:id', () => HttpResponse.json({ data: current })),
+        http.get<{ id: string }>('/api/v1/clients/:id', ({ params }) =>
+          HttpResponse.json({
+            data: { id: params.id, name: 'Client', is_company: false, contacts: [] },
+          }),
+        ),
         http.get('/api/v1/clients', () =>
           HttpResponse.json({
             ...emptyPage,
@@ -186,6 +191,11 @@ export const EditInTheRealForm: Story = {
           }),
         ),
         http.get('/api/v1/imports/:id', () => HttpResponse.json({ data: current })),
+        http.get<{ id: string }>('/api/v1/clients/:id', ({ params }) =>
+          HttpResponse.json({
+            data: { id: params.id, name: 'Client', is_company: false, contacts: [] },
+          }),
+        ),
         http.get('/api/v1/clients', () =>
           HttpResponse.json({
             ...emptyPage,

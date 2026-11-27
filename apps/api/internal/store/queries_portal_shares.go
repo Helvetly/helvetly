@@ -216,3 +216,86 @@ func (q Q) LastDecidedChangeRequest(ctx context.Context, workspaceID, clientID s
 		`WHERE r.workspace_id = $1 AND r.client_id = $2 AND r.status <> 'pending' ORDER BY r.decided_at DESC, r.id LIMIT 1`,
 		workspaceID, clientID))
 }
+
+// ShareDocumentWithParticipant shares the document with one participant of the client (repeating keeps the share).
+func (q Q) ShareDocumentWithParticipant(ctx context.Context, workspaceID, documentID, clientID, contactID, userID string, now time.Time) error {
+	tag, err := q.db.Exec(ctx, `INSERT INTO document_participant_shares (document_id, contact_id, client_id, workspace_id, shared_by, created_at)
+		SELECT d.id, k.id, c.id, $1, nullif($5, ''), $6 FROM documents d, clients c, client_contacts k
+		WHERE d.workspace_id = $1 AND d.id = $2 AND d.deleted_at IS NULL AND NOT d.hr_private
+			AND c.workspace_id = $1 AND c.id = $3 AND c.deleted_at IS NULL
+			AND k.id = $4 AND k.client_id = c.id AND 'participant' = ANY (k.roles)
+		ON CONFLICT (document_id, contact_id) DO NOTHING`, workspaceID, documentID, clientID, contactID, userID, now)
+	if err != nil || tag.RowsAffected() > 0 {
+		return err
+	}
+	var one int
+	return q.db.QueryRow(ctx, `SELECT 1 FROM document_participant_shares WHERE workspace_id = $1 AND document_id = $2 AND contact_id = $3`,
+		workspaceID, documentID, contactID).Scan(&one)
+}
+
+func (q Q) UnshareDocumentWithParticipant(ctx context.Context, workspaceID, documentID, contactID string) error {
+	_, err := q.db.Exec(ctx, `DELETE FROM document_participant_shares WHERE workspace_id = $1 AND document_id = $2 AND contact_id = $3`,
+		workspaceID, documentID, contactID)
+	return err
+}
+
+// ParticipantShare is a document's share with one participant of a client.
+type ParticipantShare struct {
+	ClientID        string    `json:"client_id"`
+	ClientName      string    `json:"client_name"`
+	ParticipantID   string    `json:"participant_id"`
+	ParticipantName string    `json:"participant_name"`
+	SharedAt        time.Time `json:"shared_at"`
+}
+
+func (q Q) DocumentParticipantShares(ctx context.Context, workspaceID, documentID string) ([]ParticipantShare, error) {
+	rows, err := q.db.Query(ctx, `SELECT c.id, c.name, k.id, k.name, s.created_at FROM document_participant_shares s
+		JOIN clients c ON c.id = s.client_id JOIN client_contacts k ON k.id = s.contact_id
+		WHERE s.workspace_id = $1 AND s.document_id = $2 AND c.deleted_at IS NULL ORDER BY s.created_at DESC, k.id`, workspaceID, documentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []ParticipantShare{}
+	for rows.Next() {
+		var s ParticipantShare
+		if err := rows.Scan(&s.ClientID, &s.ClientName, &s.ParticipantID, &s.ParticipantName, &s.SharedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// ParticipantSharedDocuments: the documents shared with the participant of the client, not in the Trash, newest first.
+func (q Q) ParticipantSharedDocuments(ctx context.Context, workspaceID, clientID, contactID string) ([]SharedDocument, error) {
+	rows, err := q.db.Query(ctx, `SELECT d.id, d.name, d.size, d.content_type, s.created_at FROM document_participant_shares s
+		JOIN documents d ON d.id = s.document_id
+		WHERE s.workspace_id = $1 AND s.client_id = $2 AND s.contact_id = $3 AND d.workspace_id = $1 AND d.deleted_at IS NULL
+			AND NOT d.hr_private
+		ORDER BY s.created_at DESC, d.id`, workspaceID, clientID, contactID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []SharedDocument{}
+	for rows.Next() {
+		var d SharedDocument
+		if err := rows.Scan(&d.ID, &d.Name, &d.Size, &d.ContentType, &d.SharedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// ParticipantSharedDocument authorizes a download of a document shared with the participant of the client.
+func (q Q) ParticipantSharedDocument(ctx context.Context, workspaceID, clientID, contactID, documentID string) (PortalDocumentDownload, error) {
+	var d PortalDocumentDownload
+	err := q.db.QueryRow(ctx, `SELECT d.id, d.object_key, d.name, d.content_type FROM document_participant_shares s
+		JOIN documents d ON d.id = s.document_id
+		WHERE s.workspace_id = $1 AND s.client_id = $2 AND s.contact_id = $3 AND s.document_id = $4 AND d.workspace_id = $1
+			AND d.deleted_at IS NULL AND NOT d.hr_private`, workspaceID, clientID, contactID, documentID).
+		Scan(&d.ID, &d.ObjectKey, &d.Name, &d.ContentType)
+	return d, err
+}

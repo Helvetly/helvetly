@@ -355,7 +355,7 @@ func (e *env) invoice(b *browser, client, kind, number string, year int, source 
 	}
 }
 
-// The screenshot's case: files named by invoice numbers go to their clients' folders without asking the model, also
+// The screenshot's case: files named by invoice numbers go to their clients' folders, also
 // from a plain Invoices folder; an ambiguous number and a file without client go to the model, whose plain Invoices
 // path stays only when no client can be found.
 func TestOrganizeClientRecords(t *testing.T) {
@@ -419,12 +419,14 @@ func TestOrganizeClientRecords(t *testing.T) {
 	if len(asked) != 1 {
 		t.Fatalf("model asked %d times", len(asked))
 	}
-	for _, d := range []store.Document{d5, d6, d11} { // decided without the model
-		if strings.Contains(asked[0].Message, d.ID) {
-			t.Errorf("the model was asked about %s", d.Name)
-		}
+	if strings.Contains(asked[0].Message, d6.ID) { // the imported original is the record: decided without the model
+		t.Errorf("the model was asked about %s", d6.Name)
 	}
-	for _, d := range []store.Document{twice, theirs, named, nobody} {
+	// a number only names the record: the model says whether it is the record or a payment of it, told the record
+	if !strings.Contains(asked[0].Message, `"record":"The file names invoice 2026/IN/005 of the client Acme AG`) {
+		t.Errorf("the model was not told the record: %s", asked[0].Message)
+	}
+	for _, d := range []store.Document{d5, d11, twice, theirs, named, nobody} {
 		if !strings.Contains(asked[0].Message, d.ID) {
 			t.Errorf("the model was not asked about %s", d.Name)
 		}

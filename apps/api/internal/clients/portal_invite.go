@@ -89,6 +89,11 @@ func (s *Service) bulkPortal(ctx context.Context, sess store.Session, ids []stri
 		workers.Go(func() {
 			for c := range jobs {
 				s.invitePortal(ctx, sess, c)
+				// Its participants with their own access on get theirs: their switch follows the client's.
+				c.PortalEnabled = true
+				for _, p := range c.Contacts {
+					s.inviteParticipant(ctx, sess, c, store.Contact{}, p)
+				}
 			}
 		})
 	}
@@ -187,4 +192,58 @@ func portalInvite(ws store.Workspace, c store.Client, to, link string) mailer.Me
 		FinePrint("Enter this email address on the portal and we’ll send you a one-time sign-in code.")
 	return mailer.Message{Workspace: ws.ID, Language: "en", To: []string{to}, Subject: ws.Name + " invited you to their client portal",
 		Text: l.Text(), HTML: mailer.Title("Your client portal at "+ws.Name) + l.HTML()}
+}
+
+// inviteParticipant mails a participant the portal link once their access starts (or their address changes) and the
+// client's portal and the workspace's are open, unless portal invitations are off. A failure is logged, never returned.
+func (s *Service) inviteParticipant(ctx context.Context, sess store.Session, c store.Client, before, after store.Contact) {
+	if s.mail == nil || !participantPortal(after) || !c.PortalEnabled || participantPortal(before) && *before.Email == *after.Email {
+		return
+	}
+	// The workspace's switch for portal invitations (Settings → Client emails) covers participants too.
+	if emails, err := s.db.Q.WorkspaceClientEmails(ctx, sess.Workspace.ID); err != nil || !emails.PortalInvitations {
+		if err != nil {
+			s.log.WarnContext(ctx, "check participant invitation", "client", c.ID, "error", err)
+		}
+		return
+	}
+	access, err := s.db.Q.PortalAccessByEmail(ctx, *after.Email, sess.Workspace.ID)
+	if err != nil {
+		s.log.WarnContext(ctx, "check participant invitation", "client", c.ID, "error", err)
+		return
+	}
+	if !slices.ContainsFunc(access, func(a store.PortalAccess) bool { return a.ParticipantID == after.ID }) {
+		return
+	}
+	link, err := s.portalURLs.CanonicalURL(ctx, sess.Workspace)
+	if err == nil {
+		err = s.mail.Send(context.WithoutCancel(ctx), participantInvite(sess.Workspace, c, after, link))
+	}
+	if err != nil {
+		s.log.WarnContext(ctx, "participant invitation not sent", "client", c.ID, "error", err)
+	}
+}
+
+// participantWords: the participant's invitation in the client's language.
+var participantWords = map[string][5]string{
+	"en": {"Use the portal to see your sessions and the documents shared with you.", "Open the portal",
+		"Enter this email address on the portal and we’ll send you a one-time sign-in code.", " invited you to their portal", "Your portal at "},
+	"de": {"Im Portal sehen Sie Ihre Termine und die Dokumente, die mit Ihnen geteilt wurden.", "Portal öffnen",
+		"Geben Sie diese E-Mail-Adresse im Portal ein, und wir senden Ihnen einen einmaligen Anmeldecode.", " hat Sie zu seinem Portal eingeladen", "Ihr Portal bei "},
+	"fr": {"Dans le portail, vous voyez vos séances et les documents partagés avec vous.", "Ouvrir le portail",
+		"Saisissez cette adresse e-mail sur le portail et nous vous enverrons un code de connexion unique.", " vous a invité sur son portail", "Votre portail chez "},
+	"it": {"Nel portale vede le sue sessioni e i documenti condivisi con lei.", "Apri il portale",
+		"Inserisca questo indirizzo e-mail nel portale e le invieremo un codice di accesso monouso.", " l’ha invitata al suo portale", "Il suo portale presso "},
+}
+
+// participantInvite is a participant's invitation to the workspace's portal at link, from the business (Branded).
+func participantInvite(ws store.Workspace, c store.Client, p store.Contact, link string) mailer.Message {
+	lang := "en"
+	if c.Language != nil && participantWords[*c.Language][0] != "" {
+		lang = *c.Language
+	}
+	w := participantWords[lang]
+	l := mailer.NewLetter(lang).Greeting(p.Name).Lead(w[0]).Action(w[1], link).FinePrint(w[2])
+	return mailer.Message{Workspace: ws.ID, Language: lang, To: []string{*p.Email}, Subject: ws.Name + w[3],
+		Text: l.Text(), HTML: mailer.Title(w[4]+ws.Name) + l.HTML()}
 }

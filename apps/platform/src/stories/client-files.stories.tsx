@@ -98,7 +98,7 @@ export const List: Story = {
     const files = await panel()
     await expect(await files.findByText('Receipt Migros.pdf')).toBeVisible()
     await expect(files.getByRole('heading', { name: 'Files 3' })).toBeVisible()
-    await expect(files.getByText('8 KB · 6 Nov 2026 · Anna Muster')).toBeVisible()
+    await expect(files.getAllByTitle('8 KB · 6 Nov 2026 · Anna Muster')[0]).toBeVisible()
     // An uploader whose account is gone is left out.
     await expect(files.getByText('2.3 MB · 20 Oct 2026')).toBeVisible()
     await expect(files.getByRole('link', { name: 'Receipt Migros.pdf' })).toHaveAttribute(
