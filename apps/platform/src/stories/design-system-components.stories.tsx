@@ -56,6 +56,11 @@ export const Callouts: Story = {
         Missing: postcode, city
       </Callout>
       <Callout tone="danger" icon={CircleAlert} title="Overdue by 12 days" />
+      <Callout
+        tone="success"
+        title="portal.example.ch is live"
+        actions={<Button variant="outline">Open</Button>}
+      />
       <Callout tone="success" icon={CircleCheck}>
         All invoices of March are paid.
       </Callout>
@@ -69,11 +74,15 @@ export const Callouts: Story = {
       'warning',
       'danger',
       'success',
+      'success',
       'neutral',
     ])
     // Every tone has an icon, given or its own.
     await expect([...callouts].filter((callout) => !callout.querySelector('svg'))).toEqual([])
     await expect(within(canvasElement).getByRole('button', { name: 'Complete' })).toBeVisible()
+    // A title-only notice with an action is centred on it; one with a body stays top-aligned.
+    await expect(callouts[3]).toHaveClass('items-center')
+    await expect(callouts[1]).toHaveClass('items-start')
   },
 }
 
