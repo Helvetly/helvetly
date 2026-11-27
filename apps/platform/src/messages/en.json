@@ -6291,5 +6291,8 @@
   "auditDocumentsUploadFiled": "Upload filed",
   "auditDocumentsImportSourcesRemoved": "Import files removed",
   "auditSentenceDocumentsUploadFiled": "{count, plural, one {Filed # uploaded file} other {Filed # uploaded files}}, {placed} placed by AI",
-  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly took # import source file out of Documents} other {Helvetly took # import source files out of Documents}}"
+  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly took # import source file out of Documents} other {Helvetly took # import source files out of Documents}}",
+  "sessionLocationUnknown": "Location unknown",
+  "sessionSignedInOn": "Signed in {date}",
+  "sessionIpAddress": "IP address"
 }
