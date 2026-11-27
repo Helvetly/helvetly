@@ -2,8 +2,9 @@ package store
 
 import (
 	"io/fs"
-	"strings"
 	"testing"
+
+	"github.com/pressly/goose/v3"
 )
 
 // Two pull requests can pick the same next number; goose then refuses to start, so CI must catch it before main does.
@@ -12,15 +13,15 @@ func TestMigrationVersionsAreUnique(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	seen := map[string]string{}
+	seen := map[int64]string{}
 	for _, e := range entries {
-		version, _, ok := strings.Cut(e.Name(), "_")
-		if !ok {
-			t.Errorf("%s: no version prefix", e.Name())
+		version, err := goose.NumericComponent(e.Name())
+		if err != nil {
+			t.Errorf("%s: %v", e.Name(), err)
 			continue
 		}
 		if other, dup := seen[version]; dup {
-			t.Errorf("migration version %s used by %s and %s", version, other, e.Name())
+			t.Errorf("migration version %05d used by %s and %s", version, other, e.Name())
 		}
 		seen[version] = e.Name()
 	}
