@@ -69,6 +69,7 @@ const KIND_GROUPS: [Label, string[]][] = [
   ['docTypePowersOfAttorney', ['power-of-attorney']],
   ['docTypeReceipts', ['receipt']],
   ['bankStatements', ['bank-statement']],
+  ['docTypeTaxDocuments', ['tax-document']],
   ['clientFilesOther', []],
 ]
 

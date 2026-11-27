@@ -16,17 +16,23 @@ import (
 
 // Record matching: before the model is asked, a file is matched to the workspace's own invoices and quotes, by the
 // stored PDF it shares with one, the imported invoice it is the original of, or a record number in its name or text, and to its clients, by UID or whole name.
-// A match decides where a record goes (Clients/<client>/<Invoices|Quotes>/<year>); the model never overrules it, and
-// a record the model files outside Clients goes to the client's folder when the file names one client.
+// Only the first two are the record itself (identity): it goes to Clients/<client>/<Invoices|Quotes>/<year> without
+// the model. A number names the record's client and year only: a payment confirmation or bank statement of it (the
+// model's kind, a kind the file already has, or its name: paid, bezahlt, Gutschrift, an instalment such as _1st or
+// "1. Rate") goes to the client's Documents/<year>/Bank Statements; anything else is the record, as before. A record
+// the model files outside Clients goes to the client's folder when the file names one client.
 
 const maxRecordRefs = 50_000
 
-// recordMatch: the one record a file is.
+// recordMatch: the one record a file is, or names.
 type recordMatch struct {
-	place  recordPlace
-	client string // the client's name
-	reason string // "Matches invoice 2026/IN/005 for Acme AG."
-	tag    string
+	place    recordPlace
+	client   string // the client's name
+	reason   string // "Matches invoice 2026/IN/005 for Acme AG."
+	tag      string
+	identity bool   // it shares the record's stored PDF or is its imported original: the file is the record
+	label    string // "invoice 2026/IN/005"
+	words    []string
 }
 
 type recordIndex struct {
@@ -85,9 +91,13 @@ func (ix recordIndex) match(d store.Document, text string) *recordMatch {
 			byText, textLen = longest(byText, textLen, r, len(w))
 		}
 	}
-	for _, found := range [][]store.RecordRef{byObject, byName, byText} {
+	for i, found := range [][]store.RecordRef{byObject, byName, byText} {
 		if len(found) > 0 {
-			return ix.one(found)
+			m := ix.one(found)
+			if m != nil {
+				m.identity = i == 0
+			}
+			return m
 		}
 	}
 	return nil
@@ -119,7 +129,8 @@ func (ix recordIndex) one(found []store.RecordRef) *recordMatch {
 	client := strings.Join(strings.Fields(ix.clients[i].Name), " ")
 	label, tag := recordLabel(r.Type)
 	return &recordMatch{place: recordPlace{clientID: r.ClientID, kind: r.Kind, year: r.Year}, client: client, tag: tag,
-		reason: strings.Join(strings.Fields(fmt.Sprintf("Matches %s %s for %s.", label, r.Number, client)), " ")}
+		reason: strings.Join(strings.Fields(fmt.Sprintf("Matches %s %s for %s.", label, r.Number, client)), " "),
+		label:  strings.TrimSpace(label + " " + r.Number), words: words(r.Number)}
 }
 
 // recordLabel: how a reason names a record type, and the tag it gets.
@@ -210,4 +221,71 @@ func clientRecordPath(names recordNames, place recordPlace) (string, bool) {
 		return "", false
 	}
 	return strings.Join(p, "/"), true
+}
+
+// paymentNameWords: words of a file name that say it confirms a payment rather than being the record (en, de, fr, it).
+var paymentNameWords = []string{"paid", "payment", "payments", "instalment", "installment", "bezahlt", "zahlung",
+	"zahlungen", "teilzahlung", "gutschrift", "überweisung", "ueberweisung", "rate", "payé", "paye", "paiement",
+	"virement", "acompte", "pagato", "pagamento", "bonifico", "accredito", "rata"}
+
+var ordinalWord = regexp.MustCompile(`^([1-9][0-9]?)(st|nd|rd|th)$`)
+
+// paid: whether a file that names m by number is a payment confirmation or bank statement of it rather than the
+// record: a kind it already has, a payment word in its name, or an instalment ("_1st", "3rd", "1. Rate", a lone digit
+// right after the number); its kind and the instalment's ordinal ("1st", "" for none).
+func (m recordMatch) paid(d store.Document) (kind, ordinal string, ok bool) {
+	for _, k := range append([]string{d.FiledKind}, d.Tags...) {
+		if clientStatementKind(k) {
+			kind = k
+			break
+		}
+	}
+	w := words(strings.TrimSuffix(d.Name, path.Ext(d.Name)))
+	after := -1
+	for i := 0; len(m.words) > 0 && i+len(m.words) <= len(w); i++ {
+		if slices.Equal(w[i:i+len(m.words)], m.words) {
+			after = i + len(m.words)
+		}
+	}
+	for i, word := range w {
+		switch {
+		case ordinalWord.MatchString(word):
+			ordinal = word
+		case len(word) == 1 && word[0] >= '1' && word[0] <= '9' && (i == after || i+1 < len(w) && (w[i+1] == "rate" || w[i+1] == "rata")):
+			ordinal = ordinalOf(word)
+		}
+	}
+	named := slices.ContainsFunc(w, func(word string) bool { return slices.Contains(paymentNameWords, word) })
+	if kind == "" && (named || ordinal != "") {
+		kind = "payment-confirmation"
+	}
+	return kind, ordinal, kind != ""
+}
+
+func ordinalOf(digit string) string {
+	switch digit {
+	case "1":
+		return "1st"
+	case "2":
+		return "2nd"
+	case "3":
+		return "3rd"
+	}
+	return digit + "th"
+}
+
+// paidReason: "Payment confirmation for invoice 2026/IN/031 (1st instalment)."
+func (m recordMatch) paidReason(kind, ordinal string) string {
+	what := map[string]string{"payment-confirmation": "Payment confirmation", "bank-statement": "Bank statement"}[kind]
+	reason := what + " for " + m.label
+	if ordinal != "" {
+		reason += " (" + ordinal + " instalment)"
+	}
+	return reason + "."
+}
+
+// hint: what the model is told about a record the file names by number.
+func (m recordMatch) hint() string {
+	return fmt.Sprintf("The file names %s of the client %s; it is that %s only when it is the document itself, not a "+
+		"payment confirmation, credit advice or bank statement of it.", m.label, m.client, strings.Fields(m.label)[0])
 }

@@ -12,8 +12,9 @@ import (
 	"unicode/utf8"
 )
 
-// System folders (migrations 00040, 00044, 00079): Clients/<client>/<record type>/<year>, Expenses/<year>/<category>
-// and Bank Statements/<year>. The
+// System folders (migrations 00040, 00044, 00082): Clients/<client>/<record type>/<year> (with
+// Documents/<year>/Contracts and Documents/<year>/Bank Statements), Expenses/<year>/<category> and Tax
+// Documents/<year>. The
 // app makes them on demand and nobody renames, moves or deletes them; the stored name of a typed one is English, shown
 // translated.
 
@@ -22,17 +23,28 @@ var RecordFolders = map[string]string{"invoices": "Invoices", "quotes": "Quotes"
 	"signatures": "Signatures", "documents": "Documents"}
 
 // SystemRoots: the top-level system folders, by system_kind.
-var SystemRoots = map[string]string{"clients": "Clients", "expenses": "Expenses", "bank_statements": BankStatementsFolderName}
+var SystemRoots = map[string]string{"clients": "Clients", "expenses": "Expenses", "tax_documents": TaxDocumentsFolderName}
 
-// BankStatementsFolderName: the stored name of the top-level folder of bank statements.
+// BankStatementsFolderName: the stored name of a client's Documents/<year>/Bank Statements (and of the top-level folder
+// of migration 00079, which RepairBankStatementsRoot takes apart).
 const BankStatementsFolderName = "Bank Statements"
 
-// SystemRootKinds: the top-level system folders' kinds, in the order they are made.
-var SystemRootKinds = []string{"clients", "expenses", "bank_statements"}
+// TaxDocumentsFolderName: the stored name of the top-level folder of tax documents.
+const TaxDocumentsFolderName = "Tax Documents"
 
-// bankStatementNames: the names of Bank Statements in the app's languages (lower case); a plain top-level folder by
-// one of them becomes it.
-var bankStatementNames = []string{"bank statements", "kontoauszüge", "relevés bancaires", "estratti conto"}
+// SystemRootKinds: the top-level system folders' kinds, in the order they are made.
+var SystemRootKinds = []string{"clients", "expenses", "tax_documents"}
+
+// adoptedNames: the names of a system folder in the app's languages (lower case), by kind; a plain sibling by one of
+// them becomes it (renamed to its stored English name).
+var adoptedNames = map[string][]string{
+	"client_bank_statements": {"bank statements", "kontoauszüge", "relevés bancaires", "estratti conto"},
+	"tax_documents":          {"tax documents", "steuerunterlagen", "documents fiscaux", "documenti fiscali"},
+}
+
+// taxFolderNames: short names of a tax folder (lower case); a plain top-level one becomes Tax Documents only when it
+// is empty or AI filing made it, never a person's folder with files.
+var taxFolderNames = []string{"tax", "taxes", "steuern", "impôts", "impots", "tasse"}
 
 // UncategorisedFolder: the stored name of the folder in Expenses for expenses without a category.
 const UncategorisedFolder = "Uncategorised"
@@ -93,33 +105,64 @@ func (q Q) EnsureSystemRoots(ctx context.Context, workspaceID string, now time.T
 	return nil
 }
 
-// rootFolder: the top-level system folder of kind, made when missing. Bank Statements also adopts a plain folder
-// named in another of the app's languages, renamed to its stored English name.
+// rootFolder: the top-level system folder of kind, made when missing (adopting a plain folder named in another of the
+// app's languages).
 func (q Q) rootFolder(ctx context.Context, workspaceID, kind, userID string, now time.Time) (string, error) {
-	if kind == "bank_statements" {
-		if err := q.LockContainer(ctx, workspaceID, nil); err != nil {
-			return "", err
-		}
-		_, err := q.db.Exec(ctx, `UPDATE document_folders SET system_kind = 'bank_statements', name = $3, updated_at = $4
-			WHERE id = (SELECT id FROM document_folders WHERE workspace_id = $1 AND parent_id IS NULL AND deleted_at IS NULL
-				AND system_kind IS NULL AND lower(name) = ANY($2)
-				AND NOT EXISTS (SELECT 1 FROM document_folders b WHERE b.workspace_id = $1 AND b.parent_id IS NULL
-					AND b.deleted_at IS NULL AND (b.system_kind = 'bank_statements' OR lower(b.name) = lower($3)))
-				ORDER BY created_at, id LIMIT 1)`, workspaceID, bankStatementNames, SystemRoots[kind], now)
-		if err != nil {
-			return "", err
-		}
+	if err := q.adopt(ctx, workspaceID, nil, kind, SystemRoots[kind], now); err != nil {
+		return "", err
 	}
 	return q.systemFolder(ctx, workspaceID, nil, kind, "", SystemRoots[kind], userID, now)
 }
 
-// BankStatementsFolder: Bank Statements/<year>, made where missing. Run it in a transaction.
-func (q Q) BankStatementsFolder(ctx context.Context, workspaceID string, year int, userID string, now time.Time) (string, error) {
-	root, err := q.rootFolder(ctx, workspaceID, "bank_statements", userID, now)
+// adopt turns the oldest plain folder in parent named like kind in one of the app's languages (adoptedNames; for
+// Tax Documents also a short tax name when the folder is empty or AI filing made it) into that system folder, renamed
+// to name; nothing when parent already has it or a folder called name. Run it in a transaction.
+func (q Q) adopt(ctx context.Context, workspaceID string, parent *string, kind, name string, now time.Time) error {
+	names, ok := adoptedNames[kind]
+	if !ok {
+		return nil
+	}
+	short := []string{}
+	if kind == "tax_documents" {
+		short = taxFolderNames
+	}
+	if err := q.LockContainer(ctx, workspaceID, parent); err != nil {
+		return err
+	}
+	_, err := q.db.Exec(ctx, `UPDATE document_folders SET system_kind = $3, name = $4, updated_at = $5
+		WHERE id = (SELECT f.id FROM document_folders f WHERE f.workspace_id = $1 AND f.parent_id IS NOT DISTINCT FROM $2
+			AND f.deleted_at IS NULL AND f.system_kind IS NULL
+			AND (lower(f.name) = ANY($6) OR lower(f.name) = ANY($7) AND (
+				EXISTS (SELECT 1 FROM document_filings ff WHERE ff.folder_id = f.id AND ff.created_folder)
+				OR NOT EXISTS (SELECT 1 FROM documents d WHERE d.workspace_id = $1 AND d.folder_id = f.id)
+					AND NOT EXISTS (SELECT 1 FROM document_folders c WHERE c.workspace_id = $1 AND c.parent_id = f.id)))
+			AND NOT EXISTS (SELECT 1 FROM document_folders b WHERE b.workspace_id = $1 AND b.parent_id IS NOT DISTINCT FROM $2
+				AND b.deleted_at IS NULL AND (b.system_kind = $3 OR lower(b.name) = lower($4)))
+			ORDER BY lower(f.name) = ANY($6) DESC, f.created_at, f.id LIMIT 1)`,
+		workspaceID, parent, kind, name, now, names, short)
+	return err
+}
+
+// TaxDocumentsFolder: Tax Documents/<year>, made where missing. Run it in a transaction.
+func (q Q) TaxDocumentsFolder(ctx context.Context, workspaceID string, year int, userID string, now time.Time) (string, error) {
+	root, err := q.rootFolder(ctx, workspaceID, "tax_documents", userID, now)
 	if err != nil {
 		return "", err
 	}
 	return q.systemFolder(ctx, workspaceID, &root, "year", "", strconv.Itoa(year), userID, now)
+}
+
+// ClientBankStatementsFolder: Clients/<client>/Documents/<year>/Bank Statements, made where missing (adopting a
+// plain sibling named in another of the app's languages). Run it in a transaction.
+func (q Q) ClientBankStatementsFolder(ctx context.Context, workspaceID, clientID string, year int, userID string, now time.Time) (string, error) {
+	yearFolder, err := q.ClientRecordFolder(ctx, workspaceID, clientID, "documents", year, userID, now)
+	if err != nil {
+		return "", err
+	}
+	if err := q.adopt(ctx, workspaceID, &yearFolder, "client_bank_statements", BankStatementsFolderName, now); err != nil {
+		return "", err
+	}
+	return q.systemFolder(ctx, workspaceID, &yearFolder, "client_bank_statements", "", BankStatementsFolderName, userID, now)
 }
 
 // clientFolderName: the client's name as a folder name (no slashes, at most 60 characters).
@@ -574,7 +617,7 @@ func (q Q) LooseClientFiles(ctx context.Context, limit int) ([]LooseClientFile, 
 // WorkspacesWithoutSystemRoots: up to limit workspaces missing a top-level system folder.
 func (q Q) WorkspacesWithoutSystemRoots(ctx context.Context, limit int) ([]string, error) {
 	rows, err := q.db.Query(ctx, `SELECT w.id FROM workspaces w WHERE (SELECT count(DISTINCT f.system_kind) FROM document_folders f
-		WHERE f.workspace_id = w.id AND f.parent_id IS NULL AND f.deleted_at IS NULL AND f.system_kind IN ('clients', 'expenses', 'bank_statements')) < 3
+		WHERE f.workspace_id = w.id AND f.parent_id IS NULL AND f.deleted_at IS NULL AND f.system_kind IN ('clients', 'expenses', 'tax_documents')) < 3
 		ORDER BY w.id LIMIT $1`, limit)
 	if err != nil {
 		return nil, err

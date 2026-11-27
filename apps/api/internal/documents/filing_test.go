@@ -401,7 +401,8 @@ func TestAIFilingWaitsForABusyPoolWithoutSpendingTries(t *testing.T) {
 	}
 }
 
-// An upload named by one of the workspace's invoice numbers is filed in its client's folder without the model.
+// An upload named by one of the workspace's invoice numbers is filed in its client's folder: the model is asked what it
+// is (it may be a payment of it), and anything but a payment or statement is the invoice.
 func TestFilingMatchesRecords(t *testing.T) {
 	e := newEnv(t)
 	b := e.workspace()
@@ -411,8 +412,8 @@ func TestFilingMatchesRecords(t *testing.T) {
 	e.invoice(b, acme, "invoice", "2026/IN/005", 2026, "")
 	d := e.uploaded(b, "2026-IN-005.pdf", pdf)
 	e.fileDue()
-	if len(m.asked()) != 0 {
-		t.Fatal("the model was asked")
+	if len(m.asked()) != 1 || !strings.Contains(m.asked()[0].Message, "The file names invoice 2026/IN/005 of the client Acme AG") {
+		t.Fatalf("the model was not told the record: %d calls", len(m.asked()))
 	}
 	got := e.get(b, d.ID)
 	if got.FolderID == nil || !slices.Equal(got.Tags, []string{"invoice", "year-2026", "acme-ag"}) {

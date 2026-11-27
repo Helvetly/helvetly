@@ -51,7 +51,9 @@ const filingInstructions = "You file documents in a small business's document ma
 	"terms filled in, no empty lines, blanks or [Name]-style placeholders, not marked as a template, sample or draft), " +
 	"else false; contract_reason says why in one short sentence for a contract-like file, else is empty. " + kindRule +
 	" For a bank statement, statement_period_end is the last day of the period it covers and statement_date the day " +
-	"it was made (YYYY-MM-DD, empty when not given); else both are empty. Use only the given information."
+	"it was made; for a credit advice or payment confirmation, statement_period_end is empty and statement_date its " +
+	"value or payment date (YYYY-MM-DD, empty when not given); else both are empty. For a tax document, tax_year is the " +
+	"tax year it is about (YYYY), else empty. Use only the given information."
 
 var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any{
 	"type": "object",
@@ -64,9 +66,10 @@ var filingSchema = &aimodel.Schema{Name: "document_filing", JSON: map[string]any
 		"kind":                  kindSchema,
 		"statement_period_end":  map[string]any{"type": "string"},
 		"statement_date":        map[string]any{"type": "string"},
+		"tax_year":              map[string]any{"type": "string"},
 	},
 	"required": []string{"tags", "folder_id", "new_folder", "is_completed_contract", "contract_reason", "kind",
-		"statement_period_end", "statement_date"},
+		"statement_period_end", "statement_date", "tax_year"},
 	"additionalProperties": false,
 }}
 
@@ -78,7 +81,12 @@ const kindRule = "Set kind to what the document is, one of the listed values, el
 	"paiement, conferma di pagamento, a provider's payment receipt), receipt for a purchase receipt, consent and " +
 	"power-of-attorney for a signed consent or power of attorney, bank-statement for an account statement of a bank or " +
 	"payment provider (such as UBS, PostFinance, Raiffeisen, Revolut or Wise, also CAMT.053 or MT940 files) that lists " +
-	"an account's transactions and balances, never for an invoice, receipt or payment slip that only shows an IBAN."
+	"an account's transactions and balances, never for an invoice, receipt or payment slip that only shows an IBAN; a " +
+	"bank's credit advice (Gutschrift, avis de crédit) is a payment-confirmation, also when its name carries an " +
+	"invoice number: paid, bezahlt, Zahlung, Gutschrift, Überweisung, payment or instalment wording, or a suffix such as " +
+	"_1st, 2nd, 3rd or 1. Rate next to the number, marks a payment of that invoice, not the invoice. tax-document for a tax return, tax " +
+	"assessment (Veranlagung), provisional tax bill, VAT return or statement of the tax authority, withholding tax or " +
+	"tax certificate; a social security (AHV/IV/EO/ALV) bill is a receipt."
 
 // modelTags: the model's tags as tags (at most filingAITags) and its kind: the kind field, else a kind among its tags.
 // A kind, signed or date tag is never a free tag: those come only from the record or filing.
@@ -198,8 +206,8 @@ type filing struct {
 	// the model's verdict on a contract (is_completed_contract, contract_reason), and the reason recorded
 	completedContract bool
 	contractReason    string
-	// a bank statement's dates the model read (YYYY-MM-DD, "" when unknown)
-	periodEnd, statementDate string
+	// a bank statement's dates the model read (YYYY-MM-DD, "" when unknown), a tax document's year (YYYY)
+	periodEnd, statementDate, taxYear string
 }
 
 func (s *Service) file(ctx context.Context, j store.FilingJob) {
@@ -271,7 +279,8 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if err != nil {
 		return err
 	}
-	if m := index.match(doc, text); m != nil { // one of the workspace's own records: no model needed
+	m := index.match(doc, text)
+	if m != nil && m.identity { // one of the workspace's own records: no model needed
 		if err := s.filingGate(ctx, s.db.Q, ws.ID, j.UserID); err != nil {
 			return err
 		}
@@ -304,6 +313,9 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 		return err
 	}
 	req := filingRequest(doc, data, text, mayMove, lang, listed, names, used)
+	if m != nil {
+		req.Message = m.hint() + "\n\n" + req.Message
+	}
 	budget := s.budget
 	budget.Gate = func(ctx context.Context, q store.Q, workspaceID string) error {
 		return s.filingGate(ctx, q, workspaceID, j.UserID)
@@ -324,27 +336,61 @@ func (s *Service) fileOne(ctx context.Context, j store.FilingJob) error {
 	if err != nil {
 		return err
 	}
+	if m != nil {
+		decided = numbered(decided, *m, doc, ws.Location())
+	}
 	if mayMove && decided.record == nil {
 		decided = toClient(decided, doc, listed, index.client(doc, text))
 		decided.newFolder = localName(decided.newFolder, lang) // the model may still have named it in the document's language
-		// never the bare system folder: Bank Statements/<year> or nowhere
-		if statementTag([]string{decided.newFolder}) {
-			decided.newFolder = ""
-			if decided.kind == "" {
-				decided.kind = "bank-statement"
-			}
+		if statementTag([]string{decided.newFolder}) && decided.kind == "" {
+			decided.kind = "bank-statement"
 		}
 	}
 	if mayMove && bankStatement(doc, text, decided.kind, decided.record) {
+		decided.kind = "bank-statement"
+	}
+	if mayMove {
 		year := statementYear(decided.periodEnd, decided.statementDate, doc.CreatedAt, ws.Location())
-		decided = filing{tags: decided.tags, kind: "bank-statement",
-			record: &recordPlace{kind: "bank_statements", year: year}}
+		if decided.periodEnd == "" && decided.statementDate == "" {
+			if decided.record != nil && decided.record.clientID != "" {
+				year = decided.record.year // the year of the client's folder the model chose
+			} else if y := nameYear(doc.Name); y != 0 {
+				year = y
+			}
+		}
+		if place := statementPlace(doc, decided.kind, decided.record, index.client(doc, text), year); place != nil {
+			decided = filing{tags: decided.tags, kind: decided.kind, record: place}
+		} else if decided.record != nil && decided.record.statements { // the client's Bank Statements only for those
+			decided.record.statements = false
+		}
+		if taxDocument(doc, text, decided.kind) {
+			decided = filing{tags: decided.tags, kind: "tax-document",
+				record: &recordPlace{kind: "tax_documents", year: taxYear(decided.taxYear, doc, ws.Location())}}
+		} else if decided.record != nil && decided.record.kind == "tax_documents" {
+			decided.record = nil // Tax Documents only for tax documents
+		}
 	}
 	if decided.record != nil && decided.record.contracts {
 		ok, reason := completedContract(doc.Name, text, decided.completedContract, decided.contractReason)
 		decided.record.contracts, decided.contractReason = ok, reason // not completed: the client's Documents/<year>
 	}
 	return s.applyFiling(ctx, j, ws, decided)
+}
+
+// numbered: the model's filing of a file that names one of the workspace's records by number: a payment confirmation or
+// bank statement of it (the model's kind, or the file's kind or name says so) goes to the client's Documents/<year>/Bank
+// Statements (the year of its date, else the upload's in zone); anything else is the record, as before.
+func numbered(f filing, m recordMatch, d store.Document, zone *time.Location) filing {
+	kind, _, paid := m.paid(d)
+	if clientStatementKind(f.kind) {
+		kind, paid = f.kind, true
+	}
+	if !paid {
+		return filing{kind: m.tag, record: &m.place}
+	}
+	year := statementYear(f.periodEnd, f.statementDate, d.CreatedAt, zone)
+	return filing{tags: f.tags, kind: kind, periodEnd: f.periodEnd, statementDate: f.statementDate,
+		record: &recordPlace{clientID: m.place.clientID, kind: "documents", year: year, statements: true}}
 }
 
 // toClient: an invoice, quote or contract the model filed outside the system folders goes to its client's record
@@ -439,13 +485,14 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 		Kind      string   `json:"kind"`
 		PeriodEnd string   `json:"statement_period_end"`
 		Date      string   `json:"statement_date"`
+		TaxYear   string   `json:"tax_year"`
 	}
 	if json.Unmarshal([]byte(strings.TrimSpace(text)), &out) != nil {
 		return filing{}, errSkip
 	}
 	reason := []rune(strings.Join(strings.Fields(out.Reason), " "))
 	f := filing{completedContract: out.Completed, contractReason: string(reason[:min(len(reason), 200)]),
-		periodEnd: out.PeriodEnd, statementDate: out.Date}
+		periodEnd: out.PeriodEnd, statementDate: out.Date, taxYear: out.TaxYear}
 	f.tags, f.kind = modelTags(out.Tags, out.Kind)
 	switch {
 	case !mayMove:
@@ -453,12 +500,24 @@ func readFiling(text string, mayMove bool, folders map[string]bool, names record
 		f.folderID = *out.FolderID
 	case out.NewFolder != nil:
 		if path, ok := splitPath(*out.NewFolder, organizeApplyDepth); ok {
-			if statementTag(path) { // a statement folder, in any language: Bank Statements/<year>
+			if statementTag(path) { // a statement folder, in any language: a plain one (or the client's, decided after)
 				if f.kind == "" {
 					f.kind = "bank-statement"
 				}
 				if _, ok := yearOf(path[len(path)-1]); ok && f.periodEnd == "" && f.statementDate == "" {
 					f.periodEnd = path[len(path)-1]
+				}
+				if name, problem := checkName(path[0]); problem == "" {
+					f.newFolder = name
+				}
+				break
+			}
+			if taxTag(path) { // a tax folder, in any language: Tax Documents/<year>, decided after
+				if f.kind == "" {
+					f.kind = "tax-document"
+				}
+				if _, ok := yearOf(path[len(path)-1]); ok && f.taxYear == "" {
+					f.taxYear = path[len(path)-1]
 				}
 				break
 			}

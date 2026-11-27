@@ -14,7 +14,7 @@ import (
 
 // autoTagSQL: a live general file's tags and its tags.Record. The record decides first (an invoice whose PDF or
 // original it is, a quote's PDF or revision, a contract made from a quote or its signed copy, a receipt's expense),
-// then the system folder it sits in (Clients/<client>, Invoices, …, <year>, Expenses/<year>/<category>, Bank Statements/<year>).
+// then the system folder it sits in (Clients/<client>, Invoices, …, <year>, Expenses/<year>/<category>, Tax Documents/<year>).
 const autoTagSQL = `WITH RECURSIVE up AS (
 		SELECT f.id, f.parent_id, f.system_kind, f.system_ref, f.name, 0 AS depth
 		FROM documents d JOIN document_folders f ON f.id = d.folder_id AND f.workspace_id = d.workspace_id AND f.deleted_at IS NULL
@@ -23,7 +23,8 @@ const autoTagSQL = `WITH RECURSIVE up AS (
 		SELECT p.id, p.parent_id, p.system_kind, p.system_ref, p.name, u.depth + 1
 		FROM up u JOIN document_folders p ON p.id = u.parent_id AND p.workspace_id = $1 AND p.deleted_at IS NULL WHERE u.depth < 32),
 	fx AS (SELECT
-		(SELECT system_kind FROM up WHERE system_kind IN ('invoices', 'quotes', 'engagements', 'signatures', 'contracts', 'expenses', 'bank_statements')
+		(SELECT system_kind FROM up WHERE system_kind IN ('invoices', 'quotes', 'engagements', 'signatures', 'contracts', 'expenses', 'tax_documents',
+				'client_bank_statements')
 			ORDER BY depth LIMIT 1) AS kind,
 		(SELECT name FROM up WHERE system_kind = 'year' AND name ~ '^[0-9]{4}$' ORDER BY depth LIMIT 1) AS year,
 		(SELECT system_ref FROM up WHERE system_kind = 'client' ORDER BY depth LIMIT 1) AS client,
@@ -33,7 +34,9 @@ const autoTagSQL = `WITH RECURSIVE up AS (
 		CASE WHEN inv.kind IS NOT NULL THEN ''
 			WHEN qt.found THEN 'quote' WHEN qc.number IS NOT NULL THEN 'contract' WHEN ex.found THEN 'receipt' WHEN eg.start_date IS NOT NULL THEN 'engagement'
 			ELSE CASE fx.kind WHEN 'invoices' THEN 'invoice' WHEN 'quotes' THEN 'quote' WHEN 'engagements' THEN 'engagement'
-				WHEN 'contracts' THEN 'contract' WHEN 'expenses' THEN 'receipt' WHEN 'bank_statements' THEN 'bank-statement' ELSE '' END END,
+				WHEN 'contracts' THEN 'contract' WHEN 'expenses' THEN 'receipt' WHEN 'tax_documents' THEN 'tax-document'
+				-- a client's Bank Statements also holds payment confirmations: the folder says bank statement only without a filed kind
+				WHEN 'client_bank_statements' THEN CASE WHEN d.filed_kind IS NULL THEN 'bank-statement' ELSE '' END ELSE '' END END,
 		coalesce(to_char(CASE WHEN inv.kind IS NOT NULL THEN inv.issue_date WHEN qt.found THEN qt.issue_date
 			WHEN qc.number IS NOT NULL THEN (qc.created_at AT TIME ZONE w.timezone)::date WHEN ex.found THEN ex.document_date
 			WHEN eg.start_date IS NOT NULL THEN eg.start_date ELSE (sg.completed_at AT TIME ZONE w.timezone)::date END, 'YYYY-MM'), fx.year, ''),

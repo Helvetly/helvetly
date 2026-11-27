@@ -110,10 +110,10 @@ func TestSystemFolderNamesFollowTheLanguage(t *testing.T) {
 	}
 	en := names()
 	cases := map[string][]string{
-		"de-CH,de;q=0.9": {"2025", "Acme AG", "Ausgaben", "Kontoauszüge", "Kunden", "Offerten"},
-		"fr":             {"2025", "Acme AG", "Clients", "Devis", "Dépenses", "Relevés bancaires"},
-		"it-IT":          {"2025", "Acme AG", "Clienti", "Estratti conto", "Preventivi", "Spese"},
-		"pl,en;q=0.5":    {"2025", "Acme AG", "Bank Statements", "Clients", "Expenses", "Quotes"},
+		"de-CH,de;q=0.9": {"2025", "Acme AG", "Ausgaben", "Kunden", "Offerten", "Steuerunterlagen"},
+		"fr":             {"2025", "Acme AG", "Clients", "Devis", "Documents fiscaux", "Dépenses"},
+		"it-IT":          {"2025", "Acme AG", "Clienti", "Documenti fiscali", "Preventivi", "Spese"},
+		"pl,en;q=0.5":    {"2025", "Acme AG", "Clients", "Expenses", "Quotes", "Tax Documents"},
 	}
 	for lang, want := range cases {
 		if got := names("Accept-Language", lang); !slices.Equal(got, want) {
