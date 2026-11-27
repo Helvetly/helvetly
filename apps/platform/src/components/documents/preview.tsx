@@ -5,14 +5,13 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { Callout } from '@helvetly/ui/components/callout'
 import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
-import { Loader } from '@helvetly/ui/components/loader'
 import { Panel } from '@helvetly/ui/components/panel'
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Sheet, SheetContent, SheetTitle } from '@helvetly/ui/components/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { formatDate } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Building2,
   ChevronLeft,
@@ -37,7 +36,8 @@ import {
   FileCheck2,
 } from 'lucide-react'
 import Image from 'next/image'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
+import { useContext, useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { lockedAction, useFeatureLock } from '@/components/billing/feature-lock'
@@ -45,9 +45,11 @@ import { toastError } from '@/components/billing/upgrade-prompt'
 import type { KnownTag } from '@/components/clients/fields'
 import { InlineTagsEditor } from '@/components/clients/inline-tags'
 import { PdfView } from '@/components/invoices/pdf-view'
-import { RecordLink, RecordPageButton } from '@/components/record-link'
+import { LoadError } from '@/components/load-error'
+import { RecordLink, RecordPageButton, RecordPageContext } from '@/components/record-link'
 import { Person } from '@/components/user-avatar'
 import { useAI } from '@/lib/ai'
+import { ApiError } from '@/lib/api'
 import { useClientSearch } from '@/lib/clients'
 import { automaticOnlyTag, documentTagLabel } from '@/lib/document-tags'
 import {
@@ -63,7 +65,7 @@ import {
   linkLabel,
   refreshDocuments,
   tagCounts,
-  useDoc,
+  docQuery,
   type DocFile,
   type DocLink,
 } from '@/lib/documents'
@@ -117,13 +119,26 @@ export function Preview({
   const signLock = useFeatureLock('simple_signatures')
   const aiLock = useFeatureLock('ai_import')
   const ai = useAI()
-  const query = useDoc(id)
-  const file = query.data ?? siblings.find((sibling) => sibling.id === id)
+  // Check even a recently opened file before showing its details again.
+  const query = useQuery({ ...docQuery(id), refetchOnMount: 'always' })
+  const router = useRouter()
+  const page = useContext(RecordPageContext)
+  const missing = query.error instanceof ApiError && query.error.status === 404
+  useEffect(() => {
+    if (missing) {
+      page?.leave()
+      toast.error(translate('documentUnavailableHere'), { id: 'document-not-found' })
+      router.replace('/documents/')
+    }
+  }, [missing, page, router])
+  const file = query.isSuccess ? query.data : undefined
+  const checking = query.isPending || (query.isFetching && !query.isFetchedAfterMount)
   const index = siblings.findIndex((sibling) => sibling.id === id)
   const prev = index > 0 ? siblings[index - 1] : undefined
   const next = index >= 0 ? siblings[index + 1] : undefined
 
   useEffect(() => {
+    if (checking || !file) return
     const onKey = (event: KeyboardEvent) => {
       const target = event.target
       if (target instanceof HTMLElement && target.closest('input, textarea')) return
@@ -132,10 +147,11 @@ export function Preview({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [prev, next, onNavigate])
+  }, [checking, file, prev, next, onNavigate])
 
   const trashed = !!file?.deleted_at
   const [sharing, setSharing] = useState(false)
+  if (checking || missing) return null
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent
@@ -147,10 +163,10 @@ export function Preview({
         className="w-full! max-w-none! gap-0 overflow-hidden bg-card p-0 sm:w-[min(1680px,calc(100vw-3.5rem))]!"
       >
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-3 md:px-4">
-          {file ? <KindIcon kind={file.kind} /> : <Loader className="size-7 min-h-0 shrink-0" />}
+          {file && <KindIcon kind={file.kind} />}
           <div className="min-w-0 flex-1">
             <SheetTitle className="truncate text-[15px] font-medium">
-              {file?.name ?? translate('loading')}
+              {file?.name ?? translate('thePreviewCouldnTLoad')}
             </SheetTitle>
             {file && (
               <p className="truncate text-[12px] text-muted-foreground">
@@ -281,7 +297,16 @@ export function Preview({
         </header>
         <div className="flex min-h-0 flex-1">
           <div className="relative min-w-0 flex-1 bg-muted/50 dark:bg-background">
-            {file ? <Stage file={file} /> : null}
+            {file && <Stage file={file} />}
+            {query.isError && (
+              <div className="mx-auto max-w-lg p-4">
+                <LoadError
+                  what={translate('preview')}
+                  error={query.error}
+                  onRetry={() => void query.refetch()}
+                />
+              </div>
+            )}
           </div>
           {file && (
             <aside className="hidden w-[380px] shrink-0 overflow-y-auto border-l bg-panel lg:block dark:bg-background">

@@ -897,6 +897,7 @@
   "discountOnTheWholeDocumentPercent": "Remise sur l’ensemble du document, en pourcentage",
   "dismiss": "Rejeter",
   "document": "Document",
+  "documentUnavailableHere": "Ce document est indisponible dans l’espace de travail actuel.",
   "document2": " (document : {clientName})",
   "documentIs": "le document est",
   "documentLanguage": "Langue du document",
