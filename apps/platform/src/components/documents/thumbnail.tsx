@@ -142,6 +142,7 @@ export function Thumbnail({ file, className }: { file: DocFile; className?: stri
           fill
           unoptimized
           sizes="240px"
+          loading="eager"
           draggable={false}
           onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}
