@@ -186,13 +186,6 @@ export const eventTypeValues = (
   ...autoTitle(values, type.name),
 })
 
-/** The duration is asked for unless it is the chosen event type's own length (then the summary names it). */
-export const asksDuration = (
-  values: Values,
-  type: Pick<EventType, 'duration_minutes'> | undefined,
-  overriding: boolean,
-) => overriding || !type || values.duration !== String(type.duration_minutes)
-
 /** A typed title stays; clearing it lets the next pick name the session again. */
 export const typedTitle = (title: string): Partial<Values> => ({
   title,

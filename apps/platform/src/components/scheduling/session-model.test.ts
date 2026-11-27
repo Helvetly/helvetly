@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { event, occurrence } from '@/mocks/scheduling'
 
 import {
-  asksDuration,
   autoTitle,
   blankValues,
   changesOf,
@@ -282,13 +281,5 @@ describe('event type', () => {
         location: 'Bern',
       }),
     ).toMatchObject({ mode: 'live', provider: 'manual', location: 'Bern' })
-  })
-
-  it('asks for the duration only without a type, with another length or when overridden', () => {
-    const typed = { ...blank(), ...eventTypeValues(blank(), german) }
-    expect(asksDuration(typed, german, false)).toBe(false)
-    expect(asksDuration(typed, german, true)).toBe(true)
-    expect(asksDuration({ ...typed, duration: '90' }, german, false)).toBe(true)
-    expect(asksDuration(typed, undefined, false)).toBe(true)
   })
 })
