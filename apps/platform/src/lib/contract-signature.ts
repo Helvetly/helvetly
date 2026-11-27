@@ -1,7 +1,8 @@
 import { API_PREFIX } from '@helvetly/ui/lib/http'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { request, type ApiError } from '@/lib/api'
+import { uploadedPng } from '@/components/signatures/ink'
+import { request, type ApiError, type Session } from '@/lib/api'
 
 /**
  * Your own signature for contracts in this workspace: an image you drew or uploaded (private to you) and the place
@@ -45,4 +46,28 @@ export function useRemoveSignature() {
 
 export function useSignaturePlace() {
   return useSave((place: string) => request(PATH, { method: 'PUT', json: { place } }))
+}
+
+/**
+ * The signed-in person's saved signature as a PNG data URL, for a signing link addressed to them; null for anyone
+ * else (no session, another address, none saved). Public calls: a signer without a session is not sent to sign-in.
+ */
+export function useSavedSignature(email: string) {
+  return useQuery({
+    queryKey: [...signatureKey, 'for', email.trim().toLowerCase()],
+    retry: false,
+    staleTime: Infinity,
+    queryFn: async () => {
+      try {
+        const session = await request<Session>('/session', { public: true })
+        if (session.user.email.toLowerCase() !== email.trim().toLowerCase()) return null
+        const { data } = await request<{ data: ContractSignature }>(PATH, { public: true })
+        if (!data.has_image) return null
+        const image = await fetch(signatureImageUrl(Date.now()), { credentials: 'same-origin' })
+        return image.ok ? await uploadedPng(await image.blob(), true) : null
+      } catch {
+        return null
+      }
+    },
+  })
 }

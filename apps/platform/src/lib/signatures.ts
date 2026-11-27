@@ -110,7 +110,7 @@ export type SigningView = {
 
 export type Sign = {
   consent: true
-  signature: { method: 'typed' | 'drawn'; image: string }
+  signature: { method: 'typed' | 'drawn' | 'uploaded' | 'saved'; image: string }
   values: Record<string, string>
 }
 
