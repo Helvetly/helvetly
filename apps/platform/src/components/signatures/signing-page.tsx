@@ -34,6 +34,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { DisabledTip } from '@/components/employees/hr-access'
 import { PdfView } from '@/components/invoices/pdf-view'
 import { ApiError, errorMessage } from '@/lib/api'
+import { useSavedSignature } from '@/lib/contract-signature'
 import { translate } from '@/lib/i18n'
 import { signaturesApi, signingDocumentUrl, type Field, type SigningView } from '@/lib/signatures'
 
@@ -219,6 +220,7 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
   const { request, signer, fields } = view
   const [signature, setSignature] = useState<Adopted | null>(null)
   const [adopting, setAdopting] = useState(false)
+  const saved = useSavedSignature(signer.email).data
   const [values, setValues] = useState<Record<string, string>>({})
   const [consent, setConsent] = useState(false)
   const [declining, setDeclining] = useState(false)
@@ -429,6 +431,7 @@ function SignForm({ token, view }: { token: string; view: SigningView }) {
       {adopting && (
         <AdoptDialog
           name={signer.name}
+          saved={saved}
           onClose={() => setAdopting(false)}
           onAdopt={(adopted) => {
             setSignature(adopted)

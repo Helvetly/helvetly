@@ -33,7 +33,7 @@
                 "value": "Bearer {token}",
                 "isRequired": true,
                 "isSecret": true,
-                "description": "A personal API token (hvt_…) from Settings → API & MCP"
+                "description": "A personal API token (hvt_…) from the API & MCP page in Helvetly"
               }
             ]
           }
