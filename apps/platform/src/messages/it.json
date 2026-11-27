@@ -3466,7 +3466,6 @@
   "upToFilesAtOnce": "Fino a {MAX_FILES} file contemporaneamente.",
   "upToReceiptsAtOnce": "Fino a {RECEIPT_MAX_FILES} ricevute contemporaneamente.",
   "upToThreeDaysFrom1To90E": "Fino a tre giorni da 1 a 90, ad es. 3, 10.",
-  "upToThreeRemindersSeparatedByCommas310": "Fino a tre solleciti, separati da virgole: 3, 10 ne invia uno 3 giorni e uno 10 giorni dopo la data di scadenza.",
   "usage": "Utilizzo",
   "usageInvoiceLines": "Righe fattura di utilizzo",
   "usageOnInvoices": "Utilizzo sulle fatture",
@@ -6254,5 +6253,13 @@
   "auditDocumentsUploadFiled": "Caricamento archiviato",
   "auditDocumentsImportSourcesRemoved": "File di importazione rimossi",
   "auditSentenceDocumentsUploadFiled": "{count, plural, one {# file caricato archiviato} other {# file caricati archiviati}}, {placed} collocati dall’IA",
-  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly ha tolto # file sorgente di importazione da Documenti} other {Helvetly ha tolto # file sorgente di importazione da Documenti}}"
+  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly ha tolto # file sorgente di importazione da Documenti} other {Helvetly ha tolto # file sorgente di importazione da Documenti}}",
+  "instalmentReminderEmails": "E-mail di promemoria per le rate",
+  "instalmentReminderEmailsLead": "Il tuo cliente riceve un’e-mail prima e dopo la scadenza di ogni rata, finché non è pagata.",
+  "upToThreeRemindersTypeADayAndPressEnter": "Fino a tre e-mail dopo la scadenza. Digita un numero di giorni e premi Invio.",
+  "removeTheReminderDaysAfter": "Rimuovi il promemoria {days, plural, one {# giorno} other {# giorni}} dopo",
+  "egThreeDays": "p. es. 3",
+  "addADay": "Aggiungi",
+  "daysBeforeCount": "{days, plural, one {# giorno} other {# giorni}} prima",
+  "daysAfterCount": "{days, plural, one {# giorno} other {# giorni}} dopo"
 }

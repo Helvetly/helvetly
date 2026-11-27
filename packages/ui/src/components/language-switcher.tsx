@@ -19,10 +19,9 @@ import {
 } from '@helvetly/ui/components/dropdown-menu'
 import { Flag } from '@helvetly/ui/components/flag'
 import { useLanguage, useTranslate } from '@helvetly/ui/components/language-provider'
+import { languageFlags } from '@helvetly/ui/components/language-select'
 import { Check, Globe, Languages } from 'lucide-react'
 import type { ReactNode, RefObject } from 'react'
-
-const languageFlags: Record<string, string> = { de: 'DE', en: 'GB', fr: 'FR', it: 'IT' }
 
 /** Reloads the page in `language`, so module-level labels change too. */
 function switchLanguage(language: string) {

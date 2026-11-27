@@ -11,6 +11,7 @@ import {
   InputGroupText,
 } from '@helvetly/ui/components/input-group'
 import { Kbd } from '@helvetly/ui/components/kbd'
+import { LanguageSelect } from '@helvetly/ui/components/language-select'
 import { Logo } from '@helvetly/ui/components/logo'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { SwitchRow } from '@helvetly/ui/components/switch-row'
@@ -55,7 +56,7 @@ import {
   useInvoiceSettings,
   today,
   useSaveInvoiceSettings,
-  type DocLanguage,
+  DOC_LANGUAGES,
   type InvoiceSettings,
   type NumberFormat,
   unsupportedSellerCountry,
@@ -93,15 +94,8 @@ import { TypedWelcomeTitle } from './welcome-intro'
 
 type Errors = Partial<Record<string, string>>
 
-const LANGUAGES: { value: DocLanguage; label: string }[] = [
-  { value: 'de', label: translate('deutsch') },
-  { value: 'fr', label: translate('franAis') },
-  { value: 'it', label: translate('italiano') },
-  { value: 'en', label: translate('english') },
-]
-
 // Public-site locales do not extend the languages supported by financial documents.
-const interfaceLanguage = LANGUAGES.find(({ value }) => value === locale)?.value
+const interfaceLanguage = DOC_LANGUAGES.find((code) => code === locale)
 
 /** What sign-up calls a new workspace (apps/api/internal/auth/signin.go). */
 const DEFAULT_WORKSPACE_NAME = 'My workspace'
@@ -1028,24 +1022,26 @@ function PreferencesStep({
         {translate('whatANewInvoiceStartsWithEachClientAnd')}
       </StepHeader>
       <div className="mt-7 grid gap-5">
-        <fieldset className="grid gap-1.5">
-          <legend className="mb-1.5 text-[13px] font-medium">{translate('language')}</legend>
-          <Segmented
-            label={translate('invoiceLanguage')}
-            value={values?.language ?? 'de'}
-            options={LANGUAGES}
-            onChange={(language) => onChange({ language })}
-          />
-        </fieldset>
-        <FormField id="onboarding-currency" label={translate('currency')} className="max-w-56">
-          <Combobox
-            id="onboarding-currency"
-            value={values?.currency ?? 'CHF'}
-            options={CURRENCY_OPTIONS}
-            placeholder={translate('chooseACurrency2')}
-            onChange={(currency) => onChange({ currency })}
-          />
-        </FormField>
+        <div className="grid gap-5 sm:grid-cols-2 sm:gap-4">
+          <FormField id="onboarding-language" label={translate('invoiceLanguage')}>
+            <LanguageSelect
+              id="onboarding-language"
+              value={values?.language ?? 'de'}
+              languages={DOC_LANGUAGES}
+              placeholder={translate('chooseALanguage')}
+              onChange={(language) => onChange({ language })}
+            />
+          </FormField>
+          <FormField id="onboarding-currency" label={translate('currency')}>
+            <Combobox
+              id="onboarding-currency"
+              value={values?.currency ?? 'CHF'}
+              options={CURRENCY_OPTIONS}
+              placeholder={translate('chooseACurrency2')}
+              onChange={(currency) => onChange({ currency })}
+            />
+          </FormField>
+        </div>
         <FormField
           id="onboarding-number-format"
           label={translate('numberFormat')}

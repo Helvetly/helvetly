@@ -3466,7 +3466,6 @@
   "upToFilesAtOnce": "Jusqu’à {MAX_FILES} fichiers à la fois.",
   "upToReceiptsAtOnce": "Jusqu’à {RECEIPT_MAX_FILES} reçus à la fois.",
   "upToThreeDaysFrom1To90E": "Jusqu’à trois jours de 1 à 90, par ex. 3, 10.",
-  "upToThreeRemindersSeparatedByCommas310": "Jusqu’à trois rappels, séparés par des virgules : 3, 10 envoie un 3 jours et un 10 jours après la date d’échéance.",
   "usage": "Utilisation",
   "usageInvoiceLines": "Lignes de facture d’utilisation",
   "usageOnInvoices": "Utilisation sur les factures",
@@ -6254,5 +6253,13 @@
   "auditDocumentsUploadFiled": "Téléversement rangé",
   "auditDocumentsImportSourcesRemoved": "Fichiers d’import retirés",
   "auditSentenceDocumentsUploadFiled": "{count, plural, one {# fichier téléversé rangé} other {# fichiers téléversés rangés}}, {placed} placés par l’IA",
-  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly a retiré # fichier source d’import de Documents} other {Helvetly a retiré # fichiers sources d’import de Documents}}"
+  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly a retiré # fichier source d’import de Documents} other {Helvetly a retiré # fichiers sources d’import de Documents}}",
+  "instalmentReminderEmails": "E-mails de rappel des échéances",
+  "instalmentReminderEmailsLead": "Votre client reçoit un e-mail avant et après chaque échéance, jusqu’à son paiement.",
+  "upToThreeRemindersTypeADayAndPressEnter": "Jusqu’à trois e-mails après l’échéance. Saisissez un nombre de jours et appuyez sur Entrée.",
+  "removeTheReminderDaysAfter": "Supprimer le rappel {days, plural, one {# jour} other {# jours}} après",
+  "egThreeDays": "p. ex. 3",
+  "addADay": "Ajouter",
+  "daysBeforeCount": "{days, plural, one {# jour} other {# jours}} avant",
+  "daysAfterCount": "{days, plural, one {# jour} other {# jours}} après"
 }

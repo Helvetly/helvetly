@@ -38,12 +38,6 @@ import {
   type CatalogueLine,
 } from './catalogue-price'
 
-export const LANGUAGE_CHOICES: { value: DocLanguage; label: string }[] = [
-  { value: 'de', label: 'DE' },
-  { value: 'fr', label: 'FR' },
-  { value: 'it', label: 'IT' },
-  { value: 'en', label: 'EN' },
-]
 export const VAT_CHOICES: { value: VatMode; label: string }[] = [
   { value: 'exclusive', label: translate('exclVAT') },
   { value: 'inclusive', label: translate('inclVAT') },

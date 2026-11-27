@@ -436,6 +436,55 @@ export const Invoices: Story = {
   },
 }
 
+/** Instalment reminders read as emails: chips of days after the due date and a timeline; the document language is a
+ * flag select beside the currency, as tall and as wide. */
+export const InvoicesReminderEmails: Story = {
+  parameters: {
+    nextjs: { navigation: { pathname: '/settings/invoices' } },
+    msw: {
+      handlers: [
+        http.get('/api/v1/invoice-settings', () => HttpResponse.json({ data: sampleSettings() })),
+        ...screenHandlers,
+      ],
+    },
+  },
+  render: () => <InvoiceSettingsPage />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const defaults = within(await canvas.findByRole('region', { name: 'Defaults' }))
+    const language = defaults.getByRole('button', { name: /Document language/ })
+    const currency = defaults.getByRole('button', { name: /Currency/ })
+    const a = language.getBoundingClientRect()
+    const b = currency.getBoundingClientRect()
+    await expect(a.top).toBe(b.top)
+    await expect(a.height).toBe(b.height)
+    await expect(a.width).toBe(b.width)
+    await expect(language).toHaveTextContent('Deutsch')
+    await userEvent.click(language)
+    await userEvent.click(await body.findByRole('option', { name: /Français/ }))
+    await expect(language).toHaveTextContent('Français')
+
+    const instalments = within(canvas.getByRole('region', { name: 'Instalments' }))
+    await expect(
+      instalments.getByRole('heading', { name: 'Instalment reminder emails' }),
+    ).toBeVisible()
+    await expect(instalments.getByRole('link', { name: 'Client emails' })).toBeVisible()
+    const schedule = instalments.getByRole('status', { name: 'Reminder schedule' })
+    await expect(schedule).toHaveTextContent('5 days before')
+    await expect(schedule).toHaveTextContent('10 days after')
+    const after = instalments.getByRole('textbox', { name: 'After the due date, if unpaid' })
+    await userEvent.type(after, '20{Enter}')
+    await expect(schedule).toHaveTextContent('20 days after')
+    await expect(after).toBeDisabled()
+    await userEvent.click(
+      instalments.getByRole('button', { name: 'Remove the reminder 3 days after' }),
+    )
+    await expect(schedule).not.toHaveTextContent('3 days after')
+    await expect(after).toBeEnabled()
+  },
+}
+
 /** The company page's notes: VAT's "while it is off" note spans the whole card and the IBAN's kind reads as a title. */
 export const CompanyNotes: Story = {
   parameters: {

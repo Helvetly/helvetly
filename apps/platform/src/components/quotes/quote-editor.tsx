@@ -2,6 +2,7 @@
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { inputClass } from '@helvetly/ui/components/input'
+import { LanguageSelect } from '@helvetly/ui/components/language-select'
 import { Loader } from '@helvetly/ui/components/loader'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import {
@@ -31,7 +32,6 @@ import {
 import {
   applyClient,
   changeVatMode,
-  LANGUAGE_CHOICES,
   scheduleBlocker,
   serverErrors,
   VAT_CHOICES,
@@ -51,6 +51,7 @@ import {
   useInvoicePreview,
   useInvoiceSettings,
   type InvoiceSettings,
+  DOC_LANGUAGES,
 } from '@/lib/invoices'
 import { useSession } from '@/lib/queries'
 import { quoteNumber, useSaveQuote, type Quote } from '@/lib/quotes'
@@ -306,13 +307,15 @@ function Editor({
                   onChange={(code) => set('currency', code)}
                 />
               </div>
-              <Segmented
-                size="sm"
-                label={translate('documentLanguage')}
-                value={values.language}
-                options={LANGUAGE_CHOICES}
-                onChange={(language) => set('language', language)}
-              />
+              <div className="w-[136px]">
+                <LanguageSelect
+                  value={values.language}
+                  languages={DOC_LANGUAGES}
+                  label={translate('documentLanguage')}
+                  placeholder={translate('documentLanguage')}
+                  onChange={(language) => set('language', language)}
+                />
+              </div>
               <Segmented
                 size="sm"
                 label={translate('vat')}

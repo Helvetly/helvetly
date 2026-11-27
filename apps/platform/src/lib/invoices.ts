@@ -113,7 +113,8 @@ const isInvoiceKind = (value: string | null): value is InvoiceKind =>
 export type VatMode = 'exclusive' | 'inclusive' | 'none'
 export type VatCategory = 'S' | 'Z' | 'E' | 'AE' | 'K' | 'G' | 'O'
 export type Unit = 'hour' | 'day' | 'piece' | 'month' | 'km' | 'flat'
-export type DocLanguage = 'de' | 'fr' | 'it' | 'en'
+export const DOC_LANGUAGES = ['de', 'fr', 'it', 'en'] as const
+export type DocLanguage = (typeof DOC_LANGUAGES)[number]
 export type PaymentMethod = 'bank_transfer' | 'cash' | 'card' | 'twint' | 'other'
 /** Literal text with {YYYY} {YY} {MM} {DD} {TYPE} and one {N}…{NNNNNN} placeholder; the API checks it too. */
 export type NumberFormat = string
