@@ -51,13 +51,12 @@ export const googleConnection: Connection = {
   push_calendar_id: 'primary',
   busy_calendar_ids: ['primary'],
   calendars: [
-    { id: 'primary', name: 'anna@muster.ch', primary: true, color: '#4285f4' },
-    { id: 'team', name: 'Team', primary: false, color: '#33b679' },
+    { id: 'primary', name: 'anna@muster.ch', primary: true },
+    { id: 'team', name: 'Team', primary: false },
     {
       id: 'holidays',
       name: 'Feiertage in der Schweiz und Ferien der Kantone Zürich, Bern und Luzern',
       primary: false,
-      color: '#f6bf26',
     },
     { id: 'shared', name: 'Shared with me', primary: false, color: null },
   ],

@@ -56,6 +56,20 @@ const Shell = ({ children }: { children: ReactNode }) => (
   </SidebarProvider>
 )
 
+// The colours Google gives these calendars; one without a colour gets the neutral dot.
+const PROVIDER_COLOURS: Record<string, string> = {
+  primary: '#4285f4',
+  team: '#33b679',
+  holidays: '#f6bf26',
+}
+const colouredGoogle = {
+  ...googleConnection,
+  calendars: googleConnection.calendars.map((calendar) => ({
+    ...calendar,
+    color: PROVIDER_COLOURS[calendar.id] ?? null,
+  })),
+}
+
 const meta = {
   title: 'Scheduling/Settings',
   parameters: { layout: 'fullscreen', ownMain: true },
@@ -311,7 +325,7 @@ export const YourCalendars: Story = {
   beforeEach: () =>
     resetSchedulingSettings({
       providers: ['google', 'microsoft'],
-      connections: [googleConnection],
+      connections: [colouredGoogle],
     }),
   render: () => (
     <Shell>
