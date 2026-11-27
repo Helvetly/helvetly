@@ -226,12 +226,10 @@ const BOX = 898
 export const DragResizes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Before any resize the columns share the box, the client one getting the most of the room.
     await waitFor(() => expect(sum(widths(canvas))).toBe(BOX))
     const start = widths(canvas)
-    await expect(start.Number).toBeGreaterThan(128)
-    await expect((start.Client ?? 0) - 240).toBeGreaterThan((start.Number ?? 0) - 128)
-    await inTurn(['Number', 'Client', 'Due', 'Amount'], async (name) => {
+    await expect(start).toMatchObject({ Number: 128, Client: 338, Status: 112 })
+    await inTurn(['Number', 'Client', 'Due', 'Amount', 'Status'], async (name) => {
       await expectDragChangesOnly(canvas, name, 80)
       await expectDragChangesOnly(canvas, name, -40)
     })
@@ -240,7 +238,7 @@ export const DragResizes: Story = {
     const box = canvasElement.querySelector('table')?.parentElement
     if (!box) throw new Error('The table has no box')
     // Wider than its box now: the table is as wide as its columns and the box scrolls sideways.
-    await expect(box.scrollWidth).toBe(BOX + 4 * 40)
+    await expect(box.scrollWidth).toBe(BOX + 5 * 40)
     await expect(getComputedStyle(box).overflowX).toBe('auto')
     const stored = widths(canvas)
     const kept: unknown = JSON.parse(localStorage.getItem(KEY) ?? 'null')
@@ -249,9 +247,15 @@ export const DragResizes: Story = {
       client: stored.Client,
       due: (start.Due ?? 0) + 40,
       total: (start.Amount ?? 0) + 40,
+      status: 152,
     })
     await userEvent.click(canvas.getByRole('button', { name: 'Reload' }))
     await waitFor(() => expect(widths(canvas)).toEqual(stored))
+
+    await drag(resizer(canvas, 'Status'), -300)
+    await waitFor(() => expect(widths(canvas)).toEqual({ ...stored, Status: 64 }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Reload' }))
+    await waitFor(() => expect(widths(canvas)).toEqual({ ...stored, Status: 64 }))
   },
 }
 
@@ -260,7 +264,7 @@ export const TouchResizes: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await waitFor(() => expect(sum(widths(canvas))).toBe(BOX))
-    await inTurn(['Number', 'Client', 'Due', 'Amount'], async (name) => {
+    await inTurn(['Number', 'Client', 'Due', 'Amount', 'Status'], async (name) => {
       await expectDragChangesOnly(canvas, name, 80, swipe)
       await expectDragChangesOnly(canvas, name, -40, swipe)
     })
@@ -339,17 +343,13 @@ export const KeyboardResizes: Story = {
   },
 }
 
-/**
- * A handle sits between two data columns: a dashed 1 px line at the right edge of every one but the
- * last, in a 12 px strip that takes the pointer.
- */
+/** Every data column has a 12 px handle with a 1 px line at its right edge. */
 export const HandlesOnlyOnResizable: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('button', { name: 'Resize Status' })).toBeNull()
-    await expect(canvas.queryByRole('button', { name: 'Resize Amount' })).not.toBeNull()
+    await expect(resizer(canvas, 'Status')).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Resize Select all' })).toBeNull()
-    await expect(canvas.getAllByRole('button', { name: /^Resize / })).toHaveLength(4)
+    await expect(canvas.getAllByRole('button', { name: /^Resize / })).toHaveLength(5)
     const handle = resizer(canvas, 'Client')
     await expect(getComputedStyle(handle).cursor).toBe('col-resize')
     await expect(getComputedStyle(handle).touchAction).toBe('none')
@@ -578,10 +578,7 @@ export const SortsAndSelects: Story = {
 
 const right = (element: Element) => Math.round(element.getBoundingClientRect().right)
 
-/**
- * The row menu column is 48 px, has no handle, cannot be dragged and stays at the right edge, also
- * when the columns leave room; it holds its button without clipping it into an ellipsis.
- */
+/** Status can reach its minimum while the 48 px row menu keeps its button at the right edge. */
 export const RowMenuFits: Story = {
   render: () => (
     <div className="w-[900px] rounded-xl border bg-card">
@@ -615,11 +612,11 @@ export const RowMenuFits: Story = {
     const head = canvas.getByRole('columnheader', { name: 'Actions' })
     await expect(Math.round(head.getBoundingClientRect().width)).toBe(48)
     await expect(canvas.queryByRole('button', { name: 'Resize Actions' })).toBeNull()
-    // No bar at the row menu's edge: Status, the last data column, has none; Amount, before it, has.
-    await expect(canvas.queryByRole('button', { name: 'Resize Status' })).toBeNull()
-    await expect(canvas.queryByRole('button', { name: 'Resize Amount' })).not.toBeNull()
     await expect(head.querySelector('[draggable=true]')).toBeNull()
-    await expectDragChangesOnly(canvas, 'Client', -60)
+    await waitFor(() => expect(sum(widths(canvas))).toBe(BOX))
+    const before = widths(canvas)
+    await drag(resizer(canvas, 'Status'), -200)
+    await waitFor(() => expect(widths(canvas)).toEqual({ ...before, Status: 64 }))
     await expect(right(head)).toBe(right(head.closest('tr') ?? head))
     await expect(right(cell)).toBe(right(cell.closest('tr') ?? cell))
   },

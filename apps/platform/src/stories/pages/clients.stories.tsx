@@ -364,10 +364,8 @@ export const ResizeColumns: Story = {
     await expect(handles.map((handle) => handle.getAttribute('aria-label'))).toContain(
       'Resize Name',
     )
-    // Bars sit between data columns only: one right of Status, none right of Added (last, next to
-    // the row menu).
     await expect(body.queryByRole('button', { name: 'Resize Status' })).not.toBeNull()
-    await expect(body.queryByRole('button', { name: 'Resize Added' })).toBeNull()
+    await expect(body.queryByRole('button', { name: 'Resize Added' })).not.toBeNull()
     await inTurn(handles, (handle) => {
       const column = handle.getAttribute('aria-label')?.replace('Resize ', '') ?? ''
       return inTurn([80, -40], async (dx) => {
