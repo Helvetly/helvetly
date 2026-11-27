@@ -13,6 +13,7 @@ const pages = [
   '/books/ledger',
   '/books/vat-return',
   '/clients',
+  '/developers',
   '/documents',
   '/employees',
   '/employees/payroll',
@@ -24,7 +25,6 @@ const pages = [
   '/products',
   '/quotes',
   '/scheduling',
-  '/settings/api',
   '/settings/approvals',
   '/settings/audit-log',
   '/settings/billing',
@@ -55,7 +55,7 @@ const displayed = (el: HTMLElement) =>
   !el.closest('[hidden], [inert], [aria-hidden=true], [data-heidi-panel]') &&
   el.checkVisibility?.({ opacityProperty: true, visibilityProperty: true }) === true
 const neutralPage = (path: string) =>
-  !/^\/(?:employees|settings\/(?:employment|api|security)|account)(?:\/|$)/.test(path)
+  !/^\/(?:employees|developers|settings\/(?:employment|security)|account)(?:\/|$)/.test(path)
 let labelKeys: Map<string, string> | undefined
 
 function staticLabelKey(label: string) {
