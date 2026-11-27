@@ -1,0 +1,20 @@
+[14:06:37.058] [INFO] storybook v10.6.6
+[14:06:37.779] [DEBUG] Getting package.json info for /Users/pkrajewski/Sites/helvetly.com/helvetly/.worktrees/portal-live-callout/apps/platform/package.json...
+[14:06:38.445] [DEBUG] Could not determine @babel/preset-env version in use. In case of runtime errors with @babel/preset-env, you may need to set the babelRemoveBugfixes feature flag in your `main.ts` file.
+[14:06:39.915] [DEBUG] Serving static files from apps/platform/public at /
+[14:06:39.915] [DEBUG] Serving static files from apps/platform/.storybook/msw at /
+[14:06:39.915] [INFO] Starting...
+[14:06:39.925] [DEBUG] readDependencyManifest: could not resolve "@helvetly/ui"
+[14:06:39.930] [DEBUG] readDependencyManifest: could not resolve "@helvetly/typescript-config"
+[14:06:40.043] [DEBUG] Starting preview..
+[14:06:40.462] [DEBUG] Change detection enabled.
+[14:06:40.463] [DEBUG] Change detection: snapshotting Vite resolve config (restart required if vite.config.ts changes)
+[14:06:40.463] [DEBUG] Change detection: ignored 28 regex alias(es); related modules tracked as opaque-leaf.
+[14:06:40.463] [DEBUG] ChangeDetectionResolverFactory: skipped regex aliases [/^react$/, /^react\/jsx-runtime$/, /^react\/jsx-dev-runtime$/, /^react-dom$/, /^react-dom\/server$/, /^react-dom\/test-utils$/, /^react-dom\/client$/, /^react-dom\/cjs\/react-dom\.development\.js$/, /^@storybook\/global$/, /^storybook\/test$/, /^storybook\/actions$/, /^storybook\/preview-api$/, /^storybook\/internal\/channels$/, /^storybook\/internal\/client-logger$/, /^storybook\/internal\/core-events$/, /^storybook\/internal\/preview-errors$/, /^storybook\/internal\/types$/, /^storybook\/internal\/preview-api$/, /^react$/, /^react\/jsx-runtime$/, /^react\/jsx-dev-runtime$/, /^react-dom$/, /^react-dom\/server$/, /^react-dom\/test-utils$/, /^react-dom\/client$/, /^react-dom\/cjs\/react-dom\.development\.js$/, /^\/?@vite\/env/, /^\/?@vite\/client/]
+[14:06:40.511] [ERROR] [38;2;241;97;97mError: listen EADDRINUSE: address already in use 127.0.0.1:6006[39m
+    at Server.setupListenHandle [as _listen2] (node:net:2390:16)
+    at listenInCluster (node:net:2499:12)
+    at node:net:2728:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+[14:06:40.511] [WARN] Broken build, fix the error above.
+You may need to refresh the browser.

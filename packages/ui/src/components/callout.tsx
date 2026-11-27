@@ -41,20 +41,21 @@ export function Callout({
 } & Omit<ComponentProps<'div'>, 'title'>) {
   const { box, accent, icon: toneIcon } = TONES[tone]
   const Icon = icon ?? toneIcon
+  // A notice with actions and no body is one line beside its buttons, so it centres on them.
+  const centred = Boolean(actions && !children)
   return (
     <div
       data-slot="callout"
       data-tone={tone}
       className={cn(
         'flex gap-3 rounded-xl px-4 py-3 text-body-sm ring-1 ring-inset',
-        // A body-only notice with actions is one line beside its buttons, so it centres on them.
-        !title && actions ? 'items-center' : 'items-start',
+        centred ? 'items-center' : 'items-start',
         box,
         className,
       )}
       {...props}
     >
-      <Icon aria-hidden className={cn('size-4 shrink-0', (title || !actions) && 'mt-px', accent)} />
+      <Icon aria-hidden className={cn('size-4 shrink-0', !centred && 'mt-px', accent)} />
       <div className="grid min-w-0 flex-1 gap-1">
         {title && <p className={cn('text-body font-medium', accent)}>{title}</p>}
         {children && <div className="text-pretty text-foreground">{children}</div>}
