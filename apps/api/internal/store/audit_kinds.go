@@ -10,6 +10,7 @@ import (
 // (`lib/audit-log.ts`, held to this list by a test); LogEvent refuses any other kind under `go test`.
 var AuditKinds = []string{
 	"invoice.issued", "invoice.import_overwritten", "invoice.xml_archived", "invoice.voided", "invoice.replaced",
+	"invoice.payment_file_attached", "invoice.payment_file_removed",
 	"payment.added", "payment.deleted", "refund.added", "refund.deleted", "credit.issued",
 	"plan.created", "plan.cancelled",
 	"expense.booked", "expense.voided", "expense.payment_changed",

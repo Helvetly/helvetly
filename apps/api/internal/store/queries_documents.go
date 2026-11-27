@@ -108,11 +108,13 @@ const retentionSQL = `(SELECT to_char(make_date(max(extract(year FROM r.day))::i
 
 // retainedSQL: document d may not be trashed or deleted on the day in parameter $today; the original of an invoice
 // issued elsewhere stays as long as the invoice (invoices.source_document_id) points at it, and the filed PDF of an
-// invoice or quote as long as the record (pdf_key) or a sent revision of the quote keeps it: they share one object.
+// invoice or quote as long as the record (pdf_key) or a sent revision of the quote keeps it: they share one object;
+// a statement or confirmation linked to an invoice's payment or refund as long as it is linked.
 const recordFileSQL = `(EXISTS (SELECT 1 FROM invoices si WHERE si.workspace_id = d.workspace_id AND si.source_document_id = d.id)
 		OR EXISTS (SELECT 1 FROM invoices pi WHERE pi.workspace_id = d.workspace_id AND pi.pdf_key = d.object_key)
 		OR EXISTS (SELECT 1 FROM quotes pq WHERE pq.workspace_id = d.workspace_id AND pq.pdf_key = d.object_key)
-		OR EXISTS (SELECT 1 FROM quote_revisions qr WHERE qr.workspace_id = d.workspace_id AND qr.pdf_key = d.object_key))`
+		OR EXISTS (SELECT 1 FROM quote_revisions qr WHERE qr.workspace_id = d.workspace_id AND qr.pdf_key = d.object_key)
+		OR EXISTS (SELECT 1 FROM document_links pl WHERE pl.document_id = d.id AND pl.target_type IN ('payment', 'refund')))`
 
 func retainedSQL(today string) string {
 	return `(coalesce(` + retentionSQL + ` >= ` + today + `, false) OR ` + recordFileSQL + `)`
@@ -483,7 +485,9 @@ func (q Q) addLinks(ctx context.Context, docs []Document) error {
 	for i, d := range docs {
 		ids[i], at[d.ID] = d.ID, i
 	}
-	rows, err := q.db.Query(ctx, `SELECT document_id, target_type, target_id, label, retains FROM (SELECT l.document_id, l.target_type, l.target_id,
+	// a payment's or refund's link names its invoice (id and number), which is where it is opened and unlinked
+	rows, err := q.db.Query(ctx, `SELECT document_id, target_type, target_id, label, retains FROM (SELECT l.document_id, l.target_type,
+			coalesce(pi.id, l.target_id),
 			coalesce(CASE l.target_type
 				WHEN 'client' THEN c.name
 				WHEN 'invoice' THEN CASE WHEN i.number IS NULL
@@ -491,14 +495,19 @@ func (q Q) addLinks(ctx context.Context, docs []Document) error {
 					ELSE CASE WHEN i.kind = 'credit_note' THEN 'Credit note ' ELSE 'Invoice ' END || i.number END
 				WHEN 'expense' THEN 'Expense #' || e.number || coalesce(' · ' || e.supplier_name, '')
 				WHEN 'signature' THEN 'Signed · ' || sr.title
+				WHEN 'payment' THEN pi.number
+				WHEN 'refund' THEN pi.number
 			END, 'Deleted record'),
 			coalesce((l.target_type = 'invoice' AND i.status <> 'draft') OR (l.target_type = 'expense' AND e.status <> 'draft')
-				OR (l.target_type = 'signature' AND sr.completed_at IS NOT NULL), false), l.created_at
+				OR (l.target_type = 'signature' AND sr.completed_at IS NOT NULL) OR l.target_type IN ('payment', 'refund'), false), l.created_at
 		FROM document_links l
 		LEFT JOIN clients c ON l.target_type = 'client' AND c.id = l.target_id
 		LEFT JOIN invoices i ON l.target_type = 'invoice' AND i.id = l.target_id
 		LEFT JOIN expenses e ON l.target_type = 'expense' AND e.id = l.target_id
 		LEFT JOIN signature_requests sr ON l.target_type = 'signature' AND sr.id = l.target_id
+		LEFT JOIN invoice_payments ip ON l.target_type = 'payment' AND ip.id = l.target_id
+		LEFT JOIN invoice_refunds ir ON l.target_type = 'refund' AND ir.id = l.target_id
+		LEFT JOIN invoices pi ON pi.id = coalesce(ip.invoice_id, ir.invoice_id)
 		WHERE l.document_id = ANY($1)
 		UNION ALL -- the quote a contract was made from (quote_contracts), labelled by its number alone
 		SELECT qc.document_id, 'quote', qc.quote_id, coalesce(t.number, ''), false, qc.created_at
@@ -825,4 +834,14 @@ func (q Q) HRFile(ctx context.Context, workspaceID, id string) (Document, error)
 func (q Q) DeleteHRFile(ctx context.Context, workspaceID, id string) (string, error) {
 	return q.taken(ctx, `DELETE FROM documents WHERE workspace_id = $1 AND id = $2 AND hr_private RETURNING object_key`,
 		workspaceID, id)
+}
+
+// RemovePaymentLink unlinks the file from the payment or refund; false when it was not linked.
+func (q Q) RemovePaymentLink(ctx context.Context, workspaceID, documentID, targetType, targetID string, now time.Time) (bool, error) {
+	tag, err := q.db.Exec(ctx, `DELETE FROM document_links WHERE workspace_id = $1 AND document_id = $2 AND target_type = $3 AND target_id = $4`,
+		workspaceID, documentID, targetType, targetID)
+	if err != nil || tag.RowsAffected() == 0 {
+		return false, err
+	}
+	return true, q.AutoTag(ctx, workspaceID, documentID, now)
 }

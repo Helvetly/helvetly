@@ -19,6 +19,7 @@ import {
   Copy,
   Download,
   Ellipsis,
+  FileCheck2,
   FileSignature,
   FileText,
   FolderInput,
@@ -32,8 +33,9 @@ import {
   Share2,
   Sparkles,
   Trash2,
+  Undo2,
+  Wallet,
   X,
-  FileCheck2,
 } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -99,6 +101,8 @@ const LINK_ICONS = {
   expense: Receipt,
   signature: FileSignature,
   quote: FileCheck2,
+  payment: Wallet,
+  refund: Undo2,
 }
 
 /** The file large, with its details and links on the right; ← and → step through the list. */

@@ -27,6 +27,8 @@ export const AUDIT_KINDS = [
   'invoice.xml_archived',
   'invoice.voided',
   'invoice.replaced',
+  'invoice.payment_file_attached',
+  'invoice.payment_file_removed',
   'payment.added',
   'payment.deleted',
   'refund.added',
@@ -214,6 +216,17 @@ function words(event: FinancialEvent): { line: string; amount: string | null } {
           record: RECORD,
           replacement: text(event.payload.replaced_by_number),
         }),
+        amount: null,
+      }
+    case 'invoice.payment_file_attached':
+    case 'invoice.payment_file_removed':
+      return {
+        line: translate(
+          event.kind === 'invoice.payment_file_attached'
+            ? 'auditSentencePaymentFileAttached'
+            : 'auditSentencePaymentFileRemoved',
+          { target: 'refund_id' in event.payload ? 'refund' : 'payment', record: RECORD },
+        ),
         amount: null,
       }
     case 'payment.added':

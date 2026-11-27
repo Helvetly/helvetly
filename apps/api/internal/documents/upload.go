@@ -22,37 +22,16 @@ func contentDisposition(kind, name string) string {
 
 // upload hashes the spooled multipart file before storing it; matching uploads serialize across APIs and instances.
 func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	limitMB := s.maxSize >> 20
-	tooLarge := refuse(http.StatusRequestEntityTooLarge, "payload_too_large", fmt.Sprintf("Upload files of up to %d MB.", limitMB), nil)
-	r.Body = http.MaxBytesReader(w, r.Body, min(s.maxSize+1<<20, uploads.MaxRequestBytes))
-	if err := r.ParseMultipartForm(8 << 20); err != nil {
-		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			return tooLarge
-		}
-		return badRequest("Send the file as multipart/form-data in file.")
+	form, h, err := s.parseUpload(w, r)
+	if form != nil {
+		defer func() { _ = form.RemoveAll() }()
 	}
-	defer func() { _ = r.MultipartForm.RemoveAll() }()
-	form := r.MultipartForm
-	if len(form.File["file"]) != 1 {
-		return validationFailed(map[string]string{"file": "Send one file per request."})
-	}
-	h := form.File["file"][0]
-	if h.Size > s.maxSize {
-		return tooLarge
+	if err != nil {
+		return err
 	}
 	mode, err := onConflict(formValue(form, "on_conflict"))
 	if err != nil {
 		return err
-	}
-	name := displayName(h.Filename)
-	head, err := readHead(h)
-	if err != nil {
-		return err
-	}
-	ct := detectType(name, head)
-	if ct == "" {
-		return validationFailed(map[string]string{"file": name + " is not a supported file: use PDF, images, Office or " +
-			"OpenDocument files, CSV, text, XML, JSON or ZIP."})
 	}
 	var folder *string
 	if id := formValue(form, "folder_id"); id != "" {
@@ -71,6 +50,62 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return validationFailed(map[string]string{"client_id": "This client doesn't exist."})
 		}
 	}
+	return s.storeUpload(w, r, sess, h, uploadTarget{folder: folder, clientID: clientID, mode: mode})
+}
+
+// parseUpload reads the one multipart file of the request; the caller removes the form's spooled files.
+func (s *Service) parseUpload(w http.ResponseWriter, r *http.Request) (*multipart.Form, *multipart.FileHeader, error) {
+	limitMB := s.maxSize >> 20
+	tooLarge := refuse(http.StatusRequestEntityTooLarge, "payload_too_large", fmt.Sprintf("Upload files of up to %d MB.", limitMB), nil)
+	r.Body = http.MaxBytesReader(w, r.Body, min(s.maxSize+1<<20, uploads.MaxRequestBytes))
+	if err := r.ParseMultipartForm(8 << 20); err != nil {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			return nil, nil, tooLarge
+		}
+		return nil, nil, badRequest("Send the file as multipart/form-data in file.")
+	}
+	form := r.MultipartForm
+	if len(form.File["file"]) != 1 {
+		return form, nil, validationFailed(map[string]string{"file": "Send one file per request."})
+	}
+	h := form.File["file"][0]
+	if h.Size > s.maxSize {
+		return form, nil, tooLarge
+	}
+	return form, h, nil
+}
+
+// uploadTarget: where an upload goes. attach, when set, runs in the transaction that creates or reuses the Document
+// (its id), the new one then gets kind as its filed kind and is not queued for AI filing.
+type uploadTarget struct {
+	folder   *string
+	clientID string
+	mode     string
+	kind     string
+	attach   func(q store.Q, documentID string) error
+}
+
+func (t uploadTarget) reused(q store.Q, id string) error {
+	if id == "" || t.attach == nil {
+		return nil
+	}
+	return t.attach(q, id)
+}
+
+// storeUpload stores the file once per workspace and content (SHA-256 under the workspace's hash lock), counting it
+// before any byte reaches storage.
+func (s *Service) storeUpload(w http.ResponseWriter, r *http.Request, sess store.Session, h *multipart.FileHeader, t uploadTarget) error {
+	name := displayName(h.Filename)
+	head, err := readHead(h)
+	if err != nil {
+		return err
+	}
+	ct := detectType(name, head)
+	if ct == "" {
+		return validationFailed(map[string]string{"file": name + " is not a supported file: use PDF, images, Office or " +
+			"OpenDocument files, CSV, text, XML, JSON or ZIP."})
+	}
+	folder, clientID := t.folder, t.clientID
 
 	id := auth.NewID("doc")
 	key := objectKey(sess, id, name)
@@ -93,8 +128,10 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 				}
 			}
 			var err error
-			reused, err = s.reuse(q, r.Context(), sess, sum, folder, clientID)
-			return err
+			if reused, err = s.reuse(q, r.Context(), sess, sum, folder, clientID); err != nil {
+				return err
+			}
+			return t.reused(q, reused)
 		})
 		if err != nil {
 			return err
@@ -132,9 +169,12 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 			return err
 		}
 		if reused, err = s.reuse(q, r.Context(), sess, sum, folder, clientID); err != nil || reused != "" {
+			if err == nil {
+				err = t.reused(q, reused)
+			}
 			return err
 		}
-		final, err := s.placeFile(q, r.Context(), sess, "", name, folder, mode)
+		final, err := s.placeFile(q, r.Context(), sess, "", name, folder, t.mode)
 		if err != nil {
 			return err
 		}
@@ -142,6 +182,16 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if err := q.CreateDocument(r.Context(), sess.Workspace.ID, sess.User.ID, store.Document{ID: id, FolderID: folder,
 			Name: final, Size: h.Size, ContentType: ct, SHA256: &sum, ObjectKey: key, CreatedAt: now}); err != nil {
 			return err
+		}
+		if t.kind != "" {
+			if err := q.SetDocumentKind(r.Context(), sess.Workspace.ID, id, t.kind, now); err != nil {
+				return err
+			}
+		}
+		if t.attach != nil {
+			if err := t.attach(q, id); err != nil {
+				return err
+			}
 		}
 		if clientID == "" {
 			return nil
@@ -156,7 +206,9 @@ func (s *Service) upload(w http.ResponseWriter, r *http.Request, sess store.Sess
 		s.removeObjects(r.Context(), key)
 		return s.writeReused(w, r, sess, reused)
 	}
-	s.queueFiling(r.Context(), sess, id, folder == nil, requestLanguage(r))
+	if t.attach == nil {
+		s.queueFiling(r.Context(), sess, id, folder == nil, requestLanguage(r))
+	}
 	return s.writeDocument(w, r, sess, http.StatusCreated, id)
 }
 
