@@ -141,7 +141,7 @@ export const Periods: Story = {
     const closedRow = canvas.getByRole('listitem', { name: last })
     await expect(within(closedRow).getByText('Closed')).toBeVisible()
     await expect(within(closedRow).getByText('Anna Muster')).toBeVisible()
-    await expect(closedRow).toHaveTextContent(/· AMAnna Muster/)
+    await expect(closedRow).toHaveTextContent(/Closed 3 Nov·AMAnna Muster/)
     const row = canvas.getByRole('listitem', { name: open })
     await expect(within(row).getByText('Open')).toBeVisible()
     await expect(await within(row).findByText(/\d+ issued/)).toBeVisible()
