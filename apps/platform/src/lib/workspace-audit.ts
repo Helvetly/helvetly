@@ -2,6 +2,7 @@ import { locale } from '@helvetly/i18n'
 
 import { request } from '@/lib/api'
 import { translate } from '@/lib/i18n'
+import { formatDay } from '@/lib/invoices'
 
 export const auditLevels = {
   critical: translate('workspaceAuditCritical'),
@@ -25,6 +26,34 @@ export const auditAreas = {
   expenses: translate('workspaceAuditExpenses'),
   documents: translate('workspaceAuditDocuments'),
 }
+export type AuditArea = keyof typeof auditAreas
+/** The scope picker's choices, in the order shown: the API area with a name and what it checks. */
+export const auditScopes: [AuditArea, string, string][] = [
+  [
+    'invoices',
+    translate('workspaceAuditScopeInvoices'),
+    translate('workspaceAuditScopeInvoicesHint'),
+  ],
+  [
+    'payments',
+    translate('workspaceAuditScopePayments'),
+    translate('workspaceAuditScopePaymentsHint'),
+  ],
+  ['clients', translate('workspaceAuditScopeClients'), translate('workspaceAuditScopeClientsHint')],
+  ['documents', translate('workspaceAuditScopeLinks'), translate('workspaceAuditScopeLinksHint')],
+  [
+    'contracts',
+    translate('workspaceAuditScopeContracts'),
+    translate('workspaceAuditScopeContractsHint'),
+  ],
+  ['quotes', translate('workspaceAuditScopeQuotes'), translate('workspaceAuditScopeQuotesHint')],
+  [
+    'expenses',
+    translate('workspaceAuditScopeExpenses'),
+    translate('workspaceAuditScopeExpensesHint'),
+  ],
+  ['tax', translate('workspaceAuditScopeTax'), translate('workspaceAuditScopeTaxHint')],
+]
 const routes = {
   client: '/clients?id=',
   invoice: '/invoices?id=',
@@ -39,7 +68,7 @@ export type AuditFinding = {
   class: keyof typeof auditClasses
   code: string
   severity: keyof typeof auditLevels
-  category: keyof typeof auditAreas
+  category: AuditArea
   evidence: Evidence[]
   values?: string[]
   advice?: string
@@ -47,16 +76,19 @@ export type AuditFinding = {
 export type WorkspaceAudit = {
   findings: AuditFinding[]
   pending: string[]
-  counts: Partial<Record<keyof typeof auditAreas, number>>
+  counts: Partial<Record<AuditArea, number>>
   read: number
   partial: number
 }
 const options = (signal: AbortSignal) => ({ method: 'POST' as const, signal })
-export const fetchAudit = (signal: AbortSignal) =>
-  request<WorkspaceAudit>(`/reports/workspace-audit?lang=${locale}`, options(signal))
-export const inspectOriginal = (id: string, signal: AbortSignal) =>
+/** No areas is the full audit. */
+export const auditQuery = (areas: AuditArea[]) =>
+  `?lang=${locale}` + (areas.length ? `&areas=${areas.join(',')}` : '')
+export const fetchAudit = (signal: AbortSignal, areas: AuditArea[]) =>
+  request<WorkspaceAudit>(`/reports/workspace-audit${auditQuery(areas)}`, options(signal))
+export const inspectOriginal = (id: string, signal: AbortSignal, areas: AuditArea[]) =>
   request<{ status: string }>(
-    `/reports/workspace-audit/documents/${encodeURIComponent(id)}?lang=${locale}`,
+    `/reports/workspace-audit/documents/${encodeURIComponent(id)}${auditQuery(areas)}`,
     options(signal),
   )
 
@@ -192,9 +224,25 @@ const comparisonLabels: Record<string, [string, string]> = {
   tax_year: [original, translate('workspaceAuditFolder')],
   filename_reference: [translate('workspaceAuditFilename'), translate('workspaceAuditTransfer')],
 }
-export function findingValues(finding: AuditFinding) {
+const isoDay = /^\d{4}-\d{2}-\d{2}$/
+/** A finding's values as labelled facts for one row: dates in the person's format, counts in words. */
+export function findingValues(finding: AuditFinding): { label?: string; value: string }[] {
+  const values = finding.values ?? []
+  if (finding.code === 'unreferenced_transfer')
+    return [{ value: translate('workspaceAuditCreditCount', { count: Number(values[0]) || 0 }) }]
   const labels = comparisonLabels[finding.code]
-  return finding.values
-    ?.map((value, index) => (labels?.[index] ? labels[index] + ' · ' + value : value))
-    .join('  /  ')
+  return values.map((value, index) => ({
+    label: labels?.[index],
+    value: isoDay.test(value) ? formatDay(value) : value,
+  }))
+}
+/** Findings per severity and per area, for the summary's filters. */
+export function auditTally(findings: AuditFinding[]) {
+  const severity: Partial<Record<keyof typeof auditLevels, number>> = {}
+  const area: Partial<Record<AuditArea, number>> = {}
+  for (const f of findings) {
+    severity[f.severity] = (severity[f.severity] ?? 0) + 1
+    area[f.category] = (area[f.category] ?? 0) + 1
+  }
+  return { severity, area }
 }

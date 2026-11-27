@@ -8,7 +8,7 @@ import type { Session } from '@/lib/api'
 import { storySession } from '../screen-fixtures'
 import { filtersPlay } from './filters'
 import {
-  barsBetweenDataColumns,
+  showsResizeHandles,
   closeHeidi,
   dark,
   desktop,
@@ -36,7 +36,7 @@ type Story = StoryObj<typeof meta>
 export const List: Story = { play: shows('Swisscom (Schweiz) AG') }
 export const ListDark = dark(List)
 export const ListResizeBars: Story = {
-  play: async ({ canvasElement }) => barsBetweenDataColumns(canvasElement),
+  play: async ({ canvasElement }) => showsResizeHandles(canvasElement),
 }
 export const ListPhone = phone(List)
 

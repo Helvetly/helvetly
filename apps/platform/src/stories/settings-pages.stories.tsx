@@ -216,6 +216,12 @@ export const Account: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await canvas.findByText('MacBook Pro')
+    const memory = within(await canvas.findByRole('region', { name: 'Heidi memory' }))
+    await expect(
+      await memory.findByRole('switch', { name: 'Learn from my activity' }),
+    ).toBeChecked()
+    await expect(memory.getByText('You have no learned topics yet.')).toBeVisible()
+    await expect(memory.queryByRole('radio')).toBeNull()
     await tabMarked(canvasElement, 'Account')
     await sectionsAreBands(canvasElement)
     await headerRuled(canvasElement)

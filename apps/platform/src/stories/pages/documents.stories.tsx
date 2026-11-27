@@ -1,7 +1,12 @@
 import { createTranslators } from '@helvetly/i18n'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
+import {
+  getRouter,
+  ReadonlyURLSearchParams,
+  useSearchParams,
+} from '@storybook/nextjs-vite/navigation.mock'
 import { delay, http, HttpResponse } from 'msw'
+import { useSyncExternalStore } from 'react'
 import { expect, fireEvent, spyOn, userEvent, waitFor, within } from 'storybook/test'
 
 import { DocumentsPage } from '@/components/documents/documents-page'
@@ -13,7 +18,7 @@ import en from '../../messages/en.json'
 import fr from '../../messages/fr.json'
 import it from '../../messages/it.json'
 import { sessionHandler } from '../screen-fixtures'
-import { files as sampleFiles, folders as sampleFolders, page } from './api'
+import { file as sampleFile, files as sampleFiles, folders as sampleFolders, page } from './api'
 import { filtersPlay } from './filters'
 import { closeHeidi, dark, desktop, Frame, pageParameters, phone, shows } from './frame'
 import { sameRowMenus } from './menus'
@@ -387,6 +392,85 @@ export const FolderClickOpens: Story = {
 
     await userEvent.click(folderItem(canvasElement, 'fld_contracts'))
     await waitFor(() => expect(url(canvasElement).get('folder')).toBe('fld_contracts'))
+  },
+}
+
+const materialsFolder = {
+  ...sampleFolders[0]!,
+  id: 'fld_materials',
+  name: 'Materials & goods',
+  parent_id: 'fld_sys_expenses_2025',
+  system_kind: 'expense_category' as const,
+  file_count: 1,
+  total_files: 1,
+  starred: false,
+}
+let materialsListing = Promise.withResolvers<void>()
+
+function subscribeToFolderNavigation(notify: () => void) {
+  window.addEventListener('popstate', notify)
+  return () => window.removeEventListener('popstate', notify)
+}
+
+function useFolderStoryParams() {
+  const search = useSyncExternalStore(subscribeToFolderNavigation, () => window.location.search)
+  return new ReadonlyURLSearchParams(
+    window.location.pathname === '/documents' ? search : 'folder=fld_sys_expenses_2025',
+  )
+}
+
+export const FolderFirstOpen: Story = {
+  beforeEach: () => {
+    const listing = Promise.withResolvers<void>()
+    materialsListing = listing
+    useSearchParams.mockImplementation(useFolderStoryParams)
+    return () => {
+      listing.resolve()
+      useSearchParams.mockReset()
+    }
+  },
+  parameters: pageParameters('/documents', { folder: 'fld_sys_expenses_2025' }, [
+    http.get('/api/v1/documents/folders', () =>
+      HttpResponse.json({ data: [...sampleFolders, materialsFolder] }),
+    ),
+    http.get('/api/v1/documents/trash', () => HttpResponse.json({ data: [] })),
+    http.get('/api/v1/documents', async ({ request }) => {
+      if (new URL(request.url).searchParams.get('folder_id') !== materialsFolder.id)
+        return HttpResponse.json(page([]))
+      await materialsListing.promise
+      return HttpResponse.json(
+        page([sampleFile('doc_materials', 'Materials receipt.png', 'image', 'image/png')]),
+      )
+    }),
+    http.get('/api/v1/documents/doc_materials/content', async () => {
+      await delay(800)
+      return fetch('/email-logo.png')
+    }),
+  ]),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const listing = materialsListing
+    try {
+      await body.findByRole('checkbox', { name: 'Select Materials & goods' }, { timeout: 8000 })
+      // Open without hovering so the list is still cold when the folder changes.
+      fireEvent.click(folderItem(canvasElement, materialsFolder.id))
+      // Next observes pushState in the app. The Storybook router mock needs a navigation event.
+      fireEvent.popState(window)
+      await waitFor(() =>
+        expect(
+          within(body.getByRole('navigation', { name: 'Breadcrumbs' })).getByText(
+            'Materials & goods',
+          ),
+        ).toBeVisible(),
+      )
+      expect(body.queryByText('Materials & goods is empty')).toBeNull()
+      expect(body.getByRole('status', { name: 'Loading…' })).toBeInTheDocument()
+    } finally {
+      listing.resolve()
+    }
+    await expect(
+      await body.findByText('Materials receipt.png', {}, { timeout: 8000 }),
+    ).toBeVisible()
   },
 }
 
@@ -795,8 +879,10 @@ export const TypesMultiSelect: Story = {
     await expect(panel.getByRole('button', { name: /^Type / })).toHaveTextContent(
       /Invoices.*Quotes/,
     )
-    await expect(panel.getByRole('button', { name: /^Client / })).toHaveTextContent(
-      /Acme AG.*Bern Bau GmbH/,
+    await waitFor(() =>
+      expect(panel.getByRole('button', { name: /^Client / })).toHaveTextContent(
+        /Acme AG.*Bern Bau GmbH/,
+      ),
     )
     await userEvent.click(panel.getByRole('button', { name: /^Type / }))
     await userEvent.click(await body.findByRole('option', { name: 'Receipts' }))
