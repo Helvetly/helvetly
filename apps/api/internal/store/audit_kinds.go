@@ -22,7 +22,7 @@ var AuditKinds = []string{
 	"portal.preview_started", "portal.preview_ended",
 	"portal.participant_signed_in", "portal.participant_signed_out", "portal.participant_access_granted",
 	"portal.participant_access_revoked", "client.merged_into_participant",
-	"documents.exported", "documents.folder_repaired", "imports.expired", "email_template.ai_written",
+	"documents.exported", "documents.folder_repaired", "documents.upload_filed", "documents.import_sources_removed", "imports.expired", "email_template.ai_written",
 	"quote.contract_drafted", "quote.contract_written", "contract.signature_applied",
 	"employee.created", "employee.archived", "employee.unarchived", "employee.deleted", "employee.erased",
 	"employee.legal_hold_set", "employee.legal_hold_lifted", "employee.restricted", "employee.unrestricted",

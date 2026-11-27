@@ -8,24 +8,45 @@ import { Switch } from '@helvetly/ui/components/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, CircleCheck, LoaderCircle, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowRight, Circle, CircleCheck, Info, LoaderCircle, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useAIApproval } from '@/components/ai/ai-approval'
 import { FileIcon } from '@/components/import/import-files'
 import { errorMessage } from '@/lib/api'
-import { docsApi, refreshDocuments, useFolders, type OrganizeProposal } from '@/lib/documents'
+import {
+  docsApi,
+  refreshDocuments,
+  useFolders,
+  type DocFile,
+  type OrganizeProposal,
+  type StagedFile,
+} from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { pathLabel } from '@/lib/system-folders'
 
 import { FolderPathInput, folderEntries, folderProblem } from './folder-combobox'
-
-/** A path as people read it: "Invoices › 2025", or "Top level". */
-const shownPath = (path: string | null) =>
-  path ? pathLabel(path).split('/').join(' › ') : translate('organizeTopLevel')
+import { proposalFacts } from './proposal-facts'
 
 type Row = OrganizeProposal & { folderInput: string }
+
+/** Files of a staged upload to place: proposed a few at a time (to show progress), then filed all at once. */
+export type StagedBatch = {
+  batchId: string
+  folderId: string | null
+  files: StagedFile[]
+}
+
+/** Staged files asked about per request, so the drawer can show each one's progress. */
+export const STAGED_CHUNK = 5
+
+/** Where an applied row's file went: its proposed path; null for the rows left out (the batch's folder). */
+export type StagedFiled = { documents: DocFile[]; paths: Record<string, string> }
+
+/** A path as people read it: "Invoices › 2025", or "Top level". */
+export const readablePath = (path: string | null) =>
+  path ? pathLabel(path).split('/').join(' › ') : translate('organizeTopLevel')
 
 /**
  * Organize with AI: Heidi looks at the documents, unsorted ones first, and proposes a folder (new ones too, like
@@ -34,10 +55,15 @@ type Row = OrganizeProposal & { folderInput: string }
  */
 export function OrganizeDrawer({
   folderId,
+  staged,
+  onApplied,
   onClose,
 }: {
   /** Limit to this folder's files and subfolders; none: the whole library. */
   folderId?: string | null
+  /** AI smart grouping of a staged upload instead of the stored files: analysed at once, applied by filing it. */
+  staged?: StagedBatch
+  onApplied?: (filed: StagedFiled) => void
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
@@ -50,8 +76,35 @@ export function OrganizeDrawer({
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [showKept, setShowKept] = useState(false)
 
+  const [analysed, setAnalysed] = useState<Set<string>>(new Set())
+  // A staged upload's answers so far, kept across a retry after an error, which goes on from there.
+  const answered = useRef<{ proposals: OrganizeProposal[]; considered: number }>({
+    proposals: [],
+    considered: 0,
+  })
   const analyse = useMutation({
-    mutationFn: async () => (await docsApi.organize(folderId ?? undefined)).data,
+    mutationFn: async () => {
+      if (!staged) return (await docsApi.organize(folderId ?? undefined)).data
+      const done = new Set(answered.current.proposals.map((proposal) => proposal.document_id))
+      const left = staged.files.filter((entry) => !done.has(entry.id)).map((entry) => entry.id)
+      const chunks = Array.from({ length: Math.ceil(left.length / STAGED_CHUNK) }, (_, i) =>
+        left.slice(i * STAGED_CHUNK, (i + 1) * STAGED_CHUNK),
+      )
+      // One request at a time: the workspace's AI pool takes one call at once, and each answer shows progress.
+      await chunks.reduce(
+        (previous, ids) =>
+          previous.then(async () => {
+            const result = (await docsApi.stagedAnalyze(staged.batchId, ids, staged.folderId)).data
+            answered.current = {
+              proposals: [...answered.current.proposals, ...result.proposals],
+              considered: answered.current.considered + result.considered,
+            }
+            setAnalysed((current) => new Set([...current, ...ids]))
+          }),
+        Promise.resolve(),
+      )
+      return answered.current
+    },
     onSuccess: (result) => {
       const next = result.proposals.map((proposal) => ({
         ...proposal,
@@ -62,17 +115,37 @@ export function OrganizeDrawer({
       setPicked(new Set(next.filter((row) => row.change).map((row) => row.document_id)))
     },
   })
+  const started = useRef(false)
+  useEffect(() => {
+    // The person chose AI smart grouping already: no second start button.
+    if (staged && !started.current) {
+      started.current = true
+      analyse.mutate()
+    }
+  }, [staged, analyse])
+  const itemsOf = (items: Row[]) =>
+    items.map((row) => ({
+      document_id: row.document_id,
+      folder: row.folderInput.trim().replace(/^\/+|\/+$/g, ''),
+      tags: row.tags,
+    }))
+  const file = useMutation({
+    mutationFn: async (items: Row[]) => {
+      if (!staged) throw new Error('Filing needs a staged upload.')
+      const chosen = itemsOf(items)
+      const result = (await docsApi.stagedConfirm(staged.batchId, staged.folderId, chosen)).data
+      return {
+        documents: result.documents,
+        paths: Object.fromEntries(chosen.map((item) => [item.document_id, item.folder])),
+      }
+    },
+    onSuccess: (filed) => {
+      refreshDocuments(queryClient)
+      onApplied?.(filed)
+    },
+  })
   const apply = useMutation({
-    mutationFn: async (items: Row[]) =>
-      (
-        await docsApi.organizeApply(
-          items.map((row) => ({
-            document_id: row.document_id,
-            folder: row.folderInput.trim().replace(/^\/+|\/+$/g, ''),
-            tags: row.tags,
-          })),
-        )
-      ).data,
+    mutationFn: async (items: Row[]) => (await docsApi.organizeApply(itemsOf(items))).data,
     onSuccess: (result) => {
       refreshDocuments(queryClient)
       onClose()
@@ -98,7 +171,8 @@ export function OrganizeDrawer({
   }
   const changes = rows?.filter((row) => row.change) ?? []
   const kept = rows?.filter((row) => !row.change) ?? []
-  const shown = showKept ? (rows ?? []) : changes
+  // A staged file always lands somewhere: every row is shown, unticked ones go to the folder the person was in.
+  const shown = showKept || staged ? (rows ?? []) : changes
   const chosen = (rows ?? []).filter((row) => picked.has(row.document_id))
   const toggle = (id: string, on: boolean) =>
     setPicked((current) => {
@@ -159,12 +233,86 @@ export function OrganizeDrawer({
               </button>
             </span>
           ))}
-          {row.reason && (
+          {row.reason && !staged && (
             <span className="ml-1 text-caption text-pretty text-muted-foreground">
               {row.reason}
             </span>
           )}
         </div>
+      </div>
+    )
+  }
+
+  /** A staged row's findings: the kind as a chip, the client and the year, the reason behind an info icon. */
+  const facts = (row: Row) => {
+    const { kind, client, year } = proposalFacts({ folder: row.folderInput, tags: row.tags })
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 pt-1 text-caption text-muted-foreground">
+        {kind && (
+          <span className="rounded-full bg-heidi-soft px-2 py-0.5 font-medium text-heidi">
+            {kind}
+          </span>
+        )}
+        {client && <span>{client}</span>}
+        {year && <span>{year}</span>}
+        {row.reason && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={translate('stagedWhy', { name: row.name })}
+                className="grid size-5 place-items-center rounded-full hover:bg-muted hover:text-foreground"
+              >
+                <Info aria-hidden className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72">{row.reason}</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    )
+  }
+
+  /** While a staged upload is analysed: each file, waiting, being looked at or done. */
+  const progress = (files: StagedFile[]) => {
+    const current = new Set(
+      files
+        .filter((entry) => !analysed.has(entry.id))
+        .slice(0, STAGED_CHUNK)
+        .map((entry) => entry.id),
+    )
+    return (
+      <div className="grid gap-3">
+        <p className="text-body-sm text-muted-foreground" aria-live="polite">
+          {translate('stagedAnalysing', { done: analysed.size, total: files.length })}
+        </p>
+        <ul
+          aria-label={translate('stagedFiles')}
+          className="divide-y rounded-lg border text-body-sm"
+        >
+          {files.map((entry) => (
+            <li key={entry.id} className="flex items-center gap-2.5 px-3 py-2">
+              <FileIcon name={entry.name} className="size-6 stroke-[1.5]" />
+              <span className="min-w-0 flex-1 truncate">{entry.name}</span>
+              {analysed.has(entry.id) ? (
+                <CircleCheck
+                  aria-label={translate('stagedAnalysed')}
+                  className="size-4 text-success-solid"
+                />
+              ) : current.has(entry.id) && analyse.isPending ? (
+                <LoaderCircle
+                  aria-label={translate('stagedAnalysingFile')}
+                  className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
+                />
+              ) : (
+                <Circle
+                  aria-label={translate('waiting')}
+                  className="size-4 text-muted-foreground/50"
+                />
+              )}
+            </li>
+          ))}
+        </ul>
       </div>
     )
   }
@@ -183,10 +331,12 @@ export function OrganizeDrawer({
             </span>
             <div className="grid min-w-0 gap-0.5">
               <SheetTitle className="text-title-sm font-semibold">
-                {translate('organizeTitle')}
+                {staged ? translate('stagedGroupingTitle') : translate('organizeTitle')}
               </SheetTitle>
               <SheetDescription className="text-body-sm text-muted-foreground">
-                {translate('organizeLead')}
+                {staged
+                  ? translate('stagedGroupingLead', { count: staged.files.length })
+                  : translate('organizeLead')}
               </SheetDescription>
             </div>
           </div>
@@ -208,8 +358,22 @@ export function OrganizeDrawer({
         <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 py-6 md:px-8">
           {analyse.error && <Callout tone="danger">{errorMessage(analyse.error)}</Callout>}
           {apply.error && <Callout tone="danger">{errorMessage(apply.error)}</Callout>}
+          {file.error && <Callout tone="danger">{errorMessage(file.error)}</Callout>}
 
-          {!rows ? (
+          {staged && !rows ? (
+            <>
+              {progress(staged.files)}
+              {analyse.error && (
+                <Button
+                  variant="outline"
+                  className="justify-self-start"
+                  onClick={() => analyse.mutate()}
+                >
+                  {translate('retry')}
+                </Button>
+              )}
+            </>
+          ) : !rows ? (
             <div className="grid justify-items-center gap-4 rounded-xl border border-dashed px-6 py-12 text-center">
               <span className="grid size-12 place-items-center rounded-full bg-heidi-soft">
                 <HeidiSparkle animated={analyse.isPending} className="size-5" />
@@ -248,7 +412,7 @@ export function OrganizeDrawer({
                     {translate('organizeConsidered', { count: considered })}
                   </span>
                 </div>
-                {kept.length > 0 && (
+                {kept.length > 0 && !staged && (
                   <label className="flex items-center gap-2 text-caption text-muted-foreground">
                     <Switch checked={showKept} onCheckedChange={setShowKept} />
                     {translate('organizeShowKept')}
@@ -309,7 +473,7 @@ export function OrganizeDrawer({
                                 <span className="grid min-w-0">
                                   <span className="truncate font-medium">{row.name}</span>
                                   <span className="truncate text-caption text-muted-foreground">
-                                    {shownPath(row.from_folder)}
+                                    {readablePath(row.from_folder)}
                                   </span>
                                 </span>
                               </span>
@@ -317,7 +481,10 @@ export function OrganizeDrawer({
                             <td className="px-0 py-2.5 text-muted-foreground">
                               <ArrowRight aria-hidden className="size-4" />
                             </td>
-                            <td className="min-w-80 px-2 py-2.5">{proposed(row)}</td>
+                            <td className="min-w-80 px-2 py-2.5">
+                              {proposed(row)}
+                              {staged && facts(row)}
+                            </td>
                           </tr>
                         )
                       })}
@@ -335,9 +502,14 @@ export function OrganizeDrawer({
           </span>
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={onClose}>
-              {translate('cancel')}
+              {staged ? translate('stagedBack') : translate('cancel')}
             </Button>
-            {rows && (
+            {staged && rows && (
+              <Button disabled={file.isPending} onClick={() => file.mutate(chosen)}>
+                {translate('stagedApply', { count: staged.files.length })}
+              </Button>
+            )}
+            {rows && !staged && (
               <Button
                 disabled={!chosen.length || apply.isPending}
                 onClick={() => apply.mutate(chosen)}

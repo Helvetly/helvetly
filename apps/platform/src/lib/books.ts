@@ -135,6 +135,8 @@ export const EVENT_LABELS: Record<string, string> = {
   'portal.preview_ended': translate('auditPortalPreviewEnded'),
   'documents.exported': translate('auditDocumentsExported'),
   'documents.folder_repaired': translate('auditDocumentsFolderRepaired'),
+  'documents.upload_filed': translate('auditDocumentsUploadFiled'),
+  'documents.import_sources_removed': translate('auditDocumentsImportSourcesRemoved'),
   'imports.expired': translate('auditImportExpired'),
   'approval.submitted': translate('auditApprovalSubmitted'),
   'approval.approved': translate('auditApprovalApproved'),

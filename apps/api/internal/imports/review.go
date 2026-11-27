@@ -247,6 +247,12 @@ func (s *Service) commit(w http.ResponseWriter, r *http.Request, sess store.Sess
 		}
 		results = append(results, res)
 	}
+	// Once every record is created or skipped, the uploads it read are not needed: originals are Documents by now.
+	sources, err := s.db.DropImportSources(ctx, sess.Workspace.ID, b.ID)
+	if err != nil {
+		return err
+	}
+	s.deleteKept(ctx, sources)
 	if b, err = s.db.ImportBatch(ctx, sess.Workspace.ID, sess.User.ID, b.ID); err != nil {
 		return err
 	}
@@ -309,9 +315,13 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, batchID, id
 			sum := sha256.Sum256(b)
 			return int64(len(b)), hex.EncodeToString(sum[:]), nil
 		}
+		staged := src.Staged
 		document := func(ctx context.Context) (string, error) {
 			if src.DocumentID != nil {
 				return *src.DocumentID, nil
+			}
+			if staged {
+				return s.promoteSource(ctx, q, sess, *src.ObjectKey)
 			}
 			id, key, err := s.entryDocument(ctx, q, sess, src)
 			if key != "" {
@@ -320,7 +330,7 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, batchID, id
 			return id, err
 		}
 		entity, conflict, err := k.write(ctx, q, sess, rec.Data, Source{DocumentID: src.DocumentID, Name: src.Name,
-			ContentType: src.ContentType, Keep: keep, Document: document}, resolution)
+			ContentType: src.ContentType, Keep: keep, Document: document, Staged: staged}, resolution)
 		if err != nil {
 			return err
 		}
@@ -351,6 +361,20 @@ func (s *Service) commitOne(ctx context.Context, sess store.Session, batchID, id
 	return res, err
 }
 
+// promoteSource makes the staged upload at key the Document a record keeps as its original, at the top level for the
+// record to place: the same object, still counted once. Another record of the same file may have promoted it already.
+func (s *Service) promoteSource(ctx context.Context, q store.Q, sess store.Session, key string) (string, error) {
+	u, err := q.TakeImportSource(ctx, sess.Workspace.ID, key)
+	if errors.Is(err, store.ErrNotFound) {
+		return q.DocumentAt(ctx, sess.Workspace.ID, key)
+	}
+	if err != nil {
+		return "", err
+	}
+	data := upload{name: u.Name, contentType: u.ContentType, sum: u.SHA256, documentID: u.ID, key: u.ObjectKey}
+	return u.ID, s.createDocumentSized(ctx, q, sess, data, u.Size)
+}
+
 // entryDocument stores a ZIP entry as a Document of its own, under the same hash lock and storage admission as an
 // upload; equal bytes already stored as a Document are reused. key is the object it put ("" when none).
 func (s *Service) entryDocument(ctx context.Context, q store.Q, sess store.Session, src store.ImportSource) (id, key string, err error) {
@@ -364,6 +388,10 @@ func (s *Service) entryDocument(ctx context.Context, q store.Q, sess store.Sessi
 		return "", "", err
 	}
 	u := &list[0]
+	if u.reused && u.staged { // another import's staged upload of the same bytes: it becomes the Document
+		id, err := s.promoteSource(ctx, q, sess, u.key)
+		return id, "", err
+	}
 	// A match may be an expense receipt ("rcp_…"), which is no Document: then the entry is stored as one.
 	if u.reused && strings.HasPrefix(u.documentID, "doc_") {
 		return u.documentID, "", nil

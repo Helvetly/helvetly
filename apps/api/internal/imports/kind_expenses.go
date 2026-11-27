@@ -113,15 +113,24 @@ var expensesKind = Kind{
 				return "", err
 			}
 		}
-		// The link keeps the uploaded Document with its expense: a business record once the expense is booked.
-		if src.DocumentID != nil {
-			if err := q.AddDocumentLink(ctx, sess.Workspace.ID, *src.DocumentID, "expense", e.ID, sess.User.ID, now); err != nil {
+		// The link keeps the uploaded Document with its expense: a business record once the expense is booked. A staged
+		// upload becomes one only when it is this expense's receipt; a list of expenses is no record's and goes away.
+		docID := src.DocumentID
+		if _, receipt := receiptExt[src.ContentType]; docID == nil && src.Staged && receipt && src.Document != nil {
+			id, err := src.Document(ctx)
+			if err != nil {
+				return "", err
+			}
+			docID = &id
+		}
+		if docID != nil {
+			if err := q.AddDocumentLink(ctx, sess.Workspace.ID, *docID, "expense", e.ID, sess.User.ID, now); err != nil {
 				return "", err
 			}
 			folder := func() (string, error) {
 				return q.ExpenseYearFolder(ctx, sess.Workspace.ID, e.CategoryID, store.ExpenseYear(e.DocumentDate, sess.Workspace.Today(now)), sess.User.ID, now)
 			}
-			if err := placeDocument(ctx, q, sess, *src.DocumentID, folder, nil, now); err != nil {
+			if err := placeDocument(ctx, q, sess, *docID, folder, nil, now); err != nil {
 				return "", err
 			}
 		}

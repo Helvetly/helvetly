@@ -19,7 +19,13 @@ import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } 
 
 import { promptUpgrade } from '@/components/billing/upgrade-prompt'
 import { ApiError, errorMessage } from '@/lib/api'
-import { formatSize, refreshDocuments, uploadDocument, type OnConflict } from '@/lib/documents'
+import {
+  formatSize,
+  refreshDocuments,
+  stageDocument,
+  uploadDocument,
+  type OnConflict,
+} from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { folderLabel } from '@/lib/system-folders'
 
@@ -33,8 +39,11 @@ import {
   type Upload,
 } from './upload-queue'
 
-/** The upload queue: adds files, runs a few at a time, and refreshes the lists as files land. */
-export function useUploads() {
+/**
+ * The upload queue: adds files, runs a few at a time, and refreshes the lists as files land. With `staging` the files of
+ * one add go into a staging batch instead, for the person to choose where they go once all are up.
+ */
+export function useUploads({ staging = false }: { staging?: boolean } = {}) {
   const queryClient = useQueryClient()
   const [uploads, dispatch] = useReducer(queueReducer, [])
   const controllers = useRef(new Map<string, AbortController>())
@@ -45,19 +54,27 @@ export function useUploads() {
       const controller = new AbortController()
       controllers.current.set(upload.id, controller)
       dispatch({ type: 'start', id: upload.id })
-      uploadDocument(
-        upload.file,
-        { folderId: upload.folderId, onConflict: upload.onConflict },
-        (progress) => dispatch({ type: 'progress', id: upload.id, progress }),
-        controller.signal,
-      )
-        .then((result) => {
-          dispatch({ type: 'done', id: upload.id, result, reused: result.reused })
-          refreshDocuments(queryClient)
-        })
+      const progress = (share: number) =>
+        dispatch({ type: 'progress', id: upload.id, progress: share })
+      const sent = upload.batchId
+        ? stageDocument(upload.file, upload.batchId, progress, controller.signal).then((staged) =>
+            dispatch({ type: 'staged', id: upload.id, staged }),
+          )
+        : uploadDocument(
+            upload.file,
+            { folderId: upload.folderId, onConflict: upload.onConflict },
+            progress,
+            controller.signal,
+          ).then((result) => {
+            dispatch({ type: 'done', id: upload.id, result, reused: result.reused })
+            refreshDocuments(queryClient)
+          })
+      sent
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === 'AbortError') return
-          if (error instanceof ApiError && error.code === 'name_taken') {
+          if (error instanceof ApiError && error.code === 'duplicate_file' && upload.batchId) {
+            dispatch({ type: 'duplicate', id: upload.id, error: error.message })
+          } else if (error instanceof ApiError && error.code === 'name_taken') {
             const suggestion = error.details.suggestion
             dispatch({
               type: 'conflict',
@@ -78,9 +95,18 @@ export function useUploads() {
     dispatch(action)
   }
   const add = (files: File[], folderId: string | null, folderName: string) =>
-    dispatch({ type: 'add', uploads: newUploads(files, folderId, folderName) })
+    dispatch({
+      type: 'add',
+      uploads: newUploads(
+        files,
+        folderId,
+        folderName,
+        'fail',
+        staging ? crypto.randomUUID() : null,
+      ),
+    })
   const clear = useCallback(() => dispatch({ type: 'clear' }), [])
-  return { uploads, add, act, clear }
+  return { uploads, add, act, clear, dispatch }
 }
 
 /** The server's sentence about the file ("… is not a supported file"), not the generic one. */
@@ -98,6 +124,8 @@ function uploadError(error: unknown) {
 const STATUS_TEXT: Record<Upload['status'], string> = {
   queued: translate('waiting'),
   uploading: translate('uploading'),
+  staged: translate('stagedUploaded'),
+  duplicate: translate('alreadyInDocuments'),
   done: translate('uploaded2'),
   reused: translate('alreadyInDocuments'),
   failed: translate('failed'),
@@ -116,23 +144,25 @@ export function UploadTray({
   const [collapsed, setCollapsed] = useState(false)
   if (uploads.length === 0) return null
   const sum = summarize(uploads)
-  const finished = sum.active === 0 && sum.conflicts === 0
+  const finished = sum.active === 0 && sum.conflicts === 0 && sum.staged === 0
   const title =
     sum.active > 0
       ? translate('uploading2', { active: sum.active, value2: sum.active === 1 ? 'file' : 'files' })
-      : sum.conflicts > 0
-        ? translate('dynamicTaken', {
-            conflicts: sum.conflicts,
-            value2: sum.conflicts === 1 ? translate('nameIs') : translate('namesAre'),
-          })
-        : sum.failed > 0
-          ? translate('uploadedFailed', { done: sum.done, failed: sum.failed })
-          : sum.done === 0 && sum.reused > 0
-            ? translate('alreadyInDocuments')
-            : translate('dynamicComplete', {
-                done: sum.done,
-                value2: sum.done === 1 ? translate('dynamicUpload') : translate('dynamicUploads'),
-              })
+      : sum.staged > 0
+        ? translate('stagedWaiting', { count: sum.staged })
+        : sum.conflicts > 0
+          ? translate('dynamicTaken', {
+              conflicts: sum.conflicts,
+              value2: sum.conflicts === 1 ? translate('nameIs') : translate('namesAre'),
+            })
+          : sum.failed > 0
+            ? translate('uploadedFailed', { done: sum.done, failed: sum.failed })
+            : sum.done === 0 && sum.reused > 0
+              ? translate('alreadyInDocuments')
+              : translate('dynamicComplete', {
+                  done: sum.done,
+                  value2: sum.done === 1 ? translate('dynamicUpload') : translate('dynamicUploads'),
+                })
 
   return (
     <section
@@ -241,7 +271,7 @@ function UploadRow({ upload, act }: { upload: Upload; act: (action: QueueAction)
               upload.status === 'failed' && 'text-[#a05c5c] dark:text-rose-300',
             )}
           >
-            {upload.status === 'failed'
+            {upload.status === 'failed' || upload.status === 'duplicate'
               ? upload.error
               : upload.status === 'conflict'
                 ? translate('isAlreadyIn', {

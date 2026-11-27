@@ -295,14 +295,18 @@ type ImportSource struct {
 	ContentType string
 	ObjectKey   *string
 	EntryIndex  *int
+	// Staged: the file is a whole upload kept in the staging area (no Document of its own; staged_uploads), or one a
+	// record of the same file promoted already.
+	Staged bool
 }
 
 func (q Q) ImportRecordSource(ctx context.Context, batchID, recordID string) (ImportSource, error) {
 	var s ImportSource
-	err := q.db.QueryRow(ctx, `SELECT d.id, f.name, f.content_type, f.object_key, f.entry_index
+	err := q.db.QueryRow(ctx, `SELECT d.id, f.name, f.content_type, f.object_key, f.entry_index,
+			f.entry_index IS NULL AND f.document_id IS NULL AND f.object_key IS NOT NULL
 		FROM import_records r JOIN import_files f ON f.id=r.file_id
 		LEFT JOIN documents d ON f.entry_index IS NULL AND d.id=f.document_id AND d.workspace_id=f.workspace_id AND d.deleted_at IS NULL
-		WHERE r.batch_id=$1 AND r.id=$2`, batchID, recordID).Scan(&s.DocumentID, &s.Name, &s.ContentType, &s.ObjectKey, &s.EntryIndex)
+		WHERE r.batch_id=$1 AND r.id=$2`, batchID, recordID).Scan(&s.DocumentID, &s.Name, &s.ContentType, &s.ObjectKey, &s.EntryIndex, &s.Staged)
 	return s, err
 }
 
@@ -384,17 +388,21 @@ func (q Q) ImportOutcome(ctx context.Context, batchID string) (ImportOutcome, er
 	return o, err
 }
 
-// ExistingUpload: the stored object of a Document or receipt of the workspace with these bytes, so an import reads it
-// instead of storing the bytes again. An HR import (hr) reuses only HR files, and any other import never does.
-func (q Q) ExistingUpload(ctx context.Context, workspaceID, sum string, hr bool) (id, objectKey string, err error) {
-	err = q.db.QueryRow(ctx, `SELECT id, object_key FROM (
+// ExistingUpload: the stored object of a Document, receipt or another import's staged source of the workspace with
+// these bytes, so an import reads it instead of storing the bytes again (staged then says it is a staged source). An
+// HR import (hr) reuses only HR files, and any other import never does.
+func (q Q) ExistingUpload(ctx context.Context, workspaceID, sum string, hr bool) (id, objectKey string, staged bool, err error) {
+	var resource string
+	err = q.db.QueryRow(ctx, `SELECT id, object_key, resource FROM (
 		SELECT id, object_key, 'document' AS resource FROM documents WHERE workspace_id=$1 AND sha256=$2 AND deleted_at IS NULL
 			AND hr_private = $3 AND employee_id IS NULL
 		UNION ALL
 		SELECT r.id, r.object_key, 'receipt' FROM expense_receipts r JOIN expenses e ON e.id=r.expense_id
 		WHERE r.workspace_id=$1 AND r.sha256=$2 AND e.deleted_at IS NULL AND NOT $3
-	) matched ORDER BY resource, id LIMIT 1`, workspaceID, sum, hr).Scan(&id, &objectKey)
-	return id, objectKey, err
+		UNION ALL
+		SELECT id, object_key, 'staged' FROM staged_uploads WHERE workspace_id=$1 AND sha256=$2 AND purpose='import' AND NOT $3
+	) matched ORDER BY resource, id LIMIT 1`, workspaceID, sum, hr).Scan(&id, &objectKey, &resource)
+	return id, objectKey, resource == "staged", err
 }
 
 // SimilarClient: a live client with the same name, VAT number or email (case-insensitive), with the matching rule.

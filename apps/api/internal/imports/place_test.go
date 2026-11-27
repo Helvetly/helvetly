@@ -198,8 +198,8 @@ func TestPlacingKindsAreNotQueuedForGenericFiling(t *testing.T) {
 	}
 	e.filedMu.Lock()
 	defer e.filedMu.Unlock()
-	if len(e.filed) != 1 {
-		t.Fatalf("queued %v, want only the clients file", e.filed)
+	if len(e.filed) != 0 { // the uploads are staged sources, not Documents
+		t.Fatalf("queued %v, want none", e.filed)
 	}
 }
 

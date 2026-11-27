@@ -75,6 +75,20 @@ func (s *Service) parseUpload(w http.ResponseWriter, r *http.Request) (*multipar
 	return form, h, nil
 }
 
+// uploadedType: the upload's display name and the supported type its bytes are.
+func uploadedType(h *multipart.FileHeader) (name, ct string, err error) {
+	name = displayName(h.Filename)
+	head, err := readHead(h)
+	if err != nil {
+		return "", "", err
+	}
+	if ct = detectType(name, head); ct == "" {
+		return "", "", validationFailed(map[string]string{"file": name + " is not a supported file: use PDF, images, Office or " +
+			"OpenDocument files, CSV, text, XML, JSON or ZIP."})
+	}
+	return name, ct, nil
+}
+
 // uploadTarget: where an upload goes. attach, when set, runs in the transaction that creates or reuses the Document
 // (its id), the new one then gets kind as its filed kind and is not queued for AI filing.
 type uploadTarget struct {
@@ -95,15 +109,9 @@ func (t uploadTarget) reused(q store.Q, id string) error {
 // storeUpload stores the file once per workspace and content (SHA-256 under the workspace's hash lock), counting it
 // before any byte reaches storage.
 func (s *Service) storeUpload(w http.ResponseWriter, r *http.Request, sess store.Session, h *multipart.FileHeader, t uploadTarget) error {
-	name := displayName(h.Filename)
-	head, err := readHead(h)
+	name, ct, err := uploadedType(h)
 	if err != nil {
 		return err
-	}
-	ct := detectType(name, head)
-	if ct == "" {
-		return validationFailed(map[string]string{"file": name + " is not a supported file: use PDF, images, Office or " +
-			"OpenDocument files, CSV, text, XML, JSON or ZIP."})
 	}
 	folder, clientID := t.folder, t.clientID
 

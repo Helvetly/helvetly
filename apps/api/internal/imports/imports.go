@@ -250,8 +250,8 @@ func (s *Service) discard(w http.ResponseWriter, r *http.Request, sess store.Ses
 	return nil
 }
 
-// drop deletes a batch with its files and records, and for a private kind the HR files it stored that nothing else
-// refers to, returning their object keys to delete once q commits (storage then releases their bytes). ErrNotFound
+// drop deletes a batch with its files and records, its staged uploads, and for a private kind the HR files it stored
+// that nothing else refers to, returning their object keys to delete once q commits (storage then releases their bytes). ErrNotFound
 // when the batch is gone.
 func drop(ctx context.Context, q store.Q, workspaceID, userID, id string, private bool) ([]string, error) {
 	var sources []string
@@ -268,10 +268,12 @@ func drop(ctx context.Context, q store.Q, workspaceID, userID, id string, privat
 	if !found {
 		return nil, store.ErrNotFound
 	}
-	if len(sources) == 0 {
-		return nil, nil
+	keys, err := q.DropImportSources(ctx, workspaceID, id) // the staged uploads no other open import reads
+	if err != nil || len(sources) == 0 {
+		return keys, err
 	}
-	return q.DeleteUnusedImportSources(ctx, workspaceID, sources)
+	hr, err := q.DeleteUnusedImportSources(ctx, workspaceID, sources)
+	return append(keys, hr...), err
 }
 
 // errExpired: an unfinished import past store.ImportExpiry cannot be continued; the expiry job discards it.

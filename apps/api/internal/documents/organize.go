@@ -115,22 +115,33 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 	if err != nil {
 		return err
 	}
-	names, err := s.recordNames(ctx, ws.ID)
+	proposals, considered, err := s.propose(ctx, sess, requestLanguage(r), docs, folders)
 	if err != nil {
 		return err
 	}
+	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"proposals": proposals, "considered": considered}))
+	return nil
+}
+
+// propose finds where each document belongs: a record it is decides, else the model; the proposals in docs' order and
+// the number of documents considered. New folders are named in the asker's language (lang).
+func (s *Service) propose(ctx context.Context, sess store.Session, lang string, docs []store.Document, folders []store.Folder) ([]proposal, int, error) {
+	ws := sess.Workspace
+	names, err := s.recordNames(ctx, ws.ID)
+	if err != nil {
+		return nil, 0, err
+	}
 	if len(docs) == 0 {
-		auth.WriteJSON(w, http.StatusOK, data(map[string]any{"proposals": []proposal{}, "considered": 0}))
-		return nil
+		return []proposal{}, 0, nil
 	}
 	used, err := s.db.DocumentTags(ctx, ws.ID, 50)
 	if err != nil {
-		return err
+		return nil, 0, err
 	}
 	snippets := s.snippets(ctx, docs)
 	index, err := s.recordIndex(ctx, ws.ID, names.clients)
 	if err != nil {
-		return err
+		return nil, 0, err
 	}
 	byID, clients, numbers := map[string]proposal{}, map[string]store.ClientName{}, map[string]recordMatch{}
 	var rest []store.Document // the files no record decides, for the model
@@ -158,13 +169,13 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 		}
 		rest = append(rest, d)
 	}
-	lang, err := s.folderLanguage(ctx, ws.ID, requestLanguage(r))
+	lang, err = s.folderLanguage(ctx, ws.ID, lang)
 	if err != nil {
-		return err
+		return nil, 0, err
 	}
 	considered, err := s.organizeRest(ctx, sess, lang, rest, snippets, folders, names, clients, numbers, used, byID)
 	if err != nil {
-		return err
+		return nil, 0, err
 	}
 	proposals := []proposal{}
 	for _, d := range docs {
@@ -172,8 +183,7 @@ func (s *Service) organize(w http.ResponseWriter, r *http.Request, sess store.Se
 			proposals = append(proposals, p)
 		}
 	}
-	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"proposals": proposals, "considered": len(docs) - len(rest) + considered}))
-	return nil
+	return proposals, len(docs) - len(rest) + considered, nil
 }
 
 // organizeRest asks the model about the files no record decides and adds its checked proposals to byID, new folders
@@ -544,130 +554,24 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 	if !s.auth.Decode(w, r, &body) {
 		return nil
 	}
-	switch {
-	case len(body.Items) == 0:
+	if len(body.Items) == 0 {
 		return validationFailed(map[string]string{"items": "Choose at least one document."})
-	case len(body.Items) > organizeMax:
-		return validationFailed(map[string]string{"items": "Choose at most 150 documents at a time."})
 	}
-	paths := make([][]string, len(body.Items))
-	for i, it := range body.Items {
-		path, ok := splitPath(it.Folder, organizeApplyDepth)
-		if !ok {
-			return validationFailed(map[string]string{"items": "Use folder names of at most 60 characters, without control characters."})
-		}
-		typed, problem := cleanTags(it.Tags)
-		if problem == "" && len(typed) > maxTags {
-			problem = tooManyTags
-		}
-		if problem != "" {
-			return validationFailed(map[string]string{"items": problem})
-		}
-		paths[i], body.Items[i].Tags = path, typed
+	paths, err := checkItems(body.Items)
+	if err != nil {
+		return err
 	}
 	ctx, ws := r.Context(), sess.Workspace.ID
 	names, err := s.recordNames(ctx, ws)
 	if err != nil {
 		return err
 	}
-	moved, tagged := 0, 0
+	var moved, tagged int
 	var undo organizeUndo
 	err = s.db.Tx(ctx, func(q store.Q) error {
-		moved, tagged, undo = 0, 0, organizeUndo{Previous: []organizePrevious{}, CreatedFolders: []string{}}
-		resolved := map[string]*string{"": nil}
-		resolve := func(path []string) (*string, error) {
-			place, system := recordPath(path, names)
-			if place != nil {
-				id, err := place.folder(ctx, q, ws, sess.User.ID, s.now())
-				return &id, err
-			}
-			var parent *string
-			for i, name := range path {
-				key := strings.ToLower(strings.Join(path[:i+1], "/"))
-				if id, ok := resolved[key]; ok {
-					parent = id
-					continue
-				}
-				if err := q.LockContainer(ctx, ws, parent); err != nil {
-					return nil, err
-				}
-				id, err := q.FolderNameTaken(ctx, ws, parent, name, "")
-				if err != nil {
-					return nil, err
-				}
-				if id == "" {
-					if system {
-						return nil, errSkip
-					}
-					id = auth.NewID("fld")
-					if err := q.CreateFolder(ctx, ws, id, name, parent, sess.User.ID, s.now()); err != nil {
-						return nil, err
-					}
-					undo.CreatedFolders = append(undo.CreatedFolders, id)
-				}
-				parent = &id
-				resolved[key] = parent
-			}
-			return parent, nil
-		}
-		seen := map[string]bool{}
-		for i, it := range body.Items {
-			if seen[it.DocumentID] {
-				continue
-			}
-			seen[it.DocumentID] = true
-			cur, err := q.Document(ctx, ws, it.DocumentID)
-			if errors.Is(err, store.ErrNotFound) || err == nil && cur.DeletedAt != nil {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			target, err := resolve(paths[i])
-			if errors.Is(err, errSkip) { // not a place in the system folders: the document stays
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			prev := organizePrevious{DocumentID: cur.ID, FolderID: cur.FolderID, Tags: slices.Clone(cur.Tags), Kind: cur.FiledKind}
-			changed := false
-			if !samePlace(cur.FolderID, target) {
-				name, err := s.placeFile(q, ctx, sess, cur.ID, cur.Name, target, "keep_both")
-				if err != nil {
-					return err
-				}
-				if err := q.UpdateDocument(ctx, ws, cur.ID, name, target, s.now()); err != nil {
-					return err
-				}
-				moved++
-				changed = true
-			}
-			if i := slices.IndexFunc(it.Tags, tags.Kind); i >= 0 && it.Tags[i] != cur.FiledKind {
-				if err := q.SetDocumentKind(ctx, ws, cur.ID, it.Tags[i], s.now()); err != nil {
-					return err
-				}
-				tagged++
-				changed = true
-			}
-			next := slices.Clone(cur.Tags)
-			for _, t := range it.Tags {
-				if !tags.Protected(t) && !slices.Contains(next, t) && len(next) < maxTags {
-					next = append(next, t)
-				}
-			}
-			if len(next) != len(cur.Tags) {
-				if err := q.SetDocumentTags(ctx, ws, cur.ID, next, s.now()); err != nil {
-					return err
-				}
-				tagged++
-				changed = true
-			}
-			if changed {
-				undo.Previous = append(undo.Previous, prev)
-			}
-		}
-		return nil
+		var err error
+		moved, tagged, undo, err = s.applyItems(ctx, q, sess, body.Items, paths, names)
+		return err
 	})
 	if err != nil {
 		return err
@@ -676,6 +580,131 @@ func (s *Service) organizeApply(w http.ResponseWriter, r *http.Request, sess sto
 		"created_folders", len(undo.CreatedFolders))
 	auth.WriteJSON(w, http.StatusOK, data(map[string]any{"moved": moved, "tagged": tagged, "undo": undo}))
 	return nil
+}
+
+// checkItems validates applied rows (their tags cleaned in place) and returns each one's folder path.
+func checkItems(items []organizeItem) ([][]string, error) {
+	if len(items) > organizeMax {
+		return nil, validationFailed(map[string]string{"items": "Choose at most 150 documents at a time."})
+	}
+	paths := make([][]string, len(items))
+	for i, it := range items {
+		path, ok := splitPath(it.Folder, organizeApplyDepth)
+		if !ok {
+			return nil, validationFailed(map[string]string{"items": "Use folder names of at most 60 characters, without control characters."})
+		}
+		typed, problem := cleanTags(it.Tags)
+		if problem == "" && len(typed) > maxTags {
+			problem = tooManyTags
+		}
+		if problem != "" {
+			return nil, validationFailed(map[string]string{"items": problem})
+		}
+		paths[i], items[i].Tags = path, typed
+	}
+	return paths, nil
+}
+
+// applyItems moves each document to its path (making the missing folders) and adds its tags, its kind tag recorded as
+// its kind, in q's transaction; what changed and how to undo it.
+func (s *Service) applyItems(ctx context.Context, q store.Q, sess store.Session, items []organizeItem, paths [][]string,
+	names recordNames) (moved, tagged int, undo organizeUndo, err error) {
+	ws := sess.Workspace.ID
+	undo = organizeUndo{Previous: []organizePrevious{}, CreatedFolders: []string{}}
+	resolved := map[string]*string{"": nil}
+	resolve := func(path []string) (*string, error) {
+		place, system := recordPath(path, names)
+		if place != nil {
+			id, err := place.folder(ctx, q, ws, sess.User.ID, s.now())
+			return &id, err
+		}
+		var parent *string
+		for i, name := range path {
+			key := strings.ToLower(strings.Join(path[:i+1], "/"))
+			if id, ok := resolved[key]; ok {
+				parent = id
+				continue
+			}
+			if err := q.LockContainer(ctx, ws, parent); err != nil {
+				return nil, err
+			}
+			id, err := q.FolderNameTaken(ctx, ws, parent, name, "")
+			if err != nil {
+				return nil, err
+			}
+			if id == "" {
+				if system {
+					return nil, errSkip
+				}
+				id = auth.NewID("fld")
+				if err := q.CreateFolder(ctx, ws, id, name, parent, sess.User.ID, s.now()); err != nil {
+					return nil, err
+				}
+				undo.CreatedFolders = append(undo.CreatedFolders, id)
+			}
+			parent = &id
+			resolved[key] = parent
+		}
+		return parent, nil
+	}
+	seen := map[string]bool{}
+	for i, it := range items {
+		if seen[it.DocumentID] {
+			continue
+		}
+		seen[it.DocumentID] = true
+		cur, err := q.Document(ctx, ws, it.DocumentID)
+		if errors.Is(err, store.ErrNotFound) || err == nil && cur.DeletedAt != nil {
+			continue
+		}
+		if err != nil {
+			return 0, 0, undo, err
+		}
+		target, err := resolve(paths[i])
+		if errors.Is(err, errSkip) { // not a place in the system folders: the document stays
+			continue
+		}
+		if err != nil {
+			return 0, 0, undo, err
+		}
+		prev := organizePrevious{DocumentID: cur.ID, FolderID: cur.FolderID, Tags: slices.Clone(cur.Tags), Kind: cur.FiledKind}
+		changed := false
+		if !samePlace(cur.FolderID, target) {
+			name, err := s.placeFile(q, ctx, sess, cur.ID, cur.Name, target, "keep_both")
+			if err != nil {
+				return 0, 0, undo, err
+			}
+			if err := q.UpdateDocument(ctx, ws, cur.ID, name, target, s.now()); err != nil {
+				return 0, 0, undo, err
+			}
+			moved++
+			changed = true
+		}
+		if i := slices.IndexFunc(it.Tags, tags.Kind); i >= 0 && it.Tags[i] != cur.FiledKind {
+			if err := q.SetDocumentKind(ctx, ws, cur.ID, it.Tags[i], s.now()); err != nil {
+				return 0, 0, undo, err
+			}
+			tagged++
+			changed = true
+		}
+		next := slices.Clone(cur.Tags)
+		for _, t := range it.Tags {
+			if !tags.Protected(t) && !slices.Contains(next, t) && len(next) < maxTags {
+				next = append(next, t)
+			}
+		}
+		if len(next) != len(cur.Tags) {
+			if err := q.SetDocumentTags(ctx, ws, cur.ID, next, s.now()); err != nil {
+				return 0, 0, undo, err
+			}
+			tagged++
+			changed = true
+		}
+		if changed {
+			undo.Previous = append(undo.Previous, prev)
+		}
+	}
+	return moved, tagged, undo, nil
 }
 
 func samePlace(a, b *string) bool { return a == nil && b == nil || a != nil && b != nil && *a == *b }

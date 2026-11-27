@@ -179,22 +179,17 @@ func TestPayrollBatchDiscardAndAmbiguousEmail(t *testing.T) {
 	}
 }
 
-func TestImportedFilesAreQueuedForFilingButHRFilesNever(t *testing.T) {
+// An import's upload is staged, never a Document, so nothing queues it for filing; an HR file never is either.
+func TestImportedFilesAreNeverQueuedForFiling(t *testing.T) {
 	e := newEnv(t)
 	e.consent("ws_a", "usr_a")
 	if w := e.upload("clients", map[string][]byte{"clients.csv": []byte(clientsCSV)}); w.Code != 201 {
 		t.Fatalf("clients upload: %d %s", w.Code, w.Body)
 	}
-	if len(e.filed) != 1 {
-		t.Fatalf("imported file not queued for filing: %v", e.filed)
-	}
-	if doc, err := e.db.Document(context.Background(), "ws_a", e.filed[0]); err != nil || doc.Name != "clients.csv" {
-		t.Fatalf("queued a document that isn't the import's: %+v %v", doc, err)
-	}
 	if w := e.upload("payroll", map[string][]byte{"oct.csv": []byte(payrollCSV)}); w.Code != 201 {
 		t.Fatalf("payroll upload: %d %s", w.Code, w.Body)
 	}
-	if len(e.filed) != 1 {
-		t.Fatalf("an HR file was queued for filing: %v", e.filed)
+	if len(e.filed) != 0 {
+		t.Fatalf("queued for filing: %v", e.filed)
 	}
 }
