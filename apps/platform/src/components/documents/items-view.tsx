@@ -2,6 +2,7 @@
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { ContextMenu, ContextMenuTrigger } from '@helvetly/ui/components/context-menu'
 import { DataTable, type DataColumn } from '@helvetly/ui/components/data-table'
+import { Loader } from '@helvetly/ui/components/loader'
 import { Separator } from '@helvetly/ui/components/separator'
 import { formatDate, formatRelative } from '@helvetly/ui/lib/format'
 import { cn } from '@helvetly/ui/lib/utils'
@@ -69,6 +70,7 @@ export type ItemsProps = {
   sort: SortField
   desc: boolean
   onSort: (field: SortField, desc: boolean) => void
+  onPrefetchFolder?: (id: string) => void
   onClick: (key: ItemKey, event: MouseEvent) => void
   /** A checkbox adds the item to the selection or takes it out, as ⌘-click does. */
   /** A checkbox click: Shift selects the range from the anchor, otherwise it toggles the item. */
@@ -208,7 +210,10 @@ function useItem(
       onDragEnd: endDrag,
       onClick: (event: MouseEvent) => props.onClick(key, event),
       onContextMenu: () => props.onContext(key),
-      onPointerEnter: isFolder ? undefined : () => prefetch(key.slice('file:'.length)),
+      onPointerEnter: () => {
+        if (folderTarget) props.onPrefetchFolder?.(folderTarget)
+        else prefetch(key.slice('file:'.length))
+      },
     },
   }
 }
@@ -274,6 +279,20 @@ function ItemMenu({
 
 // ---- grid ----
 
+const grid = '@container grid gap-7 p-4 md:p-5'
+const fileGrid = 'grid grid-cols-[repeat(auto-fill,minmax(184px,1fr))] gap-3'
+const filePreview = 'aspect-[4/3] w-full'
+
+export function LoadingFiles() {
+  return (
+    <div className={grid}>
+      <div className={cn(fileGrid, 'pt-9')}>
+        <Loader label={translate('loading')} className={cn(filePreview, 'min-h-0')} />
+      </div>
+    </div>
+  )
+}
+
 const card =
   'group/item relative block w-full cursor-pointer rounded-xl bg-card ring-1 ring-border/80 transition-[box-shadow,background-color] duration-150 outline-none not-data-selected:hover:ring-foreground/20 focus-visible:ring-2 focus-visible:ring-ring/50 data-selected:bg-primary/[0.04] data-selected:ring-2 data-selected:ring-primary/70 data-selected:hover:ring-primary data-focused:ring-2 data-focused:ring-ring/50 data-selected:data-focused:ring-primary data-drop-over:bg-primary/[0.06] data-drop-over:ring-2 data-drop-over:ring-primary dark:bg-muted/40'
 
@@ -293,7 +312,7 @@ function Grid(props: ItemsProps) {
     </Section>
   )
   return (
-    <div className="@container grid gap-7 p-4 md:p-5">
+    <div className={grid}>
       {props.recent &&
         section(
           'recent',
@@ -316,7 +335,7 @@ function Grid(props: ItemsProps) {
         section(
           'files',
           translate('files'),
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(184px,1fr))] gap-3">
+          <div className={fileGrid}>
             {props.files.map((file) => (
               <FileCard key={file.id} props={props} file={file} />
             ))}
@@ -434,7 +453,10 @@ function FileCard({ props, file }: { props: ItemsProps; file: DocFile }) {
           <FileBadges file={file} className="absolute top-2 right-2 z-[1]" />
           <Thumbnail
             file={file}
-            className="aspect-[4/3] w-full border-b border-border/60 bg-muted/60 dark:bg-background/40"
+            className={cn(
+              filePreview,
+              'border-b border-border/60 bg-muted/60 dark:bg-background/40',
+            )}
           />
           {/* The share button's column on the right (outside this box, over the card) is kept free here. */}
           <span className="flex w-full items-start gap-2 pt-2.5 pr-11 pb-3 pl-3">
