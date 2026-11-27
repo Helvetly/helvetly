@@ -1258,7 +1258,13 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                 title={translate('bankAccount')}
                 description={translate('printedOnEveryInvoiceASwissIBANAddsA')}
               >
-                <FormField id={inputId('iban')} label="IBAN" required error={shown.iban} width="md">
+                <FormField
+                  id={inputId('iban')}
+                  label="IBAN"
+                  required
+                  error={shown.iban}
+                  width="full"
+                >
                   <input
                     {...describe('iban')}
                     value={values.iban}
@@ -1283,7 +1289,7 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     className={bigInput}
                   />
                 </FormField>
-                <FormField id={inputId('bic')} label="BIC / SWIFT" error={shown.bic} width="sm">
+                <FormField id={inputId('bic')} label="BIC / SWIFT" error={shown.bic} width="md">
                   <input
                     {...describe('bic')}
                     value={values.bic}
@@ -1687,7 +1693,8 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
                     onChange={(e) => set('footer', e.target.value)}
                     placeholder={translate('eGThankYouForYourTrustPayableWithin')}
                     max={DOCUMENT_TEXT_MAX}
-                    className="min-h-24 leading-relaxed"
+                    resizable={false}
+                    className="leading-relaxed"
                   />
                 </FormField>
               </Section>
