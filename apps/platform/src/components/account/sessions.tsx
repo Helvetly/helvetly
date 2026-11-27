@@ -3,21 +3,74 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { Loader } from '@helvetly/ui/components/loader'
+import { MetaDot, MetaItem, MetaList } from '@helvetly/ui/components/meta-list'
+import { TruncatedText } from '@helvetly/ui/components/truncated-text'
 import { formatDate } from '@helvetly/ui/lib/format'
-import { Monitor, Smartphone, Tablet, MonitorSmartphone, LogOut } from 'lucide-react'
+import {
+  Building2,
+  Clock,
+  Globe,
+  LogIn,
+  LogOut,
+  MapPin,
+  Monitor,
+  MonitorSmartphone,
+  Smartphone,
+  Tablet,
+} from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
 import { LoadError } from '@/components/load-error'
 import { SettingsRow, SettingsSection } from '@/components/settings/layout'
-import { lastActive, useAccountSessions, useRevokeSession, type DeviceKind } from '@/lib/account'
+import {
+  lastActive,
+  useAccountSessions,
+  useRevokeSession,
+  type AccountSession,
+  type DeviceKind,
+} from '@/lib/account'
 import { translate } from '@/lib/i18n'
 
 const ICONS: Record<DeviceKind, typeof Monitor> = {
   desktop: Monitor,
   mobile: Smartphone,
   tablet: Tablet,
+}
+
+/** A session's facts, each its own item, on two lines: activity (green while active), place and workspace; then since when and the address. */
+function SessionFacts({ session }: { session: AccountSession }) {
+  const when = session.current ? translate('activeNow') : lastActive(session.last_active_at)
+  const active = when === translate('activeNow')
+  return (
+    <div className="grid gap-0.5">
+      <MetaList>
+        {active ? (
+          <MetaItem tone="success" icon={<MetaDot />}>
+            {when}
+          </MetaItem>
+        ) : (
+          <MetaItem icon={<Clock />}>{when}</MetaItem>
+        )}
+        <MetaItem icon={<MapPin />}>
+          {session.location ?? translate('sessionLocationUnknown')}
+        </MetaItem>
+        <MetaItem icon={<Building2 />}>
+          <TruncatedText>{session.workspace_name}</TruncatedText>
+        </MetaItem>
+      </MetaList>
+      <MetaList>
+        <MetaItem icon={<LogIn />}>
+          {translate('sessionSignedInOn', { date: formatDate(session.created_at) })}
+        </MetaItem>
+        <MetaItem icon={<Globe />} className="font-code text-caption">
+          <span className="sr-only">{translate('sessionIpAddress')} </span>
+          <TruncatedText className="max-w-[18ch]">{session.ip}</TruncatedText>
+        </MetaItem>
+      </MetaList>
+    </div>
+  )
 }
 
 /** Where the person is signed in, newest first, with this browser on top. */
@@ -70,12 +123,7 @@ export function Sessions() {
                       {session.current && <Badge tone="green">{translate('thisDevice')}</Badge>}
                     </>
                   }
-                  meta={[
-                    session.location ?? 'Unknown location',
-                    session.ip,
-                    session.current ? 'Active now' : lastActive(session.last_active_at),
-                    `signed in ${formatDate(session.created_at)} to ${session.workspace_name}`,
-                  ].join(' · ')}
+                  meta={<SessionFacts session={session} />}
                 >
                   {!session.current && (
                     <Button
