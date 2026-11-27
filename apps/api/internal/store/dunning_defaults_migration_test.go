@@ -8,7 +8,7 @@ import (
 func TestDunningDefaultsMigration(t *testing.T) {
 	ctx := context.Background()
 	p, pool := migrationProvider(t)
-	if _, err := p.UpTo(ctx, 89); err != nil {
+	if _, err := p.UpTo(ctx, 90); err != nil {
 		t.Fatal(err)
 	}
 	exec := func(sql string, args ...any) {
@@ -47,7 +47,7 @@ func TestDunningDefaultsMigration(t *testing.T) {
 	exec(`CREATE TABLE original_settings AS SELECT * FROM invoice_settings`)
 	exec(`CREATE TABLE original_notices AS SELECT * FROM dunning_notices`)
 
-	if _, err := p.UpTo(ctx, 90); err != nil {
+	if _, err := p.UpTo(ctx, 91); err != nil {
 		t.Fatal(err)
 	}
 	var changed string
