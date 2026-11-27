@@ -405,6 +405,7 @@ const materialsFolder = {
   total_files: 1,
   starred: false,
 }
+let materialsListing = Promise.withResolvers<void>()
 
 function subscribeToFolderNavigation(notify: () => void) {
   window.addEventListener('popstate', notify)
@@ -420,8 +421,13 @@ function useFolderStoryParams() {
 
 export const FolderFirstOpen: Story = {
   beforeEach: () => {
+    const listing = Promise.withResolvers<void>()
+    materialsListing = listing
     useSearchParams.mockImplementation(useFolderStoryParams)
-    return () => useSearchParams.mockReset()
+    return () => {
+      listing.resolve()
+      useSearchParams.mockReset()
+    }
   },
   parameters: pageParameters('/documents', { folder: 'fld_sys_expenses_2025' }, [
     http.get('/api/v1/documents/folders', () =>
@@ -431,7 +437,7 @@ export const FolderFirstOpen: Story = {
     http.get('/api/v1/documents', async ({ request }) => {
       if (new URL(request.url).searchParams.get('folder_id') !== materialsFolder.id)
         return HttpResponse.json(page([]))
-      await delay(1200)
+      await materialsListing.promise
       return HttpResponse.json(
         page([sampleFile('doc_materials', 'Materials receipt.png', 'image', 'image/png')]),
       )
@@ -443,20 +449,25 @@ export const FolderFirstOpen: Story = {
   ]),
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    await body.findByRole('checkbox', { name: 'Select Materials & goods' }, { timeout: 8000 })
-    // Open without hovering so the list is still cold when the folder changes.
-    fireEvent.click(folderItem(canvasElement, materialsFolder.id))
-    // Next observes pushState in the app. The Storybook router mock needs a navigation event.
-    fireEvent.popState(window)
-    await waitFor(() =>
-      expect(
-        within(body.getByRole('navigation', { name: 'Breadcrumbs' })).getByText(
-          'Materials & goods',
-        ),
-      ).toBeVisible(),
-    )
-    expect(body.getByRole('status', { name: 'Loading…' })).toBeInTheDocument()
-    expect(body.queryByText('Materials & goods is empty')).toBeNull()
+    const listing = materialsListing
+    try {
+      await body.findByRole('checkbox', { name: 'Select Materials & goods' }, { timeout: 8000 })
+      // Open without hovering so the list is still cold when the folder changes.
+      fireEvent.click(folderItem(canvasElement, materialsFolder.id))
+      // Next observes pushState in the app. The Storybook router mock needs a navigation event.
+      fireEvent.popState(window)
+      await waitFor(() =>
+        expect(
+          within(body.getByRole('navigation', { name: 'Breadcrumbs' })).getByText(
+            'Materials & goods',
+          ),
+        ).toBeVisible(),
+      )
+      expect(body.queryByText('Materials & goods is empty')).toBeNull()
+      expect(body.getByRole('status', { name: 'Loading…' })).toBeInTheDocument()
+    } finally {
+      listing.resolve()
+    }
     await expect(
       await body.findByText('Materials receipt.png', {}, { timeout: 8000 }),
     ).toBeVisible()
