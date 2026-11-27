@@ -440,6 +440,9 @@ function Details({
 }) {
   const canWrite = useCan('write:documents')
   const retained = isRetained(file.retained_until)
+  const uploader: [string, ReactNode][] = file.uploaded_by
+    ? [[translate('uploadedBy'), <Person key="uploader" person={file.uploaded_by} size="xs" />]]
+    : []
   const rows: [string, ReactNode][] = [
     [translate('kind'), KIND_LABELS[file.kind]],
     [translate('size'), formatSize(file.size)],
@@ -457,18 +460,8 @@ function Details({
         </span>
       </button>,
     ],
-    [
-      translate('uploaded2'),
-      <span key="uploaded" className="flex min-w-0 flex-wrap items-center">
-        {formatDate(file.created_at)}
-        {file.uploaded_by && (
-          <>
-            {translate('dynamicBy', { name: '' })}
-            <Person person={file.uploaded_by} size="xs" />
-          </>
-        )}
-      </span>,
-    ],
+    [translate('uploaded2'), formatDate(file.created_at)],
+    ...uploader,
     [translate('modified'), formatDate(file.updated_at)],
   ]
   return (

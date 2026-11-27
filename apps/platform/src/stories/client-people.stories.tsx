@@ -119,7 +119,7 @@ export const CompanyPeople: Story = {
   },
 }
 
-/** "Add participant" saves a participant, whose email is optional. */
+/** "Add participant" opens the dialog; a participant's email is optional. */
 export const AddParticipant: Story = {
   parameters: { msw: { handlers: handlers(euroChem()) } },
   render: detail,
@@ -128,9 +128,10 @@ export const AddParticipant: Story = {
     const body = await openPeople()
     const participants = within(await body.findByRole('region', { name: 'Participants' }))
     await userEvent.click(participants.getByRole('button', { name: /Add participant/ }))
-    await userEvent.type(participants.getByRole('textbox', { name: /Name/ }), 'Mia Keller')
-    await userEvent.type(participants.getByRole('textbox', { name: /City/ }), 'Basel')
-    await userEvent.click(participants.getByRole('button', { name: 'Add participant' }))
+    const dialog = within(await body.findByRole('dialog', { name: 'Add participant' }))
+    await userEvent.type(dialog.getByRole('textbox', { name: /Name/ }), 'Mia Keller')
+    await userEvent.type(dialog.getByRole('textbox', { name: /City/ }), 'Basel')
+    await userEvent.click(dialog.getByRole('button', { name: 'Add participant' }))
     await waitFor(() =>
       expect(savedPerson).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -141,7 +142,100 @@ export const AddParticipant: Story = {
         }),
       ),
     )
+    await waitFor(() => expect(body.queryByRole('dialog', { name: 'Add participant' })).toBeNull())
     await expect(await participants.findByText('Mia Keller')).toBeVisible()
+  },
+}
+
+/** The contact dialog: placeholders in every field, required name and email refused inline, then saved. */
+export const AddContactDialog: Story = {
+  parameters: { msw: { handlers: handlers(euroChem()) } },
+  render: detail,
+  play: async () => {
+    savedPerson.mockClear()
+    const body = await openPeople()
+    const contacts = within(await body.findByRole('region', { name: 'Contacts' }))
+    await userEvent.click(contacts.getByRole('button', { name: /Add contact/ }))
+    const dialog = within(await body.findByRole('dialog', { name: 'Add contact' }))
+    const name = dialog.getByRole('textbox', { name: /Name/ })
+    await expect(name).toHaveFocus()
+    await expect(name).toHaveAttribute('placeholder', 'Anna Muster')
+    await expect(dialog.getByRole('textbox', { name: /Role/ })).toHaveAttribute(
+      'placeholder',
+      'Head of finance',
+    )
+    await expect(dialog.getByRole('textbox', { name: /Email/ })).toHaveAttribute(
+      'placeholder',
+      'anna@company.ch',
+    )
+    await userEvent.click(dialog.getByRole('button', { name: 'Add contact' }))
+    await expect(await dialog.findByText('Enter a name.')).toBeVisible()
+    await expect(dialog.getByText('Enter an email address.')).toBeVisible()
+    await expect(savedPerson).not.toHaveBeenCalled()
+  },
+}
+
+/** Validation errors sit below their fields without moving the next row. */
+export const AddContactValidation: Story = {
+  parameters: { msw: { handlers: handlers(euroChem()) } },
+  render: detail,
+  play: async () => {
+    savedPerson.mockClear()
+    const body = await openPeople()
+    const contacts = within(await body.findByRole('region', { name: 'Contacts' }))
+    await userEvent.click(contacts.getByRole('button', { name: /Add contact/ }))
+    const dialog = within(await body.findByRole('dialog', { name: 'Add contact' }))
+    const phone = dialog.getByLabelText('Phone')
+    const before = phone.getBoundingClientRect().top
+    await userEvent.click(dialog.getByRole('button', { name: 'Add contact' }))
+    await expect(await dialog.findByText('Enter a name.')).toBeVisible()
+    await expect(phone.getBoundingClientRect().top).toBe(before)
+    await userEvent.type(dialog.getByRole('textbox', { name: /Name/ }), 'Anna Muster')
+    await userEvent.type(dialog.getByRole('textbox', { name: /Email/ }), 'anna@eurochem.ch')
+    await userEvent.click(dialog.getByRole('button', { name: 'Add contact' }))
+    await waitFor(() =>
+      expect(savedPerson).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Anna Muster', email: 'anna@eurochem.ch' }),
+      ),
+    )
+  },
+}
+
+/** Edit from the row menu opens the same dialog filled in; Save keeps the change. */
+export const EditContact: Story = {
+  parameters: { msw: { handlers: handlers(euroChem()) } },
+  render: detail,
+  play: async () => {
+    savedPerson.mockClear()
+    const body = await openPeople()
+    await expect(await body.findByRole('link', { name: 'oliver@eurochem.ch' })).toHaveAttribute(
+      'href',
+      'mailto:oliver@eurochem.ch',
+    )
+    await userEvent.click(body.getByRole('button', { name: /Actions for Oliver Harvey/ }))
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Edit' }))
+    const dialog = within(await body.findByRole('dialog', { name: 'Edit contact' }))
+    const role = dialog.getByRole('textbox', { name: /Role/ })
+    await expect(role).toHaveValue('Head of HR')
+    await userEvent.clear(role)
+    await userEvent.type(role, 'CFO')
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }))
+    await waitFor(() =>
+      expect(savedPerson).toHaveBeenCalledWith(expect.objectContaining({ role: 'CFO' })),
+    )
+    await expect(await body.findByText('CFO')).toBeVisible()
+  },
+}
+
+/** A company with nobody yet: two compact empty states that explain both groups. */
+export const EmptyCompany: Story = {
+  parameters: { msw: { handlers: handlers(euroChem({ contacts: [] })) } },
+  render: detail,
+  play: async () => {
+    const body = await openPeople()
+    await expect(await body.findByText('No contact persons yet')).toBeVisible()
+    await expect(body.getByText('No participants yet')).toBeVisible()
+    await expect(body.getByText(/Contact persons receive your invoices/)).toBeVisible()
   },
 }
 
@@ -152,7 +246,7 @@ export const ChangeRoles: Story = {
   play: async () => {
     savedPerson.mockClear()
     const body = await openPeople()
-    await userEvent.click(await body.findByRole('button', { name: /Oliver Harvey/ }))
+    await userEvent.click(await body.findByRole('button', { name: /Actions for Oliver Harvey/ }))
     await userEvent.click(await body.findByRole('menuitem', { name: 'Make a participant' }))
     await waitFor(() =>
       expect(savedPerson).toHaveBeenCalledWith({ roles: ['contact', 'participant'] }),

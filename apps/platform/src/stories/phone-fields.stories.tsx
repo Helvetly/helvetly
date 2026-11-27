@@ -127,8 +127,9 @@ export const ContactPhone: Story = {
   ),
   play: async ({ canvasElement }) => {
     saved.contact = null
-    const page = within(canvasElement)
-    await userEvent.click(page.getByRole('button', { name: /add contact/i }))
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /add contact/i }))
+    // The form opens in a dialog, outside the canvas.
+    const page = within(await within(document.body).findByRole('dialog'))
     await expect(page.getByRole('button', { name: 'Phone country DE +49' })).toBeVisible()
     await userEvent.type(page.getByLabelText(/^Name/), 'Lena Huber')
     // Name and email are required; an empty email is refused first.

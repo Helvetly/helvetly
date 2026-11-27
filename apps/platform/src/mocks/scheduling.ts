@@ -263,6 +263,8 @@ export const sampleRequests = (): RequestItem[] => [
 ]
 
 export const sampleBusy = (): Busy[] => [
+  // Over before STORY_NOW: the grid leaves it out.
+  { host_id: ME.id, starts_at: at('2026-12-01', '10:00'), ends_at: at('2026-12-01', '11:00') },
   { host_id: ME.id, starts_at: at('2026-12-02', '13:00'), ends_at: at('2026-12-02', '14:30') },
   { host_id: LUCA.id, starts_at: at('2026-12-03', '08:00'), ends_at: at('2026-12-03', '09:00') },
 ]
