@@ -28,7 +28,7 @@ type Field struct {
 
 type Signer struct {
 	Name, Email, IP, UserAgent string
-	Method                     string // typed | drawn
+	Method                     string // typed | drawn | uploaded | saved
 	Viewed, Signed             time.Time
 }
 
@@ -232,6 +232,10 @@ func when(t time.Time, zone *time.Location) string {
 	return t.In(zone).Format("02.01.2006 15:04:05 MST")
 }
 
+// methodNames: how each way of adopting a signature reads on the certificate.
+var methodNames = map[string]string{"typed": "Typed name, rendered in a script font", "drawn": "Drawn by hand",
+	"uploaded": "Uploaded image of a handwritten signature", "saved": "Saved signature from the signer's account"}
+
 func certificate(pdf *fpdf.Fpdf, txt *pdffont.Text, c Certificate) {
 	pdf.AddPageFormat("P", fpdf.SizeType{Wd: 595.28, Ht: 841.89})
 	const left, width = 56.0, 483.28
@@ -291,7 +295,7 @@ func certificate(pdf *fpdf.Fpdf, txt *pdffont.Text, c Certificate) {
 		text("B", 9.5, fmt.Sprintf("%d. %s", i+1, s.Name), 20, 20, 20)
 		y += 2
 		row("Email", s.Email)
-		row("Signature", map[string]string{"typed": "Typed name, rendered in a script font", "drawn": "Drawn by hand"}[s.Method])
+		row("Signature", methodNames[s.Method])
 		row("Viewed", when(s.Viewed, c.Zone))
 		row("Signed", when(s.Signed, c.Zone))
 		row("IP address", s.IP)

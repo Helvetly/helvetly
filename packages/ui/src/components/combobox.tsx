@@ -46,6 +46,7 @@ export function Combobox({
   label,
   className,
   renderValue,
+  renderOption,
   contentClassName,
   disabled,
   onCreate,
@@ -72,6 +73,8 @@ export function Combobox({
   label?: string
   className?: string
   renderValue?: (option: Option) => ReactNode
+  /** An option's row in the list in place of its label (type-ahead still goes by the label). */
+  renderOption?: (option: Option) => ReactNode
   /** E.g. a width for lists whose labels are longer than the trigger. */
   contentClassName?: string
   disabled?: boolean
@@ -223,9 +226,11 @@ export function Combobox({
                             chosen.includes(option.value) ? 'opacity-100' : 'opacity-0',
                           )}
                         />
-                        <span className="min-w-0 flex-1 truncate" title={option.label}>
-                          {option.label}
-                        </span>
+                        {renderOption?.(option) ?? (
+                          <span className="min-w-0 flex-1 truncate" title={option.label}>
+                            {option.label}
+                          </span>
+                        )}
                         {option.adornment}
                         {option.hint && (
                           <CommandShortcut className="shrink-0 tracking-normal tabular-nums">
