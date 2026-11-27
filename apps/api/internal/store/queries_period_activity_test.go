@@ -79,3 +79,41 @@ func TestPeriodActivity(t *testing.T) {
 		})
 	}
 }
+
+func TestFirstRecordMonth(t *testing.T) {
+	db, raw := dashboardFixture(t)
+	ctx := context.Background()
+	activityInvoice(t, raw, "i-draft", "dash-own", "invoice", "draft", "2023-01-10", "CHF", 1)
+	activityInvoice(t, raw, "i-first", "dash-own", "invoice", "open", "2024-03-15", "CHF", 1)
+	activityInvoice(t, raw, "i-later", "dash-own", "invoice", "paid", "2025-06-01", "CHF", 1)
+	activityExpense(t, raw, "e-draft", "dash-own", "draft", "2022-01-01", 1, false)
+	activityExpense(t, raw, "e-void", "dash-own", "void", "2022-02-01", 1, false)
+	activityExpense(t, raw, "e-first", "dash-own", "booked", "2024-11-02", 1, false)
+	if _, err := raw.Exec(ctx, `INSERT INTO closed_periods (workspace_id, month, closed_at)
+		VALUES ('dash-own', '2025-01', now()), ('dash-foreign', '2020-01', now())`); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name               string
+		ws                 string
+		invoices, expenses bool
+		want               string
+	}{
+		{"both", "dash-own", true, true, "2024-03"},
+		{"invoices only", "dash-own", true, false, "2024-03"},
+		{"expenses only: invoice dates stay hidden", "dash-own", false, true, "2024-11"},
+		{"neither: closed months", "dash-own", false, false, "2025-01"},
+		{"no records", "dash-none", true, true, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := db.FirstRecordMonth(ctx, tt.ws, tt.invoices, tt.expenses)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (got == nil) != (tt.want == "") || (got != nil && *got != tt.want) {
+				t.Fatalf("got %v, want %q", got, tt.want)
+			}
+		})
+	}
+}

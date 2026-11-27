@@ -342,7 +342,7 @@ const goServedFakes = [
   ),
 
   // Books
-  http.get('/api/v1/periods', () => HttpResponse.json({ data: periods })),
+  http.get('/api/v1/periods', () => HttpResponse.json({ data: periods, first_month: null })),
   http.post<never, { month?: unknown }>('/api/v1/periods', async ({ request }) => {
     const { month } = await request.json()
     if (typeof month !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month >= thisMonth())

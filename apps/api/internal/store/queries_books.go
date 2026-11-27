@@ -524,3 +524,20 @@ func (q Q) PeriodActivity(ctx context.Context, workspaceID, from, to string, inv
 		return a, err
 	})
 }
+
+// FirstRecordMonth is the month (YYYY-MM) of the workspace's earliest issued invoice or booked expense, of the
+// sources the caller may read, or else of its earliest closed month; nil when it has none of them.
+func (q Q) FirstRecordMonth(ctx context.Context, workspaceID string, invoices, expenses bool) (*string, error) {
+	var month *string
+	err := q.db.QueryRow(ctx, `SELECT coalesce(
+			to_char(least(
+				(SELECT min(issue_date) FROM invoices WHERE $2 AND workspace_id = $1 AND status <> 'draft'),
+				(SELECT min(document_date) FROM expenses
+					WHERE $3 AND workspace_id = $1 AND status = 'booked' AND deleted_at IS NULL)
+			), 'YYYY-MM'),
+			(SELECT min(month) FROM closed_periods WHERE workspace_id = $1))`, workspaceID, invoices, expenses).Scan(&month)
+	if err != nil {
+		return nil, fmt.Errorf("first record month: %w", err)
+	}
+	return month, nil
+}

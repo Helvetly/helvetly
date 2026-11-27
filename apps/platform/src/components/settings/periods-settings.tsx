@@ -27,7 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components
 import { Textarea } from '@helvetly/ui/components/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { cn } from '@helvetly/ui/lib/utils'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, CircleDot, Lock, LockOpen, MoreHorizontal, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -77,6 +77,45 @@ export function monthsBefore(month: string, count: number): string {
   const date = utc(month)
   date.setUTCMonth(date.getUTCMonth() - (count - 1))
   return date.toISOString().slice(0, 7)
+}
+
+/**
+ * The months the books show, newest first: every month from the January of `firstMonth`'s year (or of an earlier
+ * closed month) through the current one, else the current month and the last 12 ended ones; closed months always.
+ */
+export function bookMonths(
+  todayIso: string,
+  firstMonth: string | null,
+  closed: string[],
+): string[] {
+  const current = todayIso.slice(0, 7)
+  const earliest = firstMonth ? [firstMonth, ...closed, current].toSorted()[0] : undefined
+  const months = earliest
+    ? monthsFrom(`${earliest.slice(0, 4)}-01`, current)
+    : [current, ...endedMonths(todayIso, 12)]
+  return [...new Set([...months, ...closed])].toSorted((a, b) => b.localeCompare(a))
+}
+
+/** Every month from..to (YYYY-MM, both included), oldest first. */
+function monthsFrom(from: string, to: string): string[] {
+  const months: string[] = []
+  for (
+    const date = utc(from);
+    date.toISOString().slice(0, 7) <= to;
+    date.setUTCMonth(date.getUTCMonth() + 1)
+  )
+    months.push(date.toISOString().slice(0, 7))
+  return months
+}
+
+/** from..to cut into windows of at most MAX_ACTIVITY_MONTHS, newest first: one activity request each. */
+export function activityWindows(from: string, to: string): [string, string][] {
+  const windows: [string, string][] = []
+  for (let end = to; end >= from; end = monthsBefore(windows.at(-1)?.[0] ?? from, 2)) {
+    const start = [from, monthsBefore(end, MAX_ACTIVITY_MONTHS)].toSorted().at(-1) ?? from
+    windows.push([start, end])
+  }
+  return windows
 }
 
 /** Whether every word of `query` starts a part of `month`: its name ("oct"), year ("2026") or number ("10"). */
@@ -157,23 +196,24 @@ export function PeriodsSettings() {
 export function PeriodsCard() {
   const queryClient = useQueryClient()
   const canEdit = useCan('write:periods')
+  // Its own key under PERIODS_KEY: other screens cache the list alone there, and invalidating PERIODS_KEY reaches both.
   const periods = useQuery({
-    queryKey: PERIODS_KEY,
-    queryFn: async () => (await booksApi.periods()).data,
+    queryKey: [...PERIODS_KEY, 'range'],
+    queryFn: booksApi.periods,
   })
   const now = today()
   const current = now.slice(0, 7)
-  const ended = endedMonths(now, 12)
-  const closed = new Map<string, Period>((periods.data ?? []).map((p) => [p.month, p]))
-  const months = [...new Set([current, ...ended, ...closed.keys()])].toSorted((a, b) =>
-    b.localeCompare(a),
-  )
-  const oldest = months.at(-1) ?? current
-  const from = [oldest, monthsBefore(current, MAX_ACTIVITY_MONTHS)].toSorted().at(-1) ?? current
-  const activity = useQuery({
-    queryKey: [...ACTIVITY_KEY, from, current],
-    queryFn: async () => (await booksApi.activity(from, current)).data,
-    enabled: periods.data !== undefined,
+  const closed = new Map<string, Period>((periods.data?.data ?? []).map((p) => [p.month, p]))
+  const months = bookMonths(now, periods.data?.first_month ?? null, [...closed.keys()])
+  const activity = useQueries({
+    queries: activityWindows(months.at(-1) ?? current, current).map(([from, to]) => ({
+      queryKey: [...ACTIVITY_KEY, from, to],
+      queryFn: async () => (await booksApi.activity(from, to)).data,
+      enabled: periods.data !== undefined,
+    })),
+    combine: (results) => ({
+      data: results.every((r) => r.data) ? results.flatMap((r) => r.data ?? []) : undefined,
+    }),
   })
   const refresh = () =>
     Promise.all([
@@ -202,7 +242,7 @@ export function PeriodsCard() {
 
   const byMonth = new Map((activity.data ?? []).map((a) => [a.month, a]))
   const closedSet = new Set(closed.keys())
-  const open = ended.filter((month) => !closedSet.has(month))
+  const open = months.filter((month) => month !== current && !closedSet.has(month))
   const through = closedThrough(closedSet)
   const busy = close.isPending || reopen.isPending
   const stateOf = (month: string): State =>
