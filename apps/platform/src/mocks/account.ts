@@ -179,7 +179,7 @@ const signatureView = () => ({
 
 /** Back to the sample data; tests call it between cases. */
 export function resetAccountMock() {
-  memory = { enabled: true, reply_style: 'auto', topics: [] }
+  memory = { enabled: true, topics: [] }
   account = sampleAccount()
   sessions = sampleSessions()
   tokens = sampleTokens()
@@ -190,13 +190,15 @@ export function resetAccountMock() {
   } catch {}
 }
 
-let memory: { enabled: boolean; reply_style: string; topics: { title: string; count: number }[] } =
-  { enabled: true, reply_style: 'auto', topics: [] }
+let memory: { enabled: boolean; topics: { title: string; count: number }[] } = {
+  enabled: true,
+  topics: [],
+}
 
 const memoryView = () =>
   HttpResponse.json({
     ...memory,
-    has_memory: memory.topics.length > 0 || memory.reply_style !== 'auto',
+    has_memory: memory.topics.length > 0,
   })
 
 export const heidiMemoryRead = http.get('/api/v1/heidi/memory', memoryView)
@@ -204,15 +206,12 @@ export const heidiMemoryRead = http.get('/api/v1/heidi/memory', memoryView)
 export const accountHandlers = [
   heidiMemoryRead,
   http.patch('/api/v1/heidi/memory', async ({ request }) => {
-    const update = (await request.json()) as Partial<typeof memory>
-    memory =
-      update.enabled === false
-        ? { enabled: false, reply_style: 'auto', topics: [] }
-        : { ...memory, ...update }
+    const { enabled } = (await request.json()) as { enabled: boolean }
+    memory = { enabled, topics: enabled ? memory.topics : [] }
     return memoryView()
   }),
   http.delete('/api/v1/heidi/memory', () => {
-    memory = { ...memory, reply_style: 'auto', topics: [] }
+    memory = { ...memory, topics: [] }
     return memoryView()
   }),
   // The account page asks for deleted workspaces; none by default (the restore stories bring their own).

@@ -92,6 +92,11 @@ const titleField = async () =>
 /** A Combobox trigger by its label: its name is the label followed by the chosen value. */
 const picker = (sheet: ReturnType<typeof within>, label: string) =>
   sheet.getByRole('button', { name: new RegExp(`^${label}`) })
+/** A length from the duration select, whose options also name the end time ("1 h until 15:00"). */
+const pickLength = async (sheet: ReturnType<typeof within>, option: RegExp) => {
+  await userEvent.click(picker(sheet, 'Duration'))
+  await userEvent.click(await screen.findByRole('option', { name: option }))
+}
 const pick = async (sheet: ReturnType<typeof within>, label: string, option: string) => {
   // Event types and hosts load first: their rows appear then.
   await userEvent.click(await sheet.findByRole('button', { name: new RegExp(`^${label}`) }))
@@ -107,7 +112,7 @@ export const CreateOneOff: Story = {
     await expect(sheet.queryByRole('button', { name: /^Engagement/ })).not.toBeInTheDocument()
     await expect(sheet.getByRole('button', { name: /^Repeat Does not repeat/ })).toBeVisible()
     await expect(sheet.getByText(/3 Dec · 14:00 – 15:00 \(Zurich\)/)).toBeVisible()
-    await userEvent.click(sheet.getByRole('button', { name: '45 min' }))
+    await pickLength(sheet, /^45 min/)
     await expect(await sheet.findByText(/14:00 – 14:45/)).toBeVisible()
     await userEvent.type(await titleField(), 'Kick-off')
     await userEvent.click(sheet.getByRole('button', { name: 'Schedule' }))
@@ -124,10 +129,8 @@ export const EventTypePrefills: Story = {
     const sheet = await drawer()
     await pick(sheet, 'Event type', 'Intro call')
     await expect(await titleField()).toHaveValue('Intro call')
-    await expect(sheet.getByRole('button', { name: 'My own link' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    await expect(sheet.getByRole('radio', { name: 'Online' })).toBeChecked()
+    await expect(picker(sheet, 'Meeting platform')).toHaveAccessibleName(/My own link/)
     // A typed title stays when the type changes.
     await userEvent.clear(await titleField())
     await userEvent.type(await titleField(), 'First meeting')
@@ -136,25 +139,44 @@ export const EventTypePrefills: Story = {
   },
 }
 
-/** The event type's length is not asked again: the summary names it, and Change opens the picks anyway. */
+/** The length is a select whose options name the end time; an event type sets it, Custom… asks for minutes. */
 export const EventTypeDuration: Story = {
   play: async () => {
     const sheet = await drawer()
-    await expect(sheet.getByRole('button', { name: '45 min' })).toBeVisible()
+    await expect(picker(sheet, 'Duration')).toHaveAccessibleName(/1 h/)
+    await userEvent.click(picker(sheet, 'Duration'))
+    await expect(await screen.findByRole('option', { name: /^1\.5 h until 15:30/ })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
     await pick(sheet, 'Event type', 'Intro call')
     await expect(await sheet.findByText(/3 Dec · 14:00 – 14:30 \(Zurich\)/)).toBeVisible()
-    await expect(sheet.getByText('· 30 min')).toBeVisible()
-    await expect(sheet.queryByRole('button', { name: '45 min' })).not.toBeInTheDocument()
-    await userEvent.click(sheet.getByRole('button', { name: 'Change duration' }))
-    await expect(sheet.getByRole('button', { name: '30 min' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    await expect(sheet.queryByRole('button', { name: 'Change duration' })).not.toBeInTheDocument()
-    // The custom length's unit sits inside its field.
-    await userEvent.click(sheet.getByRole('button', { name: 'Custom' }))
+    await expect(picker(sheet, 'Duration')).toHaveAccessibleName(/30 min/)
+    // The custom length's unit sits inside its field, beside the way back to the list.
+    await pickLength(sheet, /^Custom/)
     const minutes = await sheet.findByRole('textbox', { name: 'Duration in minutes' })
+    await waitFor(() => expect(minutes).toHaveFocus())
     await expect(minutes.closest('[data-slot=input-group]')).toHaveTextContent('min')
+    await userEvent.clear(minutes)
+    await userEvent.type(minutes, '50')
+    await expect(await sheet.findByText(/14:00 – 14:50/)).toBeVisible()
+    await userEvent.click(sheet.getByRole('button', { name: 'Choose from common lengths' }))
+    // A length of its own is one of the options.
+    await expect(picker(sheet, 'Duration')).toHaveAccessibleName(/50 min/)
+  },
+}
+
+/** Date, start and length share one row whose edges are the client field's. */
+export const WhenRowAligned: Story = {
+  play: async () => {
+    const sheet = await drawer()
+    const client = picker(sheet, 'Client').getBoundingClientRect()
+    const date = field('date').getBoundingClientRect()
+    const length = picker(sheet, 'Duration').getBoundingClientRect()
+    await expect(Math.abs(date.left - client.left)).toBeLessThanOrEqual(1)
+    await expect(Math.abs(length.right - client.right)).toBeLessThanOrEqual(1)
+    await expect(
+      Math.abs(field('time').getBoundingClientRect().top - date.top),
+    ).toBeLessThanOrEqual(1)
+    await expect(length.height).toBe(date.height)
   },
 }
 
@@ -208,41 +230,96 @@ export const CustomMonthly: Story = {
   },
 }
 
-/** The slot overlaps another session and a busy time: one line under the time, the fields below stay put. */
+/** The slot overlaps: a calm notice under the time lists each entry and offers the start after them. */
 export const ConflictsWarning: Story = {
   render: () => <Drawer start={create({ date: '2026-12-02', minutes: 9 * 60 + 30 })} />,
   play: async () => {
     const sheet = await drawer()
-    await expect(await sheet.findByText(/1 overlap: /)).toBeVisible()
-    await sheet.findByRole('button', { name: /^Event type/ })
-    const repeat = picker(sheet, 'Repeat')
-    const before = repeat.getBoundingClientRect().top
-    await expect(sheet.getByText(/Strategy session/)).toBeVisible()
-    await expect(repeat.getBoundingClientRect().top).toBe(before)
+    const notice = await sheet.findByText('This time overlaps one entry')
+    const callout = notice.closest('[data-slot=callout]')
+    if (!(callout instanceof HTMLElement)) throw new Error('No callout')
+    await expect(within(callout).getByText('Strategy session')).toBeVisible()
+    await userEvent.click(within(callout).getByRole('button', { name: 'Start at 11:00' }))
+    await expect(field('time')).toHaveValue('11:00')
+    await waitFor(() =>
+      expect(sheet.queryByText('This time overlaps one entry')).not.toBeInTheDocument(),
+    )
     // Moving the time onto the busy block names it without a title.
     fireEvent.change(field('time'), { target: { value: '14:00' } })
-    await expect(await sheet.findByText(/busy in the host’s calendar/)).toBeVisible()
-    await expect(repeat.getBoundingClientRect().top).toBe(before)
+    await expect(await sheet.findByText('busy in the host’s calendar')).toBeVisible()
   },
 }
 
-/** Google Meet works (my Google calendar is connected); Teams is offered but not connected: a link to connect it. */
-export const MeetConnectLink: Story = {
+export const ConflictsWarningDark: Story = { ...ConflictsWarning, parameters: { dark: true } }
+
+export const ConflictsWarningPhone: Story = {
+  ...ConflictsWarning,
+  parameters: {
+    viewport: {
+      options: { phone: { name: 'Phone', styles: { width: '390px', height: '844px' } } },
+    },
+  },
+  globals: { viewport: { value: 'phone' } },
+}
+
+/** Online: Google Meet works (my Google calendar is connected), its link is made on save. */
+export const OnlineGoogleMeet: Story = {
   play: async () => {
     const sheet = await drawer()
-    const connect = await sheet.findByRole('link', {
-      name: /Connect your Microsoft 365 calendar/,
-    })
-    await expect(connect).toHaveAttribute('href', '/settings/scheduling#calendars')
-    await expect(sheet.queryByRole('button', { name: 'Microsoft Teams' })).not.toBeInTheDocument()
-    await userEvent.click(sheet.getByRole('button', { name: 'Google Meet' }))
-    await expect(sheet.getByRole('button', { name: 'Google Meet' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    await userEvent.click(sheet.getByRole('radio', { name: 'Online' }))
+    await pick(sheet, 'Meeting platform', 'Google Meet')
     await expect(
       sheet.getByText('The link is made in the host’s calendar when you save.'),
     ).toBeVisible()
+  },
+}
+
+/** Online with a connected Microsoft calendar: Teams makes its link like Meet. */
+export const OnlineTeams: Story = {
+  beforeEach: () => {
+    Object.assign(state, sampleState({ connected: ['google', 'microsoft'] }))
+  },
+  play: async () => {
+    const sheet = await drawer()
+    await userEvent.click(sheet.getByRole('radio', { name: 'Online' }))
+    await pick(sheet, 'Meeting platform', 'Microsoft Teams')
+    await expect(
+      sheet.getByText('The link is made in the host’s calendar when you save.'),
+    ).toBeVisible()
+  },
+}
+
+/** Teams is offered but my Microsoft calendar is not connected: the option says so and the field links to connect it. */
+export const OnlineTeamsNotConnected: Story = {
+  play: async () => {
+    const sheet = await drawer()
+    await userEvent.click(sheet.getByRole('radio', { name: 'Online' }))
+    await userEvent.click(picker(sheet, 'Meeting platform'))
+    await userEvent.click(
+      await screen.findByRole('option', { name: /^Microsoft Teams Not connected/ }),
+    )
+    await expect(
+      sheet.getByText(/Connect your Microsoft 365 calendar in your account first/),
+    ).toBeVisible()
+    await expect(sheet.getByRole('link', { name: 'Connect calendar' })).toHaveAttribute(
+      'href',
+      '/settings/scheduling#calendars',
+    )
+  },
+}
+
+export const OnlineTeamsNotConnectedDark: Story = {
+  ...OnlineTeamsNotConnected,
+  parameters: { dark: true },
+}
+
+/** My own link: a field for the address of the meeting. */
+export const OnlineOwnLink: Story = {
+  play: async () => {
+    const sheet = await drawer()
+    await userEvent.click(sheet.getByRole('radio', { name: 'Online' }))
+    await expect(picker(sheet, 'Meeting platform')).toHaveAccessibleName(/My own link/)
+    await expect(sheet.getByRole('textbox', { name: 'Meeting link' })).toBeVisible()
   },
 }
 
@@ -263,11 +340,14 @@ export const MeetHiddenWhenNotConfigured: Story = {
   },
   play: async () => {
     const sheet = await drawer()
-    await userEvent.click(await sheet.findByRole('button', { name: 'My own link' }))
+    await userEvent.click(await sheet.findByRole('radio', { name: 'Online' }))
     await expect(sheet.getByRole('textbox', { name: 'Meeting link' })).toBeVisible()
-    await expect(sheet.queryByText('Google Meet')).not.toBeInTheDocument()
-    await expect(sheet.queryByText('Microsoft Teams')).not.toBeInTheDocument()
-    await userEvent.click(sheet.getByRole('button', { name: 'In person' }))
+    await userEvent.click(picker(sheet, 'Meeting platform'))
+    await expect(await screen.findByRole('option', { name: /My own link/ })).toBeVisible()
+    await expect(screen.queryByRole('option', { name: /Google Meet/ })).not.toBeInTheDocument()
+    await expect(screen.queryByRole('option', { name: /Microsoft Teams/ })).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(sheet.getByRole('radio', { name: 'In person' }))
     await expect(sheet.getByRole('textbox', { name: 'Location' })).toHaveValue('Office')
   },
 }
@@ -641,8 +721,7 @@ export const StartedSessionTimeLocked: Story = {
     await expect(await sheet.findByRole('heading', { name: 'Edit session' })).toBeVisible()
     await expect(field('date')).toHaveAttribute('readonly')
     await expect(field('time')).toHaveAttribute('readonly')
-    await expect(sheet.queryByRole('button', { name: '45 min' })).not.toBeInTheDocument()
-    await expect(sheet.queryByRole('button', { name: 'Change duration' })).not.toBeInTheDocument()
+    await expect(picker(sheet, 'Duration')).toBeDisabled()
     const lock = sheet.getByLabelText(reason)
     await userEvent.hover(lock)
     await expect(await screen.findByRole('tooltip')).toHaveTextContent(reason)
