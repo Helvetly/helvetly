@@ -33,6 +33,7 @@ type AuditOtherRecord struct {
 type AuditDocument struct {
 	ID, Name, Kind, Client, FolderClient, FolderYear, ObjectKey string
 	Owners, Payments, Refunds, Expenses, Invoices               []string
+	ContractEvidence                                            bool
 	Status                                                      string
 	Facts                                                       json.RawMessage
 }
@@ -83,15 +84,24 @@ const auditCached = ` LEFT JOIN workspace_audit_evidence a ON a.workspace_id=d.w
  AND a.language=$2 AND a.fingerprint=` + auditFingerprint + `
  AND (a.status NOT IN ('missing','integrity') OR a.checked_at > now()-interval '5 minutes') `
 
-func (q Q) AuditDocuments(ctx context.Context, ws, lang, zone string) ([]AuditDocument, error) {
+func (q Q) AuditDocuments(ctx context.Context, ws, lang, zone, id string, contractChecks bool) ([]AuditDocument, error) {
+	args := []any{ws, lang, zoneOr(zone), contractChecks}
+	filter := ""
+	if id != "" {
+		filter = " AND d.id=$5"
+		args = append(args, id)
+	}
 	rows, err := q.db.Query(ctx, classCTE+` SELECT d.id,d.name,g.type,g.client,coalesce(fx.client,''),coalesce(fx.year,''),d.object_key,
  ARRAY(SELECT l.target_id FROM document_links l WHERE l.workspace_id=$1 AND l.document_id=d.id AND l.target_type='client' ORDER BY l.target_id),
  ARRAY(SELECT l.target_id FROM document_links l WHERE l.workspace_id=$1 AND l.document_id=d.id AND l.target_type='payment' ORDER BY l.target_id),
  ARRAY(SELECT l.target_id FROM document_links l WHERE l.workspace_id=$1 AND l.document_id=d.id AND l.target_type='refund' ORDER BY l.target_id),
  ARRAY(SELECT l.target_id FROM document_links l WHERE l.workspace_id=$1 AND l.document_id=d.id AND l.target_type='expense' ORDER BY l.target_id),
  ARRAY(SELECT l.target_id FROM document_links l WHERE l.workspace_id=$1 AND l.document_id=d.id AND l.target_type='invoice' ORDER BY l.target_id),
+CASE WHEN $4::boolean AND a.status IS NULL THEN EXISTS (SELECT 1 FROM invoices i WHERE i.workspace_id=$1 AND i.number<>'' AND i.status<>'draft'
+	AND (i.contract_document_id=d.id OR i.source_document_id=d.id
+		OR (coalesce(i.source_document_id,'')='' AND i.pdf_key=d.object_key))) ELSE false END,
  coalesce(a.status,''),coalesce(a.facts,'{}'::jsonb) FROM documents d `+classJoins("$3")+auditCached+
-		` WHERE d.workspace_id=$1 AND d.deleted_at IS NULL AND NOT d.hr_private ORDER BY d.id`, ws, lang, zoneOr(zone))
+		` WHERE d.workspace_id=$1 AND d.deleted_at IS NULL AND NOT d.hr_private`+filter+` ORDER BY d.id`, args...)
 	if err != nil {
 		return nil, err
 	}

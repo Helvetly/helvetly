@@ -102,6 +102,7 @@ import {
   canDeleteForever,
   childrenOf,
   docKeys,
+  docListQuery,
   docsApi,
   downloadUrl,
   KIND_LABELS,
@@ -162,7 +163,7 @@ import { FolderMark } from './folder-art'
 import { FolderTree } from './folder-tree'
 import { GroupByMenu, GroupCrumbs, type ViewPreset } from './group-controls'
 import { GroupView } from './group-view'
-import { ItemsView } from './items-view'
+import { ItemsView, LoadingFiles } from './items-view'
 import { KIND_STYLE, KindIcon } from './kind'
 import { OrganizeDrawer } from './organize-drawer'
 import { pinAction, sameTab, tabOfView, usePinnedTabs, type PinnedTab } from './pinned-tabs'
@@ -350,10 +351,17 @@ export function DocumentsPage() {
     setSelection(EMPTY_SELECTION)
     setFocused(null)
   }
+  const prefetchFolder = (id: string) => {
+    if (!session || id === current || !allFolders.find((folder) => folder.id === id)?.file_count)
+      return
+    void queryClient.prefetchQuery(
+      docListQuery(listQuery({ ...view, ...folderView(id) }, session.user.id)),
+    )
+  }
   const openFolder = (id: string | null) => {
     clearSelection()
     setSearch('')
-    navigate({ section: 'files', folder: id, search: '', file: null, group: [], ...NO_GROUP }, true)
+    navigate(folderView(id), true)
   }
   const setGrouping = (group: GroupDim[], change: Partial<ViewParams> = {}) => {
     storeGrouping(group)
@@ -483,7 +491,7 @@ export function DocumentsPage() {
     itemCount: itemCount(folder),
   }))
   if (view.sort === 'name' && view.desc) visibleFolders.reverse()
-  // At a level of groups there are no files on screen (the list keeps its last page as a placeholder).
+  // At a level of groups there are no files on screen.
   const files = dim === null ? (list.data?.data ?? []) : []
   // The top level of "All documents", unfiltered: the storage overview and Recent show there.
   const home = view.section === 'files' && current === null && !searching && !filtered
@@ -1075,7 +1083,9 @@ export function DocumentsPage() {
   const showLocation = searching || view.section === 'recent' || grouping || byGroup
   const dropHere = view.section === 'trash' ? null : current
   const surfaceDrop = useDropTarget(dropHere)
-  const loading = listing && dim === null && !list.data && !list.error
+  const needsFolders = view.section === 'files' && !filtered && !folders.data
+  const loading = list.isPending || (needsFolders && folders.isPending)
+  const listError = list.error ?? (needsFolders ? folders.error : null)
 
   // The header's solid button: Upload for files, "New" in Templates and Signatures (locked: says why).
   const sectionLock =
@@ -1186,6 +1196,7 @@ export function DocumentsPage() {
                       openFolder(data.id)
                     }, docError),
                   open: openFolder,
+                  prefetch: prefetchFolder,
                   section: openSection,
                   newFolder: (parent) => setNewFolderIn(parent),
                   rename: (folder, name) => void rename(folderKey(folder.id), name),
@@ -1376,14 +1387,18 @@ export function DocumentsPage() {
                       onDownload={(group) => downloadZip(groupChange(dim, group.key))}
                     />
                   )
-                ) : list.error ? (
+                ) : listError ? (
                   <LoadProblem
-                    error={list.error}
+                    error={listError}
                     what={translate('theFiles')}
-                    onRetry={() => void list.refetch()}
+                    onRetry={() => void (list.error ? list.refetch() : folders.refetch())}
                   />
                 ) : loading ? (
-                  <LoadingRows />
+                  view.layout === 'grid' ? (
+                    <LoadingFiles />
+                  ) : (
+                    <LoadingRows />
+                  )
                 ) : visibleFolders.length + files.length === 0 ? (
                   <Empty
                     view={view}
@@ -1404,12 +1419,7 @@ export function DocumentsPage() {
                     }}
                   />
                 ) : (
-                  <div
-                    className={cn(
-                      'flex-1 transition-opacity duration-150',
-                      list.isPlaceholderData && 'opacity-60',
-                    )}
-                  >
+                  <div className="flex-1">
                     <ItemsView
                       canWrite={canWrite}
                       layout={view.layout}
@@ -1423,6 +1433,7 @@ export function DocumentsPage() {
                       sort={view.sort}
                       desc={view.desc}
                       onSort={(field, desc) => navigate({ sort: field, desc })}
+                      onPrefetchFolder={prefetchFolder}
                       onClick={onItemClick}
                       onToggle={(key, modifiers) => {
                         setFocused(key)
@@ -2006,6 +2017,16 @@ function saveFile(href: string) {
 }
 
 const NO_GROUP = { types: [], year: null, clients: [] } satisfies Partial<ViewParams>
+
+const folderView = (id: string | null) =>
+  ({
+    section: 'files',
+    folder: id,
+    search: '',
+    file: null,
+    group: [],
+    ...NO_GROUP,
+  }) satisfies Partial<ViewParams>
 
 /**
  * The search's field terms: `kind:`, `uploaded:`, `by:me` and the groups' `type:`, `year:` and

@@ -96,9 +96,36 @@ func language(r *http.Request) string {
 	}
 	return "en"
 }
+
+type areas map[string]bool
+
+func parseAreas(raw string) (areas, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	selected := areas{}
+	for _, value := range strings.Split(raw, ",") {
+		area := strings.TrimSpace(value)
+		switch area {
+		case "clients", "invoices", "quotes", "payments", "expenses", "contracts", "documents", "tax":
+			selected[area] = true
+		default:
+			return nil, auth.Error(http.StatusBadRequest, "invalid_areas", "One or more audit areas are invalid.", nil)
+		}
+	}
+	return selected, nil
+}
+
+func (a areas) includes(area string) bool { return len(a) == 0 || a[area] }
+
 func (s *Service) Register(mux *http.ServeMux) {
-	handle := func(path string, fn func(context.Context, store.Session, string, string) (any, error)) {
+	handle := func(path string, fn func(context.Context, store.Session, string, string, areas) (any, error)) {
 		mux.HandleFunc("POST "+path, s.auth.SignedIn(func(w http.ResponseWriter, r *http.Request, sess store.Session) {
+			selected, err := parseAreas(strings.Join(r.URL.Query()["areas"], ","))
+			if err != nil {
+				s.auth.WriteError(w, r, err)
+				return
+			}
 			if s.model == nil {
 				s.auth.WriteError(w, r, auth.Error(503, "ai_unavailable", "AI is unavailable.", nil))
 				return
@@ -107,7 +134,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 				s.auth.WriteError(w, r, err)
 				return
 			}
-			result, err := fn(r.Context(), sess, language(r), r.PathValue("id"))
+			result, err := fn(r.Context(), sess, language(r), r.PathValue("id"), selected)
 			if err != nil {
 				s.auth.WriteError(w, r, err)
 				return
@@ -122,9 +149,10 @@ func (s *Service) Register(mux *http.ServeMux) {
 func denied() error {
 	return auth.Error(http.StatusForbidden, "forbidden", "You do not have access to these records.", nil)
 }
-func (s *Service) inspect(ctx context.Context, sess store.Session, lang, id string) (any, error) {
+func (s *Service) inspect(ctx context.Context, sess store.Session, lang, id string, selected areas) (any, error) {
 	ws := sess.Workspace.ID
-	if !permissions.Allows(sess.Role, sess.Scopes, "read:documents") {
+	a := auditAccess(sess)
+	if !a.documents {
 		return nil, denied()
 	}
 	d, err := s.db.AuditSource(ctx, ws, lang, id)
@@ -136,6 +164,18 @@ func (s *Service) inspect(ctx context.Context, sess store.Session, lang, id stri
 	}
 	if d.Status != "" {
 		return map[string]string{"status": d.Status}, nil
+	}
+	if !selected.includes("documents") {
+		docs, err := s.db.AuditDocuments(ctx, ws, lang, sess.Workspace.Timezone, id, a.invoices && selected["contracts"])
+		if err != nil {
+			return nil, err
+		}
+		if len(docs) == 0 {
+			return map[string]string{"status": "removed"}, nil
+		}
+		if !selected.includesDocument(docs[0], a) {
+			return map[string]string{"status": "skipped"}, nil
+		}
 	}
 	token := auth.NewID("aud")
 	claimed, err := s.db.ClaimAuditDocument(ctx, ws, lang, id, token)

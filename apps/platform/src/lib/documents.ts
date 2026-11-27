@@ -1,12 +1,6 @@
 'use client'
 // Documents, typed by hand from docs/documents-contract.md.
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { ApiError, errorFromBody, getCsrfToken, request } from '@/lib/api'
 import type { Client } from '@/lib/clients'
@@ -774,7 +768,7 @@ export function useFolders() {
 }
 
 export function useDocList(query: URLSearchParams, enabled = true) {
-  return useQuery({ ...docListQuery(query), placeholderData: keepPreviousData, enabled })
+  return useQuery({ ...docListQuery(query), enabled })
 }
 
 /** One level of a grouped view: the groups and their counts. */
@@ -783,7 +777,6 @@ export function useDocGroups(query: URLSearchParams, enabled = true) {
   return useQuery({
     queryKey: docKeys.groups(text),
     queryFn: async () => (await docsApi.groups(new URLSearchParams(text))).data,
-    placeholderData: keepPreviousData,
     enabled,
   })
 }
