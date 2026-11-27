@@ -2686,7 +2686,7 @@
   "rejectTheRequestedChanges": "Die angeforderten Änderungen ablehnen?",
   "remaining": "Verbleibend",
   "remind": "Erinnern",
-  "reminder": "Erinnerung {rank}",
+  "reminder": "{rank, select, 1 {Erste Erinnerung} 2 {Zweite Erinnerung} 3 {Dritte Erinnerung} 4 {Vierte Erinnerung} 5 {Fünfte Erinnerung} 6 {Sechste Erinnerung} 7 {Siebte Erinnerung} 8 {Achte Erinnerung} 9 {Neunte Erinnerung} 10 {Zehnte Erinnerung} other {Erinnerung}}",
   "reminderEmailed": "Erinnerung per E-Mail",
   "reminders": "Erinnerungen",
   "reminderSchedule": "Erinnerungsplan",
