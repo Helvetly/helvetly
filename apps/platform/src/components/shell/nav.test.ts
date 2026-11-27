@@ -68,3 +68,18 @@ test('Scheduling sits right under the dashboard and needs read:scheduling', () =
   expect(item).toMatchObject({ href: '/scheduling', feature: 'scheduling' })
   expect(item?.badge).toBeDefined()
 })
+
+const bottom = (scopes: readonly string[]) =>
+  visibleNav(scopes)
+    .find((group) => group.bottom)
+    ?.items.map((item) => item.label)
+
+test('API & MCP sits right under Ask Heidi and needs read:api, as its settings tab did', () => {
+  expect(bottom(['*:*'])).toEqual(['Ask Heidi', 'API & MCP', 'Notifications'])
+  expect(
+    visibleNav(['read:api'])
+      .flatMap((group) => group.items)
+      .find((item) => item.label === 'API & MCP')?.href,
+  ).toBe('/developers')
+  expect(bottom(['read:clients'])).toEqual(['Ask Heidi', 'Notifications'])
+})

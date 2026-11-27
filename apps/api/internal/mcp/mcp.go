@@ -77,7 +77,7 @@ func (s *Service) post(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="helvetly"`)
 		s.auth.WriteError(w, r, auth.Error(http.StatusUnauthorized, "unauthenticated",
-			"Send an API token: Authorization: Bearer hvt_… (Settings → API & MCP).", nil))
+			"Send an API token: Authorization: Bearer hvt_… (the API & MCP page in Helvetly).", nil))
 		return
 	}
 	if v := r.Header.Get("MCP-Protocol-Version"); v != "" && !slices.Contains(versions, v) {

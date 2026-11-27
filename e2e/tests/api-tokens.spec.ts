@@ -1,12 +1,12 @@
 import { expect, object, test, text, uniqueName } from './fixtures'
 
-test('a token made in Settings → API & MCP opens the API without cookies until it is revoked', async ({
+test('a token made on the API & MCP page opens the API without cookies until it is revoked', async ({
   api,
   page,
   playwright,
   baseURL,
 }) => {
-  await page.goto('/settings/api')
+  await page.goto('/developers')
   const section = page.getByRole('region', { name: 'API tokens' })
   await section.getByRole('button', { name: 'Create token' }).click()
   const drawer = page.getByRole('dialog', { name: 'Create API token' })

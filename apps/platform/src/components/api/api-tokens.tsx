@@ -93,7 +93,7 @@ function ScopeBadges({ scopes }: { scopes: string[] }) {
 }
 
 /** Personal tokens for scripts and AI tools (the REST API and MCP), each bound to one workspace. */
-export function ApiTokens() {
+export function ApiTokens({ className }: { className?: string }) {
   const tokens = useApiTokens()
   const revoke = useRevokeApiToken()
   const [creating, setCreating] = useState(false)
@@ -116,6 +116,7 @@ export function ApiTokens() {
 
   return (
     <SettingsSection
+      className={className}
       id="api-tokens"
       icon={KeySquare}
       title={translate('apiTokens')}
