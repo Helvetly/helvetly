@@ -3,13 +3,13 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
 import { expect, spyOn, userEvent, within } from 'storybook/test'
 
-import { ApiSettings } from '@/components/api/api-settings'
+import { DevelopersPage } from '@/components/api/developers-page'
 import { accountHandlers, resetAccountMock } from '@/mocks/account'
 
 import { screenHandlers } from './screen-fixtures'
 
 const meta = {
-  title: 'Settings/API & MCP',
+  title: 'Developers/API & MCP',
   decorators: [
     (Story) => (
       <SidebarProvider>
@@ -22,36 +22,29 @@ const meta = {
   parameters: {
     layout: 'fullscreen',
     ownMain: true,
-    nextjs: { navigation: { pathname: '/settings/api' } },
+    nextjs: { navigation: { pathname: '/developers' } },
     msw: { handlers: [...accountHandlers, ...screenHandlers] },
   },
   beforeEach: () => resetAccountMock(),
-  render: () => <ApiSettings />,
+  render: () => <DevelopersPage />,
 } satisfies Meta
 export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * Its own settings tab after Account: tokens, connecting an AI assistant over MCP with a setup per
- * client, and the REST API, each with a link to the docs site.
+ * Its own page (under Ask Heidi in the sidebar), not a settings tab: tokens, connecting an AI assistant over MCP with
+ * a setup per client, and the REST API, each a card with a link to the docs site; Developer docs in the header.
  */
 export const Page: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await canvas.findByText('Claude')
-    const tabs = within(await canvas.findByRole('navigation', { name: 'Views' }))
-    const labels = tabs.getAllByRole('button').map((tab) => tab.textContent)
-    // Your own settings, invoices, employment (when you may see it), then API & MCP; on a phone some tabs go under
-    // "More", and the ones shown keep that order.
-    const order = ['Account', 'Invoices', 'Employment', 'API & MCP']
-    const shown = labels.filter((label) => label !== null && order.includes(label))
-    await expect(shown).toEqual(order.filter((label) => shown.includes(label)))
-    await expect(shown).toContain('API & MCP')
-    await expect(tabs.getByRole('button', { name: 'API & MCP' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
-    await expect(canvas.getByRole('heading', { level: 1, name: 'API & MCP' })).toBeVisible()
+    // One page, no tabs: the header bar names it.
+    await expect(canvas.queryByRole('navigation', { name: 'Views' })).toBeNull()
+    // The header bar's title for screen readers, then the page's own.
+    await expect(
+      canvas.getAllByRole('heading', { level: 1, name: 'API & MCP' }).at(-1),
+    ).toBeVisible()
     await expect(canvas.getByRole('link', { name: /Developer docs/ })).toHaveAttribute(
       'href',
       'https://docs.helvetly.com',
