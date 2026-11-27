@@ -56,6 +56,7 @@ export const AUDIT_KINDS = [
   'portal.preview_started',
   'portal.preview_ended',
   'documents.exported',
+  'documents.folder_repaired',
   'imports.expired',
   'email_template.ai_written',
   'quote.contract_drafted',
