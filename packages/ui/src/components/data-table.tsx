@@ -357,8 +357,7 @@ export function DataTable<T extends RowData>({
   const [defs, setDefs] = useState(model)
   if (JSON.stringify(model) !== JSON.stringify(defs)) setDefs(model)
 
-  // Until a person sizes them, the columns share what the box has beyond their default widths;
-  // the first resize of any column stores every width, so only the dragged one moves.
+  // The first resize stores the visible widths so only the dragged column changes.
   const columnSizing = useMemo(() => fitColumns(shown, sizes, available), [shown, sizes, available])
 
   const movable = all.filter((column) => !isFixed(column.id)).map((column) => column.id)
@@ -414,7 +413,14 @@ export function DataTable<T extends RowData>({
       pagination: paginationState,
     },
     onColumnSizingChange: (updater: Updater<ColumnSizingState>) => {
-      const next = typeof updater === 'function' ? updater(columnSizing) : updater
+      const next = { ...(typeof updater === 'function' ? updater(columnSizing) : updater) }
+      // TanStack clamps the rendered size, but a drag can report a width of zero.
+      for (const [columnId, width] of Object.entries(next)) {
+        const column = byId.get(columnId)
+        if (!column) continue
+        const { min, max } = bounds(column)
+        next[columnId] = clamp(width, min, max)
+      }
       writeColumnSizes(id, next)
       setSizes(next)
     },
@@ -456,8 +462,6 @@ export function DataTable<T extends RowData>({
   const resizing = table.state.columnResizing.isResizingColumn
   const visibleColumns = table.getVisibleLeafColumns()
   const lastColumn = visibleColumns.at(-1)?.id
-  // A bar sits only between two data columns: none after the last one, so none at the row menu's edge.
-  const lastDataColumn = visibleColumns.findLast((column) => column.getCanResize())?.id
   // The row menu column stays at the right edge: the empty room goes before it.
   const fillerAt = lastColumn === ACTIONS ? visibleColumns.length - 1 : visibleColumns.length
   const withFiller = (cells: ReactNode[], cell: ReactNode) =>
@@ -562,8 +566,7 @@ export function DataTable<T extends RowData>({
                         </th>
                       )
                     const sorted = header.column.getIsSorted()
-                    const canResizeColumn =
-                      header.column.getCanResize() && column.id !== lastDataColumn
+                    const canResizeColumn = header.column.getCanResize()
                     const canMove = !isFixed(column.id)
                     return (
                       <th
@@ -767,44 +770,32 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   )
 }
 
-/**
- * The widths of the shown columns: stored ones as they are, the others at their default; what
- * the box has beyond that goes to the resizable ones without a stored width, in proportion to
- * their default (the flexible one counts twice), so no column soaks up all of it. Short of room,
- * the flexible one gives up width down to its minimum.
- */
+/** Only the unsized flexible column adjusts to fit the box, within its bounds. */
 export function fitColumns<T>(
   shown: readonly DataColumn<T>[],
   sizes: ColumnSizingState,
   available: number,
 ): ColumnSizingState {
+  const unsized = shown.filter((column) => canResize(column) && !(column.id in sizes))
+  if (unsized.length === 0) return sizes
+
   const width = (column: DataColumn<T>) => {
     const { size, min, max } = bounds(column)
     return clamp(sizes[column.id] ?? size, min, max)
   }
-  const used = shown.reduce((sum, column) => sum + width(column), 0)
-  const growing = shown.filter((column) => canResize(column) && !(column.id in sizes))
-  if (growing.length === 0) return sizes
-  const extra = available - used
-  const flex = growing.find((column) => column.flex)
-  const fitted = new Map(growing.map((column) => [column.id, width(column)]))
-  if (extra < 0 && flex) fitted.set(flex.id, Math.max(bounds(flex).min, width(flex) + extra))
-  if (extra > 0) {
-    const weight = (column: DataColumn<T>) => width(column) * (column.flex ? 2 : 1)
-    const weights = growing.reduce((sum, column) => sum + weight(column), 0)
-    for (const column of growing)
-      fitted.set(column.id, width(column) + Math.floor((extra * weight(column)) / weights))
-    // What rounding down left over goes to the flexible column, else the first one.
-    const rest =
-      available - used - growing.reduce((sum, c) => sum + (fitted.get(c.id) ?? 0) - width(c), 0)
-    const last = flex ?? growing[0]
-    if (last) fitted.set(last.id, (fitted.get(last.id) ?? 0) + rest)
-    for (const column of growing) {
-      const { min, max } = bounds(column)
-      fitted.set(column.id, clamp(fitted.get(column.id) ?? 0, min, max))
-    }
+  const flex = unsized.find((column) => column.flex)
+  const otherWidth = flex
+    ? shown.reduce((sum, column) => sum + (column === flex ? 0 : width(column)), 0)
+    : 0
+  return {
+    ...sizes,
+    ...Object.fromEntries(
+      unsized.map((column) => {
+        const { size, min, max } = bounds(column)
+        return [column.id, clamp(column === flex ? available - otherWidth : size, min, max)]
+      }),
+    ),
   }
-  return { ...sizes, ...Object.fromEntries(fitted) }
 }
 
 /**
