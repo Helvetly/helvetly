@@ -20,6 +20,7 @@
     "lint:ui": "bash scripts/ui-guard.sh",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "check:migrations": "bash scripts/check-migrations.sh",
     "check": "pnpm format:check && pnpm lint && pnpm lint:ui && pnpm typecheck && pnpm test && pnpm test:tooling && pnpm build && pnpm build:storybook && pnpm test:storybook && pnpm test:visual && pnpm test:e2e && pnpm test:einvoice && pnpm test:xsd",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
