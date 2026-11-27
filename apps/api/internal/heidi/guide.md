@@ -579,7 +579,7 @@ Keywords: heidi, assistant, ai, chat, ask, chatbot, openai, consent, allow ai, t
 2. Heidi looks up permitted records such as clients, invoices, quotes, expenses, documents and sessions. For a change, review the proposed operation and its values before confirming. The same permissions, plan limits and approval rules apply as on the corresponding page. When Heidi offers a button for the current screen, you choose whether to activate it.
 3. Add up to four PDFs, images, text or CSV files, Word documents (.docx) or Excel workbooks (.xlsx) per message, up to 8 MiB each. Heidi can also read a supported file already in Documents when you ask. Employee and payroll records are excluded from AI lookups.
 4. Each member approves model use for themselves in the current workspace before requests go to the AI provider. Without approval, local lookups and the built-in guide remain available. The footer shows the chat token allowance, which is separate from AI import and filing.
-5. **Account settings → Heidi memory** shows your frequently used topics in this workspace. They personalise **Try asking** across chats. Choose a reply style, clear memory, or switch learning off there. **New chat** starts a conversation with its own history.
+5. **Account settings → Heidi memory** shows your frequently used topics in this workspace. They personalise **Try asking** across chats. Clear memory or switch learning off there. **New chat** starts a conversation with its own history.
 
 ## Get help or send feedback
 

@@ -368,8 +368,7 @@ are the reference.
   API write requires confirmation. The platform can also offer the current screen's available controls for the
   person to activate. Model inputs can include bounded lookup results and specifically requested non-HR documents
   under the versioned personal AI approval. Personal memory is held per workspace membership: successful topic
-  counts rank suggestions, and a chosen reply style applies to model answers. Account settings show, clear or
-  disable memory; removing membership deletes it.
+  counts rank suggestions. Account settings show, clear or disable memory; removing membership deletes it.
 - **Dashboard AI Audit** (`internal/workspaceaudit`, session-only): the dashboard checks all dates in the current
   workspace and only the member's readable clients, sales records, expenses and general documents. A snapshot
   compares stored amounts, schedules, ownership and document links. Reading each original uses personal AI consent

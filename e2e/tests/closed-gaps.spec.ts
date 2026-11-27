@@ -258,6 +258,8 @@ test('Heidi answers the latest issued invoice in Polish and remembers the topic 
   await page.goto('/account')
   const memory = page.getByRole('region', { name: 'Heidi memory' })
   await expect(memory.getByText('Latest issued invoice · 1 use')).toBeVisible()
+  await expect(memory.getByRole('switch', { name: 'Learn from my activity' })).toBeChecked()
+  await expect(memory.getByRole('radio')).toHaveCount(0)
   await memory.getByRole('button', { name: 'Clear memory' }).click()
   await expect(memory.getByText('You have no learned topics yet.')).toBeVisible()
   await page.reload()
