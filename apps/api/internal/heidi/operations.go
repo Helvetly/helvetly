@@ -70,8 +70,6 @@ var workspaceOps = func() map[string]openapi.Operation {
 		}
 		ops[op.ID] = op
 	}
-	style := heidiStyleOperation()
-	ops[style.ID] = style
 	return ops
 }()
 
@@ -123,11 +121,6 @@ type workspaceCommand struct {
 var segment = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 
 func (c workspaceCommand) target(op openapi.Operation) (string, error) {
-	if op.ID == "set_heidi_reply_style" {
-		if err := validateHeidiStyleBody(c.Body); err != nil {
-			return "", err
-		}
-	}
 	route := op.Path
 	query := url.Values{}
 	for key, value := range c.Params {

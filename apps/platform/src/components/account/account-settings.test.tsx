@@ -198,20 +198,30 @@ test('a picked photo opens the crop dialog; cancelling sends nothing; a wrong ty
 })
 
 test('inspects, edits and clears Heidi memory for this workspace', async () => {
+  server.use(
+    http.get('/api/v1/heidi/memory', () =>
+      HttpResponse.json({
+        enabled: true,
+        has_memory: true,
+        topics: [{ title: 'Recent invoices', count: 2 }],
+      }),
+    ),
+  )
   renderPage()
   const memory = await screen.findByRole('region', { name: 'Heidi memory' })
   const controls = within(memory)
   const enable = await controls.findByRole('switch', { name: 'Learn from my activity' })
   expect(enable).toBeChecked()
-  await userEvent.click(controls.getByRole('radio', { name: 'Detailed' }))
-  await waitFor(() => expect(controls.getByRole('radio', { name: 'Detailed' })).toBeChecked())
+  expect(controls.getByText('Recent invoices · 2 uses')).toBeVisible()
+  expect(controls.queryByRole('radio')).toBeNull()
   await userEvent.click(controls.getByRole('button', { name: 'Clear memory' }))
-  await waitFor(() => expect(controls.getByRole('radio', { name: 'Automatic' })).toBeChecked())
+  expect(await controls.findByText('You have no learned topics yet.')).toBeVisible()
   await userEvent.click(enable)
   await waitFor(() => expect(enable).not.toBeChecked())
-  expect(controls.queryByRole('radio')).toBeNull()
+  expect(controls.queryByText('Learned topics')).toBeNull()
   await userEvent.click(enable)
-  expect(await controls.findByRole('radio', { name: 'Automatic' })).toBeChecked()
+  expect(await controls.findByText('You have no learned topics yet.')).toBeVisible()
+  expect(enable).toBeChecked()
 })
 
 test('existing memory can be cleared when the AI provider is disabled', async () => {
@@ -226,12 +236,16 @@ test('existing memory can be cleared when the AI provider is disabled', async ()
       }),
     ),
     http.get('/api/v1/heidi/memory', () =>
-      HttpResponse.json({ enabled: true, reply_style: 'brief', has_memory: true, topics: [] }),
+      HttpResponse.json({
+        enabled: true,
+        has_memory: true,
+        topics: [{ title: 'Recent invoices', count: 2 }],
+      }),
     ),
   )
   renderPage()
   const memory = await screen.findByRole('region', { name: 'Heidi memory' })
-  await waitFor(() => expect(within(memory).getByRole('radio', { name: 'Brief' })).toBeDisabled())
+  expect(await within(memory).findByText('Recent invoices · 2 uses')).toBeVisible()
   await userEvent.click(within(memory).getByRole('button', { name: 'Clear memory' }))
   await waitFor(() => expect(screen.queryByRole('region', { name: 'Heidi memory' })).toBeNull())
 })
