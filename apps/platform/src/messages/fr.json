@@ -2665,7 +2665,7 @@
   "rejectTheRequestedChanges": "Rejeter les modifications demandées ?",
   "remaining": "Restant",
   "remind": "Rappeler",
-  "reminder": "Rappel {rank}",
+  "reminder": "{rank, select, 1 {Premier rappel} 2 {Deuxième rappel} 3 {Troisième rappel} 4 {Quatrième rappel} 5 {Cinquième rappel} 6 {Sixième rappel} 7 {Septième rappel} 8 {Huitième rappel} 9 {Neuvième rappel} 10 {Dixième rappel} other {Rappel}}",
   "reminderEmailed": "Rappel envoyé par email",
   "reminders": "Rappels",
   "reminderSchedule": "Calendrier de rappel",

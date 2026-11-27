@@ -25,13 +25,18 @@ func TestReminderWords(t *testing.T) {
 		{"fr", 3, 3, false, "Dernier rappel"},
 		{"fr", 2, 3, false, "2e rappel"},
 		{"it", 2, 3, false, "2° sollecito"},
-		{"en", 3, 5, false, "Reminder 3"},
+		{"en", 2, 3, false, "Second reminder"},
+		{"en", 3, 5, false, "Third reminder"},
+		{"en", 9, 10, false, "Ninth reminder"},
 		{"en", 1, 3, true, "Payment due soon"},
 		{"xx", 1, 3, false, "Payment reminder"},
 	} {
 		if got := ReminderWords(c.language, c.rank, c.ranks, c.beforeDue).Title; got != c.want {
 			t.Errorf("%s %d/%d = %q, want %q", c.language, c.rank, c.ranks, got, c.want)
 		}
+	}
+	if got := LegacyReminderWords("en", 2, 3).Title; got != "Reminder 2" {
+		t.Errorf("historical title = %q, want Reminder 2", got)
 	}
 	if w := ReminderWords("de", 0, 0, true); !strings.Contains(w.Sentence, "fällig wird") || !strings.Contains(w.PayWithin, "Fälligkeitsdatum") {
 		t.Errorf("note before the due date: %+v", w)

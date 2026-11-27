@@ -74,8 +74,8 @@ export const Settings: Story = {
       '/settings/emails/',
     )
     await expect(section.getByText('10 days after due · no fee')).toBeVisible()
-    await userEvent.click(section.getByRole('button', { name: 'Edit Reminder 2' }))
-    const dialog = within(await body.findByRole('dialog', { name: 'Edit Reminder 2' }))
+    await userEvent.click(section.getByRole('button', { name: 'Edit Second reminder' }))
+    const dialog = within(await body.findByRole('dialog', { name: 'Edit Second reminder' }))
     const fee = dialog.getByRole('textbox', { name: 'Fee' })
     await userEvent.clear(fee)
     await userEvent.type(fee, '2.33')
@@ -84,7 +84,7 @@ export const Settings: Story = {
     await userEvent.clear(fee)
     await userEvent.type(fee, '20')
     await userEvent.click(dialog.getByRole('button', { name: 'Apply' }))
-    await expect(section.getByText('14 days after the previous · CHF 20.00 fee')).toBeVisible()
+    await expect(section.getByText('10 days after the previous · CHF 20.00 fee')).toBeVisible()
     await expect(section.getByText('Unsaved changes')).toBeVisible()
     await userEvent.click(section.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(lastSaved()?.dunning?.steps?.[1]?.fee).toBe('20.00'))
@@ -152,14 +152,28 @@ const phone = {
 /** The default three steps as a timeline after the due date. */
 export const StepsDefault: Story = {
   render: () => (
-    <Steps initial={[draft({ timing: 'after_due', days: '10' }), draft({}), draft({})]} />
+    <Steps
+      initial={[
+        draft({ timing: 'after_due', days: '10' }),
+        draft({ days: '10' }),
+        draft({ days: '10' }),
+      ]}
+    />
   ),
   play: async ({ canvasElement }) => {
     const page = within(canvasElement)
     await expect(page.getByText('Due date')).toBeVisible()
     await expect(page.getByText('Payment reminder')).toBeVisible()
+    await expect(page.getByText('Second reminder')).toBeVisible()
     await expect(page.getByText('Final reminder')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Add a reminder' })).toBeEnabled()
+    await expect(page.getAllByText('10 days after the previous · no fee')).toHaveLength(2)
+    await userEvent.click(page.getByRole('button', { name: 'Add a reminder' }))
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'New reminder' }),
+    )
+    await expect(dialog.getByRole('textbox', { name: 'Name' })).toHaveValue('Fourth reminder')
+    await expect(dialog.getByRole('textbox', { name: 'Days' })).toHaveValue('10')
+    await userEvent.click(dialog.getByRole('button', { name: 'Cancel' }))
   },
 }
 

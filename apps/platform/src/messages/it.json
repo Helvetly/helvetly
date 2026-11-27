@@ -2665,7 +2665,7 @@
   "rejectTheRequestedChanges": "Rifiutare le modifiche richieste?",
   "remaining": "Rimanente",
   "remind": "Ricorda",
-  "reminder": "Promemoria {rank}",
+  "reminder": "{rank, select, 1 {Primo promemoria} 2 {Secondo promemoria} 3 {Terzo promemoria} 4 {Quarto promemoria} 5 {Quinto promemoria} 6 {Sesto promemoria} 7 {Settimo promemoria} 8 {Ottavo promemoria} 9 {Nono promemoria} 10 {Decimo promemoria} other {Promemoria}}",
   "reminderEmailed": "Promemoria inviato via email",
   "reminders": "Solleciti",
   "reminderSchedule": "Programmazione promemoria",

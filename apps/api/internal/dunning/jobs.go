@@ -190,7 +190,7 @@ func (s *Service) DigestSection(ctx context.Context, ws store.Workspace, now tim
 	}
 	lines := make([]engagements.DigestLine, len(rows))
 	for i, r := range rows {
-		title := invoicepdf.ReminderWords("en", r.Level, r.Levels, false).Title
+		title := invoicepdf.LegacyReminderWords("en", r.Level, r.Levels).Title
 		if r.Title != nil { // as sent: the step's name or the standard title in the invoice's language
 			title = *r.Title
 		}
