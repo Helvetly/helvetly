@@ -36,7 +36,14 @@ export const emptySummary: Summary = {
   collection_rate: null,
   monthly: [],
 }
-export const emptyUsage: Usage = { files: 0, size: 0, by_kind: [], trash: { files: 0, size: 0 } }
+export const emptyUsage: Usage = {
+  files: 0,
+  size: 0,
+  stored_bytes: 0,
+  capacity_bytes: 10_000_000_000,
+  by_kind: [],
+  trash: { files: 0, size: 0 },
+}
 export const emptyDashboard: Dashboard = {
   currency: 'CHF',
   currencies: ['CHF'],

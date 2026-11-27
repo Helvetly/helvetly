@@ -28,7 +28,7 @@ type DocumentGroup struct {
 	Size  int64  `json:"size"`
 }
 
-func (f DocumentFilter) grouped() bool { return f.Type != "" || f.Year != 0 || f.Client != "" }
+func (f DocumentFilter) grouped() bool { return len(f.Types) > 0 || f.Year != 0 || len(f.Clients) > 0 }
 
 // classCTE: for every live folder of workspace $1, what its system ancestors say about the files in it: the client
 // (Clients/<client>), the record type (Invoices, Quotes, …, or Expenses) and the year, each from the nearest one.
@@ -158,14 +158,14 @@ func documentWhere(f DocumentFilter, arg func(any) string) []string {
 		}
 		where = append(where, match)
 	}
-	if f.Type != "" {
-		where = append(where, "g.type = "+arg(f.Type))
+	if len(f.Types) > 0 {
+		where = append(where, "g.type = ANY("+arg(f.Types)+")")
 	}
 	if f.Year != 0 {
 		where = append(where, "g.year = "+arg(f.Year))
 	}
-	if f.Client != "" {
-		where = append(where, "g.client = "+arg(f.Client))
+	if len(f.Clients) > 0 {
+		where = append(where, "g.client = ANY("+arg(f.Clients)+")")
 	}
 	return where
 }

@@ -1,6 +1,7 @@
 package documents
 
 import (
+	"context"
 	"net/http"
 	"slices"
 
@@ -20,8 +21,10 @@ type kindTally struct {
 
 type usage struct {
 	tally
-	ByKind []kindTally `json:"by_kind"`
-	Trash  tally       `json:"trash"`
+	CapacityBytes *int64      `json:"capacity_bytes,omitempty"`
+	StoredBytes   int64       `json:"stored_bytes"`
+	ByKind        []kindTally `json:"by_kind"`
+	Trash         tally       `json:"trash"`
 }
 
 func (t *tally) add(files int, size int64) {
@@ -53,11 +56,29 @@ func usageOf(rows []store.UsageRow) usage {
 	return u
 }
 
+// SetStorageCapacity supplies the workspace limit used to admit uploads.
+func (s *Service) SetStorageCapacity(capacity func(context.Context, string) (int64, error)) {
+	s.storageCapacity = capacity
+}
+
 func (s *Service) usage(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	rows, err := s.db.DocumentUsage(r.Context(), sess.Workspace.ID)
 	if err != nil {
 		return err
 	}
-	auth.WriteJSON(w, http.StatusOK, data(usageOf(rows)))
+	u := usageOf(rows)
+	u.StoredBytes, err = s.db.StoredBytes(r.Context(), sess.Workspace.ID)
+	if err != nil {
+		return err
+	}
+	if s.storageCapacity != nil {
+		capacity, err := s.storageCapacity(r.Context(), sess.Workspace.ID)
+		if err != nil {
+			s.log.WarnContext(r.Context(), "document storage capacity unavailable", "err", err)
+		} else {
+			u.CapacityBytes = &capacity
+		}
+	}
+	auth.WriteJSON(w, http.StatusOK, data(u))
 	return nil
 }

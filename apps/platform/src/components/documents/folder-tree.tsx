@@ -6,7 +6,6 @@ import { CountBadge } from '@helvetly/ui/components/count-badge'
 import { TruncatedText } from '@helvetly/ui/components/truncated-text'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
-  Check,
   Clock,
   FileSignature,
   LayoutTemplate,
@@ -18,7 +17,7 @@ import {
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 
-import { KIND_LABELS, type Folder, type Kind, type Section } from '@/lib/documents'
+import type { Folder, Kind, Section } from '@/lib/documents'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 import { folderLabel, isSystemFolder } from '@/lib/system-folders'
@@ -26,7 +25,6 @@ import { folderLabel, isSystemFolder } from '@/lib/system-folders'
 import { endDrag, startDrag, useDropTarget } from './drop-target'
 import { FolderMark } from './folder-art'
 import { InlineRename } from './inline-rename'
-import { KindIcon } from './kind'
 import { pinAction, type Pinned, type PinnedTab } from './pinned-tabs'
 import { StarGlyph, starAction } from './star'
 import { FolderName } from './system-mark'
@@ -39,13 +37,10 @@ export type TreeActions = {
   trash: (folder: Folder) => void
   /** Creates a top-level folder by name (the one-click suggestions). */
   create: (name: string) => void
-  /** Shows only files of these kinds (any of them); none shows every kind. */
-  kinds: (kinds: Kind[]) => void
   star: (folder: Folder) => void
 }
 
 const SUGGESTED = [translate('contracts'), translate('tax2026')]
-const TYPES: Kind[] = ['pdf', 'image', 'spreadsheet', 'document']
 
 const row =
   'group/row relative flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg pr-2.5 text-left text-[14px] text-foreground/75 transition-colors duration-100 outline-none hover:bg-foreground/[0.045] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 has-[:focus-visible:not(input)]:ring-2 has-[:focus-visible:not(input)]:ring-ring/50 aria-[current=page]:bg-foreground/[0.06] aria-[current=page]:font-medium aria-[current=page]:text-foreground data-current:bg-foreground/[0.06] data-current:font-medium data-current:text-foreground data-drop-over:bg-brand-solid/10 data-drop-over:text-foreground data-drop-over:ring-2 data-drop-over:ring-brand-solid/70'
@@ -70,7 +65,6 @@ export function FolderTree({
   current: string | null
   section: Section
   trashCount: number
-  /** The kind filter: the types toggled on (the Filters popover's Kind and its chip). */
   kinds: readonly Kind[]
   pinned: Pinned
   actions: TreeActions
@@ -110,7 +104,6 @@ export function FolderTree({
     ))
 
   const rootOpen = section === 'files' && current === null && kinds.length === 0
-  const picked = section === 'files' ? kinds : []
   return (
     <div className="flex min-h-full flex-col gap-5 p-3">
       <nav aria-label={translate('folders')} className="grid grid-cols-1 content-start gap-0.5">
@@ -223,55 +216,6 @@ export function FolderTree({
             )}
           </div>
         )}
-      </nav>
-
-      <nav aria-label={translate('fileTypes')} className="grid grid-cols-1 content-start gap-0.5">
-        <Label
-          action={
-            picked.length > 0 && (
-              <button
-                type="button"
-                onClick={() => actions.kinds([])}
-                className="cursor-pointer rounded-sm text-caption text-muted-foreground underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                {translate('clear')}
-              </button>
-            )
-          }
-        >
-          {translate('types')}
-        </Label>
-        {TYPES.map((type) => {
-          const on = picked.includes(type)
-          return (
-            <Pinnable key={type} pinned={pinned} tab={{ type: 'kind', kind: type }}>
-              {/* A toggle: several types combine (any of them), the same state as the Kind filter. */}
-              <button
-                type="button"
-                aria-pressed={on}
-                data-current={on || undefined}
-                onClick={() =>
-                  actions.kinds(on ? picked.filter((kind) => kind !== type) : [...picked, type])
-                }
-                className={cn(row, 'pl-1.5')}
-              >
-                <KindIcon kind={type} className="size-6 rounded-md" />
-                <TruncatedText className="flex-1">{`${KIND_LABELS[type]}${translate('s')}`}</TruncatedText>
-                <span
-                  aria-hidden
-                  className={cn(
-                    'flex size-4 shrink-0 items-center justify-center rounded-sm border transition-colors',
-                    on
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-foreground/20 opacity-0 group-hover/row:opacity-100 group-focus-visible/row:opacity-100',
-                  )}
-                >
-                  {on && <Check className="size-3 stroke-[2.5]" />}
-                </span>
-              </button>
-            </Pinnable>
-          )
-        })}
       </nav>
 
       <div className="mt-auto grid gap-0.5">

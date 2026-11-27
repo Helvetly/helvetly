@@ -625,11 +625,11 @@ type DocumentFilter struct {
 	ClientID     string
 	Tag          string
 	// The virtual groups' keys (queries_document_groups.go): a DocumentTypes key, a year, a client id or NoClient.
-	Type   string
-	Year   int
-	Client string
-	Sort   string // a key of DocumentSorts
-	Desc   bool
+	Types   []string
+	Year    int
+	Clients []string
+	Sort    string // a key of DocumentSorts
+	Desc    bool
 }
 
 var DocumentSorts = map[string]string{"name": "lower(d.name)", "size": "d.size", "created_at": "d.created_at",

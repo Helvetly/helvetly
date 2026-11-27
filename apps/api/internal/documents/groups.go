@@ -52,11 +52,11 @@ func groupDims(r *http.Request) ([]string, error) {
 func fixed(f store.DocumentFilter, dim string) bool {
 	switch dim {
 	case "type":
-		return f.Type != ""
+		return len(f.Types) == 1
 	case "year":
 		return f.Year != 0
 	default:
-		return f.Client != ""
+		return len(f.Clients) == 1
 	}
 }
 
@@ -135,8 +135,8 @@ func (s *Service) groupZip(w http.ResponseWriter, r *http.Request, sess store.Se
 			map[string]any{"max_bytes": s.zipStream})
 	}
 	if err := s.db.Tx(r.Context(), func(q store.Q) error {
-		return s.logExport(r.Context(), q, sess.Workspace.ID, sess.User.ID, map[string]any{"group": dims, "type": f.Type,
-			"year": f.Year, "client": f.Client, "files": len(files), "bytes": total})
+		return s.logExport(r.Context(), q, sess.Workspace.ID, sess.User.ID, map[string]any{"group": dims, "type": strings.Join(f.Types, ","),
+			"year": f.Year, "client": strings.Join(f.Clients, ","), "files": len(files), "bytes": total})
 	}); err != nil {
 		return err
 	}
@@ -238,7 +238,7 @@ func zipPaths(files []store.GroupedFile, dims []string, f store.DocumentFilter) 
 			open = append(open, dim)
 		}
 	}
-	if !slices.Contains(dims, "client") && f.Client == "" {
+	if !slices.Contains(dims, "client") && len(f.Clients) != 1 {
 		open = append(open, "client")
 	}
 	taken := map[string]bool{}
@@ -302,13 +302,13 @@ func unique(p string, taken map[string]bool) string {
 // zipName: the download's file name, from the group's keys (ASCII only, so every browser keeps it).
 func zipName(f store.DocumentFilter) string {
 	parts := []string{"documents"}
-	if f.Type != "" {
-		parts = append(parts, strings.ReplaceAll(f.Type, "_", "-"))
+	if len(f.Types) == 1 {
+		parts = append(parts, strings.ReplaceAll(f.Types[0], "_", "-"))
 	}
 	if f.Year != 0 {
 		parts = append(parts, strconv.Itoa(f.Year))
 	}
-	if f.Client == store.NoClient {
+	if len(f.Clients) == 1 && f.Clients[0] == store.NoClient {
 		parts = append(parts, "no-client")
 	}
 	return strings.Join(parts, "-") + ".zip"

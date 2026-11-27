@@ -196,7 +196,7 @@ are the reference.
   quote's PDF, an imported original, a receipt's expense, a signature's PDF), then its system folder (`Tax Documents`
   gives Tax documents), its tags (`bank-statement` gives Bank statements, `payment-confirmation` Payment confirmations), its name, else Other; year: the record's, the year folder's, else the upload's in the workspace's zone; client: the
   record's, the `Clients/<client>` folder's, a client link, else none. A group is the list's `type`, `year` and
-  `client` filters (the search's chips, combined with AND, with or without a grouping); the levels come in any order,
+  `client` filters (the search's chips, combined with AND, with or without a grouping). Repeated types and clients match any selection within that dimension. Upload dates use inclusive workspace calendar days; the levels come in any order,
   each once, up to three (Group by's presets and builder; the last choice in localStorage); `GET /api/v1/documents/groups`
   answers a level's groups with counts or, once every level is chosen, the page of files; `…/groups/zip` makes what the
   view shows (its filters, its folder outside a grouping) one ZIP (at most 1000 files and 500 MB, refused before reading;
@@ -309,6 +309,7 @@ are the reference.
 - **Plan usage**: a monthly limit counts through `store.ConsumeUsage` in the write's transaction, or
   `ReserveUsage` before an external effect and `SettleUsage` after it (`usage_events`: one row per operation id, its
   UTC month fixed at admission); state limits count what exists. Both are admitted by `billing.AllowResource`.
+  Documents shows the storage cap and remaining bytes alongside a breakdown by file kind.
   Storage counts each workspace object once in `stored_objects`: `ReserveObject` before every `files.Put` of a
   workspace's object (admitted for new growth, counted only for records the business keeps), the real size once
   storage answers, released only after a confirmed delete, reconciled by a job. Downloads are not counted: they go

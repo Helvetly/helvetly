@@ -67,7 +67,9 @@ export const VIEW_PRESETS: ViewPreset[] = [
 
 /** Whether the view is (inside) a preset. */
 export const inPreset = (view: ViewParams, preset: ViewPreset) =>
-  view.section === 'files' && view.group.join() === preset.group.join() && view.type === preset.type
+  view.section === 'files' &&
+  view.group.join() === preset.group.join() &&
+  (preset.type ? view.types.length === 1 && view.types[0] === preset.type : view.types.length === 0)
 
 /** One level moved by step (-1 up, 1 down) in the grouping. */
 export function moveLevel(group: readonly GroupDim[], index: number, step: -1 | 1): GroupDim[] {

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"helvetly.com/api/internal/billing/billingtest"
 	"helvetly.com/api/internal/store"
 )
 
@@ -47,17 +48,25 @@ func TestUsageRoute(t *testing.T) {
 	e.uploaded(other, "theirs.pdf", pdf)
 	e.bulk(b, map[string]any{"action": "trash", "document_ids": []string{gone.ID}})
 
+	billingSvc := billingtest.Wire(t, e.st)
+	e.svc.SetStorageCapacity(billingSvc.StorageCapacity)
+	capacity, err := billingSvc.StorageCapacity(t.Context(), b.workspace)
+	if err != nil || capacity <= 0 {
+		t.Fatalf("storage cap = %d, %v", capacity, err)
+	}
 	for _, tc := range []struct {
 		who  *browser
 		want usage
 	}{
 		{b, usage{
-			tally:  tally{2, int64(len(pdf) + len(png))},
-			ByKind: []kindTally{{"pdf", tally{1, int64(len(pdf))}}, {"image", tally{1, int64(len(png))}}},
-			Trash:  tally{1, int64(len(pdf))},
+			StoredBytes: int64(len(pdf) + len(png) + len("%PDF-1.7\nolder")),
+			tally:       tally{2, int64(len(pdf) + len(png))},
+			ByKind:      []kindTally{{"pdf", tally{1, int64(len(pdf))}}, {"image", tally{1, int64(len(png))}}},
+			Trash:       tally{1, int64(len(pdf))},
 		}},
-		{other, usage{tally: tally{1, int64(len(pdf))}, ByKind: []kindTally{{"pdf", tally{1, int64(len(pdf))}}}}},
+		{other, usage{StoredBytes: int64(len(pdf)), tally: tally{1, int64(len(pdf))}, ByKind: []kindTally{{"pdf", tally{1, int64(len(pdf))}}}}},
 	} {
+		tc.want.CapacityBytes = &capacity
 		var out one[usage]
 		e.do(tc.who, "GET", "/api/v1/documents/usage", nil, 200, &out)
 		if !reflect.DeepEqual(out.Data, tc.want) {

@@ -38,12 +38,12 @@ describe('group by', () => {
   it('knows the open preset', () => {
     const invoices = VIEW_PRESETS.find((preset) => preset.id === 'invoices')!
     const folders = VIEW_PRESETS.find((preset) => preset.id === 'folders')!
-    expect(inPreset({ ...DEFAULT_VIEW, group: ['type', 'year'], type: 'invoices' }, invoices)).toBe(
-      true,
-    )
-    expect(inPreset({ ...DEFAULT_VIEW, group: ['type', 'year'], type: 'quotes' }, invoices)).toBe(
-      false,
-    )
+    expect(
+      inPreset({ ...DEFAULT_VIEW, group: ['type', 'year'], types: ['invoices'] }, invoices),
+    ).toBe(true)
+    expect(
+      inPreset({ ...DEFAULT_VIEW, group: ['type', 'year'], types: ['quotes'] }, invoices),
+    ).toBe(false)
     expect(inPreset(DEFAULT_VIEW, folders)).toBe(true)
   })
 })
