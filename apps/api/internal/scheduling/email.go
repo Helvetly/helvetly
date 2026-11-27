@@ -75,6 +75,7 @@ type letter struct {
 	sessions     []store.SchedOccurrence
 	where, join  string
 	note, reason string
+	cancelReason string
 	proposal     *time.Time
 	portalLine   bool // "Accept or decline it in the client portal."
 }
@@ -178,18 +179,18 @@ func (e *Emails) sessions(ctx context.Context, c Change) error {
 		errs = append(errs, e.ended(ctx, c.WorkspaceID, c.EndedEventID))
 	}
 	for _, eventID := range order {
-		errs = append(errs, e.event(ctx, c.Kind, c.WorkspaceID, eventID, byEvent[eventID]))
+		errs = append(errs, e.event(ctx, c, eventID, byEvent[eventID]))
 	}
 	return errors.Join(errs...)
 }
 
 // event emails one event's changed occurrences with the .ics that applies the change in the client's calendar.
-func (e *Emails) event(ctx context.Context, kind, workspaceID, eventID string, occs []store.SchedOccurrence) error {
-	m, err := e.load(ctx, e.s.db.Q, workspaceID, eventID)
+func (e *Emails) event(ctx context.Context, c Change, eventID string, occs []store.SchedOccurrence) error {
+	m, err := e.load(ctx, e.s.db.Q, c.WorkspaceID, eventID)
 	if err != nil || len(m.to) == 0 {
 		return err
 	}
-	cal, err := e.calendar(ctx, m, kind, occs)
+	cal, err := e.calendar(ctx, m, c.Kind, occs)
 	if err != nil {
 		return err
 	}
@@ -198,13 +199,20 @@ func (e *Emails) event(ctx context.Context, kind, workspaceID, eventID string, o
 	l := letter{title: title, sessions: occs, note: deref(m.event.ClientNote)}
 	l.where, l.join = place(m.event, occs[0])
 	subject := w.invitation
-	switch kind {
+	switch c.Kind {
 	case ChangeInvited:
 		l.lead = fmt.Sprintf(w.invited, m.brand.Name, title)
 	case ChangeUpdated:
 		subject, l.lead = w.update, fmt.Sprintf(w.updated, m.brand.Name, title)
 	case ChangeCancelled:
 		subject, l.lead, l.where, l.join, l.note = w.cancellation, fmt.Sprintf(w.cancelled, m.brand.Name, title), "", "", ""
+		if c.CancelReason != "" {
+			l.cancelReason = strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(c.CancelReason)
+			description := w.reason + ": " + l.cancelReason
+			for i := range cal.Events {
+				cal.Events[i].Description = strings.TrimSpace(description + "\n\n" + cal.Events[i].Description)
+			}
+		}
 	}
 	return e.send(ctx, m, subject+": "+title, l, cal)
 }
@@ -450,6 +458,7 @@ func compose(m mailCtx, l letter, method ical.Method) (text, body string) {
 		lt.Greeting(m.greet)
 	}
 	lt.Lead(l.lead)
+	lt.Summary(mail.Row{Label: w.reason, Value: l.cancelReason})
 	if m.lang == "en" {
 		switch {
 		case m.members:

@@ -578,7 +578,7 @@ func (s *Service) cancelOccurrence(w http.ResponseWriter, r *http.Request, sess 
 	}
 	ctx, now := r.Context(), s.now()
 	var out Occurrence
-	var ed edit
+	var cancelled []string
 	err = s.db.Tx(ctx, func(q store.Q) error {
 		if err := q.RequireFeature(ctx, sess.Workspace.ID, store.FeatureScheduling); err != nil {
 			return err
@@ -606,22 +606,22 @@ func (s *Service) cancelOccurrence(w http.ResponseWriter, r *http.Request, sess 
 		if err := s.cancelOne(ctx, q, actor, &o, late); err != nil {
 			return err
 		}
-		ed.cancelled = append(ed.cancelled, o.ID)
+		cancelled = append(cancelled, o.ID)
 		if e.RRule != nil && scope != "this" {
 			more, err := s.endSeries(ctx, q, actor.id, e, o, scope)
 			if err != nil {
 				return err
 			}
-			ed.cancelled = append(ed.cancelled, more...)
+			cancelled = append(cancelled, more...)
 		}
-		if err := closeRequests(ctx, q, e.WorkspaceID, ed.cancelled, actor.id, now); err != nil {
+		if err := closeRequests(ctx, q, e.WorkspaceID, cancelled, actor.id, now); err != nil {
 			return err
 		}
 		if err := s.audit(ctx, q, sess.Workspace.ID, &actor.id, "scheduling.cancelled", o.ID, map[string]any{"occurrence_id": o.ID,
 			"as": map[bool]string{true: "late", false: "on_time"}[late], "by": "staff", "scope": scope, "reason": reason}); err != nil {
 			return err
 		}
-		if err := s.cal.Enqueue(ctx, q, e.WorkspaceID, ed.cancelled); err != nil {
+		if err := s.cal.Enqueue(ctx, q, e.WorkspaceID, cancelled); err != nil {
 			return err
 		}
 		out, err = s.occurrenceView(ctx, q, sess.Workspace.ID, o.ID)
@@ -630,7 +630,8 @@ func (s *Service) cancelOccurrence(w http.ResponseWriter, r *http.Request, sess 
 	if err != nil {
 		return err
 	}
-	s.tell(ctx, ed.changes(sess.Workspace.ID, out.EventID, sess.User.ID, notifyOf(body)))
+	s.tell(ctx, changes{{Kind: ChangeCancelled, WorkspaceID: sess.Workspace.ID, EventID: out.EventID,
+		OccurrenceIDs: cancelled, ActorID: sess.User.ID, Notify: notifyOf(body), CancelReason: deref(reason)}})
 	auth.WriteJSON(w, http.StatusOK, data(out))
 	return nil
 }

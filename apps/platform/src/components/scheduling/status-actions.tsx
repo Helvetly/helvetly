@@ -255,8 +255,8 @@ function CancelDialog({
             </div>
           )}
           <TextareaBox
-            aria-label={translate('schedReasonOptional')}
-            placeholder={translate('schedReasonOptional')}
+            aria-label={translate('schedCancellationReasonOptional')}
+            placeholder={translate('schedCancellationReasonOptional')}
             rows={2}
             max={500}
             value={reason}
