@@ -118,42 +118,31 @@ func TestMemoryIsLocalWithoutProviderConsent(t *testing.T) {
 	}
 }
 
-func TestLegacyReplyStylesAreIgnored(t *testing.T) {
-	s, mux, sess, _, raw := fixtureRaw(t)
+func TestMemoryRejectsReplyStylesAndUsesDefaultFormatting(t *testing.T) {
+	_, mux, p, _ := modelFixture(t)
 	if _, ok := workspaceOps["set_heidi_reply_style"]; ok {
 		t.Error("Heidi still offers to set a reply style")
 	}
-	grant(t, mux)
-	calls := 0
-	s.provider = &testProvider{input: 5, answer: func(_ context.Context, req ProviderRequest) (ProviderReply, error) {
-		calls++
-		if strings.Contains(req.Instructions, "The user prefers") || !strings.Contains(req.Instructions, formatting) {
-			t.Error("expected default formatting without a stored preference")
-		}
+	var prompt string
+	p.answer = func(_ context.Context, req ProviderRequest) (ProviderReply, error) {
+		prompt = req.Instructions
 		return ProviderReply{Text: "Here is how Swiss VAT works.", Tokens: new(int64(1))}, nil
-	}}
-	for _, style := range []string{"brief", "detailed"} {
-		t.Run(style, func(t *testing.T) {
-			if _, err := raw.Exec(t.Context(), `INSERT INTO heidi_memory(workspace_id,user_id,reply_style)
-				VALUES ($1,$2,$3) ON CONFLICT (workspace_id,user_id) DO UPDATE SET reply_style=excluded.reply_style`,
-				sess.Workspace.ID, sess.User.ID, style); err != nil {
-				t.Fatal(err)
-			}
-			const endpoint = "/api/v1/heidi/memory"
-			if w := call(mux, "GET", endpoint, "", ""); w.Code != 200 ||
-				strings.Contains(w.Body.String(), "reply_style") || !strings.Contains(w.Body.String(), `"has_memory":false`) {
-				t.Errorf("memory %d %s", w.Code, w.Body)
-			}
-			if w := call(mux, "PATCH", endpoint, `{"reply_style":"`+style+`"}`, "application/json"); w.Code != 400 {
-				t.Errorf("retired setting %d %s", w.Code, w.Body)
-			}
-			if w := chat(t, mux, style, "Explain how Swiss VAT works"); w.Code != 200 ||
-				!strings.Contains(w.Body.String(), "Here is how Swiss VAT works.") {
-				t.Fatalf("chat %d %s", w.Code, w.Body)
-			}
-		})
 	}
-	if calls != 2 {
-		t.Fatalf("expected two model answers, got %d", calls)
+	const endpoint = "/api/v1/heidi/memory"
+	if w := call(mux, "GET", endpoint, "", ""); w.Code != 200 ||
+		strings.Contains(w.Body.String(), "reply_style") || !strings.Contains(w.Body.String(), `"has_memory":false`) {
+		t.Errorf("memory %d %s", w.Code, w.Body)
+	}
+	for _, style := range []string{"brief", "detailed"} {
+		if w := call(mux, "PATCH", endpoint, `{"reply_style":"`+style+`"}`, "application/json"); w.Code != 400 {
+			t.Errorf("retired setting %s: %d %s", style, w.Code, w.Body)
+		}
+	}
+	if w := chat(t, mux, "default", "Explain how Swiss VAT works"); w.Code != 200 ||
+		!strings.Contains(w.Body.String(), "Here is how Swiss VAT works.") {
+		t.Fatalf("chat %d %s", w.Code, w.Body)
+	}
+	if !strings.Contains(prompt, formatting) || strings.Contains(prompt, "The user prefers") {
+		t.Error("expected default formatting without a stored preference")
 	}
 }
