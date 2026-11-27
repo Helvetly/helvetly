@@ -103,6 +103,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	s.registerShares(handle)
 	s.registerShareLinks(mux, handle)
 	s.registerOrganize(handle)
+	s.registerPaymentFiles(handle)
 }
 
 // Run files what came before the system folders and tags the files from before automatic tags once, then purges the Trash of what is older than 30 days, hourly,

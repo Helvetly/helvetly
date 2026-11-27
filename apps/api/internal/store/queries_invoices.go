@@ -235,24 +235,41 @@ type InvoiceLine struct {
 }
 
 type Payment struct {
-	ID        string    `json:"id"`
-	Amount    Money     `json:"amount"`
-	PaidOn    string    `json:"paid_on"`
-	Method    string    `json:"method"`
-	Note      *string   `json:"note"`
-	CreatedAt time.Time `json:"created_at"`
-	CreatedBy *Uploader `json:"created_by"` // null once the person's account is gone
+	ID        string            `json:"id"`
+	Amount    Money             `json:"amount"`
+	PaidOn    string            `json:"paid_on"`
+	Method    string            `json:"method"`
+	Note      *string           `json:"note"`
+	CreatedAt time.Time         `json:"created_at"`
+	CreatedBy *Uploader         `json:"created_by"` // null once the person's account is gone
+	Documents []PaymentDocument `json:"documents"`
 }
 
 // Refund pays back part of an invoice's credit balance.
 type Refund struct {
-	ID         string    `json:"id"`
-	Amount     Money     `json:"amount"`
-	RefundedOn string    `json:"refunded_on"`
-	Method     string    `json:"method"`
-	Note       *string   `json:"note"`
-	CreatedAt  time.Time `json:"created_at"`
-	CreatedBy  *Uploader `json:"created_by"`
+	ID         string            `json:"id"`
+	Amount     Money             `json:"amount"`
+	RefundedOn string            `json:"refunded_on"`
+	Method     string            `json:"method"`
+	Note       *string           `json:"note"`
+	CreatedAt  time.Time         `json:"created_at"`
+	CreatedBy  *Uploader         `json:"created_by"`
+	Documents  []PaymentDocument `json:"documents"`
+}
+
+// PaymentDocument: a file linked to a payment or refund (a bank statement, payment confirmation or credit advice).
+type PaymentDocument struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Size        int64  `json:"size"`
+	ContentType string `json:"content_type"`
+}
+
+// paymentDocumentsSQL: the live files linked to the payment or refund (target type $type) in column col, oldest first.
+func paymentDocumentsSQL(targetType, col string) string {
+	return `coalesce((SELECT json_agg(json_build_object('id', d.id, 'name', d.name, 'size', d.size, 'content_type', d.content_type)
+		ORDER BY l.created_at, d.id) FROM document_links l JOIN documents d ON d.id = l.document_id AND d.workspace_id = l.workspace_id
+		AND d.deleted_at IS NULL WHERE l.target_type = '` + targetType + `' AND l.target_id = ` + col + `), '[]')`
 }
 
 type Delivery struct {
@@ -793,7 +810,8 @@ func (q Q) CreatePayment(ctx context.Context, invoiceID, userID string, p Paymen
 
 // Payments: the invoice's payments, oldest first.
 func (q Q) Payments(ctx context.Context, invoiceID string) ([]Payment, error) {
-	rows, err := q.db.Query(ctx, `SELECT p.id, p.amount, p.paid_on::text, p.method, p.note, p.created_at, u.id, u.name, `+avatarColumn+`
+	rows, err := q.db.Query(ctx, `SELECT p.id, p.amount, p.paid_on::text, p.method, p.note, p.created_at, u.id, u.name, `+avatarColumn+`,
+		`+paymentDocumentsSQL("payment", "p.id")+`
 		FROM invoice_payments p LEFT JOIN users u ON u.id = p.created_by WHERE p.invoice_id = $1 ORDER BY p.paid_on, p.created_at, p.id`,
 		invoiceID)
 	if err != nil {
@@ -802,7 +820,7 @@ func (q Q) Payments(ctx context.Context, invoiceID string) ([]Payment, error) {
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Payment, error) {
 		var p Payment
 		var uid, uname, uavatar *string
-		err := r.Scan(&p.ID, &p.Amount, &p.PaidOn, &p.Method, &p.Note, &p.CreatedAt, &uid, &uname, &uavatar)
+		err := r.Scan(&p.ID, &p.Amount, &p.PaidOn, &p.Method, &p.Note, &p.CreatedAt, &uid, &uname, &uavatar, &p.Documents)
 		p.CreatedBy = uploader(uid, uname, uavatar)
 		return p, err
 	})
@@ -810,7 +828,11 @@ func (q Q) Payments(ctx context.Context, invoiceID string) ([]Payment, error) {
 
 func (q Q) DeletePayment(ctx context.Context, invoiceID, id string) (bool, error) {
 	tag, err := q.db.Exec(ctx, `DELETE FROM invoice_payments WHERE invoice_id = $1 AND id = $2`, invoiceID, id)
-	return tag.RowsAffected() == 1, err
+	if err != nil || tag.RowsAffected() != 1 {
+		return false, err
+	}
+	_, err = q.db.Exec(ctx, `DELETE FROM document_links WHERE target_type = 'payment' AND target_id = $1`, id)
+	return true, err
 }
 
 // ---- refunds ----
@@ -823,7 +845,8 @@ func (q Q) CreateRefund(ctx context.Context, invoiceID, userID string, r Refund)
 
 // Refunds: the invoice's refunds, oldest first.
 func (q Q) Refunds(ctx context.Context, invoiceID string) ([]Refund, error) {
-	rows, err := q.db.Query(ctx, `SELECT r.id, r.amount, r.refunded_on::text, r.method, r.note, r.created_at, u.id, u.name, `+avatarColumn+`
+	rows, err := q.db.Query(ctx, `SELECT r.id, r.amount, r.refunded_on::text, r.method, r.note, r.created_at, u.id, u.name, `+avatarColumn+`,
+		`+paymentDocumentsSQL("refund", "r.id")+`
 		FROM invoice_refunds r LEFT JOIN users u ON u.id = r.created_by WHERE r.invoice_id = $1 ORDER BY r.refunded_on, r.created_at, r.id`,
 		invoiceID)
 	if err != nil {
@@ -832,7 +855,7 @@ func (q Q) Refunds(ctx context.Context, invoiceID string) ([]Refund, error) {
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Refund, error) {
 		var r Refund
 		var uid, uname, uavatar *string
-		err := row.Scan(&r.ID, &r.Amount, &r.RefundedOn, &r.Method, &r.Note, &r.CreatedAt, &uid, &uname, &uavatar)
+		err := row.Scan(&r.ID, &r.Amount, &r.RefundedOn, &r.Method, &r.Note, &r.CreatedAt, &uid, &uname, &uavatar, &r.Documents)
 		r.CreatedBy = uploader(uid, uname, uavatar)
 		return r, err
 	})
@@ -840,7 +863,11 @@ func (q Q) Refunds(ctx context.Context, invoiceID string) ([]Refund, error) {
 
 func (q Q) DeleteRefund(ctx context.Context, invoiceID, id string) (bool, error) {
 	tag, err := q.db.Exec(ctx, `DELETE FROM invoice_refunds WHERE invoice_id = $1 AND id = $2`, invoiceID, id)
-	return tag.RowsAffected() == 1, err
+	if err != nil || tag.RowsAffected() != 1 {
+		return false, err
+	}
+	_, err = q.db.Exec(ctx, `DELETE FROM document_links WHERE target_type = 'refund' AND target_id = $1`, id)
+	return true, err
 }
 
 // RefundAvailableOn also protects any later refunds that would otherwise overdraw their day's balance.
@@ -1201,4 +1228,17 @@ func (q Q) InvoiceSummary(ctx context.Context, workspaceID, currency, today, cli
 		return m, err
 	})
 	return s, err
+}
+
+// PaymentTarget: the client, number and date of an invoice's payment (targetType "payment") or refund ("refund") in
+// the workspace, the row share-locked so it is not deleted before the transaction ends.
+func (q Q) PaymentTarget(ctx context.Context, workspaceID, invoiceID, targetType, id string) (clientID, number, on string, err error) {
+	table, date := "invoice_payments", "paid_on"
+	if targetType == "refund" {
+		table, date = "invoice_refunds", "refunded_on"
+	}
+	err = q.db.QueryRow(ctx, `SELECT i.client_id, coalesce(i.number, ''), p.`+date+`::text FROM `+table+` p
+		JOIN invoices i ON i.id = p.invoice_id WHERE i.workspace_id = $1 AND i.id = $2 AND p.id = $3 FOR SHARE OF p`,
+		workspaceID, invoiceID, id).Scan(&clientID, &number, &on)
+	return clientID, number, on, err
 }

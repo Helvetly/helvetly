@@ -563,6 +563,7 @@ export const scheduledInvoice: ApiInvoice = {
       note: null,
       created_at: '2026-11-04T10:00:00Z',
       created_by: { id: 'usr_mock_1', name: 'Anna Muster' },
+      documents: [],
     },
   ],
   refunds: [],

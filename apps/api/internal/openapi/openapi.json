@@ -3289,6 +3289,116 @@
         "x-helvetly-write": true
       }
     },
+    "/api/v1/invoices/{id}/payments/{payment_id}/documents": {
+      "post": {
+        "operationId": "attach_payment_document",
+        "tags": ["Invoices"],
+        "summary": "Attach a file to a payment",
+        "description": "Links a bank statement, payment confirmation or credit advice to the invoice's payment. Either upload a file (multipart field file; the rules, limits and duplicate check of upload_document apply), which is filed in the invoice client's Documents/<year>/Bank Statements folder (the payment's year) as a payment confirmation, or send document_id instead to link a live document of the workspace, which stays where it is. Identical bytes link the existing document: 200 with reused: true. While linked, the document cannot be moved or trashed (409 record_move_locked or retained). HR files, trashed files and other workspaces' documents are 422 validation_failed. A closed period does not stop it. Audited as invoice.payment_file_attached. Needs write access to invoices and documents.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The invoice's id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "payment_id",
+            "in": "path",
+            "required": true,
+            "description": "The payment's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentDocumentUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An equal file already exists: that Document, linked, with reused: true",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Linked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
+    "/api/v1/invoices/{id}/payments/{payment_id}/documents/{document_id}": {
+      "delete": {
+        "operationId": "detach_payment_document",
+        "tags": ["Invoices"],
+        "summary": "Unlink a file from a payment",
+        "description": "Removes the link between the document and the invoice's payment; the document stays in Documents and can be moved again. 404 when it was not linked. Audited as invoice.payment_file_removed.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The invoice's id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "payment_id",
+            "in": "path",
+            "required": true,
+            "description": "The payment's id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "description": "The document's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no content."
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
     "/api/v1/invoices/{id}/payments/{payment_id}": {
       "delete": {
         "operationId": "delete_payment",
@@ -3409,6 +3519,116 @@
                 }
               }
             }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
+    "/api/v1/invoices/{id}/refunds/{refund_id}/documents": {
+      "post": {
+        "operationId": "attach_refund_document",
+        "tags": ["Invoices"],
+        "summary": "Attach a file to a refund",
+        "description": "Links a bank statement, payment confirmation or credit advice to the invoice's refund. Either upload a file (multipart field file; the rules, limits and duplicate check of upload_document apply), which is filed in the invoice client's Documents/<year>/Bank Statements folder (the refund's year) as a payment confirmation, or send document_id instead to link a live document of the workspace, which stays where it is. Identical bytes link the existing document: 200 with reused: true. While linked, the document cannot be moved or trashed (409 record_move_locked or retained). HR files, trashed files and other workspaces' documents are 422 validation_failed. A closed period does not stop it. Audited as invoice.payment_file_attached. Needs write access to invoices and documents.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The invoice's id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "refund_id",
+            "in": "path",
+            "required": true,
+            "description": "The refund's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentDocumentUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "An equal file already exists: that Document, linked, with reused: true",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Linked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
+    "/api/v1/invoices/{id}/refunds/{refund_id}/documents/{document_id}": {
+      "delete": {
+        "operationId": "detach_refund_document",
+        "tags": ["Invoices"],
+        "summary": "Unlink a file from a refund",
+        "description": "Removes the link between the document and the invoice's refund; the document stays in Documents and can be moved again. 404 when it was not linked. Audited as invoice.payment_file_removed.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The invoice's id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "refund_id",
+            "in": "path",
+            "required": true,
+            "description": "The refund's id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "description": "The document's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no content."
           },
           "default": {
             "$ref": "#/components/responses/Error"
@@ -8117,9 +8337,49 @@
                 "type": "null"
               }
             ]
+          },
+          "documents": {
+            "type": "array",
+            "description": "Linked files (bank statements, payment confirmations, credit advices), oldest first.",
+            "items": { "$ref": "#/components/schemas/PaymentDocument" }
           }
         },
-        "required": ["id", "amount", "paid_on", "method", "note", "created_at", "created_by"]
+        "required": [
+          "id",
+          "amount",
+          "paid_on",
+          "method",
+          "note",
+          "created_at",
+          "created_by",
+          "documents"
+        ]
+      },
+      "PaymentDocument": {
+        "type": "object",
+        "description": "A file linked to a payment or refund.",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "size": { "type": "integer", "format": "int64" },
+          "content_type": { "type": "string" }
+        },
+        "required": ["id", "name", "size", "content_type"]
+      },
+      "PaymentDocumentUpload": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "A new file to store and link."
+          },
+          "document_id": {
+            "type": "string",
+            "description": "Instead of file: a live document of this workspace to link."
+          }
+        },
+        "description": "file or document_id."
       },
       "Refund": {
         "type": "object",
@@ -8153,9 +8413,23 @@
                 "type": "null"
               }
             ]
+          },
+          "documents": {
+            "type": "array",
+            "description": "Linked files (bank statements, payment confirmations, credit advices), oldest first.",
+            "items": { "$ref": "#/components/schemas/PaymentDocument" }
           }
         },
-        "required": ["id", "amount", "refunded_on", "method", "note", "created_at", "created_by"]
+        "required": [
+          "id",
+          "amount",
+          "refunded_on",
+          "method",
+          "note",
+          "created_at",
+          "created_by",
+          "documents"
+        ]
       },
       "InstalmentItem": {
         "type": "object",
@@ -9399,7 +9673,8 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": "string"
+            "type": "string",
+            "description": "client, invoice, expense, signature or quote; payment or refund, whose id and label are then the invoice's id and number."
           },
           "id": {
             "type": "string"

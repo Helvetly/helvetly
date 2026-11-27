@@ -25,7 +25,7 @@ contract_document contract_reference count countries country counts created_at c
 credit credit_account credit_total credited_invoice currencies currency currency_code current current_period
 current_period_end cutoff_days cutoff_time data date days days_overdue debit debit_account debit_total
 decided_at decided_by decision_note deducted_on deductible_amount deductible_percent deductible_vat deleted_at
-deleted_by description discount_amount discount_percent document document_date document_id draft drafts
+deleted_by description discount_amount discount_percent document document_date document_id documents draft drafts
 due_date due_on dunning_enabled duplicate_of duration_minutes effective einvoice_format electronic_address
 email enabled end end_date ending_soon ends_at ends_on engagement engagement_id entries entry_ids entry_mode
 event_id exchange_rate exchange_rate_date exchange_rate_source expected expense_count expenses expenses_count
