@@ -117,6 +117,7 @@ const credited = sampleInvoice({
       note: null,
       created_at: '2026-11-01T09:00:00Z',
       created_by: by,
+      documents: [],
     },
   ],
 })
@@ -194,6 +195,7 @@ test('payments and refunds read as one history, oldest first', () => {
         note: null,
         created_at: '2026-11-03T10:00:00Z',
         created_by: null,
+        documents: [],
       },
     ],
   })

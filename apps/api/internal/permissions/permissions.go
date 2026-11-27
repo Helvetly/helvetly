@@ -148,6 +148,9 @@ var also = []struct{ method, pattern, scope string }{
 	{http.MethodDelete, "/api/v1/engagements/*/invoices/*", "write:invoices"},
 	{http.MethodGet, "/api/v1/invoices/*/engagement", "read:engagements"},
 	{http.MethodPost, "/api/v1/scheduling/occurrences/invoice", "write:invoices"},
+	// a payment's or refund's statement is stored as a document
+	{http.MethodPost, "/api/v1/invoices/*/payments/*/documents", "write:documents"},
+	{http.MethodPost, "/api/v1/invoices/*/refunds/*/documents", "write:documents"},
 }
 
 // instead: routes whose scopes replace their prefix's read/write scope, as path.Match patterns, for reads (GET, HEAD)

@@ -50,7 +50,8 @@ const classCTE = `WITH RECURSIVE fwalk AS (
 
 // classJoins joins g (type, year, client) to documents d, after classCTE; zone is the parameter of the workspace's
 // time zone, in which a timestamp's year is read. The record a file belongs to decides first (an invoice or quote
-// whose PDF it is, an imported invoice's original, a receipt's expense, a signature's PDF), then its system folder,
+// whose PDF it is, an imported invoice's original, a receipt's expense, a signature's PDF, a payment's or refund's
+// confirmation), then its system folder,
 // then its tags (AI filing's), then its name; the year is the record's, the year folder's, else the upload's. Each
 // way a record matches is its own branch, so every one is an index lookup per file, never a scan of the table (audit
 // A06; indexes of 00060).
@@ -89,6 +90,14 @@ func classJoins(zone string) string {
 			SELECT 4, 'contracts', extract(year FROM coalesce(s.completed_at, s.created_at) AT TIME ZONE ` + zone + `::text)::int, NULL
 			FROM document_links l JOIN signature_requests s ON s.id = l.target_id AND s.workspace_id = d.workspace_id
 			WHERE l.document_id = d.id AND l.target_type = 'signature'
+			UNION ALL
+			SELECT 5, 'payment_confirmations', extract(year FROM p.paid_on)::int, i.client_id
+			FROM document_links l JOIN invoice_payments p ON p.id = l.target_id JOIN invoices i ON i.id = p.invoice_id AND i.workspace_id = d.workspace_id
+			WHERE l.document_id = d.id AND l.target_type = 'payment'
+			UNION ALL
+			SELECT 5, 'payment_confirmations', extract(year FROM r.refunded_on)::int, i.client_id
+			FROM document_links l JOIN invoice_refunds r ON r.id = l.target_id JOIN invoices i ON i.id = r.invoice_id AND i.workspace_id = d.workspace_id
+			WHERE l.document_id = d.id AND l.target_type = 'refund'
 		) c ORDER BY c.p, c.year DESC NULLS LAST LIMIT 1) rec ON true
 	CROSS JOIN LATERAL (SELECT
 		coalesce(rec.kind, CASE fx.kind WHEN 'invoices' THEN 'invoices' WHEN 'quotes' THEN 'quotes' WHEN 'engagements' THEN 'engagements'

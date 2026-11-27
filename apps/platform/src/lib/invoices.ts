@@ -449,7 +449,14 @@ export type Payment = {
   note: string | null
   created_at: string
   created_by: { id: string; name: string; avatar_url?: string | null }
+  /** Linked bank statements, payment confirmations or credit advices, oldest first. */
+  documents: PaymentDocument[]
 }
+
+/** A file linked to a payment or refund. */
+export type PaymentDocument = { id: string; name: string; size: number; content_type: string }
+
+export type MoneyMovementKind = 'payment' | 'refund'
 
 export type Refund = {
   id: string
@@ -459,6 +466,7 @@ export type Refund = {
   note: string | null
   created_at: string
   created_by: { id: string; name: string; avatar_url?: string | null } | null
+  documents: PaymentDocument[]
 }
 
 export type Delivery = {
@@ -1452,6 +1460,11 @@ const path = (id: string) => `/invoices/${encodeURIComponent(id)}`
 export type BulkResult = { id: string; ok: boolean; error?: string; message?: string }
 
 const post = (json: unknown = {}) => ({ method: 'POST' as const, json })
+/** A payment's or refund's linked files (POST a document_id, or upload a file to the full URL). */
+const movementFiles = (id: string, kind: MoneyMovementKind, targetId: string) =>
+  `${path(id)}/${kind === 'refund' ? 'refunds' : 'payments'}/${encodeURIComponent(targetId)}/documents`
+export const paymentFilesUrl = (id: string, kind: MoneyMovementKind, targetId: string) =>
+  `/api/v1${movementFiles(id, kind, targetId)}`
 type One<T> = { data: T }
 
 export const invoicesApi = {
@@ -1493,6 +1506,21 @@ export const invoicesApi = {
     request<void>(`${path(id)}/refunds/${encodeURIComponent(refundId)}`, { method: 'DELETE' }),
   deletePayment: (id: string, paymentId: string) =>
     request<void>(`${path(id)}/payments/${encodeURIComponent(paymentId)}`, { method: 'DELETE' }),
+  attachPaymentDocument: (
+    id: string,
+    kind: MoneyMovementKind,
+    targetId: string,
+    documentId: string,
+  ) => request<void>(movementFiles(id, kind, targetId), post({ document_id: documentId })),
+  detachPaymentDocument: (
+    id: string,
+    kind: MoneyMovementKind,
+    targetId: string,
+    documentId: string,
+  ) =>
+    request<void>(`${movementFiles(id, kind, targetId)}/${encodeURIComponent(documentId)}`, {
+      method: 'DELETE',
+    }),
   send: (id: string, input: SendInput) => request<One<Invoice>>(`${path(id)}/send`, post(input)),
   deliveries: (id: string) => request<One<Delivery[]>>(`${path(id)}/deliveries`),
   settings: async () =>

@@ -71,7 +71,8 @@ export type Kind = (typeof KINDS)[number] | 'other'
 
 export type DocLink = {
   /** quote: the quote a contract was made from (label: its number); never unlinked by hand. */
-  type: 'client' | 'invoice' | 'expense' | 'signature' | 'quote'
+  /** payment, refund: a payment's or refund's file; id and label are its invoice's id and number. */
+  type: 'client' | 'invoice' | 'expense' | 'signature' | 'quote' | 'payment' | 'refund'
   id: string
   label: string
   retains: boolean
@@ -560,14 +561,23 @@ export const isMoveLocked = (file: Pick<DocFile, 'record_file' | 'retained_until
 export const linkLabel = (link: DocLink) =>
   link.type === 'quote'
     ? translate('createdFromQuote', { number: link.label || translate('draft') })
-    : link.label
+    : link.type === 'payment'
+      ? translate('paymentOfInvoice', { number: link.label })
+      : link.type === 'refund'
+        ? translate('refundOfInvoice', { number: link.label })
+        : link.label
 
 export function linkHref(link: DocLink) {
   if (link.type === 'signature')
     return `/documents?${new URLSearchParams({ view: 'signatures', request: link.id })}`
-  const page = { client: '/clients', invoice: '/invoices', expense: '/expenses', quote: '/quotes' }[
-    link.type
-  ]
+  const page = {
+    client: '/clients',
+    invoice: '/invoices',
+    expense: '/expenses',
+    quote: '/quotes',
+    payment: '/invoices',
+    refund: '/invoices',
+  }[link.type]
   return `${page}?${new URLSearchParams({ id: link.id })}`
 }
 
@@ -862,7 +872,8 @@ export const DOCUMENT_MAX_BYTES = MAX_FILE_BYTES
  */
 export function uploadDocument(
   file: File,
-  options: { folderId: string | null; onConflict?: OnConflict; clientId?: string },
+  /** url: another endpoint taking the same upload, e.g. a payment's documents. */
+  options: { folderId: string | null; onConflict?: OnConflict; clientId?: string; url?: string },
   onProgress: (share: number) => void,
   signal?: AbortSignal,
 ): Promise<DocFile & { reused: boolean }> {
@@ -871,7 +882,7 @@ export function uploadDocument(
   if (options.folderId) form.append('folder_id', options.folderId)
   if (options.onConflict) form.append('on_conflict', options.onConflict)
   if (options.clientId) form.append('client_id', options.clientId)
-  return sendFile<DocFile>('/api/v1/documents', file, form, onProgress, signal)
+  return sendFile<DocFile>(options.url ?? '/api/v1/documents', file, form, onProgress, signal)
 }
 
 /** A file uploaded into the staging area: no Document until its batch is confirmed. */

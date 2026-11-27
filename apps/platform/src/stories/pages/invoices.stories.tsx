@@ -212,6 +212,7 @@ const refund = {
   note: null,
   created_at: '2026-11-10T09:00:00Z',
   created_by: null,
+  documents: [],
 }
 
 // Paid in full, then credited 432.40 (taken from the last instalment backwards) and refunded.
@@ -393,5 +394,116 @@ export const DraftRowMenu: Story = {
       'destructive',
     )
     await userEvent.keyboard('{Escape}')
+  },
+}
+
+const statement = {
+  id: 'doc_statement',
+  name: 'Gutschrift 1. Rate.pdf',
+  size: 48_213,
+  content_type: 'application/pdf',
+}
+const withFile: Invoice = {
+  ...scheduledInvoice,
+  payments: scheduledInvoice.payments.map((payment) => ({ ...payment, documents: [statement] })),
+}
+const unlinked: string[] = []
+
+/** A payment's linked file is a chip: its menu previews it, opens it in Documents or unlinks it. */
+export const PaymentWithFile: Story = {
+  parameters: pageParameters('/invoices', { id: withFile.id }, [
+    http.get(`/api/v1/invoices/${withFile.id}`, () => HttpResponse.json({ data: withFile })),
+    http.delete(
+      `/api/v1/invoices/${withFile.id}/payments/:payment/documents/:document`,
+      ({ params }) => {
+        unlinked.push(String(params.document))
+        return new HttpResponse(null, { status: 204 })
+      },
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    unlinked.length = 0
+    const body = within(canvasElement.ownerDocument.body)
+    const sheet = within(await body.findByRole('dialog'))
+    await userEvent.click(await sheet.findByRole('tab', { name: /Payments/ }))
+    const chip = await sheet.findByRole('button', { name: /Gutschrift 1\. Rate\.pdf: preview/ })
+    await expect(chip).toHaveTextContent('Gutschrift 1. Rate.pdf')
+    await userEvent.click(chip)
+    await expect(await body.findByRole('menuitem', { name: 'Preview' })).toBeVisible()
+    await expect(body.getByRole('menuitem', { name: 'Open in Documents' })).toBeVisible()
+    await userEvent.click(body.getByRole('menuitem', { name: 'Unlink from payment' }))
+    await waitFor(() => expect(unlinked).toEqual(['doc_statement']))
+    await body.findByText('File unlinked; it stays in Documents')
+  },
+}
+export const PaymentWithFilePhone = phone(PaymentWithFile)
+
+const attachBodies: unknown[] = []
+
+/** The paperclip of a payment row picks a PDF from Documents (or uploads one) and links it to the payment. */
+export const AttachPaymentFile: Story = {
+  parameters: pageParameters('/invoices', { id: scheduledInvoice.id }, [
+    http.get(`/api/v1/invoices/${scheduledInvoice.id}`, () =>
+      HttpResponse.json({ data: scheduledInvoice }),
+    ),
+    http.get('/api/v1/documents', () =>
+      HttpResponse.json({
+        data: [
+          {
+            ...statement,
+            folder_id: null,
+            folder: null,
+            kind: 'pdf',
+            sha256: null,
+            tags: [],
+            ai_filing: null,
+            previewable: true,
+            links: [],
+            retained_until: null,
+            uploaded_by: null,
+            created_at: '2026-11-05T09:00:00Z',
+            updated_at: '2026-11-05T09:00:00Z',
+            deleted_at: null,
+            deleted_by: null,
+            purge_at: null,
+          },
+        ],
+        meta: { total: 1, page: 1, page_size: 40, total_pages: 1 },
+      }),
+    ),
+    http.post(
+      `/api/v1/invoices/${scheduledInvoice.id}/payments/:payment/documents`,
+      async ({ request }) => {
+        attachBodies.push(await request.json())
+        return new HttpResponse(null, { status: 201 })
+      },
+    ),
+  ]),
+  play: async ({ canvasElement }) => {
+    attachBodies.length = 0
+    const body = within(canvasElement.ownerDocument.body)
+    const sheet = within(await body.findByRole('dialog'))
+    await userEvent.click(await sheet.findByRole('tab', { name: /Payments/ }))
+    await userEvent.click(await sheet.findByRole('button', { name: /^Attach a file to / }))
+    const dialog = within(
+      await body.findByRole('dialog', { name: 'Attach a statement or confirmation' }),
+    )
+    await expect(dialog.getByRole('button', { name: 'Upload PDF' })).toBeVisible()
+    await userEvent.click(await dialog.findByRole('button', { name: /Gutschrift 1\. Rate\.pdf/ }))
+    await waitFor(() => expect(attachBodies).toEqual([{ document_id: 'doc_statement' }]))
+    await body.findByText('File attached')
+  },
+}
+
+const unpaid: Invoice = { ...scheduledInvoice, amount_paid: '0.00', payments: [] }
+
+/** No payment yet: the tab says so and offers no file to attach. */
+export const PaymentsEmpty: Story = {
+  parameters: drawerOf(unpaid),
+  play: async ({ canvasElement }) => {
+    const sheet = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'))
+    await userEvent.click(await sheet.findByRole('tab', { name: /Payments/ }))
+    await sheet.findByText('No payments yet.')
+    await expect(sheet.queryByRole('button', { name: /^Attach a file to / })).toBeNull()
   },
 }

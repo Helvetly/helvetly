@@ -31,11 +31,14 @@ export function PdfPicker({
   document,
   folderId,
   onChoose,
+  upload: uploadTo,
 }: {
   document: { id: string; name: string } | null
   /** Where an upload goes. */
   folderId: string | null
   onChoose: (file: DocFile) => void
+  /** Uploads go here instead of into folderId, and are not chosen afterwards. */
+  upload?: (file: File, onProgress: (share: number) => void) => Promise<unknown>
 }) {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -49,6 +52,10 @@ export function PdfPicker({
   const uploadPdf = async (file: File) => {
     setUpload(0)
     try {
+      if (uploadTo) {
+        await uploadTo(file, setUpload)
+        return
+      }
       const uploaded = await uploadDocument(file, { folderId, onConflict: 'keep_both' }, setUpload)
       refreshDocuments(queryClient)
       onChoose(uploaded)

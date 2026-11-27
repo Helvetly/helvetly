@@ -82,12 +82,14 @@ import {
   type Invoice,
   type InvoiceListItem,
 } from '@/lib/invoices'
+import { useCan } from '@/lib/permissions'
 
 import { editHref } from './compose'
 import { DunningCard, dunnable } from './dunning-card'
 import { InstalmentSchedule } from './instalment-schedule'
 import { ApprovalBadge, InvoiceStatusBadge, Money } from './invoice-bits'
 import { invoiceActions, useInvoiceActionState, type InvoiceCommand } from './invoice-commands'
+import { AttachPaymentFile, PaymentFileChips } from './payment-files'
 import { PaymentSummary } from './payment-methods'
 import { PdfView } from './pdf-view'
 import { PlanCard } from './plan-card'
@@ -944,6 +946,8 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
   const removePayment = useDeletePayment(invoice.id)
   const removeRefund = useDeleteRefund(invoice.id)
   const [deleting, setDeleting] = useState<{ kind: 'payment' | 'refund'; id: string } | null>(null)
+  const canWriteInvoices = useCan('write:invoices')
+  const canAttach = useCan('write:documents') && canWriteInvoices
   const open = invoice.status === 'open'
   const refundDue = isPositive(invoice.refund_due)
   return (
@@ -996,6 +1000,11 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
                       </>
                     )}
                   </span>
+                  <PaymentFileChips
+                    target={{ invoiceId: invoice.id, kind: row.kind, id: row.id }}
+                    documents={row.documents}
+                    canEdit={canAttach}
+                  />
                 </span>
                 <Money
                   value={row.amount}
@@ -1003,6 +1012,12 @@ function Payments({ invoice, canManage, run }: { invoice: Invoice; canManage: bo
                   negative={refund}
                   className="text-[14px]"
                 />
+                {canAttach && (
+                  <AttachPaymentFile
+                    target={{ invoiceId: invoice.id, kind: row.kind, id: row.id }}
+                    label={`${formatDay(row.on)} · ${row.amount}`}
+                  />
+                )}
                 {canManage && (
                   <Button
                     variant="destructive-ghost"

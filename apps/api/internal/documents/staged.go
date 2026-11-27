@@ -40,10 +40,14 @@ func batchParam(r *http.Request) (string, error) {
 // stage stores one file of a batch. The same bytes as a live Document, or as a file already in the batch, are
 // refused (409 duplicate_file) before anything is stored, and again under the hash lock.
 func (s *Service) stage(w http.ResponseWriter, r *http.Request, sess store.Session) error {
-	form, h, name, ct, err := s.receive(w, r)
+	form, h, err := s.parseUpload(w, r)
 	if form != nil {
 		defer func() { _ = form.RemoveAll() }()
 	}
+	if err != nil {
+		return err
+	}
+	name, ct, err := uploadedType(h)
 	if err != nil {
 		return err
 	}

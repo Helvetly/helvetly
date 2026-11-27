@@ -104,6 +104,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	s.registerShareLinks(mux, handle)
 	s.registerOrganize(handle)
 	s.registerStaged(handle)
+	s.registerPaymentFiles(handle)
 }
 
 // Run files what came before the system folders, tags the files from before automatic tags and takes earlier imports'
