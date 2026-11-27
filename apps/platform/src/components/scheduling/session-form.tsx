@@ -1,5 +1,6 @@
 'use client'
 import { Button } from '@helvetly/ui/components/button'
+import { Callout } from '@helvetly/ui/components/callout'
 import { Checkbox } from '@helvetly/ui/components/checkbox'
 import { Combobox } from '@helvetly/ui/components/combobox'
 import { FormField } from '@helvetly/ui/components/form-field'
@@ -14,7 +15,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@helvetly/ui/components/popover'
 import { Segmented } from '@helvetly/ui/components/segmented'
 import { Switch } from '@helvetly/ui/components/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import { segmentItem, segmentTrack } from '@helvetly/ui/lib/segmented'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
@@ -23,15 +23,11 @@ import {
   ChevronsUpDown,
   Clock,
   LayoutTemplate,
-  Link2,
   Mail,
   MapPin,
   Plus,
   Repeat,
-  TriangleAlert,
   UserRound,
-  Users,
-  Video,
   type LucideIcon,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -44,7 +40,9 @@ import { translate } from '@/lib/i18n'
 import { useMembers } from '@/lib/members'
 import { useSession } from '@/lib/queries'
 import {
+  clock,
   dayLabel,
+  minutesOf,
   recurrenceSummary,
   timeLabel,
   useCalendars,
@@ -52,15 +50,16 @@ import {
   useEventTypes,
   WEEKDAYS,
   weekdayName,
+  zoned,
   zoneName,
   type Conflict,
+  type MeetingProvider,
   type Weekday,
 } from '@/lib/scheduling'
 
 import { AddressInput } from './address-input'
-import { Choices, TimeLock } from './bits'
+import { TimeLock } from './bits'
 import {
-  asksDuration,
   autoTitle,
   dateChange,
   eventTypeValues,
@@ -76,10 +75,8 @@ import {
   type Values,
 } from './session-model'
 
-const DURATIONS = ['30', '45', '60', '90', '120']
+const DURATIONS = [15, 30, 45, 60, 90, 120]
 const fieldId = (name: keyof Values) => `session-${name}`
-/** The duration picks' box, focused when "Change" reveals them. */
-const DURATION_CHOICES = 'session-duration-choices'
 /** Focuses a field a click has just revealed, once it is rendered. */
 const focusSoon = (id: string) => requestAnimationFrame(() => document.getElementById(id)?.focus())
 /** Where a person connects their own calendar; a new tab, so the form in the drawer stays as it is. */
@@ -115,8 +112,6 @@ export function SessionFields({
     slot && values.host_id ? { host_id: values.host_id, ...slot, exclude: excludeId } : null,
   )
   const [clientOpen, setClientOpen] = useState(false)
-  /** The event type sets the length; "Change" asks for it anyway. */
-  const [override, setOverride] = useState(false)
   const [notes, setNotes] = useState({
     client: values.client_note !== '',
     internal: values.description !== '',
@@ -141,9 +136,6 @@ export function SessionFields({
       label: member.name || member.email,
     })) ?? []
 
-  const chosenType = types.find((entry) => entry.id === values.event_type_id)
-  const durationAsked = asksDuration(values, chosenType, override)
-
   return (
     <div className="grid gap-4">
       <Line>
@@ -162,7 +154,12 @@ export function SessionFields({
 
       <Line icon={Building2}>
         <div className="grid gap-2 sm:grid-cols-2">
-          <Field id={fieldId('client')} label={translate('client')} error={errors.client}>
+          <Field
+            id={fieldId('client')}
+            label={translate('client')}
+            error={errors.client}
+            className="sm:col-span-2"
+          >
             <Popover open={clientOpen} onOpenChange={setClientOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -258,7 +255,6 @@ export function SessionFields({
               onChange={(id) => {
                 const type = types.find((entry) => entry.id === id)
                 if (!type) return
-                setOverride(false)
                 set(eventTypeValues(values, type))
               }}
               onClear={() => set({ event_type_id: '' })}
@@ -272,7 +268,7 @@ export function SessionFields({
       {/* One member hosts everything: nothing to choose. */}
       {hosts.length > 1 && (
         <Line icon={UserRound}>
-          <Field id={fieldId('host_id')} error={errors.host_id} className="sm:max-w-[50%]">
+          <Field id={fieldId('host_id')} error={errors.host_id}>
             <Combobox
               id={fieldId('host_id')}
               label={translate('schedHost')}
@@ -289,55 +285,25 @@ export function SessionFields({
       )}
 
       <Line icon={Clock}>
-        <When
+        <When values={values} errors={errors} set={set} describe={describe} locked={timeLocked} />
+        <p
+          className="mt-1.5 flex h-5 min-w-0 items-center gap-1.5 text-body-sm text-muted-foreground"
+          aria-live="polite"
+        >
+          {slot && (
+            <span className="truncate">
+              {dayLabel(values.date)} · {timeLabel(slot.starts_at, zone)} –{' '}
+              {timeLabel(slot.ends_at, zone)} ({zoneName(zone)})
+            </span>
+          )}
+          {timeLocked && <TimeLock />}
+        </p>
+        <Overlaps
+          conflicts={slot && values.host_id ? (conflicts.data ?? []) : []}
           values={values}
-          errors={errors}
+          zone={zone}
           set={set}
-          describe={describe}
-          durationAsked={durationAsked && !timeLocked}
-          locked={timeLocked}
         />
-        <div className="mt-1.5 flex h-5 min-w-0 items-center gap-2 text-body-sm">
-          <span
-            className="flex shrink-0 items-center gap-1 text-muted-foreground"
-            aria-live="polite"
-          >
-            {slot && (
-              <span>
-                {dayLabel(values.date)} · {timeLabel(slot.starts_at, zone)} –{' '}
-                {timeLabel(slot.ends_at, zone)} ({zoneName(zone)})
-              </span>
-            )}
-            {(!durationAsked || timeLocked) && (
-              <>
-                <span>
-                  {slot && '· '}
-                  {shortDuration(Number(values.duration))}
-                </span>
-              </>
-            )}
-            {!durationAsked && !timeLocked && (
-              <>
-                <button
-                  type="button"
-                  aria-label={translate('schedChangeDuration')}
-                  onClick={() => {
-                    setOverride(true)
-                    focusSoon(DURATION_CHOICES)
-                  }}
-                  className="rounded-sm text-link underline underline-offset-2 outline-none hover:no-underline focus-visible:ring-2 focus-visible:ring-ring/50"
-                >
-                  {translate('change')}
-                </button>
-              </>
-            )}
-          </span>
-          {/* On the summary's line, so a warning appearing never moves the fields below. */}
-          <ConflictLine
-            conflicts={slot && values.host_id ? (conflicts.data ?? []) : []}
-            zone={zone}
-          />
-        </div>
       </Line>
 
       <Line icon={Repeat}>
@@ -515,21 +481,11 @@ function Field({
   )
 }
 
-/**
- * Date, start and duration on one row (wrapping on a phone); the duration as quick picks or minutes, left out while
- * the event type's length holds (the summary below names it).
- */
-function When({
-  values,
-  errors,
-  set,
-  describe,
-  durationAsked,
-  locked,
-}: Part & { durationAsked: boolean; locked: boolean }) {
+/** Date, start and length side by side, as wide as the fields above; the date takes its own line on a phone. */
+function When({ values, errors, set, describe, locked }: Part & { locked: boolean }) {
   return (
     <div className="grid gap-1">
-      <div className="flex flex-wrap items-start gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <label htmlFor={fieldId('date')} className="sr-only">
           {translate('date')}
         </label>
@@ -539,7 +495,7 @@ function When({
           value={values.date}
           readOnly={locked}
           onChange={(event) => set(dateChange(values, event.target.value))}
-          className={cn(inputClass, 'w-auto', locked && 'text-muted-foreground')}
+          className={cn(inputClass, 'col-span-2 sm:col-span-1', locked && 'text-muted-foreground')}
         />
         <label htmlFor={fieldId('time')} className="sr-only">
           {translate('schedStart')}
@@ -551,16 +507,9 @@ function When({
           value={values.time}
           readOnly={locked}
           onChange={(event) => set({ time: event.target.value })}
-          className={cn(inputClass, 'w-auto', locked && 'text-muted-foreground')}
+          className={cn(inputClass, locked && 'text-muted-foreground')}
         />
-        {locked && (
-          <span className="flex h-9 items-center">
-            <TimeLock />
-          </span>
-        )}
-        {durationAsked && (
-          <Duration values={values} errors={errors} set={set} describe={describe} />
-        )}
+        <Duration values={values} errors={errors} set={set} describe={describe} locked={locked} />
       </div>
       {(['date', 'time', 'duration'] as const).map(
         (name) =>
@@ -574,52 +523,82 @@ function When({
   )
 }
 
-/** The duration as quick picks or minutes; mounted when shown, so it starts from the length the form has then. */
-function Duration({ values, set, describe }: Part) {
-  const [custom, setCustom] = useState(!DURATIONS.includes(values.duration))
-  return (
-    <>
-      <div id={DURATION_CHOICES} tabIndex={-1} className="outline-none">
-        <Choices
-          label={translate('schedDuration')}
-          value={custom ? 'custom' : values.duration}
-          options={[
-            ...DURATIONS.map((minutes) => ({
-              value: minutes,
-              label: shortDuration(Number(minutes)),
-            })),
-            { value: 'custom', label: translate('schedDurationCustom') },
-          ]}
-          onChange={(choice) => {
-            setCustom(choice === 'custom')
-            if (choice === 'custom') focusSoon(fieldId('duration'))
-            else set({ duration: choice })
-          }}
+/**
+ * The length as a select of common ones, each naming the end time it gives; the form's own length (an event type's
+ * 50 min) is one of them. Custom… turns it into minutes, with a way back to the list.
+ */
+function Duration({ values, errors, set, describe, locked }: Part & { locked: boolean }) {
+  const [custom, setCustom] = useState(false)
+  if (custom) {
+    return (
+      <InputGroup>
+        <InputGroupInput
+          {...describe('duration')}
+          aria-label={translate('schedDurationMinutes')}
+          inputMode="numeric"
+          value={values.duration}
+          onChange={(event) => set({ duration: event.target.value })}
         />
-      </div>
-      {custom && (
-        <InputGroup className="w-24">
-          <InputGroupInput
-            {...describe('duration')}
-            aria-label={translate('schedDurationMinutes')}
-            inputMode="numeric"
-            value={values.duration}
-            onChange={(event) => set({ duration: event.target.value })}
-          />
-          <InputGroupAddon align="inline-end">
-            <InputGroupText>{translate('schedMinutesUnit')}</InputGroupText>
-          </InputGroupAddon>
-        </InputGroup>
-      )}
-    </>
+        <InputGroupAddon align="inline-end">
+          <InputGroupText>{translate('schedMinutesUnit')}</InputGroupText>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={translate('schedDurationPresets')}
+            title={translate('schedDurationPresets')}
+            onClick={() => {
+              setCustom(false)
+              focusSoon(fieldId('duration'))
+            }}
+          >
+            <ChevronsUpDown />
+          </Button>
+        </InputGroupAddon>
+      </InputGroup>
+    )
+  }
+  const minutes = Number(values.duration)
+  const valid = Number.isInteger(minutes) && minutes > 0
+  const lengths = [...new Set([...DURATIONS, ...(valid ? [minutes] : [])])].toSorted(
+    (a, b) => a - b,
+  )
+  const start = /^\d{2}:\d{2}$/.test(values.time) ? minutesOf(values.time) : null
+  return (
+    <Combobox
+      id={fieldId('duration')}
+      label={translate('schedDuration')}
+      value={valid ? String(minutes) : ''}
+      options={[
+        ...lengths.map((length) => ({
+          value: String(length),
+          label: durationLabel(length),
+          hint:
+            start === null
+              ? undefined
+              : translate('schedEndsAt', { time: clock((start + length) % 1440) }),
+        })),
+        { value: 'custom', label: translate('schedDurationCustom') },
+      ]}
+      onChange={(choice) => {
+        if (choice !== 'custom') return set({ duration: choice })
+        setCustom(true)
+        focusSoon(fieldId('duration'))
+      }}
+      placeholder={translate('schedDuration')}
+      invalid={Boolean(errors.duration)}
+      disabled={locked}
+    />
   )
 }
 
-/** "1 h", "1.5 h", "45 min": short enough for a chip. */
-const shortDuration = (minutes: number) =>
+/** "45 min", "1 h", "1.5 h", "1 h 10 min". */
+const durationLabel = (minutes: number) =>
   minutes < 60
     ? translate('schedMinutes', { count: minutes })
-    : translate('schedHoursShort', { count: minutes / 60 })
+    : minutes % 30 === 0
+      ? translate('schedHoursShort', { count: minutes / 60 })
+      : `${translate('schedHoursShort', { count: Math.floor(minutes / 60) })} ${translate('schedMinutes', { count: minutes % 60 })}`
 
 const ordinalLabel = (pos: 1 | 2 | 3 | 4 | -1) =>
   translate(
@@ -653,7 +632,7 @@ function RepeatFields({ values, errors, set, describe }: Part) {
   const preset = custom && values.repeat !== 'none' ? 'custom' : presetOf(values)
   return (
     <div className="grid gap-2">
-      <div className="sm:max-w-[50%]">
+      <div>
         <Combobox
           id={fieldId('repeat')}
           label={translate('schedRepeat')}
@@ -829,12 +808,34 @@ function DayToggles({
   )
 }
 
-type Place = 'live' | 'google_meet' | 'teams' | 'manual'
-const PROVIDER_OF = { google_meet: 'google', teams: 'microsoft' } as const
+/**
+ * The online meeting platforms, in the order offered. `calendar`: the platform makes its link in that calendar, so
+ * the installation must offer it and the host must have connected it. A new platform is one more entry.
+ */
+const PLATFORMS: {
+  value: MeetingProvider
+  label: string
+  calendar?: 'google' | 'microsoft'
+  connectFirst?: string
+}[] = [
+  {
+    value: 'google_meet',
+    label: 'Google Meet',
+    calendar: 'google',
+    connectFirst: translate('schedConnectGoogleFirst'),
+  },
+  {
+    value: 'teams',
+    label: 'Microsoft Teams',
+    calendar: 'microsoft',
+    connectFirst: translate('schedConnectMicrosoftFirst'),
+  },
+  { value: 'manual', label: translate('schedManualLink') },
+]
 
 /**
- * Where, as tiles: in person, the meeting providers this installation offers, or one's own link. A provider
- * without keys here is left out; one the host (me) has not connected says so with a link to connect it.
+ * Where: in person (an address) or online on a platform. A platform this installation has no keys for is left out
+ * unless the session already uses it; one the host (me) has not connected says so and links to connect it.
  * Another host's connections are not known here: the API checks them (422 meeting_provider).
  */
 function Where({ values, errors, set, describe, me }: Part & { me: string | undefined }) {
@@ -845,78 +846,26 @@ function Where({ values, errors, set, describe, me }: Part & { me: string | unde
       .filter((entry) => entry.status === 'active')
       .map((entry) => entry.provider),
   )
-  const place: Place = values.mode === 'live' ? 'live' : values.provider
-  const tiles: { value: Place; icon: LucideIcon; label: string; connect?: string }[] = [
-    { value: 'live', icon: MapPin, label: translate('schedLive') },
-  ]
-  for (const value of ['google_meet', 'teams'] as const) {
-    const provider = PROVIDER_OF[value]
-    // A session that already has it keeps its tile, whatever the installation offers now.
-    if (!offered.includes(provider) && place !== value) continue
-    tiles.push({
-      value,
-      icon: value === 'google_meet' ? Video : Users,
-      label: value === 'google_meet' ? 'Google Meet' : 'Microsoft Teams',
-      connect:
-        values.host_id === me && !connected.has(provider) && place !== value
-          ? translate(
-              provider === 'google' ? 'schedConnectGoogleFirst' : 'schedConnectMicrosoftFirst',
-            )
-          : undefined,
-    })
-  }
-  tiles.push({ value: 'manual', icon: Link2, label: translate('schedManualLink') })
-  const choose = (value: Place) =>
-    set(value === 'live' ? { mode: 'live' } : { mode: 'online', provider: value })
-  const problem = errors.provider ?? (place === 'manual' ? undefined : errors.meeting_url)
+  const unconnected = (calendar: 'google' | 'microsoft' | undefined) =>
+    calendar !== undefined && values.host_id === me && !connected.has(calendar)
+  const platforms = PLATFORMS.filter(
+    (entry) =>
+      !entry.calendar || offered.includes(entry.calendar) || values.provider === entry.value,
+  )
+  const chosen = PLATFORMS.find((entry) => entry.value === values.provider)
+  const problem = errors.provider ?? (values.provider === 'manual' ? undefined : errors.meeting_url)
   return (
-    <div className="grid gap-2">
-      <fieldset
-        id={fieldId('provider')}
-        tabIndex={-1}
-        className="grid grid-cols-2 gap-2 outline-none sm:grid-cols-4"
-      >
-        <legend className="sr-only">{translate('schedWhere')}</legend>
-        {tiles.map((tile) =>
-          tile.connect ? (
-            <div
-              key={tile.value}
-              className="flex min-h-9 items-center gap-2 rounded-lg border border-dashed px-3 py-1.5 text-sm text-muted-foreground"
-            >
-              <tile.icon aria-hidden className="size-4 shrink-0" />
-              <span className="grid min-w-0 leading-tight">
-                <span className="truncate">{tile.label}</span>
-                <a
-                  href={CONNECT_CALENDAR}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={tile.connect}
-                  className="w-fit text-xs text-link underline underline-offset-2 hover:no-underline"
-                >
-                  {translate('schedConnect')}
-                </a>
-              </span>
-            </div>
-          ) : (
-            <button
-              key={tile.value}
-              type="button"
-              aria-pressed={place === tile.value}
-              onClick={() => choose(tile.value)}
-              className={cn(
-                'flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-left text-sm transition-colors outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50',
-                place === tile.value
-                  ? 'border-primary/60 bg-primary/5 font-medium text-foreground hover:bg-primary/5'
-                  : 'text-muted-foreground',
-              )}
-            >
-              <tile.icon aria-hidden className="size-4 shrink-0" />
-              <span className="min-w-0 truncate">{tile.label}</span>
-            </button>
-          ),
-        )}
-      </fieldset>
-      {place === 'live' ? (
+    <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)]">
+      <Segmented
+        label={translate('schedWhere')}
+        value={values.mode}
+        options={[
+          { value: 'live', label: translate('schedLive') },
+          { value: 'online', label: translate('schedOnline') },
+        ]}
+        onChange={(mode) => set({ mode })}
+      />
+      {values.mode === 'live' ? (
         <Field id={fieldId('location')} label={translate('location')} error={errors.location}>
           <AddressInput
             {...describe('location')}
@@ -926,69 +875,130 @@ function Where({ values, errors, set, describe, me }: Part & { me: string | unde
             className={inputClass}
           />
         </Field>
-      ) : place === 'manual' ? (
-        <Field
-          id={fieldId('meeting_url')}
-          label={translate('schedMeetingLink')}
-          error={errors.meeting_url}
-        >
-          <input
-            {...describe('meeting_url')}
-            type="url"
-            value={values.meeting_url}
-            onChange={(event) => set({ meeting_url: event.target.value })}
-            placeholder="https://"
-            className={inputClass}
-          />
-        </Field>
       ) : (
-        <p className={cn('text-body-sm', problem ? 'text-destructive' : 'text-muted-foreground')}>
-          {problem ?? translate('schedLinkMadeOnSave')}
-        </p>
+        <Combobox
+          id={fieldId('provider')}
+          label={translate('schedMeetingPlatform')}
+          value={values.provider}
+          options={platforms.map((entry) => ({
+            value: entry.value,
+            label: entry.label,
+            hint: unconnected(entry.calendar) ? translate('schedNotConnected') : undefined,
+          }))}
+          onChange={(provider) => {
+            const next = PLATFORMS.find((entry) => entry.value === provider)
+            if (next) set({ provider: next.value })
+          }}
+          placeholder={translate('schedMeetingPlatform')}
+          invalid={Boolean(errors.provider)}
+        />
+      )}
+      {values.mode === 'online' && (
+        <div className="sm:col-span-2">
+          {values.provider === 'manual' ? (
+            <Field
+              id={fieldId('meeting_url')}
+              label={translate('schedMeetingLink')}
+              error={errors.meeting_url}
+            >
+              <input
+                {...describe('meeting_url')}
+                type="url"
+                value={values.meeting_url}
+                onChange={(event) => set({ meeting_url: event.target.value })}
+                placeholder="https://"
+                className={inputClass}
+              />
+            </Field>
+          ) : (
+            <p
+              className={cn('text-body-sm', problem ? 'text-destructive' : 'text-muted-foreground')}
+            >
+              {problem ??
+                (unconnected(chosen?.calendar) ? (
+                  <>
+                    {chosen?.connectFirst}{' '}
+                    <a
+                      href={CONNECT_CALENDAR}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-link underline underline-offset-2 hover:no-underline"
+                    >
+                      {translate('schedConnect')}
+                    </a>
+                  </>
+                ) : (
+                  translate('schedLinkMadeOnSave')
+                ))}
+            </p>
+          )}
+        </div>
       )}
     </div>
   )
 }
 
-/** Overlaps with the host's other sessions or busy times, in one line; the full list in its tooltip. */
-function ConflictLine({ conflicts, zone }: { conflicts: Conflict[]; zone: string }) {
-  const describe = (conflict: Conflict) =>
-    `${timeLabel(conflict.starts_at, zone)}–${timeLabel(conflict.ends_at, zone)} ${
-      conflict.kind === 'event'
-        ? (conflict.title ?? translate('schedAnotherSession'))
-        : conflict.kind === 'busy'
-          ? translate('schedBusyInCalendar')
-          : conflict.kind === 'holiday'
-            ? translate('schedHoliday')
-            : translate('schedOutsideHours')
-    }`
-  const first = conflicts[0]
+/** What a conflict is, after its time: a session's title, or why the host is not free then. */
+const conflictLabel = (conflict: Conflict) =>
+  conflict.kind === 'event'
+    ? (conflict.title ?? translate('schedAnotherSession'))
+    : conflict.kind === 'busy'
+      ? translate('schedBusyInCalendar')
+      : conflict.kind === 'client'
+        ? translate('schedClientElsewhere')
+        : conflict.kind === 'holiday'
+          ? translate('schedHoliday')
+          : translate('schedOutsideHours')
+
+/**
+ * The slot's overlaps as a calm notice under the time, one line each. Overlaps with sessions or busy times offer
+ * the start right after the last of them, when that is still the same day; holidays and hours are not moved past.
+ */
+function Overlaps({
+  conflicts,
+  values,
+  zone,
+  set,
+}: {
+  conflicts: Conflict[]
+  values: Values
+  zone: string
+  set: (change: Partial<Values>) => void
+}) {
+  const last = conflicts
+    .filter((conflict) => conflict.kind !== 'holiday' && conflict.kind !== 'outside_hours')
+    .map((conflict) => conflict.ends_at)
+    .toSorted()
+    .at(-1)
+  const after = last ? zoned(last, zone) : null
+  const next = after?.date === values.date ? clock(after.minutes) : null
   return (
-    <span className="flex min-w-0 items-center" aria-live="polite">
-      {first && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="flex min-w-0 items-center gap-1.5 rounded-sm text-body-sm text-warning outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            >
-              <TriangleAlert className="size-3.5 shrink-0" />
-              <span className="truncate">
-                {translate('schedConflicts', { count: conflicts.length })}: {describe(first)}
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <ul className="grid gap-0.5">
-              {conflicts.map((conflict) => (
-                <li key={`${conflict.kind}-${conflict.starts_at}-${conflict.occurrence_id ?? ''}`}>
-                  {describe(conflict)}
-                </li>
-              ))}
-            </ul>
-          </TooltipContent>
-        </Tooltip>
+    <div aria-live="polite">
+      {conflicts.length > 0 && (
+        <Callout
+          tone="warning"
+          className="mt-2"
+          title={translate('schedOverlaps', { count: conflicts.length })}
+          actions={
+            next && (
+              <Button type="button" variant="outline" size="sm" onClick={() => set({ time: next })}>
+                {translate('schedStartAt', { time: next })}
+              </Button>
+            )
+          }
+        >
+          <ul className="grid gap-0.5">
+            {conflicts.map((conflict) => (
+              <li key={`${conflict.kind}-${conflict.starts_at}-${conflict.occurrence_id ?? ''}`}>
+                <span className="text-muted-foreground tabular-nums">
+                  {timeLabel(conflict.starts_at, zone)}–{timeLabel(conflict.ends_at, zone)}
+                </span>{' '}
+                {conflictLabel(conflict)}
+              </li>
+            ))}
+          </ul>
+        </Callout>
       )}
-    </span>
+    </div>
   )
 }

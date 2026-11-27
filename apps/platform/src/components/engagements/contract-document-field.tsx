@@ -57,7 +57,8 @@ export function ContractDocumentField({
       option(d, clientDocs.length ? translate('contractDocumentOther') : translate('documents')),
     ),
   ]
-  const empty = recent.isSuccess && options.length === 1
+  const pending = recent.isPending || (Boolean(clientId) && ofClient.isPending)
+  const empty = recent.isSuccess && (!clientId || ofClient.isSuccess) && options.length === 1
 
   return (
     <div className="grid min-w-0 gap-1.5">
@@ -66,7 +67,7 @@ export function ContractDocumentField({
         value={value}
         options={options}
         onChange={onChange}
-        placeholder={recent.isPending ? translate('loading') : translate('contractDocumentNone')}
+        placeholder={pending ? translate('loading') : translate('contractDocumentNone')}
         invalid={invalid}
         disabled={empty}
         searchable

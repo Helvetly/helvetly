@@ -3,9 +3,22 @@ import { ActionMenuContent } from '@helvetly/ui/components/action-menu'
 import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@helvetly/ui/components/dialog'
 import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
+import { EmptyState } from '@helvetly/ui/components/empty-state'
+import { describedBy, FormField } from '@helvetly/ui/components/form-field'
+import { Input } from '@helvetly/ui/components/input'
+import { Panel } from '@helvetly/ui/components/panel'
 import { PhoneInput } from '@helvetly/ui/components/phone-input'
 import { Segmented } from '@helvetly/ui/components/segmented'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components/tooltip'
 import {
   displayPhone,
   PHONE_ERROR,
@@ -14,6 +27,7 @@ import {
   toE164,
   type CountryCode,
 } from '@helvetly/ui/lib/phone'
+import { cn } from '@helvetly/ui/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   Ellipsis,
@@ -25,8 +39,10 @@ import {
   UserCheck,
   UserMinus,
   UserPlus,
+  UserRoundCheck,
+  UsersRound,
 } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { toastError } from '@/components/billing/upgrade-prompt'
@@ -54,7 +70,6 @@ import {
   withPrimary,
   type PersonAction,
 } from './contacts-model'
-import { inputClass } from './fields'
 
 type Draft = {
   name: string
@@ -97,7 +112,10 @@ function check(draft: Draft, roles: PersonRole[]): Errors {
   return errors
 }
 
-function ContactEditor({
+/** Where a field's error sits: in the gap below it, so an error never moves the fields around it. */
+const fieldClass = 'relative [&>p]:absolute [&>p]:top-full [&>p]:pt-1'
+
+function ContactDialog({
   contact,
   roles,
   clientCountry,
@@ -115,84 +133,100 @@ function ContactEditor({
 }) {
   const [draft, setDraft] = useState(() => toDraft(contact, clientCountry))
   const [errors, setErrors] = useState<Errors>({})
-  const nameInput = useRef<HTMLInputElement>(null)
-  // The editor opens on the name.
-  useEffect(() => nameInput.current?.focus(), [])
-  const required = (key: keyof Draft) =>
-    key === 'name' || (key === 'email' && roles.includes('contact'))
-  const field = (key: Exclude<keyof Draft, 'phone' | 'country'>, label: string, type = 'text') => (
-    <label className="grid gap-1 text-[12.5px] font-medium">
-      <span>
-        {label}
-        {required(key) && (
-          <span aria-hidden className="ml-0.5 text-destructive">
-            *
-          </span>
-        )}
-      </span>
-      <input
+  const isContact = roles.includes('contact')
+  const required = (key: keyof Draft) => key === 'name' || (key === 'email' && isContact)
+  const field = (
+    key: Exclude<keyof Draft, 'phone' | 'country'>,
+    label: string,
+    placeholder: string,
+    type = 'text',
+  ) => (
+    <FormField
+      id={`contact-${key}`}
+      label={label}
+      required={required(key)}
+      error={errors[key]}
+      className={fieldClass}
+    >
+      <Input
+        {...describedBy(`contact-${key}`, errors[key])}
         type={type}
         value={draft[key]}
         required={required(key)}
-        aria-invalid={errors[key] ? true : undefined}
-        ref={key === 'name' ? nameInput : undefined}
+        placeholder={placeholder}
+        autoComplete={key === 'email' ? 'email' : key === 'name' ? 'name' : 'off'}
         onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.value }))}
-        className={inputClass}
       />
-      {errors[key] && <span className="font-normal text-destructive">{errors[key]}</span>}
-    </label>
+    </FormField>
   )
+  const title = contact
+    ? isContact
+      ? translate('editContact')
+      : translate('editParticipant')
+    : isContact
+      ? translate('addContact2')
+      : translate('addParticipantSubmit')
   return (
-    <form
-      noValidate
-      className="grid gap-3 rounded-xl bg-muted/50 p-3"
-      onSubmit={(event) => {
-        event.preventDefault()
-        const found = check(draft, roles)
-        setErrors(found)
-        if (!Object.keys(found).length) onSave(draft, setErrors)
-      }}
-    >
-      <div className="grid gap-3 sm:grid-cols-2">
-        {field('name', translate('name'))}
-        {field('role', translate('role'))}
-        {field('email', translate('email'), 'email')}
-        <div className="grid gap-1 text-[12.5px] font-medium">
-          <label htmlFor="contact-phone">{translate('phone')}</label>
-          <PhoneInput
-            id="contact-phone"
-            value={draft.phone}
-            country={draft.country}
-            invalid={Boolean(errors.phone)}
-            onChange={(phone) => setDraft((current) => ({ ...current, phone }))}
-            onCountryChange={(code) =>
-              setDraft((current) => ({ ...current, country: phoneCountryOr(code) }))
-            }
-          />
-          {errors.phone && <span className="font-normal text-destructive">{errors.phone}</span>}
-        </div>
-        {roles.includes('participant') && (
-          <>
-            {field('street', translate('participantStreet'))}
-            {field('street_number', translate('participantStreetNumber'))}
-            {field('zip', translate('participantZip'))}
-            {field('city', translate('participantCity'))}
-          </>
-        )}
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          {translate('cancel')}
-        </Button>
-        <Button type="submit" size="sm" disabled={pending}>
-          {contact
-            ? translate('save2')
-            : roles.includes('contact')
-              ? translate('addContact2')
-              : translate('addParticipantSubmit')}
-        </Button>
-      </div>
-    </form>
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {isContact ? translate('contactDialogHelp') : translate('participantDialogHelp')}
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          noValidate
+          className="grid gap-5"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const found = check(draft, roles)
+            setErrors(found)
+            if (!Object.keys(found).length) onSave(draft, setErrors)
+          }}
+        >
+          <div className="grid gap-x-3 gap-y-6 sm:grid-cols-2">
+            {field('name', translate('name'), 'Anna Muster')}
+            {field('role', translate('role'), translate('contactRolePlaceholder'))}
+            {field('email', translate('email'), 'anna@company.ch', 'email')}
+            <FormField
+              id="contact-phone"
+              label={translate('phone')}
+              error={errors.phone}
+              className={fieldClass}
+            >
+              <PhoneInput
+                id="contact-phone"
+                value={draft.phone}
+                country={draft.country}
+                invalid={Boolean(errors.phone)}
+                aria-describedby={errors.phone ? 'contact-phone-error' : undefined}
+                onChange={(phone) => setDraft((current) => ({ ...current, phone }))}
+                onCountryChange={(code) =>
+                  setDraft((current) => ({ ...current, country: phoneCountryOr(code) }))
+                }
+              />
+            </FormField>
+            {roles.includes('participant') && (
+              <>
+                {field('street', translate('participantStreet'), 'Bahnhofstrasse')}
+                {field('street_number', translate('participantStreetNumber'), '12')}
+                {field('zip', translate('participantZip'), '8001')}
+                {field('city', translate('participantCity'), 'Zürich')}
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              {translate('cancel')}
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {contact ? translate('save2') : title}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -263,7 +297,7 @@ const actionGroup = (action: PersonAction) =>
 
 /**
  * The people of a client in two groups: contacts (billing and correspondence, one of them primary) and, for a
- * company, participants (who take the service). A person can be in both; add, edit, change roles and delete inline.
+ * company, participants (who take the service). A person can be in both; add and edit in a dialog, roles from the menu.
  */
 export function ClientContacts({ client }: { client: Client }) {
   const queryClient = useQueryClient()
@@ -330,124 +364,136 @@ export function ClientContacts({ client }: { client: Client }) {
     )
   }
 
-  const row = (contact: Contact) =>
-    editing?.id === contact.id ? (
-      <li key={contact.id}>
-        <ContactEditor
-          contact={contact}
-          roles={editing.roles}
-          clientCountry={client.country}
-          pending={save.isPending}
-          onSave={submit(contact, editing.roles)}
-          onCancel={() => setEditing(null)}
-        />
-      </li>
-    ) : (
-      <li key={contact.id} className="flex items-center gap-3 rounded-lg px-1 py-1.5">
-        <Initials name={contact.name} />
-        <span className="grid min-w-0 flex-1 leading-tight">
-          <span className="flex items-center gap-2 truncate text-[13.5px]">
-            {contact.name}
-            {contact.is_primary && (
-              <Badge tone="green" size="sm">
-                {translate('primary')}
-              </Badge>
+  const link =
+    'min-w-0 truncate underline decoration-foreground/25 underline-offset-2 hover:decoration-foreground'
+  const row = (contact: Contact) => (
+    <li key={contact.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+      <Initials name={contact.name} className="size-9 text-[11px]" />
+      <div className="grid min-w-0 flex-1 gap-0.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-body-sm font-medium">{contact.name}</span>
+          {contact.is_primary && (
+            <Badge tone="green" size="sm">
+              {translate('primary')}
+            </Badge>
+          )}
+          {rolesOf(contact).includes('participant') && contact.portal_enabled && (
+            <Badge tone="blue" size="sm">
+              <UserCheck />
+              {translate('portalAccess')}
+            </Badge>
+          )}
+        </div>
+        {contact.role && (
+          <span className="truncate text-xs text-muted-foreground">{contact.role}</span>
+        )}
+        {(contact.email || contact.phone) && (
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+            {contact.email && (
+              <a href={`mailto:${contact.email}`} className={link}>
+                {contact.email}
+              </a>
             )}
-            {rolesOf(contact).includes('participant') && contact.portal_enabled && (
-              <Badge tone="blue" size="sm">
-                <UserCheck />
-                {translate('portalAccess')}
-              </Badge>
+            {contact.phone && (
+              <a href={`tel:${contact.phone}`} className={cn(link, 'tabular-nums')}>
+                {displayPhone(contact.phone)}
+              </a>
             )}
-          </span>
-          <span className="truncate text-xs text-muted-foreground">
-            {[contact.role, contact.email, contact.phone ? displayPhone(contact.phone) : null]
-              .filter(Boolean)
-              .join(' · ') || translate('noDetails')}
-          </span>
-        </span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={translate('actionsFor', { name: contact.name })}
-              className="text-muted-foreground"
-            >
-              <Ellipsis />
-            </Button>
-          </DropdownMenuTrigger>
-          <ActionMenuContent
-            kind="dropdown"
-            menu={{
-              header: contact.name,
-              actions: contactActions(contact, contacts.length, client.is_company).map(
-                (action) => ({
-                  id: action,
-                  group: actionGroup(action),
-                  icon: actionIcon[action],
-                  label: actionLabel(action),
-                  onSelect: () => act(contact, action),
-                }),
-              ),
-            }}
-          />
-        </DropdownMenu>
-      </li>
-    )
-
-  const group = (role: PersonRole, list: Contact[], empty: string, add: string) => (
-    <section
-      className="grid gap-2"
-      aria-label={role === 'contact' ? translate('contacts') : translate('participants')}
-    >
-      {client.is_company && (
-        <h3 className="text-caption font-medium text-muted-foreground">
-          {role === 'contact' ? translate('contacts') : translate('participants')}
-        </h3>
-      )}
-      {list.length === 0 && !(editing?.id === 'new' && editing.roles.includes(role)) && (
-        <p className="text-[13px] text-muted-foreground">{empty}</p>
-      )}
-      <ul className="grid gap-1">{list.map(row)}</ul>
-      {editing?.id === 'new' && editing.roles[0] === role ? (
-        <ContactEditor
-          roles={editing.roles}
-          clientCountry={client.country}
-          pending={save.isPending}
-          onSave={submit(undefined, editing.roles)}
-          onCancel={() => setEditing(null)}
+          </div>
+        )}
+      </div>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={translate('actionsFor', { name: contact.name })}
+                className="text-muted-foreground"
+              >
+                <Ellipsis />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{translate('actions')}</TooltipContent>
+        </Tooltip>
+        <ActionMenuContent
+          kind="dropdown"
+          menu={{
+            header: contact.name,
+            actions: contactActions(contact, contacts.length, client.is_company).map((action) => ({
+              id: action,
+              group: actionGroup(action),
+              icon: actionIcon[action],
+              label: actionLabel(action),
+              onSelect: () => act(contact, action),
+            })),
+          }}
         />
-      ) : (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit text-muted-foreground"
-          onClick={() => setEditing({ id: 'new', roles: [role] })}
-        >
-          <Plus />
-          {add}
-        </Button>
-      )}
-    </section>
+      </DropdownMenu>
+    </li>
   )
 
+  const group = (role: PersonRole, list: Contact[]) => {
+    const isContact = role === 'contact'
+    const title = isContact ? translate('contacts') : translate('participants')
+    const add = isContact ? translate('addContact2') : translate('addParticipantSubmit')
+    const open = () => setEditing({ id: 'new', roles: [role] })
+    return (
+      <section aria-label={title}>
+        <Panel
+          title={title}
+          action={
+            list.length > 0 && (
+              <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={open}>
+                <Plus />
+                {add}
+              </Button>
+            )
+          }
+        >
+          {list.length === 0 ? (
+            <EmptyState
+              icon={isContact ? UsersRound : UserRoundCheck}
+              title={isContact ? translate('noContactPersonsYet') : translate('noParticipantsYet')}
+              description={
+                isContact ? translate('contactsEmptyHelp') : translate('participantsEmptyHelp')
+              }
+              action={
+                <Button variant="outline" size="sm" onClick={open}>
+                  <Plus />
+                  {add}
+                </Button>
+              }
+              className="py-5"
+            />
+          ) : (
+            <ul className="grid divide-y divide-border/60">{list.map(row)}</ul>
+          )}
+        </Panel>
+      </section>
+    )
+  }
+
+  const edited =
+    editing && editing.id !== 'new' ? people.find((person) => person.id === editing.id) : undefined
+
   return (
-    <div className="grid gap-5">
-      {group(
-        'contact',
-        contacts,
-        translate('noContactPersonsYet') +
-          (client.is_company ? translate('addThePeopleYouDealWith') : '.'),
-        translate('addContact'),
+    <div className="grid gap-3">
+      {group('contact', contacts)}
+      {client.is_company && group('participant', participants)}
+      {editing && (editing.id === 'new' || edited) && (
+        <ContactDialog
+          key={editing.id}
+          contact={edited}
+          roles={editing.roles}
+          clientCountry={client.country}
+          pending={save.isPending}
+          onSave={submit(edited, editing.roles)}
+          onCancel={() => setEditing(null)}
+        />
       )}
-      {client.is_company &&
-        group(
-          'participant',
-          participants,
-          translate('noParticipantsYet'),
-          translate('addParticipant'),
-        )}
       {deleting && (
         <ConfirmDialog
           key={deleting.id}

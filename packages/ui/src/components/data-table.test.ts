@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { readColumnSizes } from '@helvetly/ui/lib/table-storage'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { createElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -21,16 +22,21 @@ const total = (sizes: Record<string, number>) =>
   52 + 48 + Object.entries(sizes).reduce((sum, [, width]) => sum + width, 0)
 
 describe('fitColumns', () => {
-  it('shares the room beyond the defaults by default width, the flexible column twice', () => {
-    // 52 + 240 + 120 + 48 = 460 used; 600 more: name weighs 480, date 120.
-    const sizes = fitColumns(COLUMNS, {}, 1060)
-    expect(sizes).toEqual({ name: 720, date: 240 })
-    expect(total(sizes)).toBe(1060)
+  it('gives extra room only to the flexible column', () => {
+    const sizes = fitColumns(COLUMNS, {}, 1061)
+    expect(sizes).toEqual({ name: 841, date: 120 })
+    expect(total(sizes)).toBe(1061)
   })
 
-  it('gives what rounding leaves to the flexible column', () => {
-    const sizes = fitColumns(COLUMNS, {}, 1061)
-    expect(total(sizes)).toBe(1061)
+  it('leaves room when the flexible column is hidden or reaches its maximum', () => {
+    const withoutName = COLUMNS.filter(({ id }) => id !== 'name')
+    expect(fitColumns(withoutName, {}, 1060)).toEqual({ date: 120 })
+    const cappedName = COLUMNS.map((col) => (col.flex ? { ...col, maxSize: 400 } : col))
+    expect(fitColumns(cappedName, {}, 1060)).toEqual({ name: 400, date: 120 })
+  })
+
+  it('uses the default for a new column beside a stored flexible column', () => {
+    expect(fitColumns(COLUMNS, { name: 300 }, 2000)).toEqual({ name: 300, date: 120 })
   })
 
   it('keeps stored widths and fills with the rest', () => {
@@ -43,9 +49,18 @@ describe('fitColumns', () => {
   })
 
   it('leaves stored widths alone when every column has one', () => {
-    const stored = { name: 300, date: 100 }
+    const stored = { name: 300, date: 64 }
     expect(fitColumns(COLUMNS, stored, 2000)).toBe(stored)
   })
+})
+
+it('stores the last data column at its minimum after dragging past it', () => {
+  const id = 'minimum-width-test'
+  render(createElement(DataTable, { id, columns: COLUMNS, data: [], getRowId: () => '' }))
+  fireEvent.mouseDown(screen.getByRole('button', { name: 'Resize date' }), { clientX: 250 })
+  fireEvent.mouseMove(document, { clientX: 0 })
+  fireEvent.mouseUp(document, { clientX: 0 })
+  expect(readColumnSizes(id, ['date'])).toEqual({ date: 64 })
 })
 
 it('keeps unchanged cells when the table updates and redraws edited rows', () => {
