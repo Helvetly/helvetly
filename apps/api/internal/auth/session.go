@@ -73,6 +73,18 @@ func (s *Service) SignedInMCP(next func(http.ResponseWriter, *http.Request, stor
 	return s.signedIn(next, false)
 }
 
+// CookieSession resolves the live membership for an ongoing session-only operation.
+func (s *Service) CookieSession(ctx context.Context, q store.Q, r *http.Request) (store.Session, error) {
+	c, err := r.Cookie(sessionCookie)
+	if err != nil {
+		return store.Session{}, errUnauthenticated
+	}
+	sess, err := q.SessionByToken(ctx, hashSecret(c.Value), s.now())
+	if errors.Is(err, store.ErrNotFound) {
+		return store.Session{}, errUnauthenticated
+	}
+	return sess, err
+}
 func (s *Service) signedIn(next func(http.ResponseWriter, *http.Request, store.Session), countToken bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if h := r.Header.Get("Authorization"); h != "" {
@@ -84,16 +96,7 @@ func (s *Service) signedIn(next func(http.ResponseWriter, *http.Request, store.S
 			next(w, r, sess)
 			return
 		}
-		c, err := r.Cookie(sessionCookie)
-		if err != nil {
-			s.WriteError(w, r, errUnauthenticated)
-			return
-		}
-		sess, err := s.db.SessionByToken(r.Context(), hashSecret(c.Value), s.now())
-		if errors.Is(err, store.ErrNotFound) {
-			s.WriteError(w, r, errUnauthenticated)
-			return
-		}
+		sess, err := s.CookieSession(r.Context(), s.db.Q, r)
 		if err != nil {
 			s.WriteError(w, r, err)
 			return

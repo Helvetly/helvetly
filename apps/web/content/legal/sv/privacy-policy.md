@@ -88,6 +88,7 @@ sortering är tillgängliga i de abonnemang som omfattar AI-import.
 Vad som skickas:
 
 - Heidi skickar meddelandet du skriver, upp till 20 tidigare meddelanden i konversationen (som kan innehålla belopp Heidi visat dig) och filer du bifogar till meddelandet. En kort kontroll av om meddelandet handlar om Helvetly eller ditt företag skickas också till OpenAI.
+- Beroende på din fråga skickar Heidi även begränsade resultat från arbetsytans uppgifter som du har tillgång till (inklusive företags- och kunduppgifter), innehållet i ett dokument som du ber henne läsa, identifierare för den aktuella sidan och dess tillgängliga kontroller samt den svarsstil du valt.
 - AI-import skickar innehållet i valda filer, del för del; kvittoläsning skickar kvittot du väljer.
 - Förslaget på arbetsytenamn skickar endast företagsnamnet du anger.
 - **Automatisk sortering:** efter att du laddat upp en fil i Dokument skickar Helvetly i bakgrunden filens namn och typ, början av texten (upp till cirka 6 000 byte) eller, om den saknar läsbar text, själva PDF-filen eller bilden (upp till 4 MiB; en större fil endast med namn), tillsammans med namnen på upp till 200 mappar i arbetsytan och upp till 50 använda taggar. Modellen föreslår taggar och en mapp; du kan ångra resultatet.
@@ -106,6 +107,8 @@ Heidi-konversationer sparas i Helvetly, ännu utan fast raderingsfrist, tills du
 (i en raderad arbetsyta förblir de lagrade med övriga poster); importerade filer, poster och
 sorterade dokument ligger kvar i arbetsytan som andra uppgifter. Heidi är märkt som AI-assistent;
 svaren, importerade poster och sorteringsförslag kan vara felaktiga och är förslag som du ska granska.
+
+Helvetly räknar slutförda sökningar och åtgärder per ämne för att föreslå frågor i kommande chattar i den här arbetsytan. I kontoinställningarna kan du se och rensa både räknarna och din svarsstil eller stänga av minnet. Räknarna stannar i Helvetly.
 
 ## 5. Mottagare och överföringar utomlands
 

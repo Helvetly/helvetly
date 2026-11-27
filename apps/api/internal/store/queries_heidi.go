@@ -61,20 +61,20 @@ type HeidiConversation struct {
 // HeidiConversations lists one person's conversations in a workspace, newest first, titled by
 // their first question, with the start of the latest answer and the number of messages;
 // conversations without a message are left out.
-func (q Q) HeidiConversations(ctx context.Context, workspace, user string, limit int) ([]HeidiConversation, error) {
+func (q Q) HeidiConversations(ctx context.Context, workspace, user, access string, legacy bool, limit int) ([]HeidiConversation, error) {
 	rows, err := q.db.Query(ctx, `SELECT c.id, coalesce(left((SELECT m.payload->>'text' FROM heidi_messages m
 			WHERE m.workspace_id=c.workspace_id AND m.user_id=c.user_id AND m.conversation_id=c.id AND m.payload->>'role'='user'
 			ORDER BY m.position LIMIT 1), 120), ''),
 		  coalesce(left((SELECT m.payload->>'text' FROM heidi_messages m
 			WHERE m.workspace_id=c.workspace_id AND m.user_id=c.user_id AND m.conversation_id=c.id AND m.payload->>'role'='assistant'
-			  AND coalesce(m.payload->>'text','')<>''
+			  AND coalesce(m.payload->>'text','')<>'' AND (m.payload->>'access'=$4 OR ($5 AND NOT m.payload?'access'))
 			ORDER BY m.position DESC LIMIT 1), 160), ''),
 		  n.messages, c.updated_at
 		FROM heidi_conversations c
 		CROSS JOIN LATERAL (SELECT count(*)::int AS messages FROM heidi_messages m
 			WHERE m.workspace_id=c.workspace_id AND m.user_id=c.user_id AND m.conversation_id=c.id) n
 		WHERE c.workspace_id=$1 AND c.user_id=$2 AND n.messages > 0
-		ORDER BY c.updated_at DESC, c.id LIMIT $3`, workspace, user, limit)
+		ORDER BY c.updated_at DESC, c.id LIMIT $3`, workspace, user, limit, access, legacy)
 	if err != nil {
 		return nil, err
 	}
@@ -195,4 +195,12 @@ func (q Q) SetAIConsent(ctx context.Context, workspaceID, userID string, granted
 	_, err := q.db.Exec(ctx, `INSERT INTO workspace_ai_consents (workspace_id, granted, user_id, at, version) VALUES ($1, $2, $3, $4, $5)`,
 		workspaceID, granted, userID, now, ainotice.Version)
 	return err
+}
+
+// HeidiNamedDocument resolves a filename explicitly supplied in the current chat. Duplicate names need an explicit ID.
+func (q Q) HeidiNamedDocument(ctx context.Context, workspace, name string) (string, error) {
+	var id string
+	err := q.db.QueryRow(ctx, `SELECT CASE WHEN count(*)=1 THEN min(id) ELSE '' END FROM
+	 (SELECT id FROM documents WHERE workspace_id=$1 AND lower(name)=lower($2) AND NOT hr_private AND deleted_at IS NULL LIMIT 2) d`, workspace, name).Scan(&id)
+	return id, err
 }
