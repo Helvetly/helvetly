@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse } from 'msw'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 
+import { billingFixture, entitlementsFixture } from '@/components/billing/billing-fixture'
 import { Dashboard } from '@/components/dashboard/dashboard'
 
 import { emptyExpenseSummary, unavailable } from '../screen-fixtures'
@@ -128,6 +129,17 @@ export const NoSpending: Story = {
 const auditUsage = http.get('/api/v1/heidi/usage', () =>
   HttpResponse.json({ provider_available: true, consent: { granted: true } }),
 )
+const auditBilling = (used: number) =>
+  http.get('/api/v1/billing', () =>
+    HttpResponse.json({
+      data: billingFixture({
+        plan: 'business',
+        entitlements: entitlementsFixture('business', {
+          used: { workspace_audits_per_month: used },
+        }),
+      }),
+    }),
+  )
 let auditQueries: string[] = []
 
 /** The scope modal first; the drawer opens on Start with a severity summary and one-line rows. */
@@ -139,6 +151,7 @@ export const WorkspaceAudit: Story = {
   parameters: pageParameters('/', {}, [
     ...attentionHandlers(),
     auditUsage,
+    auditBilling(3),
     http.post('/api/v1/reports/workspace-audit', ({ request }) => {
       auditQueries.push(new URL(request.url).search)
       return HttpResponse.json({
@@ -176,6 +189,7 @@ export const WorkspaceAudit: Story = {
     await userEvent.click(await body().findByRole('button', { name: 'AI Audit' }))
     const modal = within(await body().findByRole('dialog', { name: 'AI Audit' }))
     await expect(modal.getByText(/AI automation allowance/)).toBeVisible()
+    await expect(await modal.findByText('7 of 10 audits left this month')).toBeVisible()
     await userEvent.click(modal.getByRole('radio', { name: 'Choose areas' }))
     const start = modal.getByRole('button', { name: 'Start audit' })
     await expect(start).toBeDisabled()
@@ -204,11 +218,35 @@ export const WorkspaceAudit: Story = {
   },
 }
 
+export const WorkspaceAuditLocked: Story = {
+  parameters: pageParameters('/', {}, [...attentionHandlers(), auditUsage]),
+  play: async () => {
+    const link = await body().findByRole('link', { name: /AI Audit.*Business/ })
+    await expect(link).toHaveAttribute('href', '/settings/billing/plans/')
+    await expect(within(link).getByText('Business')).toBeVisible()
+    await expect(body().queryByRole('dialog', { name: 'AI Audit' })).toBeNull()
+  },
+}
+
+export const WorkspaceAuditLimitReached: Story = {
+  parameters: pageParameters('/', {}, [...attentionHandlers(), auditUsage, auditBilling(10)]),
+  play: async () => {
+    await userEvent.click(await body().findByRole('button', { name: 'AI Audit' }))
+    const modal = within(await body().findByRole('dialog', { name: 'AI Audit' }))
+    await expect(await modal.findByText(/You’ve used all AI audits for this month/)).toBeVisible()
+    await expect(modal.getByRole('button', { name: 'Start audit' })).toBeDisabled()
+  },
+}
+
+export const WorkspaceAuditLockedPhone = phone(WorkspaceAuditLocked)
+export const WorkspaceAuditLimitReachedDark = dark(WorkspaceAuditLimitReached)
+
 /** While originals are read the button shows progress and reopens the running audit, never a new one. */
 export const WorkspaceAuditRunning: Story = {
   parameters: pageParameters('/', {}, [
     ...attentionHandlers(),
     auditUsage,
+    auditBilling(0),
     http.post('/api/v1/reports/workspace-audit', () =>
       HttpResponse.json({
         counts: { documents: 2 },
@@ -226,7 +264,9 @@ export const WorkspaceAuditRunning: Story = {
   play: async () => {
     await userEvent.click(await body().findByRole('button', { name: 'AI Audit' }))
     const modal = within(await body().findByRole('dialog', { name: 'AI Audit' }))
-    await userEvent.click(modal.getByRole('button', { name: 'Start audit' }))
+    const start = modal.getByRole('button', { name: 'Start audit' })
+    await waitFor(() => expect(start).toBeEnabled())
+    await userEvent.click(start)
     const drawer = within(await body().findByRole('dialog', { name: 'AI Audit' }))
     await expect(await drawer.findByText('Checking original 1 of 2')).toBeVisible()
     await userEvent.keyboard('{Escape}')

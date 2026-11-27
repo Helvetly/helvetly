@@ -52,7 +52,7 @@ func TestSeededOffer(t *testing.T) {
 	if o.Trial.AccessPlan != Pro || o.Trial.Days != 14 || o.Trial.Seats != 2 {
 		t.Fatalf("the current offer's trial: %+v", o.Trial)
 	}
-	if len(o.Records) != 74 || len(defs) != 74 || len(o.PublicPricing.ComparisonRows) != 16 || len(o.PublicPricing.UsageDetailsKeys) != 12 {
+	if len(o.Records) != 74 || len(defs) != 76 || len(o.PublicPricing.ComparisonRows) != 16 || len(o.PublicPricing.UsageDetailsKeys) != 12 {
 		t.Fatalf("%d records, %d definitions, %d rows, %d allowances", len(o.Records), len(defs),
 			len(o.PublicPricing.ComparisonRows), len(o.PublicPricing.UsageDetailsKeys))
 	}

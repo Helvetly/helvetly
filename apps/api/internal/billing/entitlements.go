@@ -173,6 +173,12 @@ func (s *Service) rightsOn(ctx context.Context, q store.Q, workspaceID, offer, p
 	if err != nil {
 		return Rights{}, fmt.Errorf("resolving limits: %w", err)
 	}
+	for i, row := range rows {
+		if row.Plan == nil && slices.Contains(additivePlanKeys, row.Key) {
+			v := additivePlanValue(plan, row.Key)
+			rows[i].Plan = &v
+		}
+	}
 	r, err := resolve(rows, seats)
 	if err != nil {
 		s.log.ErrorContext(ctx, "resolving limits failed", "workspace", workspaceID, "offer", offer, "error", err)

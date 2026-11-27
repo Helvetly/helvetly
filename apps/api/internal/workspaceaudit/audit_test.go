@@ -10,11 +10,14 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"helvetly.com/api/internal/aimodel"
 	"helvetly.com/api/internal/auth"
+	"helvetly.com/api/internal/billing"
+	"helvetly.com/api/internal/billing/billingtest"
 	"helvetly.com/api/internal/store"
 	"helvetly.com/api/internal/store/storetest"
 )
@@ -174,6 +177,92 @@ func (s *sourceFiles) Open(_ context.Context, _ string) (io.ReadSeekCloser, erro
 type seekCloser struct{ *strings.Reader }
 
 func (seekCloser) Close() error { return nil }
+
+func TestAuditPlanAndRunAllowance(t *testing.T) {
+	db, _ := storetest.New(t)
+	billingtest.Wire(t, db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	ws := store.Workspace{ID: "ws", Name: "Example", Timezone: "Europe/Zurich"}
+	user := store.User{ID: "user", Email: "owner@example.test", Name: "Owner"}
+	check := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	check(db.CreateWorkspace(ctx, ws, ws.Timezone, now))
+	check(db.CreateUser(ctx, user, now))
+	check(db.AddMember(ctx, ws.ID, user.ID, "owner", now))
+	check(db.SetAIConsent(ctx, ws.ID, user.ID, true, now))
+	a := &sessionAuth{current: store.Session{User: user, Workspace: ws, Role: "owner"}}
+	svc := New(db, a, nil, &aimodel.Fake{}, aimodel.Budget{})
+	svc.now = func() time.Time { return now }
+	mux := http.NewServeMux()
+	svc.Register(mux)
+	call := func(suffix, key string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("POST", "/api/v1/reports/workspace-audit"+suffix, nil)
+		r.Header.Set("Idempotency-Key", key)
+		mux.ServeHTTP(w, r)
+		return w
+	}
+	assert := func(w *httptest.ResponseRecorder, status int, body string) {
+		t.Helper()
+		if w.Code != status || !strings.Contains(w.Body.String(), body) {
+			t.Fatalf("got %d %s, want %d with %q", w.Code, w.Body, status, body)
+		}
+	}
+	for _, plan := range []string{billing.Free, billing.Basic, billing.Pro} {
+		if plan != billing.Free {
+			billingtest.On(t, db, ws.ID, plan)
+		}
+		for _, suffix := range []string{"", "/documents/removed"} {
+			assert(call(suffix, ""), http.StatusForbidden, `"code":"feature_not_in_plan"`)
+			assert(call(suffix, ""), http.StatusForbidden, `"required_plan":"business"`)
+		}
+	}
+	billingtest.On(t, db, ws.ID, billing.Business)
+	assert(call("?areas=invoices,clients", "first"), http.StatusOK, `"findings"`)
+	assert(call("?areas=clients,invoices", "first"), http.StatusOK, `"findings"`)
+	assert(call("?areas=quotes", "first"), http.StatusConflict, `"code":"idempotency_conflict"`)
+	assert(call("/documents/removed", ""), http.StatusOK, `"status":"removed"`)
+
+	var starts sync.WaitGroup
+	results := make(chan *httptest.ResponseRecorder, 12)
+	for range cap(results) {
+		starts.Go(func() { results <- call("", "") })
+	}
+	starts.Wait()
+	close(results)
+	accepted := 0
+	for result := range results {
+		if result.Code == http.StatusOK {
+			accepted++
+		} else {
+			assert(result, http.StatusPaymentRequired, `"code":"limit_reached"`)
+		}
+	}
+	if accepted != 9 {
+		t.Fatalf("accepted %d concurrent starts after the first, want 9", accepted)
+	}
+	assert(call("?areas=clients,invoices", "first"), http.StatusOK, `"findings"`)
+	assert(call("/documents/removed", ""), http.StatusOK, `"status":"removed"`)
+	month := store.UsagePeriod(now)
+	used, err := db.UsageInPeriods(ctx, ws.ID, string(billing.WorkspaceAudits), month, month)
+	check(err)
+	if used.Total() != 10 {
+		t.Fatalf("recorded %d audit starts, want 10", used.Total())
+	}
+	now = store.UsagePeriodStart(now).AddDate(0, 1, 0)
+	assert(call("", ""), http.StatusOK, `"findings"`)
+	month = store.UsagePeriod(now)
+	used, err = db.UsageInPeriods(ctx, ws.ID, string(billing.WorkspaceAudits), month, month)
+	check(err)
+	if used.Total() != 1 {
+		t.Fatalf("recorded %d audit starts in new month, want 1", used.Total())
+	}
+}
 func TestAuditRoutesScopeConsentCacheAndOriginals(t *testing.T) {
 	db, raw := storetest.New(t)
 	ctx := context.Background()

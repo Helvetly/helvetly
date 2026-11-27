@@ -41,6 +41,7 @@ var featureNames = map[Feature]string{
 	store.FeatureClientPortal:         "the client portal",
 	store.FeatureEInvoiceXML:          "e-invoice XML",
 	store.FeatureEmployees:            "the Employees module",
+	store.FeatureWorkspaceAudit:       "AI Audit",
 	store.FeatureCustomPortalDomain:   "the client portal on your own domain",
 	Scheduling:                        "scheduling",
 	CalendarSync:                      "calendar sync",
@@ -83,6 +84,16 @@ func currentCatalogue(ctx context.Context, q store.Q) (catalogue, error) {
 			c.order = append(c.order, p.Key)
 		}
 		c.values[p.Plan][p.Key] = p
+	}
+	for _, key := range additivePlanKeys {
+		if !slices.Contains(c.order, key) {
+			c.order = append(c.order, key)
+		}
+		for plan, values := range c.values {
+			if _, ok := values[key]; !ok {
+				values[key] = additivePlanValue(plan, key)
+			}
+		}
 	}
 	return c, nil
 }
