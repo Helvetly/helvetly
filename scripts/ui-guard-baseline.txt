@@ -11,7 +11,6 @@
 6 hex apps/platform/src/components/documents/trash-view.tsx
 2 hex apps/platform/src/components/documents/upload-tray.tsx
 1 hex apps/platform/src/components/expenses/expenses-page.tsx
-2 hex apps/platform/src/components/initials.tsx
 1 hex apps/platform/src/components/invoices/client-invoices.tsx
 1 hex apps/platform/src/components/invoices/invoices-page.tsx
 2 hex apps/platform/src/components/invoices/pdf-view.tsx
@@ -64,6 +63,7 @@
 1 radius apps/platform/src/components/signatures/parts.tsx
 1 radius apps/platform/src/components/signatures/pdf-parts.tsx
 1 radius apps/platform/src/components/signatures/placement.tsx
+2 radius packages/ui/src/components/avatar.tsx
 4 radius packages/ui/src/components/button.tsx
 2 radius packages/ui/src/components/chart.tsx
 1 radius packages/ui/src/components/checkbox.tsx
@@ -75,11 +75,9 @@
 1 shadow apps/platform/src/components/documents/documents-page.tsx
 1 shadow apps/platform/src/components/documents/preview.tsx
 1 shadow apps/platform/src/components/expenses/expenses-page.tsx
-1 shadow apps/platform/src/components/initials.tsx
 1 shadow apps/platform/src/components/invoices/invoice-dialogs.tsx
 1 shadow apps/platform/src/components/onboarding/invoice-preview.tsx
 1 shadow apps/platform/src/components/shell/mobile-tab-bar.tsx
-1 shadow apps/portal/src/components/portal-bits.tsx
 1 shadow packages/ui/src/components/button.tsx
 1 shadow packages/ui/src/components/checkbox.tsx
 1 shadow packages/ui/src/components/confirm-dialog.tsx
