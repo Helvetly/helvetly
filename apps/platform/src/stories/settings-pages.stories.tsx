@@ -57,6 +57,18 @@ const accountHandlers = [
           last_active_at: new Date(Date.now() - 3 * 3_600_000).toISOString(),
           workspace_name: 'Muster AG',
         },
+        {
+          id: 'ses_3',
+          current: false,
+          browser: 'Chrome 157',
+          os: 'Windows 11',
+          device: 'desktop',
+          ip: '2001:db8:5780:2180:8485:95c5:68f7:7430',
+          location: null,
+          created_at: '2026-09-14T08:00:00Z',
+          last_active_at: '2026-10-02T08:00:00Z',
+          workspace_name: 'DeinDeutschCoach',
+        },
       ],
     }),
   ),
@@ -220,8 +232,14 @@ export const Account: Story = {
     ])
     await expect(canvas.queryByRole('region', { name: 'Your calendars' })).toBeNull()
     await expect(canvas.queryByRole('region', { name: 'Your signature for contracts' })).toBeNull()
-    // Signing out everywhere else is a red outline button under the list, and asks first.
     const sessions = within(canvas.getByRole('region', { name: 'Active sessions' }))
+    // Each session's facts are separate items: the live one in green, an unknown place said plainly, the IP cut short.
+    await expect(await sessions.findByText('Active now')).toHaveClass('text-success')
+    await expect(sessions.getByText('Location unknown')).toBeVisible()
+    await expect(sessions.getByText('Signed in 14 Sept 2026')).toBeVisible()
+    const ip = sessions.getByText('2001:db8:5780:2180:8485:95c5:68f7:7430')
+    await expect(ip.scrollWidth).toBeGreaterThan(ip.clientWidth)
+    // Signing out everywhere else is a red outline button under the list, and asks first.
     const all = sessions.getByRole('button', { name: 'Sign out of all other sessions' })
     await expect(all).toHaveAttribute('data-variant', 'destructive-outline')
     await expect(all.closest('[data-slot="sessions-footer"]')).not.toBeNull()

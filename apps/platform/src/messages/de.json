@@ -6254,5 +6254,8 @@
   "auditDocumentsUploadFiled": "Upload abgelegt",
   "auditDocumentsImportSourcesRemoved": "Importdateien entfernt",
   "auditSentenceDocumentsUploadFiled": "{count, plural, one {# hochgeladene Datei abgelegt} other {# hochgeladene Dateien abgelegt}}, {placed} durch KI platziert",
-  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly hat # Import-Quelldatei aus Dokumente entfernt} other {Helvetly hat # Import-Quelldateien aus Dokumente entfernt}}"
+  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly hat # Import-Quelldatei aus Dokumente entfernt} other {Helvetly hat # Import-Quelldateien aus Dokumente entfernt}}",
+  "sessionLocationUnknown": "Standort unbekannt",
+  "sessionSignedInOn": "Angemeldet am {date}",
+  "sessionIpAddress": "IP-Adresse"
 }

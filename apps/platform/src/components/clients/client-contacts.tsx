@@ -4,8 +4,10 @@ import { Badge } from '@helvetly/ui/components/badge'
 import { Button } from '@helvetly/ui/components/button'
 import { ConfirmDialog } from '@helvetly/ui/components/confirm-dialog'
 import { DropdownMenu, DropdownMenuTrigger } from '@helvetly/ui/components/dropdown-menu'
+import { MetaItem, MetaList } from '@helvetly/ui/components/meta-list'
 import { PhoneInput } from '@helvetly/ui/components/phone-input'
 import { Segmented } from '@helvetly/ui/components/segmented'
+import { TruncatedText } from '@helvetly/ui/components/truncated-text'
 import {
   displayPhone,
   PHONE_ERROR,
@@ -16,9 +18,12 @@ import {
 } from '@helvetly/ui/lib/phone'
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  Briefcase,
   Ellipsis,
   KeyRound,
+  Mail,
   Pencil,
+  Phone,
   Plus,
   Star,
   Trash2,
@@ -345,7 +350,7 @@ export function ClientContacts({ client }: { client: Client }) {
     ) : (
       <li key={contact.id} className="flex items-center gap-3 rounded-lg px-1 py-1.5">
         <Initials name={contact.name} />
-        <span className="grid min-w-0 flex-1 leading-tight">
+        <div className="grid min-w-0 flex-1 gap-0.5 leading-tight">
           <span className="flex items-center gap-2 truncate text-[13.5px]">
             {contact.name}
             {contact.is_primary && (
@@ -360,12 +365,24 @@ export function ClientContacts({ client }: { client: Client }) {
               </Badge>
             )}
           </span>
-          <span className="truncate text-xs text-muted-foreground">
-            {[contact.role, contact.email, contact.phone ? displayPhone(contact.phone) : null]
-              .filter(Boolean)
-              .join(' · ') || translate('noDetails')}
-          </span>
-        </span>
+          {contact.role || contact.email || contact.phone ? (
+            <MetaList className="gap-x-3 gap-y-0.5 text-caption">
+              {contact.role && (
+                <MetaItem icon={<Briefcase />}>
+                  <TruncatedText>{contact.role}</TruncatedText>
+                </MetaItem>
+              )}
+              {contact.email && (
+                <MetaItem icon={<Mail />}>
+                  <TruncatedText>{contact.email}</TruncatedText>
+                </MetaItem>
+              )}
+              {contact.phone && <MetaItem icon={<Phone />}>{displayPhone(contact.phone)}</MetaItem>}
+            </MetaList>
+          ) : (
+            <span className="text-caption text-muted-foreground">{translate('noDetails')}</span>
+          )}
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

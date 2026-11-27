@@ -6254,5 +6254,8 @@
   "auditDocumentsUploadFiled": "Téléversement rangé",
   "auditDocumentsImportSourcesRemoved": "Fichiers d’import retirés",
   "auditSentenceDocumentsUploadFiled": "{count, plural, one {# fichier téléversé rangé} other {# fichiers téléversés rangés}}, {placed} placés par l’IA",
-  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly a retiré # fichier source d’import de Documents} other {Helvetly a retiré # fichiers sources d’import de Documents}}"
+  "auditSentenceDocumentsImportSourcesRemoved": "{count, plural, one {Helvetly a retiré # fichier source d’import de Documents} other {Helvetly a retiré # fichiers sources d’import de Documents}}",
+  "sessionLocationUnknown": "Lieu inconnu",
+  "sessionSignedInOn": "Connecté le {date}",
+  "sessionIpAddress": "Adresse IP"
 }
