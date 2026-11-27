@@ -153,7 +153,7 @@
             "name": "status",
             "in": "query",
             "required": false,
-            "description": "Comma-separated: active, inactive, draft, complete.",
+            "description": "Repeatable or comma-separated: active, inactive, draft, complete, archived. Archived clients appear only when archived is requested.",
             "schema": {
               "type": "string"
             }
@@ -651,7 +651,7 @@
         "operationId": "issue_invoice",
         "tags": ["Invoices"],
         "summary": "Issue a draft invoice",
-        "description": "Gives the draft its gapless number and freezes it. Cannot be undone: an issued invoice can only be voided or corrected. Answers 422 cannot_issue with details.reasons when something is missing. Answers 409 period_closed when the issue date's month is closed in the books, and 409 self_billing_agreement_missing for a self-billed invoice without a self-billing agreement covering the issue date.",
+        "description": "Gives the draft its gapless number and freezes it. Cannot be undone: an issued invoice can only be voided or corrected. Answers 422 cannot_issue with details.reasons when something is missing. The client_archived reason requires restoring the client before issue. Answers 409 period_closed when the issue date's month is closed in the books, and 409 self_billing_agreement_missing for a self-billed invoice without a self-billing agreement covering the issue date.",
         "parameters": [
           {
             "name": "id",
@@ -1701,6 +1701,76 @@
         "x-helvetly-write": true
       }
     },
+    "/api/v1/clients/{id}/archive": {
+      "post": {
+        "operationId": "archive_client",
+        "tags": ["Clients"],
+        "summary": "Archive a client",
+        "description": "Hides the client from the default list and pickers and blocks issuing new invoices to them. Existing records are still readable. Requires client write access. Returns the client and is safe to retry.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The client's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
+    "/api/v1/clients/{id}/unarchive": {
+      "post": {
+        "operationId": "unarchive_client",
+        "tags": ["Clients"],
+        "summary": "Restore an archived client",
+        "description": "Restores the client to the inactive list. Requires client write access. Returns the client and is safe to retry.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The client's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-helvetly-write": true
+      }
+    },
     "/api/v1/clients/export": {
       "get": {
         "operationId": "export_clients",
@@ -1751,7 +1821,7 @@
             "name": "status",
             "in": "query",
             "required": false,
-            "description": "Comma-separated: active, inactive, draft, complete.",
+            "description": "Repeatable or comma-separated: active, inactive, draft, complete, archived. Archived clients appear only when archived is requested.",
             "schema": {
               "type": "string"
             }
@@ -7789,6 +7859,11 @@
           "is_active": {
             "type": "boolean"
           },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the client was archived, or null for an unarchived client. This field takes precedence over is_active and is_draft."
+          },
           "email": {
             "type": ["string", "null"]
           },
@@ -7929,6 +8004,7 @@
           "name",
           "is_company",
           "is_active",
+          "archived_at",
           "tags",
           "dunning_enabled",
           "einvoice_format",

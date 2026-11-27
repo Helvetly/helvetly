@@ -30,6 +30,7 @@ type Client struct {
 	PreferredName      *string           `json:"preferred_name"`
 	IsCompany          bool              `json:"is_company"`
 	IsActive           bool              `json:"is_active"`
+	ArchivedAt         *time.Time        `json:"archived_at"`
 	Email              *string           `json:"email"`
 	BillingEmail       *string           `json:"billing_email"`
 	Phone              *string           `json:"phone"`
@@ -176,7 +177,7 @@ var ContactColumns = []string{"name", "role", "email", "phone", "roles", "portal
 var ClientSorts = map[string]string{"number": "c.number", "name": "lower(c.name)", "email": "c.email", "city": "lower(c.city)",
 	"created_at": "c.created_at", "updated_at": "c.updated_at"}
 
-const clientColumns = `c.id, c.number, c.name, c.preferred_name, c.is_company, c.is_active, c.email, c.billing_email, c.phone,
+const clientColumns = `c.id, c.number, c.name, c.preferred_name, c.is_company, c.is_active, c.archived_at, c.email, c.billing_email, c.phone,
 	c.website, c.street, c.street_number, c.apt, c.zip, c.city, c.country, c.vat_number, c.language, c.currency,
 	c.payment_terms_days, c.internal_id, c.note, c.tags, c.created_at, c.updated_at, c.electronic_address, c.registration_number, c.dunning_enabled, c.einvoice_format, c.leitweg_id, c.region, c.portal_enabled, c.portal_invited_at, c.portal_signed_in_at, c.verified_uid, c.uid_verified_at, c.documents_to,
 	(SELECT count(*) FROM document_links l JOIN documents d ON d.id = l.document_id AND d.deleted_at IS NULL
@@ -188,7 +189,7 @@ const clientColumns = `c.id, c.number, c.name, c.preferred_name, c.is_company, c
 
 func scanClient(row interface{ Scan(...any) error }) (Client, error) {
 	var c Client
-	err := row.Scan(&c.ID, &c.Number, &c.Name, &c.PreferredName, &c.IsCompany, &c.IsActive, &c.Email, &c.BillingEmail, &c.Phone,
+	err := row.Scan(&c.ID, &c.Number, &c.Name, &c.PreferredName, &c.IsCompany, &c.IsActive, &c.ArchivedAt, &c.Email, &c.BillingEmail, &c.Phone,
 		&c.Website, &c.Street, &c.StreetNumber, &c.Apt, &c.Zip, &c.City, &c.Country, &c.VATNumber, &c.Language, &c.Currency,
 		&c.PaymentTermsDays, &c.InternalID, &c.Note, &c.Tags, &c.CreatedAt, &c.UpdatedAt, &c.ElectronicAddress, &c.RegistrationNumber, &c.DunningEnabled, &c.EInvoiceFormat, &c.LeitwegID, &c.Region, &c.PortalEnabled, &c.PortalInvitedAt, &c.PortalSignedInAt, &c.VerifiedUID, &c.UIDVerifiedAt, &c.DocumentsTo, &c.FilesCount, &c.PendingChange, &c.Contacts)
 	address := map[string]*string{"street": c.Street, "street_number": c.StreetNumber, "zip": c.Zip, "city": c.City, "country": c.Country}
@@ -249,6 +250,12 @@ func (q Q) SetClientUIDVerification(ctx context.Context, workspaceID, id string,
 func (q Q) Client(ctx context.Context, workspaceID, id string) (Client, error) {
 	return scanClient(q.db.QueryRow(ctx, `SELECT `+clientColumns+` FROM clients c
 		WHERE c.workspace_id = $1 AND c.id = $2 AND c.deleted_at IS NULL`, workspaceID, id))
+}
+
+// ClientForIssue holds a share lock so archival and invoice issuing cannot cross.
+func (q Q) ClientForIssue(ctx context.Context, workspaceID, id string) (Client, error) {
+	return scanClient(q.db.QueryRow(ctx, `SELECT `+clientColumns+` FROM clients c
+		WHERE c.workspace_id = $1 AND c.id = $2 AND c.deleted_at IS NULL FOR SHARE OF c`, workspaceID, id))
 }
 
 // LockClient: the live client exists (locked until the transaction ends, when called inside one).
@@ -322,8 +329,22 @@ func (q Q) BulkClients(ctx context.Context, workspaceID string, ids []string, ac
 		return 0, fmt.Errorf("bulk clients: unknown action %q", action)
 	}
 	tag, err := q.db.Exec(ctx, `UPDATE clients SET `+set+`, updated_at = $3
-		WHERE workspace_id = $1 AND id = ANY($2) AND deleted_at IS NULL`, workspaceID, ids, now)
+		WHERE workspace_id = $1 AND id = ANY($2) AND deleted_at IS NULL AND (archived_at IS NULL OR $4 = 'delete')`,
+		workspaceID, ids, now, action)
 	return tag.RowsAffected(), err
+}
+
+// SetClientsArchived returns only the clients whose archive state changed. Restored clients are inactive.
+func (q Q) SetClientsArchived(ctx context.Context, workspaceID string, ids []string, archive bool, now time.Time) ([]string, error) {
+	rows, err := q.db.Query(ctx, `UPDATE clients SET archived_at = CASE WHEN $3 THEN $4::timestamptz END,
+		is_active = $3 AND is_active, updated_at = $4
+		WHERE id IN (SELECT id FROM clients WHERE workspace_id = $1 AND id = ANY($2)
+			AND deleted_at IS NULL AND (archived_at IS NULL) = $3 ORDER BY id FOR UPDATE)
+		RETURNING id`, workspaceID, ids, archive, now)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
 }
 
 // LockClientsChangingPortal selects each live client just once, in a stable lock order for overlapping selections.
@@ -355,6 +376,7 @@ type ClientFilter struct {
 	Email       string // contained in the email, ignoring case
 	City        string // contained in the city, ignoring case
 	Active      *bool
+	Archived    bool
 	Draft       *bool
 	Company     *bool
 	Tags        []string // lowercase; a client must have all of them
@@ -371,6 +393,11 @@ func (f ClientFilter) where(workspaceID string) (string, []any) {
 	args := []any{workspaceID}
 	arg := func(v any) string { args = append(args, v); return "$" + strconv.Itoa(len(args)) }
 	conds := []string{"c.workspace_id = $1", "c.deleted_at IS NULL"}
+	if f.Archived {
+		conds = append(conds, "c.archived_at IS NOT NULL")
+	} else {
+		conds = append(conds, "c.archived_at IS NULL")
+	}
 	contains := func(term string) string {
 		return arg("%" + strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(term) + "%")
 	}

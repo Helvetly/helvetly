@@ -4,7 +4,12 @@ import { STATUS_TONES } from '@helvetly/ui/lib/status-tones'
 import { streetLine, type Client } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 
-export function ClientStatusBadge({ client }: { client: Pick<Client, 'is_draft' | 'is_active'> }) {
+export function ClientStatusBadge({
+  client,
+}: {
+  client: Pick<Client, 'is_draft' | 'is_active' | 'archived_at'>
+}) {
+  if (client.archived_at) return <Badge tone="amber">{translate('archived')}</Badge>
   if (client.is_draft) return <Badge tone={STATUS_TONES.client.draft}>{translate('draft')}</Badge>
   return client.is_active ? (
     <Badge tone={STATUS_TONES.client.active}>{translate('active')}</Badge>
@@ -44,9 +49,9 @@ export function MissingDataBadges({
 export function ClientRowStatus({
   client,
 }: {
-  client: Pick<Client, 'is_draft' | 'is_active' | 'email' | 'billing_email'>
+  client: Pick<Client, 'is_draft' | 'is_active' | 'archived_at' | 'email' | 'billing_email'>
 }) {
-  if (client.is_active && missingData(client).length)
+  if (!client.archived_at && client.is_active && missingData(client).length)
     return <MissingDataBadges client={client} only />
   return <ClientStatusBadge client={{ ...client, is_draft: false }} />
 }

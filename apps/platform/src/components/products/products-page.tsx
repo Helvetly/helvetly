@@ -586,7 +586,12 @@ export function bulkActions(
                 onClick: run.unarchive,
                 write: true,
               }
-            : { label: translate('archive'), icon: <Archive />, onClick: run.archive, write: true },
+            : {
+                label: translate('archiveAction'),
+                icon: <Archive />,
+                onClick: run.archive,
+                write: true,
+              },
         ]
       : []),
     { label: translate('exportCSV'), icon: <Download />, onClick: run.exportCsv },

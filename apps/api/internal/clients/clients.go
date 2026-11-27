@@ -80,6 +80,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	handle("GET /api/v1/clients/{id}", s.get)
 	handle("PATCH /api/v1/clients/{id}", s.update)
 	handle("DELETE /api/v1/clients/{id}", s.delete)
+	handle("POST /api/v1/clients/{id}/archive", s.archive(true))
+	handle("POST /api/v1/clients/{id}/unarchive", s.archive(false))
 	handle("POST /api/v1/clients/{id}/contacts", s.createContact)
 	handle("PATCH /api/v1/clients/{id}/contacts/{contact_id}", s.updateContact)
 	handle("DELETE /api/v1/clients/{id}/contacts/{contact_id}", s.deleteContact)
@@ -184,6 +186,9 @@ func (s *Service) update(w http.ResponseWriter, r *http.Request, sess store.Sess
 		if before, err = q.Client(r.Context(), sess.Workspace.ID, id); err != nil {
 			return err
 		}
+		if active, ok := fields["is_active"].(bool); ok && before.ArchivedAt != nil && active != before.IsActive {
+			return validationFailed(map[string]string{"is_active": "Restore this client before changing its active status."})
+		}
 		if _, err := q.UpdateClient(r.Context(), sess.Workspace.ID, id, fields, s.now()); err != nil {
 			return err
 		}
@@ -238,6 +243,39 @@ func (s *Service) delete(w http.ResponseWriter, r *http.Request, sess store.Sess
 	return nil
 }
 
+func (s *Service) archive(archive bool) handler {
+	return func(w http.ResponseWriter, r *http.Request, sess store.Session) error {
+		if _, err := s.setArchived(r.Context(), sess, []string{r.PathValue("id")}, archive); err != nil {
+			return err
+		}
+		return s.get(w, r, sess)
+	}
+}
+
+func (s *Service) setArchived(ctx context.Context, sess store.Session, ids []string, archive bool) (int, error) {
+	now := s.now()
+	kind := "client.unarchived"
+	if archive {
+		kind = "client.archived"
+	}
+	var count int
+	err := s.db.Tx(ctx, func(q store.Q) error {
+		changed, err := q.SetClientsArchived(ctx, sess.Workspace.ID, ids, archive, now)
+		if err != nil {
+			return err
+		}
+		for _, id := range changed {
+			if err := q.LogEvent(ctx, store.FinancialEvent{WorkspaceID: sess.Workspace.ID, Kind: kind,
+				SubjectType: "client", SubjectID: id, ActorID: &sess.User.ID, At: now}); err != nil {
+				return err
+			}
+		}
+		count = len(changed)
+		return nil
+	})
+	return count, err
+}
+
 func (s *Service) bulk(w http.ResponseWriter, r *http.Request, sess store.Session) error {
 	var body struct {
 		IDs    []string `json:"ids"`
@@ -251,15 +289,23 @@ func (s *Service) bulk(w http.ResponseWriter, r *http.Request, sess store.Sessio
 		invalid["ids"] = "Choose 1 to 500 clients."
 	}
 	switch body.Action {
-	case "activate", "deactivate", "delete", "enable_portal", "disable_portal":
+	case "activate", "deactivate", "archive", "unarchive", "delete", "enable_portal", "disable_portal":
 	default:
-		invalid["action"] = "Choose activate, deactivate, delete, enable_portal or disable_portal."
+		invalid["action"] = "Choose activate, deactivate, archive, unarchive, delete, enable_portal or disable_portal."
 	}
 	if len(invalid) > 0 {
 		return validationFailed(invalid)
 	}
 	if body.Action == "delete" && !canDelete(sess) {
 		return errForbidden
+	}
+	if body.Action == "archive" || body.Action == "unarchive" {
+		n, err := s.setArchived(r.Context(), sess, body.IDs, body.Action == "archive")
+		if err != nil {
+			return err
+		}
+		auth.WriteJSON(w, http.StatusOK, data(map[string]int{"updated": n}))
+		return nil
 	}
 	if body.Action == "enable_portal" || body.Action == "disable_portal" {
 		result, err := s.bulkPortal(r.Context(), sess, body.IDs, body.Action == "enable_portal")
@@ -366,12 +412,13 @@ func parseFilter(q url.Values, zone string) (store.ClientFilter, error) {
 	}
 	status := map[string]bool{}
 	for _, v := range listParam(q, "status") {
-		if v != "active" && v != "inactive" && v != "draft" && v != "complete" {
-			return f, badQuery("status must be active, inactive, draft or complete.")
+		if v != "active" && v != "inactive" && v != "draft" && v != "complete" && v != "archived" {
+			return f, badQuery("status must be active, inactive, draft, complete or archived.")
 		}
 		status[v] = true
 	}
 	f.Active, f.Draft = either(status["active"], status["inactive"]), either(status["draft"], status["complete"])
+	f.Archived = status["archived"]
 	switch q.Get("type") {
 	case "":
 	case "company", "person":

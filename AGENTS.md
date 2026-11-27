@@ -94,6 +94,11 @@ are the reference.
   set, fills what the person lacks, deletes the client (`clients.merged_into`, a repeat answers done) and logs
   `client.merged_into_participant` as a new financial event, never editing older ones. Documents can be shared with one
   participant (`document_participant_shares`).
+- **Client archive** (`clients.archived_at`): members with client write access can archive or restore a client
+  (`POST /api/v1/clients/{id}/archive|unarchive`, or actions `archive` and `unarchive` at `/api/v1/clients/bulk`).
+  Only `status=archived` lists archived clients. Restore puts them in Inactive. Archive and restore changes are
+  audited per client. The client, its history and its files stay readable. Issuing an invoice for an archived
+  client requires restoring the client first (`422 cannot_issue`, reason `client_archived`).
 - **Custom portal domains** (`internal/customdomains`, Business feature `custom_portal_domain`, off without
   `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID` and `CUSTOM_DOMAIN_TARGET`): a workspace's portal on its own host
   through Cloudflare for SaaS custom hostnames (`workspace_domains`: one per workspace and hostname among rows not

@@ -42,6 +42,7 @@ export type Client = {
   preferred_name: string | null
   is_company: boolean
   is_active: boolean
+  archived_at?: string | null
   email: string | null
   phone: string | null
   street: string | null
@@ -245,7 +246,7 @@ export type Page<T> = {
 
 export const SORT_FIELDS = ['number', 'name', 'email', 'city', 'created_at', 'updated_at'] as const
 export type SortField = (typeof SORT_FIELDS)[number]
-export const STATUSES = ['active', 'inactive', 'draft', 'complete'] as const
+export const STATUSES = ['active', 'inactive', 'draft', 'complete', 'archived'] as const
 export type ClientStatus = (typeof STATUSES)[number]
 export type ClientType = 'company' | 'person'
 
@@ -380,7 +381,14 @@ export function apiQuery(params: ListParams, paging = true) {
   return query
 }
 
-type BulkClientAction = 'activate' | 'deactivate' | 'delete' | 'enable_portal' | 'disable_portal'
+export type ClientArchiveAction = 'archive' | 'unarchive'
+export type BulkClientAction =
+  | 'activate'
+  | 'deactivate'
+  | ClientArchiveAction
+  | 'delete'
+  | 'enable_portal'
+  | 'disable_portal'
 
 const path = (id: string) => `/clients/${encodeURIComponent(id)}`
 
@@ -394,6 +402,8 @@ export const clientsApi = {
   update: (id: string, input: Partial<ClientInput>) =>
     request<{ data: Client }>(path(id), { method: 'PATCH', json: input }),
   remove: (id: string) => request<void>(path(id), { method: 'DELETE' }),
+  setArchived: (id: string, action: ClientArchiveAction) =>
+    request<{ data: Client }>(`${path(id)}/${action}`, { method: 'POST' }),
   resendPortalInvite: (id: string) =>
     request<{ data: Client }>(`${path(id)}/portal-invitation`, { method: 'POST' }),
   startPortalPreview: (id: string) =>
@@ -446,8 +456,11 @@ export const clientsApi = {
 
 // Downloads go through plain links so the browser sends the session cookie and saves the file.
 export const exportUrl = (params: ListParams) => `/api/v1/clients/export?${apiQuery(params, false)}`
-export const exportIdsUrl = (ids: string[]) =>
-  `/api/v1/clients/export?${new URLSearchParams({ ids: ids.join(',') })}`
+export const exportIdsUrl = (ids: string[], archived = false) => {
+  const query = new URLSearchParams({ ids: ids.join(',') })
+  if (archived) query.set('status', 'archived')
+  return `/api/v1/clients/export?${query}`
+}
 export const fileUrl = (id: string, fileId: string) =>
   `/api/v1${path(id)}/files/${encodeURIComponent(fileId)}`
 
@@ -501,6 +514,7 @@ export const STATUS_VIEWS = [
   { value: 'active', label: translate('active'), status: ['active'] },
   { value: 'draft', label: translate('drafts'), status: ['draft'] },
   { value: 'inactive', label: translate('inactive'), status: ['inactive'] },
+  { value: 'archived', label: translate('archived'), status: ['archived'] },
 ] as const satisfies readonly { value: string; label: string; status: readonly ClientStatus[] }[]
 export type StatusView = (typeof STATUS_VIEWS)[number]['value']
 

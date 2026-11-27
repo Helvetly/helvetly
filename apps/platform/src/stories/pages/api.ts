@@ -13,6 +13,7 @@ import type { Invitation, Member } from '@/lib/members'
 import type { Product } from '@/lib/products'
 import type { Template } from '@/lib/templates'
 import type { VATReturn } from '@/lib/vat-return'
+import { clientArchiveHandlers } from '@/mocks/clients'
 import { dashboard, sampleActivity } from '@/mocks/data'
 import { employeesHandlers } from '@/mocks/employees'
 import { heidiHandlers } from '@/mocks/heidi'
@@ -608,6 +609,11 @@ const one =
       : HttpResponse.json({ error: { code: 'not_found', message: 'Not found.' } }, { status: 404 })
   }
 
+// Archiving changes these in place; each story starts from the fixtures again.
+const archivableClients = clients.map((client) => ({ ...client }))
+export const resetClientArchive = () =>
+  archivableClients.splice(0, archivableClients.length, ...clients.map((client) => ({ ...client })))
+
 /** What every signed-in screen asks for, then each area's records; the first match wins. */
 export const shellHandlers = [
   http.get('/api/v1/auth/config', () =>
@@ -643,19 +649,21 @@ export const shellHandlers = [
   ),
   http.get('/api/v1/clients/:id/change-request', () => HttpResponse.json({ data: null })),
   http.get('/api/v1/clients/:id/self-billing-agreements', () => HttpResponse.json({ data: [] })),
-  http.get('/api/v1/clients/:id', one(clients)),
+  http.get('/api/v1/clients/:id', one(archivableClients)),
+  ...clientArchiveHandlers(archivableClients),
   // Status as the Go API reads it: each value narrows the list (docs/clients-contract.md).
   http.get('/api/v1/clients', ({ request }) => {
     const query = new URL(request.url).searchParams
     const status = query.getAll('status')
     const type = query.get('type')
     const city = query.get('city')?.toLowerCase()
-    const match = clients.filter(
+    const match = archivableClients.filter(
       (client) =>
-        (!status.includes('active') || client.is_active) &&
-        (!status.includes('inactive') || !client.is_active) &&
-        (!status.includes('draft') || client.is_draft) &&
-        (!status.includes('complete') || !client.is_draft) &&
+        Boolean(client.archived_at) === status.includes('archived') &&
+        (status.includes('active') === status.includes('inactive') ||
+          client.is_active === status.includes('active')) &&
+        (status.includes('draft') === status.includes('complete') ||
+          client.is_draft === status.includes('draft')) &&
         (!type || client.is_company === (type === 'company')) &&
         (!city || Boolean(client.city?.toLowerCase().includes(city))),
     )

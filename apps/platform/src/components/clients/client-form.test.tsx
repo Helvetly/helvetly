@@ -5,9 +5,10 @@ import userEvent from '@testing-library/user-event'
 
 import type { Session } from '@/lib/api'
 import { queryKeys } from '@/lib/queries'
+import { sampleClient } from '@/test/invoice-fixtures'
 
 import { ClientForm } from './client-form'
-import { bulkActions } from './clients-page'
+import { bulkActions, selectionState } from './clients-page'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn<() => void>(), push: vi.fn<() => void>() }),
@@ -165,19 +166,45 @@ test('closing while a save is pending keeps the drawer, so a refusal still reach
   expect(await screen.findByText('Already a client.')).toBeInTheDocument()
 })
 
-test('members get the bulk bar without Delete', () => {
+test('the bulk bar offers only what the selection allows, status and portal grouped', () => {
   const run = {
-    activate: vi.fn<() => void>(),
-    deactivate: vi.fn<() => void>(),
+    status: vi.fn<() => void>(),
     exportCsv: vi.fn<() => void>(),
     remove: vi.fn<() => void>(),
+    portal: { change: vi.fn<() => void>() },
   }
-  expect(bulkActions(false, run).map((action) => action.label)).toEqual([
+  const rows = [
+    sampleClient({ id: 'a', is_active: true, portal_enabled: false }),
+    sampleClient({ id: 'b', is_active: true, portal_enabled: false }),
+  ]
+  const labels = (canDelete: boolean, ids: string[]) =>
+    bulkActions(canDelete, selectionState(rows, new Set(ids)), run).map((action) => [
+      action.label,
+      action.group?.label,
+    ])
+  expect(labels(false, ['a', 'b'])).toEqual([
+    ['Deactivate', 'Status'],
+    ['Archive', 'Status'],
+    ['Enable portal', 'Portal'],
+    ['Export CSV', undefined],
+  ])
+  expect(labels(true, ['a']).map(([label]) => label)).toContain('Delete')
+  // A row of another page may be in any state: everything stays offered.
+  expect(labels(false, ['a', 'elsewhere']).map(([label]) => label)).toEqual([
     'Activate',
     'Deactivate',
+    'Archive',
+    'Unarchive',
+    'Enable portal',
+    'Disable portal',
     'Export CSV',
   ])
-  expect(bulkActions(true, run).map((action) => action.label)).toContain('Delete')
+  const archived = [
+    sampleClient({ id: 'c', archived_at: '2026-11-01T00:00:00Z', is_active: false }),
+  ]
+  expect(
+    bulkActions(false, selectionState(archived, new Set(['c'])), run).map((action) => action.label),
+  ).toEqual(['Unarchive', 'Export CSV'])
 })
 
 test('a learned country stays when a phone from another country is typed', async () => {

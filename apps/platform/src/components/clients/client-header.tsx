@@ -8,6 +8,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@helvetly/ui/components
 import { displayPhone } from '@helvetly/ui/lib/phone'
 import { cn } from '@helvetly/ui/lib/utils'
 import {
+  Archive,
+  ArchiveRestore,
   Building2,
   ChevronDown,
   Ellipsis,
@@ -122,6 +124,7 @@ export function ClientHeader({
   onClose,
   onEdit,
   onToggle,
+  onArchive,
   onDelete,
   onFillTemplate,
   onImportInvoices,
@@ -133,6 +136,8 @@ export function ClientHeader({
   onClose: () => void
   onEdit: () => void
   onToggle: () => void
+  /** Archives the client, or unarchives an archived one; without it (no write) not offered. */
+  onArchive?: () => void
   onDelete: () => void
   onFillTemplate: () => void
   /** Opens the invoice import for this client; without it (no right to write invoices) no menu. */
@@ -166,12 +171,19 @@ export function ClientHeader({
               menu={{
                 header: `#${client.number} · ${client.name}`,
                 actions: [
-                  {
+                  !client.archived_at && {
                     id: 'toggle',
                     group: 'status',
                     icon: client.is_active ? <PowerOff /> : <Power />,
                     label: client.is_active ? translate('deactivate') : translate('activate'),
                     onSelect: onToggle,
+                  },
+                  onArchive && {
+                    id: 'archive',
+                    group: 'status',
+                    icon: client.archived_at ? <ArchiveRestore /> : <Archive />,
+                    label: translate(client.archived_at ? 'unarchive' : 'archiveAction'),
+                    onSelect: onArchive,
                   },
                   {
                     id: 'edit',
@@ -269,7 +281,9 @@ export function ClientHeader({
               </h2>
               {/* Active is the normal state; only what invoicing lacks or an inactive client gets a badge. */}
               <MissingDataBadges client={client} />
-              {!client.is_active && <ClientStatusBadge client={{ ...client, is_draft: false }} />}
+              {(client.archived_at || !client.is_active) && (
+                <ClientStatusBadge client={{ ...client, is_draft: false }} />
+              )}
               <UidVerifiedBadge client={client} />
             </div>
             <p className="text-body-sm text-muted-foreground">{clientKind(client)}</p>

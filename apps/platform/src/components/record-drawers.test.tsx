@@ -60,6 +60,7 @@ vi.mock('@/components/quotes/quote-detail', () => ({
   ),
 }))
 vi.mock('@/components/clients/client-detail', () => ({
+  useClientArchive: () => ({ run: () => {}, pending: false }),
   ClientDetail: ({ id, onClose }: { id: string; onClose: () => void }) => (
     <dialog open aria-label={`Client ${id}`}>
       <button type="button" onClick={onClose}>

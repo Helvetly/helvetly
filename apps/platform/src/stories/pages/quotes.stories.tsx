@@ -1,7 +1,7 @@
 import { expectButtonsDoNotSubmit } from '@helvetly/vitest-config/form-buttons'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { delay, http, HttpResponse, type RequestHandler } from 'msw'
-import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test'
 
 import { billingFixture } from '@/components/billing/billing-fixture'
 import { ClientsPage } from '@/components/clients/clients-page'
@@ -725,18 +725,19 @@ export const SelectAndBulkMark: Story = {
       page(canvasElement).getByRole('toolbar', { name: 'Selected rows' }),
     ).toHaveTextContent('2')
     await expect(
-      missing(bar, 'button', [
-        'Download PDFs',
-        'Mark 1 as sent',
-        'Mark 1 accepted',
-        'Mark 1 declined',
-        'Duplicate',
-        'Delete draft',
-      ]),
+      missing(bar, 'button', ['Download PDFs', 'Status', 'Duplicate', 'Delete draft']),
     ).toEqual([])
     await expect(bar.queryByRole('button', { name: /Delete 2/ })).toBeNull()
 
-    await userEvent.click(bar.getByRole('button', { name: 'Mark 1 accepted' }))
+    // The status changes share one Status menu.
+    await userEvent.click(bar.getByRole('button', { name: 'Status' }))
+    const statusMenu = await screen.findByRole('menu')
+    await expect(
+      within(statusMenu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Mark 1 as sent', 'Mark 1 accepted', 'Mark 1 declined'])
+    await userEvent.click(within(statusMenu).getByRole('menuitem', { name: 'Mark 1 accepted' }))
     const confirm = await page(canvasElement).findByRole('dialog', {
       name: 'Mark 1 quote accepted?',
     })

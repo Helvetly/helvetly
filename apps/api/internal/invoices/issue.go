@@ -107,7 +107,7 @@ func (s *Service) issueDraft(ctx context.Context, q store.Q, sess store.Session,
 		return err
 	}
 	var client *store.Client
-	if c, err := q.Client(ctx, sess.Workspace.ID, inv.ClientID); err == nil {
+	if c, err := q.ClientForIssue(ctx, sess.Workspace.ID, inv.ClientID); err == nil {
 		client = &c
 	} else if !errors.Is(err, store.ErrNotFound) {
 		return err
@@ -393,6 +393,7 @@ func issueReasons(inv store.Invoice, set Settings, client *store.Client, credite
 		add(selfBilled && inv.VATMode != invoicecalc.None && buyer.VATNumber == nil, "supplier_vat_missing", "client.vat_number",
 			"A self-billed VAT invoice needs the supplier's VAT number.")
 		if client != nil {
+			add(client.ArchivedAt != nil, "client_archived", "client_id", "Restore the archived client before issuing this document.")
 			add(client.IsDraft, "client_draft", "client.address", "Complete the client's address: "+
 				strings.ReplaceAll(strings.Join(client.MissingFields, ", "), "_", " ")+".")
 		}

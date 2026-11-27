@@ -8,6 +8,30 @@ import (
 	"time"
 )
 
+func TestArchivedClientCannotIssueANewInvoice(t *testing.T) {
+	e := newEnv(t)
+	b, clientID := e.ready()
+	issued := e.issued(b, clientID, nil)
+	draft := e.draft(b, clientID, nil)
+	ctx := context.Background()
+	if _, err := e.st.SetClientsArchived(ctx, b.workspace, []string{clientID}, true, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	out := e.fails(b, "POST", path(draft.ID, "issue"), nil, http.StatusUnprocessableEntity, "cannot_issue")
+	if codes := reasonCodes(out); len(codes) != 1 || codes[0] != "client_archived" {
+		t.Fatalf("issue reasons: %v", codes)
+	}
+	if got := e.invoice(b, "GET", path(issued.ID), nil, http.StatusOK); got.Number == nil || got.Buyer == nil {
+		t.Fatalf("issued invoice: %+v", got)
+	}
+	if _, err := e.st.SetClientsArchived(ctx, b.workspace, []string{clientID}, false, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if got := e.invoice(b, "POST", path(draft.ID, "issue"), nil, http.StatusOK); got.Number == nil {
+		t.Fatalf("issued after restore: %+v", got)
+	}
+}
+
 // An issued invoice keeps its buyer snapshot after the client is deleted: it can still be voided, credited,
 // debited or corrected, while a new primary document for that client stays refused.
 func TestDeletedClientDerivedDocuments(t *testing.T) {

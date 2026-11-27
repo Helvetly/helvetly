@@ -38,7 +38,15 @@ import { SessionsPanel } from '@/components/scheduling/sessions-panel'
 import { tabIcons } from '@/components/tab-icons'
 import { FillTemplateDrawer } from '@/components/templates/fill-drawer'
 import { ApiError, errorMessage } from '@/lib/api'
-import { clientsApi, useClient, useSaveClient, type Client, type ClientInput } from '@/lib/clients'
+import {
+  clientsApi,
+  useBulkClients,
+  useClient,
+  useSaveClient,
+  type Client,
+  type ClientArchiveAction,
+  type ClientInput,
+} from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import { useCan } from '@/lib/permissions'
 
@@ -276,7 +284,37 @@ const languageName = (code: string | null) =>
 const currencyName = (code: string | null) =>
   code ? `${code} · ${CURRENCIES.find((currency) => currency.code === code)?.name ?? ''}` : null
 
-export type ClientCommand = 'edit' | 'complete' | 'toggle' | 'delete'
+export type ClientCommand = 'edit' | 'complete' | 'toggle' | 'archive' | 'unarchive' | 'delete'
+
+/**
+ * Archives or unarchives clients, one or many: a toast with Undo instead of a confirmation, since
+ * nothing is lost and the step is one click back.
+ */
+export function useClientArchive() {
+  const bulk = useBulkClients()
+  const run = (action: ClientArchiveAction, ids: string[], onDone?: () => void) =>
+    bulk.mutate(
+      { ids, action },
+      {
+        onSuccess: ({ data }) => {
+          onDone?.()
+          toast.success(
+            translate(action === 'archive' ? 'clientsArchived' : 'clientsUnarchived', {
+              count: data.updated,
+            }),
+            {
+              action: {
+                label: translate('undo'),
+                onClick: () => run(action === 'archive' ? 'unarchive' : 'archive', ids),
+              },
+            },
+          )
+        },
+        onError: toastError,
+      },
+    )
+  return { run, pending: bulk.isPending }
+}
 
 /** One client, in a sheet from the right (full screen on phones). */
 export function ClientDetail({
@@ -376,6 +414,11 @@ function Detail({
         onClose={onClose}
         onEdit={edit}
         onToggle={() => onCommand('toggle', client)}
+        onArchive={
+          canWrite
+            ? () => onCommand(client.archived_at ? 'unarchive' : 'archive', client)
+            : undefined
+        }
         onDelete={() => onCommand('delete', client)}
         onFillTemplate={() => setFilling(true)}
         onImportInvoices={canImportInvoices ? () => setImporting(true) : undefined}
