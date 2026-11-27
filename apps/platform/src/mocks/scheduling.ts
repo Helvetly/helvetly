@@ -425,12 +425,6 @@ export function schedulingHandlers(state: SchedulingState = sampleState(), now =
         ),
       })
     }),
-    // The session form reads the client for its participants; the stories' clients have none unless a story says so.
-    http.get<{ id: string }>('/api/v1/clients/:id', ({ params }) =>
-      HttpResponse.json({
-        data: { id: params.id, name: 'Alpenglow Studio GmbH', is_company: false, contacts: [] },
-      }),
-    ),
     http.post('/api/v1/scheduling/events', async ({ request }) => {
       const input = (await request.json()) as EventInput
       const fields: Record<string, string> = {}
