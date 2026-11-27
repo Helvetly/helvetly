@@ -53,6 +53,7 @@ export const AUDIT_KINDS = [
   'workspace.portal_domain_added',
   'workspace.portal_domain_removed',
   'workspace.reply_to_changed',
+  'workspace.client_emails_changed',
   'portal.preview_started',
   'portal.preview_ended',
   'portal.participant_signed_in',
