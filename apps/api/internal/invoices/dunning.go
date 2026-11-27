@@ -75,7 +75,7 @@ const StatutoryInterest invoicecalc.Percent = 500
 
 func defaultDunningSettings() DunningSettings {
 	return DunningSettings{Steps: []DunningStep{{Timing: dunningcalc.AfterDue, Days: 10, QRBill: true},
-		{Timing: dunningcalc.AfterPrevious, Days: 14, QRBill: true}, {Timing: dunningcalc.AfterPrevious, Days: 14, QRBill: true}},
+		{Timing: dunningcalc.AfterPrevious, Days: 10, QRBill: true}, {Timing: dunningcalc.AfterPrevious, Days: 10, QRBill: true}},
 		InterestRate: StatutoryInterest, InterestFrom: "reminder"}
 }
 
