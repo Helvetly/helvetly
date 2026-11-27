@@ -517,6 +517,7 @@ export const WeeklyHoursSuggested: Story = {
     await expect(canvas.getByLabelText('To, Friday')).toHaveValue('17:00')
     await expect(canvas.getByRole('switch', { name: 'Saturday' })).not.toBeChecked()
     const workspace = canvas.getByRole('button', { name: 'Workspace' })
+    getRouter().push.mockClear()
     await userEvent.click(workspace)
     await expect(getRouter().push).toHaveBeenCalledWith('/settings/workspace')
     await expect(body(canvasElement).queryByRole('dialog')).not.toBeInTheDocument()
@@ -549,8 +550,9 @@ export const LeaveWithSavedHours: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText(colouredGoogle.account_email)).toBeVisible()
+    await expect(await canvas.findByRole('region', { name: 'Google Calendar' })).toBeVisible()
     await expect(await canvas.findByLabelText('To, Tuesday')).toHaveValue('17:00')
+    getRouter().push.mockClear()
     await userEvent.click(canvas.getByRole('button', { name: 'Workspace' }))
     await expect(getRouter().push).toHaveBeenCalledWith('/settings/workspace')
     await expect(body(canvasElement).queryByRole('dialog')).not.toBeInTheDocument()
