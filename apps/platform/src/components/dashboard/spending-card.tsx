@@ -10,7 +10,7 @@ import { categoryLabel } from '@/lib/expense-categories'
 import { useExpenseSummary } from '@/lib/expenses'
 import { translate } from '@/lib/i18n'
 
-import { DashboardCard } from './dashboard-card'
+import { DashboardCard, SERIES } from './dashboard-card'
 import { share } from './figures'
 
 const SHOWN = 5
@@ -30,7 +30,7 @@ export function SpendingCard({ className }: { className?: string }) {
       className={className}
     >
       {summary.error ? (
-        <div className="grid justify-items-start gap-3 px-4 pt-2 pb-4">
+        <div className="grid flex-1 content-center justify-items-start gap-3 px-4 pt-2 pb-4">
           <p role="alert" className="text-sm text-muted-foreground">
             {translate('spendingCouldnTBeLoaded')}
             {errorMessage(summary.error)}
@@ -40,14 +40,14 @@ export function SpendingCard({ className }: { className?: string }) {
           </Button>
         </div>
       ) : !data ? (
-        <Loader className="min-h-40" />
+        <Loader className="min-h-40 flex-1" />
       ) : rows.length === 0 ? (
-        <p className="px-4 pt-6 pb-10 text-center text-body-sm text-muted-foreground">
+        <p className="grid min-h-40 flex-1 place-items-center px-4 pb-4 text-center text-body-sm text-muted-foreground">
           {translate('noExpensesThisMonthYet')}
         </p>
       ) : (
         <ul className="grid gap-3 px-4 pt-2 pb-4">
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const part = share(row.amount, data.this_month.amount)
             const name = row.category
               ? categoryLabel(row.category)
@@ -59,10 +59,13 @@ export function SpendingCard({ className }: { className?: string }) {
                   <span className="text-muted-foreground tabular-nums">{formatPercent(part)}</span>
                   <Money value={row.amount} currency={data.currency} className="ml-auto" />
                 </span>
-                <span className="block h-1.5 overflow-hidden rounded-full bg-violet-surface">
+                <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
                   <span
-                    className="block h-full rounded-full bg-violet-solid/70"
-                    style={{ width: `${Math.max(Math.round(part * 100), 2)}%` }}
+                    className="block h-full rounded-full"
+                    style={{
+                      width: `${Math.max(Math.round(part * 100), 2)}%`,
+                      background: SERIES[index % SERIES.length],
+                    }}
                   />
                 </span>
               </li>

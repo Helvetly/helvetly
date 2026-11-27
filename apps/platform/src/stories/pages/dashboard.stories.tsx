@@ -390,6 +390,8 @@ export const Customize: Story = {
     )
     await expect(order()).toContain('Spending by category')
     await expect(localStorage.getItem(LAYOUT_KEY)).toBeNull()
+    // Back at the top: the focus-ring check reads the page at rest, not a card cut by the screen's edge.
+    body().getByRole('button', { name: 'Customize' }).scrollIntoView({ block: 'center' })
   },
 }
 
@@ -413,3 +415,212 @@ export const CustomizeSaved: Story = {
   },
 }
 export const CustomizePhone = phone(Customize)
+
+/** The cards' boxes by their registry id. */
+const boxes = () =>
+  Object.fromEntries(
+    [...document.querySelectorAll<HTMLElement>('[data-dashboard-card]')].map((card) => [
+      card.dataset.dashboardCard ?? '',
+      card.getBoundingClientRect(),
+    ]),
+  )
+/** The cards' titles in the order they show, which a move previews before the page's order changes. */
+const shownOrder = () =>
+  [...document.querySelectorAll<HTMLElement>('[data-dashboard-card]')]
+    .toSorted((a, b) => {
+      const [first, second] = [a.getBoundingClientRect(), b.getBoundingClientRect()]
+      return first.top - second.top || first.left - second.left
+    })
+    .map((card) => card.querySelector('h2')?.textContent)
+const pointer = (type: string, x: number, y: number) =>
+  new PointerEvent(type, {
+    bubbles: true,
+    isPrimary: true,
+    button: 0,
+    pointerId: 7,
+    clientX: x,
+    clientY: y,
+  })
+
+/**
+ * Dragging a card by its grip: a ghost follows the pointer, a dashed placeholder of the card's size
+ * shows where it lands, the other cards make room, and the drop is saved.
+ */
+export const DragToReorder: Story = {
+  beforeEach: () => {
+    localStorage.removeItem(LAYOUT_KEY)
+    return () => localStorage.removeItem(LAYOUT_KEY)
+  },
+  play: async (context) => {
+    await shows(/Cash flow/i)?.(context)
+    await cardNamed('Spending by category')
+    await expect(order().slice(0, 4)).toEqual([
+      'Cash flow',
+      'Needs attention',
+      'Year over year',
+      'Spending by category',
+    ])
+    // The pointer finds its target on screen: bring the card it drops past into view.
+    document.querySelector('[data-dashboard-card="spending"]')?.scrollIntoView({ block: 'center' })
+    const grip = body().getByRole('button', { name: 'Move Needs attention' })
+    const from = grip.getBoundingClientRect()
+    grip.dispatchEvent(pointer('pointerdown', from.x + 4, from.y + 4))
+    // Past the middle of Spending by category, the card after it in the order.
+    const spending = boxes().spending
+    if (!spending) throw new Error('Spending by category is not drawn')
+    const to = { x: spending.right - 20, y: Math.min(spending.bottom - 20, innerHeight - 10) }
+    for (let step = 1; step <= 5; step++)
+      window.dispatchEvent(
+        pointer(
+          'pointermove',
+          from.x + ((to.x - from.x) * step) / 5,
+          from.y + ((to.y - from.y) * step) / 5,
+        ),
+      )
+    const placeholder = await waitFor(() => {
+      const element = document.querySelector('[data-dashboard-card="attention"]')
+      if (element?.getAttribute('data-placeholder') !== 'pointer') throw new Error('No placeholder')
+      return element
+    })
+    await expect(getComputedStyle(placeholder).borderTopStyle).toBe('dashed')
+    // The live preview: the cards already stand where the drop leaves them.
+    await waitFor(() =>
+      expect(shownOrder().slice(0, 4)).toEqual([
+        'Cash flow',
+        'Year over year',
+        'Spending by category',
+        'Needs attention',
+      ]),
+    )
+    await expect(document.querySelector('[aria-hidden="true"][inert]')).toBeInstanceOf(HTMLElement)
+    window.dispatchEvent(pointer('pointerup', to.x, to.y))
+    await waitFor(() =>
+      expect(order().slice(0, 4)).toEqual([
+        'Cash flow',
+        'Year over year',
+        'Spending by category',
+        'Needs attention',
+      ]),
+    )
+    await expect(document.querySelector('[data-placeholder]')).toBeNull()
+    await expect(JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? 'null')?.order.slice(0, 4)).toEqual(
+      ['cash-flow', 'year-over-year', 'spending', 'attention'],
+    )
+    await expect(
+      body().getByText('Needs attention dropped at position 4 of 5.'),
+    ).toBeInTheDocument()
+  },
+}
+
+/** By keyboard: Space picks the card up, the arrows move its placeholder, Escape puts it back, Space drops. */
+export const KeyboardReorder: Story = {
+  beforeEach: () => {
+    localStorage.removeItem(LAYOUT_KEY)
+    return () => localStorage.removeItem(LAYOUT_KEY)
+  },
+  play: async (context) => {
+    await shows(/Cash flow/i)?.(context)
+    await cardNamed('Spending by category')
+    const grip = () => body().getByRole('button', { name: 'Move Year over year' })
+    grip().focus()
+    await userEvent.keyboard(' ')
+    await expect(
+      await body().findByText(/Year over year picked up, position 3 of/),
+    ).toBeInTheDocument()
+    await expect(document.querySelector('[data-dashboard-card="year-over-year"]')).toHaveAttribute(
+      'data-placeholder',
+      'keyboard',
+    )
+    await userEvent.keyboard('{ArrowLeft}')
+    await waitFor(() => expect(shownOrder().slice(0, 2)).toEqual(['Cash flow', 'Year over year']))
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(shownOrder().slice(0, 3)).toEqual(['Cash flow', 'Needs attention', 'Year over year']),
+    )
+    await expect(body().getByText(/Move cancelled/)).toBeInTheDocument()
+    await expect(localStorage.getItem(LAYOUT_KEY)).toBeNull()
+
+    grip().focus()
+    await userEvent.keyboard(' ')
+    await userEvent.keyboard('{ArrowLeft}')
+    await userEvent.keyboard(' ')
+    await waitFor(() =>
+      expect(shownOrder().slice(0, 3)).toEqual(['Cash flow', 'Year over year', 'Needs attention']),
+    )
+    await expect(body().getByText(/Year over year dropped at position 2 of/)).toBeInTheDocument()
+    await expect(document.querySelector('[data-placeholder]')).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(grip()))
+  },
+}
+
+/** Needs attention moved to the bottom: the two charts fill their row half and half, every row is full. */
+export const NeedsAttentionAtTheBottom: Story = {
+  beforeEach: () => {
+    localStorage.setItem(
+      LAYOUT_KEY,
+      JSON.stringify({
+        order: ['cash-flow', 'year-over-year', 'spending', 'today', 'engagements', 'attention'],
+        hidden: [],
+      }),
+    )
+    return () => localStorage.removeItem(LAYOUT_KEY)
+  },
+  play: async (context) => {
+    await shows(/Cash flow/i)?.(context)
+    await cardNamed('Needs attention')
+    await waitFor(() => {
+      const { 'cash-flow': cash, 'year-over-year': years } = boxes()
+      expect(years?.top).toBe(cash?.top)
+      expect(Math.abs((years?.width ?? 0) - (cash?.width ?? 0))).toBeLessThan(1)
+    })
+    // Rows are filled: each row's cards and their gaps span the grid's width.
+    const grid = document
+      .querySelector('[data-dashboard-card]')
+      ?.parentElement?.getBoundingClientRect()
+    const rows = new Map<number, { width: number; cards: number }>()
+    for (const box of Object.values(boxes())) {
+      const row = rows.get(Math.round(box.top)) ?? { width: 0, cards: 0 }
+      rows.set(Math.round(box.top), { width: row.width + box.width, cards: row.cards + 1 })
+    }
+    await expect(
+      [...rows.values()].map(({ width, cards }) => Math.round(width + 16 * (cards - 1))),
+    ).toEqual([...rows.values()].map(() => Math.round(grid?.width ?? 0)))
+    await expect(order().at(-1)).toBe('Needs attention')
+  },
+}
+
+/** A chart card's height, its plot's height and its plot's left edge. */
+const chartBox = (id: string) => {
+  const card = document.querySelector(`[data-dashboard-card="${id}"]`)
+  const plot = card?.querySelector('.recharts-cartesian-grid')?.getBoundingClientRect()
+  return [card?.getBoundingClientRect().height, plot?.height, plot?.left]
+}
+/** Clicks each tab in turn and checks the card and its plot stay exactly where they were. */
+const switchEvery = async (title: string, id: string, tabs: string[]) => {
+  const card = await cardNamed(title)
+  await waitFor(() => expect(chartBox(id)[1]).toBeGreaterThan(0))
+  const before = chartBox(id)
+  await tabs.reduce(
+    (previous, tab) =>
+      previous.then(async () => {
+        await userEvent.click(card.getByRole('radio', { name: tab }))
+        await waitFor(() => expect(chartBox(id)).toEqual(before))
+      }),
+    Promise.resolve(),
+  )
+}
+
+/**
+ * Charts keep one height: switching every period and measure changes neither a card's height nor
+ * its plot's, and the plot does not move sideways; the cards of a row are equally tall.
+ */
+export const ChartHeightsStay: Story = {
+  play: async (context) => {
+    await shows(/Cash flow/i)?.(context)
+    await switchEvery('Cash flow', 'cash-flow', ['30D', '90D', '12M'])
+    await switchEvery('Year over year', 'year-over-year', ['Expenses', 'Net', 'Income'])
+    const cards = boxes()
+    await expect(cards.attention?.height).toBe(cards['cash-flow']?.height)
+    await expect(cards.spending?.height).toBe(cards['year-over-year']?.height)
+  },
+}

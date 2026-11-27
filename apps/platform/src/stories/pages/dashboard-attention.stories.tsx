@@ -99,9 +99,14 @@ export const MonthsToClose: Story = {
   },
 }
 
+/** A dashboard card's section by its title. */
+const section = (title: string) =>
+  within(document.body).getByRole('heading', { name: title, level: 2 }).closest('section')
+
 /**
  * Most important first, in groups with a count: the to-dos (VAT return, then months to close), then
- * the invoices; a long group shows its first three and unfolds the rest.
+ * the invoices. The card keeps its row's height and shows each group's first rows; "View all 4"
+ * opens every row in a drawer.
  */
 export const EverythingPending: Story = {
   parameters: pageParameters('/', {}, attentionHandlers()),
@@ -110,13 +115,8 @@ export const EverythingPending: Story = {
     await list.findByText(vatRow)
     const tasks = within(list.getByRole('region', { name: 'To do' }))
     const links = tasks.getAllByRole('link').map((link) => link.getAttribute('href'))
-    await expect(links).toEqual(['/books/vat-return/', '/books/', '/books/'])
-    const more = tasks.getByRole('button', { name: '+1 more' })
-    await expect(more).toHaveAttribute('aria-expanded', 'false')
-    await userEvent.click(more)
-    await expect(tasks.getAllByRole('link')).toHaveLength(4)
-    await userEvent.click(tasks.getByRole('button', { name: 'Show less' }))
-    await expect(tasks.getAllByRole('link')).toHaveLength(3)
+    await expect(links.length).toBeLessThanOrEqual(3)
+    await expect(links[0]).toBe('/books/vat-return/')
     const [first, ...money] = list.getAllByRole('region')
     await expect(first).toHaveAccessibleName('To do')
     await expect(money.length).toBeGreaterThan(0)
@@ -126,6 +126,23 @@ export const EverythingPending: Story = {
         .map((link) => link.getAttribute('href') ?? ''),
     )
     await expect(hrefs.every((href) => href.startsWith('/invoices'))).toBe(true)
+
+    // The card is as tall as the charts in its row, whatever it lists.
+    await expect(section('Needs attention')?.getBoundingClientRect().height).toBe(
+      section('Cash flow')?.getBoundingClientRect().height,
+    )
+
+    await userEvent.click(tasks.getByRole('button', { name: 'View all 4' }))
+    const drawer = within(
+      await within(document.body).findByRole('dialog', { name: 'Needs attention' }),
+    )
+    await expect(
+      within(drawer.getByRole('region', { name: 'To do' })).getAllByRole('link'),
+    ).toHaveLength(4)
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(within(document.body).queryByRole('dialog', { name: 'Needs attention' })).toBeNull(),
+    )
   },
 }
 

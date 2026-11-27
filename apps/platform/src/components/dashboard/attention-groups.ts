@@ -78,3 +78,20 @@ export function totalsByCurrency(rows: MoneyRow[]): { currency: string; amount: 
     .toSorted(([, a], [, b]) => (b > a ? 1 : b < a ? -1 : 0))
     .map(([currency, cents]) => ({ currency, amount: fromCents(cents) }))
 }
+
+/**
+ * How many rows each group shows in a card of fixed height: one each first, then a second, then a
+ * third, most important group first, while `budget` rows fit. A group never shows more than it has.
+ */
+export function fitRows(sizes: readonly number[], budget: number, most = 3): number[] {
+  const shown = sizes.map(() => 0)
+  let left = Math.max(budget, 0)
+  for (let round = 1; round <= most; round++)
+    for (const [i, size] of sizes.entries()) {
+      // Every group keeps its first row, so it is never hidden behind a full card.
+      if (size < round || (round > 1 && left <= 0)) continue
+      shown[i] = round
+      left -= 1
+    }
+  return shown
+}

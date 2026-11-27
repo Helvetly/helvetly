@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { InvoiceListItem } from '@/lib/invoices'
 import { scheduledInvoice } from '@/mocks/data'
 
-import { moneyGroups, totalsByCurrency } from './attention-groups'
+import { moneyGroups, totalsByCurrency, fitRows } from './attention-groups'
 
 const NOW = '2026-11-27'
 const invoice = (patch: Partial<InvoiceListItem>): InvoiceListItem => ({
@@ -91,5 +91,19 @@ describe('totalsByCurrency', () => {
       { currency: 'CHF', amount: '0.30' },
     ])
     expect(totalsByCurrency([])).toEqual([])
+  })
+})
+
+describe('fitRows', () => {
+  it('shows up to three rows a group while they fit, the first groups first', () => {
+    expect(fitRows([5, 6, 2], 99)).toEqual([3, 3, 2])
+    expect(fitRows([5, 6, 2], 5)).toEqual([2, 2, 1])
+    expect(fitRows([5, 6, 2], 6)).toEqual([2, 2, 2])
+    expect(fitRows([5, 6, 2], 7)).toEqual([3, 2, 2])
+  })
+  it('keeps one row per group when nothing more fits', () => {
+    expect(fitRows([5, 6, 2], 0)).toEqual([1, 1, 1])
+    expect(fitRows([5, 6, 2], -4)).toEqual([1, 1, 1])
+    expect(fitRows([], 4)).toEqual([])
   })
 })

@@ -34,19 +34,37 @@ export function ToneTile({ icon: Icon, tone }: { icon: LucideIcon; tone: Tone })
   )
 }
 
+/** Every dashboard chart's plot: one height, whatever its period, measure or legend. */
+export const CHART_PLOT = 'h-60'
+/**
+ * A chart's headline: its figure on one line, its legend on the next, at any width. Fixed, so a tab
+ * or series that changes the words never moves the plot.
+ */
+export const CHART_SUMMARY = 'h-16'
+/** The summary, its gap and the plot: what a loading, failed or empty chart fills instead. */
+export const CHART_BODY = 'h-80'
+/** The dashboard's series colours (`--series-*`), in their colour-blind-safe order. */
+export const SERIES = [
+  'var(--series-1)',
+  'var(--series-2)',
+  'var(--series-3)',
+  'var(--series-4)',
+  'var(--series-5)',
+] as const
+
 /** What the customizable dashboard gives a card it lays out: its drag handle and drag state. */
 export type CardDrag = {
-  /** The card's registry id, the drop target the pointer is over. */
+  /** The card's registry id. */
   id: string
   label: string
-  dragging: boolean
-  over: boolean
+  /** Being moved: its place shows where it will drop. */
+  lifted?: 'pointer' | 'keyboard'
+  /** Its place while a move previews. */
+  order?: number
   handle: {
     onPointerDown: (event: PointerEvent<HTMLButtonElement>) => void
-    onPointerMove: (event: PointerEvent<HTMLButtonElement>) => void
-    onPointerUp: (event: PointerEvent<HTMLButtonElement>) => void
-    onLostPointerCapture: (event: PointerEvent<HTMLButtonElement>) => void
     onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void
+    onBlur: () => void
   }
 }
 export const CardDragContext = createContext<CardDrag | null>(null)
@@ -66,7 +84,7 @@ function DragHandle({ drag }: { drag: CardDrag }) {
           <GripVertical aria-hidden className="size-3.5" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="top">{translate('dashboardDragToMove')}</TooltipContent>
+      <TooltipContent side="top">{translate('dashboardDragToReorder')}</TooltipContent>
     </Tooltip>
   )
 }
@@ -99,10 +117,13 @@ export function DashboardCard({
     // A container: what a card shows follows its own width, wherever the page lays it out.
     <section
       data-dashboard-card={drag?.id}
-      data-dragging={drag?.dragging || undefined}
-      data-drop-target={drag?.over || undefined}
+      data-placeholder={drag?.lifted}
+      style={drag?.order === undefined ? undefined : { order: drag.order }}
       className={cn(
-        'group/card @container relative flex min-w-0 flex-col rounded-xl border bg-card transition-[opacity,border-color] duration-150 data-dragging:opacity-50 data-drop-target:border-dashed data-drop-target:border-brand data-drop-target:bg-brand-surface/30',
+        'group/card @container relative flex min-w-0 flex-col rounded-xl border bg-card transition-[border-color,background-color] duration-150',
+        // Its place while moved: a dashed outline of its size. The pointer's ghost shows the card itself;
+        // by keyboard the card stays readable in place.
+        'data-placeholder:border-dashed data-placeholder:border-foreground/25 data-placeholder:bg-muted/40 data-[placeholder=keyboard]:ring-2 data-[placeholder=keyboard]:ring-ring/40 data-[placeholder=keyboard]:*:opacity-60 data-[placeholder=pointer]:*:invisible',
         className,
       )}
     >
@@ -131,7 +152,8 @@ export function DashboardCard({
           )}
         </div>
       </div>
-      {children}
+      {/* A card keeps its row's height: what it shows fits inside, never grows it. */}
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
   )
 }
