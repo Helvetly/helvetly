@@ -48,8 +48,8 @@ test('steps are named by their place among the reminders after the due date', ()
   expect(steps.map((_, i) => stepTitle(steps, i))).toEqual([
     'Payment due soon',
     'Payment reminder',
-    'Reminder 2',
-    'Reminder 3',
+    'Second reminder',
+    'Third reminder',
     'Final reminder',
   ])
   expect(stepTitle([step({ name: '  Hinweis ' })], 0)).toBe('Hinweis')
@@ -106,7 +106,7 @@ test('lists each step with its summary around the due date', () => {
     expect.stringContaining('Payment due soon3 days before due · friendly note'),
     'Due date',
     expect.stringContaining('Payment reminder10 days after due · no fee'),
-    expect.stringContaining('Reminder 214 days after the previous · CHF 20.00 fee'),
+    expect.stringContaining('Second reminder14 days after the previous · CHF 20.00 fee'),
     expect.stringContaining('Final reminder14 days after the previous · CHF 30.00 fee'),
   ])
 })
@@ -114,8 +114,8 @@ test('lists each step with its summary around the due date', () => {
 test('edits a step in the dialog; Apply changes the list, Cancel does not', async () => {
   const user = userEvent.setup()
   render(<Harness initial={three()} />)
-  await user.click(screen.getByRole('button', { name: 'Edit Reminder 2' }))
-  let dialog = screen.getByRole('dialog', { name: 'Edit Reminder 2' })
+  await user.click(screen.getByRole('button', { name: 'Edit Second reminder' }))
+  let dialog = screen.getByRole('dialog', { name: 'Edit Second reminder' })
   expect(within(dialog).getByText(/Despite our reminder, invoice \[number\]/)).toBeVisible()
   const fee = within(dialog).getByRole('textbox', { name: 'Fee' })
   await user.clear(fee)
@@ -138,6 +138,18 @@ test('edits a step in the dialog; Apply changes the list, Cancel does not', asyn
   expect(saved()[2]?.days).toBe('14')
 })
 
+test('adds an ordinal reminder counting only the steps after due', async () => {
+  const user = userEvent.setup()
+  render(<Harness initial={[step({ timing: 'before_due', days: '3' }), ...three().slice(0, 2)]} />)
+  await user.click(screen.getByRole('button', { name: 'Add a reminder' }))
+  const dialog = within(screen.getByRole('dialog', { name: 'New reminder' }))
+  expect(dialog.getByRole('textbox', { name: 'Name' })).toHaveValue('Third reminder')
+  expect(dialog.getByRole('textbox', { name: 'Days' })).toHaveValue('10')
+  await user.click(dialog.getByRole('button', { name: 'Apply' }))
+  expect(saved().at(-1)).toMatchObject({ name: 'Third reminder', days: '10', fee: '0.00' })
+  expect(screen.getByRole('button', { name: 'Edit Third reminder' })).toBeVisible()
+})
+
 test('adds a note before the due date at the top, without a fee', async () => {
   const user = userEvent.setup()
   render(<Harness initial={three()} />)
@@ -154,7 +166,7 @@ test('adds a note before the due date at the top, without a fee', async () => {
   await user.type(days, '3')
   await user.click(within(dialog).getByRole('button', { name: 'Apply' }))
   expect(saved()).toHaveLength(4)
-  expect(saved()[0]).toMatchObject({ timing: 'before_due', days: '3', fee: '0.00' })
+  expect(saved()[0]).toMatchObject({ name: '', timing: 'before_due', days: '3', fee: '0.00' })
   expect(rows()[1]?.textContent).toBe('Due date')
 })
 
@@ -176,7 +188,7 @@ test('a step out of order is refused in the dialog', async () => {
 test('removes a step after confirming; the last one cannot go', async () => {
   const user = userEvent.setup()
   render(<Harness initial={three()} />)
-  await user.click(screen.getByRole('button', { name: 'Edit Reminder 2' }))
+  await user.click(screen.getByRole('button', { name: 'Edit Second reminder' }))
   await user.click(screen.getByRole('button', { name: 'Remove reminder' }))
   await user.click(screen.getByRole('button', { name: 'Keep it' }))
   expect(saved()).toHaveLength(3)

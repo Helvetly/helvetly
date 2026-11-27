@@ -100,19 +100,31 @@ export function sortSteps(steps: StepDraft[]): StepDraft[] {
     .map(({ step }) => step)
 }
 
-/** The step's name, else its standard title (in English here; the client gets the invoice's language). */
+const reminderRank = (steps: StepDraft[], index: number) =>
+  steps.slice(0, index + 1).filter((step) => !isNote(step)).length
+
+const reminderKind = (steps: StepDraft[], index: number) => {
+  const step = steps[index]
+  if (!step || isNote(step)) return 'note'
+  if (reminderRank(steps, index) === 1) return 'first'
+  return steps.slice(index + 1).some((later) => !isNote(later)) ? 'middle' : 'final'
+}
+
+/** The step's name, else its standard title in the person's language. */
 export function stepTitle(steps: StepDraft[], index: number): string {
   const step = steps[index]
   if (!step) return ''
   if (step.name.trim()) return step.name.trim()
-  if (isNote(step)) return translate('paymentDueSoon')
-  const ranks = steps.filter((s) => !isNote(s)).length
-  const rank = steps.slice(0, index + 1).filter((s) => !isNote(s)).length
-  return rank <= 1
-    ? translate('paymentReminder')
-    : rank >= ranks
-      ? translate('finalReminder')
-      : translate('reminder', { rank: rank })
+  switch (reminderKind(steps, index)) {
+    case 'note':
+      return translate('paymentDueSoon')
+    case 'first':
+      return translate('paymentReminder')
+    case 'middle':
+      return translate('reminder', { rank: reminderRank(steps, index) })
+    case 'final':
+      return translate('finalReminder')
+  }
 }
 
 const STANDARD = {
@@ -124,13 +136,7 @@ const STANDARD = {
 
 /** The sentence the step sends, in the person's language (the client gets the invoice's). */
 export function standardText(steps: StepDraft[], index: number): string {
-  const title = stepTitle(
-    steps.map((step) => ({ ...step, name: '' })),
-    index,
-  )
-  if (title === 'Payment due soon') return STANDARD.note
-  if (title === 'Payment reminder') return STANDARD.first
-  return title === 'Final reminder' ? STANDARD.final : STANDARD.middle
+  return STANDARD[reminderKind(steps, index)]
 }
 
 const dayCount = (typed: string) => {
@@ -167,7 +173,7 @@ function newStep(steps: StepDraft[]): StepDraft {
     key: crypto.randomUUID(),
     name: '',
     timing: after ? 'after_previous' : 'after_due',
-    days: after ? '14' : '10',
+    days: '10',
     fee: '0.00',
     qr_bill: true,
   }
@@ -342,6 +348,7 @@ function StepDialog({
   onClose: () => void
 }) {
   const [draft, setDraft] = useState(step)
+  const [nameEdited, setNameEdited] = useState(false)
   const [errors, setErrors] = useState<FieldErrors>(serverErrors)
   const [confirming, setConfirming] = useState(false)
   const set = (change: Partial<StepDraft>) => {
@@ -359,18 +366,22 @@ function StepDialog({
     index === null ? [...steps, draft] : steps.map((s, i) => (i === index ? draft : s))
   const at = withDraft.indexOf(draft)
   const title = stepTitle(withDraft, at)
+  const next = sortSteps(withDraft)
+  const mine = next.indexOf(draft)
+  const name =
+    index === null && !nameEdited && !isNote(draft)
+      ? translate('reminder', { rank: reminderRank(next, mine) })
+      : draft.name
 
   const apply = () => {
-    const next = sortSteps(withDraft)
     const problems = timingProblems(next)
-    const mine = next.indexOf(draft)
     // the edited step's own problem, else the first it causes for another
     const bad = problems[mine] ? mine : problems.findIndex(Boolean)
     const problem =
       bad === -1 ? '' : `${bad === mine ? '' : `${stepTitle(next, bad)}: `}${problems[bad]}`
     const found = { ...stepErrors(draft), ...(problem ? { timing: problem } : {}) }
     if (Object.keys(found).length > 0) return setErrors(found)
-    const kept = isNote(draft) ? { ...draft, fee: '0.00' } : draft
+    const kept = { ...draft, name, fee: isNote(draft) ? '0.00' : draft.fee }
     onApply(next.map((s) => (s === draft ? kept : s)))
   }
 
@@ -399,13 +410,16 @@ function StepDialog({
           >
             <input
               {...describedBy(id('name'), errors.name)}
-              value={draft.name}
+              value={name}
               maxLength={60}
               placeholder={stepTitle(
                 withDraft.map((s) => (s === draft ? { ...s, name: '' } : s)),
                 at,
               )}
-              onChange={(e) => set({ name: e.target.value })}
+              onChange={(e) => {
+                setNameEdited(true)
+                set({ name: e.target.value })
+              }}
               className={fieldInput}
             />
           </FormField>
