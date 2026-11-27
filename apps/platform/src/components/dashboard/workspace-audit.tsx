@@ -457,7 +457,7 @@ export function WorkspaceAuditButton() {
       <Button asChild variant="outline">
         <Link href={PLANS_HREF}>
           <Sparkles aria-hidden className="text-heidi" />
-          <span className="sr-only sm:not-sr-only">{translate('workspaceAuditAudit')}</span>
+          <span className="@max-2xl:sr-only">{translate('workspaceAuditAudit')}</span>
           <PlanTag lock={lock} />
         </Link>
       </Button>
@@ -487,13 +487,13 @@ export function WorkspaceAuditButton() {
         )}
         {running && progress ? (
           <span className="tabular-nums">
-            <span className="hidden sm:inline">{translate('workspaceAuditRunning', progress)}</span>
-            <span className="sm:hidden">
+            <span className="@max-2xl:hidden">{translate('workspaceAuditRunning', progress)}</span>
+            <span className="@2xl:hidden">
               {progress.current}/{progress.total}
             </span>
           </span>
         ) : (
-          <span className="hidden sm:inline">
+          <span className="@max-2xl:hidden">
             {running ? translate('workspaceAuditRunningShort') : translate('workspaceAuditAudit')}
           </span>
         )}
