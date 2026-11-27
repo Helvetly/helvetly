@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, waitFor, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { Dashboard } from '@/components/dashboard/dashboard'
 import { endedMonths } from '@/components/settings/periods-settings'
@@ -18,7 +18,11 @@ import { closeHeidi, desktop, Frame, pageParameters, shows } from './frame'
 const [last = '', previous = '', oldest = ''] = endedMonths(today(), 3)
 const vatRow = `VAT return ${last}`
 const monthLabel = (month: string) =>
-  new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en', { month: 'long', timeZone: 'UTC' })
+  new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
 const ALL_DONE = 'All done. Nothing needs your attention.'
 
 const closedMonths = (...months: string[]) =>
@@ -74,6 +78,7 @@ export const OneMonthToClose: Story = {
     const closing = await list.findByRole('link', {
       name: `${monthLabel(oldest)} is ready to close Close the month`,
     })
+    await expect(list.getByRole('region', { name: 'To do' })).toHaveTextContent('1')
     await expect(closing).toHaveAttribute('href', '/books/')
     await expect(list.queryByText(/VAT return/)).toBeNull()
   },
@@ -83,27 +88,44 @@ export const MonthsToClose: Story = {
   parameters: pageParameters('/', {}, [notRegistered, ...attentionHandlers()]),
   play: async (context) => {
     const list = await card(context)
-    await list.findByText(
-      `${monthLabel(oldest)}, ${monthLabel(previous)} and ${monthLabel(last)} are ready to close`,
+    // One row per month, oldest first, each its own to-do.
+    await list.findByText(`${monthLabel(oldest)} is ready to close`)
+    const rows = within(list.getByRole('region', { name: 'To do' }))
+      .getAllByRole('link')
+      .map((link) => link.textContent)
+    await expect(rows).toEqual(
+      [oldest, previous, last].map((m) => `${monthLabel(m)} is ready to closeClose the month`),
     )
-    await expect(list.getByText('Close the months')).toBeVisible()
   },
 }
 
-/** Most important first: the VAT return, then the months to close, then the open invoices. */
+/**
+ * Most important first, in groups with a count: the to-dos (VAT return, then months to close), then
+ * the invoices; a long group shows its first three and unfolds the rest.
+ */
 export const EverythingPending: Story = {
   parameters: pageParameters('/', {}, attentionHandlers()),
   play: async (context) => {
     const list = await card(context)
     await list.findByText(vatRow)
-    const links = list.getAllByRole('link').map((link) => link.getAttribute('href'))
-    await expect(links.slice(0, 3)).toEqual([
-      '/invoices/?status=open&status=refund_due&kind=invoice',
-      '/books/vat-return/',
-      '/books/',
-    ])
-    await expect(links.slice(3).every((href) => href?.startsWith('/invoices'))).toBe(true)
-    await expect(links.length).toBeGreaterThan(3)
+    const tasks = within(list.getByRole('region', { name: 'To do' }))
+    const links = tasks.getAllByRole('link').map((link) => link.getAttribute('href'))
+    await expect(links).toEqual(['/books/vat-return/', '/books/', '/books/'])
+    const more = tasks.getByRole('button', { name: '+1 more' })
+    await expect(more).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(more)
+    await expect(tasks.getAllByRole('link')).toHaveLength(4)
+    await userEvent.click(tasks.getByRole('button', { name: 'Show less' }))
+    await expect(tasks.getAllByRole('link')).toHaveLength(3)
+    const [first, ...money] = list.getAllByRole('region')
+    await expect(first).toHaveAccessibleName('To do')
+    await expect(money.length).toBeGreaterThan(0)
+    const hrefs = money.flatMap((group) =>
+      within(group)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href') ?? ''),
+    )
+    await expect(hrefs.every((href) => href.startsWith('/invoices'))).toBe(true)
   },
 }
 
@@ -127,6 +149,10 @@ export const OverdueInstalments: Story = {
   ]),
   play: async (context) => {
     const list = await card(context)
+    const group = within(await list.findByRole('region', { name: 'Instalments' }))
+    await expect(
+      group.getByRole('heading', { name: 'Instalments' }).parentElement,
+    ).toHaveTextContent(/2.*CHF\s*165\.00/)
     const first = await list.findByRole('link', { name: /Instalment 1/ })
     const second = list.getByRole('link', { name: /Instalment 2/ })
     await expect(first).toHaveTextContent(dueLabel('2025-11-01').toLowerCase())
@@ -163,7 +189,7 @@ export const OneSourceFails: Story = {
       'The VAT return couldn’t be checked: The service is temporarily unavailable.',
     )
     await expect(list.getByRole('button', { name: 'Retry VAT return' })).toBeVisible()
-    await list.findByText(/are ready to close/)
+    await list.findAllByText(/is ready to close/)
     await expect(list.getAllByRole('listitem').length).toBeGreaterThan(1)
     await expect(list.queryByText(ALL_DONE)).toBeNull()
   },
