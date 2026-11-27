@@ -439,3 +439,24 @@ func TestHostAvatar(t *testing.T) {
 		t.Fatalf("host with a photo: %+v", h)
 	}
 }
+
+// A member who never saved hours is told so (the platform then suggests a week to save); once saved, never again.
+func TestHostHoursSaved(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	var got struct {
+		Data struct {
+			Saved  bool
+			Weekly []store.SchedWindow
+		}
+	}
+	e.do(b, "GET", "/api/v1/scheduling/hosts/me", nil, 200, &got)
+	if got.Data.Saved || len(got.Data.Weekly) != 0 {
+		t.Fatalf("never saved: %+v", got.Data)
+	}
+	e.do(b, "PUT", "/api/v1/scheduling/hosts/me", map[string]any{"weekly": []any{}}, 200, nil)
+	e.do(b, "GET", "/api/v1/scheduling/hosts/me", nil, 200, &got)
+	if !got.Data.Saved {
+		t.Fatalf("saved with no hours: %+v", got.Data)
+	}
+}

@@ -1,10 +1,12 @@
 import { expect, object, test, text, uniqueName } from './fixtures'
 import { list, objects, portalClient } from './scheduling-fixtures'
 
-test('booking and weekly hours save through the scheduling settings page', async ({
+test('booking and weekly hours save through the scheduling settings page and shape the booking slots', async ({
   api,
+  browser,
   page,
 }) => {
+  test.setTimeout(120_000)
   await page.goto('/settings/scheduling')
 
   const booking = page.getByRole('region', { name: 'Booking', exact: true })
@@ -21,30 +23,72 @@ test('booking and weekly hours save through the scheduling settings page', async
     })
 
   const hours = page.getByRole('region', { name: 'Weekly hours', exact: true })
-  await hours.getByLabel('Start time', { exact: true }).fill('08:30')
-  await hours.getByLabel('End time', { exact: true }).fill('16:30')
-  await hours.getByRole('button', { name: 'Add to selected days' }).click()
-  await hours.getByRole('button', { name: 'Save', exact: true }).click()
+  // Never saved: a usual week is suggested, still to be saved.
+  await expect(hours.getByLabel('From, Monday')).toHaveValue('09:00')
+  await expect(hours.getByLabel('To, Friday')).toHaveValue('17:00')
+  await expect(hours.getByLabel('From, Saturday')).toHaveCount(0)
 
-  const weekly = [1, 2, 3, 4, 5].map((day) => ({ day, start: '08:30', end: '16:30' }))
-  await expect.poll(() => api.read('/scheduling/hosts/me')).toMatchObject({ weekly })
+  await hours.getByLabel('From, Monday').selectOption('08:30')
+  await hours.getByLabel('To, Monday').selectOption('16:30')
+  await hours.getByRole('button', { name: /^Copy Monday.s hours to other days$/ }).click()
+  await page.getByRole('menuitem', { name: 'Monday to Friday' }).click()
+  await expect(hours.getByLabel('From, Friday')).toHaveValue('08:30')
+
+  await hours.getByRole('switch', { name: 'Saturday' }).click()
+  await hours.getByLabel('From, Saturday').selectOption('10:00')
+  await hours.getByLabel('To, Saturday').selectOption('12:00')
+
+  // A second range that overlaps the first is marked at once and cannot be saved.
+  await hours.getByRole('button', { name: 'Add a time range on Monday' }).click()
+  await hours.getByLabel('From, Monday').nth(1).selectOption('12:00')
+  await expect(hours.getByText('Monday: Time ranges on one day can’t overlap.')).toBeVisible()
+  await expect(hours.getByLabel('From, Monday').nth(1)).toHaveAttribute('aria-invalid', 'true')
+  await hours.getByRole('button', { name: 'Remove a time range on Monday' }).nth(1).click()
+  await expect(hours.getByText('Monday: Time ranges on one day can’t overlap.')).toHaveCount(0)
+
+  await hours.getByRole('button', { name: 'Save', exact: true }).click()
+  const weekly = [
+    ...[1, 2, 3, 4, 5].map((day) => ({ day, start: '08:30', end: '16:30' })),
+    { day: 6, start: '10:00', end: '12:00' },
+  ]
+  await expect.poll(async () => (await api.read('/scheduling/hosts/me')).weekly).toEqual(weekly)
 
   await page.reload()
   await expect(booking.getByRole('radio', { name: 'Review each one' })).toBeChecked()
   await expect(hours.getByLabel('From, Friday')).toHaveValue('08:30')
-  await expect(hours.getByLabel('From, Saturday')).toHaveCount(0)
+  await expect(hours.getByLabel('To, Saturday')).toHaveValue('12:00')
+  await expect(hours.getByRole('switch', { name: 'Sunday' })).not.toBeChecked()
+  await expect(hours.getByLabel('From, Sunday')).toHaveCount(0)
 
-  await hours.getByRole('button', { name: 'Every day', exact: true }).click()
-  await hours.getByLabel('Start time', { exact: true }).fill('17:00')
-  await hours.getByLabel('End time', { exact: true }).fill('18:00')
-  await hours.getByRole('button', { name: 'Add to selected days' }).click()
-  await hours.getByRole('button', { name: 'Save', exact: true }).click()
-
-  const evening = [1, 2, 3, 4, 5, 6, 7].map((day) => ({ day, start: '17:00', end: '18:00' }))
-  const allHours = [...weekly, ...evening].toSorted(
-    (a, b) => a.day - b.day || a.start.localeCompare(b.start),
-  )
-  await expect.poll(async () => (await api.read('/scheduling/hosts/me')).weekly).toEqual(allHours)
+  // The booking page offers exactly those hours: on a Saturday, 60-minute sessions start 10:00–11:00 Zurich time.
+  const type = await api.save('/scheduling/event-types', {
+    name: uniqueName('Saturday lesson'),
+    duration_minutes: 60,
+    mode: 'live',
+  })
+  const client = await portalClient(api, browser)
+  const saturday = new Date(Date.now() + 2 * 24 * 3_600_000)
+  while (saturday.getUTCDay() !== 6) saturday.setUTCDate(saturday.getUTCDate() + 1)
+  saturday.setUTCHours(0, 0, 0, 0)
+  const slotsOn = async (day: Date) =>
+    (
+      await list(
+        await client.get(
+          `/booking/slots?event_type_id=${text(type.id)}&from=${new Date(day.getTime() - 2 * 3_600_000).toISOString()}&to=${new Date(day.getTime() + 22 * 3_600_000).toISOString()}`,
+        ),
+      )
+    ).map((slot) =>
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/Zurich',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(text(slot.starts_at))),
+    )
+  const offered = await slotsOn(saturday)
+  expect(offered).toContain('10:00')
+  expect(offered).toContain('11:00')
+  expect(offered.every((clock) => clock >= '10:00' && clock <= '11:00')).toBe(true)
+  expect(await slotsOn(new Date(saturday.getTime() + 24 * 3_600_000))).toEqual([])
 })
 
 test('clients book in the portal: two at once for one slot, one wins; manual confirmation holds the slot until staff approve', async ({

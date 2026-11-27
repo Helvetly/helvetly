@@ -305,11 +305,14 @@ export const EventTypeDrawer: Story = {
   },
 }
 
-/** Your calendars: only configured providers offer a button; a connection can be synced and disconnected. */
+/** Your calendars: the connected one as a card (status, Sync now, ⋯ with Disconnect); the rest as rows to connect. */
 export const YourCalendars: Story = {
   parameters: page('owner'),
   beforeEach: () =>
-    resetSchedulingSettings({ providers: ['google'], connections: [googleConnection] }),
+    resetSchedulingSettings({
+      providers: ['google', 'microsoft'],
+      connections: [googleConnection],
+    }),
   render: () => (
     <Shell>
       <Calendars userId="usr_story" />
@@ -318,11 +321,22 @@ export const YourCalendars: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect((await canvas.findAllByText('anna@muster.ch'))[0]).toBeVisible()
+    await expect(canvas.getByText('Synced 2 minutes ago')).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Connect' })).toHaveAttribute(
+      'href',
+      '/api/v1/scheduling/calendars/microsoft/connect',
+    )
     await userEvent.click(canvas.getByRole('button', { name: 'Sync now' }))
     await waitFor(() =>
       expect(schedulingCalls()).toContain('POST /scheduling/calendars/cal_google/sync'),
     )
-    await userEvent.click(canvas.getByRole('button', { name: 'Disconnect' }))
+    // Long calendar names are cut, each calendar shows its own colour.
+    await expect(
+      canvasElement.querySelectorAll('[data-slot="calendar-dot"]').length,
+    ).toBeGreaterThan(3)
+    await expect(canvas.getByText('Primary')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'More for Google Calendar' }))
+    await userEvent.click(await body(canvasElement).findByRole('menuitem', { name: 'Disconnect' }))
     await userEvent.click(
       await body(canvasElement).findByRole('button', { name: 'Disconnect, keep the events' }),
     )
@@ -426,12 +440,23 @@ export const HoursFollowWorkspaceZone: Story = {
   },
 }
 
-export const BulkWeeklyHours: Story = {
+/** A connection that needs attention says so in red; a revoked one offers Reconnect instead of Sync now. */
+export const CalendarNeedsAttention: Story = {
   parameters: page('owner'),
   beforeEach: () =>
     resetSchedulingSettings({
-      providers: [],
-      hours: { weekly: [{ day: 7, start: '10:00', end: '11:00' }] },
+      providers: ['google', 'microsoft'],
+      connections: [
+        { ...googleConnection, status: 'revoked' },
+        {
+          ...googleConnection,
+          id: 'cal_microsoft',
+          provider: 'microsoft',
+          account_email: 'anna@muster.onmicrosoft.com',
+          status: 'error',
+          error: 'Microsoft did not answer.',
+        },
+      ],
     }),
   render: () => (
     <Shell>
@@ -440,33 +465,102 @@ export const BulkWeeklyHours: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const days = await canvas.findByRole('group', { name: 'Days to add hours to' })
-    const sunday = within(days).getByRole('button', { name: 'Sun' })
-    const add = canvas.getByRole('button', { name: 'Add to selected days' })
-    await expect(sunday).toHaveAttribute('aria-pressed', 'false')
-    const dayButton = (name: string) => within(days).getByRole('button', { name })
-    await userEvent.click(dayButton('Mon'))
-    await userEvent.click(dayButton('Tue'))
-    await userEvent.click(dayButton('Wed'))
-    await userEvent.click(dayButton('Thu'))
-    await userEvent.click(dayButton('Fri'))
-    await expect(add).toBeDisabled()
-    await userEvent.click(canvas.getByRole('button', { name: 'Every day' }))
-    await expect(sunday).toHaveAttribute('aria-pressed', 'true')
-    // One conflict makes the entire add a no-op, including the days that were free.
-    await userEvent.click(add)
-    await expect(canvas.queryByLabelText('From, Monday')).not.toBeInTheDocument()
-    await expect(canvas.queryByText('Unsaved changes')).not.toBeInTheDocument()
-    await userEvent.click(sunday)
-    await userEvent.click(add)
+    await expect(await canvas.findByRole('link', { name: 'Reconnect' })).toHaveAttribute(
+      'href',
+      '/api/v1/scheduling/calendars/google/connect',
+    )
+    await expect(
+      canvas
+        .getAllByRole('alert')
+        .some((one) => /Microsoft did not answer/.test(one.textContent ?? '')),
+    ).toBe(true)
+    // Settings are hidden until the connection works again.
+    await expect(canvas.queryByText('Check these calendars for conflicts')).toBeNull()
+  },
+}
 
-    await expect(canvas.getByLabelText('From, Monday')).toHaveValue('09:00')
-    await expect(canvas.getByLabelText('From, Saturday')).toHaveValue('09:00')
-    await expect(canvas.getByLabelText('From, Sunday')).toHaveValue('10:00')
+/** Someone who never saved hours gets Monday to Friday, 09:00–17:00 to save or change. */
+export const WeeklyHoursSuggested: Story = {
+  parameters: page('owner'),
+  beforeEach: () =>
+    resetSchedulingSettings({
+      providers: [],
+      hours: { saved: false, time_zone: null, weekly: [], overrides: [] },
+    }),
+  render: () => (
+    <Shell>
+      <Calendars userId="usr_story" />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByLabelText('From, Monday')).toHaveValue('09:00')
+    await expect(canvas.getByLabelText('To, Friday')).toHaveValue('17:00')
+    await expect(canvas.getByRole('switch', { name: 'Saturday' })).not.toBeChecked()
+    await expect(canvas.getByText('Unsaved changes')).toBeVisible()
+  },
+}
+
+/** One list for the week: switch a day on, add a range, copy a day to the others, save. */
+export const WeeklyHoursEditing: Story = {
+  parameters: page('owner'),
+  beforeEach: () => resetSchedulingSettings({ providers: [] }),
+  render: () => (
+    <Shell>
+      <Calendars userId="usr_story" />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('switch', { name: 'Wednesday' }))
+    await expect(canvas.getByLabelText('From, Wednesday')).toHaveValue('09:00')
+    await userEvent.click(canvas.getByRole('button', { name: 'Add a time range on Wednesday' }))
+    await expect(canvas.getAllByLabelText('From, Wednesday')[1]).toHaveValue('18:00')
+    await userEvent.click(
+      canvas.getByRole('button', { name: /^Copy Monday.s hours to other days$/ }),
+    )
+    await userEvent.click(await body(canvasElement).findByRole('menuitem', { name: 'Every day' }))
+    const starts = (day: string) =>
+      canvas.getAllByLabelText(`From, ${day}`).map((one) => (one as HTMLSelectElement).value)
+    await expect(['Tuesday', 'Wednesday', 'Sunday'].map(starts)).toEqual([
+      ['09:00', '13:00'],
+      ['09:00', '13:00'],
+      ['09:00', '13:00'],
+    ])
+    await userEvent.click(canvas.getByRole('switch', { name: 'Sunday' }))
+    await expect(canvas.queryByLabelText('From, Sunday')).toBeNull()
     await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(schedulingCalls()).toContain('PUT /scheduling/hosts/usr_story'))
     await waitFor(() => expect(canvas.queryByText('Unsaved changes')).not.toBeInTheDocument())
-    await expect(canvas.getByLabelText('From, Saturday')).toHaveValue('09:00')
-    await expect(canvas.getByLabelText('From, Sunday')).toHaveValue('10:00')
+    await expect(canvas.getAllByLabelText('To, Saturday')[1]).toHaveValue('17:00')
+  },
+}
+
+/** An end before its start or overlapping ranges are marked at once, worded under the list, and refused on save. */
+export const WeeklyHoursValidation: Story = {
+  parameters: page('owner'),
+  beforeEach: () => resetSchedulingSettings({ providers: [] }),
+  render: () => (
+    <Shell>
+      <Calendars userId="usr_story" />
+    </Shell>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const end = await canvas.findByLabelText('To, Tuesday')
+    const listBox = canvas.getByRole('list', { name: 'Weekly hours' })
+    const height = listBox.getBoundingClientRect().height
+    await userEvent.selectOptions(end, '08:00')
+    await expect(end).toHaveAttribute('aria-invalid', 'true')
+    await expect(canvas.getByText('Tuesday: The end must be after the start.')).toBeVisible()
+    // The message has its room already: nothing moves.
+    await expect(listBox.getBoundingClientRect().height).toBe(height)
+    await userEvent.selectOptions(end, '17:00')
+    const [, afternoon] = canvas.getAllByLabelText('From, Monday')
+    if (!afternoon) throw new Error('Monday has two ranges in the sample')
+    await userEvent.selectOptions(afternoon, '11:00')
+    await expect(canvas.getByText('Monday: Time ranges on one day can’t overlap.')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
+    await expect(schedulingCalls()).not.toContain('PUT /scheduling/hosts/usr_story')
   },
 }
