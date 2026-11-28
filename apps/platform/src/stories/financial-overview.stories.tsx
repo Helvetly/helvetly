@@ -419,10 +419,11 @@ export const BillingActiveDetails: Story = {
       'href',
       'https://billing.example.invalid/invoice.pdf',
     )
-    await expect(canvas.getByRole('link', { name: 'Upgrade to Business' })).toHaveAttribute(
-      'href',
-      '/settings/billing/plans/',
-    )
+    // The upsell card and the usage nudge both offer it, to the same page.
+    const upgrades = canvas.getAllByRole('link', { name: 'Upgrade to Business' })
+    await expect(upgrades).toHaveLength(2)
+    for (const link of upgrades)
+      await expect(link).toHaveAttribute('href', '/settings/billing/plans/')
   },
 }
 
