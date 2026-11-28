@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { toast } from 'sonner'
 
+import { CHECKER, LOGO_BOX_ASPECT } from '@/components/shared/document-logo-frame'
 import { useLogoCrop } from '@/components/shared/logo-crop'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
@@ -97,8 +98,14 @@ export function LogoDropzone({ url, canEdit }: { url: string | null; canEdit: bo
       >
         {url ? (
           <>
-            {/* Logos are made for paper: always on white, in the PDF's largest 75 × 18 mm box, from its left as printed. */}
-            <span className="flex aspect-[25/6] w-56 shrink-0 items-center justify-center rounded-lg bg-white p-2 shadow-elevation-1">
+            {/* In the PDF's largest 75 × 18 mm box, from its left as printed; transparency on a checkerboard. */}
+            <span
+              className={cn(
+                'flex w-56 shrink-0 items-center justify-center rounded-lg p-2 ring-1 ring-border',
+                CHECKER,
+              )}
+              style={{ aspectRatio: LOGO_BOX_ASPECT }}
+            >
               <span className="relative size-full">
                 <Image
                   src={url}

@@ -98,8 +98,8 @@ export const DOCUMENT_MAX_ZOOM = 4
 // The narrowest and the widest field: a picture between them keeps its own shape, any other gets the nearest one.
 const DOCUMENT_MIN_RATIO = 1
 const DOCUMENT_MAX_RATIO = 5
-// The most the PDF prints the field at (apps/api/internal/invoicepdf logoMaxW, logoMaxH).
-const DOCUMENT_FIELD_MM = { width: 75, height: 18 }
+/** The PDFs' logo box in mm (invoicepdf and engagementpdf logoMaxW, logoMaxH): the cropper and previews draw it. */
+export const DOCUMENT_LOGO_BOX_MM = { width: 75, height: 18 }
 // A newly rendered document logo is at most 640 px high (3200 px wide at 5 : 1, about 900 dpi in the field), and at
 // least the 150 dpi its at most 18 mm need (107 px), so its short side is always above the API's 64 px. Older and
 // untouched PNGs may be bigger (up to LOGO_MAX_SIDE).
@@ -171,8 +171,13 @@ export const isWholePicture = (natural: Size, view: DocumentView) =>
 export function documentDpi(natural: Size, view: DocumentView) {
   const ratio = documentRatio(natural)
   const at = placeOnCanvas(natural, view, { width: ratio, height: 1 })
-  const fieldHeightMm = Math.min(DOCUMENT_FIELD_MM.height, DOCUMENT_FIELD_MM.width / ratio)
-  return (natural.width * 25.4) / (at.width * fieldHeightMm)
+  return (natural.width * 25.4) / (at.width * documentPrintSize(ratio).height)
+}
+
+/** The size in mm a field of this width : height prints at where the text beside it leaves the widest box. */
+export function documentPrintSize(ratio: number) {
+  const { width, height } = DOCUMENT_LOGO_BOX_MM
+  return { width: Math.min(width, height * ratio), height: Math.min(height, width / ratio) }
 }
 
 /** Whether the part chosen (in the picture's own pixels) is too small for a workspace mark. */

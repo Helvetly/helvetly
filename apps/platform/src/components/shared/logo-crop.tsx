@@ -42,7 +42,7 @@ import {
   type LogoFormat,
 } from '@/lib/logo-crop'
 
-import { DocumentLogoFrame } from './document-logo-frame'
+import { DocumentLogoFrame, DocumentLogoPreview } from './document-logo-frame'
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
@@ -304,26 +304,31 @@ export function LogoCropDialog({
 
   return (
     <Dialog open onOpenChange={(next) => !next && !busy && onCancel()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={isDocument ? 'sm:max-w-3xl' : 'sm:max-w-lg'}>
         <DialogHeader>
           <DialogTitle>{translate('adjustLogo')}</DialogTitle>
           <DialogDescription>{translate('dragTheLogoToPlaceItAndZoom')}</DialogDescription>
         </DialogHeader>
         {isDocument ? (
           natural && (
-            <DocumentLogoFrame
-              url={url}
-              natural={natural}
-              view={view}
-              disabled={busy}
-              onChange={placeDocument}
-              onDecoded={(size) =>
-                setNatural((current) =>
-                  current?.width === size.width && current.height === size.height ? current : size,
-                )
-              }
-              onError={() => setProblem(translate('logoUnreadable'))}
-            />
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_20rem] sm:items-center">
+              <DocumentLogoFrame
+                url={url}
+                natural={natural}
+                view={view}
+                disabled={busy}
+                onChange={placeDocument}
+                onDecoded={(size) =>
+                  setNatural((current) =>
+                    current?.width === size.width && current.height === size.height
+                      ? current
+                      : size,
+                  )
+                }
+                onError={() => setProblem(translate('logoUnreadable'))}
+              />
+              <DocumentLogoPreview url={url} natural={natural} view={view} />
+            </div>
           )
         ) : (
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_7rem]">

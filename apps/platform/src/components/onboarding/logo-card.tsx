@@ -5,16 +5,13 @@ import { ImagePlus, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import { useRef, useState, type DragEvent } from 'react'
 
+import { CHECKER, LOGO_BOX_ASPECT } from '@/components/shared/document-logo-frame'
 import { useLogoCrop } from '@/components/shared/logo-crop'
 import { errorMessage } from '@/lib/api'
 import { translate } from '@/lib/i18n'
 import { LOGO_TYPES, useLogo } from '@/lib/invoices'
 
-// A transparent logo shows on a checkerboard, so its edges are visible.
-const CHECKER =
-  'bg-white bg-[conic-gradient(#e5e5e5_25%,transparent_0_50%,#e5e5e5_0_75%,transparent_0)] bg-[length:12px_12px]'
-
-/** The welcome's document-logo picker: a preview square, what fits, and one button; drop works too. Picking opens the crop. */
+/** The welcome's document-logo picker: a preview in the PDFs' logo shape, what fits, and one button; drop works too. Picking opens the crop. */
 export function LogoCard({ url }: { url: string | null }) {
   const logo = useLogo()
   const input = useRef<HTMLInputElement>(null)
@@ -70,9 +67,11 @@ export function LogoCard({ url }: { url: string | null }) {
       >
         <span
           className={cn(
-            'relative flex aspect-[5/2] w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1 ring-border sm:w-44',
+            'relative flex w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1 ring-border sm:w-44',
             url ? CHECKER : 'bg-muted text-muted-foreground',
           )}
+          // The PDFs' logo box, so the thumbnail is the printed logo's shape, not a square.
+          style={{ aspectRatio: LOGO_BOX_ASPECT }}
         >
           {url ? (
             <Image
@@ -81,7 +80,7 @@ export function LogoCard({ url }: { url: string | null }) {
               fill
               unoptimized
               sizes="176px"
-              className="object-contain p-1.5"
+              className="object-contain object-left p-1.5"
             />
           ) : (
             <ImagePlus className="size-7 stroke-[1.5]" />

@@ -2,6 +2,7 @@ import { cn } from '@helvetly/ui/lib/utils'
 import Image from 'next/image'
 
 import { COUNTRY_OPTIONS } from '@/components/clients/fields'
+import { LOGO_BOX_ASPECT } from '@/components/shared/document-logo-frame'
 import { streetLine } from '@/lib/clients'
 import { translate } from '@/lib/i18n'
 import { ibanInfo, toCents, type DocLanguage, type InvoiceSettings } from '@/lib/invoices'
@@ -113,18 +114,22 @@ export function InvoicePreview({
   return (
     <div className="relative w-full max-w-[25rem] rounded-xl bg-white p-7 text-[10.5px] leading-relaxed text-neutral-900 shadow-[0_24px_60px_-20px_rgb(0_0_0/0.35),0_2px_8px_rgb(0_0_0/0.06)] ring-1 ring-black/5">
       <div className="flex items-start justify-between gap-4">
-        <span className="relative flex h-10 w-28 items-center">
+        <span
+          className="relative flex h-9 shrink-0 items-center"
+          // The PDFs' logo box (75 × 18 mm), so the logo shows here at the shape it prints.
+          style={{ aspectRatio: LOGO_BOX_ASPECT }}
+        >
           {logo ? (
             <Image
               src={logo}
               alt=""
               fill
               unoptimized
-              sizes="112px"
+              sizes="150px"
               className="object-contain object-left"
             />
           ) : (
-            <span className="flex h-10 w-24 items-center justify-center rounded-md border border-dashed border-neutral-300 text-[9px] text-neutral-500">
+            <span className="flex size-full items-center justify-center rounded-md border border-dashed border-neutral-300 text-[9px] text-neutral-500">
               {translate('logo')}
             </span>
           )}

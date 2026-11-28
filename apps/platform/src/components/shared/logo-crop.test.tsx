@@ -90,6 +90,7 @@ describe('LogoCropDialog, document logo', () => {
     const onSave = open(file)
     await picture()
     expect(screen.getByRole('button', { name: 'Fit the whole picture' })).toBeDisabled()
+    expect(screen.getByText('On your invoice: 45 × 18 mm')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Use this logo' }))
     await waitFor(() => expect(onSave).toHaveBeenCalledWith(file))
   })
@@ -191,6 +192,8 @@ describe('LogoCropDialog, document logo', () => {
     // A portrait picture gets the square field: 75 % of it wide, centred.
     expect(start).toBeCloseTo(12.5, 5)
     expect(screen.getByText(/wide area on documents/)).toBeInTheDocument()
+    // The invoice preview prints a square field 18 mm high, as the PDF's logo box allows.
+    expect(screen.getByText('On your invoice: 18 × 18 mm')).toBeInTheDocument()
 
     const group = screen.getByRole('button', { name: /arrow keys/ })
     fireEvent.keyDown(group, { key: 'ArrowLeft' })
