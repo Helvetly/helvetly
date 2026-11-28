@@ -17,7 +17,7 @@ test('one row per place to fix, each linking to its own settings section', () =>
   expect(fixes.map(({ key, messages }) => [key, messages])).toEqual([
     ['Company details', ['Your company details are missing: ZIP, City.']],
     ['VAT settings', ['vat']],
-    ['Bank account', ['iban']],
+    ['Bank details', ['iban']],
     ['Complete the client', ['address', 'client vat']],
     ['no_lines:lines', ['lines']],
   ])

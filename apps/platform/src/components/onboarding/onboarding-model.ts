@@ -1,8 +1,8 @@
 import { isValidUid } from '@/components/clients/client-form-model'
 import { translate } from '@/lib/i18n'
 import {
+  bankErrors,
   formatIban,
-  ibanInfo,
   type DocLanguage,
   type InvoiceSettings,
   type NumberFormat,
@@ -25,6 +25,8 @@ export type Values = {
   vat_registered: boolean
   vat_number: string
   iban: string
+  bank_name: string
+  bic: string
   language: DocLanguage
   currency: string
   default_terms_days: number
@@ -50,6 +52,8 @@ export function valuesFrom(settings: InvoiceSettings, interfaceLanguage?: DocLan
     vat_registered: settings.vat_registered,
     vat_number: seller.vat_number ?? '',
     iban: settings.iban ? formatIban(settings.iban) : '',
+    bank_name: settings.bank_name ?? '',
+    bic: settings.bic ?? '',
     language: settings.is_complete ? settings.language : (interfaceLanguage ?? settings.language),
     currency: settings.currency || 'CHF',
     default_terms_days: settings.default_terms_days,
@@ -101,6 +105,8 @@ export function toSettingsInput(
     // The two must agree (docs/invoices-contract.md).
     default_vat_mode: values.vat_registered ? vatMode : 'none',
     iban: values.iban.replace(/\s/g, '').toUpperCase() || null,
+    bank_name: values.bank_name.trim() || null,
+    bic: values.bic.replace(/\s/g, '').toUpperCase() || null,
     language: values.language,
     currency: values.currency,
     default_terms_days: values.default_terms_days,
@@ -129,8 +135,7 @@ export function validate(
   // The server checks every number starting with CH as a Swiss UID.
   if (values.vat_registered && /^CH/i.test(vat) && !isValidUid(vat))
     errors.vat_number = translate('thisUIDNumberIsnTValidCheckTheDigits')
-  if (values.iban.trim() && !ibanInfo(values.iban).valid)
-    errors.iban = translate('thisIBANSCheckDigitsDonTMatchCheck')
+  Object.assign(errors, bankErrors(values))
   // The server takes whole days from 0 (the invoice date itself) to 365; a saved 10, 60 or other value in range stays valid.
   if (
     !Number.isInteger(values.default_terms_days) ||

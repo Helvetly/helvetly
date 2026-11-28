@@ -17,6 +17,8 @@ const values: Values = {
   vat_registered: false,
   vat_number: '',
   iban: '',
+  bank_name: '',
+  bic: '',
   language: 'de',
   currency: 'CHF',
   default_terms_days: 30,

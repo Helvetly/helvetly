@@ -78,7 +78,7 @@ export const SaveOneSection: Story = {
     sent.length = 0
     const page = within(canvasElement)
     const iban = await page.findByLabelText(/^IBAN/)
-    const bank = await region(canvasElement, 'Bank account')
+    const bank = await region(canvasElement, 'Bank details')
     const company = await region(canvasElement, 'Company')
     // Nothing to save yet: the section shows no Save bar.
     await expect(bank.queryByRole('button', { name: 'Save' })).toBeNull()
@@ -108,7 +108,7 @@ export const SaveOneSection: Story = {
     await expect(Math.round(headBox?.right ?? -1)).toBe(Math.round(pageBox?.right ?? -2))
     // The section nav (a sidebar on wide screens, a row of chips on narrow ones) marks it too.
     await expect(
-      page.getByRole('button', { name: /^Bank account.*unsaved changes/i }),
+      page.getByRole('button', { name: /^Bank details.*unsaved changes/i }),
     ).toBeVisible()
 
     await userEvent.click(bank.getByRole('button', { name: 'Save' }))
@@ -118,7 +118,7 @@ export const SaveOneSection: Story = {
     await expect(getComputedStyle(saved).color).toBe(painted(saved, 'text-success', 'color'))
     await expect(lastSent()?.iban).toBe('CH93 0076 2011 6238 5295 7')
     await expect(lastSent()?.seller?.apt).toBeNull() // the company's edit was not part of this save
-    await expect(await within(document.body).findAllByText('Bank account saved.')).not.toHaveLength(
+    await expect(await within(document.body).findAllByText('Bank details saved.')).not.toHaveLength(
       0,
     ) // the toast
     await expect(page.getByText(/invoices can be issued/)).toBeVisible() // readiness follows the save

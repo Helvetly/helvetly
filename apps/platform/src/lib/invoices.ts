@@ -1036,7 +1036,7 @@ export const MISSING_LABELS: Record<string, string> = {
 /** The settings section each field is in, and the link's name; the rest is Company. */
 const SETTINGS_SECTIONS: Record<string, [section: string, label: string]> = {
   'seller.vat_number': ['vat', translate('vatSettings')],
-  iban: ['bank', translate('bankAccount')],
+  iban: ['bank', translate('bankDetails')],
   'seller.registration_number': ['company', translate('companyDetails')],
   'seller.electronic_address': ['einvoice', translate('eInvoiceSettings')],
 }
@@ -1287,6 +1287,20 @@ export function ibanInfo(input: string): IbanInfo {
     swiss,
     qr: swiss && iid >= 30000 && iid <= 31999,
   }
+}
+
+/** ISO 9362, as the server checks it: bank, country, location and optionally a branch ("UBSWCHZH80A"). */
+export const validBic = (input: string) =>
+  /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(input.replace(/\s/g, '').toUpperCase())
+
+/** The bank details' format errors; both are optional, so only what is typed is checked. */
+export function bankErrors(values: { iban: string; bic: string }) {
+  const errors: { iban?: string; bic?: string } = {}
+  if (values.iban.trim() && !ibanInfo(values.iban).valid)
+    errors.iban = translate('thisIBANSCheckDigitsDonTMatchCheck')
+  if (values.bic.trim() && !validBic(values.bic))
+    errors.bic = translate('enterABICOf8Or11Characters')
+  return errors
 }
 
 /** "CH93 0076 2011 6238 5295 7": an IBAN in groups of four (as stored, when it isn't one). */

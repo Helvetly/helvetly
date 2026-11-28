@@ -451,7 +451,7 @@ export const Invoices: Story = {
     await sectionsAreBands(canvasElement)
     await headerRuled(canvasElement)
     await expect(canvas.queryByRole('region', { name: 'Company' })).toBeNull()
-    await expect(canvas.queryByRole('region', { name: 'Bank account' })).toBeNull()
+    await expect(canvas.queryByRole('region', { name: 'Bank details' })).toBeNull()
     // Number format is a select with the next numbers behind an (i), not a wall of cards.
     const numbering = within(canvas.getByRole('region', { name: 'Numbering' }))
     await expect(numbering.queryAllByRole('radio')).toHaveLength(0)
@@ -534,9 +534,10 @@ export const CompanyNotes: Story = {
     await expect(note.getBoundingClientRect().left).toBe(row?.getBoundingClientRect().left)
     await expect(note.getBoundingClientRect().width).toBe(row?.getBoundingClientRect().width)
 
-    const bank = canvas.getByRole('region', { name: 'Bank account' })
+    const bank = canvas.getByRole('region', { name: 'Bank details' })
     await expect(within(bank).getByText('Swiss IBAN')).toBeVisible()
-    await expect(within(bank).queryByRole('button', { name: /IBAN/ })).toBeNull()
+    await expect(within(bank).queryByRole('button', { name: /Swiss IBAN/ })).toBeNull()
+    await expect(within(bank).getByRole('button', { name: 'About IBAN' })).toBeVisible()
   },
 }
 
