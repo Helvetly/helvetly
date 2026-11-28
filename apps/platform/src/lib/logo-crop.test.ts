@@ -2,6 +2,8 @@ import {
   clampView,
   documentCanvas,
   documentDpi,
+  documentPrintSize,
+  DOCUMENT_LOGO_BOX_MM,
   documentRatio,
   imageSize,
   isWholePicture,
@@ -518,4 +520,13 @@ describe('normalizeLogo with trim', () => {
     const file = new File([jpeg(60, 20)], 'logo.jpg', { type: 'image/jpeg' })
     expect((await normalizeLogo(file, 'jpeg', { width: 60, height: 20 }, true)).file).toBe(file)
   })
+})
+
+test('a field prints in the PDF box as large as it fits, never stretched', () => {
+  // 75 × 18 mm at most: wide is held by the width, square and tall by the height.
+  expect(documentPrintSize(5)).toEqual({ width: 75, height: 15 })
+  expect(documentPrintSize(75 / 18)).toEqual({ width: 75, height: 18 })
+  expect(documentPrintSize(2.5)).toEqual({ width: 45, height: 18 })
+  expect(documentPrintSize(1)).toEqual({ width: 18, height: 18 })
+  expect(DOCUMENT_LOGO_BOX_MM.width / DOCUMENT_LOGO_BOX_MM.height).toBeCloseTo(4.17, 2)
 })

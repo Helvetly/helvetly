@@ -4315,6 +4315,7 @@
   "workspaceLogoRemoved": "Logo dell’area di lavoro rimosso.",
   "fitWholePicture": "Adatta l’intera immagine",
   "logoFrameHint": "Il tuo logo appare in un’ampia area sui documenti. Ingrandisci e trascina per regolarlo.",
+  "logoOnInvoicePreview": "Sulla tua fattura: {width} × {height} mm",
   "suggestWorkspaceNameConsent": "Condividi solo il nome della tua azienda con OpenAI per un suggerimento una tantum sul nome dello spazio di lavoro.",
   "suggestAName": "Suggerisci un nome",
   "suggestingAName": "Suggerire un nome…",

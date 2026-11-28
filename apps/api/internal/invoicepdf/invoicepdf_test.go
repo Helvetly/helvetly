@@ -129,6 +129,7 @@ func TestLogo(t *testing.T) {
 		{3000, 600, 10, 45, 9},                          // never narrower than the old box
 		{1600, 400, 100, 72, 18},                        // 4 : 1: limited by the height before the width
 		{1000, 1000, 100, 18, 18},                       // square: limited by the height
+		{300, 900, 100, 6, 18},                          // tall: limited by the height, never stretched
 		{64, 64, 100, 64 * mmPerPixel, 64 * mmPerPixel}, // small: never upscaled past 96 dpi
 	} {
 		if w, h := logoSize(tt.w, tt.h, tt.room); math.Abs(w-tt.wantW) > 1e-9 || math.Abs(h-tt.wantH) > 1e-9 {

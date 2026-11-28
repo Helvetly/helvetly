@@ -4315,6 +4315,7 @@
   "workspaceLogoRemoved": "Workspace-Logo entfernt.",
   "fitWholePicture": "Passen Sie das Gesamtbild an",
   "logoFrameHint": "Ihr Logo erscheint grossflächig auf Dokumenten. Zoomen und ziehen Sie, um es anzupassen.",
+  "logoOnInvoicePreview": "Auf Ihrer Rechnung: {width} × {height} mm",
   "suggestWorkspaceNameConsent": "Teilen Sie nur Ihren Firmennamen mit OpenAI für einen einmaligen Namensvorschlag für Ihren Arbeitsbereich.",
   "suggestAName": "Schlagen Sie einen Namen vor",
   "suggestingAName": "Einen Namen vorschlagen…",
