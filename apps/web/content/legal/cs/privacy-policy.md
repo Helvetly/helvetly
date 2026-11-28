@@ -41,8 +41,10 @@ zákazník jako správce; podrobnosti uvádí [smlouva o zpracování údajů](d
 | Odesílané e-maily: přihlašovací kódy, pozvánky, oznámení, bezpečnostní upozornění, souhrny                                                                                                                                                                   | Provoz služby                                            | Smlouva                                                                           | Po dobu, po kterou poskytovatel e-mailů uchovává protokoly doručení                                                      |
 | Chybové protokoly (trasa, chyba, čas) a protokoly poskytovatele hostingu (mohou obsahovat IP adresy)                                                                                                                                                         | Provoz a zabezpečení služby                              | Oprávněný zájem                                                                   | 30 dní. Aplikace sama nevede přístupový protokol; chyby zaznamenává bez tokenů z URL                                     |
 
-Osobní údaje neprodáváme, nepoužíváme je k reklamě, neprofilujeme vás a nerozhodujeme o vás
+Osobní údaje neprodáváme, nepřizpůsobujeme reklamu, neprofilujeme vás a nerozhodujeme o vás
 výhradně automatizovaně (nDSG čl. 21, GDPR čl. 22).
+
+**Volitelné měření reklam.** S vaším souhlasem může Google Ads propojit kliknutí na reklamu s novou registrací v Helvetly. Google obdrží identifikátor kliknutí, údaje o prohlížeči a síti a náhodný identifikátor konverze. Událost neobsahuje e-mailovou adresu ani obsah pracovního prostoru. Google používá vlastní atribuční cookies (`_gcl_*`). Helvetly ukládá vaši volbu na 180 dní a značku registrace nejvýše na deset minut. Souhlas můžete odmítnout nebo odvolat v části „Měření reklam“ v zápatí webu (čl. 6 odst. 1 písm. a GDPR).
 
 **Cookies a úložiště prohlížeče.** Web (www.helvetly.com) používá Google Analytics 4 k počítání
 návštěv a zjišťování, které stránky a kanály přivádějí návštěvníky; ukládá cookies Google `_ga`
@@ -53,7 +55,7 @@ analytiku, reklamu ani sledování. Platforma (app.helvetly.com) používá Goog
 ale odesílá pouze adresu každé stránky bez dotazu či fragmentu, nikdy zadávaný obsah ani údaje
 pracovního prostoru. Po přihlášení přidává pseudonym účtu a pracovního prostoru (hash s klíčem,
 který Google nemůže přiřadit zpět k vám) a vaši roli, aby se návštěvy z více zařízení počítaly jako
-jedna osoba. Klientský portál analytiku nenačítá. Kromě cookies Google `_ga` platforma a klientský
+jedna osoba. Klientský portál analytiku nenačítá. Kromě volitelného měření reklam a cookies Google `_ga` platforma a klientský
 portál ukládají pouze cookies nezbytné pro přihlašování:
 
 | Název                     | Nastavuje        | Účel                                              | Platnost                   |

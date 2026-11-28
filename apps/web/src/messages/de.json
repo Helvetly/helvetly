@@ -431,7 +431,7 @@
   "new": "Neu",
   "newInvoiceIssuesAMonth": "Ausgestellte Rechnungen pro Monat",
   "questionsThatNeedAModelGoToOpenAI": "Vor der ersten KI-Nutzung in jedem Arbeitsbereich stimmen Sie der Übermittlung von Inhalten an OpenAI zu. Die Zustimmung gilt dort für alle KI-Funktionen und nur für Sie. Laut den API-Bedingungen von OpenAI werden API-Daten nicht zum Trainieren von Modellen verwendet.",
-  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "Website und Plattform verwenden Google Analytics. Das Kundenportal verwendet weder Analyse- noch Werbeskripte.",
+  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "Das Kundenportal verwendet keine Analyse- oder Werbeskripte. Website und Plattform nutzen Google Analytics. Die Messung von Anzeigenklicks und neuen Registrierungen ist freiwillig.",
   "noPasswordsPasskeysGoogleOrASixDigitCode": "Keine Passwörter: Passkeys, Google oder ein sechsstelliger Code per E-Mail.",
   "noPasswordsToSteal": "Keine Passwörter zum Stehlen",
   "noPlan": "kein Plan {id}",
@@ -445,7 +445,7 @@
   "notIncluded": "Nicht enthalten",
   "notOffered": "Nicht angeboten",
   "notOnPaperwork": " statt für Papierkram.",
-  "noTrackersNoAds": "Keine Werbung",
+  "noTrackersNoAds": "Werbefreies Kundenportal",
   "offerHeidiDataDetails": "Heidi ist in {plans} enthalten. Vor der ersten KI-Nutzung in jedem Arbeitsbereich stimmen Sie der Übermittlung von Inhalten an OpenAI zu. Dies gilt dort für alle KI-Funktionen und nur für Sie. Heidi ändert nichts ohne Ihre Bestätigung. Weitere Informationen finden Sie in der ",
   "offerMonthlyPrice": "{name} CHF {amount}",
   "planMonthlyWithPeopleIncluded": "{name} CHF {amount} / Monat mit {people, plural, one {# Person} other {# Personen}}, CHF {extra} je weitere Person",
@@ -1178,5 +1178,9 @@
   "xeroYearly": "Standard USD 648 / 648 zum globalen Monatspreis; Steuern nicht ausgewiesen",
   "fbYearly": "Lite USD 276 / 540 zum Monatspreis (5 Kunden); Steuern nicht ausgewiesen",
   "zbYearly": "Standard EUR 120 / 120 bei jährlicher Zahlung (3 Benutzer inklusive); exkl. lokale Steuern",
-  "bonsaiYearly": "Essentials USD 228 / 684 bei jährlicher Zahlung; Steuern nicht ausgewiesen"
+  "bonsaiYearly": "Essentials USD 228 / 684 bei jährlicher Zahlung; Steuern nicht ausgewiesen",
+  "adsPreferences": "Werbemessung",
+  "adsExplanation": "Darf Google Ads diesen Anzeigenklick einer neuen Helvetly-Registrierung zuordnen? Sie können Ihre Wahl in der Fusszeile der Website ändern.",
+  "adsDecline": "Ablehnen",
+  "adsAllow": "Erlauben"
 }

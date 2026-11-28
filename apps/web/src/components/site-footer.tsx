@@ -6,6 +6,7 @@ import { Logo } from '@helvetly/ui/components/logo'
 import { ThemeToggle } from '@helvetly/ui/components/theme-toggle'
 import { Bell, CircleCheck, Landmark, type LucideIcon } from 'lucide-react'
 
+import { AdsPreferences } from '@/components/ads-preferences'
 import { Cta } from '@/components/cta'
 import { Ridge } from '@/components/ridge'
 import { Container } from '@/components/section'
@@ -163,6 +164,7 @@ export function SiteFooter({ lang }: { lang: Locale }) {
             </p>
             <div className="flex flex-wrap items-center gap-4 lg:justify-self-end">
               {/* The same glass as the theme toggle beside it; the footer is always dark. */}
+              <AdsPreferences />
               <LanguageSwitcher className="bg-white/8 dark:hover:bg-white/14 dark:aria-expanded:bg-white/14" />
               <ThemeToggle className="bg-white/8" />
             </div>

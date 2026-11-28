@@ -103,6 +103,7 @@ func New(cfg config.Config, db *store.Store, log *slog.Logger) (*Service, error)
 
 // Register adds the sign-in, session and passkey routes.
 func (s *Service) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/v1/public/ads/measurement", s.adsMeasurement)
 	mux.HandleFunc("GET /api/v1/auth/config", s.authConfig)
 	mux.HandleFunc("GET /api/v1/auth/google/start", s.googleStart)
 	mux.HandleFunc("GET /api/v1/auth/google/callback", s.googleCallback)

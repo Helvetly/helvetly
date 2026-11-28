@@ -435,7 +435,7 @@
   "new": "New",
   "newInvoiceIssuesAMonth": "New invoice issues a month",
   "questionsThatNeedAModelGoToOpenAI": "Before your first AI use in each workspace, you approve sending content to OpenAI. Approval covers all AI tools there and applies only to you. OpenAI’s API terms say API data is not used to train models.",
-  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "The website and platform use Google Analytics. The client portal uses no analytics or advertising scripts.",
+  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "The client portal has no analytics or advertising scripts. The website and platform use Google Analytics. Measuring ad clicks and new registrations is optional.",
   "noPasswordsPasskeysGoogleOrASixDigitCode": "No passwords: passkeys, Google or a six-digit code sent by email.",
   "noPasswordsToSteal": "No passwords to steal",
   "noPlan": "no plan {id}",
@@ -449,7 +449,7 @@
   "notIncluded": "Not included",
   "notOffered": "Not offered",
   "notOnPaperwork": "not on paperwork.",
-  "noTrackersNoAds": "No advertising",
+  "noTrackersNoAds": "Ad-free client portal",
   "offerHeidiDataDetails": "Heidi is included in {plans}. Before your first AI use in each workspace, you approve sending content to OpenAI. This covers all AI tools there, only for you. Heidi changes nothing without your confirmation. The details are in the ",
   "offerMonthlyPrice": "{name} CHF {amount}",
   "planMonthlyWithPeopleIncluded": "{name} CHF {amount} / month with {people, plural, one {# person} other {# people}}, CHF {extra} per extra person",
@@ -1178,5 +1178,9 @@
   "xeroYearly": "Standard USD 648 / 648 at the global monthly price; tax not stated",
   "fbYearly": "Lite USD 276 / 540 at the monthly price (5 clients); tax not stated",
   "zbYearly": "Standard EUR 120 / 120 billed yearly (3 users included); excl. local taxes",
-  "bonsaiYearly": "Essentials USD 228 / 684 billed yearly; tax not stated"
+  "bonsaiYearly": "Essentials USD 228 / 684 billed yearly; tax not stated",
+  "adsPreferences": "Ad measurement",
+  "adsExplanation": "Allow Google Ads to link this ad click to a new Helvetly account? You can change your choice in the website footer.",
+  "adsDecline": "Decline",
+  "adsAllow": "Allow"
 }

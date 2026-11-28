@@ -48,8 +48,10 @@ per il numero AVS); l’[accordo sul trattamento dei dati](dpa.md) descrive i de
 | Email che ti inviamo: codici di accesso, inviti, avvisi, allarmi di sicurezza, riepiloghi                                                                                                                                                    | Gestire il servizio                                 | Contratto                                                                         | Per il periodo in cui il fornitore email conserva i log di consegna                                                                           |
 | Log degli errori (percorso, errore, ora) e log del nostro fornitore di hosting (che possono contenere indirizzi IP)                                                                                                                          | Gestire e proteggere il servizio                    | Legittimo interesse                                                               | 30 giorni. L’applicazione non scrive un registro degli accessi; registra gli errori senza i token degli URL                                   |
 
-Non vendiamo dati personali, non li usiamo per pubblicità, non effettuiamo profilazione e non
+Non vendiamo dati personali, non personalizziamo la pubblicità, non effettuiamo profilazione e non
 prendiamo decisioni su di te con mezzi esclusivamente automatizzati (art. 21 nLPD, art. 22 GDPR).
+
+**Misurazione pubblicitaria facoltativa.** Con il tuo consenso, Google Ads può collegare il clic su un annuncio alla creazione di un account Helvetly. Google riceve l’identificativo del clic, dati sul browser e sulla rete e un identificativo di conversione casuale. L’evento non contiene indirizzi e-mail o dati dello spazio di lavoro. Google utilizza cookie di attribuzione di prima parte (`_gcl_*`). Helvetly conserva la scelta per 180 giorni e l’indicatore di registrazione per un massimo di dieci minuti. Puoi rifiutare o revocare il consenso alla voce «Misurazione pubblicitaria» a piè di pagina (art. 6, par. 1, lett. a RGPD).
 
 **Cookie e archiviazione nel browser.** Il sito (www.helvetly.com) usa Google Analytics 4 per contare
 le visite e capire quali pagine e canali portano visitatori; imposta i cookie Google `_ga` (fino a
@@ -61,7 +63,7 @@ allo stesso modo, ma invia solo l’indirizzo di ogni pagina senza query o framm
 inserisci o i dati dello spazio di lavoro. Dopo l’accesso aggiunge uno pseudonimo del tuo account e dello
 spazio di lavoro (un’impronta con chiave che Google non può ricondurre a te) e il tuo ruolo, così le visite da più
 dispositivi contano come una sola persona. Il portale clienti non carica strumenti di analisi.
-A parte i cookie Google `_ga`, piattaforma e portale impostano solo i cookie strettamente necessari
+A parte la misurazione pubblicitaria facoltativa e i cookie Google `_ga`, piattaforma e portale impostano solo i cookie strettamente necessari
 per l’accesso:
 
 | Nome                      | Impostato da    | Finalità                                                | Durata                                   |

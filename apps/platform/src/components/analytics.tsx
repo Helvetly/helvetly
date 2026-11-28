@@ -1,4 +1,10 @@
 'use client'
+import {
+  adsAllowed,
+  adsSignupId,
+  denyAnalyticsAdvertising,
+  measureAds,
+} from '@helvetly/ui/lib/ads-measurement'
 import { useQuery } from '@tanstack/react-query'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -25,6 +31,13 @@ export function Analytics() {
 function PageAnalytics({ pathname }: { pathname: string }) {
   const id = useAuthConfig().data?.google_analytics_id
   const session = useLoadedSession()
+  const signedIn = Boolean(session?.user)
+  useEffect(() => {
+    if (!signedIn || window.location.origin !== 'https://app.helvetly.com' || !adsAllowed()) return
+    const signup = adsSignupId()
+    if (signup) return measureAds({ type: 'signup', id: signup })
+  }, [signedIn])
+
   const [ga, setGa] = useState<typeof ReactGA>()
 
   useEffect(() => {
@@ -34,7 +47,14 @@ function PageAnalytics({ pathname }: { pathname: string }) {
 
     void import('react-ga4').then(({ default: g }) => {
       if (!g.isInitialized) {
-        g.initialize(id, { gtagOptions: { send_page_view: false } })
+        denyAnalyticsAdvertising()
+        g.initialize(id, {
+          gtagOptions: {
+            send_page_view: false,
+            allow_google_signals: false,
+            allow_ad_personalization_signals: false,
+          },
+        })
       }
 
       setGa(g)

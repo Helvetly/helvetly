@@ -127,6 +127,7 @@ func (s *Service) emailVerify(w http.ResponseWriter, r *http.Request) {
 		s.WriteError(w, r, err)
 		return
 	}
+	s.markAdsSignup(w, r, ns)
 	s.signedInResponse(w, ns, SafeNext(in.Next))
 }
 

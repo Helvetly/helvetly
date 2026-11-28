@@ -435,7 +435,7 @@
   "new": "Ny",
   "newInvoiceIssuesAMonth": "Nya utfärdade fakturor per månad",
   "questionsThatNeedAModelGoToOpenAI": "Innan du använder AI för första gången i varje arbetsyta godkänner du att innehåll skickas till OpenAI. Godkännandet omfattar alla AI-verktyg där och gäller bara dig. Enligt OpenAI:s API-villkor används API-data inte för att träna modeller.",
-  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "Webbplatsen och plattformen använder Google Analytics. Kundportalen laddar inga analys- eller reklamskript.",
+  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "Kundportalen använder inga analys- eller annonsskript. Webbplatsen och plattformen använder Google Analytics. Mätning av annonsklick och nya registreringar är valfri.",
   "noPasswordsPasskeysGoogleOrASixDigitCode": "Inga lösenord: passnycklar, Google eller en sexsiffrig kod via mejl.",
   "noPasswordsToSteal": "Inga lösenord att stjäla",
   "noPlan": "ingen plan {id}",
@@ -449,7 +449,7 @@
   "notIncluded": "Ingår inte",
   "notOffered": "Erbjuds inte",
   "notOnPaperwork": "inte på pappersarbete.",
-  "noTrackersNoAds": "Ingen reklam",
+  "noTrackersNoAds": "Annonsfri kundportal",
   "offerHeidiDataDetails": "Heidi ingår i {plans}. Innan du använder AI för första gången i varje arbetsyta godkänner du att innehåll skickas till OpenAI. Detta omfattar alla AI-verktyg där och gäller bara dig. Heidi ändrar ingenting utan din bekräftelse. Detaljerna finns i ",
   "offerMonthlyPrice": "{name} CHF {amount}",
   "planMonthlyWithPeopleIncluded": "{name} CHF {amount} / månad med {people, plural, one {# person} other {# personer}}, CHF {extra} per extra person",
@@ -1178,5 +1178,9 @@
   "xeroYearly": "Standard USD 648 / 648 till globalt månadspris; skatt anges inte",
   "fbYearly": "Lite USD 276 / 540 till månadspris (5 kunder); skatt anges inte",
   "zbYearly": "Standard EUR 120 / 120 vid årsbetalning (3 användare ingår); exkl. lokala skatter",
-  "bonsaiYearly": "Essentials USD 228 / 684 vid årsbetalning; skatt anges inte"
+  "bonsaiYearly": "Essentials USD 228 / 684 vid årsbetalning; skatt anges inte",
+  "adsPreferences": "Annonsmätning",
+  "adsExplanation": "Får Google Ads koppla ett annonsklick till en ny registrering hos Helvetly? Du kan ändra ditt val i sidfoten.",
+  "adsDecline": "Avböj",
+  "adsAllow": "Tillåt"
 }

@@ -435,7 +435,7 @@
   "new": "Nuovo",
   "newInvoiceIssuesAMonth": "Nuove emissioni di fatture al mese",
   "questionsThatNeedAModelGoToOpenAI": "Prima del primo utilizzo dell’IA in ogni spazio di lavoro, approvi l’invio di contenuti a OpenAI. L’approvazione copre tutte le funzioni IA di quello spazio e vale solo per te. Secondo le condizioni API di OpenAI, i dati API non vengono usati per addestrare i modelli.",
-  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "Il sito e la piattaforma usano Google Analytics. Il portale clienti non carica script di analisi o pubblicità.",
+  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "Il portale clienti non utilizza script di analisi o pubblicitari. Il sito e la piattaforma utilizzano Google Analytics. La misurazione dei clic sugli annunci e delle nuove registrazioni è facoltativa.",
   "noPasswordsPasskeysGoogleOrASixDigitCode": "Niente password: passkey, Google o un codice a sei cifre inviato via email.",
   "noPasswordsToSteal": "Nessuna password da rubare",
   "noPlan": "nessun piano {id}",
@@ -449,7 +449,7 @@
   "notIncluded": "Non incluso",
   "notOffered": "Non offerto",
   "notOnPaperwork": "non alle scartoffie.",
-  "noTrackersNoAds": "Senza pubblicità",
+  "noTrackersNoAds": "Portale clienti senza pubblicità",
   "offerHeidiDataDetails": "Heidi è inclusa in {plans}. Prima del primo utilizzo dell’IA in ogni spazio di lavoro, approvi l’invio di contenuti a OpenAI. Questo copre tutte le funzioni IA di quello spazio e vale solo per te. Heidi non modifica nulla senza la tua conferma. I dettagli si trovano in ",
   "offerMonthlyPrice": "{name} CHF {amount}",
   "planMonthlyWithPeopleIncluded": "{name} CHF {amount} / mese con {people, plural, one {# persona} other {# persone}}, CHF {extra} per ogni persona in più",
@@ -1178,5 +1178,9 @@
   "xeroYearly": "Standard USD 648 / 648 al prezzo mensile globale; tasse non indicate",
   "fbYearly": "Lite USD 276 / 540 al prezzo mensile (5 clienti); tasse non indicate",
   "zbYearly": "Standard EUR 120 / 120 con fatturazione annuale (3 utenti inclusi); tasse locali escluse",
-  "bonsaiYearly": "Essentials USD 228 / 684 con fatturazione annuale; tasse non indicate"
+  "bonsaiYearly": "Essentials USD 228 / 684 con fatturazione annuale; tasse non indicate",
+  "adsPreferences": "Misurazione pubblicitaria",
+  "adsExplanation": "Consenti a Google Ads di collegare il clic su un annuncio alla creazione di un account Helvetly? Puoi cambiare la tua scelta a piè di pagina.",
+  "adsDecline": "Rifiuta",
+  "adsAllow": "Consenti"
 }

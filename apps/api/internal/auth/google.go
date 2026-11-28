@@ -139,6 +139,7 @@ func (s *Service) googleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, next, http.StatusFound)
 		return
 	}
+	s.markAdsSignup(w, r, ns)
 	s.setSessionCookie(w, ns)
 	http.Redirect(w, r, next, http.StatusFound)
 }
