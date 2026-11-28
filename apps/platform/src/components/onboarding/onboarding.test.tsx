@@ -443,6 +443,47 @@ describe('the welcome', () => {
     expect(saved[0]?.seller).toMatchObject({ apt: null, vat_number: null })
   })
 
+  test('company and defaults send only onboarding fields when the API predates payment confirmations', async () => {
+    server.use(
+      http.get('/api/v1/invoice-settings', () =>
+        HttpResponse.json({ data: { ...empty, payment_confirmation: undefined } }),
+      ),
+    )
+    const user = userEvent.setup()
+    wrap(<Welcome />)
+    await start(user)
+    await fillCompany(user, 'Muster')
+    await user.click(legalForm())
+    await user.click(await screen.findByRole('option', { name: /Sole proprietorship/ }))
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    await screen.findByRole('heading', { name: 'Add your logo' })
+    const input = {
+      seller: {
+        name: 'Muster',
+        street: 'Bahnhofstrasse',
+        street_number: '12',
+        apt: null,
+        zip: '8001',
+        city: 'Zürich',
+        country: 'CH',
+        legal_form: 'sole',
+        vat_number: null,
+      },
+      vat_registered: false,
+      default_vat_mode: 'none',
+      iban: null,
+      language: 'en',
+      currency: 'CHF',
+      default_terms_days: 30,
+      number_format: '{YYYY}-{NNN}',
+    }
+    expect(saved).toEqual([input])
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    await screen.findByRole('heading', { name: 'Invoice defaults' })
+    await user.click(screen.getByRole('button', { name: /Continue/ }))
+    await waitFor(() => expect(saved).toEqual([input, input]))
+  })
+
   test('an invalid entry stays, so it is not silently thrown away', async () => {
     const user = userEvent.setup()
     const settingsReady = Promise.withResolvers<void>()
