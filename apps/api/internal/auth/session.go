@@ -25,10 +25,11 @@ const (
 )
 
 type newSession struct {
-	token, csrf string
-	challenge   string
-	linked      bool
-	expires     time.Time
+	createdAccount bool
+	token, csrf    string
+	challenge      string
+	linked         bool
+	expires        time.Time
 }
 
 func (s *Service) createSession(ctx context.Context, q store.Q, userID, workspaceID string) (newSession, error) {

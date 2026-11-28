@@ -52,6 +52,12 @@ are the reference.
 - **Auth** (`internal/auth`): passwordless (Google OIDC, email code, passkeys), sessions bound to one workspace,
   `SignedIn` wraps signed-in routes and requires `X-CSRF-Token` on non-GET requests; personal API tokens
   (`Authorization: Bearer hvt_…`) reach only the operations in `internal/openapi/openapi.json` and `POST /api/mcp`.
+- **Optional Google Ads measurement**: on the hosted marketing site, a Google ad click offers a choice in the
+  page footer (`helvetly_ads`, 180 days). Only after consent, an isolated frame on the API origin handles attribution
+  and the first successful email or Google registration. Its short-lived host-only marker carries a random conversion
+  ID for deduplication, independent of the account, workspace and session. The Google Ads tag has no access to the
+  platform page; analytics on ordinary pages denies advertising consent. Other installations and the portal do not
+  load this frame.
 - **Portal scope** (`internal/portalscope`): the one place that decides whose client portal a request is for. Every
   workspace has a slug (`portal_slugs`: its current one, plus every earlier one, which redirects pages to the current
   and is never given to another workspace, by a 302 that is never cached since a workspace may take an earlier slug back;

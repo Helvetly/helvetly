@@ -1,0 +1,54 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Helvetly</title>
+<script>
+  const tag = 'AW-18597239844'
+  const hasConsent = () => document.cookie.split('; ').includes('helvetly_ads=yes')
+  function gtag() {
+    window.dataLayer.push(arguments)
+  }
+
+  window.addEventListener('message', function measure(event) {
+    if (window.parent === window || event.source !== window.parent || !hasConsent()) return
+    const signup = event.origin === 'https://app.helvetly.com' && event.data?.type === 'signup'
+    const landing =
+      ['https://www.helvetly.com', 'https://helvetly.com'].includes(event.origin) &&
+      event.data?.type === 'landing'
+    if (!landing && !signup) return
+    if (signup && !/^[A-Z2-7]{26}$/.test(event.data.id)) return
+    window.removeEventListener('message', measure)
+    const id = event.data.id
+    const loader = document.createElement('script')
+    loader.async = true
+    loader.referrerPolicy = 'no-referrer'
+    loader.onload = () => {
+      if (!hasConsent()) return
+      gtag('config', tag, {
+        send_page_view: false,
+        cookie_domain: 'helvetly.com',
+        allow_ad_personalization_signals: false,
+        allow_enhanced_conversions: false,
+      })
+      if (signup) {
+        gtag('event', 'conversion', {
+          send_to: tag + '/j6ZeCP7liMAdEKS47aNF',
+          value: 1,
+          currency: 'CHF',
+          transaction_id: id,
+          event_callback: () =>
+            window.parent.postMessage({ type: 'signup-sent', id }, event.origin),
+        })
+      }
+    }
+    window.dataLayer = []
+    gtag('consent', 'default', {
+      ad_storage: 'granted',
+      ad_user_data: 'granted',
+      ad_personalization: 'denied',
+      analytics_storage: 'denied',
+    })
+    gtag('js', new Date())
+    loader.src = 'https://www.googletagmanager.com/gtag/js?id=' + tag
+    document.head.append(loader)
+  })
+</script>

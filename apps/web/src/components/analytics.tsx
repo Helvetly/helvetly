@@ -1,5 +1,6 @@
 'use client'
 
+import { denyAnalyticsAdvertising } from '@helvetly/ui/lib/ads-measurement'
 import { useEffect } from 'react'
 
 /** What starts Google Analytics: the visitor's first interaction, or this long on the page. */
@@ -14,7 +15,7 @@ declare global {
 }
 
 // gtag reads `arguments` objects from the queue, not arrays; the parameters only type the calls.
-function gtag(_command: string, _value: unknown) {
+function gtag(_command: string, _value: unknown, _options?: object) {
   window.dataLayer?.push(arguments)
 }
 
@@ -22,8 +23,16 @@ function gtag(_command: string, _value: unknown) {
 function startGtag(gaId: string) {
   if (window.dataLayer) return
   window.dataLayer = []
+  denyAnalyticsAdvertising()
   gtag('js', new Date())
-  gtag('config', gaId)
+  const page = new URL(window.location.href)
+  for (const key of ['gclid', 'dclid', 'gbraid', 'wbraid', 'gad_source', 'gad_campaignid'])
+    page.searchParams.delete(key)
+  gtag('config', gaId, {
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false,
+    ...(page.href !== window.location.href && { page_location: page.href }),
+  })
   const script = document.createElement('script')
   script.async = true
   script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`

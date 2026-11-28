@@ -24,11 +24,13 @@ type identity struct {
 
 // signInIdentity finds or creates the person and opens a fresh session, in the caller's transaction.
 func (s *Service) signInIdentity(ctx context.Context, q store.Q, id identity, timezone, next string) (newSession, error) {
-	user, err := s.upsertUser(ctx, q, id)
+	user, created, err := s.upsertUser(ctx, q, id)
 	if err != nil {
 		return newSession{}, err
 	}
-	return s.signInUser(ctx, q, user, timezone, next)
+	ns, err := s.signInUser(ctx, q, user, timezone, next)
+	ns.createdAccount = created
+	return ns, err
 }
 
 // signInUser opens a session in the person's first workspace. Someone without one joins the workspaces
@@ -97,7 +99,8 @@ func (s *Service) joinInvited(ctx context.Context, q store.Q, user store.User, n
 // a Google account and an email code for one address are one user, and the new identity is added), else
 // creates them. The profile is refreshed: a provider's name only fills an empty one; Google's picture is kept
 // (shown unless the person uploaded their own photo).
-func (s *Service) upsertUser(ctx context.Context, q store.Q, id identity) (store.User, error) {
+func (s *Service) upsertUser(ctx context.Context, q store.Q, id identity) (store.User, bool, error) {
+	created := false
 	now := s.now()
 	email := strings.ToLower(strings.TrimSpace(id.email))
 	name, picture := truncateRunes(strings.TrimSpace(id.name), 200), id.picture
@@ -105,7 +108,7 @@ func (s *Service) upsertUser(ctx context.Context, q store.Q, id identity) (store
 		picture = ""
 	}
 	if err := q.LockAddress(ctx, email); err != nil { // two first sign-ins for one address make one person
-		return store.User{}, err
+		return store.User{}, false, err
 	}
 	u, err := q.UserByIdentity(ctx, id.provider, id.subject)
 	if errors.Is(err, store.ErrNotFound) {
@@ -113,19 +116,20 @@ func (s *Service) upsertUser(ctx context.Context, q store.Q, id identity) (store
 		if errors.Is(err, store.ErrNotFound) {
 			u = store.User{ID: NewID("usr"), Email: email, Name: name, AvatarURL: picture}
 			if err := q.CreateUser(ctx, u, now); err != nil {
-				return store.User{}, err
+				return store.User{}, false, err
 			}
+			created = true
 			if err := q.QueueAdminAlert(ctx, "New sign-up\nUser: "+store.NameAndEmail(u.Name, u.Email)); err != nil {
-				return store.User{}, err
+				return store.User{}, false, err
 			}
 		} else if err != nil {
-			return store.User{}, err
+			return store.User{}, false, err
 		}
 		if err := q.CreateIdentity(ctx, id.provider, id.subject, u.ID, email, now); err != nil {
-			return store.User{}, err
+			return store.User{}, false, err
 		}
 	} else if err != nil {
-		return store.User{}, err
+		return store.User{}, false, err
 	}
 	if u.Name == "" {
 		u.Name = name
@@ -135,9 +139,10 @@ func (s *Service) upsertUser(ctx context.Context, q store.Q, id identity) (store
 		google = &picture
 	}
 	if err := q.UpdateUserProfile(ctx, u.ID, u.Name, google, now); err != nil {
-		return store.User{}, err
+		return store.User{}, false, err
 	}
-	return q.User(ctx, u.ID)
+	u, err = q.User(ctx, u.ID)
+	return u, created, err
 }
 
 // SafeNext keeps a redirect on the platform: a same-origin path, never another host and never /login.

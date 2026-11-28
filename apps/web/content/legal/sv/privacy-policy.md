@@ -42,8 +42,10 @@ eller art. 50e–50g AHVG för AHV-numret); [personuppgiftsbiträdesavtalet](dpa
 | E-post vi skickar: inloggningskoder, inbjudningar, meddelanden, säkerhetsvarningar, sammanställningar                                                                                                                                    | Driva tjänsten                              | Avtal                                                                      | Så länge e-postleverantören sparar sina leveransloggar                                                                      |
 | Felloggar (rutt, fel, tid) och driftleverantörens loggar (kan innehålla IP-adresser)                                                                                                                                                     | Driva och skydda tjänsten                   | Berättigat intresse                                                        | 30 dagar. Applikationen skriver själv ingen åtkomstlogg; den loggar fel utan token från URL:er                              |
 
-Vi säljer inte personuppgifter, använder dem inte för reklam, profilerar dig inte och fattar inga
+Vi säljer inte personuppgifter, anpassar inte reklam, profilerar dig inte och fattar inga
 beslut om dig enbart automatiserat (nDSG art. 21, GDPR art. 22).
+
+**Valfri annonsmätning.** Med ditt samtycke kan Google Ads koppla ett annonsklick till en ny registrering hos Helvetly. Google får klickets identifierare, webbläsar- och nätverksuppgifter samt ett slumpmässigt konverterings-ID. Händelsen innehåller ingen e-postadress eller information från arbetsytan. Google använder förstapartskakor för tillskrivning (`_gcl_*`). Helvetly sparar ditt val i 180 dagar och registreringsmarkören i högst tio minuter. Du kan neka eller återkalla samtycket under Annonsmätning i sidfoten (artikel 6.1 a i GDPR).
 
 **Cookies och webbläsarlagring.** Webbplatsen (www.helvetly.com) använder Google Analytics 4 för
 att räkna besök och se vilka sidor och kanaler som ger besökare; den sätter Googles `_ga`-cookies
@@ -55,7 +57,7 @@ sätter inga cookies och använder ingen analys, reklam eller spårning. Plattfo
 utan frågesträng eller fragment, aldrig det du skriver in eller uppgifter i arbetsytan. När du
 är inloggad lägger den till en pseudonym för kontot och arbetsytan (en nycklad hash som Google
 inte kan spåra tillbaka till dig) och din roll, så att besök från flera enheter räknas som en
-person. Kundportalen laddar ingen analys. Utöver Googles `_ga`-cookies sätter plattformen och
+person. Kundportalen laddar ingen analys. Utöver valfri annonsmätning och Googles `_ga`-cookies sätter plattformen och
 kundportalen bara cookies som är strikt nödvändiga för inloggning:
 
 | Namn                      | Sätts av     | Ändamål                                   | Livslängd                         |

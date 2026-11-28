@@ -47,8 +47,10 @@ customer to determine as controller; the [data processing agreement](dpa.md) des
 | Emails we send you: sign-in codes, invitations, notices, security alerts, digests                                                                                                                               | Running the service                                 | Contract                                                             | As long as the email provider keeps its delivery logs                                                                           |
 | Error logs (route, error, time) and the logs of our hosting provider (which can contain IP addresses)                                                                                                           | Operating and securing the service                  | Legitimate interest                                                  | 30 days. The application itself writes no access log; it logs errors without tokens from URLs                                   |
 
-We do not sell personal data, do not use it for advertising, do not profile you and make no decisions
+We do not sell personal data, do not personalise advertising, do not profile you and make no decisions
 about you by automated means alone (nDSG Art. 21, GDPR Art. 22).
+
+**Optional ad measurement.** If you agree, Google Ads can link an ad click to a new Helvetly registration. Google receives the ad click identifier, browser and network information and a random conversion ID. The event contains no email address or workspace content. Google uses first-party attribution cookies (`_gcl_*`). Helvetly stores your choice for 180 days and the registration marker for up to ten minutes. You can decline or withdraw consent in “Ad measurement” in the website footer (GDPR Art. 6(1)(a)).
 
 **Cookies and browser storage.** The website (www.helvetly.com) uses Google Analytics 4 to count visits and see
 which pages and channels bring visitors; it sets Google's `_ga` cookies (up to 2 years) and sends page views and device
@@ -58,7 +60,7 @@ advertising or tracking. The platform (app.helvetly.com) uses Google Analytics 4
 address of each page without its query or fragment, never what you enter or the data in your workspace. When you are signed in, it adds a pseudonym of your account
 and of the workspace (a keyed hash Google cannot trace back to you) and your role, so visits from several devices
 count as one person. The client
-portal loads no analytics. Apart from Google's `_ga` cookies, the platform and the client portal set only cookies
+portal loads no analytics. Apart from optional ad measurement and Google's `_ga` cookies, the platform and the client portal set only cookies
 that are strictly necessary for signing in:
 
 | Name                      | Set by        | Purpose                                                | Lifetime                       |

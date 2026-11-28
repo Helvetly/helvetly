@@ -435,7 +435,7 @@
   "new": "Nieuw",
   "newInvoiceIssuesAMonth": "Nieuwe uitgegeven facturen per maand",
   "questionsThatNeedAModelGoToOpenAI": "Voordat je AI voor het eerst in elke werkruimte gebruikt, geef je toestemming om inhoud naar OpenAI te sturen. Deze toestemming geldt daar voor alle AI-hulpmiddelen en alleen voor jou. Volgens de API-voorwaarden van OpenAI worden API-gegevens niet gebruikt om modellen te trainen.",
-  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "De website en het platform gebruiken Google Analytics. Het klantportaal laadt geen analyse- of advertentiescripts.",
+  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "Het klantportaal gebruikt geen analyse- of advertentiescripts. De website en het platform gebruiken Google Analytics. Het meten van advertentieklikken en nieuwe registraties is optioneel.",
   "noPasswordsPasskeysGoogleOrASixDigitCode": "Geen wachtwoorden: passkeys, Google of een zescijferige code per e-mail.",
   "noPasswordsToSteal": "Geen wachtwoorden om te stelen",
   "noPlan": "geen abonnement {id}",
@@ -449,7 +449,7 @@
   "notIncluded": "Niet inbegrepen",
   "notOffered": "Niet aangeboden",
   "notOnPaperwork": "niet aan papierwerk.",
-  "noTrackersNoAds": "Geen advertenties",
+  "noTrackersNoAds": "Advertentievrij klantportaal",
   "offerHeidiDataDetails": "Heidi is inbegrepen bij {plans}. Voordat je AI voor het eerst in elke werkruimte gebruikt, geef je toestemming om inhoud naar OpenAI te sturen. Dat geldt daar voor alle AI-hulpmiddelen, alleen voor jou. Heidi verandert niets zonder je bevestiging. De details staan in de ",
   "offerMonthlyPrice": "{name} CHF {amount}",
   "planMonthlyWithPeopleIncluded": "{name} CHF {amount} / maand met {people, plural, one {# persoon} other {# personen}}, CHF {extra} per extra persoon",
@@ -1178,5 +1178,9 @@
   "xeroYearly": "Standard USD 648 / 648 tegen de wereldwijde maandprijs; belasting niet vermeld",
   "fbYearly": "Lite USD 276 / 540 tegen de maandprijs (5 klanten); belasting niet vermeld",
   "zbYearly": "Standard EUR 120 / 120 bij jaarbetaling (3 gebruikers inbegrepen); excl. lokale belastingen",
-  "bonsaiYearly": "Essentials USD 228 / 684 bij jaarbetaling; belasting niet vermeld"
+  "bonsaiYearly": "Essentials USD 228 / 684 bij jaarbetaling; belasting niet vermeld",
+  "adsPreferences": "Advertentiemeting",
+  "adsExplanation": "Mag Google Ads een advertentieklik koppelen aan een nieuwe Helvetly-registratie? Je kunt je keuze onderaan de website wijzigen.",
+  "adsDecline": "Weigeren",
+  "adsAllow": "Toestaan"
 }

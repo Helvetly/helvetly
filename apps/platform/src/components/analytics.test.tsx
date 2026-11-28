@@ -60,7 +60,13 @@ test('sends a page view of the path alone, again on navigation', async () => {
   const { initialize, send, view, client } = renderWith('G-TEST123')
 
   await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
-  expect(initialize).toHaveBeenCalledWith('G-TEST123', { gtagOptions: { send_page_view: false } })
+  expect(initialize).toHaveBeenCalledWith('G-TEST123', {
+    gtagOptions: {
+      send_page_view: false,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false,
+    },
+  })
   expect(send).toHaveBeenLastCalledWith({
     hitType: 'pageview',
     page: '/invoices',

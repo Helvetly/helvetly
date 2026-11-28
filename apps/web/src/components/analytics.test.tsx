@@ -32,8 +32,14 @@ describe('Analytics', () => {
     expect(gtagScripts()).toEqual(['https://www.googletagmanager.com/gtag/js?id=G-TEST'])
     const queued = (window.dataLayer ?? []).map((entry) => [...entry])
     expect(queued).toEqual([
+      [
+        'consent',
+        'default',
+        { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' },
+      ],
+      ['set', 'ads_data_redaction', true],
       ['js', expect.any(Date)],
-      ['config', 'G-TEST'],
+      ['config', 'G-TEST', expect.objectContaining({ allow_google_signals: false })],
     ])
   })
 

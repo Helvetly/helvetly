@@ -42,8 +42,10 @@ verwerkingsverantwoordelijke; de [verwerkersovereenkomst](dpa.md) beschrijft de 
 | E-mails die we versturen: aanmeldcodes, uitnodigingen, mededelingen, beveiligingswaarschuwingen, overzichten                                                                                                                    | De dienst laten werken                           | Overeenkomst                                                               | Zolang de e-mailaanbieder zijn bezorglogboeken bewaart                                                                                                       |
 | Foutlogs (route, fout, tijd) en logbestanden van onze hostingaanbieder (kunnen IP-adressen bevatten)                                                                                                                            | De dienst beheren en beveiligen                  | Gerechtvaardigd belang                                                     | 30 dagen. De applicatie zelf houdt geen toegangslog bij; fouten worden gelogd zonder tokens uit URL's                                                        |
 
-We verkopen geen persoonsgegevens, gebruiken deze niet voor reclame, profileren je niet en nemen
+We verkopen geen persoonsgegevens, personaliseren geen advertenties, profileren je niet en nemen
 geen besluiten over je uitsluitend op geautomatiseerde wijze (nDSG art. 21, GDPR art. 22).
+
+**Optionele advertentiemeting.** Met je toestemming kan Google Ads een advertentieklik koppelen aan een nieuwe Helvetly-registratie. Google ontvangt de klik-ID, browser- en netwerkgegevens en een willekeurige conversie-ID. Het evenement bevat geen e-mailadres of werkruimtegegevens. Google gebruikt eigen attributiecookies (`_gcl_*`). Helvetly bewaart je keuze 180 dagen en de registratiemarkering maximaal tien minuten. Via ‘Advertentiemeting’ onderaan de website kun je toestemming weigeren of intrekken (art. 6 lid 1 onder a AVG).
 
 **Cookies en browseropslag.** De website (www.helvetly.com) gebruikt Google Analytics 4 om bezoeken
 te tellen en te zien welke pagina's en kanalen bezoekers brengen; zij plaatst de `_ga`-cookies
@@ -55,7 +57,7 @@ gebruikt Google Analytics 4 op dezelfde manier, maar verstuurt uitsluitend het a
 pagina zonder query of fragment, nooit je invoer of gegevens uit je werkruimte. Na aanmelding
 voegt het een pseudoniem van je account en werkruimte toe (een hash met sleutel die Google niet
 naar je kan herleiden) en je rol, zodat bezoeken vanaf meerdere apparaten als één persoon tellen.
-Het klantenportaal laadt geen analyse. Behalve Googles `_ga`-cookies plaatsen platform en
+Het klantenportaal laadt geen analyse. Naast optionele advertentiemeting en Googles `_ga`-cookies plaatsen platform en
 klantenportaal alleen cookies die strikt noodzakelijk zijn voor aanmelden:
 
 | Naam                      | Geplaatst door | Doel                                                   | Geldigheidsduur           |

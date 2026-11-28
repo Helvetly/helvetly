@@ -435,7 +435,7 @@
   "new": "Nové",
   "newInvoiceIssuesAMonth": "Nově vystavené faktury měsíčně",
   "questionsThatNeedAModelGoToOpenAI": "Před prvním použitím AI v každém pracovním prostoru schvalujete odesílání obsahu OpenAI. Souhlas se vztahuje na všechny tamní nástroje AI a pouze na vás. Podle podmínek API OpenAI se data API nepoužívají k trénování modelů.",
-  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "Web a platforma používají Google Analytics. Klientský portál nenačítá analytické ani reklamní skripty.",
+  "noAnalyticsAdvertisingOrTrackingScriptsInThePlatform": "Klientský portál nepoužívá analytické ani reklamní skripty. Web a platforma používají Google Analytics. Měření kliknutí na reklamy a nových registrací je volitelné.",
   "noPasswordsPasskeysGoogleOrASixDigitCode": "Bez hesel: přístupové klíče, Google nebo šestimístný kód zaslaný e-mailem.",
   "noPasswordsToSteal": "Žádná hesla, která lze ukrást",
   "noPlan": "neexistující tarif {id}",
@@ -449,7 +449,7 @@
   "notIncluded": "Nezahrnuto",
   "notOffered": "Nenabízeno",
   "notOnPaperwork": "ne papírování.",
-  "noTrackersNoAds": "Bez reklam",
+  "noTrackersNoAds": "Klientský portál bez reklam",
   "offerHeidiDataDetails": "Heidi je zahrnuta v {plans}. Před prvním použitím AI v každém pracovním prostoru schvalujete odesílání obsahu OpenAI. Souhlas zahrnuje všechny tamní nástroje AI pouze pro vás. Heidi bez vašeho potvrzení nic nemění. Podrobnosti najdete v ",
   "offerMonthlyPrice": "{name} CHF {amount}",
   "planMonthlyWithPeopleIncluded": "{name} CHF {amount} / měsíc pro {people, plural, one {# osobu} few {# osoby} many {# osoby} other {# osob}}, CHF {extra} za každou další osobu",
@@ -1178,5 +1178,9 @@
   "xeroYearly": "Standard USD 648 / 648 za globální měsíční cenu; daň neuvedena",
   "fbYearly": "Lite USD 276 / 540 za měsíční cenu (5 klientů); daň neuvedena",
   "zbYearly": "Standard EUR 120 / 120 při ročním placení (3 uživatelé v ceně); bez místních daní",
-  "bonsaiYearly": "Essentials USD 228 / 684 při ročním placení; daň neuvedena"
+  "bonsaiYearly": "Essentials USD 228 / 684 při ročním placení; daň neuvedena",
+  "adsPreferences": "Měření reklam",
+  "adsExplanation": "Smí Google Ads propojit kliknutí na reklamu s vytvořením účtu Helvetly? Volbu můžete změnit v zápatí webu.",
+  "adsDecline": "Odmítnout",
+  "adsAllow": "Povolit"
 }
