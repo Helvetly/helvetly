@@ -21,12 +21,12 @@ const MARGIN_MM = { left: 20, top: 15 }
 /** A length on the page as a share of the paper's width. */
 const mm = (value: number) => `${(value / PAGE_MM) * 100}%`
 
-/** A transparent logo shows on a checkerboard, so its edges and any transparent padding are visible. */
-export const CHECKER =
-  'bg-white bg-[conic-gradient(#e5e5e5_25%,transparent_0_50%,#e5e5e5_0_75%,transparent_0)] bg-[length:12px_12px]'
-
 /** The width : height of the PDFs' widest logo box: the shape a saved logo's thumbnail is shown in. */
 export const LOGO_BOX_ASPECT = DOCUMENT_LOGO_BOX_MM.width / DOCUMENT_LOGO_BOX_MM.height
+
+/** A transparent logo shows on a checkerboard, so its edges and any transparent padding are visible. */
+export const CHECKER =
+  'bg-white bg-[conic-gradient(rgb(229_229_229)_25%,transparent_0_50%,rgb(229_229_229)_0_75%,transparent_0)] bg-[length:12px_12px]'
 
 type Size = { width: number; height: number }
 
@@ -174,14 +174,14 @@ export function DocumentLogoFrame({
         {/* The picture outside the field is dimmed, as the workspace cropper does; the frame itself stays clear. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 border border-white/80 shadow-[0_0_0_100vmax_rgb(0_0_0/0.45)] in-focus-visible:ring-3 in-focus-visible:ring-ring/60"
+          className="pointer-events-none absolute inset-0 border border-white/80 outline-[100vmax] outline-black/45 outline-solid in-focus-visible:ring-3 in-focus-visible:ring-ring/60"
         >
           {dragging && (
             <>
-              <span className="absolute inset-y-0 left-1/3 w-px bg-white/70 shadow-[0_0_0_0.5px_rgb(0_0_0/0.2)]" />
-              <span className="absolute inset-y-0 left-2/3 w-px bg-white/70 shadow-[0_0_0_0.5px_rgb(0_0_0/0.2)]" />
-              <span className="absolute inset-x-0 top-1/3 h-px bg-white/70 shadow-[0_0_0_0.5px_rgb(0_0_0/0.2)]" />
-              <span className="absolute inset-x-0 top-2/3 h-px bg-white/70 shadow-[0_0_0_0.5px_rgb(0_0_0/0.2)]" />
+              <span className="absolute inset-y-0 left-1/3 w-px bg-white/70 ring-[0.5px] ring-black/20" />
+              <span className="absolute inset-y-0 left-2/3 w-px bg-white/70 ring-[0.5px] ring-black/20" />
+              <span className="absolute inset-x-0 top-1/3 h-px bg-white/70 ring-[0.5px] ring-black/20" />
+              <span className="absolute inset-x-0 top-2/3 h-px bg-white/70 ring-[0.5px] ring-black/20" />
             </>
           )}
         </span>
@@ -205,7 +205,7 @@ export function DocumentLogoPreview({
 }) {
   const ratio = documentRatio(natural)
   const printed = documentPrintSize(ratio)
-  const line = 'block h-[3px] rounded-full bg-neutral-200'
+  const line = 'block h-[3px] rounded-full bg-black/10'
   return (
     <figure className="grid gap-2">
       <div
@@ -213,7 +213,7 @@ export function DocumentLogoPreview({
         className="relative aspect-[210/60] overflow-hidden rounded-md bg-white ring-1 ring-border"
       >
         <span
-          className="absolute rounded-[2px] border border-dashed border-neutral-300"
+          className="absolute rounded-xs border border-dashed border-black/20"
           style={{
             left: mm(MARGIN_MM.left),
             top: mm(MARGIN_MM.top),
@@ -234,13 +234,13 @@ export function DocumentLogoPreview({
           <PlacedPicture url={url} natural={natural} view={view} />
         </span>
         <span className="absolute top-[7%] right-[9.5%] grid w-[26%] justify-items-end gap-[5px]">
-          <span className={cn(line, 'w-full bg-neutral-300')} />
+          <span className={cn(line, 'w-full bg-black/20')} />
           <span className={cn(line, 'w-4/5')} />
           <span className={cn(line, 'w-3/5')} />
           <span className={cn(line, 'w-2/3')} />
         </span>
         <span className="absolute right-[9.5%] bottom-[16%] left-[9.5%] grid gap-[5px]">
-          <span className="block h-[5px] w-1/4 rounded-full bg-neutral-400" />
+          <span className="block h-[5px] w-1/4 rounded-full bg-black/35" />
           <span className={cn(line, 'w-full')} />
           <span className={cn(line, 'w-11/12')} />
         </span>

@@ -15,7 +15,6 @@
 1 hex apps/platform/src/components/invoices/invoices-page.tsx
 2 hex apps/platform/src/components/invoices/pdf-view.tsx
 1 hex apps/platform/src/components/invoices/plan-card.tsx
-1 hex apps/platform/src/components/onboarding/logo-card.tsx
 3 hex apps/platform/src/components/products/product-detail.tsx
 13 hex apps/platform/src/components/scheduling/settings/calendar-marks.tsx
 8 hex apps/platform/src/components/shell/app-sidebar.tsx
