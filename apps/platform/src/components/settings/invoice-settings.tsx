@@ -61,6 +61,7 @@ import {
   type SectionState,
 } from '@/components/section-form'
 import { ApprovalsRow } from '@/components/settings/approvals-row'
+import { BankFields } from '@/components/settings/bank-fields'
 import { NextNumbersTip } from '@/components/settings/next-numbers-tip'
 import { NumberFormatField } from '@/components/settings/number-format-field'
 import { PercentInput } from '@/components/shared/percent-input'
@@ -73,6 +74,7 @@ import {
   nextNumberOf,
   numberFormatError,
   formatIban,
+  bankErrors,
   ibanInfo,
   INTERVALS,
   logoSrc,
@@ -348,8 +350,7 @@ export function validate(values: Values): FieldErrors {
     if (!values.electronic_id.trim())
       errors.electronic_id = translate('enterTheElectronicAddressRegisteredWithYourProvider')
   }
-  if (values.iban.trim() && !ibanInfo(values.iban).valid)
-    errors.iban = translate('thisIBANSCheckDigitsDonTMatchCheck')
+  Object.assign(errors, bankErrors(values))
   const market = unsupportedSellerCountry(values.country)
   if (market) errors.country = market
   const rate = parseDecimalInput(values.default_vat_rate, 2)
@@ -489,7 +490,7 @@ const SECTIONS: {
   {
     id: 'bank',
     page: 'company',
-    title: translate('bankAccount'),
+    title: translate('bankDetails'),
     icon: Landmark,
     required: ['iban'],
     fields: ['iban', 'bank_name', 'bic'],
@@ -1256,51 +1257,17 @@ function SettingsForm({ settings, page }: { settings: InvoiceSettings; page: Set
               <Section
                 id="bank"
                 state={state('bank')}
-                title={translate('bankAccount')}
-                description={translate('printedOnEveryInvoiceASwissIBANAddsA')}
+                title={translate('bankDetails')}
+                description={translate('bankDetailsLead')}
               >
-                <FormField
-                  id={inputId('iban')}
-                  label="IBAN"
+                <BankFields
+                  idPrefix="settings"
+                  values={values}
+                  errors={shown}
                   required
-                  error={shown.iban}
-                  width="full"
-                >
-                  <input
-                    {...describe('iban')}
-                    value={values.iban}
-                    onChange={(e) => set('iban', e.target.value.toUpperCase())}
-                    onBlur={() => iban.valid && set('iban', iban.formatted)}
-                    placeholder={translate('eGCH9300762011623852957')}
-                    spellCheck={false}
-                    className={cn(bigInput, 'font-code text-body tracking-wide')}
-                  />
-                </FormField>
-                <FormField
-                  id={inputId('bank_name')}
-                  label={translate('bank')}
-                  error={shown.bank_name}
-                  width="md"
-                >
-                  <input
-                    {...describe('bank_name')}
-                    value={values.bank_name}
-                    onChange={(e) => set('bank_name', e.target.value)}
-                    placeholder={translate('eGZRcherKantonalbank')}
-                    className={bigInput}
-                  />
-                </FormField>
-                <FormField id={inputId('bic')} label="BIC / SWIFT" error={shown.bic} width="md">
-                  <input
-                    {...describe('bic')}
-                    value={values.bic}
-                    maxLength={14}
-                    onChange={(e) => set('bic', e.target.value.toUpperCase())}
-                    placeholder={translate('eGZKBKCHZZ80A')}
-                    spellCheck={false}
-                    className={cn(bigInput, 'font-code text-body tracking-wide')}
-                  />
-                </FormField>
+                  inputClassName={bigInput}
+                  onChange={set}
+                />
                 {values.iban.trim() && iban.valid && <IbanNote iban={iban} />}
               </Section>
             )}

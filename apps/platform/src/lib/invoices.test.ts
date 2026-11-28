@@ -28,6 +28,7 @@ import {
   formatMoney,
   formatWholeAmount,
   fromCents,
+  bankErrors,
   ibanInfo,
   isZero,
   listParamsToQuery,
@@ -45,6 +46,7 @@ import {
   toCents,
   usableMethods,
   repeatsAmount,
+  validBic,
 } from './invoices'
 
 test('reads the list state from the URL and ignores what it does not know', () => {
@@ -172,6 +174,23 @@ test('tells QR-IBANs, Swiss and foreign IBANs apart and checks their digits', ()
     qr: false,
   })
   expect(ibanInfo('CH93 0076 2011 6238 5295 8')).toEqual({ valid: false })
+})
+
+test('checks BICs as the server does and reports only typed bank details', () => {
+  expect(['UBSWCHZH80A', 'ubswchzh', 'ZKBK CHZZ 80A'].map(validBic)).toEqual([true, true, true])
+  expect(['UBSWCHZ', 'UBSWCHZH80', 'UBSWCHZH80AX', '1BSWCHZH', 'UBSW1HZH'].map(validBic)).toEqual([
+    false,
+    false,
+    false,
+    false,
+    false,
+  ])
+  expect(bankErrors({ iban: '', bic: '' })).toEqual({})
+  expect(bankErrors({ iban: 'CH93 0076 2011 6238 5295 7', bic: 'UBSWCHZH80A' })).toEqual({})
+  expect(bankErrors({ iban: 'CH93 0076 2011 6238 5295 8', bic: 'UBS' })).toEqual({
+    iban: expect.stringContaining('IBAN'),
+    bic: expect.stringContaining('BIC'),
+  })
 })
 
 test('derives what the list shows from kind, status and due date', () => {

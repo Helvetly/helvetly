@@ -111,7 +111,7 @@ export const OneIssue: Story = {
   play: async () => {
     const { dialog, list } = await blockers(1)
     await expect(dialog.getByText('One thing to fix before issuing')).toBeVisible()
-    await expect(list.getByRole('link', { name: /Bank account/ })).toHaveAttribute(
+    await expect(list.getByRole('link', { name: /Bank details/ })).toHaveAttribute(
       'href',
       '/settings/company/?focus=iban#bank',
     )

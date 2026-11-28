@@ -167,6 +167,61 @@ export const Company: Story = {
   },
 }
 
+/** Bank details are their own block: IBAN across, bank and BIC side by side; a bad BIC stops the step, a good one is saved. */
+const bankSent: Record<string, unknown>[] = []
+export const CompanyBankDetails: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.put('/api/v1/invoice-settings', async ({ request }) => {
+          bankSent.push((await request.json()) as Record<string, unknown>)
+          return HttpResponse.json({ data: settings })
+        }),
+        ...meta.parameters.msw.handlers,
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    bankSent.length = 0
+    await begin(canvasElement)
+    const company = within(await step(canvasElement, 'company'))
+    await waitFor(() => expect(company.getByLabelText(/^ZIP/)).toBeEnabled())
+    const bank = within(company.getByRole('region', { name: 'Bank details' }))
+    await expect(bank.getByText(/so clients know where to pay/)).toBeVisible()
+    const iban = bank.getByLabelText('IBAN')
+    const name = bank.getByLabelText('Bank name')
+    const bic = bank.getByLabelText('BIC / SWIFT')
+    await expect(name).toHaveAttribute('placeholder', 'UBS Switzerland AG')
+    await expect(bic).toHaveAttribute('placeholder', 'UBSWCHZH80A')
+    const ibanBox = iban.getBoundingClientRect()
+    const nameBox = name.getBoundingClientRect()
+    const bicBox = bic.getBoundingClientRect()
+    await expect(Math.round(nameBox.top)).toBe(Math.round(bicBox.top))
+    await expect(Math.round(nameBox.height)).toBe(Math.round(bicBox.height))
+    await expect(ibanBox.width).toBeGreaterThan(nameBox.width + bicBox.width)
+    await expect(bank.getByRole('button', { name: 'About BIC / SWIFT' })).toBeVisible()
+
+    await userEvent.clear(iban)
+    await userEvent.type(iban, 'ch9300762011623852957')
+    await userEvent.type(name, 'UBS Switzerland AG')
+    await userEvent.type(bic, 'ubs')
+    await userEvent.click(company.getByRole('button', { name: /Continue/ }))
+    await waitFor(() => expect(bic).toHaveAttribute('aria-invalid', 'true'))
+    await expect(bank.getByText(/BIC of 8 or 11 characters/)).toBeVisible()
+    await expect(bankSent).toHaveLength(0)
+
+    await userEvent.type(bic, 'wchzh80a')
+    await expect(iban).toHaveValue('CH93 0076 2011 6238 5295 7')
+    await next(canvasElement, 'company', /Continue/)
+    await within(await step(canvasElement, 'logo')).findByRole('heading', { level: 1 })
+    await expect(bankSent.at(-1)).toMatchObject({
+      iban: 'CH9300762011623852957',
+      bank_name: 'UBS Switzerland AG',
+      bic: 'UBSWCHZH80A',
+    })
+  },
+}
+
 /** A new workspace: the company step has no way past it until the required details are in. */
 /** A long step scrolls on its own: the page and the preview stay put, the bottom stays reachable. */
 export const CompanyScroll: Story = {

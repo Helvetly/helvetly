@@ -23,6 +23,7 @@ import {
   ArrowRight,
   Check,
   FileUp,
+  Landmark,
   PartyPopper,
   ReceiptText,
   UserPlus,
@@ -39,6 +40,7 @@ import {
 } from '@/components/clients/fields'
 import { useHeidi } from '@/components/heidi/heidi-provider'
 import { ImportDrawer } from '@/components/import/import-drawer'
+import { BankFields } from '@/components/settings/bank-fields'
 import { HelpTip } from '@/components/settings/help-tip'
 import { NumberFormatField } from '@/components/settings/number-format-field'
 import { WorkspaceLogoControl } from '@/components/settings/workspace-logo'
@@ -782,33 +784,41 @@ function CompanyStep({
           />
         </FormField>
         {values && <VatCard values={values} error={errors.vat_number} onChange={onChange} />}
-        <FormField
-          id="onboarding-iban"
-          label="IBAN"
-          error={errors.iban}
-          hint={translate('whereClientsPayYouPrintedOnTheQRBill')}
-          status={
-            iban.valid &&
-            (iban.qr
-              ? translate('aQRIBANInvoicesGetAQRReferenceQRR')
-              : translate('invoicesGetACreditorReferenceSCOR'))
-          }
+        {/* Bank details: their own block, apart from the address and VAT, as on Settings → Company. */}
+        <section
+          aria-labelledby="onboarding-bank-title"
+          className="mt-2 grid gap-x-3 gap-y-4 border-t pt-6 sm:grid-cols-2"
         >
-          <input
-            {...describedBy('onboarding-iban', errors.iban)}
-            className={cn(inputClass, 'font-code tracking-wide')}
-            placeholder={translate('ch9300762011623852957')}
-            autoComplete="off"
-            spellCheck={false}
-            value={values?.iban ?? ''}
+          <header className="grid gap-1 sm:col-span-2">
+            <h2
+              id="onboarding-bank-title"
+              className="flex items-center gap-2 text-body font-semibold"
+            >
+              <Landmark
+                aria-hidden
+                className="size-4 shrink-0 stroke-[1.75] text-muted-foreground"
+              />
+              {translate('bankDetails')}
+            </h2>
+            <p className="text-body-sm text-pretty text-muted-foreground">
+              {translate('bankDetailsLead')}
+            </p>
+          </header>
+          <BankFields
+            idPrefix="onboarding"
+            values={values ?? { iban: '', bank_name: '', bic: '' }}
+            errors={errors}
             disabled={!values}
-            onChange={(event) => onChange({ iban: event.target.value })}
-            onBlur={(event) => {
-              const info = ibanInfo(event.target.value)
-              if (info.valid) onChange({ iban: info.formatted })
-            }}
+            inputClassName={inputClass}
+            ibanStatus={
+              iban.valid &&
+              (iban.qr
+                ? translate('aQRIBANInvoicesGetAQRReferenceQRR')
+                : translate('invoicesGetACreditorReferenceSCOR'))
+            }
+            onChange={(field, value) => onChange({ [field]: value })}
           />
-        </FormField>
+        </section>
       </div>
       <Actions onBack={onBack}>
         <Button size="xl" type="submit" className={bigButton} disabled={busy || !values}>
