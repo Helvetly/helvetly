@@ -411,7 +411,7 @@ export const CalendarSyncNotOnFree: Story = {
     await expect(
       await canvas.findByText(/Google and Microsoft calendar sync comes with the Basic plan/),
     ).toBeVisible()
-    await expect(canvas.getByRole('link', { name: 'See plans' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Compare plans' })).toHaveAttribute(
       'href',
       '/settings/billing/plans/',
     )

@@ -5,6 +5,7 @@ test('a feature the plan lacks names the cheapest plan that has it', () => {
   const basic = billingFixture({ plan: 'basic', locked: false })
   expect(featureLock(basic, 'heidi')).toEqual({
     plan: expect.objectContaining({ id: 'pro' }),
+    name: 'Heidi',
     hint: 'Your plan doesn’t include Heidi; Pro does',
   })
   expect(featureLock(basic, 'einvoice_xml')?.hint).toBe(

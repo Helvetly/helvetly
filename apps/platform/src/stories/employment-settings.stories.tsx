@@ -160,7 +160,7 @@ export const OwnerAfterDowngrade: Story = {
     // in the page's content, in the warning tone, not a banner above it
     const notice = body.getByText(/you can view and export it/).closest('[data-tone]')
     await expect(notice).toHaveAttribute('data-tone', 'warning')
-    await expect(body.getByRole('link', { name: /See Business/ })).toHaveAttribute(
+    await expect(body.getByRole('link', { name: /Upgrade to Business/ })).toHaveAttribute(
       'href',
       '/settings/billing/plans/',
     )

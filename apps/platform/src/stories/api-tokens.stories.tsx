@@ -94,7 +94,7 @@ export const LockedByPlan: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText(/New API tokens come with the Pro plan/)).toBeVisible()
-    await expect(canvas.getByRole('link', { name: 'See plans' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Compare plans' })).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/settings\/billing\/plans\/?$/),
     )

@@ -2,7 +2,11 @@ import { effectiveScopes } from '@/lib/permissions'
 
 import { hrAccess } from './hr-access'
 
-const lock = { plan: null, hint: 'Your plan doesn’t include employees and payroll' }
+const lock = {
+  plan: null,
+  name: 'employees and payroll',
+  hint: 'Your plan doesn’t include employees and payroll',
+}
 
 test('the owner edits both areas; on a lapsed plan reads stay and every write is off with its reason', () => {
   const owner = effectiveScopes('owner', null)

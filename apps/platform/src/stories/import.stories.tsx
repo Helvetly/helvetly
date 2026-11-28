@@ -344,7 +344,7 @@ export const CommitPartialSuccess: Story = {
       expect.stringContaining('cli_42'),
     )
     await expect(body().getByText('Your Basic plan includes 10 clients.')).toBeVisible()
-    await expect(body().getByRole('link', { name: 'See plans' })).toBeVisible()
+    await expect(body().getByRole('link', { name: 'Compare plans' })).toBeVisible()
     await expect(body().getByRole('checkbox', { name: 'Select Delta AG' })).toBeChecked()
   },
 }
@@ -511,7 +511,7 @@ export const PlanLimit: Story = {
     await expect(
       await body().findByText('Your storage is full. Upgrade for more space.'),
     ).toBeVisible()
-    await expect(body().getByRole('link', { name: 'See plans' })).toHaveAttribute(
+    await expect(body().getByRole('link', { name: 'Compare plans' })).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/settings\/billing\/plans/),
     )
@@ -607,14 +607,13 @@ export const NotInPlan: Story = {
   parameters: { msw: { handlers: [sessionHandler(), noBatches, onPlan('basic')] } },
   play: async () => {
     await opened()
-    await expect(
-      await body().findByText(/Your plan doesn’t include the AI import; Pro does\./),
-    ).toBeVisible()
+    await expect(await body().findByText(/Upgrade to Pro to use the AI import\./)).toBeVisible()
     await expect(body().getByText(/Imports already read stay open for review\./)).toBeVisible()
-    await expect(body().getByRole('link', { name: 'See Pro' })).toHaveAttribute(
-      'href',
-      expect.stringMatching(/^\/settings\/billing\/plans/),
-    )
+    // The plans open over the drawer: the page, and with it a welcome in progress, stays where it is.
+    await userEvent.click(body().getByRole('button', { name: 'Upgrade to Pro' }))
+    await expect(await body().findByRole('dialog', { name: 'Choose a plan' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(body().queryByRole('dialog', { name: 'Choose a plan' })).toBeNull())
     await expect(body().getByLabelText('Choose files to import')).toBeDisabled()
     await expect(body().getByRole('button', { name: 'Process with AI' })).toBeDisabled()
   },

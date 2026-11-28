@@ -24,7 +24,7 @@ test('a limit error opens the prompt with the meter and the way to the plans', a
   expect(dialog).toHaveTextContent('Client limit reached')
   expect(dialog).toHaveTextContent('The Basic plan includes 250 clients.')
   expect(dialog).toHaveTextContent('250 of 250')
-  expect(screen.getByRole('link', { name: 'See plans' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: 'Compare plans' })).toHaveAttribute(
     'href',
     '/settings/billing/plans',
   )

@@ -187,7 +187,7 @@ export const TokenAllowanceWarning: Story = {
     const bar = await canvas.findByText(/You have used 78% of this month’s Heidi AI tokens\./)
     // The panel slides in from opacity 0.
     await waitFor(() => expect(bar).toBeVisible())
-    await expect(within(bar).getByRole('link', { name: 'See plans' })).toHaveAttribute(
+    await expect(within(bar).getByRole('link', { name: 'Compare plans' })).toHaveAttribute(
       'href',
       expect.stringMatching(/^\/settings\/billing\/plans\/?$/),
     )

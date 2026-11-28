@@ -31,7 +31,7 @@ test('the nudge names the item at its limit and what the next plan includes', ()
   ).toHaveTextContent(
     'Signature requests: the plan’s limit is reached. Business includes unlimited signature requests.',
   )
-  expect(screen.getByRole('link', { name: 'See Business' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: 'Upgrade to Business' })).toHaveAttribute(
     'href',
     '/settings/billing/plans',
   )

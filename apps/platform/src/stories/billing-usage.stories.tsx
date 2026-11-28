@@ -90,7 +90,7 @@ export const NearLimit: Story = {
       'Invoice issues: almost at the plan’s limit. Pro includes 100 invoice issues a month per team member.',
     )
     await expect(
-      within(nudge ?? canvasElement).getByRole('link', { name: 'See Pro' }),
+      within(nudge ?? canvasElement).getByRole('link', { name: 'Upgrade to Pro' }),
     ).toHaveAttribute('href', '/settings/billing/plans/')
   },
 }

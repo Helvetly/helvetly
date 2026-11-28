@@ -22,4 +22,4 @@ Elke werkruimte heeft een eigen abonnement. Een werkruimte zonder betaald abonne
 - Nieuwe proefperiodes voor in aanmerking komende klanten geven Pro gedurende 14 dagen, met maximaal 2 personen. Een betaalkaart is vereist. Tijdens de proefperiode krijg je de tegoeden van Pro voor één persoon, en die worden niet gereset. Proefperiodes die onder eerdere aanbiedingen zijn toegekend behouden hun oorspronkelijke voorwaarden.
 - Zonder betaald abonnement, bijvoorbeeld na de proefperiode of een opzegging, zit de werkruimte op Free: niets wordt verwijderd en alles blijft leesbaar, maar nieuwe toevoegingen boven de limieten van Free wachten tot je een abonnement kiest.
 - Alleen eigenaars en beheerders kunnen het abonnement wijzigen.
-- Bij het bereiken van een limiet zie je een melding met **See plans**.
+- Bij het bereiken van een limiet zie je een melding met **Compare plans**.

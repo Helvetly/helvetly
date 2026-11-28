@@ -528,7 +528,7 @@ export const BillingDisabled: Story = {
         'Subscription billing is currently unavailable. Plan limits are not applied to this workspace.',
       ),
     ).toBeVisible()
-    await expect(canvas.queryByRole('link', { name: 'See plans' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('link', { name: 'Compare plans' })).not.toBeInTheDocument()
   },
 }
 

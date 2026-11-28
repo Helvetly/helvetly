@@ -14,6 +14,7 @@ import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'rea
 
 import { isAIConsentRequired, useAIApproval } from '@/components/ai/ai-approval'
 import { FeatureLockNotice, useFeatureLock } from '@/components/billing/feature-lock'
+import { PlansDrawer } from '@/components/billing/plans-drawer'
 import { errorMessage } from '@/lib/api'
 import { usageKey } from '@/lib/heidi'
 import { translate } from '@/lib/i18n'
@@ -75,6 +76,7 @@ export function ImportDrawer({
   const config = kind === 'auto' ? null : IMPORT_KINDS[kind]
   const noun = config ? config.label.toLowerCase() : 'records'
   const [files, setFiles] = useState(() => peekHandOff(kind))
+  const [plansOpen, setPlansOpen] = useState(false)
   const aiLock = useFeatureLock('ai_import')
   // payroll files are parsed, not read by the AI
   const lock = kind === 'payroll' ? null : aiLock
@@ -225,7 +227,11 @@ export function ImportDrawer({
             )}
           </Callout>
         )}
-        <FeatureLockNotice lock={lock} kept={translate('importsAlreadyReadStayOpenForReview')} />
+        <FeatureLockNotice
+          lock={lock}
+          kept={translate('importsAlreadyReadStayOpenForReview')}
+          onSeePlans={() => setPlansOpen(true)}
+        />
         {upload.error && <Problem error={upload.error} onRetry={() => void read()} />}
         {documents ? (
           upload.isPending && <Loader className="min-h-52" />
@@ -498,6 +504,8 @@ export function ImportDrawer({
               }}
             />
           )}
+
+        {plansOpen && <PlansDrawer onClose={() => setPlansOpen(false)} />}
 
         {confirmDiscard !== null && (
           <ConfirmDialog
