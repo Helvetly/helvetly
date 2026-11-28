@@ -77,16 +77,14 @@ export function vatNumber(values: Values) {
   return `CHE-${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)} ${vatSuffix(values.language)}`
 }
 
-/** The settings as read, with the welcome's values on top: what PUT /invoice-settings takes. */
+/** PUT preserves omitted fields, including settings introduced by a different API version. */
 export function toSettingsInput(
-  settings: InvoiceSettings,
+  settings: Pick<InvoiceSettings, 'default_vat_mode'>,
   values: Values,
-): SettingsInput & Pick<InvoiceSettings, 'seller'> {
+) {
   const vatMode = settings.default_vat_mode === 'none' ? 'exclusive' : settings.default_vat_mode
   return {
-    ...settings,
     seller: {
-      ...settings.seller,
       name: values.name.trim(),
       street: values.street.trim(),
       street_number: values.street_number.trim(),
@@ -105,7 +103,7 @@ export function toSettingsInput(
     currency: values.currency,
     default_terms_days: values.default_terms_days,
     number_format: values.number_format,
-  }
+  } satisfies SettingsInput
 }
 
 /** The company's name and address (not the apartment) are required, and the server refuses to finish without them. */

@@ -9,6 +9,33 @@ import (
 	"helvetly.com/api/internal/store"
 )
 
+func TestOnboardingCompanySavePreservesOtherSettings(t *testing.T) {
+	e := newEnv(t)
+	b := e.workspace()
+	const path = "/api/v1/invoice-settings"
+	e.do(b, "PUT", path, map[string]any{
+		"payment_confirmation": false, "seller": map[string]any{"email": "office@example.test"},
+	}, http.StatusOK, nil)
+
+	e.do(b, "PUT", path, map[string]any{
+		"seller": map[string]any{
+			"name": "Muster", "street": "Bahnhofstrasse", "street_number": "12", "apt": nil,
+			"zip": "8001", "city": "Zürich", "country": "CH", "legal_form": "sole", "vat_number": nil,
+		},
+		"vat_registered": false, "default_vat_mode": "none", "iban": nil,
+		"language": "en", "currency": "CHF", "default_terms_days": 30, "number_format": "{YYYY}-{NNN}",
+	}, http.StatusOK, nil)
+
+	var got struct{ Data Settings }
+	e.do(b, "GET", path, nil, http.StatusOK, &got)
+	if got.Data.PaymentConfirmation || got.Data.Seller.Email == nil || *got.Data.Seller.Email != "office@example.test" {
+		t.Fatalf("company save changed unrelated settings: %+v", got.Data)
+	}
+	if err := e.svc.CompleteOnboarding(context.Background(), b.workspace, func(store.Q) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // The welcome's company step is mandatory on the server: it marks the workspace done only when the stored name,
 // address and country (and the VAT number of a VAT-registered seller) are there. The apartment and the bank account stay optional.
 func TestCompleteOnboardingNeedsTheCompanyDetails(t *testing.T) {

@@ -557,9 +557,19 @@ export type InvoiceSettings = {
 export type SettingsInput = Partial<
   Omit<
     InvoiceSettings,
-    'is_complete' | 'missing_fields' | 'logo_file_id' | 'logo_url' | 'instalments' | 'dunning'
+    | 'is_complete'
+    | 'missing_fields'
+    | 'logo_file_id'
+    | 'logo_url'
+    | 'seller'
+    | 'instalments'
+    | 'dunning'
   >
-> & { instalments?: Partial<InstalmentSettings>; dunning?: Partial<DunningSettings> }
+> & {
+  seller?: Partial<InvoiceSettings['seller']>
+  instalments?: Partial<InstalmentSettings>
+  dunning?: Partial<DunningSettings>
+}
 
 export type SendInput = {
   expected_amount_due?: Decimal

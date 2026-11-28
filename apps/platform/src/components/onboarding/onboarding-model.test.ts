@@ -20,9 +20,7 @@ test('defaults to Switzerland and sends the IBAN without spaces', () => {
   expect(values.country).toBe('CH')
   expect(toSettingsInput(settings, values)).toMatchObject({
     iban: 'CH9300762011623852957',
-    // Settings the welcome doesn't ask about go back as they were.
     number_format: '{YYYY}-{NNN}',
-    qr_bill_enabled: true,
   })
   expect(validate(values)).toEqual({})
   expect(validate({ ...values, iban: 'CH93 0076 2011 6238 5295 8' })).toHaveProperty('iban')
