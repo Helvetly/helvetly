@@ -23,4 +23,4 @@ Varje arbetsyta har en egen plan. En arbetsyta utan betald plan har **Free**. S�
 - Nya berättigade provperioder ger Pro i 14 dagar med upp till 2 personer. Kort krävs. Under provperioden får du Pros kvoter för en person, och de återställs inte. Provperioder som redan beviljats enligt tidigare erbjudanden behåller sina ursprungliga villkor.
 - Utan betald plan, till exempel efter provperioden eller en uppsägning, har arbetsytan Free: ingenting raderas och allt går fortfarande att läsa, men nya tillägg utöver Frees gränser får vänta tills du väljer en plan.
 - Bara ägare och administratörer kan byta plan.
-- När du når en gräns visas uppmaningen **See plans**.
+- När du når en gräns visas uppmaningen **Compare plans**.

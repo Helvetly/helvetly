@@ -30,6 +30,7 @@ export function featureLock(billing: Billing | undefined, feature: FeatureKey) {
   const name = FEATURE_LABELS[feature]
   return {
     plan: locked.plan,
+    name,
     hint: locked.plan
       ? translate('yourPlanDoesntIncludeDoes', { name, plan: locked.plan.name })
       : translate('yourPlanDoesntInclude', { name }),
@@ -39,7 +40,7 @@ export function featureLock(billing: Billing | undefined, feature: FeatureKey) {
 export type FeatureLock = ReturnType<typeof featureLock>
 
 const seeLabel = (lock: NonNullable<FeatureLock>) =>
-  lock.plan ? translate('see2', { name: lock.plan.name }) : translate('seePlans')
+  lock.plan ? translate('upgradeTo', { name: lock.plan.name }) : translate('seePlans')
 
 /**
  * Employees and payroll are not shown at all on a plan without them, unless the owner still has records to read and
@@ -103,13 +104,17 @@ export function FeatureLockNotice({
   lock,
   kept,
   className,
+  onSeePlans,
 }: {
   lock: FeatureLock
   /** What still works, e.g. "Expenses you already have stay available." */
   kept: string
   className?: string
+  /** Opens the plans in place, for a screen the plans page would pull the person away from (the welcome). */
+  onSeePlans?: () => void
 }) {
   if (!lock) return null
+  const label = seeLabel(lock)
   return (
     <Callout
       data-slot="feature-lock-notice"
@@ -117,12 +122,21 @@ export function FeatureLockNotice({
       className={className}
       icon={Lock}
       actions={
-        <Button asChild size="sm" variant="outline">
-          <Link href={PLANS_HREF}>{seeLabel(lock)}</Link>
-        </Button>
+        onSeePlans ? (
+          <Button size="sm" variant="outline" onClick={onSeePlans}>
+            {label}
+          </Button>
+        ) : (
+          <Button asChild size="sm" variant="outline">
+            <Link href={PLANS_HREF}>{label}</Link>
+          </Button>
+        )
       }
     >
-      {lock.hint}. {kept}
+      {lock.plan
+        ? translate('upgradeToUseFeature', { plan: lock.plan.name, name: lock.name })
+        : `${lock.hint}.`}{' '}
+      {kept}
     </Callout>
   )
 }

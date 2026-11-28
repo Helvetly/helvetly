@@ -18,7 +18,7 @@ export function toastPlanRequired(error: unknown, seePlans: () => void): boolean
     id: refusal.feature ? `plan-required-${refusal.feature}` : 'plan-required',
     action: {
       label: refusal.requiredPlan
-        ? translate('see2', { name: PLAN_NAMES[refusal.requiredPlan] })
+        ? translate('upgradeTo', { name: PLAN_NAMES[refusal.requiredPlan] })
         : translate('seePlans'),
       onClick: seePlans,
     },

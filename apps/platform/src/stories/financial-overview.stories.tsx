@@ -419,10 +419,13 @@ export const BillingActiveDetails: Story = {
       'href',
       'https://billing.example.invalid/invoice.pdf',
     )
-    await expect(canvas.getByRole('link', { name: 'Upgrade to Business' })).toHaveAttribute(
-      'href',
+    // The upsell card and the usage nudge both offer it, to the same page.
+    const upgrades = canvas.getAllByRole('link', { name: 'Upgrade to Business' })
+    await expect(upgrades).toHaveLength(2)
+    expect(upgrades.map((link) => link.getAttribute('href'))).toEqual([
       '/settings/billing/plans/',
-    )
+      '/settings/billing/plans/',
+    ])
   },
 }
 
@@ -528,7 +531,7 @@ export const BillingDisabled: Story = {
         'Subscription billing is currently unavailable. Plan limits are not applied to this workspace.',
       ),
     ).toBeVisible()
-    await expect(canvas.queryByRole('link', { name: 'See plans' })).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('link', { name: 'Compare plans' })).not.toBeInTheDocument()
   },
 }
 

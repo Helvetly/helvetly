@@ -27,7 +27,7 @@ test('a plan_required refusal is one toast with the way to the plans', async () 
   expect(toastPlanRequired(refused(), seePlans)).toBe(true)
   expect(await screen.findAllByText('This workspace has no active plan.')).toHaveLength(1)
   // userEvent's pointer events need setPointerCapture, which jsdom lacks and sonner calls.
-  fireEvent.click(screen.getByRole('button', { name: 'See plans' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Compare plans' }))
   expect(seePlans).toHaveBeenCalledOnce()
 })
 
@@ -57,7 +57,7 @@ test('a feature_not_in_plan refusal is the same toast, and the action’s own to
   expect(toastPlanRequired(lacking, seePlans)).toBe(true)
   toastError(lacking)
   expect(await screen.findAllByText('The Basic plan does not include expenses.')).toHaveLength(1)
-  fireEvent.click(screen.getByRole('button', { name: 'See Pro' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Pro' }))
   expect(seePlans).toHaveBeenCalledOnce()
   // A 403 for a missing scope is not a plan refusal.
   expect(

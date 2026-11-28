@@ -41,6 +41,74 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+const middle = (element: Element | null) => {
+  const box = element?.getBoundingClientRect()
+  return box ? box.top + box.height / 2 : Number.NaN
+}
+
+const TONES = ['info', 'warning', 'danger', 'success', 'neutral'] as const
+
+/** Every tone with an action: one line, two lines, and title + body. */
+export const CalloutActions: Story = {
+  render: () => (
+    <div className="grid max-w-xl gap-6">
+      {TONES.map((tone) => (
+        <div key={tone} data-tone-row={tone} className="grid gap-2">
+          <Callout
+            tone={tone}
+            actions={
+              <Button size="sm" variant="outline">
+                Upgrade to Pro
+              </Button>
+            }
+          >
+            Upgrade to Pro to use the AI import.
+          </Callout>
+          <div className="max-w-sm">
+            <Callout
+              tone={tone}
+              actions={
+                <Button size="sm" variant="outline">
+                  Compare plans
+                </Button>
+              }
+            >
+              Your plan doesn’t include calendar sync. Upgrade to connect Google or Microsoft
+              calendars to your sessions.
+            </Callout>
+          </div>
+          <Callout
+            tone={tone}
+            title="Almost at the plan’s limit"
+            actions={
+              <Button size="sm" variant="outline">
+                Open billing
+              </Button>
+            }
+          >
+            47 of 50 clients used this month.
+          </Callout>
+        </div>
+      ))}
+    </div>
+  ),
+  play: ({ canvasElement }) => {
+    for (const row of canvasElement.querySelectorAll('[data-tone-row]')) {
+      const [single, wrapped] = [...row.querySelectorAll('[data-slot=callout]')]
+      const button = middle(single?.querySelector('button') ?? null)
+      // One line: icon and text sit level with the button.
+      expect(Math.abs(middle(single?.querySelector('svg') ?? null) - button)).toBeLessThan(1.5)
+      expect(
+        Math.abs(middle(single?.querySelector('[data-slot=callout-text]') ?? null) - button),
+      ).toBeLessThan(1.5)
+      // Wrapped: the icon stays on the first line, above the button's middle.
+      expect(middle(wrapped?.querySelector('svg') ?? null)).toBeLessThan(
+        middle(wrapped?.querySelector('button') ?? null) - 4,
+      )
+    }
+  },
+}
+
 export const Callouts: Story = {
   render: () => (
     <div className="grid max-w-xl gap-3">
@@ -81,8 +149,6 @@ export const Callouts: Story = {
     await expect([...callouts].filter((callout) => !callout.querySelector('svg'))).toEqual([])
     await expect(within(canvasElement).getByRole('button', { name: 'Complete' })).toBeVisible()
     // A title-only notice with an action is centred on it; one with a body stays top-aligned.
-    await expect(callouts[3]).toHaveClass('items-center')
-    await expect(callouts[1]).toHaveClass('items-start')
   },
 }
 

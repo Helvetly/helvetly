@@ -65,14 +65,14 @@ export const ExpensesOnBasic: Story = {
   play: async () => {
     const screen = body()
     const notice = await screen.findByText(
-      /Your plan doesn’t include expenses; Pro does\./,
+      /Upgrade to Pro to use expenses\./,
       {},
       { timeout: 8000 },
     )
     await expect(notice.closest('[data-slot=feature-lock-notice]')).toHaveTextContent(
       'Expenses you already have stay available to read.',
     )
-    await expect(screen.getByRole('link', { name: 'See Pro' })).toHaveAttribute(
+    await expect(screen.getByRole('link', { name: 'Upgrade to Pro' })).toHaveAttribute(
       'href',
       '/settings/billing/plans/',
     )
@@ -96,11 +96,7 @@ export const ExpensesOnBasicPhone: Story = {
   play: async () => {
     const screen = body()
     await expect(
-      await screen.findByText(
-        /Your plan doesn’t include expenses; Pro does\./,
-        {},
-        { timeout: 8000 },
-      ),
+      await screen.findByText(/Upgrade to Pro to use expenses\./, {}, { timeout: 8000 }),
     ).toBeVisible()
     await expect(screen.queryByRole('button', { name: 'New expense' })).toBeNull()
   },
@@ -122,11 +118,7 @@ export const LedgerOnBasic: Story = {
   play: async () => {
     const screen = body()
     await expect(
-      await screen.findByText(
-        /Your plan doesn’t include the ledger; Pro does\./,
-        {},
-        { timeout: 8000 },
-      ),
+      await screen.findByText(/Upgrade to Pro to use the ledger\./, {}, { timeout: 8000 }),
     ).toBeVisible()
     await expect(screen.queryByRole('button', { name: /Export/ })).toBeNull()
   },
@@ -197,12 +189,12 @@ export const PlanErrorToasts: Story = {
     await expect(screen.getAllByText('Expenses are not part of the Basic plan.')).toHaveLength(1)
     const toast = screen.getByText('Expenses are not part of the Basic plan.').closest('li')
     await expect(
-      within(toast ?? document.body).getByRole('button', { name: 'See Pro' }),
+      within(toast ?? document.body).getByRole('button', { name: 'Upgrade to Pro' }),
     ).toBeVisible()
     // 402 plan_required: the same path, to the plans
     await userEvent.click(screen.getByRole('button', { name: 'Add a client' }))
     await toastShows('This workspace has no active plan.')
-    await expect(screen.getByRole('button', { name: 'See plans' })).toBeVisible()
+    await expect(screen.getByRole('button', { name: 'Compare plans' })).toBeVisible()
     // 402 limit_reached (the current body): the prompt with the meter, the reset and the kept draft
     await userEvent.click(screen.getByRole('button', { name: 'Issue an invoice' }))
     const dialog = within(await screen.findByRole('dialog'))
@@ -239,12 +231,12 @@ export const LockedAreaBlurred: Story = {
   },
   play: async () => {
     const screen = body()
-    const notice = await screen.findByText(/Your plan doesn’t include expenses; Pro does\./)
+    const notice = await screen.findByText(/Upgrade to Pro to use expenses\./)
     await expect(notice.closest('[data-slot=feature-lock-notice]')).toHaveAttribute(
       'data-tone',
       'warning',
     )
-    await expect(screen.getByRole('link', { name: 'See Pro' })).toBeVisible()
+    await expect(screen.getByRole('link', { name: 'Upgrade to Pro' })).toBeVisible()
     // the content behind is inert: out of the tab order and the accessibility tree
     await expect(screen.getByText('Office rent, 1 200.00 CHF').closest('[inert]')).not.toBeNull()
     await expect(screen.queryByRole('button', { name: 'New expense' })).toBeNull()

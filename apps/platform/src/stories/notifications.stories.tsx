@@ -778,8 +778,8 @@ export const DigestPlanLock: Story = {
     const canvas = within(document.body)
     const digest = await canvas.findByRole('switch', { name: 'Daily e-mail digest' })
     await expect(digest).toBeDisabled()
-    await expect(await canvas.findByText(/Your plan doesn.t include/)).toBeVisible()
-    await expect(canvas.getByRole('link', { name: /See/ })).toBeVisible()
+    await expect(await canvas.findByText(/Upgrade to Pro to use/)).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Upgrade to Pro' })).toBeVisible()
   },
 }
 

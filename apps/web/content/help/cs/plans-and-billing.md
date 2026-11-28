@@ -22,4 +22,4 @@ Každý pracovní prostor má vlastní tarif. Pracovní prostor bez placeného t
 - Nové zkušební doby při splnění podmínek dávají Pro na 14 dní až pro 2 osoby. Je nutná karta. Během zkoušky máte limity Pro pro jednu osobu a neobnovují se. Dříve poskytnuté zkoušky zachovávají původní podmínky.
 - Bez placeného tarifu, například po zkoušce nebo zrušení, je pracovní prostor na Free: nic se nemaže a vše zůstává čitelné, ale nové položky nad limity Free počkají, až tarif vyberete.
 - Tarif mohou měnit jen vlastníci a správci.
-- Při dosažení limitu se zobrazí výzva **See plans**.
+- Při dosažení limitu se zobrazí výzva **Compare plans**.

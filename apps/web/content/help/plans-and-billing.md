@@ -22,4 +22,4 @@ Each workspace has its own plan. A workspace without a paid plan is on **Free**.
 - New eligible trials give Pro for 14 days with up to 2 people. A card is required. During the trial you get Pro's allowances for one person, and they do not reset. Trials already granted under earlier offers keep their original terms.
 - Without a paid plan, for example after the trial or a cancellation, the workspace is on Free: nothing is deleted and everything stays readable, but new additions beyond Free's limits wait until you choose a plan.
 - Only owners and admins can change the plan.
-- When you reach a limit, you see a prompt with **See plans**.
+- When you reach a limit, you see a prompt with **Compare plans**.

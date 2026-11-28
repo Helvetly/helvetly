@@ -97,8 +97,8 @@ function UpgradeNudge({ billing, item }: { billing: Billing; item: UsageItem }) 
         next && (
           <Button asChild size="sm" variant="outline">
             <Link href="/settings/billing/plans">
-              {translate('see')}
-              {next.name} <ArrowRight data-icon="inline-end" aria-hidden />
+              {translate('upgradeTo', { name: next.name })}{' '}
+              <ArrowRight data-icon="inline-end" aria-hidden />
             </Link>
           </Button>
         )
